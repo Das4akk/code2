@@ -1,7 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getDatabase, ref, push, onChildAdded, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-// --- КОНФИГУРАЦИЯ ---
 const firebaseConfig = {
     apiKey: "AIzaSyCby2qPGnLHWRfxWAI3Y2aK_UndEh9nato",
     authDomain: "das4akk-1.firebaseapp.com",
@@ -25,7 +24,7 @@ const player = document.getElementById('native-player');
 const shutter = document.getElementById('player-shutter');
 const chatMessages = document.getElementById('chat-messages');
 
-// --- ДВИЖОК ФОНОВЫХ ЧАСТИЦ (HIGH END) ---
+// --- ДВИЖОК ФОНА: ПЛЕКСУС (СЕТЬ) ---
 const canvas = document.getElementById('particle-canvas');
 const ctx = canvas.getContext('2d');
 let particles = [];
@@ -39,41 +38,69 @@ initCanvas();
 
 class Particle {
     constructor() {
-        this.reset();
-    }
-    reset() {
+        // Частицы сразу разбросаны по всему экрану
         this.x = Math.random() * canvas.width;
-        this.y = canvas.height + 20;
-        this.size = Math.random() * 1.8 + 0.2;
-        this.speedY = Math.random() * 0.6 + 0.3;
-        this.alpha = Math.random() * 0.4 + 0.1;
-        this.oscillation = Math.random() * 0.02;
-        this.angle = Math.random() * Math.PI * 2;
+        this.y = Math.random() * canvas.height;
+        this.vx = (Math.random() - 0.5) * 0.8;
+        this.vy = (Math.random() - 0.5) * 0.8;
+        this.size = Math.random() * 2 + 0.5;
     }
     update() {
-        this.y -= this.speedY;
-        this.x += Math.sin(this.angle) * 0.3;
-        this.angle += this.oscillation;
-        if (this.y < -20) this.reset();
+        this.x += this.vx;
+        this.y += this.vy;
+        
+        // Отскок от краев экрана
+        if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+        if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
     }
     draw() {
-        ctx.fillStyle = `rgba(255, 255, 255, ${this.alpha})`;
+        ctx.fillStyle = 'rgba(150, 150, 150, 0.6)'; // Серые точки
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
         ctx.fill();
     }
 }
 
-for (let i = 0; i < 120; i++) particles.push(new Particle());
+// Создаем 80 частиц
+for (let i = 0; i < 80; i++) particles.push(new Particle());
 
-function animate() {
+function animatePlexus() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    particles.forEach(p => { p.update(); p.draw(); });
-    requestAnimationFrame(animate);
+    
+    // Рисуем линии между близкими частицами
+    for (let i = 0; i < particles.length; i++) {
+        particles[i].update();
+        particles[i].draw();
+        
+        for (let j = i + 1; j < particles.length; j++) {
+            let dx = particles[i].x - particles[j].x;
+            let dy = particles[i].y - particles[j].y;
+            let dist = Math.sqrt(dx * dx + dy * dy);
+            
+            if (dist < 120) {
+                // Чем ближе точки, тем ярче линия
+                ctx.strokeStyle = `rgba(150, 150, 150, ${1 - dist / 120})`;
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(particles[i].x, particles[i].y);
+                ctx.lineTo(particles[j].x, particles[j].y);
+                ctx.stroke();
+            }
+        }
+    }
+    requestAnimationFrame(animatePlexus);
 }
-animate();
+animatePlexus();
 
-// --- ЛОГИКА АВАТАРОВ И ВХОДА ---
+
+// --- ЛОГИКА АВАТАРОВ И ВХОДА (И ЗАПОМИНАНИЕ) ---
+
+// Проверяем, есть ли сохраненный никнейм
+const savedName = localStorage.getItem('cow_username');
+if (savedName) {
+    document.getElementById('username-input').value = savedName;
+}
+
 document.querySelectorAll('.av-item').forEach(el => {
     el.onclick = () => {
         document.querySelector('.av-item.active').classList.remove('active');
@@ -86,6 +113,9 @@ document.getElementById('login-btn').onclick = () => {
     const val = document.getElementById('username-input').value.trim();
     if (val) {
         myUser.name = val;
+        // Запоминаем в браузере
+        localStorage.setItem('cow_username', val); 
+        
         document.getElementById('auth-screen').style.opacity = '0';
         setTimeout(() => {
             document.getElementById('auth-screen').classList.remove('active');
@@ -94,7 +124,7 @@ document.getElementById('login-btn').onclick = () => {
     }
 };
 
-// --- ВИДЕО СИНХРОНИЗАЦИЯ (PREMIUM) ---
+// --- ВИДЕО СИНХРОНИЗАЦИЯ ---
 const sync = (type, time) => {
     if (isRemoteAction || !myUser.name) return;
     set(videoRef, {
@@ -146,24 +176,8 @@ onValue(videoRef, (snap) => {
     setTimeout(() => isRemoteAction = false, 1000);
 });
 
-// --- ЧАТ И СТИКЕРЫ (Rave Engine) ---
-const stickerPanel = document.getElementById('sticker-panel');
-document.getElementById('open-stickers').onclick = () => stickerPanel.classList.toggle('active');
 
-const stickerMap = {
-    heart: 'https://cdn-icons-png.flaticon.com/512/4117/4117961.png',
-    wow: 'https://cdn-icons-png.flaticon.com/512/4117/4117951.png',
-    cry: 'https://cdn-icons-png.flaticon.com/512/4117/4117947.png',
-    popcorn: 'https://cdn-icons-png.flaticon.com/512/1791/1791330.png'
-};
-
-document.querySelectorAll('.st-item').forEach(s => {
-    s.onclick = () => {
-        push(chatRef, { user: myUser.name, av: myUser.avatar, type: 'sticker', content: s.dataset.st });
-        stickerPanel.classList.remove('active');
-    };
-});
-
+// --- ЧАТ (ТОЛЬКО ТЕКСТ) ---
 const sendMsg = () => {
     const inp = document.getElementById('chat-input');
     if (inp.value.trim()) {
@@ -181,15 +195,11 @@ onChildAdded(chatRef, (snap) => {
     const isSelf = m.user === myUser.name;
     div.className = isSelf ? 'm-line self' : 'm-line';
     
-    let contentHtml = m.type === 'sticker' 
-        ? `<img src="${stickerMap[m.content]}" class="chat-sticker">` 
-        : `<p>${m.content}</p>`;
-    
     div.innerHTML = `
         <img src="https://api.dicebear.com/8.x/avataaars/svg?seed=${m.av}" class="m-avatar">
         <div class="bubble">
             <strong>${m.user}</strong>
-            ${contentHtml}
+            <p>${m.content}</p>
         </div>
     `;
     

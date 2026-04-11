@@ -1,23 +1,24 @@
 :root {
-    --bg: #000;
+    --bg: #0b0b0c; /* Очень глубокий серый/черный */
     --accent: #fff;
-    --glass: rgba(255, 255, 255, 0.03);
+    --glass: rgba(255, 255, 255, 0.04);
     --border: rgba(255, 255, 255, 0.08);
-    --blur: blur(30px);
+    --blur: blur(20px);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, system-ui, sans-serif; }
 body { background: var(--bg); color: #fff; height: 100vh; overflow: hidden; -webkit-tap-highlight-color: transparent; }
 
-#particle-canvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0.6; }
+/* Новый фон */
+#particle-canvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0.8; }
 
 .screen { display: none; height: 100vh; position: relative; z-index: 1; }
 .screen.active { display: flex; flex-direction: column; }
 
-/* АУТЕНТИФИКАЦИЯ БЕЗ СЕРЫХ ПАНЕЛЕЙ */
+/* АВТОРИЗАЦИЯ */
 .auth-box { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 35px; animation: authIn 1s cubic-bezier(0.2, 1, 0.2, 1); }
 .auth-logo { font-size: 60px; font-weight: 900; letter-spacing: -4px; }
-.auth-logo span { color: #333; }
+.auth-logo span { color: #555; }
 
 .avatar-grid { display: flex; gap: 20px; }
 .av-item { width: 65px; height: 65px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; transition: 0.4s; background: var(--glass); padding: 5px; }
@@ -29,7 +30,7 @@ body { background: var(--bg); color: #fff; height: 100vh; overflow: hidden; -web
 .primary-btn { background: #fff; color: #000; border: none; padding: 20px 70px; border-radius: 22px; font-weight: 900; cursor: pointer; transition: 0.3s; font-size: 15px; }
 .primary-btn:active { transform: scale(0.95); }
 
-/* ЛЕЙАУТ ПРИЛОЖЕНИЯ */
+/* ЛЕЙАУТ */
 .app-header { padding: 30px 40px; border-bottom: 1px solid var(--border); border-radius: 0 0 30px 30px; }
 .live-indicator { color: #34C759; font-size: 11px; font-weight: 800; display: flex; align-items: center; gap: 7px; margin-top: 8px; text-transform: uppercase; letter-spacing: 1px; }
 .live-indicator span { width: 8px; height: 8px; background: #34C759; border-radius: 50%; box-shadow: 0 0 12px #34C759; }
@@ -39,7 +40,7 @@ body { background: var(--bg); color: #fff; height: 100vh; overflow: hidden; -web
 
 .video-column { flex: 3; padding: 30px; display: flex; flex-direction: column; gap: 25px; }
 .episode-list { display: flex; gap: 12px; overflow-x: auto; scrollbar-width: none; }
-.ep-btn { background: var(--glass); border: 1px solid var(--border); color: #666; padding: 14px 30px; border-radius: 18px; cursor: pointer; transition: 0.3s; }
+.ep-btn { background: var(--glass); border: 1px solid var(--border); color: #888; padding: 14px 30px; border-radius: 18px; cursor: pointer; transition: 0.3s; }
 .ep-btn.active { background: #fff; color: #000; font-weight: 800; border-color: #fff; }
 
 .player-container { position: relative; aspect-ratio: 16/9; background: #000; border-radius: 30px; overflow: hidden; border: 1px solid var(--border); box-shadow: 0 50px 100px rgba(0,0,0,0.9); }
@@ -56,24 +57,19 @@ video { width: 100%; height: 100%; object-fit: contain; }
 .m-line.self { align-self: flex-end; flex-direction: row-reverse; }
 .m-avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--glass); border: 1px solid var(--border); }
 
-.bubble { background: var(--glass); padding: 15px 20px; border-radius: 22px; border: 1px solid var(--border); backdrop-filter: blur(10px); }
+.bubble { background: var(--glass); padding: 15px 20px; border-radius: 22px; border: 1px solid var(--border); backdrop-filter: blur(10px); line-height: 1.4; }
 .self .bubble { background: #fff; color: #000; border: none; }
 .bubble strong { display: block; font-size: 10px; opacity: 0.4; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
 
-.chat-sticker { width: 110px; height: 110px; display: block; margin-top: 8px; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.5)); }
+/* НОВОЕ КРАСИВОЕ ПОЛЕ ВВОДА В ЧАТЕ */
+.message-dock { padding: 25px; }
+.beautiful-chat-input { display: flex; align-items: center; background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 30px; padding: 6px 8px 6px 20px; backdrop-filter: var(--blur); transition: 0.3s; }
+.beautiful-chat-input:focus-within { border-color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.08); }
+.beautiful-chat-input input { flex: 1; background: none; border: none; color: #fff; font-size: 15px; outline: none; height: 40px; }
+.beautiful-chat-input input::placeholder { color: rgba(255,255,255,0.3); }
 
-/* ПАНЕЛЬ СТИКЕРОВ */
-.sticker-popup { position: absolute; bottom: 110px; left: 25px; right: 25px; padding: 25px; border-radius: 25px; transform: translateY(30px) scale(0.9); opacity: 0; pointer-events: none; transition: 0.4s cubic-bezier(0.2, 1, 0.2, 1); z-index: 100; border: 1px solid var(--border); background: rgba(10,10,10,0.9); }
-.sticker-popup.active { transform: translateY(0) scale(1); opacity: 1; pointer-events: auto; }
-.sticker-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
-.st-item { width: 100%; cursor: pointer; transition: 0.3s; }
-.st-item:hover { transform: scale(1.25) rotate(5deg); }
-
-.message-dock { padding: 25px; position: relative; }
-.input-dock-wrapper { display: flex; align-items: center; padding: 5px 15px; }
-.icon-btn { background: none; border: none; font-size: 22px; cursor: pointer; padding-right: 15px; filter: grayscale(1); transition: 0.3s; }
-.icon-btn:hover { filter: grayscale(0); }
-.send-btn { width: 45px; height: 45px; background: #fff; border: none; border-radius: 50%; font-weight: 900; cursor: pointer; color: #000; font-size: 20px; flex-shrink: 0; }
+.send-btn { width: 42px; height: 42px; background: #fff; border: none; border-radius: 50%; font-weight: 900; cursor: pointer; color: #000; font-size: 20px; flex-shrink: 0; transition: 0.2s; }
+.send-btn:active { transform: scale(0.9); }
 
 @keyframes msgSlide { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes authIn { from { opacity: 0; transform: scale(1.05); } to { opacity: 1; transform: scale(1); } }
