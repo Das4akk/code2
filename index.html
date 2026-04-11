@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Co-Watch Premium | TVD</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <canvas id="particle-canvas"></canvas>
+
+    <section id="auth-screen" class="screen active auth-animate-in">
+        <div class="auth-card glass">
+            <div class="auth-logo-wrapper">
+                <div class="auth-logo">CO<span>W</span></div>
+                <div class="auth-shine"></div>
+            </div>
+            <h1>Shared Cinema</h1>
+            <p>1 сезон 1 серия</p>
+            <div class="input-container glass-input">
+                <input type="text" id="username-input" placeholder="Введите ваш никнейм" autocomplete="off">
+            </div>
+            <button id="login-btn" class="primary-btn pulse-animate">Войти в зал</button>
+        </div>
+    </section>
+
+    <section id="main-app" class="screen">
+        <header class="app-header glass">
+            <div class="room-info">
+                <h2 id="current-title">1 сезон 1 серия</h2>
+                <div id="status" class="live-indicator"><span></span> Синхронизация активна</div>
+            </div>
+        </header>
+
+        <main class="main-layout">
+            <div class="video-column">
+                <div class="episode-list">
+                    <button class="ep-btn active glass-btn" data-mp4="https://www.dropbox.com/scl/fi/is8mv6swhjln0rgcxcdu7/s01e01_1080.mp4?rlkey=2l9ox7mwbexyauki8jzyj8ymx&st=31w6hepc&raw=1">1 серия</button>
+                    <button class="ep-btn glass-btn" data-mp4="ССЫЛКА_НА_2_СЕРИЮ">2 серия</button>
+                </div>
+
+                <div class="player-wrapper glass-player">
+                    <video id="native-player" controls playsinline>
+                        <source src="https://www.dropbox.com/scl/fi/is8mv6swhjln0rgcxcdu7/s01e01_1080.mp4?rlkey=2l9ox7mwbexyauki8jzyj8ymx&st=31w6hepc&raw=1" type="video/mp4">
+                    </video>
+                    <div id="player-shutter" class="shutter-animate"></div>
+                </div>
+            </div>
+
+            <div class="chat-column glass-chat">
+                <div class="chat-label">Обсуждение</div>
+                <div class="chat-area" id="chat-messages"></div>
+                <div class="message-dock glass-dock">
+                    <div class="input-dock-wrapper glass-input">
+                        <input type="text" id="chat-input" placeholder="Напишите сообщение..." autocomplete="off">
+                        <button id="send-btn" class="send-action-btn glass-send">↑</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </section>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>
