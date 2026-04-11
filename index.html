@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Co-Watch | Plexus Style</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Co-Watch | Live Room</title>
+    <link rel="stylesheet" href="style.css?v=10">
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 </head>
 <body>
     <canvas id="particle-canvas"></canvas>
@@ -12,51 +13,36 @@
     <section id="auth-screen" class="screen active">
         <div class="auth-box">
             <div class="auth-logo">CO<span>W</span></div>
-            <h1>Shared Cinema</h1>
-            
-            <div class="avatar-grid">
-                <img src="https://api.dicebear.com/8.x/avataaars/svg?seed=Felix" class="av-item active" data-av="Felix">
-                <img src="https://api.dicebear.com/8.x/avataaars/svg?seed=Aneka" class="av-item" data-av="Aneka">
-                <img src="https://api.dicebear.com/8.x/avataaars/svg?seed=Casper" class="av-item" data-av="Casper">
-                <img src="https://api.dicebear.com/8.x/avataaars/svg?seed=Milo" class="av-item" data-av="Milo">
-            </div>
-
             <div class="input-wrapper glass">
-                <input type="text" id="username-input" placeholder="Никнейм" autocomplete="off">
+                <input type="text" id="username-input" placeholder="Твое имя" autocomplete="off">
             </div>
-            <button id="login-btn" class="primary-btn">Войти в комнату</button>
+            <button id="login-btn" class="primary-btn">Войти</button>
         </div>
     </section>
 
     <section id="main-app" class="screen">
         <header class="app-header glass">
             <div class="room-info">
-                <h2 id="current-title">1 сезон 1 серия</h2>
-                <div id="status" class="live-indicator"><span></span> Live Sync</div>
+                <h2>Доктор Стрэндж</h2>
+                <div id="status" class="live-indicator"><span></span> Sync Active</div>
             </div>
         </header>
 
         <main class="main-layout">
             <div class="video-column">
-                <div class="episode-list">
-                    <button class="ep-btn active glass-btn" data-mp4="https://www.dropbox.com/scl/fi/is8mv6swhjln0rgcxcdu7/s01e01_1080.mp4?rlkey=2l9ox7mwbexyauki8jzyj8ymx&st=31w6hepc&raw=1">1 серия</button>
-                    <button class="ep-btn glass-btn" data-mp4="https://www.dropbox.com/scl/fi/is8mv6swhjln0rgcxcdu7/s01e01_1080.mp4?rlkey=2l9ox7mwbexyauki8jzyj8ymx&st=31w6hepc&raw=1">2 серия</button>
-                </div>
                 <div class="player-container glass-player">
                     <video id="native-player" controls playsinline>
-                        <source src="https://www.dropbox.com/scl/fi/is8mv6swhjln0rgcxcdu7/s01e01_1080.mp4?rlkey=2l9ox7mwbexyauki8jzyj8ymx&st=31w6hepc&raw=1" type="video/mp4">
+                        <source src="https://www.dropbox.com/scl/fi/w6ne3u4cu0etalghat2p9/Doktor_Strendzh_2016_720-kinovasek.net.mp4?rlkey=zt2j541gmovz2bodz94t3dse5&st=tt9m2hw8&raw=1" type="video/mp4">
                     </video>
-                    <div id="player-shutter"></div>
                 </div>
             </div>
 
             <div class="chat-column glass-chat">
-                <div class="chat-header">Чат комнаты</div>
                 <div class="chat-area" id="chat-messages"></div>
-
                 <div class="message-dock">
                     <div class="beautiful-chat-input glass">
-                        <input type="text" id="chat-input" placeholder="Написать сообщение..." autocomplete="off">
+                        <button id="mic-toggle" class="mic-btn">🎤</button>
+                        <input type="text" id="chat-input" placeholder="Написать..." autocomplete="off">
                         <button id="send-btn" class="send-btn">↑</button>
                     </div>
                 </div>
@@ -64,6 +50,6 @@
         </main>
     </section>
 
-    <script type="module" src="app.js"></script>
+    <script type="module" src="app.js?v=10"></script>
 </body>
 </html>
