@@ -3,43 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Co-Watch | Synced Cinema</title>
+    <title>Co-Watch | Ultra Rave</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <canvas id="particle-canvas"></canvas>
 
     <section id="auth-screen" class="screen active">
-        <div class="auth-card glass auth-animate-in">
-            <div class="auth-logo-wrapper">
-                <div class="auth-logo">CO<span>W</span></div>
+        <div class="auth-box">
+            <div class="auth-logo">CO<span>W</span></div>
+            <h1>Shared Cinema</h1>
+            
+            <div class="avatar-grid">
+                <img src="https://api.dicebear.com/8.x/avataaars/svg?seed=Felix" class="av-item active" data-av="Felix">
+                <img src="https://api.dicebear.com/8.x/avataaars/svg?seed=Aneka" class="av-item" data-av="Aneka">
+                <img src="https://api.dicebear.com/8.x/avataaars/svg?seed=Casper" class="av-item" data-av="Casper">
+                <img src="https://api.dicebear.com/8.x/avataaars/svg?seed=Milo" class="av-item" data-av="Milo">
             </div>
-            <h1>Войти в комнату</h1>
-            <div class="input-container glass-input">
+
+            <div class="input-wrapper glass">
                 <input type="text" id="username-input" placeholder="Никнейм" autocomplete="off">
             </div>
-            <button id="login-btn" class="primary-btn pulse-animate-white">Войти</button>
+            <button id="login-btn" class="primary-btn pulse-white">Войти в комнату</button>
         </div>
     </section>
-
-    <div id="settings-panel" class="glass-panel shutter-animate">
-        <header>
-            <h3>Профиль</h3>
-            <button id="close-settings" class="icon-btn">✕</button>
-        </header>
-        <div class="avatar-picker">
-            <img src="https://api.dicebear.com/8.x/avataaars/svg?seed=Felix" class="av-p active" data-av="Felix">
-            <img src="https://api.dicebear.com/8.x/avataaars/svg?seed=Aria" class="av-p" data-av="Aria">
-            <img src="https://api.dicebear.com/8.x/avataaars/svg?seed=Leo" class="av-p" data-av="Leo">
-            <img src="https://api.dicebear.com/8.x/avataaars/svg?seed=Maya" class="av-p" data-av="Maya">
-            <img src="https://api.dicebear.com/8.x/avataaars/svg?seed=Zoe" class="av-p" data-av="Zoe">
-            <img src="https://api.dicebear.com/8.x/avataaars/svg?seed=Max" class="av-p" data-av="Max">
-        </div>
-        <div class="input-container glass-input">
-            <input type="text" id="settings-name-input" placeholder="Новый ник">
-        </div>
-        <button id="save-settings" class="primary-btn">Сохранить</button>
-    </div>
 
     <section id="main-app" class="screen">
         <header class="app-header glass">
@@ -55,33 +42,32 @@
                     <button class="ep-btn active glass-btn" data-mp4="https://www.dropbox.com/scl/fi/is8mv6swhjln0rgcxcdu7/s01e01_1080.mp4?rlkey=2l9ox7mwbexyauki8jzyj8ymx&st=31w6hepc&raw=1">1 серия</button>
                     <button class="ep-btn glass-btn" data-mp4="https://www.dropbox.com/scl/fi/is8mv6swhjln0rgcxcdu7/s01e01_1080.mp4?rlkey=2l9ox7mwbexyauki8jzyj8ymx&st=31w6hepc&raw=1">2 серия</button>
                 </div>
-                <div class="player-wrapper glass-player">
+                <div class="player-container glass-player">
                     <video id="native-player" controls playsinline>
                         <source src="https://www.dropbox.com/scl/fi/is8mv6swhjln0rgcxcdu7/s01e01_1080.mp4?rlkey=2l9ox7mwbexyauki8jzyj8ymx&st=31w6hepc&raw=1" type="video/mp4">
                     </video>
-                    <div id="player-shutter" class="shutter-animate"></div>
+                    <div id="player-shutter"></div>
                 </div>
             </div>
 
             <div class="chat-column glass-chat">
-                <header class="chat-header">
-                    <span>Чат</span>
-                    <button id="open-settings" class="icon-btn">⚙️</button>
-                </header>
+                <div class="chat-header">Чат комнаты</div>
                 <div class="chat-area" id="chat-messages"></div>
                 
-                <div id="sticker-panel" class="glass-panel sticker-shutter">
-                    <img src="https://cdn-icons-png.flaticon.com/512/4117/4117961.png" class="sticker-img" data-sticker="heart">
-                    <img src="https://cdn-icons-png.flaticon.com/512/4117/4117951.png" class="sticker-img" data-sticker="wow">
-                    <img src="https://cdn-icons-png.flaticon.com/512/4117/4117947.png" class="sticker-img" data-sticker="cry">
-                    <img src="https://cdn-icons-png.flaticon.com/512/1791/1791330.png" class="sticker-img" data-sticker="popcorn">
+                <div id="sticker-panel" class="sticker-popup glass">
+                    <div class="sticker-grid">
+                        <img src="https://cdn-icons-png.flaticon.com/512/4117/4117961.png" class="st-item" data-st="heart">
+                        <img src="https://cdn-icons-png.flaticon.com/512/4117/4117951.png" class="st-item" data-st="wow">
+                        <img src="https://cdn-icons-png.flaticon.com/512/4117/4117947.png" class="st-item" data-st="cry">
+                        <img src="https://cdn-icons-png.flaticon.com/512/1791/1791330.png" class="st-item" data-st="popcorn">
+                    </div>
                 </div>
 
                 <div class="message-dock">
-                    <div class="input-dock-wrapper glass-input">
-                        <button id="open-stickers" class="icon-btn-inline">😊</button>
-                        <input type="text" id="chat-input" placeholder="Сообщение..." autocomplete="off">
-                        <button id="send-btn" class="send-action-btn glass-send">↑</button>
+                    <div class="input-dock-wrapper glass">
+                        <button id="open-stickers" class="icon-btn">😊</button>
+                        <input type="text" id="chat-input" placeholder="Написать..." autocomplete="off">
+                        <button id="send-btn" class="send-btn">↑</button>
                     </div>
                 </div>
             </div>
