@@ -13,182 +13,202 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-const videoRef = ref(db, 'native_premium_sync'); // Новая ветка для нового стиля
-const chatRef = ref(db, 'chat_messages');
+const videoRef = ref(db, 'native_rave_sync'); // Новая ветка
+const chatRef = ref(db, 'chat_messages_rave');
 
-let myName = "";
+// ЛОКАЛЬНЫЕ ДАННЫЕ ПРОФИЛЯ
+let myProfile = {
+    name: "",
+    avatar: "Felix" // Дефолт
+};
+
 let isRemoteAction = false; 
 const player = document.getElementById('native-player');
 const shutter = document.getElementById('player-shutter');
 
-// --- ДВИЖОК МАГИЧЕСКОГО ФОНА (PARTICLE SYSTEM) ---
+// --- ДВИЖОК БЕЛЫХ ЧАСТИЦ (Rave-Style) ---
 const canvas = document.getElementById('particle-canvas');
 const ctx = canvas.getContext('2d');
 let particles = [];
-let mouse = { x: null, y: null };
-
-function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-}
-window.addEventListener('resize', resizeCanvas);
-resizeCanvas();
-
-window.addEventListener('mousemove', (e) => { mouse.x = e.x; mouse.y = e.y; });
-window.addEventListener('mouseout', () => { mouse.x = null; mouse.y = null; });
+function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+window.addEventListener('resize', resizeCanvas); resizeCanvas();
 
 class Particle {
     constructor() {
         this.x = Math.random() * canvas.width;
         this.y = Math.random() * canvas.height;
-        this.size = Math.random() * 2 + 0.5;
-        this.speedX = Math.random() * 0.3 - 0.15;
-        this.speedY = Math.random() * 0.3 - 0.15;
-        this.alpha = Math.random() * 0.5 + 0.1;
+        this.size = Math.random() * 1.5 + 0.1;
+        this.speedX = Math.random() * 0.1 - 0.05;
+        this.speedY = Math.random() * 0.2 + 0.1; // Плывут вверх
+        this.alpha = Math.random() * 0.3 + 0.1;
     }
     update() {
-        this.x += this.speedX;
-        this.y += this.speedY;
-        
-        if (this.x > canvas.width) this.x = 0; else if (this.x < 0) this.x = canvas.width;
-        if (this.y > canvas.height) this.y = 0; else if (this.y < 0) this.y = canvas.height;
-        
-        // Реакция на мышь
-        if (mouse.x && mouse.y) {
-            let dx = mouse.x - this.x;
-            let dy = mouse.y - this.y;
-            let distance = Math.sqrt(dx*dx + dy*dy);
-            if (distance < 120) {
-                this.x -= dx * 0.005;
-                this.y -= dy * 0.005;
-            }
-        }
+        this.y -= this.speedY; // Движение вверх
+        if (this.y < 0) { this.y = canvas.height; this.x = Math.random() * canvas.width; }
     }
     draw() {
-        ctx.fillStyle = `rgba(212, 175, 55, ${this.alpha})`; // Золотые частицы
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.fillStyle = `rgba(255, 255, 255, ${this.alpha})`; // ТЕПЕРЬ БЕЛЫЕ
+        ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
     }
 }
-
 function initParticles() {
     particles = [];
-    let numberOfParticles = (canvas.width * canvas.height) / 15000;
-    for (let i = 0; i < numberOfParticles; i++) { particles.push(new Particle()); }
+    let num = (canvas.width * canvas.height) / 10000;
+    for (let i = 0; i < num; i++) particles.push(new Particle());
 }
 initParticles();
-
 function animateParticles() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    for (let i = 0; i < particles.length; i++) {
-        particles[i].update();
-        particles[i].draw();
-    }
+    for (let i = 0; i < particles.length; i++) { particles[i].update(); particles[i].draw(); }
     requestAnimationFrame(animateParticles);
 }
 animateParticles();
 
-// --- ПРЕМИУМ ЛОГИКА ---
+// --- ПРЕМИУМ-ФУНКЦИОНАЛ ---
 document.addEventListener('DOMContentLoaded', () => {
 
-    // --- ВХОД С АНИМАЦИЕЙ ПЕРЕХОДА ---
+    // Вход
     document.getElementById('login-btn').onclick = () => {
         const val = document.getElementById('username-input').value.trim();
         if (val) {
-            myName = val;
-            const authScreen = document.getElementById('auth-screen');
-            const mainApp = document.getElementById('main-app');
-            
-            authScreen.style.opacity = '0';
-            authScreen.style.transform = 'scale(1.1)'; // Выплывание
-            
+            myProfile.name = val;
+            document.getElementById('auth-screen').style.opacity = '0';
             setTimeout(() => {
-                authScreen.classList.remove('active');
-                mainApp.classList.add('active');
-            }, 600); // Синхронно с CSS кривой
+                document.getElementById('auth-screen').classList.remove('active');
+                document.getElementById('main-app').classList.add('active');
+            }, 600);
         }
     };
 
-    // --- СМЕНА СЕРИИ С ЭФФЕКТОМ "ШТОРКИ" ---
+    // УПРАВЛЕНИЕ ПАНЕЛЯМИ (Настройки и Стикеры)
+    const setPanel = document.getElementById('settings-panel');
+    const stickPanel = document.getElementById('sticker-panel');
+
+    const togglePanel = (panel) => panel.classList.toggle('active');
+
+    document.getElementById('open-settings').onclick = () => {
+        document.getElementById('settings-name-input').value = myProfile.name;
+        togglePanel(setPanel);
+    };
+    document.getElementById('close-settings').onclick = () => togglePanel(setPanel);
+    document.getElementById('open-stickers').onclick = () => togglePanel(stickPanel);
+
+    // Выбор аватарки
+    document.querySelectorAll('.av-p').forEach(av => {
+        av.onclick = () => {
+            document.querySelectorAll('.av-p').forEach(a => a.classList.remove('active'));
+            av.classList.add('active');
+            myProfile.avatar = av.getAttribute('data-av');
+        }
+    });
+
+    // Сохранить настройки
+    document.getElementById('save-settings').onclick = () => {
+        const newName = document.getElementById('settings-name-input').value.trim();
+        if(newName) myProfile.name = newName;
+        togglePanel(setPanel);
+    };
+
+    // ОТПРАВКА СТИКЕРА
+    document.querySelectorAll('.sticker-img').forEach(img => {
+        img.onclick = () => {
+            const stickerId = img.getAttribute('data-sticker');
+            if(myName || myProfile.name) {
+                push(chatRef, { 
+                    user: myProfile.name, 
+                    avatar: myProfile.avatar, 
+                    type: 'sticker', 
+                    content: stickerId, 
+                    ts: Date.now() 
+                });
+                togglePanel(stickPanel); // Закрыть панель
+            }
+        }
+    });
+
+    // --- СИНХРОНИЗАЦИЯ ВИДЕО ---
     document.querySelectorAll('.ep-btn').forEach(btn => {
         btn.onclick = () => {
             if (btn.classList.contains('active')) return;
-            const url = btn.getAttribute('data-mp4');
-            const title = btn.innerText;
-            
-            // Анимация в Firebase
-            set(videoRef, { type: 'change', url: url, title: title, user: myName, ts: Date.now() });
+            set(videoRef, { type: 'change', url: btn.getAttribute('data-mp4'), title: btn.innerText, user: myProfile.name, ts: Date.now() });
         };
     });
 
-    function applyChangeEpisode(data) {
-        shutter.classList.add('active'); // Шторка ЗАКРЫВАЕТСЯ
-        
-        setTimeout(() => {
-            player.src = data.url;
-            document.getElementById('current-title').innerText = data.title;
-            player.play().catch(() => console.log("Браузер заблокировал автоплей"));
-            
-            document.querySelectorAll('.ep-btn').forEach(b => b.classList.toggle('active', b.getAttribute('data-mp4') === data.url));
-            
-            setTimeout(() => { shutter.classList.remove('active'); }, 200); // Шторка ОТКРЫВАЕТСЯ
-        }, 500); // Пока плеер скрыт
-    }
+    player.onplay = () => { if (!isRemoteAction && myProfile.name) set(videoRef, { type: 'play', time: player.currentTime, user: myProfile.name, ts: Date.now() }); };
+    player.onpause = () => { if (!isRemoteAction && myProfile.name) set(videoRef, { type: 'pause', time: player.currentTime, user: myProfile.name, ts: Date.now() }); };
+    player.onseeking = () => { if (!isRemoteAction && myProfile.name) set(videoRef, { type: 'seek', time: player.currentTime, user: myProfile.name, ts: Date.now() }); };
 
-    // --- ОТПРАВКА ДЕЙСТВИЙ ---
-    player.onplay = () => {
-        if (!isRemoteAction && myName) set(videoRef, { type: 'play', time: player.currentTime, user: myName, ts: Date.now() });
-    };
-    player.onpause = () => {
-        if (!isRemoteAction && myName) set(videoRef, { type: 'pause', time: player.currentTime, user: myName, ts: Date.now() });
-    };
-    player.onseeking = () => {
-        if (!isRemoteAction && myName) set(videoRef, { type: 'seek', time: player.currentTime, user: myName, ts: Date.now() });
-    };
-
-    // --- ПОЛУЧЕНИЕ КОМАНД ---
     let lastTs = 0;
     onValue(videoRef, (snap) => {
         const data = snap.val();
-        if (!data || data.user === myName || data.ts <= lastTs) return;
-        lastTs = data.ts;
-        isRemoteAction = true;
+        if (!data || data.user === myProfile.name || data.ts <= lastTs) return;
+        lastTs = data.ts; isRemoteAction = true;
 
         if (data.type === 'change') {
-            applyChangeEpisode(data);
+            shutter.classList.add('active');
+            setTimeout(() => {
+                player.src = data.url; document.getElementById('current-title').innerText = data.title; player.play();
+                document.querySelectorAll('.ep-btn').forEach(b => b.classList.toggle('active', b.getAttribute('data-mp4') === data.url));
+                setTimeout(() => { shutter.classList.remove('active'); }, 200);
+            }, 500);
         } else if (data.type === 'play') {
-            if (Math.abs(player.currentTime - data.time) > 1) player.currentTime = data.time;
-            player.play();
+            if (Math.abs(player.currentTime - data.time) > 1) player.currentTime = data.time; player.play();
         } else if (data.type === 'pause') {
-            player.pause();
-            player.currentTime = data.time;
-        } else if (data.type === 'seek') {
-            player.currentTime = data.time;
-        }
-
-        document.getElementById('status').innerText = `${data.type} от ${data.user}`;
-        setTimeout(() => isRemoteAction = false, 800); // Увеличенный блокиратор
+            player.pause(); player.currentTime = data.time;
+        } else if (data.type === 'seek') { player.currentTime = data.time; }
+        setTimeout(() => isRemoteAction = false, 600);
     });
 
-    // --- ЧАТ (Плавное появление встроенно в CSS) ---
-    const sendMsg = () => {
+    // --- ЧАТ И СТИКЕРЫ (Получение) ---
+    const stickerUrls = {
+        heart: 'https://cdn-icons-png.flaticon.com/512/4117/4117961.png',
+        wow: 'https://cdn-icons-png.flaticon.com/512/4117/4117951.png',
+        cry: 'https://cdn-icons-png.flaticon.com/512/4117/4117947.png',
+        popcorn: 'https://cdn-icons-png.flaticon.com/512/1791/1791330.png'
+    };
+
+    const sendTextMsg = () => {
         const input = document.getElementById('chat-input');
-        if (input.value.trim() && myName) {
-            push(chatRef, { user: myName, text: input.value });
+        if (input.value.trim() && myProfile.name) {
+            push(chatRef, { 
+                user: myProfile.name, 
+                avatar: myProfile.avatar, 
+                type: 'text', 
+                content: input.value, 
+                ts: Date.now() 
+            });
             input.value = '';
         }
     };
-    document.getElementById('send-btn').onclick = sendMsg;
-    document.getElementById('chat-input').onkeydown = (e) => { if(e.key === 'Enter') sendMsg(); };
+    document.getElementById('send-btn').onclick = sendTextMsg;
+    document.getElementById('chat-input').onkeydown = (e) => { if(e.key === 'Enter') sendTextMsg(); };
 
     onChildAdded(chatRef, (snap) => {
         const m = snap.val();
-        const div = document.createElement('div');
-        div.className = m.user === myName ? 'bubble self bubble-animate' : 'bubble bubble-animate';
-        div.innerHTML = `<strong>${m.user}</strong>${m.text}`;
+        const mainDiv = document.createElement('div');
+        const isSelf = m.user === myProfile.name;
+        mainDiv.className = isSelf ? 'm-line self' : 'm-line';
+
+        // dicebear апи для генерации аватарок по сиду
+        const avatarUrl = `https://api.dicebear.com/8.x/avataaars/svg?seed=${m.avatar}`;
+        
+        let contentHtml = '';
+        if (m.type === 'sticker') {
+            contentHtml = `<img src="${stickerUrls[m.content]}" class="sticker-in-chat">`;
+        } else {
+            contentHtml = `<p>${m.content}</p>`;
+        }
+
+        mainDiv.innerHTML = `
+            <img src="${avatarUrl}" class="m-avatar">
+            <div class="bubble">
+                <strong>${m.user}</strong>
+                ${contentHtml}
+            </div>
+        `;
+
         const chatArea = document.getElementById('chat-messages');
-        chatArea.appendChild(div);
+        chatArea.appendChild(mainDiv);
         chatArea.scrollTop = chatArea.scrollHeight;
     });
 });
