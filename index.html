@@ -3,16 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>COW — Co-Watching Space</title>
+    <title>COW — Private Space</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 </head>
 <body>
     <div id="loader" class="loader-overlay active"><div class="spinner"></div></div>
     <canvas id="particle-canvas"></canvas>
 
     <div id="app-container">
-        <section id="auth-screen" class="screen">
+        <section id="auth-screen" class="screen active">
             <div class="auth-wrapper glass-panel">
                 <h1 class="logo">COW</h1>
                 <div class="auth-tabs">
@@ -20,12 +19,12 @@
                     <button id="tab-register">Регистрация</button>
                 </div>
                 <div class="form-container">
-                    <div id="form-login" class="auth-form active-form">
+                    <div id="form-login" class="auth-form">
                         <input type="email" id="login-email" placeholder="Email">
                         <input type="password" id="login-password" placeholder="Пароль">
                         <button id="btn-login-email" class="primary-btn">Войти</button>
                     </div>
-                    <div id="form-register" class="auth-form hidden-form right">
+                    <div id="form-register" class="auth-form hidden-form">
                         <input type="text" id="reg-name" placeholder="Никнейм">
                         <input type="email" id="reg-email" placeholder="Email">
                         <input type="password" id="reg-password" placeholder="Пароль">
@@ -42,33 +41,57 @@
                 <aside class="lobby-sidebar glass-panel">
                     <div class="user-profile">
                         <div class="avatar-circle"></div>
-                        <h3 id="user-display-name">...</h3>
+                        <h3 id="user-display-name">Загрузка...</h3>
                     </div>
                     <nav class="sidebar-nav">
                         <button class="nav-item active">Все комнаты</button>
+                        <button class="nav-item">Мои подписки</button>
                     </nav>
-                    <button id="btn-logout" class="logout-link">Выход</button>
+                    <button id="btn-logout" class="logout-link">Выйти из системы</button>
                 </aside>
 
                 <main class="lobby-main">
                     <header class="main-header glass-panel">
-                        <input type="text" id="search-rooms" placeholder="Поиск...">
+                        <input type="text" id="search-rooms" placeholder="Найти комнату...">
                         <button id="btn-open-modal" class="primary-btn create-btn">+ Создать</button>
                     </header>
-                    <div id="rooms-grid" class="rooms-grid"></div>
+                    <div id="rooms-grid" class="rooms-grid">
+                        </div>
                 </main>
+            </div>
+        </section>
+
+        <section id="room-screen" class="screen">
+            <div class="room-container">
+                <div class="video-side glass-panel">
+                    <div class="room-info">
+                        <button id="btn-leave-room" class="back-btn">← Выйти</button>
+                        <h2 id="current-room-name">Название комнаты</h2>
+                    </div>
+                    <div class="player-wrapper">
+                        <video id="main-player" controls>
+                            <source src="" type="video/mp4">
+                        </video>
+                    </div>
+                </div>
+                <div class="chat-side glass-panel">
+                    <div id="chat-messages"></div>
+                    <div class="chat-input-area">
+                        <input type="text" id="chat-input" placeholder="Сообщение...">
+                        <button id="btn-send">Отправить</button>
+                    </div>
+                </div>
             </div>
         </section>
 
         <div id="modal-create" class="modal">
             <div class="modal-content glass-panel">
-                <h2>Создать комнату</h2>
-                <input type="text" id="room-name" placeholder="Название комнаты">
-                <input type="text" id="room-link" placeholder="Ссылка на видео (YouTube/Direct)">
-                <input type="password" id="room-pass" placeholder="Пароль (необязательно)">
+                <h2>Новое пространство</h2>
+                <input type="text" id="room-name" placeholder="Название">
+                <input type="text" id="room-link" placeholder="Прямая ссылка на .mp4">
                 <div class="modal-buttons">
                     <button id="btn-close-modal" class="google-btn">Отмена</button>
-                    <button id="btn-create-finish" class="primary-btn">Запустить</button>
+                    <button id="btn-create-finish" class="primary-btn">Создать</button>
                 </div>
             </div>
         </div>
