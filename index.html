@@ -1,66 +1,58 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>COW</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Watch Together</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div id="loader" class="loader-overlay active"><div class="spinner"></div></div>
-    <canvas id="particle-canvas"></canvas>
 
-    <section id="auth-screen" class="screen" style="display:none; height:100vh; align-items:center; justify-content:center;">
-        <div class="glass-panel" style="padding: 50px; text-align: center; width: 360px;">
-            <h1 style="letter-spacing: 12px; margin-bottom: 30px; font-weight: 300;">COW</h1>
-            <input type="email" id="email" placeholder="EMAIL">
-            <input type="password" id="pass" placeholder="PASSWORD">
-            <button id="btn-login" class="action-btn" style="width:100%;">ENTER</button>
-        </div>
-    </section>
+<!-- AUTH SCREEN -->
+<div id="authScreen" class="screen active">
+  <div class="auth-container glass">
+    <h1>Watch Together</h1>
 
-    <section id="lobby-screen" class="screen">
-        <div style="width: 100%; max-width: 1200px; display: flex; justify-content: space-between; align-items: center;">
-            <span id="user-display" style="opacity: 0.3; font-size: 0.8rem;">...</span>
-            <button id="btn-add-room" class="action-btn">+ CREATE ROOM</button>
-        </div>
-        <div id="rooms-grid" class="rooms-grid"></div>
-    </section>
-
-    <section id="room-screen" class="screen" style="display:none;">
-        <div class="room-wrapper">
-            <div class="player-side">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <button id="btn-leave" style="background:none; border:none; color:#fff; cursor:pointer; opacity:0.4;">← EXIT</button>
-                    <h2 id="room-name-display" style="font-size: 1rem; font-weight: 300; letter-spacing: 2px;">ROOM</h2>
-                    <div id="admin-tag" class="hidden" style="font-size: 9px; border: 1px solid #fff; padding: 2px 6px;">HOST</div>
-                </div>
-                <div id="video-container">
-                    <video id="main-v" controls playsinline></video>
-                    <div id="v-lock" class="hidden" style="position: absolute; inset: 0; z-index: 10; cursor: not-allowed;"></div>
-                </div>
-            </div>
-            <div class="info-side">
-                <div id="users-online" style="font-size: 0.7rem; opacity: 0.2; padding-bottom: 10px;"></div>
-                <div id="messages-box"></div>
-                <div class="chat-bar">
-                    <button id="btn-mic" style="background:none; border:none; font-size:1.2rem; cursor:pointer;">🎤</button>
-                    <input type="text" id="chat-input" placeholder="MESSAGE...">
-                    <button id="btn-send-chat" style="background:none; border:none; color:#fff; cursor:pointer;">➤</button>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <div id="modal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 2000; display: flex; align-items: center; justify-content: center;">
-        <div class="glass-panel" style="padding: 40px; width: 340px; display: flex; flex-direction: column; gap: 15px;">
-            <input type="text" id="m-title" placeholder="ROOM NAME">
-            <input type="text" id="m-url" placeholder="VIDEO LINK (.MP4)">
-            <button id="m-create" class="action-btn">LAUNCH</button>
-            <button id="m-close" style="background:none; border:none; color:#fff; cursor:pointer; opacity:0.5;">CANCEL</button>
-        </div>
+    <div class="input-group">
+      <input id="username" placeholder="Your name" />
     </div>
 
-    <script type="module" src="app.js"></script>
+    <button id="loginBtn" class="primary-btn">Continue</button>
+  </div>
+</div>
+
+<!-- LOBBY -->
+<div id="lobbyScreen" class="screen">
+  <div class="lobby-header">
+    <h2>Комнаты</h2>
+    <button id="createRoomBtn">CREATE ROOM</button>
+  </div>
+  <div id="roomList" class="room-list"></div>
+</div>
+
+<!-- ROOM -->
+<div id="roomScreen" class="screen">
+  <div class="room-container">
+
+    <!-- VIDEO -->
+    <div class="video-section">
+      <video id="videoPlayer" controls></video>
+      <div id="vlock"></div>
+    </div>
+
+    <!-- CHAT -->
+    <div class="chat-section">
+      <div id="chatMessages" class="chat-messages"></div>
+      <div class="chat-input-wrapper">
+        <input id="chatInput" placeholder="Сообщение..." />
+        <button id="sendBtn">→</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script type="module" src="app.js"></script>
 </body>
 </html>
