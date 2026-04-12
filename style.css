@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap');
 * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
 body { background: #000; color: #fff; height: 100vh; overflow: hidden; }
 
@@ -6,38 +6,45 @@ body { background: #000; color: #fff; height: 100vh; overflow: hidden; }
 .glass-panel { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(25px); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; }
 .hidden { display: none !important; }
 
-/* Кнопки и инпуты */
-input { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 14px; border-radius: 12px; outline: none; width: 100%; transition: 0.3s; }
-input:focus { border-color: rgba(255,255,255,0.3); }
-.primary-btn { background: #fff; color: #000; font-weight: 800; border: none; padding: 14px; border-radius: 12px; cursor: pointer; width: 100%; }
-.google-btn { background: transparent; border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 12px; border-radius: 12px; cursor: pointer; width: 100%; }
+/* Кнопки */
+input { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 14px; border-radius: 12px; outline: none; width: 100%; }
+.primary-btn { background: #fff; color: #000; font-weight: 800; border: none; padding: 14px; border-radius: 12px; cursor: pointer; }
+.google-btn { background: transparent; border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 12px; border-radius: 12px; cursor: pointer; }
 
-/* Комната */
+/* Экраны */
 .screen { display: none; width: 100vw; height: 100vh; padding: 15px; }
 .screen.active { display: flex; }
-.room-container { display: flex; width: 100%; height: 100%; gap: 15px; }
 
-/* Плеер */
-.video-side { flex: 3; display: flex; flex-direction: column; padding: 15px; position: relative; }
+/* Лобби */
+.lobby-layout { display: flex; width: 100%; height: 100%; gap: 15px; }
+.lobby-sidebar { width: 260px; padding: 25px; display: flex; flex-direction: column; justify-content: space-between; }
+.rooms-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; width: 100%; overflow-y: auto; }
+.room-card { padding: 20px; border: 1px solid rgba(255,255,255,0.1); transition: 0.3s; cursor: pointer; }
+.room-card:hover { background: rgba(255,255,255,0.05); }
+
+/* Комната */
+.room-container { display: flex; width: 100%; height: 100%; gap: 15px; }
+.video-side { flex: 3; display: flex; flex-direction: column; padding: 15px; }
+.chat-side { flex: 1; min-width: 320px; display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+
 #player-container { flex: 1; border-radius: 15px; overflow: hidden; background: #000; position: relative; }
 iframe, video { width: 100%; height: 100%; border: none; }
-#player-blocker { position: absolute; inset: 0; z-index: 5; }
 
-/* ЧАТ — ФИКС МОБИЛОК */
-.chat-side { flex: 1; min-width: 320px; display: flex; flex-direction: column; height: 100%; overflow: hidden; }
-.online-bar { padding: 10px 15px; font-size: 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.05); color: #888; }
 #chat-messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 8px; }
-.chat-input-wrapper { padding: 15px; background: rgba(0,0,0,0.3); display: flex; gap: 10px; align-items: center; border-top: 1px solid rgba(255,255,255,0.05); }
+.msg { font-size: 0.9rem; line-height: 1.4; }
+.msg b { color: #888; margin-right: 5px; }
+.chat-input-wrapper { padding: 15px; display: flex; gap: 10px; align-items: center; border-top: 1px solid rgba(255,255,255,0.05); }
 
-/* Микрофон */
-.mic-btn { background: none; border: none; font-size: 1.4rem; cursor: pointer; transition: 0.3s; }
-.mic-off { opacity: 0.3; filter: grayscale(1); }
-.mic-on { opacity: 1; filter: none; transform: scale(1.1); text-shadow: 0 0 10px #fff; }
+.badge { background: #fff; color: #000; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 900; }
+.mic-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; }
+.mic-on { color: #ff3b30; }
 
-/* Mobile Adapt */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1000; display: none; align-items: center; justify-content: center; }
+.modal-overlay.active { display: flex; }
+
+/* Мобилки */
 @media (max-width: 850px) {
     .room-container { flex-direction: column; }
     .video-side { height: 35vh; flex: none; }
-    .chat-side { min-width: 100%; flex: 1; }
     .lobby-sidebar { display: none; }
 }

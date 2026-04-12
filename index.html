@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>COW — Co-Watching Space</title>
+    <title>COW — Co-Watching</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://www.youtube.com/iframe_api"></script>
 </head>
@@ -45,7 +45,7 @@
                     <nav class="sidebar-nav">
                         <button class="nav-item active">Все комнаты</button>
                     </nav>
-                    <button id="btn-logout" class="logout-link">Выход</button>
+                    <button id="btn-logout" class="logout-link">Выйти</button>
                 </aside>
                 <main class="lobby-main">
                     <header class="main-header glass-panel">
@@ -62,15 +62,14 @@
                 <div class="video-side glass-panel">
                     <div class="room-nav">
                         <button id="btn-leave-room" class="icon-btn">←</button>
-                        <h2 id="current-room-name">...</h2>
+                        <h2 id="current-room-name">Загрузка...</h2>
                         <span id="admin-label" class="badge hidden">ADMIN</span>
                     </div>
-                    <div id="player-container">
-                        </div>
-                    <div id="player-blocker" class="hidden"></div> </div>
-                
+                    <div id="player-container"></div>
+                    <div id="player-blocker" class="hidden"></div>
+                </div>
                 <div class="chat-side glass-panel">
-                    <div class="online-bar">Онлайн: <span id="online-count">0</span></div>
+                    <div class="online-bar">В сети: <span id="online-count">0</span></div>
                     <div id="chat-messages"></div>
                     <div class="chat-input-wrapper">
                         <button id="btn-mic" class="mic-btn mic-off">🎤</button>
@@ -83,10 +82,10 @@
 
         <div id="modal-create" class="modal-overlay">
             <div class="modal-content glass-panel">
-                <h2>Новое пространство</h2>
+                <h2>Создать комнату</h2>
                 <input type="text" id="room-name" placeholder="Название">
                 <input type="text" id="room-link" placeholder="YouTube или прямая ссылка">
-                <input type="password" id="room-pass" placeholder="Пароль (необязательно)">
+                <input type="password" id="room-pass" placeholder="Пароль (опционально)">
                 <div class="modal-buttons">
                     <button id="btn-close-modal" class="google-btn">Отмена</button>
                     <button id="btn-create-finish" class="primary-btn">Запустить</button>
