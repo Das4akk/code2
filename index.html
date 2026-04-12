@@ -9,6 +9,7 @@
 </head>
 <body>
     <div id="loader" class="loader-overlay active"><div class="spinner"></div></div>
+    
     <canvas id="particle-canvas"></canvas>
 
     <div id="app-container">
@@ -16,24 +17,24 @@
             <div class="auth-wrapper glass-panel">
                 <h1 class="logo">COW</h1>
                 <div class="auth-tabs">
-                    <button id="tab-login" class="active">Вход</button>
-                    <button id="tab-register">Регистрация</button>
+                    <button type="button" id="tab-login" class="active">Вход</button>
+                    <button type="button" id="tab-register">Регистрация</button>
                 </div>
                 <div class="form-container">
                     <div id="form-login" class="auth-form active-form">
                         <input type="email" id="login-email" placeholder="Email">
                         <input type="password" id="login-password" placeholder="Пароль">
-                        <button id="btn-login-email" class="primary-btn">Войти</button>
+                        <button type="button" id="btn-login-email" class="primary-btn">Войти</button>
                     </div>
                     <div id="form-register" class="auth-form hidden-form right">
                         <input type="text" id="reg-name" placeholder="Никнейм">
                         <input type="email" id="reg-email" placeholder="Email">
                         <input type="password" id="reg-password" placeholder="Пароль">
-                        <button id="btn-register-email" class="primary-btn">Создать аккаунт</button>
+                        <button type="button" id="btn-register-email" class="primary-btn">Создать аккаунт</button>
                     </div>
                 </div>
                 <div class="divider"><span>или</span></div>
-                <button id="btn-google-auth" class="google-btn">Войти через Google</button>
+                <button type="button" id="btn-google-auth" class="google-btn">Войти через Google</button>
             </div>
         </section>
 
@@ -64,7 +65,7 @@
             <div class="modal-content glass-panel">
                 <h2>Создать комнату</h2>
                 <input type="text" id="room-name" placeholder="Название комнаты">
-                <input type="text" id="room-link" placeholder="Ссылка на видео (YouTube/Direct)">
+                <input type="text" id="room-link" placeholder="Ссылка на видео (Прямая ссылка mp4)">
                 <input type="password" id="room-pass" placeholder="Пароль (необязательно)">
                 <div class="modal-buttons">
                     <button id="btn-close-modal" class="google-btn">Отмена</button>
@@ -75,14 +76,17 @@
 
         <section id="room-screen" class="screen">
             <header class="room-header glass-panel">
-                <button id="btn-leave-room" class="google-btn leave-btn">← В лобби</button>
+                <div style="display: flex; gap: 10px;">
+                    <button id="btn-leave-room" class="google-btn leave-btn">← В лобби</button>
+                    <button id="btn-delete-room" class="google-btn leave-btn" style="display: none; color: #ff4757; border-color: rgba(255,71,87,0.3);">🗑 Удалить</button>
+                </div>
                 <h2 id="room-title-text" style="margin-left: 20px;">Название комнаты</h2>
             </header>
             
             <main class="main-layout-room">
                 <div class="video-column">
                     <div class="player-wrapper glass-panel" id="player-wrapper">
-                        <video id="native-player" playsinline></video>
+                        <video id="native-player" playsinline preload="metadata"></video>
                         
                         <div class="custom-controls glass-panel">
                             <div class="voice-volume-control">
@@ -101,7 +105,6 @@
                     </div>
 
                     <div class="chat-area active-area" id="chat-messages"></div>
-                    
                     <div class="users-area" id="users-list"></div>
 
                     <div class="message-dock" id="message-dock-container">
