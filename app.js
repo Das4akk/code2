@@ -1,8 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getDatabase, ref, push, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-// Твой рабочий конфиг из скриншота 411585
 const firebaseConfig = {
     apiKey: "AIzaSyCby2qPGnlHWRfxWAI3Y2aK_UndEh9nato",
     authDomain: "das4akk-1.firebaseapp.com",
@@ -19,129 +18,128 @@ const db = getDatabase(app);
 
 const $ = (id) => document.getElementById(id);
 
-// --- УПРАВЛЕНИЕ ЭКРАНАМИ И ПРЕЛОАДЕРОМ ---
-function showScreen(screenId) {
+// --- ЭКРАНЫ ---
+function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    $(screenId).classList.add('active');
+    if($(id)) $(id).classList.add('active');
 }
 
-// Слушаем статус авторизации (АВТОВХОД)
 onAuthStateChanged(auth, (user) => {
     if (user) {
-        $('user-display-name').innerText = user.displayName || user.email.split('@')[0];
+        if($('user-display-name')) $('user-display-name').innerText = user.displayName || user.email;
         showScreen('lobby-screen');
-        loadDummyRooms(); // Показываем моковые комнаты для красоты
+        syncRooms();
     } else {
         showScreen('auth-screen');
     }
-    // Выключаем загрузочный экран только когда Firebase дал ответ
     $('loader').classList.remove('active');
 });
 
-// --- АНИМАЦИЯ ПЕРЕКЛЮЧЕНИЯ ВХОД/РЕГИСТРАЦИЯ ---
-const tabLogin = $('tab-login');
-const tabRegister = $('tab-register');
-const formLogin = $('form-login');
-const formRegister = $('form-register');
-const tabsContainer = document.querySelector('.auth-tabs');
-
-tabLogin.onclick = () => {
-    tabsContainer.classList.remove('register-active');
-    tabLogin.classList.add('active');
-    tabRegister.classList.remove('active');
-    
-    formRegister.className = 'auth-form hidden-form right';
-    formLogin.className = 'auth-form active-form';
+// --- ТАБЫ ---
+$('tab-login').onclick = () => {
+    $('form-login').classList.remove('hidden-form');
+    $('form-register').classList.add('hidden-form', 'right');
+    $('tab-login').classList.add('active');
+    $('tab-register').classList.remove('active');
+};
+$('tab-register').onclick = () => {
+    $('form-login').classList.add('hidden-form', 'left');
+    $('form-register').classList.remove('hidden-form', 'right');
+    $('tab-register').classList.add('active');
+    $('tab-login').classList.remove('active');
 };
 
-tabRegister.onclick = () => {
-    tabsContainer.classList.add('register-active');
-    tabRegister.classList.add('active');
-    tabLogin.classList.remove('active');
-    
-    formLogin.className = 'auth-form hidden-form left';
-    formRegister.className = 'auth-form active-form';
+// --- AUTH ACTIONS ---
+$('btn-login-email').onclick = () => {
+    signInWithEmailAndPassword(auth, $('login-email').value, $('login-password').value).catch(e => alert(e.message));
 };
-
-// --- АВТОРИЗАЦИЯ ---
-$('btn-login-email').onclick = async () => {
-    $('loader').classList.add('active'); // Включаем лоадер при клике
-    try {
-        await signInWithEmailAndPassword(auth, $('login-email').value, $('login-password').value);
-    } catch (e) {
-        $('loader').classList.remove('active');
-        alert("Ошибка входа: " + e.message);
-    }
-};
-
 $('btn-register-email').onclick = async () => {
-    $('loader').classList.add('active');
     try {
         const res = await createUserWithEmailAndPassword(auth, $('reg-email').value, $('reg-password').value);
         await updateProfile(res.user, { displayName: $('reg-name').value });
-        window.location.reload(); // Перезагружаем для применения имени
-    } catch (e) {
-        $('loader').classList.remove('active');
-        alert("Ошибка регистрации: " + e.message);
-    }
+    } catch(e) { alert(e.message); }
+};
+$('btn-google-auth').onclick = () => signInWithPopup(auth, new GoogleAuthProvider());
+$('btn-logout').onclick = () => signOut(auth);
+
+// --- ЛОГИКА КОМНАТ ---
+$('btn-open-modal').onclick = () => $('modal-create').classList.add('active');
+$('btn-close-modal').onclick = () => $('modal-create').classList.remove('active');
+
+$('btn-create-finish').onclick = async () => {
+    const name = $('room-name').value;
+    const link = $('room-link').value;
+    const pass = $('room-pass').value;
+
+    if(!name || !link) return alert("Заполни название и ссылку!");
+
+    const roomsRef = ref(db, 'rooms');
+    const newRoomRef = push(roomsRef);
+    
+    await set(newRoomRef, {
+        name,
+        link,
+        password: pass || null,
+        admin: auth.currentUser.uid,
+        adminName: auth.currentUser.displayName || "Admin",
+        createdAt: Date.now()
+    });
+
+    $('modal-create').classList.remove('active');
+    alert("Комната создана! Скоро добавим переход внутрь.");
 };
 
-$('btn-google-auth').onclick = async () => {
-    try { await signInWithPopup(auth, new GoogleAuthProvider()); } 
-    catch (e) { console.error(e); }
-};
-
-$('btn-logout').onclick = () => {
-    $('loader').classList.add('active');
-    signOut(auth);
-};
-
-// --- ГЕНЕРАЦИЯ КРАСИВЫХ КОМНАТ ДЛЯ ТЕСТА ---
-function loadDummyRooms() {
-    const grid = $('rooms-grid');
-    grid.innerHTML = '';
-    const demoRooms = [
-        { name: "Ночной Кинопоказ", online: 12, desc: "Смотрим триллер" },
-        { name: "Аниме марафон", online: 45, desc: "Evangelion 1.0" },
-        { name: "Chill & Lofi", online: 8, desc: "Музыка и общение" },
-        { name: "Разбор кода", online: 3, desc: "Пишем на JS" }
-    ];
-
-    demoRooms.forEach(room => {
-        const card = document.createElement('div');
-        card.className = 'room-card';
-        card.innerHTML = `
-            <h4>${room.name}</h4>
-            <p>${room.desc}</p>
-            <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size: 0.8rem; color: #4CAF50;">● ${room.online} онлайн</span>
-                <button class="primary-btn" style="padding: 8px 15px; width: auto; font-size: 0.9rem;">Войти</button>
-            </div>
-        `;
-        grid.appendChild(card);
+function syncRooms() {
+    onValue(ref(db, 'rooms'), (snap) => {
+        const grid = $('rooms-grid');
+        grid.innerHTML = '';
+        const data = snap.val();
+        if(data) {
+            Object.entries(data).forEach(([id, room]) => {
+                const card = document.createElement('div');
+                card.className = 'room-card glass-panel';
+                card.innerHTML = `
+                    <h4>${room.name}</h4>
+                    <p>Админ: ${room.adminName}</p>
+                    <button class="primary-btn" style="margin-top:10px">Войти</button>
+                `;
+                grid.appendChild(card);
+            });
+        }
     });
 }
 
-// --- ФОНОВЫЕ ЧАСТИЦЫ ---
+// --- НЕЙРОСЕТИ (ПЛЕКСУС) ---
 const canvas = $('particle-canvas');
 const ctx = canvas.getContext('2d');
-let particles = [];
+let dots = [];
 function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
 window.onresize = resize; resize();
-class P {
-    constructor() { this.x = Math.random()*canvas.width; this.y = Math.random()*canvas.height; this.vx = (Math.random()-0.5)*0.3; this.vy = (Math.random()-0.5)*0.3; }
-    update() { this.x += this.vx; this.y += this.vy; if(this.x<0||this.x>canvas.width)this.vx*=-1; if(this.y<0||this.y>canvas.height)this.vy*=-1; }
+
+class Dot {
+    constructor() { this.x = Math.random()*canvas.width; this.y = Math.random()*canvas.height; this.vx = (Math.random()-0.5)*0.5; this.vy = (Math.random()-0.5)*0.5; }
+    draw() {
+        this.x += this.vx; this.y += this.vy;
+        if(this.x<0 || this.x>canvas.width) this.vx *= -1;
+        if(this.y<0 || this.y>canvas.height) this.vy *= -1;
+        ctx.fillStyle = "rgba(255,255,255,0.5)";
+        ctx.beginPath(); ctx.arc(this.x, this.y, 1.2, 0, Math.PI*2); ctx.fill();
+    }
 }
-for(let i=0; i<60; i++) particles.push(new P());
-function animate() {
+for(let i=0; i<70; i++) dots.push(new Dot());
+function anim() {
     ctx.clearRect(0,0,canvas.width,canvas.height);
-    particles.forEach(p => {
-        p.update(); ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.beginPath(); ctx.arc(p.x, p.y, 1, 0, Math.PI*2); ctx.fill();
-        particles.forEach(p2 => {
-            let d = Math.sqrt((p.x-p2.x)**2 + (p.y-p2.y)**2);
-            if(d<120) { ctx.strokeStyle = `rgba(255,255,255,${0.15 - d/800})`; ctx.lineWidth = 0.5; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p2.x, p2.y); ctx.stroke(); }
+    dots.forEach(d => {
+        d.draw();
+        dots.forEach(d2 => {
+            let dist = Math.sqrt((d.x-d2.x)**2 + (d.y-d2.y)**2);
+            if(dist < 110) {
+                ctx.strokeStyle = `rgba(255,255,255,${1 - dist/110})`;
+                ctx.lineWidth = 0.5;
+                ctx.beginPath(); ctx.moveTo(d.x, d.y); ctx.lineTo(d2.x, d2.y); ctx.stroke();
+            }
         });
     });
-    requestAnimationFrame(animate);
+    requestAnimationFrame(anim);
 }
-animate();
+anim();
