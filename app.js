@@ -1,9 +1,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-// Твои данные из Firebase Console
 const firebaseConfig = {
-    apiKey: "AIzaSyCby2qPGnLHWRfxWAI3Y2aK_UndEh9nato", 
+    apiKey: "AIzaSyCby2qPGnlHWRfxWAI3Y2aK_UndEh9nato", // Твой ключ со скрина
     authDomain: "das4akk-1.firebaseapp.com",
     databaseURL: "https://das4akk-1-default-rtdb.firebaseio.com",
     projectId: "das4akk-1",
@@ -15,127 +14,100 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
+// Вспомогательная функция для безопасного поиска элементов
+const $ = (id) => document.getElementById(id);
+
 // --- ПЕРЕКЛЮЧЕНИЕ ТАБОВ ---
-const tabLogin = document.getElementById('tab-login');
-const tabReg = document.getElementById('tab-register');
-const formLogin = document.getElementById('form-login');
-const formReg = document.getElementById('form-register');
+if ($('tab-login') && $('tab-register')) {
+    $('tab-login').onclick = () => {
+        $('form-login').classList.remove('hidden');
+        $('form-register').classList.add('hidden');
+        $('tab-login').classList.add('active');
+        $('tab-register').classList.remove('active');
+    };
+    $('tab-register').onclick = () => {
+        $('form-login').classList.add('hidden');
+        $('form-register').classList.remove('hidden');
+        $('tab-register').classList.add('active');
+        $('tab-login').classList.remove('active');
+    };
+}
 
-tabLogin.onclick = () => {
-    formLogin.classList.remove('hidden');
-    formReg.classList.add('hidden');
-    tabLogin.classList.add('active');
-    tabReg.classList.remove('active');
-};
+// --- АВТОРИЗАЦИЯ ---
+if ($('btn-login-email')) {
+    $('btn-login-email').onclick = async () => {
+        const email = $('login-email').value;
+        const pass = $('login-password').value;
+        try { await signInWithEmailAndPassword(auth, email, pass); } 
+        catch (e) { alert("Ошибка: " + e.message); }
+    };
+}
 
-tabReg.onclick = () => {
-    formLogin.classList.add('hidden');
-    formReg.classList.remove('hidden');
-    tabReg.classList.add('active');
-    tabLogin.classList.remove('active');
-};
+if ($('btn-register-email')) {
+    $('btn-register-email').onclick = async () => {
+        const name = $('reg-name').value;
+        const email = $('reg-email').value;
+        const pass = $('reg-password').value;
+        try {
+            const res = await createUserWithEmailAndPassword(auth, email, pass);
+            await updateProfile(res.user, { displayName: name });
+        } catch (e) { alert("Ошибка: " + e.message); }
+    };
+}
 
-// --- АВТОРИЗАЦИЯ (ФИКС ОШИБОК) ---
-document.getElementById('btn-login-email').onclick = async () => {
-    const email = document.getElementById('login-email').value;
-    const password = document.getElementById('login-password').value; // Исправлено ID
-    try {
-        await signInWithEmailAndPassword(auth, email, password);
-    } catch (e) {
-        alert("Ошибка входа: " + e.message);
-    }
-};
+if ($('btn-google-auth')) {
+    $('btn-google-auth').onclick = async () => {
+        try { await signInWithPopup(auth, new GoogleAuthProvider()); } 
+        catch (e) { console.error(e); }
+    };
+}
 
-document.getElementById('btn-register-email').onclick = async () => {
-    const name = document.getElementById('reg-name').value;
-    const email = document.getElementById('reg-email').value;
-    const password = document.getElementById('reg-password').value;
-    try {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        await updateProfile(userCredential.user, { displayName: name });
-    } catch (e) {
-        alert("Ошибка регистрации: " + e.message);
-    }
-};
-
-document.getElementById('btn-google-auth').onclick = async () => {
-    const provider = new GoogleAuthProvider();
-    try {
-        await signInWithPopup(auth, provider);
-    } catch (e) {
-        console.error("Ошибка Google:", e);
-        if (e.code === 'auth/popup-blocked') {
-            alert("Пожалуйста, разрешите всплывающие окна для этого сайта в браузере!");
-        }
-    }
-};
-
-// --- ОТСЛЕЖИВАНИЕ СОСТОЯНИЯ ---
+// --- УПРАВЛЕНИЕ ЭКРАНАМИ ---
 onAuthStateChanged(auth, (user) => {
-    const authScreen = document.getElementById('auth-screen');
-    const lobbyScreen = document.getElementById('lobby-screen');
-    
     if (user) {
-        authScreen.classList.remove('active');
-        lobbyScreen.classList.add('active');
-        document.getElementById('user-display-name').innerText = user.displayName || user.email;
+        $('auth-screen').classList.remove('active');
+        $('lobby-screen').classList.add('active');
+        $('user-display-name').innerText = user.displayName || user.email;
     } else {
-        authScreen.classList.add('active');
-        lobbyScreen.classList.remove('active');
+        $('auth-screen').classList.add('active');
+        $('lobby-screen').classList.remove('active');
     }
 });
 
-document.getElementById('btn-logout').onclick = () => signOut(auth);
+if ($('btn-logout')) $('btn-logout').onclick = () => signOut(auth);
 
 // --- ПЛЕКСУС ФОН ---
-const canvas = document.getElementById('particle-canvas');
+const canvas = $('particle-canvas');
 const ctx = canvas.getContext('2d');
 let particles = [];
-
-function resize() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-}
-window.onresize = resize;
-resize();
-
-class Particle {
+function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+window.onresize = resize; resize();
+class P {
     constructor() {
         this.x = Math.random() * canvas.width;
         this.y = Math.random() * canvas.height;
-        this.vx = (Math.random() - 0.5) * 0.5;
-        this.vy = (Math.random() - 0.5) * 0.5;
+        this.vx = (Math.random() - 0.5) * 0.4;
+        this.vy = (Math.random() - 0.5) * 0.4;
     }
     update() {
-        this.x += this.vx;
-        this.y += this.vy;
-        if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
-        if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+        this.x += this.vx; this.y += this.vy;
+        if (this.x<0 || this.x>canvas.width) this.vx*=-1;
+        if (this.y<0 || this.y>canvas.height) this.vy*=-1;
     }
 }
-
-for(let i=0; i<100; i++) particles.push(new Particle());
-
+for(let i=0; i<80; i++) particles.push(new P());
 function animate() {
-    ctx.clearRect(0,0, canvas.width, canvas.height);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
     particles.forEach(p => {
         p.update();
-        ctx.fillStyle = 'rgba(255,255,255,0.5)';
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 1, 0, Math.PI*2);
-        ctx.fill();
-        
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        ctx.beginPath(); ctx.arc(p.x, p.y, 1, 0, Math.PI*2); ctx.fill();
         particles.forEach(p2 => {
-            let dx = p.x - p2.x;
-            let dy = p.y - p2.y;
-            let dist = Math.sqrt(dx*dx + dy*dy);
-            if(dist < 100) {
-                ctx.strokeStyle = `rgba(255,255,255,${1 - dist/100})`;
+            let d = Math.sqrt((p.x-p2.x)**2 + (p.y-p2.y)**2);
+            if(d<100) {
+                ctx.strokeStyle = `rgba(255,255,255,${1 - d/100})`;
                 ctx.lineWidth = 0.5;
-                ctx.beginPath();
-                ctx.moveTo(p.x, p.y);
-                ctx.lineTo(p2.x, p2.y);
-                ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
             }
         });
     });

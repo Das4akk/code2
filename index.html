@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>COW - Cinema Online Watching</title>
+    <title>COW — Co-Watching Space</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 </head>
@@ -12,9 +12,8 @@
 
     <div id="app-container">
         <section id="auth-screen" class="screen active">
-            <div class="auth-card glass-panel">
+            <div class="auth-card">
                 <h1 class="logo">COW</h1>
-                
                 <div class="auth-tabs">
                     <button id="tab-login" class="active">Вход</button>
                     <button id="tab-register">Регистрация</button>
@@ -42,12 +41,21 @@
             <div class="lobby-container glass-panel">
                 <header class="lobby-header">
                     <h2 id="user-display-name">Загрузка...</h2>
-                    <button id="btn-logout" class="secondary-btn">Выход</button>
+                    <button id="btn-logout" class="secondary-btn">Выйти</button>
                 </header>
-                <div class="room-controls">
-                    <input type="text" id="room-input" placeholder="ID комнаты">
-                    <button id="btn-join-room" class="primary-btn">Войти</button>
-                    <button id="btn-create-room" class="primary-btn">Создать комнату</button>
+                <div id="rooms-list" class="rooms-grid"></div>
+                <button id="btn-open-create" class="primary-btn">Создать комнату</button>
+            </div>
+        </section>
+
+        <section id="main-app" class="screen">
+            <div class="room-layout">
+                <div class="video-side">
+                    <video id="native-player" controls></video>
+                </div>
+                <div class="chat-side glass-panel">
+                    <div id="chat-messages"></div>
+                    <input type="text" id="chat-input" placeholder="Сообщение...">
                 </div>
             </div>
         </section>

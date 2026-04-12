@@ -3,84 +3,47 @@
 * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
 body { background: #000; color: #fff; overflow: hidden; height: 100vh; }
 
-#particle-canvas {
-    position: fixed; top: 0; left: 0; z-index: -1;
-    background: radial-gradient(circle at center, #0a0a0a 0%, #000 100%);
-}
+#particle-canvas { position: fixed; top: 0; left: 0; z-index: -1; }
 
 .hidden { display: none !important; }
 
-/* Центрирование всех экранов */
-.screen {
-    display: none;
-    height: 100vh;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-}
+.screen { display: none; height: 100vh; align-items: center; justify-content: center; }
 .screen.active { display: flex; }
 
-/* УБИРАЕМ СЕРЫЙ БОКС ЗДЕСЬ */
-.auth-card {
-    width: 100%;
-    max-width: 400px;
-    text-align: center;
-    background: transparent; /* Полностью прозрачно */
-}
+/* Вход без серого фона */
+.auth-card { width: 340px; text-align: center; background: transparent; }
 
-.logo {
-    font-size: 5rem;
-    font-weight: 900;
-    letter-spacing: -4px;
-    margin-bottom: 40px;
-    text-shadow: 0 0 20px rgba(255,255,255,0.2);
-}
+.logo { font-size: 5rem; font-weight: 900; letter-spacing: -4px; margin-bottom: 30px; }
 
-/* Табы выбора */
-.auth-tabs {
-    display: flex;
-    background: rgba(255,255,255,0.05);
-    padding: 5px;
-    border-radius: 12px;
-    margin-bottom: 25px;
-}
+.auth-tabs { display: flex; gap: 10px; margin-bottom: 25px; border-bottom: 1px solid rgba(255,255,255,0.1); }
 .auth-tabs button {
-    flex: 1; padding: 12px; border: none; background: none;
-    color: #888; cursor: pointer; transition: 0.3s; font-weight: bold;
+    flex: 1; padding: 10px; border: none; background: none; color: #555; cursor: pointer; transition: 0.3s;
 }
-.auth-tabs button.active {
-    background: #fff; color: #000; border-radius: 8px;
-}
+.auth-tabs button.active { color: #fff; border-bottom: 2px solid #fff; }
 
-/* Поля ввода */
 input {
-    width: 100%;
-    padding: 16px;
-    margin-bottom: 15px;
-    border-radius: 12px;
-    border: 1px solid rgba(255,255,255,0.1);
-    background: rgba(255,255,255,0.03);
-    color: #fff;
-    font-size: 1rem;
-    outline: none;
-    backdrop-filter: blur(10px);
-    transition: 0.3s;
+    width: 100%; padding: 15px; margin-bottom: 15px; border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05);
+    color: #fff; outline: none; backdrop-filter: blur(10px);
 }
-input:focus { border-color: rgba(255,255,255,0.4); background: rgba(255,255,255,0.07); }
 
-/* Кнопки */
 .primary-btn {
     width: 100%; padding: 16px; border: none; border-radius: 12px;
-    background: #fff; color: #000; font-weight: 700; cursor: pointer;
-    transition: 0.3s; font-size: 1rem;
+    background: #fff; color: #000; font-weight: bold; cursor: pointer; transition: 0.3s;
 }
-.primary-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255,255,255,0.2); }
 
 .google-btn {
-    width: 100%; padding: 14px; border: 1px solid rgba(255,255,255,0.2);
-    border-radius: 12px; background: transparent; color: #fff;
-    cursor: pointer; margin-top: 10px; transition: 0.3s;
+    width: 100%; padding: 12px; border: 1px solid #333; border-radius: 12px;
+    background: transparent; color: #fff; cursor: pointer; margin-top: 10px;
 }
-.google-btn:hover { background: rgba(255,255,255,0.05); }
 
-.divider { margin: 25px 0; color: #444; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 2px; }
+.divider { margin: 20px 0; color: #333; font-size: 0.7rem; text-transform: uppercase; }
+
+/* Стекло для Лобби */
+.glass-panel {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 30px;
+}
