@@ -2,78 +2,46 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>COW — Co-Watching Space</title>
-    <link rel="stylesheet" href="style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Co-Watch | Live Voice</title>
+    <link rel="stylesheet" href="style.css?v=12">
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 </head>
 <body>
-    <div id="loader" class="loader-overlay active"><div class="spinner"></div></div>
     <canvas id="particle-canvas"></canvas>
 
-    <div id="app-container">
-        <section id="auth-screen" class="screen">
-            <div class="auth-wrapper glass-panel">
-                <h1 class="logo">COW</h1>
-                <div class="auth-tabs">
-                    <button id="tab-login" class="active">Вход</button>
-                    <button id="tab-register">Регистрация</button>
-                </div>
-                <div class="form-container">
-                    <div id="form-login" class="auth-form active-form">
-                        <input type="email" id="login-email" placeholder="Email">
-                        <input type="password" id="login-password" placeholder="Пароль">
-                        <button id="btn-login-email" class="primary-btn">Войти</button>
-                    </div>
-                    <div id="form-register" class="auth-form hidden-form right">
-                        <input type="text" id="reg-name" placeholder="Никнейм">
-                        <input type="email" id="reg-email" placeholder="Email">
-                        <input type="password" id="reg-password" placeholder="Пароль">
-                        <button id="btn-register-email" class="primary-btn">Создать аккаунт</button>
-                    </div>
-                </div>
-                <div class="divider"><span>или</span></div>
-                <button id="btn-google-auth" class="google-btn">Войти через Google</button>
+    <section id="auth-screen" class="screen active">
+        <div class="auth-box">
+            <div class="auth-logo">CO<span>W</span></div>
+            <div class="input-wrapper glass">
+                <input type="text" id="username-input" placeholder="Никнейм" autocomplete="off">
             </div>
-        </section>
-
-        <section id="lobby-screen" class="screen">
-            <div class="lobby-layout">
-                <aside class="lobby-sidebar glass-panel">
-                    <div class="user-profile">
-                        <div class="avatar-circle"></div>
-                        <h3 id="user-display-name">...</h3>
-                    </div>
-                    <nav class="sidebar-nav">
-                        <button class="nav-item active">Все комнаты</button>
-                    </nav>
-                    <button id="btn-logout" class="logout-link">Выход</button>
-                </aside>
-
-                <main class="lobby-main">
-                    <header class="main-header glass-panel">
-                        <input type="text" id="search-rooms" placeholder="Поиск...">
-                        <button id="btn-open-modal" class="primary-btn create-btn">+ Создать</button>
-                    </header>
-                    <div id="rooms-grid" class="rooms-grid"></div>
-                </main>
-            </div>
-        </section>
-
-        <div id="modal-create" class="modal">
-            <div class="modal-content glass-panel">
-                <h2>Создать комнату</h2>
-                <input type="text" id="room-name" placeholder="Название комнаты">
-                <input type="text" id="room-link" placeholder="Ссылка на видео (YouTube/Direct)">
-                <input type="password" id="room-pass" placeholder="Пароль (необязательно)">
-                <div class="modal-buttons">
-                    <button id="btn-close-modal" class="google-btn">Отмена</button>
-                    <button id="btn-create-finish" class="primary-btn">Запустить</button>
-                </div>
-            </div>
+            <button id="login-btn" class="primary-btn">Войти</button>
         </div>
-    </div>
+    </section>
 
-    <script type="module" src="app.js"></script>
+    <section id="main-app" class="screen">
+        <main class="main-layout">
+            <div class="video-column">
+                <div class="player-container glass-player">
+                    <video id="native-player" controls playsinline>
+                        <source src="https://www.dropbox.com/scl/fi/w6ne3u4cu0etalghat2p9/Doktor_Strendzh_2016_720-kinovasek.net.mp4?rlkey=zt2j541gmovz2bodz94t3dse5&st=tt9m2hw8&raw=1" type="video/mp4">
+                    </video>
+                </div>
+            </div>
+            <div class="chat-column glass-chat">
+                <div class="chat-area" id="chat-messages"></div>
+                <div class="message-dock">
+                    <div class="beautiful-chat-input glass">
+                        <button id="mic-btn" class="mic-icon-btn">🎤</button>
+                        <input type="text" id="chat-input" placeholder="Написать..." autocomplete="off">
+                        <button id="send-btn" class="send-btn">↑</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </section>
+
+    <script type="module" src="app.js?v=12"></script>
 </body>
 </html>
