@@ -43,7 +43,7 @@
                 <aside class="lobby-sidebar glass-panel">
                     <div class="user-profile">
                         <div class="avatar-circle"></div>
-                        <h3 id="user-display-name">...</h3>
+                        <h3 id="user-display-name">Загрузка...</h3>
                     </div>
                     <nav class="sidebar-nav">
                         <button class="nav-item active glass-panel">Все комнаты</button>
@@ -52,9 +52,9 @@
                 </aside>
 
                 <main class="lobby-main">
-                    <header class="main-header glass-panel">
-                        <input type="text" id="search-rooms" placeholder="Поиск...">
-                        <button id="btn-open-modal" class="primary-btn create-btn">+ Создать</button>
+                    <header class="main-header glass-panel" style="display: flex; justify-content: space-between; padding: 15px; margin-bottom: 20px;">
+                        <input type="text" id="search-rooms" placeholder="Поиск комнат..." style="width: auto; margin: 0; flex: 1; margin-right: 15px;">
+                        <button id="btn-open-modal" class="primary-btn create-btn" style="width: auto;">+ Создать</button>
                     </header>
                     <div id="rooms-grid" class="rooms-grid"></div>
                 </main>
@@ -63,11 +63,11 @@
 
         <div id="modal-create" class="modal">
             <div class="modal-content glass-panel">
-                <h2>Создать комнату</h2>
+                <h2 style="margin-bottom: 20px;">Создать комнату</h2>
                 <input type="text" id="room-name" placeholder="Название комнаты">
                 <input type="text" id="room-link" placeholder="Ссылка на видео (Прямая ссылка mp4)">
                 <input type="password" id="room-pass" placeholder="Пароль (необязательно)">
-                <div class="modal-buttons">
+                <div class="modal-buttons" style="display: flex; gap: 10px; margin-top: 15px;">
                     <button id="btn-close-modal" class="google-btn">Отмена</button>
                     <button id="btn-create-finish" class="primary-btn">Запустить</button>
                 </div>
@@ -80,7 +80,7 @@
                     <button id="btn-leave-room" class="google-btn leave-btn">← В лобби</button>
                     <button id="btn-delete-room" class="google-btn leave-btn" style="display: none; color: #ff4757; border-color: rgba(255,71,87,0.3);">🗑 Удалить</button>
                 </div>
-                <h2 id="room-title-text" style="margin-left: 20px;">Название комнаты</h2>
+                <h2 id="room-title-text" style="margin-left: 20px; flex: 1; text-align: right;">Название комнаты</h2>
             </header>
             
             <main class="main-layout-room">
@@ -89,11 +89,12 @@
                         <video id="native-player" playsinline preload="metadata"></video>
                         
                         <div class="custom-controls glass-panel">
-                            <div class="voice-volume-control">
+                            <div class="voice-volume-control" style="display: flex; align-items: center; gap: 10px;">
                                 <span title="Громкость голосового чата">🎙️</span>
                                 <input type="range" id="voice-volume" min="0" max="1" step="0.1" value="1" title="Громкость других участников">
                             </div>
-                            <button id="btn-fullscreen" class="icon-btn" title="На весь экран">⛶ Фуллскрин</button>
+                            <div style="width: 1px; height: 20px; background: rgba(255,255,255,0.2);"></div>
+                            <button id="btn-fullscreen" class="icon-btn" title="На весь экран" style="background: none; border: none; color: white; cursor: pointer; font-weight: bold;">⛶ Фуллскрин</button>
                         </div>
                     </div>
                 </div>
@@ -105,13 +106,14 @@
                     </div>
 
                     <div class="chat-area active-area" id="chat-messages"></div>
-                    <div class="users-area" id="users-list"></div>
+                    
+                    <div class="users-area" id="users-list" style="display: none;"></div>
 
                     <div class="message-dock" id="message-dock-container">
                         <div class="beautiful-chat-input glass-panel">
                             <button id="mic-btn" class="mic-icon-btn" title="Микрофон">🎤</button>
                             <input type="text" id="chat-input" placeholder="Написать..." autocomplete="off">
-                            <button id="send-btn" class="send-btn">↑</button>
+                            <button id="send-btn" class="send-btn" style="background: white; color: black; border: none; border-radius: 8px; width: 40px; height: 40px; cursor: pointer; font-weight: bold; transition: 0.3s;">↑</button>
                         </div>
                     </div>
                 </div>
