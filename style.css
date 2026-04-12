@@ -1,60 +1,95 @@
-/* AUTH FIX */
-.auth-container {
-  width: 320px;
-  padding: 30px 25px;
-  margin: auto;
-  margin-top: 18vh;
-  text-align: center;
-  border-radius: 24px;
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+body { background: #050505; color: #fff; overflow: hidden; height: 100vh; }
+
+#particle-canvas { position: fixed; top: 0; left: 0; z-index: -1; opacity: 0.6; }
+
+/* ПРЕЛОАДЕР */
+.loader-overlay {
+    position: fixed; inset: 0; background: #050505; z-index: 9999;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity 0.5s ease;
+}
+.loader-overlay.active { opacity: 1; pointer-events: all; }
+.spinner { width: 40px; height: 40px; border: 3px solid rgba(255,255,255,0.1); border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* БАЗА ЭКРАНОВ */
+.screen { display: none; height: 100vh; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.4s ease; }
+.screen.active { display: flex; opacity: 1; }
+
+/* СТЕКЛО */
+.glass-panel {
+    background: rgba(255, 255, 255, 0.02);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 24px;
 }
 
-.auth-container h1 {
-  font-size: 24px;
-  margin-bottom: 25px;
-  font-weight: 600;
-}
+/* АВТОРИЗАЦИЯ */
+.auth-wrapper { width: 400px; padding: 40px; text-align: center; overflow: hidden; }
+.logo { font-size: 4rem; font-weight: 900; letter-spacing: -3px; margin-bottom: 30px; }
 
-/* INPUT */
-.input-group {
-  margin-bottom: 20px;
-}
+.auth-tabs { display: flex; gap: 10px; margin-bottom: 30px; position: relative; }
+.auth-tabs button { flex: 1; padding: 10px; border: none; background: none; color: #666; font-weight: 600; cursor: pointer; transition: 0.3s; font-size: 1.1rem; }
+.auth-tabs button.active { color: #fff; }
+.auth-tabs::after { content: ''; position: absolute; bottom: 0; left: 0; width: 50%; height: 2px; background: #fff; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+.auth-tabs.register-active::after { transform: translateX(100%); }
 
-.input-group input {
-  width: 100%;
-  padding: 14px;
-  border-radius: 12px;
-  border: none;
-  outline: none;
-  background: rgba(255,255,255,0.08);
-  color: #fff;
-  font-size: 14px;
-}
+/* АНИМАЦИЯ ФОРМ */
+.form-container { position: relative; height: 180px; } /* Фиксируем высоту чтобы не прыгало */
+.auth-form { position: absolute; top: 0; left: 0; width: 100%; transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); opacity: 1; visibility: visible; }
+.hidden-form.left { transform: translateX(-40px); opacity: 0; visibility: hidden; }
+.hidden-form.right { transform: translateX(40px); opacity: 0; visibility: hidden; }
 
-.input-group input::placeholder {
-  color: rgba(255,255,255,0.4);
+input {
+    width: 100%; padding: 16px; margin-bottom: 12px; border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.2);
+    color: #fff; outline: none; font-size: 1rem; transition: border 0.3s;
 }
+input:focus { border-color: rgba(255,255,255,0.4); }
 
-/* BUTTON */
-.primary-btn {
-  width: 100%;
-  padding: 14px;
-  border-radius: 12px;
-  border: none;
-  font-weight: 600;
-  font-size: 14px;
-  background: #fff;
-  color: #000;
-  cursor: pointer;
-  transition: 0.2s;
-}
+.primary-btn { width: 100%; padding: 16px; border: none; border-radius: 12px; background: #fff; color: #000; font-weight: 600; font-size: 1rem; cursor: pointer; transition: transform 0.2s; }
+.primary-btn:active { transform: scale(0.98); }
 
-.primary-btn:hover {
-  opacity: 0.85;
+.google-btn {
+    width: 100%; padding: 14px; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;
+    background: transparent; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.3s;
 }
+.google-btn:hover { background: rgba(255,255,255,0.05); }
 
-/* GLASS UPGRADE */
-.glass {
-  backdrop-filter: blur(25px);
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.08);
-}
+.divider { margin: 25px 0; display: flex; align-items: center; color: #555; font-size: 0.8rem; text-transform: uppercase; }
+.divider::before, .divider::after { content: ''; flex: 1; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.divider span { padding: 0 10px; }
+
+/* ЛОББИ РЕЖИМ */
+.lobby-layout { display: flex; width: 95vw; max-width: 1400px; height: 90vh; gap: 30px; margin: 0 auto; }
+
+.lobby-sidebar { width: 280px; display: flex; flex-direction: column; padding: 40px 30px; }
+.user-profile { text-align: center; margin-bottom: 40px; }
+.avatar-circle { width: 80px; height: 80px; background: #222; border-radius: 50%; margin: 0 auto 15px; border: 2px solid rgba(255,255,255,0.1); }
+#user-display-name { font-weight: 600; font-size: 1.1rem; }
+
+.sidebar-nav { display: flex; flex-direction: column; gap: 10px; flex: 1; }
+.nav-item { padding: 14px 20px; background: none; border: none; color: #777; text-align: left; cursor: pointer; border-radius: 12px; transition: 0.2s; font-size: 1rem; font-weight: 600; }
+.nav-item:hover { color: #fff; background: rgba(255,255,255,0.02); }
+.nav-item.active { background: #fff; color: #000; }
+
+.logout-link { color: #ff5555; background: none; border: none; cursor: pointer; padding: 14px; font-weight: 600; text-align: left; opacity: 0.8; transition: 0.2s; }
+.logout-link:hover { opacity: 1; background: rgba(255,85,85,0.1); border-radius: 12px; }
+
+.lobby-main { flex: 1; display: flex; flex-direction: column; gap: 30px; }
+.main-header { display: flex; gap: 20px; padding: 20px 30px; align-items: center; }
+#search-rooms { flex: 1; margin: 0; background: transparent; border: none; }
+.create-btn { width: auto; padding: 14px 30px; }
+
+.rooms-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; overflow-y: auto; padding-right: 10px; }
+.rooms-grid::-webkit-scrollbar { width: 6px; }
+.rooms-grid::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+
+.room-card { padding: 25px; border-radius: 20px; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); border: 1px solid rgba(255,255,255,0.05); background: rgba(255,255,255,0.02); }
+.room-card:hover { transform: translateY(-5px); background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.2); }
+.room-card h4 { font-size: 1.2rem; margin-bottom: 10px; }
+.room-card p { color: #888; font-size: 0.9rem; }
