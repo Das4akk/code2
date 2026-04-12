@@ -3,95 +3,96 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>COW — Monochrome Space</title>
+    <title>COW — Minimalist Space</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="loader" class="loader-overlay active"><div class="spinner"></div></div>
     <canvas id="particle-canvas"></canvas>
 
-    <div id="app-container">
-        <section id="auth-screen" class="screen">
-            <div class="auth-card glass-panel">
-                <h1 class="logo">COW</h1>
-                <div class="auth-tabs">
-                    <button id="tab-login" class="active">Вход</button>
-                    <button id="tab-register">Регистрация</button>
-                </div>
-                <div class="auth-forms">
-                    <div id="form-login" class="auth-group active">
-                        <input type="email" id="login-email" placeholder="Email">
-                        <input type="password" id="login-password" placeholder="Пароль">
-                        <button id="btn-login-email" class="dark-btn">Войти</button>
-                    </div>
-                    <div id="form-register" class="auth-group hidden">
-                        <input type="text" id="reg-name" placeholder="Никнейм">
-                        <input type="email" id="reg-email" placeholder="Email">
-                        <input type="password" id="reg-password" placeholder="Пароль">
-                        <button id="btn-register-email" class="dark-btn">Создать</button>
-                    </div>
-                </div>
-                <button id="btn-google-auth" class="outline-btn">Google</button>
+    <section id="auth-screen" class="screen">
+        <div class="auth-container glass-panel">
+            <h1 class="logo">COW</h1>
+            <div class="auth-tabs">
+                <button id="tab-login" class="active">Login</button>
+                <button id="tab-register">Join</button>
             </div>
-        </section>
-
-        <section id="lobby-screen" class="screen">
-            <div class="lobby-container">
-                <header class="lobby-header glass-panel">
-                    <div class="user-info">
-                        <div class="mini-avatar"></div>
-                        <span id="user-display-name">...</span>
-                    </div>
-                    <div class="header-actions">
-                        <button id="btn-open-modal" class="dark-btn">+ Создать комнату</button>
-                        <button id="btn-logout" class="icon-btn">🚪</button>
-                    </div>
-                </header>
-                <div id="rooms-grid" class="rooms-grid"></div>
-            </div>
-        </section>
-
-        <section id="room-screen" class="screen">
-            <div class="room-layout">
-                <div class="video-section glass-panel">
-                    <div class="room-nav">
-                        <button id="btn-leave-room" class="icon-btn">←</button>
-                        <h2 id="current-room-name">...</h2>
-                        <span id="admin-tag" class="hidden">HOST</span>
-                    </div>
-                    <div id="player-viewport">
-                        <video id="main-video" playsinline></video>
-                        <div id="sync-overlay" class="hidden"></div>
-                    </div>
+            
+            <div id="auth-forms">
+                <div id="login-form" class="form-group active">
+                    <input type="email" id="email" placeholder="Email">
+                    <input type="password" id="pass" placeholder="Password">
+                    <button id="btn-login" class="action-btn">Enter</button>
                 </div>
-                
-                <div class="chat-section glass-panel">
-                    <div class="online-list-wrapper">
-                        <p>В комнате:</p>
-                        <div id="online-users"></div>
-                    </div>
-                    <div id="chat-messages"></div>
-                    <div class="chat-controls">
-                        <div class="mic-wrapper">
-                            <button id="btn-mic" class="mic-btn">🎤</button>
-                        </div>
-                        <input type="text" id="chat-input" placeholder="Сообщение...">
-                        <button id="btn-send-msg">➤</button>
-                    </div>
+                <div id="register-form" class="form-group">
+                    <input type="text" id="reg-name" placeholder="Nickname">
+                    <input type="email" id="reg-email" placeholder="Email">
+                    <input type="password" id="reg-pass" placeholder="Password">
+                    <button id="btn-reg" class="action-btn">Create</button>
                 </div>
             </div>
-        </section>
 
-        <div id="modal-create" class="modal-overlay">
-            <div class="modal-content glass-panel">
-                <h3>Новое пространство</h3>
-                <input type="text" id="room-name" placeholder="Название">
-                <input type="text" id="room-link" placeholder="Прямая ссылка (.mp4)">
-                <input type="password" id="room-pass" placeholder="Пароль (если нужен)">
-                <div class="modal-btns">
-                    <button id="btn-close-modal" class="outline-btn">Отмена</button>
-                    <button id="btn-create-finish" class="dark-btn">Запустить</button>
+            <div class="divider"><span>OR</span></div>
+            <button id="btn-google" class="google-btn">Continue with Google</button>
+        </div>
+    </section>
+
+    <section id="lobby-screen" class="screen">
+        <div class="lobby-content">
+            <header class="lobby-header glass-panel">
+                <div class="user-pill">
+                    <div class="avatar-dot"></div>
+                    <span id="user-name">...</span>
                 </div>
+                <div class="nav-btns">
+                    <button id="btn-new-room" class="action-btn">+ Room</button>
+                    <button id="btn-out" class="icon-btn">Logout</button>
+                </div>
+            </header>
+            <div id="rooms-list" class="rooms-grid"></div>
+        </div>
+    </section>
+
+    <section id="room-screen" class="screen">
+        <div class="room-wrapper">
+            <div class="player-side glass-panel">
+                <div class="room-top">
+                    <button id="btn-back" class="icon-btn">←</button>
+                    <h2 id="room-title">...</h2>
+                    <div id="host-badge" class="badge hidden">HOST</div>
+                </div>
+                <div id="video-box">
+                    <video id="v-player" playsinline></video>
+                    <div id="v-lock" class="hidden"></div>
+                </div>
+            </div>
+
+            <div class="info-side glass-panel">
+                <div class="online-section">
+                    <p>Watching:</p>
+                    <div id="users-box"></div>
+                </div>
+                <div id="messages-box"></div>
+                <div class="chat-bar">
+                    <div class="mic-container">
+                        <button id="btn-mic" class="mic-btn">🎤</button>
+                    </div>
+                    <input type="text" id="msg-input" placeholder="Text...">
+                    <button id="btn-send">➤</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div id="modal-box" class="modal-overlay">
+        <div class="modal-card glass-panel">
+            <h3>New Room</h3>
+            <input type="text" id="in-room-name" placeholder="Title">
+            <input type="text" id="in-room-link" placeholder="Direct Video Link (.mp4)">
+            <input type="password" id="in-room-pass" placeholder="Password (Optional)">
+            <div class="modal-actions">
+                <button id="btn-cancel" class="google-btn">Cancel</button>
+                <button id="btn-confirm" class="action-btn">Launch</button>
             </div>
         </div>
     </div>
