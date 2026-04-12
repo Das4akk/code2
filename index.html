@@ -2,54 +2,110 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Co-Watch | Live Room</title>
-    <link rel="stylesheet" href="style.css?v=10">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Co-Watch — Смотрим вместе</title>
+    <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 </head>
 <body>
     <canvas id="particle-canvas"></canvas>
 
-    <section id="auth-screen" class="screen active">
-        <div class="auth-box">
-            <div class="auth-logo">CO<span>W</span></div>
-            <div class="input-wrapper glass">
-                <input type="text" id="username-input" placeholder="Твое имя" autocomplete="off">
-            </div>
-            <button id="login-btn" class="primary-btn">Войти</button>
-        </div>
-    </section>
-
-    <section id="main-app" class="screen">
-        <header class="app-header glass">
-            <div class="room-info">
-                <h2>Доктор Стрэндж</h2>
-                <div id="status" class="live-indicator"><span></span> Sync Active</div>
-            </div>
-        </header>
-
-        <main class="main-layout">
-            <div class="video-column">
-                <div class="player-container glass-player">
-                    <video id="native-player" controls playsinline>
-                        <source src="https://www.dropbox.com/scl/fi/w6ne3u4cu0etalghat2p9/Doktor_Strendzh_2016_720-kinovasek.net.mp4?rlkey=zt2j541gmovz2bodz94t3dse5&st=tt9m2hw8&raw=1" type="video/mp4">
-                    </video>
+    <div id="app-container">
+        
+        <section id="auth-screen" class="screen active">
+            <div class="glass-panel auth-card">
+                <h1 class="logo">COW</h1>
+                <div class="auth-tabs">
+                    <button id="tab-login" class="active">Вход</button>
+                    <button id="tab-register">Регистрация</button>
                 </div>
+
+                <div id="form-login">
+                    <input type="email" id="login-email" placeholder="Email">
+                    <input type="password" id="login-password" placeholder="Пароль">
+                    <button id="btn-login-email" class="primary-btn">Войти</button>
+                </div>
+
+                <div id="form-register" class="hidden">
+                    <input type="text" id="reg-name" placeholder="Ваше имя">
+                    <input type="email" id="reg-email" placeholder="Email">
+                    <input type="password" id="reg-password" placeholder="Пароль">
+                    <button id="btn-register-email" class="primary-btn">Создать аккаунт</button>
+                </div>
+
+                <div class="divider"><span>или</span></div>
+                <button id="btn-google-auth" class="google-btn">
+                    Войти через Google
+                </button>
+            </div>
+        </section>
+
+        <section id="lobby-screen" class="screen">
+            <div class="lobby-header glass-panel">
+                <div class="user-info">
+                    <span id="lobby-username">Загрузка...</span>
+                    <button id="btn-logout" class="text-btn">Выйти</button>
+                </div>
+                <button id="btn-open-create-modal" class="primary-btn">+ Создать комнату</button>
             </div>
 
-            <div class="chat-column glass-chat">
-                <div class="chat-area" id="chat-messages"></div>
-                <div class="message-dock">
-                    <div class="beautiful-chat-input glass">
-                        <button id="mic-toggle" class="mic-btn">🎤</button>
-                        <input type="text" id="chat-input" placeholder="Написать..." autocomplete="off">
-                        <button id="send-btn" class="send-btn">↑</button>
+            <div id="rooms-list" class="rooms-grid">
+                </div>
+
+            <div id="create-room-modal" class="modal hidden">
+                <div class="glass-panel modal-content">
+                    <h2>Новая комната</h2>
+                    <input type="text" id="new-room-name" placeholder="Название (например, Кино на вечер)">
+                    <input type="text" id="new-room-url" placeholder="Прямая ссылка на .mp4">
+                    <input type="password" id="new-room-pass" placeholder="Пароль (необязательно)">
+                    <div class="modal-btns">
+                        <button id="btn-cancel-create" class="secondary-btn">Отмена</button>
+                        <button id="btn-confirm-create" class="primary-btn">Создать</button>
                     </div>
                 </div>
             </div>
-        </main>
-    </section>
 
-    <script type="module" src="app.js?v=10"></script>
+            <div id="password-modal" class="modal hidden">
+                <div class="glass-panel modal-content">
+                    <h2>Требуется пароль</h2>
+                    <input type="password" id="enter-room-pass" placeholder="Введите пароль">
+                    <div class="modal-btns">
+                        <button id="btn-cancel-pass" class="secondary-btn">Назад</button>
+                        <button id="btn-confirm-pass" class="primary-btn">Войти</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="main-app" class="screen">
+            <div class="room-layout">
+                <div class="video-side">
+                    <div class="video-header">
+                        <button id="btn-leave-room" class="icon-btn">←</button>
+                        <h2 id="current-room-title">Комната</h2>
+                        <button id="mic-btn" class="mic-btn">🎤</button>
+                    </div>
+                    
+                    <div class="player-container">
+                        <video id="native-player" controls playsinline></video>
+                        <div id="admin-wait-overlay" class="hidden">
+                            <p>Ожидаем администратора для синхронизации...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chat-side glass-panel">
+                    <div id="chat-messages"></div>
+                    <div class="chat-input-area">
+                        <input type="text" id="chat-input" placeholder="Сообщение...">
+                        <button id="send-btn">➤</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <script type="module" src="app.js"></script>
 </body>
 </html>
