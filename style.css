@@ -1,49 +1,68 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-
-* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
-body { background: #000; color: #fff; overflow: hidden; height: 100vh; }
-
-#particle-canvas { position: fixed; top: 0; left: 0; z-index: -1; }
-
-.hidden { display: none !important; }
-
-.screen { display: none; height: 100vh; align-items: center; justify-content: center; }
-.screen.active { display: flex; }
-
-/* Вход без серого фона */
-.auth-card { width: 340px; text-align: center; background: transparent; }
-
-.logo { font-size: 5rem; font-weight: 900; letter-spacing: -4px; margin-bottom: 30px; }
-
-.auth-tabs { display: flex; gap: 10px; margin-bottom: 25px; border-bottom: 1px solid rgba(255,255,255,0.1); }
-.auth-tabs button {
-    flex: 1; padding: 10px; border: none; background: none; color: #555; cursor: pointer; transition: 0.3s;
+/* АНИМАЦИИ ПЕРЕХОДА */
+.auth-form {
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: 1;
+    transform: translateX(0);
 }
-.auth-tabs button.active { color: #fff; border-bottom: 2px solid #fff; }
-
-input {
-    width: 100%; padding: 15px; margin-bottom: 15px; border-radius: 12px;
-    border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05);
-    color: #fff; outline: none; backdrop-filter: blur(10px);
+.auth-form.hidden {
+    display: none;
+    opacity: 0;
+    transform: translateX(20px);
 }
 
-.primary-btn {
-    width: 100%; padding: 16px; border: none; border-radius: 12px;
-    background: #fff; color: #000; font-weight: bold; cursor: pointer; transition: 0.3s;
+/* ЛОББИ В СТИЛЕ RAVE */
+.lobby-layout {
+    display: flex;
+    width: 95vw;
+    height: 90vh;
+    gap: 20px;
 }
 
-.google-btn {
-    width: 100%; padding: 12px; border: 1px solid #333; border-radius: 12px;
-    background: transparent; color: #fff; cursor: pointer; margin-top: 10px;
-}
-
-.divider { margin: 20px 0; color: #333; font-size: 0.7rem; text-transform: uppercase; }
-
-/* Стекло для Лобби */
-.glass-panel {
-    background: rgba(255, 255, 255, 0.03);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 20px;
+.lobby-sidebar {
+    width: 280px;
+    display: flex;
+    flex-direction: column;
     padding: 30px;
 }
+
+.user-profile { text-align: center; margin-bottom: 40px; }
+#user-avatar { 
+    width: 80px; height: 80px; background: #fff; border-radius: 50%; 
+    margin: 0 auto 15px; background-image: url('https://api.dicebear.com/7.x/avataaars/svg');
+}
+
+.sidebar-nav { flex: 1; }
+.nav-item {
+    display: block; width: 100%; padding: 12px; background: none; border: none;
+    color: #666; text-align: left; cursor: pointer; border-radius: 8px; transition: 0.2s;
+}
+.nav-item.active { background: rgba(255,255,255,0.1); color: #fff; }
+
+.lobby-main { flex: 1; display: flex; flex-direction: column; gap: 20px; }
+.main-header { display: flex; gap: 15px; }
+
+#search-rooms { flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); }
+
+.create-btn {
+    padding: 0 25px; background: #fff; color: #000; border: none; 
+    border-radius: 12px; font-weight: bold; cursor: pointer;
+}
+
+.rooms-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+    overflow-y: auto;
+}
+
+.room-card {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 15px;
+    padding: 20px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+.room-card:hover { transform: translateY(-5px); background: rgba(255,255,255,0.08); }
+
+.logout-link { color: #ff4444; background: none; border: none; cursor: pointer; margin-top: auto; }

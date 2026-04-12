@@ -1,66 +1,63 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>COW — Co-Watching Space</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-</head>
 <body>
     <canvas id="particle-canvas"></canvas>
 
     <div id="app-container">
         <section id="auth-screen" class="screen active">
-            <div class="auth-card">
+            <div class="auth-wrapper">
                 <h1 class="logo">COW</h1>
-                <div class="auth-tabs">
-                    <button id="tab-login" class="active">Вход</button>
-                    <button id="tab-register">Регистрация</button>
-                </div>
+                <div class="auth-container glass-panel">
+                    <div class="auth-tabs">
+                        <button id="tab-login" class="active">Вход</button>
+                        <button id="tab-register">Регистрация</button>
+                    </div>
 
-                <div id="form-login">
-                    <input type="email" id="login-email" placeholder="Email">
-                    <input type="password" id="login-password" placeholder="Пароль">
-                    <button id="btn-login-email" class="primary-btn">Войти</button>
-                </div>
+                    <div class="auth-forms-slider">
+                        <div id="form-login" class="auth-form">
+                            <input type="email" id="login-email" placeholder="Email">
+                            <input type="password" id="login-password" placeholder="Пароль">
+                            <button id="btn-login-email" class="primary-btn">Войти</button>
+                        </div>
+                        <div id="form-register" class="auth-form hidden">
+                            <input type="text" id="reg-name" placeholder="Ваше имя">
+                            <input type="email" id="reg-email" placeholder="Email">
+                            <input type="password" id="reg-password" placeholder="Пароль">
+                            <button id="btn-register-email" class="primary-btn">Создать аккаунт</button>
+                        </div>
+                    </div>
 
-                <div id="form-register" class="hidden">
-                    <input type="text" id="reg-name" placeholder="Ваше имя">
-                    <input type="email" id="reg-email" placeholder="Email">
-                    <input type="password" id="reg-password" placeholder="Пароль">
-                    <button id="btn-register-email" class="primary-btn">Создать аккаунт</button>
+                    <div class="divider"><span>или</span></div>
+                    <button id="btn-google-auth" class="google-btn">Войти через Google</button>
                 </div>
-
-                <div class="divider"><span>или</span></div>
-                <button id="btn-google-auth" class="google-btn">Войти через Google</button>
             </div>
         </section>
 
         <section id="lobby-screen" class="screen">
-            <div class="lobby-container glass-panel">
-                <header class="lobby-header">
-                    <h2 id="user-display-name">Загрузка...</h2>
-                    <button id="btn-logout" class="secondary-btn">Выйти</button>
-                </header>
-                <div id="rooms-list" class="rooms-grid"></div>
-                <button id="btn-open-create" class="primary-btn">Создать комнату</button>
-            </div>
-        </section>
+            <div class="lobby-layout">
+                <aside class="lobby-sidebar glass-panel">
+                    <div class="user-profile">
+                        <div id="user-avatar"></div>
+                        <h3 id="user-display-name">...</h3>
+                    </div>
+                    <nav class="sidebar-nav">
+                        <button class="nav-item active">Публичные комнаты</button>
+                        <button class="nav-item">Мои комнаты</button>
+                        <button class="nav-item">Друзья</button>
+                    </nav>
+                    <button id="btn-logout" class="logout-link">Выйти из системы</button>
+                </aside>
 
-        <section id="main-app" class="screen">
-            <div class="room-layout">
-                <div class="video-side">
-                    <video id="native-player" controls></video>
-                </div>
-                <div class="chat-side glass-panel">
-                    <div id="chat-messages"></div>
-                    <input type="text" id="chat-input" placeholder="Сообщение...">
-                </div>
+                <main class="lobby-main">
+                    <header class="main-header">
+                        <input type="text" id="search-rooms" placeholder="Поиск комнат по названию...">
+                        <button id="btn-open-create" class="create-btn">+ Создать</button>
+                    </header>
+                    
+                    <div id="rooms-grid" class="rooms-grid">
+                        </div>
+                </main>
             </div>
         </section>
     </div>
 
     <script type="module" src="app.js"></script>
 </body>
-</html>
