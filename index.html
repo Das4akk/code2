@@ -45,9 +45,9 @@
                         <h3 id="user-display-name">...</h3>
                     </div>
                     <nav class="sidebar-nav">
-                        <button class="nav-item active">Все комнаты</button>
+                        <button class="nav-item active glass-panel">Все комнаты</button>
                     </nav>
-                    <button id="btn-logout" class="logout-link">Выход</button>
+                    <button id="btn-logout" class="google-btn logout-btn" style="margin-top: auto;">Выход</button>
                 </aside>
 
                 <main class="lobby-main">
@@ -81,15 +81,32 @@
             
             <main class="main-layout-room">
                 <div class="video-column">
-                    <div class="player-container glass-panel">
+                    <div class="player-wrapper glass-panel" id="player-wrapper">
                         <video id="native-player" playsinline></video>
+                        
+                        <div class="custom-controls glass-panel">
+                            <div class="voice-volume-control">
+                                <span title="Громкость голосового чата">🎙️</span>
+                                <input type="range" id="voice-volume" min="0" max="1" step="0.1" value="1" title="Громкость других участников">
+                            </div>
+                            <button id="btn-fullscreen" class="icon-btn" title="На весь экран">⛶ Фуллскрин</button>
+                        </div>
                     </div>
                 </div>
+                
                 <div class="chat-column glass-panel">
-                    <div class="chat-area" id="chat-messages"></div>
-                    <div class="message-dock">
+                    <div class="chat-tabs">
+                        <button id="tab-chat-btn" class="active">Чат</button>
+                        <button id="tab-users-btn">Участники (<span id="users-count">1</span>)</button>
+                    </div>
+
+                    <div class="chat-area active-area" id="chat-messages"></div>
+                    
+                    <div class="users-area" id="users-list"></div>
+
+                    <div class="message-dock" id="message-dock-container">
                         <div class="beautiful-chat-input glass-panel">
-                            <button id="mic-btn" class="mic-icon-btn">🎤</button>
+                            <button id="mic-btn" class="mic-icon-btn" title="Микрофон">🎤</button>
                             <input type="text" id="chat-input" placeholder="Написать..." autocomplete="off">
                             <button id="send-btn" class="send-btn">↑</button>
                         </div>
