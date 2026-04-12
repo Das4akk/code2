@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getDatabase, ref, push, set, onValue, onDisconnect } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { getDatabase, ref, push, set, onValue, onDisconnect, off } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCby2qPGnlHWRfxWAI3Y2aK_UndEh9nato",
@@ -13,17 +13,16 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getDatabase(app);
-
 const $ = (id) => document.getElementById(id);
 
 document.addEventListener('DOMContentLoaded', () => {
     let currentRoomId = null;
-    let ytPlayer = null;
+    let isAdmin = false;
 
-    function showScreen(id) {
+    const showScreen = (id) => {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         $(id).classList.add('active');
-    }
+    };
 
     onAuthStateChanged(auth, (user) => {
         if (user) {
@@ -36,126 +35,147 @@ document.addEventListener('DOMContentLoaded', () => {
         $('loader').classList.remove('active');
     });
 
-    // --- AUTH ---
+    // --- АВТОРИЗАЦИЯ ---
+    $('tab-login').onclick = () => { $('form-login').classList.add('active'); $('form-register').classList.remove('active'); $('tab-login').classList.add('active'); $('tab-register').classList.remove('active'); };
+    $('tab-register').onclick = () => { $('form-register').classList.add('active'); $('form-login').classList.remove('active'); $('tab-register').classList.add('active'); $('tab-login').classList.remove('active'); };
+
     $('btn-login-email').onclick = () => signInWithEmailAndPassword(auth, $('login-email').value, $('login-password').value).catch(alert);
     $('btn-register-email').onclick = async () => {
-        try {
-            const res = await createUserWithEmailAndPassword(auth, $('reg-email').value, $('reg-password').value);
-            await updateProfile(res.user, { displayName: $('reg-name').value });
-        } catch(e) { alert(e.message); }
+        const res = await createUserWithEmailAndPassword(auth, $('reg-email').value, $('reg-password').value);
+        await updateProfile(res.user, { displayName: $('reg-name').value });
     };
-    $('btn-google-auth').onclick = () => signInWithPopup(auth, new GoogleAuthProvider());
     $('btn-logout').onclick = () => signOut(auth);
 
-    $('tab-login').onclick = () => { $('form-login').classList.remove('hidden'); $('form-register').classList.add('hidden'); };
-    $('tab-register').onclick = () => { $('form-login').classList.add('hidden'); $('form-register').classList.remove('hidden'); };
-
-    // --- ROOMS ---
+    // --- КОМНАТЫ ---
     $('btn-open-modal').onclick = () => $('modal-create').classList.add('active');
     $('btn-close-modal').onclick = () => $('modal-create').classList.remove('active');
 
     $('btn-create-finish').onclick = async () => {
         const name = $('room-name').value;
-        const link = $('room-link').value;
-        const pass = $('room-pass').value;
-        if(!name || !link) return alert("Заполни данные!");
-
-        const newRoomRef = push(ref(db, 'rooms'));
-        await set(newRoomRef, {
-            name, link, password: pass || null,
-            admin: auth.currentUser.uid,
-            adminName: auth.currentUser.displayName || "User"
+        let link = $('room-link').value;
+        if(link.includes('dropbox.com')) link = link.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('?dl=0', '').replace('?raw=1', '');
+        
+        const newRoom = push(ref(db, 'rooms'));
+        await set(newRoom, {
+            name, link, admin: auth.currentUser.uid,
+            adminName: auth.currentUser.displayName || "User",
+            password: $('room-pass').value || null
         });
         $('modal-create').classList.remove('active');
     };
 
     function listenRooms() {
-        onValue(ref(db, 'rooms'), (snap) => {
-            const grid = $('rooms-grid');
-            grid.innerHTML = '';
-            if(snap.val()) {
-                Object.entries(snap.val()).forEach(([id, room]) => {
-                    const card = document.createElement('div');
-                    card.className = 'room-card glass-panel';
-                    card.innerHTML = `<h4>${room.name}</h4><p>Админ: ${room.adminName}</p>`;
-                    card.onclick = () => enterRoom(id, room);
-                    grid.appendChild(card);
-                });
-            }
+        onValue(ref(db, 'rooms'), (s) => {
+            $('rooms-grid').innerHTML = '';
+            if(s.val()) Object.entries(s.val()).forEach(([id, r]) => {
+                const card = document.createElement('div');
+                card.className = 'room-card glass-panel';
+                card.innerHTML = `<h4>${r.name}</h4><p>${r.adminName}</p>`;
+                card.onclick = () => enterRoom(id, r);
+                $('rooms-grid').appendChild(card);
+            });
         });
     }
 
-    async function enterRoom(id, room) {
+    // --- ВХОД И СИНХРОНИЗАЦИЯ ---
+    function enterRoom(id, room) {
         if(room.password && room.admin !== auth.currentUser.uid) {
-            const p = prompt("Введите пароль:");
-            if(p !== room.password) return alert("Доступ закрыт!");
+            if(prompt("Пароль:") !== room.password) return alert("Минимо!");
         }
 
         currentRoomId = id;
-        const isAdmin = room.admin === auth.currentUser.uid;
+        isAdmin = room.admin === auth.currentUser.uid;
         showScreen('room-screen');
         $('current-room-name').innerText = room.name;
-        isAdmin ? $('admin-label').classList.remove('hidden') : $('admin-label').classList.add('hidden');
 
-        const container = $('player-container');
-        container.innerHTML = '';
+        const video = $('main-video');
+        video.src = room.link;
+        video.load();
 
-        if(room.link.includes('youtube') || room.link.includes('youtu.be')) {
-            const vid = room.link.split('v=')[1] || room.link.split('/').pop();
-            container.innerHTML = `<div id="yt-player"></div>`;
-            ytPlayer = new YT.Player('yt-player', {
-                videoId: vid,
-                playerVars: { controls: isAdmin ? 1 : 0 },
-                events: { 'onReady': (e) => { if(!isAdmin) e.target.mute(); } }
+        if(!isAdmin) {
+            $('sync-overlay').classList.remove('hidden');
+            onValue(ref(db, `rooms/${id}/sync`), (s) => {
+                const data = s.val();
+                if(data) {
+                    if(Math.abs(video.currentTime - data.time) > 1.5) video.currentTime = data.time;
+                    data.paused ? video.pause() : video.play();
+                }
             });
         } else {
-            container.innerHTML = `<video id="video-core" src="${room.link}" ${isAdmin?'controls':''}></video>`;
+            $('admin-tag').classList.remove('hidden');
+            $('sync-overlay').classList.add('hidden');
+            video.ontimeupdate = () => {
+                set(ref(db, `rooms/${id}/sync`), { time: video.currentTime, paused: video.paused });
+            };
+            video.onplay = () => set(ref(db, `rooms/${id}/sync`), { time: video.currentTime, paused: false });
+            video.onpause = () => set(ref(db, `rooms/${id}/sync`), { time: video.currentTime, paused: true });
         }
 
-        // Online & Chat
-        const presenceRef = ref(db, `rooms/${id}/online/${auth.currentUser.uid}`);
-        set(presenceRef, true);
-        onDisconnect(presenceRef).remove();
-        onValue(ref(db, `rooms/${id}/online`), (s) => $('online-count').innerText = s.val() ? Object.keys(s.val()).length : 0);
-
-        onValue(ref(db, `rooms/${id}/chat`), (s) => {
-            const box = $('chat-messages'); box.innerHTML = '';
-            if(s.val()) Object.values(s.val()).forEach(m => {
-                box.innerHTML += `<div class="msg"><b>${m.user}:</b> ${m.text}</div>`;
+        // Ники онлайн
+        const pRef = ref(db, `rooms/${id}/users/${auth.currentUser.uid}`);
+        set(pRef, auth.currentUser.displayName || "Аноним");
+        onDisconnect(pRef).remove();
+        onValue(ref(db, `rooms/${id}/users`), (s) => {
+            $('online-users').innerHTML = '';
+            if(s.val()) Object.values(s.val()).forEach(name => {
+                $('online-users').innerHTML += `<span class="u-tag">${name}</span>`;
             });
-            box.scrollTop = box.scrollHeight;
+        });
+
+        // Чат
+        const cRef = ref(db, `rooms/${id}/chat`);
+        off(cRef);
+        onValue(cRef, (s) => {
+            $('chat-messages').innerHTML = '';
+            if(s.val()) Object.values(s.val()).forEach(m => {
+                $('chat-messages').innerHTML += `<div class="msg"><b>${m.u}:</b> ${m.t}</div>`;
+            });
+            $('chat-messages').scrollTop = $('chat-messages').scrollHeight;
         });
     }
 
     $('btn-send-msg').onclick = () => {
-        const t = $('chat-input').value;
-        if(!t) return;
-        push(ref(db, `rooms/${currentRoomId}/chat`), { user: auth.currentUser.displayName || "Anon", text: t });
+        if(!$('chat-input').value) return;
+        push(ref(db, `rooms/${currentRoomId}/chat`), { u: auth.currentUser.displayName || "User", t: $('chat-input').value });
         $('chat-input').value = '';
     };
 
     $('btn-leave-room').onclick = () => {
-        if(currentRoomId) set(ref(db, `rooms/${currentRoomId}/online/${auth.currentUser.uid}`), null);
+        const video = $('main-video');
+        video.pause();
+        video.src = "";
+        video.load();
+        if(currentRoomId) set(ref(db, `rooms/${currentRoomId}/users/${auth.currentUser.uid}`), null);
         currentRoomId = null;
         showScreen('lobby-screen');
     };
 
-    // --- PLEXUS ---
-    const canvas = $('particle-canvas'); const ctx = canvas.getContext('2d'); let pts = [];
-    const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
-    window.onresize = resize; resize();
-    for(let i=0; i<60; i++) pts.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, vx: (Math.random()-0.5)*0.5, vy: (Math.random()-0.5)*0.5 });
-    function draw() {
-        ctx.clearRect(0,0,canvas.width,canvas.height);
-        pts.forEach(p => {
-            p.x+=p.vx; p.y+=p.vy; if(p.x<0||p.x>canvas.width) p.vx*=-1; if(p.y<0||p.y>canvas.height) p.vy*=-1;
-            ctx.fillStyle="rgba(255,255,255,0.4)"; ctx.beginPath(); ctx.arc(p.x,p.y,1,0,Math.PI*2); ctx.fill();
-            pts.forEach(p2 => {
-                let d = Math.sqrt((p.x-p2.x)**2 + (p.y-p2.y)**2);
-                if(d<100) { ctx.strokeStyle=`rgba(255,255,255,${0.15-d/700})`; ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(p2.x,p2.y); ctx.stroke(); }
-            });
-        });
-        requestAnimationFrame(draw);
+    // --- МИКРОФОН С ВИЗУАЛИЗАЦИЕЙ ---
+    let audioCtx, analyser, dataArray, source;
+    $('btn-mic').onclick = async () => {
+        if(!audioCtx) {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioCtx.createAnalyser();
+            source = audioCtx.createMediaStreamSource(stream);
+            source.connect(analyser);
+            analyser.fftSize = 32;
+            dataArray = new Uint8Array(analyser.frequencyBinCount);
+            $('btn-mic').classList.add('mic-on');
+            animateMic();
+        } else {
+            audioCtx.close(); audioCtx = null;
+            $('btn-mic').classList.remove('mic-on');
+            $('btn-mic').style.transform = 'scale(1)';
+        }
+    };
+
+    function animateMic() {
+        if(!audioCtx) return;
+        requestAnimationFrame(animateMic);
+        analyser.getByteFrequencyData(dataArray);
+        let sum = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+        let scale = 1 + (sum / 128);
+        $('btn-mic').style.transform = `scale(${scale})`;
     }
-    draw();
 });
