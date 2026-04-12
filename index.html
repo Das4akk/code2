@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>COW — Co-Watching Space</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
@@ -45,14 +45,16 @@
                         <h3 id="user-display-name">...</h3>
                     </div>
                     <nav class="sidebar-nav">
-                        <button class="nav-item active">Все комнаты</button>
+                        <button class="nav-btn active">Все комнаты</button>
+                        <button id="btn-logout" class="nav-btn logout">Выход</button>
                     </nav>
-                    <button id="btn-logout" class="logout-link">Выход</button>
                 </aside>
 
                 <main class="lobby-main">
                     <header class="main-header glass-panel">
-                        <input type="text" id="search-rooms" placeholder="Поиск...">
+                        <div class="search-wrapper">
+                            <input type="text" id="search-rooms" placeholder="Поиск комнат...">
+                        </div>
                         <button id="btn-open-modal" class="primary-btn create-btn">+ Создать</button>
                     </header>
                     <div id="rooms-grid" class="rooms-grid"></div>
@@ -62,10 +64,9 @@
 
         <div id="modal-create" class="modal">
             <div class="modal-content glass-panel">
-                <h2>Создать комнату</h2>
-                <input type="text" id="room-name" placeholder="Название комнаты">
-                <input type="text" id="room-link" placeholder="Ссылка на видео (YouTube/Direct)">
-                <input type="password" id="room-pass" placeholder="Пароль (необязательно)">
+                <h2>Создать пространство</h2>
+                <input type="text" id="room-name" placeholder="Название">
+                <input type="text" id="room-link" placeholder="Прямая ссылка на .mp4 или YouTube">
                 <div class="modal-buttons">
                     <button id="btn-close-modal" class="google-btn">Отмена</button>
                     <button id="btn-create-finish" class="primary-btn">Запустить</button>
@@ -75,22 +76,38 @@
 
         <section id="room-screen" class="screen">
             <header class="room-header glass-panel">
-                <button id="btn-leave-room" class="google-btn leave-btn">← В лобби</button>
-                <h2 id="room-title-text" style="margin-left: 20px;">Название комнаты</h2>
-            </header>
-            
-            <main class="main-layout-room">
-                <div class="video-column">
-                    <div class="player-container glass-panel">
-                        <video id="native-player" playsinline></video>
+                <div class="header-left">
+                    <button id="btn-leave-room" class="icon-btn">✕</button>
+                    <div class="room-meta">
+                        <h2 id="room-title-text">Комната</h2>
+                        <div id="users-online-list" class="presence-list"></div>
                     </div>
                 </div>
-                <div class="chat-column glass-panel">
-                    <div class="chat-area" id="chat-messages"></div>
-                    <div class="message-dock">
-                        <div class="beautiful-chat-input glass-panel">
-                            <button id="mic-btn" class="mic-icon-btn">🎤</button>
-                            <input type="text" id="chat-input" placeholder="Написать..." autocomplete="off">
+                <div class="header-right">
+                    <button id="btn-delete-room" class="danger-btn hidden">Удалить комнату</button>
+                </div>
+            </header>
+            
+            <main class="room-content">
+                <div class="video-section">
+                    <div class="player-wrapper glass-panel">
+                        <video id="native-player" playsinline></video>
+                        <div class="custom-controls">
+                            <input type="range" id="video-volume" min="0" max="1" step="0.05" value="1">
+                        </div>
+                    </div>
+                    <div class="voice-panel glass-panel">
+                        <span class="label">Голос друзей:</span>
+                        <input type="range" id="voice-volume" min="0" max="1" step="0.1" value="0.8">
+                    </div>
+                </div>
+
+                <div class="chat-section glass-panel">
+                    <div id="chat-messages" class="chat-messages"></div>
+                    <div class="input-container">
+                        <div class="floating-input-bar glass-panel">
+                            <button id="mic-btn" class="mic-btn">🎤</button>
+                            <input type="text" id="chat-input" placeholder="Сообщение..." autocomplete="off">
                             <button id="send-btn" class="send-btn">↑</button>
                         </div>
                     </div>
@@ -98,7 +115,6 @@
             </main>
         </section>
     </div>
-
     <script type="module" src="app.js"></script>
 </body>
 </html>
