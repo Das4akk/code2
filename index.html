@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>COW — Co-Watching Space</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
@@ -52,7 +52,7 @@
 
                 <main class="lobby-main">
                     <header class="main-header glass-panel">
-                        <input type="text" id="search-rooms" placeholder="Поиск комнат...">
+                        <input type="text" id="search-rooms" placeholder="Поиск...">
                         <button id="btn-open-modal" class="primary-btn create-btn">+ Создать</button>
                     </header>
                     <div id="rooms-grid" class="rooms-grid"></div>
@@ -64,7 +64,8 @@
             <div class="modal-content glass-panel">
                 <h2>Создать комнату</h2>
                 <input type="text" id="room-name" placeholder="Название комнаты">
-                <input type="text" id="room-link" placeholder="Ссылка (YouTube/Direct)">
+                <input type="text" id="room-link" placeholder="Ссылка на видео (YouTube/Direct)">
+                <input type="password" id="room-pass" placeholder="Пароль (необязательно)">
                 <div class="modal-buttons">
                     <button id="btn-close-modal" class="google-btn">Отмена</button>
                     <button id="btn-create-finish" class="primary-btn">Запустить</button>
@@ -74,31 +75,14 @@
 
         <section id="room-screen" class="screen">
             <header class="room-header glass-panel">
-                <div class="room-header-left">
-                    <button id="btn-leave-room" class="google-btn leave-btn">← Лобби</button>
-                    <div class="room-title-block">
-                        <h2 id="room-title-text">Загрузка...</h2>
-                        <div id="users-online-list" class="mini-presence"></div>
-                    </div>
-                </div>
-                <button id="btn-delete-room" class="danger-btn hidden">Удалить комнату</button>
+                <button id="btn-leave-room" class="google-btn leave-btn">← В лобби</button>
+                <h2 id="room-title-text" style="margin-left: 20px;">Название комнаты</h2>
             </header>
             
             <main class="main-layout-room">
                 <div class="video-column">
                     <div class="player-container glass-panel">
                         <video id="native-player" playsinline></video>
-                        <div class="video-controls-hint">Double click for Fullscreen</div>
-                    </div>
-                    <div class="audio-controls glass-panel">
-                        <div class="control-group">
-                            <span>Видео:</span>
-                            <input type="range" id="video-volume" min="0" max="1" step="0.1" value="1">
-                        </div>
-                        <div class="control-group">
-                            <span>Голос:</span>
-                            <input type="range" id="voice-volume" min="0" max="1" step="0.1" value="0.8">
-                        </div>
                     </div>
                 </div>
                 <div class="chat-column glass-panel">
