@@ -10,57 +10,54 @@
     <div id="loader" class="loader-overlay active"><div class="spinner"></div></div>
     <canvas id="particle-canvas"></canvas>
 
-    <section id="auth-screen" class="screen" style="display:flex; align-items:center; justify-content:center; width:100%; height:100vh;">
+    <section id="auth-screen" class="screen" style="display:none; height:100vh; align-items:center; justify-content:center;">
         <div class="glass-panel" style="padding: 50px; text-align: center; width: 360px;">
             <h1 style="letter-spacing: 12px; margin-bottom: 30px; font-weight: 300;">COW</h1>
-            <input type="email" id="email" placeholder="EMAIL" style="width:100%; margin-bottom:10px; padding:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:10px;">
-            <input type="password" id="pass" placeholder="PASSWORD" style="width:100%; margin-bottom:20px; padding:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:10px;">
+            <input type="email" id="email" placeholder="EMAIL">
+            <input type="password" id="pass" placeholder="PASSWORD">
             <button id="btn-login" class="action-btn" style="width:100%;">ENTER</button>
-            <button id="btn-google" style="margin-top:20px; opacity:0.3; border:none; background:none; color:#fff; cursor:pointer; font-size:0.7rem;">GOOGLE AUTH</button>
         </div>
     </section>
 
     <section id="lobby-screen" class="screen">
-        <div style="width: 100%; max-width: 1200px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <div style="width: 100%; max-width: 1200px; display: flex; justify-content: space-between; align-items: center;">
             <span id="user-display" style="opacity: 0.3; font-size: 0.8rem;">...</span>
             <button id="btn-add-room" class="action-btn">+ CREATE ROOM</button>
         </div>
-        <div id="rooms-grid" class="rooms-grid">
-            <div class="room-card glass-panel"><h3>Welcome Room</h3><p style="opacity:0.2; font-size:0.7rem; margin-top:10px;">Example</p></div>
-        </div>
+        <div id="rooms-grid" class="rooms-grid"></div>
     </section>
 
-    <section id="room-screen" class="screen">
+    <section id="room-screen" class="screen" style="display:none;">
         <div class="room-wrapper">
             <div class="player-side">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <button id="btn-leave" style="opacity: 0.4;">← BACK</button>
-                    <h2 id="room-name-display" style="font-weight: 300; letter-spacing: 2px;">ROOM</h2>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <button id="btn-leave" style="background:none; border:none; color:#fff; cursor:pointer; opacity:0.4;">← EXIT</button>
+                    <h2 id="room-name-display" style="font-size: 1rem; font-weight: 300; letter-spacing: 2px;">ROOM</h2>
                     <div id="admin-tag" class="hidden" style="font-size: 9px; border: 1px solid #fff; padding: 2px 6px;">HOST</div>
                 </div>
                 <div id="video-container">
                     <video id="main-v" controls playsinline></video>
-                    <div id="v-lock" class="hidden" style="position: absolute; inset: 0; z-index: 10; background: transparent;"></div>
+                    <div id="v-lock" class="hidden" style="position: absolute; inset: 0; z-index: 10; cursor: not-allowed;"></div>
                 </div>
             </div>
             <div class="info-side">
-                <div id="users-online" style="padding: 10px; font-size: 0.7rem; opacity: 0.3;"></div>
+                <div id="users-online" style="font-size: 0.7rem; opacity: 0.2; padding-bottom: 10px;"></div>
                 <div id="messages-box"></div>
                 <div class="chat-bar">
-                    <button id="btn-mic" style="background:none; border:none; font-size:1.2rem;">🎤</button>
+                    <button id="btn-mic" style="background:none; border:none; font-size:1.2rem; cursor:pointer;">🎤</button>
                     <input type="text" id="chat-input" placeholder="MESSAGE...">
-                    <button id="btn-send-chat" style="background:none; border:none; color:#fff;">➤</button>
+                    <button id="btn-send-chat" style="background:none; border:none; color:#fff; cursor:pointer;">➤</button>
                 </div>
             </div>
         </div>
     </section>
 
-    <div id="modal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 1000; display: flex; align-items: center; justify-content: center;">
+    <div id="modal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 2000; display: flex; align-items: center; justify-content: center;">
         <div class="glass-panel" style="padding: 40px; width: 340px; display: flex; flex-direction: column; gap: 15px;">
             <input type="text" id="m-title" placeholder="ROOM NAME">
             <input type="text" id="m-url" placeholder="VIDEO LINK (.MP4)">
             <button id="m-create" class="action-btn">LAUNCH</button>
-            <button id="m-close" style="font-size: 0.8rem; opacity: 0.5; background:none; border:none; color:#fff;">CANCEL</button>
+            <button id="m-close" style="background:none; border:none; color:#fff; cursor:pointer; opacity:0.5;">CANCEL</button>
         </div>
     </div>
 

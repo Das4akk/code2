@@ -20,11 +20,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentRoomId = null;
     let isAdmin = false;
 
-    const setScreen = (id) => {
+    function setScreen(id) {
         document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
-        $(id).style.display = (id === 'lobby-screen') ? 'flex' : 'flex';
-        if(id === 'auth-screen') $(id).style.display = 'flex';
-    };
+        $(id).style.display = 'flex';
+    }
 
     onAuthStateChanged(auth, (user) => {
         if (user) {
@@ -38,7 +37,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     $('btn-login').onclick = () => signInWithEmailAndPassword(auth, $('email').value, $('pass').value).catch(alert);
-    $('btn-google').onclick = () => signInWithPopup(auth, new GoogleAuthProvider());
     $('btn-add-room').onclick = () => $('modal').classList.remove('hidden');
     $('m-close').onclick = () => $('modal').classList.add('hidden');
 
@@ -46,7 +44,12 @@ document.addEventListener('DOMContentLoaded', () => {
         let url = $('m-url').value;
         if(url.includes('dropbox.com')) url = url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').split('?')[0];
         const r = push(ref(db, 'rooms'));
-        await set(r, { name: $('m-title').value, link: url, host: auth.currentUser.uid, hostName: auth.currentUser.displayName || "User" });
+        await set(r, { 
+            name: $('m-title').value, 
+            link: url, 
+            host: auth.currentUser.uid, 
+            hostName: auth.currentUser.displayName || "User" 
+        });
         $('modal').classList.add('hidden');
     };
 
@@ -73,12 +76,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (isAdmin) {
             $('admin-tag').classList.remove('hidden');
-            $('v-lock').classList.add('hidden');
+            $('v-lock').classList.add('hidden'); // Хост может кликать по плееру
+            
+            // Хост отправляет время всем
             const sync = () => set(ref(db, `rooms/${id}/sync`), { t: video.currentTime, p: video.paused });
-            video.onplay = sync; video.onpause = sync; video.onseeking = sync;
+            video.onplay = sync; 
+            video.onpause = sync; 
+            video.onseeking = sync;
         } else {
             $('admin-tag').classList.add('hidden');
-            $('v-lock').classList.remove('hidden');
+            $('v-lock').classList.remove('hidden'); // Зритель не может нажать кнопки
+            
+            // Зритель только слушает хоста
             onValue(ref(db, `rooms/${id}/sync`), (snap) => {
                 const data = snap.val();
                 if (data) {
@@ -88,10 +97,12 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
+        // Чат и Онлайн
         const userRef = ref(db, `rooms/${id}/users/${auth.currentUser.uid}`);
         set(userRef, auth.currentUser.displayName || "User");
         onDisconnect(userRef).remove();
         onValue(ref(db, `rooms/${id}/users`), s => { $('users-online').innerText = s.val() ? Object.values(s.val()).join(', ') : ''; });
+        
         const chatRef = ref(db, `rooms/${id}/chat`);
         off(chatRef);
         onValue(chatRef, s => {
@@ -113,7 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setScreen('lobby-screen');
     };
 
-    // --- NEURO BACKGROUND ---
+    // ФОН НЕЙРОСЕТЬ
     const cvs = $('particle-canvas'); const ctx = cvs.getContext('2d'); let pts = [];
     const res = () => { cvs.width = window.innerWidth; cvs.height = window.innerHeight; };
     window.onresize = res; res();
