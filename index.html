@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>COW</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -11,50 +11,56 @@
     <canvas id="particle-canvas"></canvas>
 
     <section id="auth-screen" class="screen">
-        <div class="auth-card glass-panel" style="padding: 50px; text-align: center; width: 350px; margin: auto;">
-            <h1 style="letter-spacing: 15px; margin-bottom: 40px;">COW</h1>
-            <input type="email" id="email" placeholder="EMAIL" style="width: 100%; margin-bottom: 10px;">
-            <input type="password" id="pass" placeholder="PASSWORD" style="width: 100%; margin-bottom: 25px;">
-            <button id="btn-login" class="action-btn" style="width: 100%;">ENTER</button>
+        <div class="auth-card glass-panel">
+            <h1>COW</h1>
+            <input type="email" id="email" placeholder="EMAIL">
+            <input type="password" id="pass" placeholder="PASSWORD">
+            <button id="btn-login" class="action-btn">ENTER</button>
+            <button id="btn-google" style="margin-top: 20px; font-size: 0.7rem; opacity: 0.4; border: none;">GOOGLE AUTH</button>
         </div>
     </section>
 
     <section id="lobby-screen" class="screen">
-        <div class="lobby-container">
-            <div style="width: 100%; max-width: 1200px; display: flex; justify-content: space-between; align-items: center;">
-                <span id="user-display" style="opacity: 0.4; font-size: 0.8rem;">...</span>
-                <button id="btn-add-room" class="action-btn">+ CREATE ROOM</button>
-            </div>
-            <div id="rooms-grid" class="rooms-grid"></div>
+        <div style="width: 100%; max-width: 1200px; display: flex; justify-content: space-between; align-items: center;">
+            <span id="user-display" style="opacity: 0.3; font-size: 0.7rem;">...</span>
+            <button id="btn-add-room" class="action-btn">+ CREATE ROOM</button>
         </div>
+        <div id="rooms-grid" class="rooms-grid"></div>
     </section>
 
     <section id="room-screen" class="screen">
         <div class="room-wrapper">
             <div class="player-side">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <button id="btn-leave" style="font-size: 0.8rem; opacity: 0.5;">← EXIT</button>
-                    <h2 id="room-name-display" style="font-weight: 300; letter-spacing: 2px;">ROOM</h2>
-                    <div id="admin-label" class="hidden" style="font-size: 8px; border: 1px solid rgba(255,255,255,0.3); padding: 2px 6px;">HOST</div>
+                    <button id="btn-leave" style="font-size: 0.7rem; opacity: 0.4;">← EXIT</button>
+                    <h2 id="room-name-display" style="font-weight: 300; letter-spacing: 2px; font-size: 1rem;">ROOM</h2>
+                    <div id="admin-tag" class="hidden" style="font-size: 8px; border: 1px solid #fff; padding: 2px 5px;">HOST</div>
                 </div>
-                
                 <div id="video-container">
                     <video id="main-v" playsinline></video>
-                    <div id="v-tap-blocker" class="hidden" style="position: absolute; inset: 0; z-index: 10; background: transparent;"></div>
+                    <div id="v-lock" class="hidden" style="position: absolute; inset: 0; z-index: 10;"></div>
                 </div>
             </div>
-
             <div class="info-side">
-                <div id="users-online" style="padding: 10px; font-size: 10px; text-transform: uppercase; opacity: 0.3; letter-spacing: 1px;"></div>
+                <div id="users-online" style="padding: 10px; font-size: 0.7rem; opacity: 0.3;"></div>
                 <div id="messages-box"></div>
                 <div class="chat-bar">
-                    <button id="btn-mic" style="font-size: 1.2rem; filter: grayscale(1);">🎤</button>
-                    <input type="text" id="chat-input" placeholder="TYPE...">
+                    <button id="btn-mic">🎤</button>
+                    <input type="text" id="chat-input" placeholder="MESSAGE...">
                     <button id="btn-send-chat">➤</button>
                 </div>
             </div>
         </div>
     </section>
+
+    <div id="modal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 1000; display: flex; align-items: center; justify-content: center;">
+        <div class="glass-panel" style="padding: 40px; width: 340px; display: flex; flex-direction: column; gap: 15px;">
+            <input type="text" id="m-title" placeholder="ROOM NAME">
+            <input type="text" id="m-url" placeholder="DIRECT VIDEO LINK (.MP4)">
+            <button id="m-create" class="action-btn">LAUNCH</button>
+            <button id="m-close" style="font-size: 0.7rem; opacity: 0.5;">CANCEL</button>
+        </div>
+    </div>
 
     <script type="module" src="app.js"></script>
 </body>
