@@ -2,9 +2,10 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>COW — Co-Watching Space</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://www.youtube.com/iframe_api"></script>
 </head>
 <body>
     <div id="loader" class="loader-overlay active"><div class="spinner"></div></div>
@@ -18,18 +19,16 @@
                     <button id="tab-login" class="active">Вход</button>
                     <button id="tab-register">Регистрация</button>
                 </div>
-                <div class="form-container">
-                    <div id="form-login" class="auth-form active">
-                        <input type="email" id="login-email" placeholder="Email">
-                        <input type="password" id="login-password" placeholder="Пароль">
-                        <button id="btn-login-email" class="primary-btn">Войти</button>
-                    </div>
-                    <div id="form-register" class="auth-form hidden">
-                        <input type="text" id="reg-name" placeholder="Никнейм">
-                        <input type="email" id="reg-email" placeholder="Email">
-                        <input type="password" id="reg-password" placeholder="Пароль">
-                        <button id="btn-register-email" class="primary-btn">Создать аккаунт</button>
-                    </div>
+                <div id="form-login" class="auth-form active">
+                    <input type="email" id="login-email" placeholder="Email">
+                    <input type="password" id="login-password" placeholder="Пароль">
+                    <button id="btn-login-email" class="primary-btn">Войти</button>
+                </div>
+                <div id="form-register" class="auth-form hidden">
+                    <input type="text" id="reg-name" placeholder="Никнейм">
+                    <input type="email" id="reg-email" placeholder="Email">
+                    <input type="password" id="reg-password" placeholder="Пароль">
+                    <button id="btn-register-email" class="primary-btn">Создать аккаунт</button>
                 </div>
                 <div class="divider"><span>или</span></div>
                 <button id="btn-google-auth" class="google-btn">Войти через Google</button>
@@ -50,8 +49,8 @@
                 </aside>
                 <main class="lobby-main">
                     <header class="main-header glass-panel">
-                        <input type="text" id="search-rooms" placeholder="Поиск комнат...">
-                        <button id="btn-open-modal" class="primary-btn">+ Создать</button>
+                        <input type="text" id="search-rooms" placeholder="Поиск...">
+                        <button id="btn-open-modal" class="primary-btn create-btn">+ Создать</button>
                     </header>
                     <div id="rooms-grid" class="rooms-grid"></div>
                 </main>
@@ -63,21 +62,20 @@
                 <div class="video-side glass-panel">
                     <div class="room-nav">
                         <button id="btn-leave-room" class="icon-btn">←</button>
-                        <h2 id="current-room-name">Комната</h2>
-                        <div class="room-controls">
-                            <button id="btn-mic" class="icon-btn">🎤</button>
-                        </div>
+                        <h2 id="current-room-name">...</h2>
+                        <span id="admin-label" class="badge hidden">ADMIN</span>
                     </div>
                     <div id="player-container">
                         </div>
-                </div>
+                    <div id="player-blocker" class="hidden"></div> </div>
+                
                 <div class="chat-side glass-panel">
+                    <div class="online-bar">Онлайн: <span id="online-count">0</span></div>
                     <div id="chat-messages"></div>
-                    <div class="chat-input-area">
-                        <label for="img-upload" class="icon-btn">📎</label>
-                        <input type="file" id="img-upload" accept="image/*" hidden>
-                        <input type="text" id="chat-input" placeholder="Сообщение...">
-                        <button id="btn-send-msg">➤</button>
+                    <div class="chat-input-wrapper">
+                        <button id="btn-mic" class="mic-btn mic-off">🎤</button>
+                        <input type="text" id="chat-input" placeholder="Написать...">
+                        <button id="btn-send-msg" class="send-btn">➤</button>
                     </div>
                 </div>
             </div>
@@ -86,9 +84,9 @@
         <div id="modal-create" class="modal-overlay">
             <div class="modal-content glass-panel">
                 <h2>Новое пространство</h2>
-                <input type="text" id="room-name" placeholder="Название комнаты">
-                <input type="text" id="room-link" placeholder="Ссылка (YouTube или .mp4)">
-                <input type="password" id="room-pass" placeholder="Пароль (если нужен)">
+                <input type="text" id="room-name" placeholder="Название">
+                <input type="text" id="room-link" placeholder="YouTube или прямая ссылка">
+                <input type="password" id="room-pass" placeholder="Пароль (необязательно)">
                 <div class="modal-buttons">
                     <button id="btn-close-modal" class="google-btn">Отмена</button>
                     <button id="btn-create-finish" class="primary-btn">Запустить</button>
