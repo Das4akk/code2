@@ -27,19 +27,13 @@ function showToast(message) {
     toast.className = 'toast';
     toast.innerText = message;
     container.appendChild(toast);
-    setTimeout(() => { 
-        toast.style.opacity = '0'; 
-        setTimeout(() => toast.remove(), 500); 
-    }, 3000);
+    setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 3000);
 }
 
-// Переменные состояния
 let currentRoomId = null;
 let isHost = false;
-let roomListenerUnsubscribe = null;
-let isRemoteAction = false;
 let lastSyncTs = 0;
-let processedMsgs = new Set();
+let isRemoteAction = false;
 
 setPersistence(auth, browserLocalPersistence);
 
@@ -48,50 +42,28 @@ onAuthStateChanged(auth, (user) => {
         $('user-display-name').innerText = user.displayName || user.email;
         if(!currentRoomId) showScreen('lobby-screen'); 
         syncRooms();
-    } else {
-        showScreen('auth-screen');
-    }
+    } else { showScreen('auth-screen'); }
 });
 
 // --- АВТОРИЗАЦИЯ ---
-$('tab-login').onclick = () => { 
-    $('form-login').classList.add('active-form'); 
-    $('form-login').classList.remove('hidden-form', 'left'); 
-    $('form-register').classList.add('hidden-form', 'right'); 
-    $('form-register').classList.remove('active-form'); 
-    $('tab-login').classList.add('active'); 
-    $('tab-register').classList.remove('active'); 
-};
-$('tab-register').onclick = () => { 
-    $('form-register').classList.add('active-form'); 
-    $('form-register').classList.remove('hidden-form', 'right'); 
-    $('form-login').classList.add('hidden-form', 'left'); 
-    $('form-login').classList.remove('active-form'); 
-    $('tab-register').classList.add('active'); 
-    $('tab-login').classList.remove('active'); 
-};
+$('tab-login').onclick = () => { $('form-login').classList.replace('hidden-form', 'active-form'); $('form-register').classList.replace('active-form', 'hidden-form'); $('tab-login').classList.add('active'); $('tab-register').classList.remove('active'); };
+$('tab-register').onclick = () => { $('form-register').classList.replace('hidden-form', 'active-form'); $('form-login').classList.replace('active-form', 'hidden-form'); $('tab-register').classList.add('active'); $('tab-login').classList.remove('active'); };
 
-$('btn-login-email').onclick = async () => { 
-    try { await signInWithEmailAndPassword(auth, $('login-email').value, $('login-password').value); } 
-    catch(e) { showToast("Ошибка входа"); } 
-};
+$('btn-login-email').onclick = async () => { try { await signInWithEmailAndPassword(auth, $('login-email').value, $('login-password').value); } catch(e) { showToast("Ошибка входа"); } };
 $('btn-register-email').onclick = async () => { 
     try { 
         const res = await createUserWithEmailAndPassword(auth, $('reg-email').value, $('reg-password').value); 
         await updateProfile(res.user, { displayName: $('reg-name').value }); 
-        $('user-display-name').innerText = $('reg-name').value; 
     } catch(e) { showToast("Ошибка регистрации"); } 
 };
-$('btn-google-auth').onclick = async () => { try { await signInWithPopup(auth, new GoogleAuthProvider()); } catch(e) { showToast("Ошибка Google"); } };
+$('btn-google-auth').onclick = () => signInWithPopup(auth, new GoogleAuthProvider());
 $('btn-logout').onclick = () => signOut(auth);
 
 // --- ЛОББИ ---
 $('btn-open-modal').onclick = () => $('modal-create').classList.add('active');
 $('btn-close-modal').onclick = () => $('modal-create').classList.remove('active');
-
 $('btn-create-finish').onclick = async () => {
-    const name = $('room-name').value;
-    const link = $('room-link').value;
+    const name = $('room-name').value, link = $('room-link').value;
     if(!name || !link) return showToast("Заполни поля!");
     const newRoomRef = push(ref(db, 'rooms'));
     await set(newRoomRef, { name, link, admin: auth.currentUser.uid, adminName: auth.currentUser.displayName || "User" });
@@ -101,14 +73,13 @@ $('btn-create-finish').onclick = async () => {
 
 function syncRooms() {
     onValue(ref(db, 'rooms'), (snap) => {
-        const grid = $('rooms-grid');
-        grid.innerHTML = '';
+        const grid = $('rooms-grid'); grid.innerHTML = '';
         const data = snap.val();
         if(data) {
             Object.entries(data).forEach(([id, room]) => {
                 const card = document.createElement('div');
                 card.className = 'room-card glass-panel';
-                card.innerHTML = `<h4>${room.name}</h4><p style="font-size:12px; opacity:0.6; margin-top:5px;">Хост: ${room.adminName}</p>`;
+                card.innerHTML = `<h4>${room.name}</h4><p>Хост: ${room.adminName}</p>`;
                 card.onclick = () => enterRoom(id, room.name, room.link, room.admin);
                 grid.appendChild(card);
             });
@@ -116,8 +87,8 @@ function syncRooms() {
     });
 }
 
+// --- КОМНАТА ---
 const player = $('native-player');
-let presenceRef = null;
 
 function enterRoom(roomId, name, link, adminId) {
     currentRoomId = roomId;
@@ -126,69 +97,41 @@ function enterRoom(roomId, name, link, adminId) {
     player.src = link;
     player.controls = isHost;
     player.style.pointerEvents = isHost ? "auto" : "none";
-    
     showScreen('room-screen');
     initRoomServices();
 }
 
 function leaveRoom() {
-    if (presenceRef) remove(presenceRef);
-    if (roomListenerUnsubscribe) roomListenerUnsubscribe(); 
-    
-    // Удаляем данные голоса
+    remove(ref(db, `rooms/${currentRoomId}/presence/${auth.currentUser.uid}`));
     remove(ref(db, `rooms/${currentRoomId}/voice/${auth.currentUser.uid}`));
-    
-    player.pause(); 
-    player.src = '';
+    player.pause(); player.src = '';
     currentRoomId = null;
     showScreen('lobby-screen');
 }
 $('btn-leave-room').onclick = leaveRoom;
 
-// --- AMBILIGHT ---
-const ambiCanvas = $('ambilight-canvas');
-const ambiCtx = ambiCanvas.getContext('2d', { willReadFrequently: true });
-function drawAmbilight() {
-    if (currentRoomId && !player.paused && !player.ended) {
-        ambiCanvas.width = player.clientWidth / 10;
-        ambiCanvas.height = player.clientHeight / 10;
-        ambiCtx.drawImage(player, 0, 0, ambiCanvas.width, ambiCanvas.height);
-    }
-    requestAnimationFrame(drawAmbilight);
-}
-player.addEventListener('play', () => drawAmbilight());
-
-// --- ОСНОВНЫЕ СЕРВИСЫ КОМНАТЫ ---
 function initRoomServices() {
     const videoRef = ref(db, `rooms/${currentRoomId}/sync`);
     const chatRef = ref(db, `rooms/${currentRoomId}/chat`);
     const voiceRef = ref(db, `rooms/${currentRoomId}/voice`);
-    const presenceDbRef = ref(db, `rooms/${currentRoomId}/presence`);
+    const presenceRef = ref(db, `rooms/${currentRoomId}/presence/${auth.currentUser.uid}`);
 
     // Присутствие
-    presenceRef = ref(db, `rooms/${currentRoomId}/presence/${auth.currentUser.uid}`);
     set(presenceRef, { name: auth.currentUser.displayName || "User" });
     onDisconnect(presenceRef).remove();
 
-    onValue(presenceDbRef, (snap) => {
+    onValue(ref(db, `rooms/${currentRoomId}/presence`), (snap) => {
         const data = snap.val() || {};
         $('users-list').innerHTML = '';
         $('users-count').innerText = Object.keys(data).length;
-        for (let uid in data) {
-            $('users-list').innerHTML += `<div class="user-item"><span>${data[uid].name}</span></div>`;
-        }
+        for (let uid in data) { $('users-list').innerHTML += `<div class="user-item"><span>${data[uid].name}</span></div>`; }
     });
 
-    // Синхронизация видео (только хост отправляет)
+    // Видеосинхронизация
     if (isHost) {
-        const sync = () => {
-            if(!isRemoteAction) set(videoRef, { type: player.paused ? 'pause' : 'play', time: player.currentTime, ts: Date.now() });
-        };
-        player.onplay = sync;
-        player.onpause = sync;
-        player.onseeked = sync;
+        const sync = () => { if(!isRemoteAction) set(videoRef, { type: player.paused ? 'pause' : 'play', time: player.currentTime, ts: Date.now() }); };
+        player.onplay = sync; player.onpause = sync; player.onseeked = sync;
     }
-
     onValue(videoRef, (snap) => {
         if (isHost) return;
         const d = snap.val();
@@ -201,16 +144,9 @@ function initRoomServices() {
     });
 
     // Чат
-    const sendMsg = () => {
-        const inp = $('chat-input');
-        if (inp.value.trim()) { 
-            push(chatRef, { user: auth.currentUser.displayName || "User", content: inp.value.trim(), ts: Date.now() }); 
-            inp.value = ''; 
-        }
-    };
+    const sendMsg = () => { if ($('chat-input').value.trim()) { push(chatRef, { user: auth.currentUser.displayName || "User", content: $('chat-input').value.trim() }); $('chat-input').value = ''; } };
     $('send-btn').onclick = sendMsg;
     $('chat-input').onkeydown = (e) => { if(e.key==='Enter') sendMsg(); };
-
     onChildAdded(chatRef, (snap) => {
         const m = snap.val();
         const div = document.createElement('div');
@@ -220,56 +156,45 @@ function initRoomServices() {
         $('chat-messages').scrollTop = $('chat-messages').scrollHeight;
     });
 
-    // --- ГОЛОСОВОЙ МОДУЛЬ (VOICE) ---
-    const micBtn = $('mic-btn');
-    const myVoiceRef = ref(db, `rooms/${currentRoomId}/voice/${auth.currentUser.uid}`);
+    // --- ГОЛОСОВОЙ МОДУЛЬ ---
+    VoiceManager.init(); // Включаем PeerJS сразу
+    
+    $('mic-btn').onclick = async () => {
+        // Чтобы браузер разрешил звук, нужно любое взаимодействие
+        if (VoiceManager.audioCtx && VoiceManager.audioCtx.state === 'suspended') {
+            VoiceManager.audioCtx.resume();
+        }
 
-    // Инициализируем PeerJS
-    VoiceManager.init();
-
-    // Клик по микрофону
-    micBtn.onclick = async () => {
-        console.log("Нажат микрофон...");
-        const isActiveNow = await VoiceManager.toggleMic(micBtn);
+        const isNowActive = await VoiceManager.toggleMic($('mic-btn'));
+        const myVoiceRef = ref(db, `rooms/${currentRoomId}/voice/${auth.currentUser.uid}`);
         
-        if (isActiveNow) {
-            // Если включили, записываем свой ID в базу
-            if (VoiceManager.peer && VoiceManager.peer.id) {
-                set(myVoiceRef, VoiceManager.peer.id);
-                showToast("Микрофон включен");
-            }
+        if (isNowActive) {
+            if (VoiceManager.peer.id) set(myVoiceRef, VoiceManager.peer.id);
+            showToast("Микрофон включен");
         } else {
-            // Если выключили — удаляем из базы
             remove(myVoiceRef);
             showToast("Микрофон выключен");
         }
     };
 
-    // Следим за ID других пользователей и звоним им
+    // Следим за голосами участников
     onValue(voiceRef, (snap) => {
         const users = snap.val();
         if (!users) return;
-        
         Object.keys(users).forEach(uid => {
             if (uid !== auth.currentUser.uid) {
-                const targetPeerId = users[uid];
-                // Звоним, если у нас активен поток
-                if (VoiceManager.myStream) {
-                    VoiceManager.callUser(targetPeerId);
-                }
+                // Если наш микрофон включен, мы звоним человеку. 
+                // Если выключен — мы просто ждем, пока он позвонит нам (PeerJS это разрулит)
+                VoiceManager.callUser(users[uid]);
             }
         });
     });
 
-    // Громкость
-    $('voice-volume').oninput = (e) => {
-        document.querySelectorAll('#remote-audio-container audio').forEach(a => a.volume = e.target.value);
-    };
+    onDisconnect(ref(db, `rooms/${currentRoomId}/voice/${auth.currentUser.uid}`)).remove();
 }
 
-// --- ФОНОВЫЕ ЧАСТИЦЫ ---
-const canvas = $('particle-canvas');
-const ctx = canvas.getContext('2d');
+// --- ФОН ---
+const canvas = $('particle-canvas'), ctx = canvas.getContext('2d');
 let dots = [];
 function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
 window.onresize = resize; resize();
@@ -290,10 +215,7 @@ function anim() {
         d.draw();
         dots.forEach(d2 => {
             let dist = Math.sqrt((d.x-d2.x)**2 + (d.y-d2.y)**2);
-            if(dist < 120) {
-                ctx.strokeStyle = `rgba(255,255,255,${0.2 - dist/600})`;
-                ctx.beginPath(); ctx.moveTo(d.x, d.y); ctx.lineTo(d2.x, d2.y); ctx.stroke();
-            }
+            if(dist < 120) { ctx.strokeStyle = `rgba(255,255,255,${0.2 - dist/600})`; ctx.beginPath(); ctx.moveTo(d.x, d.y); ctx.lineTo(d2.x, d2.y); ctx.stroke(); }
         });
     });
     requestAnimationFrame(anim);
