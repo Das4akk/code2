@@ -1,131 +1,112 @@
-// Делаем VoiceManager экспортируемым модулем
+// voice.js
 export const VoiceManager = {
     peer: null,
     myStream: null,
-    activeCalls: new Set(),
+    activeCalls: {},
     analyser: null,
-    animationId: null,
 
-    init() {
-        // Защита от двойной инициализации
-        if (this.peer) this.peer.destroy();
-        
-        // Надежное соединение с использованием STUN-серверов Google (обход NAT)
+    // 1. Инициализация PeerJS (делаем сразу при входе в комнату)
+    init(onPeerReady) {
+        if (this.peer) return; // Чтобы не плодить соединения
+
         this.peer = new Peer(undefined, {
-            host: '0.peerjs.com', 
-            port: 443, 
+            host: '0.peerjs.com',
+            port: 443,
             secure: true,
-            config: { 
-                'iceServers': [
-                    { urls: 'stun:stun.l.google.com:19302' }, 
-                    { urls: 'stun:stun1.l.google.com:19302' }
-                ] 
-            }
+            config: { 'iceServers': [{ urls: 'stun:stun.l.google.com:19302' }] }
         });
 
-        // Обработка входящих звонков
+        this.peer.on('open', (id) => {
+            console.log("Мой Peer ID:", id);
+            if (onPeerReady) onPeerReady(id);
+        });
+
+        // Слушаем входящие
         this.peer.on('call', (call) => {
-            // Отвечаем нашим стримом (даже если он null, мы сможем слушать)
-            call.answer(this.myStream);
-            call.on('stream', (remoteStream) => this.attachAudio(remoteStream, call.peer));
+            console.log("Входящий звонок от:", call.peer);
+            call.answer(this.myStream); // Отвечаем (даже если нашего звука нет, мы будем слушать)
+            call.on('stream', (remoteStream) => {
+                this.setupAudioElement(remoteStream, call.peer);
+            });
         });
     },
 
-    async startMic(btn) {
-        try {
-            // Включаем фильтры для чистоты звука и исключения эха
-            this.myStream = await navigator.mediaDevices.getUserMedia({ 
-                audio: { 
-                    echoCancellation: true, 
-                    noiseSuppression: true,
-                    autoGainControl: true
-                } 
-            });
-            btn.classList.add('active');
-            this.startVisualizer(btn);
-            return this.myStream;
-        } catch (e) {
-            console.error("Ошибка доступа к микрофону:", e);
-            return null;
-        }
-    },
-
-    stopMic(btn) {
-        if (this.myStream) {
-            this.myStream.getTracks().forEach(t => t.stop());
+    // 2. Включение/Выключение микрофона
+    async toggleMic(btn) {
+        if (!this.myStream) {
+            try {
+                // Прямой запрос потока
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: { echoCancellation: true, noiseSuppression: true }
+                });
+                this.myStream = stream;
+                btn.classList.add('active');
+                this.startVisualizer(btn);
+                return true; 
+            } catch (err) {
+                console.error("Микрофон не доступен:", err);
+                return false;
+            }
+        } else {
+            // Выключаем
+            this.myStream.getTracks().forEach(track => track.stop());
             this.myStream = null;
-        }
-        if (this.animationId) cancelAnimationFrame(this.animationId);
-        
-        if (btn) {
             btn.classList.remove('active');
             btn.style.transform = 'scale(1)';
             btn.style.filter = 'none';
+            return false;
         }
-        
-        this.activeCalls.clear();
-        document.getElementById('remote-audio-container').innerHTML = '';
     },
 
-    callPeer(targetPeerId) {
-        // Не звоним самому себе и не дублируем звонки
-        if (!this.myStream || this.activeCalls.has(targetPeerId) || targetPeerId === this.peer?.id) return;
+    // 3. Функция дозвона до другого человека
+    callUser(remotePeerId) {
+        if (!this.peer || !remotePeerId || remotePeerId === this.peer.id) return;
+        if (this.activeCalls[remotePeerId]) return; // Уже звоним
+
+        console.log("Звоню пользователю:", remotePeerId);
+        const call = this.peer.call(remotePeerId, this.myStream);
         
-        const call = this.peer.call(targetPeerId, this.myStream);
-        call.on('stream', (remoteStream) => this.attachAudio(remoteStream, targetPeerId));
+        call.on('stream', (remoteStream) => {
+            this.setupAudioElement(remoteStream, remotePeerId);
+        });
+        
+        this.activeCalls[remotePeerId] = call;
     },
 
-    attachAudio(stream, id) {
-        if (this.activeCalls.has(id)) return;
-        this.activeCalls.add(id);
-        
-        let a = document.createElement('audio');
-        a.id = `audio-${id}`; 
-        a.autoplay = true; 
-        a.srcObject = stream;
-        a.setAttribute('playsinline', 'true');
-        
-        // Подтягиваем громкость из ползунка, если он изменен
-        const volSlider = document.getElementById('voice-volume');
-        if (volSlider) a.volume = volSlider.value;
+    // 4. Создание аудио-элемента (только если его еще нет)
+    setupAudioElement(stream, id) {
+        if (document.getElementById(`audio-${id}`)) return;
 
-        document.getElementById('remote-audio-container').appendChild(a);
+        const audio = document.createElement('audio');
+        audio.id = `audio-${id}`;
+        audio.srcObject = stream;
+        audio.autoplay = true;
         
-        // Защита от блокировки автоплея браузером
-        a.play().catch(() => window.addEventListener('click', () => a.play(), { once: true }));
+        // Помещаем в скрытый контейнер
+        const container = document.getElementById('remote-audio-container');
+        if (container) container.appendChild(audio);
+        
+        console.log("Аудио-поток подключен для:", id);
     },
 
-    setVolume(vol) {
-        document.querySelectorAll('#remote-audio-container audio').forEach(a => a.volume = vol);
-    },
-
+    // Визуализация (сияние кнопки)
     startVisualizer(el) {
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         const source = audioCtx.createMediaStreamSource(this.myStream);
-        this.analyser = audioCtx.createAnalyser();
-        this.analyser.fftSize = 64; 
-        source.connect(this.analyser);
-        
-        const data = new Uint8Array(this.analyser.frequencyBinCount);
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 32;
+        source.connect(analyser);
+        const data = new Uint8Array(analyser.frequencyBinCount);
 
-        const draw = () => {
+        const loop = () => {
             if (!this.myStream) return;
-            this.analyser.getByteFrequencyData(data);
-            
-            let sum = 0;
-            for (let i = 0; i < data.length; i++) sum += data[i];
-            let avg = sum / data.length;
-            let vol = avg / 128;
-            
-            el.style.transform = `scale(${1 + vol * 0.5})`;
-            el.style.filter = `drop-shadow(0 0 ${vol * 30}px rgba(0, 209, 255, 0.8))`;
-            
-            this.animationId = requestAnimationFrame(draw);
+            analyser.getByteFrequencyData(data);
+            let sum = data.reduce((a, b) => a + b, 0);
+            let vol = sum / data.length / 128;
+            el.style.transform = `scale(${1 + vol * 0.4})`;
+            el.style.filter = `drop-shadow(0 0 ${vol * 25}px #00d1ff)`;
+            requestAnimationFrame(loop);
         };
-        draw();
-    },
-
-    destroy() {
-        this.stopMic(null);
+        loop();
     }
 };
