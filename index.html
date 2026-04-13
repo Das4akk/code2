@@ -8,12 +8,14 @@
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 </head>
 <body>
-    <div id="loader" class="loader-overlay active"><div class="spinner"></div></div>
-    
     <canvas id="particle-canvas"></canvas>
+    
+    <div id="toast-container"></div>
+    
+    <div id="remote-audio-container" style="display: none;"></div>
 
     <div id="app-container">
-        <section id="auth-screen" class="screen">
+        <section id="auth-screen" class="screen active">
             <div class="auth-wrapper glass-panel">
                 <h1 class="logo">COW</h1>
                 <div class="auth-tabs">
@@ -42,18 +44,22 @@
             <div class="lobby-layout">
                 <aside class="lobby-sidebar glass-panel">
                     <div class="user-profile">
-                        <div class="avatar-circle"></div>
-                        <h3 id="user-display-name">...</h3>
+                        <div class="avatar-circle" id="my-avatar"></div>
+                        <div>
+                            <h3 id="user-display-name">...</h3>
+                            <span style="font-size: 12px; color: #aaa;">Онлайн</span>
+                        </div>
                     </div>
                     <nav class="sidebar-nav">
                         <button class="nav-item active glass-panel">Все комнаты</button>
                     </nav>
+                    <button id="btn-delete-all-rooms" class="danger-btn" style="margin-top: 20px;">Удалить ВСЕ комнаты</button>
                     <button id="btn-logout" class="google-btn logout-btn" style="margin-top: auto;">Выход</button>
                 </aside>
 
                 <main class="lobby-main">
                     <header class="main-header glass-panel">
-                        <input type="text" id="search-rooms" placeholder="Поиск...">
+                        <input type="text" id="search-rooms" placeholder="Поиск комнат...">
                         <button id="btn-open-modal" class="primary-btn create-btn">+ Создать</button>
                     </header>
                     <div id="rooms-grid" class="rooms-grid"></div>
@@ -77,32 +83,37 @@
             <header class="room-header glass-panel">
                 <div style="display: flex; gap: 10px;">
                     <button id="btn-leave-room" class="google-btn leave-btn">← В лобби</button>
-                    <button id="btn-delete-room" class="google-btn leave-btn" style="display: none; color: #ff4757; border-color: rgba(255,71,87,0.3);">🗑 Удалить</button>
                 </div>
-                <h2 id="room-title-text" style="margin-left: 20px;">Название комнаты</h2>
+                <h2 id="room-title-text" style="margin-left: 20px; flex-grow: 1;">Комната</h2>
+                <div class="voice-volume-control" style="margin-right: 20px;">
+                    <span title="Громкость голосового чата">🎙️ Динамик:</span>
+                    <input type="range" id="voice-volume" min="0" max="1" step="0.1" value="1">
+                </div>
             </header>
             
             <main class="main-layout-room">
                 <div class="video-column">
+                    <canvas id="ambilight-canvas"></canvas>
+                    
                     <div class="player-wrapper glass-panel" id="player-wrapper">
                         <video id="native-player" playsinline preload="metadata"></video>
-                        
                         <div id="reaction-layer"></div>
-                        
-                        <div class="custom-controls glass-panel">
-                            <div class="voice-volume-control">
-                                <span title="Громкость голосового чата">🎙️</span>
-                                <input type="range" id="voice-volume" min="0" max="1" step="0.1" value="1" title="Громкость других участников">
-                            </div>
-                            <button id="btn-fullscreen" class="icon-btn" title="На весь экран">⛶ Фуллскрин</button>
-                        </div>
+                    </div>
+                    
+                    <div class="reaction-bar glass-panel">
+                        <button class="react-btn" data-emoji="🔥">🔥</button>
+                        <button class="react-btn" data-emoji="😂">😂</button>
+                        <button class="react-btn" data-emoji="😱">😱</button>
+                        <button class="react-btn" data-emoji="❤️">❤️</button>
+                        <button class="react-btn" data-emoji="👏">👏</button>
+                        <button id="btn-fullscreen" class="icon-btn" style="margin-left: auto;">⛶ Фуллскрин</button>
                     </div>
                 </div>
                 
                 <div class="chat-column glass-panel">
                     <div class="chat-tabs">
                         <button id="tab-chat-btn" class="active">Чат</button>
-                        <button id="tab-users-btn">Участники (<span id="users-count">1</span>)</button>
+                        <button id="tab-users-btn">Люди (<span id="users-count">1</span>)</button>
                     </div>
 
                     <div class="chat-area active-area" id="chat-messages"></div>
@@ -110,8 +121,8 @@
 
                     <div class="message-dock" id="message-dock-container">
                         <div class="beautiful-chat-input glass-panel">
-                            <button id="mic-btn" class="mic-icon-btn" title="Микрофон">🎤</button>
-                            <input type="text" id="chat-input" placeholder="Написать..." autocomplete="off">
+                            <button id="mic-btn" class="mic-icon-btn" title="Включить микрофон">🎤</button>
+                            <input type="text" id="chat-input" placeholder="Написать (00:00 для таймкода)..." autocomplete="off">
                             <button id="send-btn" class="send-btn">↑</button>
                         </div>
                     </div>
