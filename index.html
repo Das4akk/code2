@@ -2,13 +2,14 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>COW — Co-Watching Space</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 </head>
 <body>
     <div id="loader" class="loader-overlay active"><div class="spinner"></div></div>
+    
     <canvas id="particle-canvas"></canvas>
 
     <div id="app-container">
@@ -21,13 +22,13 @@
                 </div>
                 <div class="form-container">
                     <div id="form-login" class="auth-form active-form">
-                        <input type="email" id="login-email" placeholder="Email">
+                        <input type="email" id="login-email" placeholder="Email" autocomplete="off">
                         <input type="password" id="login-password" placeholder="Пароль">
                         <button type="button" id="btn-login-email" class="primary-btn">Войти</button>
                     </div>
                     <div id="form-register" class="auth-form hidden-form right">
-                        <input type="text" id="reg-name" placeholder="Никнейм">
-                        <input type="email" id="reg-email" placeholder="Email">
+                        <input type="text" id="reg-name" placeholder="Никнейм" autocomplete="off">
+                        <input type="email" id="reg-email" placeholder="Email" autocomplete="off">
                         <input type="password" id="reg-password" placeholder="Пароль">
                         <button type="button" id="btn-register-email" class="primary-btn">Создать аккаунт</button>
                     </div>
@@ -42,16 +43,17 @@
                 <aside class="lobby-sidebar glass-panel">
                     <div class="user-profile">
                         <div class="avatar-circle"></div>
-                        <h3 id="user-display-name">Загрузка...</h3>
+                        <h3 id="user-display-name">...</h3>
                     </div>
                     <nav class="sidebar-nav">
                         <button class="nav-item active glass-panel">Все комнаты</button>
                     </nav>
                     <button id="btn-logout" class="google-btn logout-btn" style="margin-top: auto;">Выход</button>
                 </aside>
+
                 <main class="lobby-main">
                     <header class="main-header glass-panel">
-                        <input type="text" id="search-rooms" placeholder="Поиск комнат...">
+                        <input type="text" id="search-rooms" placeholder="Поиск...">
                         <button id="btn-open-modal" class="primary-btn create-btn">+ Создать</button>
                     </header>
                     <div id="rooms-grid" class="rooms-grid"></div>
@@ -59,36 +61,40 @@
             </div>
         </section>
 
+        <div id="modal-create" class="modal">
+            <div class="modal-content glass-panel">
+                <h2>Создать комнату</h2>
+                <input type="text" id="room-name" placeholder="Название комнаты" autocomplete="off">
+                <input type="text" id="room-link" placeholder="Прямая ссылка на видео (mp4)" autocomplete="off">
+                <div class="modal-buttons">
+                    <button id="btn-close-modal" class="google-btn">Отмена</button>
+                    <button id="btn-create-finish" class="primary-btn">Запустить</button>
+                </div>
+            </div>
+        </div>
+
         <section id="room-screen" class="screen">
             <header class="room-header glass-panel">
                 <div style="display: flex; gap: 10px;">
                     <button id="btn-leave-room" class="google-btn leave-btn">← В лобби</button>
-                    <button id="btn-delete-room" class="google-btn leave-btn" style="display: none; color: #ff4757;">🗑 Удалить</button>
+                    <button id="btn-delete-room" class="google-btn leave-btn" style="display: none; color: #ff4757; border-color: rgba(255,71,87,0.3);">🗑 Удалить</button>
                 </div>
-                <h2 id="room-title-text">Название комнаты</h2>
+                <h2 id="room-title-text" style="margin-left: 20px;">Название комнаты</h2>
             </header>
             
             <main class="main-layout-room">
                 <div class="video-column">
                     <div class="player-wrapper glass-panel" id="player-wrapper">
-                        <canvas id="ambilight-canvas"></canvas>
                         <video id="native-player" playsinline preload="metadata"></video>
+                        
                         <div id="reaction-layer"></div>
-                        <div id="room-notifications"></div>
                         
                         <div class="custom-controls glass-panel">
-                            <div class="quick-reactions">
-                                <button class="react-btn" data-emoji="🔥">🔥</button>
-                                <button class="react-btn" data-emoji="😂">😂</button>
-                                <button class="react-btn" data-emoji="❤️">❤️</button>
-                                <button class="react-btn" data-emoji="😮">😮</button>
-                            </div>
-                            <div class="divider-v"></div>
                             <div class="voice-volume-control">
-                                <span>🎙️</span>
-                                <input type="range" id="voice-volume" min="0" max="1" step="0.1" value="1">
+                                <span title="Громкость голосового чата">🎙️</span>
+                                <input type="range" id="voice-volume" min="0" max="1" step="0.1" value="1" title="Громкость участников">
                             </div>
-                            <button id="btn-fullscreen" class="icon-btn">⛶ Фуллскрин</button>
+                            <button id="btn-fullscreen" class="icon-btn" title="На весь экран">⛶ Фуллскрин</button>
                         </div>
                     </div>
                 </div>
@@ -98,11 +104,13 @@
                         <button id="tab-chat-btn" class="active">Чат</button>
                         <button id="tab-users-btn">Участники (<span id="users-count">1</span>)</button>
                     </div>
+
                     <div class="chat-area active-area" id="chat-messages"></div>
                     <div class="users-area" id="users-list" style="display: none;"></div>
+
                     <div class="message-dock" id="message-dock-container">
                         <div class="beautiful-chat-input glass-panel">
-                            <button id="mic-btn" class="mic-icon-btn">🎤</button>
+                            <button id="mic-btn" class="mic-icon-btn" title="Микрофон">🎤</button>
                             <input type="text" id="chat-input" placeholder="Написать..." autocomplete="off">
                             <button id="send-btn" class="send-btn">↑</button>
                         </div>
@@ -110,19 +118,8 @@
                 </div>
             </main>
         </section>
-
-        <div id="modal-create" class="modal">
-            <div class="modal-content glass-panel">
-                <h2>Создать комнату</h2>
-                <input type="text" id="room-name" placeholder="Название комнаты">
-                <input type="text" id="room-link" placeholder="Прямая ссылка на mp4">
-                <div class="modal-buttons">
-                    <button id="btn-close-modal" class="google-btn">Отмена</button>
-                    <button id="btn-create-finish" class="primary-btn">Запустить</button>
-                </div>
-            </div>
-        </div>
     </div>
+
     <script type="module" src="app.js"></script>
 </body>
 </html>

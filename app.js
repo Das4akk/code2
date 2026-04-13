@@ -21,170 +21,18 @@ setPersistence(auth, browserLocalPersistence);
 
 const $ = id => document.getElementById(id);
 
-// --- Глобальные состояния ---
+// --- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ---
 let currentRoomId = null;
 let isHost = false;
-let myStream = null;
+let roomSub = null; 
+
+// --- ПЕРЕМЕННЫЕ WEBRTC (Микрофон) ---
 let peer = new Peer();
-let activeCalls = {};
-let roomUnsubs = []; 
-let globalRoomSub = null; 
+let myStream = null;
+let activeCalls = {};   // Хранилище активных соединений (PeerConnection)
+let remoteAudios = {};  // Хранилище HTML Audio элементов для управления громкостью
 
-// --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ---
-
-function showToast(text) {
-    const container = $('room-notifications');
-    if (!container) return;
-    const toast = document.createElement('div');
-    toast.className = 'toast glass-panel';
-    toast.innerText = text;
-    container.appendChild(toast);
-    new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3').play().catch(()=>{});
-    setTimeout(() => toast.remove(), 4000);
-}
-
-// РЕНДЕР РЕАКЦИИ (ГЛОБАЛЬНЫЙ ДЛЯ Firebase)
-window.renderEmoji = function(emoji) {
-    const container = $('reaction-layer');
-    if (!container) return;
-    const el = document.createElement('div');
-    el.className = 'floating-emoji';
-    el.innerText = emoji;
-    el.style.left = Math.random() * 80 + 10 + '%';
-    container.appendChild(el);
-    setTimeout(() => { if (el.parentNode) el.remove(); }, 3000);
-};
-
-function sendEmoji(emoji) {
-    if (!currentRoomId) return;
-    push(ref(db, `rooms/${currentRoomId}/reactions`), { emoji, ts: Date.now() });
-}
-
-// ВОСПРОИЗВЕДЕНИЕ ГОЛОСА (ФИКС ДЛЯ ПК)
-function playRemoteStream(stream, peerId) {
-    let audio = document.getElementById(`audio-${peerId}`);
-    if (!audio) {
-        audio = document.createElement('audio');
-        audio.id = `audio-${peerId}`;
-        audio.className = 'peer-audio-track';
-        document.body.appendChild(audio); 
-    }
-    audio.srcObject = stream;
-    audio.volume = $('voice-volume').value;
-    
-    const playPromise = audio.play();
-    if (playPromise !== undefined) {
-        playPromise.catch(() => {
-            console.log("Звук заблокирован политикой ПК. Ждем клика.");
-            showToast("Кликните для включения звука участников");
-            document.addEventListener('click', () => audio.play(), { once: true });
-        });
-    }
-}
-
-function updateAmbilight() {
-    const player = $('native-player');
-    const ambiCanvas = $('ambilight-canvas');
-    if (!ambiCanvas) return;
-    const ambiCtx = ambiCanvas.getContext('2d');
-    if (player && !player.paused && !player.ended) {
-        ambiCtx.drawImage(player, 0, 0, ambiCanvas.width, ambiCanvas.height);
-    }
-    requestAnimationFrame(updateAmbilight);
-}
-
-// --- ОСНОВНАЯ ЛОГИКА ---
-
-function initRoomLogic() {
-    const player = $('native-player');
-    const syncRef = ref(db, `rooms/${currentRoomId}/sync`);
-    const chatRef = ref(db, `rooms/${currentRoomId}/chat`);
-    const voiceRef = ref(db, `rooms/${currentRoomId}/voice`);
-    const presenceRef = ref(db, `rooms/${currentRoomId}/presence`);
-    const myPresenceRef = ref(db, `rooms/${currentRoomId}/presence/${auth.currentUser.uid}`);
-
-    // Отслеживание удаления комнаты
-    if(globalRoomSub) globalRoomSub();
-    globalRoomSub = onValue(ref(db, `rooms/${currentRoomId}`), (snap) => {
-        if(!snap.exists() && currentRoomId) {
-            alert("Комната была закрыта хостом");
-            exitRoom();
-        }
-    });
-
-    const myName = auth.currentUser.displayName || auth.currentUser.email.split('@')[0];
-    set(myPresenceRef, { name: myName });
-    onDisconnect(myPresenceRef).remove();
-
-    // Синхронизация списка участников
-    roomUnsubs.push(onValue(presenceRef, (snap) => {
-        const data = snap.val() || {};
-        const ul = $('users-list');
-        ul.innerHTML = '';
-        let count = 0;
-        Object.values(data).forEach(u => {
-            count++;
-            const div = document.createElement('div');
-            div.className = 'user-card';
-            div.innerHTML = `<span>${u.name}</span>`;
-            ul.appendChild(div);
-        });
-        $('users-count').innerText = count;
-    }));
-
-    // Синхронизация видео
-    let isRemote = false;
-    player.onplay = () => { if(isHost && !isRemote) set(syncRef, { state: 'play', time: player.currentTime }); };
-    player.onpause = () => { if(isHost && !isRemote) set(syncRef, { state: 'pause', time: player.currentTime }); };
-    
-    roomUnsubs.push(onValue(syncRef, (snap) => {
-        if(isHost) return;
-        const data = snap.val();
-        if(!data) return;
-        isRemote = true;
-        if(Math.abs(player.currentTime - data.time) > 1.5) player.currentTime = data.time;
-        data.state === 'play' ? player.play() : player.pause();
-        setTimeout(() => isRemote = false, 500);
-    }));
-
-    // Чат и реакции для ВСЕХ
-    roomUnsubs.push(onChildAdded(chatRef, (snap) => {
-        const d = snap.val();
-        const msg = document.createElement('div');
-        msg.className = `m-line ${d.u === myName ? 'self' : ''}`;
-        msg.innerHTML = `<div class="bubble"><strong>${d.u}:</strong> ${d.m}</div>`;
-        $('chat-messages').appendChild(msg);
-        $('chat-messages').scrollTop = $('chat-messages').scrollHeight;
-    }));
-
-    roomUnsubs.push(onChildAdded(ref(db, `rooms/${currentRoomId}/reactions`), (snap) => {
-        window.renderEmoji(snap.val().emoji);
-    }));
-
-    // Голосовая связь
-    peer.on('call', (call) => {
-        call.answer(myStream);
-        call.on('stream', (rs) => playRemoteStream(rs, call.peer));
-    });
-
-    roomUnsubs.push(onValue(voiceRef, (snap) => {
-        const data = snap.val();
-        if(!data || !myStream) return;
-        Object.values(data).forEach(pId => {
-            if(pId !== peer.id && !activeCalls[pId]) {
-                const call = peer.call(pId, myStream);
-                call.on('stream', (rs) => playRemoteStream(rs, pId));
-                activeCalls[pId] = true;
-            }
-        });
-    }));
-
-    updateAmbilight();
-    showToast("Вы в комнате");
-}
-
-// --- ИНТЕРФЕЙС ---
-
+// --- НАВИГАЦИЯ И АВТОРИЗАЦИЯ ---
 function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     $(id).classList.add('active');
@@ -193,13 +41,44 @@ function showScreen(id) {
 onAuthStateChanged(auth, (user) => {
     $('loader').classList.remove('active');
     if (user) {
-        $('user-display-name').innerText = user.displayName || user.email.split('@')[0];
+        $('user-display-name').innerText = user.displayName || user.email;
         if (!currentRoomId) showScreen('lobby-screen');
         loadRooms();
     } else {
         showScreen('auth-screen');
     }
 });
+
+$('btn-login-email').onclick = () => signInWithEmailAndPassword(auth, $('login-email').value, $('login-password').value).catch(e => alert(e.message));
+$('btn-register-email').onclick = async () => {
+    try {
+        const res = await createUserWithEmailAndPassword(auth, $('reg-email').value, $('reg-password').value);
+        await updateProfile(res.user, { displayName: $('reg-name').value });
+    } catch(e) { alert(e.message); }
+};
+$('btn-google-auth').onclick = () => signInWithPopup(auth, provider).catch(e => alert(e.message));
+$('btn-logout').onclick = () => signOut(auth);
+
+// UI Табы
+$('tab-login').onclick = () => { $('form-login').classList.remove('hidden-form'); $('form-register').classList.add('hidden-form', 'right'); $('tab-login').classList.add('active'); $('tab-register').classList.remove('active'); };
+$('tab-register').onclick = () => { $('form-login').classList.add('hidden-form', 'left'); $('form-register').classList.remove('hidden-form', 'right'); $('tab-register').classList.add('active'); $('tab-login').classList.remove('active'); };
+$('tab-chat-btn').onclick = () => { $('chat-messages').style.display = 'flex'; $('users-list').style.display = 'none'; $('tab-chat-btn').classList.add('active'); $('tab-users-btn').classList.remove('active'); $('message-dock-container').style.display = 'block'; };
+$('tab-users-btn').onclick = () => { $('users-list').style.display = 'flex'; $('chat-messages').style.display = 'none'; $('tab-users-btn').classList.add('active'); $('tab-chat-btn').classList.remove('active'); $('message-dock-container').style.display = 'none'; };
+
+// --- ЛОББИ И КОМНАТЫ ---
+$('btn-open-modal').onclick = () => $('modal-create').classList.add('active');
+$('btn-close-modal').onclick = () => $('modal-create').classList.remove('active');
+
+$('btn-create-finish').onclick = async () => {
+    const name = $('room-name').value;
+    const link = $('room-link').value;
+    if(!name || !link) return;
+
+    const newRoomRef = push(ref(db, 'rooms'));
+    await set(newRoomRef, { name, link, admin: auth.currentUser.uid, adminName: auth.currentUser.displayName || "User" });
+    $('modal-create').classList.remove('active');
+    joinRoom(newRoomRef.key, name, link, auth.currentUser.uid);
+};
 
 function loadRooms() {
     onValue(ref(db, 'rooms'), (snap) => {
@@ -210,111 +89,259 @@ function loadRooms() {
         Object.entries(data).forEach(([id, r]) => {
             const div = document.createElement('div');
             div.className = 'room-card glass-panel';
-            div.innerHTML = `<h4>${r.name}</h4><p>Хост: ${r.adminName}</p>
-                             <button class="primary-btn" id="join-${id}">Вход</button>`;
+            div.innerHTML = `<div><h4>${r.name}</h4><p style="font-size:12px; opacity:0.6">Хост: ${r.adminName}</p></div><button class="primary-btn" style="margin-top:15px" id="join-${id}">Войти</button>`;
             grid.appendChild(div);
             $(`join-${id}`).onclick = () => joinRoom(id, r.name, r.link, r.admin);
         });
     });
 }
 
+// --- ВХОД В КОМНАТУ И ИНИЦИАЛИЗАЦИЯ ---
 function joinRoom(roomId, name, link, adminId) {
     currentRoomId = roomId;
     isHost = (auth.currentUser.uid === adminId);
+    
     const player = $('native-player');
     player.src = link;
-    player.load();
+    player.load(); 
+
     $('room-title-text').innerText = name;
     $('btn-delete-room').style.display = isHost ? 'block' : 'none';
     player.controls = isHost;
     player.style.pointerEvents = isHost ? 'auto' : 'none';
+
+    const savedTime = localStorage.getItem(`cow_pos_${roomId}`);
+    if(savedTime && isHost) player.currentTime = parseFloat(savedTime);
+
+    // Закрываем любые старые аудиозвонки перед входом
+    closeAllCalls();
+
     showScreen('room-screen');
     initRoomLogic();
 }
 
-function exitRoom() {
-    roomUnsubs.forEach(unsub => unsub());
-    roomUnsubs = [];
-    if(auth.currentUser && currentRoomId) {
-        remove(ref(db, `rooms/${currentRoomId}/presence/${auth.currentUser.uid}`));
-        remove(ref(db, `rooms/${currentRoomId}/voice/${auth.currentUser.uid}`));
+function initRoomLogic() {
+    const player = $('native-player');
+    const syncRef = ref(db, `rooms/${currentRoomId}/sync`);
+    const chatRef = ref(db, `rooms/${currentRoomId}/chat`);
+    const presenceRef = ref(db, `rooms/${currentRoomId}/presence/${auth.currentUser.uid}`);
+
+    if(roomSub) roomSub();
+    roomSub = onValue(ref(db, `rooms/${currentRoomId}`), (snap) => {
+        if(!snap.exists() && currentRoomId) { alert("Комната закрыта."); exitRoom(); }
+    });
+
+    // PRESENCE (Включает в себя наш PeerID для Mesh-сети)
+    set(presenceRef, { name: auth.currentUser.displayName || "User", peerId: peer.id });
+    onDisconnect(presenceRef).remove();
+
+    // СИНХРОНИЗАЦИЯ ВИДЕО
+    let isRemote = false;
+    player.onplay = () => { if(isHost && !isRemote) set(syncRef, { state: 'play', time: player.currentTime, ts: Date.now() }); };
+    player.onpause = () => { if(isHost && !isRemote) set(syncRef, { state: 'pause', time: player.currentTime, ts: Date.now() }); };
+    player.ontimeupdate = () => { if(isHost && Math.floor(player.currentTime) % 5 === 0) localStorage.setItem(`cow_pos_${currentRoomId}`, player.currentTime); };
+
+    onValue(syncRef, (snap) => {
+        if(isHost) return;
+        const data = snap.val();
+        if(!data) return;
+        isRemote = true;
+        if(Math.abs(player.currentTime - data.time) > 1.5) player.currentTime = data.time;
+        data.state === 'play' ? player.play().catch(()=>console.log("Ожидание автоплея")) : player.pause();
+        setTimeout(() => isRemote = false, 500);
+    });
+
+    // ЧАТ
+    $('chat-messages').innerHTML = '';
+    $('send-btn').onclick = () => {
+        const val = $('chat-input').value.trim();
+        if(val) { push(chatRef, { u: auth.currentUser.displayName || "User", m: val }); $('chat-input').value = ''; }
+    };
+    onChildAdded(chatRef, (snap) => {
+        const d = snap.val();
+        const msg = document.createElement('div');
+        msg.className = `m-line ${d.u === (auth.currentUser.displayName || "User") ? 'self' : ''}`;
+        msg.innerHTML = `<div class="bubble"><strong>${d.u}</strong>${d.m}</div>`;
+        $('chat-messages').appendChild(msg);
+        $('chat-messages').scrollTop = $('chat-messages').scrollHeight;
+    });
+
+    // ОБНОВЛЕНИЕ СПИСКА УЧАСТНИКОВ И ОБРАБОТКА ЗВОНКОВ
+    onValue(ref(db, `rooms/${currentRoomId}/presence`), (snap) => {
+        const users = snap.val() || {};
+        const list = $('users-list');
+        list.innerHTML = '';
+        $('users-count').innerText = Object.keys(users).length;
+        
+        for (let uid in users) {
+            const isMe = uid === auth.currentUser.uid;
+            list.innerHTML += `<div class="user-item glass-panel"><div class="indicator"></div><span>${users[uid].name}</span>${isMe ? '<span style="opacity:0.5; font-size:12px; margin-left:auto;">(Вы)</span>' : ''}</div>`;
+            
+            // Если у нас включен микрофон, мы инициируем звонки всем новым/текущим участникам
+            if (!isMe && myStream) {
+                const targetPeerId = users[uid].peerId;
+                if (targetPeerId && !activeCalls[targetPeerId]) {
+                    initiateCall(targetPeerId);
+                }
+            }
+        }
+    });
+}
+
+// ==========================================
+// ЯДРО ГОЛОСОВОЙ СВЯЗИ (MESH WEBRTC)
+// ==========================================
+
+// Глобальная громкость
+$('voice-volume').oninput = (e) => {
+    const vol = e.target.value;
+    Object.values(remoteAudios).forEach(audio => audio.volume = vol);
+};
+
+// 1. УПРАВЛЕНИЕ МИКРОФОНОМ (Инициализация только по клику)
+$('mic-btn').onclick = async () => {
+    const btn = $('mic-btn');
+    if (!btn.classList.contains('active')) {
+        try {
+            // Запрашиваем доступ
+            myStream = await navigator.mediaDevices.getUserMedia({ 
+                audio: { echoCancellation: true, noiseSuppression: true } 
+            });
+            btn.classList.add('active');
+            
+            // Как только появился поток, звоним всем, кто сейчас в комнате
+            for (let peerId in activeCalls) {
+                // В PeerJS проще пересоздать звонок, чтобы передать новый поток
+                activeCalls[peerId].close();
+                initiateCall(peerId);
+            }
+            
+            // Если звонков еще не было создано (мы зашли первые и включили микрофон),
+            // onValue(presence) подхватит вызовы при подключении других.
+
+        } catch(e) { alert("Микрофон недоступен: " + e.message); }
+    } else {
+        // Выключение микрофона
+        if (myStream) {
+            myStream.getTracks().forEach(t => t.stop());
+            myStream = null;
+        }
+        btn.classList.remove('active');
+        // Обрываем исходящие потоки, но оставляем соединения, чтобы слышать других
+        closeAllCalls();
+        // Переподключаемся "пустыми", чтобы продолжить слушать
+        reconnectAsListener();
     }
-    currentRoomId = null;
-    $('native-player').pause();
-    $('native-player').src = '';
+};
+
+// 2. ОТВЕТ НА ВХОДЯЩИЙ ЗВОНОК
+peer.on('call', (call) => {
+    // Отвечаем тем что есть. Если микрофон выключен (myStream = null), 
+    // отправляется undefined, но соединение устанавливается!
+    call.answer(myStream || undefined);
+    
+    call.on('stream', (remoteStream) => playRemoteStream(call.peer, remoteStream));
+    call.on('close', () => removeRemoteStream(call.peer));
+    call.on('error', () => removeRemoteStream(call.peer));
+    
+    activeCalls[call.peer] = call;
+});
+
+// 3. ИСХОДЯЩИЙ ЗВОНОК
+function initiateCall(targetPeerId) {
+    if (!myStream) return;
+    const call = peer.call(targetPeerId, myStream);
+    call.on('stream', (remoteStream) => playRemoteStream(targetPeerId, remoteStream));
+    call.on('close', () => removeRemoteStream(targetPeerId));
+    call.on('error', () => removeRemoteStream(targetPeerId));
+    activeCalls[targetPeerId] = call;
+}
+
+// 4. ВОСПРОИЗВЕДЕНИЕ И ПОЛИТИКА AUTOPLAY
+function playRemoteStream(peerId, stream) {
+    if (remoteAudios[peerId]) return; // Уже играет
+    
+    const audio = new Audio();
+    audio.srcObject = stream;
+    audio.autoplay = true;
+    audio.setAttribute('playsinline', 'true'); // Важно для мобильных
+    audio.volume = $('voice-volume').value;
+    
+    // Перехват Autoplay Policy
+    audio.play().catch(e => console.warn("Браузер заблокировал автовоспроизведение звука. Требуется клик по странице.", e));
+    
+    remoteAudios[peerId] = audio;
+    document.body.appendChild(audio); // Safari иногда требует добавления в DOM
+}
+
+function removeRemoteStream(peerId) {
+    if (remoteAudios[peerId]) {
+        remoteAudios[peerId].pause();
+        remoteAudios[peerId].srcObject = null;
+        remoteAudios[peerId].remove();
+        delete remoteAudios[peerId];
+    }
+    if (activeCalls[peerId]) {
+        delete activeCalls[peerId];
+    }
+}
+
+function closeAllCalls() {
+    for (let id in activeCalls) {
+        if(activeCalls[id]) activeCalls[id].close();
+        removeRemoteStream(id);
+    }
     activeCalls = {};
-    document.querySelectorAll('.peer-audio-track').forEach(a => a.remove());
+    remoteAudios = {};
+}
+
+// Переподключение "слушателем", если выключил микрофон
+function reconnectAsListener() {
+    onValue(ref(db, `rooms/${currentRoomId}/presence`), (snap) => {
+        const users = snap.val() || {};
+        // Просто обновляем Firebase, что вызовет onValue у других, 
+        // и они перезвонят нам сами, передав свой звук.
+        set(ref(db, `rooms/${currentRoomId}/presence/${auth.currentUser.uid}`), { 
+            name: auth.currentUser.displayName || "User", 
+            peerId: peer.id,
+            ts: Date.now() // Микро-триггер для обновления базы
+        });
+    }, { onlyOnce: true });
+}
+
+// ==========================================
+
+function exitRoom() {
+    if(currentRoomId) remove(ref(db, `rooms/${currentRoomId}/presence/${auth.currentUser.uid}`));
+    currentRoomId = null;
+    
+    if(myStream) myStream.getTracks().forEach(t => t.stop());
+    myStream = null;
+    $('mic-btn').classList.remove('active');
+    
+    closeAllCalls();
+    
+    const player = $('native-player');
+    player.pause(); player.src = '';
+    
     showScreen('lobby-screen');
 }
 
-// СОБЫТИЯ
-$('btn-login-email').onclick = () => signInWithEmailAndPassword(auth, $('login-email').value, $('login-password').value);
-$('btn-register-email').onclick = async () => {
-    const res = await createUserWithEmailAndPassword(auth, $('reg-email').value, $('reg-password').value);
-    await updateProfile(res.user, { displayName: $('reg-name').value });
-};
-$('btn-google-auth').onclick = () => signInWithPopup(auth, provider);
-$('btn-logout').onclick = () => signOut(auth);
-$('btn-open-modal').onclick = () => $('modal-create').classList.add('active');
-$('btn-close-modal').onclick = () => $('modal-create').classList.remove('active');
-
-$('btn-create-finish').onclick = async () => {
-    const newRef = push(ref(db, 'rooms'));
-    await set(newRef, {
-        name: $('room-name').value || "Кино",
-        link: $('room-link').value,
-        admin: auth.currentUser.uid,
-        adminName: auth.currentUser.displayName || "Аноним"
-    });
-    $('modal-create').classList.remove('active');
-};
-
-$('send-btn').onclick = () => {
-    const val = $('chat-input').value.trim();
-    if(val && currentRoomId) { 
-        push(ref(db, `rooms/${currentRoomId}/chat`), { u: auth.currentUser.displayName, m: val }); 
-        $('chat-input').value = ''; 
-    }
-};
-
-$('mic-btn').onclick = async () => {
-    if(!myStream) {
-        try {
-            myStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            $('mic-btn').classList.add('active');
-            set(ref(db, `rooms/${currentRoomId}/voice/${auth.currentUser.uid}`), peer.id);
-        } catch(e) { showToast("Ошибка микрофона"); }
-    } else {
-        myStream.getTracks().forEach(t => t.stop());
-        myStream = null;
-        $('mic-btn').classList.remove('active');
-        remove(ref(db, `rooms/${currentRoomId}/voice/${auth.currentUser.uid}`));
-    }
-};
-
-document.querySelectorAll('.react-btn').forEach(btn => {
-    btn.onclick = () => sendEmoji(btn.dataset.emoji);
-});
-
+$('btn-leave-room').onclick = exitRoom;
+$('btn-delete-room').onclick = () => { if(confirm("Удалить комнату?")) remove(ref(db, `rooms/${currentRoomId}`)); };
 $('btn-fullscreen').onclick = () => {
     const pw = $('player-wrapper');
-    if (!document.fullscreenElement) pw.requestFullscreen();
-    else document.exitFullscreen();
+    if (!document.fullscreenElement) pw.requestFullscreen(); else document.exitFullscreen();
 };
 
-$('btn-leave-room').onclick = exitRoom;
-
-// ФОН (ПЛЕКСУС)
+// --- ФОНОВЫЕ ЧАСТИЦЫ (ПЛЕКСУС) ---
 const pCanvas = $('particle-canvas');
 const pCtx = pCanvas.getContext('2d');
 let pts = [];
 function resize() { pCanvas.width = window.innerWidth; pCanvas.height = window.innerHeight; }
 window.onresize = resize; resize();
 class Pt {
-    constructor() { 
-        this.x = Math.random() * pCanvas.width; this.y = Math.random() * pCanvas.height; 
-        this.vx = (Math.random() - 0.5) * 0.4; this.vy = (Math.random() - 0.5) * 0.4; 
-    }
+    constructor() { this.x = Math.random() * pCanvas.width; this.y = Math.random() * pCanvas.height; this.vx = (Math.random() - 0.5) * 0.4; this.vy = (Math.random() - 0.5) * 0.4; }
     upd() {
         this.x += this.vx; this.y += this.vy;
         if(this.x < 0 || this.x > pCanvas.width) this.vx *= -1;
@@ -325,14 +352,10 @@ class Pt {
 for(let i=0; i<60; i++) pts.push(new Pt());
 function loop() {
     pCtx.clearRect(0,0,pCanvas.width,pCanvas.height);
-    pts.forEach(p => {
-        p.upd();
+    pts.forEach(p => { p.upd();
         pts.forEach(p2 => {
-            let d = Math.hypot(p.x - p2.x, p.y - p2.y);
-            if(d < 120) { 
-                pCtx.strokeStyle = `rgba(255,255,255,${0.1 - d/1200})`; 
-                pCtx.beginPath(); pCtx.moveTo(p.x, p.y); pCtx.lineTo(p2.x, p2.y); pCtx.stroke(); 
-            }
+            let d = Math.hypot(p.x-p2.x, p.y-p2.y);
+            if(d<100) { pCtx.strokeStyle=`rgba(255,255,255,${1-d/100})`; pCtx.lineWidth=0.5; pCtx.beginPath(); pCtx.moveTo(p.x,p.y); pCtx.lineTo(p2.x,p2.y); pCtx.stroke(); }
         });
     });
     requestAnimationFrame(loop);
