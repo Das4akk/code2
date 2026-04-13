@@ -1,9 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, updateProfile, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getDatabase, ref, push, set, onValue, onChildAdded, onDisconnect, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"; 
-
-// Прокидываем Firebase в глобал для работы внешнего модуля voice.js
-window.fRef = ref; window.fSet = set; window.fRemove = remove;
+import { getDatabase, ref, push, set, onValue, onChildAdded, onDisconnect, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { VoiceManager } from "./voice.js"; // <--- ИМПОРТ ГОЛОСОВОГО ДВИЖКА
 
 const firebaseConfig = {
     apiKey: "AIzaSyCby2qPGnlHWRfxWAI3Y2aK_UndEh9nato",
@@ -20,28 +18,23 @@ const db = getDatabase(app);
 const $ = (id) => document.getElementById(id);
 function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); if($(id)) $(id).classList.add('active'); }
 
-// Тосты (Уведомления)
+// --- УЛУЧШЕННЫЕ ТОСТЫ ---
 function showToast(message) {
+    const container = $('toast-container');
     const toast = document.createElement('div');
     toast.className = 'toast';
     toast.innerText = message;
-    $('toast-container').appendChild(toast);
-    setTimeout(() => {
-        toast.style.opacity = '0';
-        setTimeout(() => toast.remove(), 500);
-    }, 3000);
+    container.appendChild(toast);
+    setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 3000);
 }
 
-// --- Инициализация Голоса ---
+// --- Инициализация переменных ---
 let currentRoomId = null;
 let isHost = false;
 let roomListenerUnsubscribe = null;
 let isRemoteAction = false;
 let lastSyncTs = 0;
 let processedMsgs = new Set(); // Защита от дублей сообщений
-
-// Инициализируем PeerJS через наш модуль
-VoiceManager.init();
 
 setPersistence(auth, browserLocalPersistence);
 
@@ -64,12 +57,11 @@ $('btn-register-email').onclick = async () => { try { const res = await createUs
 $('btn-google-auth').onclick = async () => { try { await signInWithPopup(auth, new GoogleAuthProvider()); } catch(e) { showToast("Ошибка Google"); } };
 $('btn-logout').onclick = () => signOut(auth);
 
-// Лобби: Создание и Удаление ВСЕХ комнат
+// Лобби
 $('btn-open-modal').onclick = () => $('modal-create').classList.add('active');
 $('btn-close-modal').onclick = () => $('modal-create').classList.remove('active');
-
 $('btn-delete-all-rooms').onclick = async () => {
-    if(confirm("ВНИМАНИЕ! Вы удалите ВСЕ комнаты в базе данных. Продолжить?")) {
+    if(confirm("ВНИМАНИЕ! Вы удалите ВСЕ комнаты. Продолжить?")) {
         await remove(ref(db, 'rooms'));
         showToast("Все комнаты удалены.");
     }
@@ -103,16 +95,13 @@ function syncRooms() {
 }
 window.joinRoom = (id, name, link, admin) => enterRoom(id, name, link, admin);
 
-// ==========================================
-// КОМНАТА И ЛОГИКА
-// ==========================================
 const player = $('native-player');
 let presenceRef = null;
 
 function enterRoom(roomId, name, link, adminId) {
     currentRoomId = roomId;
+    processedMsgs.clear(); // Очистка при входе в новую комнату
     isHost = (auth.currentUser.uid === adminId);
-    processedMsgs.clear(); // Очистка чата при входе
     $('room-title-text').innerText = name;
     player.src = link;
     $('chat-messages').innerHTML = ''; 
@@ -123,7 +112,7 @@ function enterRoom(roomId, name, link, adminId) {
     
     showScreen('room-screen');
     initRoomServices();
-    showToast(`Вы вошли в комнату: ${name}`);
+    showToast(isHost ? "Вы зашли как Хост" : "Вы зашли как Зритель");
 }
 
 function leaveRoom() {
@@ -131,20 +120,23 @@ function leaveRoom() {
     if (roomListenerUnsubscribe) roomListenerUnsubscribe(); 
     player.pause(); player.src = '';
     
-    // Выключаем голос через менеджер
-    VoiceManager.toggleMic(currentRoomId, db, auth, $('mic-btn'), true);
-    
+    VoiceManager.destroy(); // Уничтожаем WebRTC потоки при выходе
+    const micBtn = $('mic-btn');
+    micBtn.classList.remove('active');
+    micBtn.style.transform = `scale(1)`;
+    micBtn.style.filter = `none`;
+
     currentRoomId = null;
     showScreen('lobby-screen');
 }
 $('btn-leave-room').onclick = leaveRoom;
 
-// --- AMBILIGHT (Свечение плеера) ---
+// --- AMBILIGHT ---
 const ambiCanvas = $('ambilight-canvas');
 const ambiCtx = ambiCanvas.getContext('2d', { willReadFrequently: true });
 function drawAmbilight() {
     if (currentRoomId && !player.paused && !player.ended) {
-        ambiCanvas.width = player.clientWidth / 10; 
+        ambiCanvas.width = player.clientWidth / 10;
         ambiCanvas.height = player.clientHeight / 10;
         ambiCtx.drawImage(player, 0, 0, ambiCanvas.width, ambiCanvas.height);
     }
@@ -159,12 +151,8 @@ function initRoomServices() {
     const presenceDbRef = ref(db, `rooms/${currentRoomId}/presence`);
     const reactionsRef = ref(db, `rooms/${currentRoomId}/reactions`);
 
-    // Синхронизация комнаты (удаление)
     roomListenerUnsubscribe = onValue(ref(db, `rooms/${currentRoomId}`), (snap) => {
-        if (!snap.exists() && currentRoomId) {
-            showToast("Комната удалена");
-            leaveRoom();
-        }
+        if (!snap.exists() && currentRoomId) { showToast("Комната удалена"); leaveRoom(); }
     });
 
     $('btn-fullscreen').onclick = () => $('player-wrapper').requestFullscreen();
@@ -186,7 +174,7 @@ function initRoomServices() {
         }
     });
 
-    // --- ПЛЕЕР: ЖЕСТКАЯ СИНХРОНИЗАЦИЯ ТОЛЬКО ХОСТА ---
+    // --- ХИРУРГИЧЕСКАЯ СИНХРОНИЗАЦИЯ (Только хост отправляет данные) ---
     if (isHost) {
         player.onplay = () => { if(!isRemoteAction) set(videoRef, { type: 'play', time: player.currentTime, ts: Date.now() }); };
         player.onpause = () => { if(!isRemoteAction) set(videoRef, { type: 'pause', time: player.currentTime, ts: Date.now() }); };
@@ -194,31 +182,35 @@ function initRoomServices() {
     }
 
     onValue(videoRef, (snap) => {
-        if (isHost) return;
+        if (isHost) return; // Хост никогда не принимает синхронизацию от других
         const d = snap.val();
         if (!d || d.ts <= lastSyncTs) return;
         lastSyncTs = d.ts;
         isRemoteAction = true;
+        
         if (Math.abs(player.currentTime - d.time) > 2) player.currentTime = d.time;
         d.type === 'play' ? player.play() : player.pause();
+        
         setTimeout(() => isRemoteAction = false, 500);
     });
 
     // --- ЧАТ И ТАЙМКОДЫ ---
     const parseTimecodes = (text) => text.replace(/(\d{1,2}:\d{2})/g, '<button class="timecode-btn" data-time="$1">$1</button>');
-    
+
     const sendMsg = () => {
         const inp = $('chat-input');
         if (inp.value.trim()) { push(chatRef, { user: auth.currentUser.displayName, content: inp.value.trim(), ts: Date.now() }); inp.value = ''; }
     };
+
     $('send-btn').onclick = sendMsg;
     $('chat-input').onkeydown = (e) => { if(e.key==='Enter') sendMsg(); };
-    
+
     $('chat-messages').onclick = (e) => {
         if(e.target.classList.contains('timecode-btn')) {
             const parts = e.target.dataset.time.split(':');
             const seconds = parseInt(parts[0]) * 60 + parseInt(parts[1]);
             player.currentTime = seconds;
+            // Если нажал хост - мотаем у всех
             if(isHost) {
                 player.play();
                 set(videoRef, { type: 'seek', time: seconds, ts: Date.now() });
@@ -227,28 +219,32 @@ function initRoomServices() {
     };
 
     onChildAdded(chatRef, (snap) => {
-        if (processedMsgs.has(snap.key)) return; // Блокировка дублей
-        processedMsgs.add(snap.key);
         const m = snap.val();
+        const id = snap.key;
+        if (processedMsgs.has(id)) return; // Защита от дублей
+        processedMsgs.add(id);
+
         const isMe = m.user === auth.currentUser.displayName;
         const div = document.createElement('div');
         div.className = isMe ? 'm-line self' : 'm-line';
         div.innerHTML = `<div class="bubble"><strong>${m.user}</strong><p>${parseTimecodes(m.content)}</p></div>`;
         $('chat-messages').appendChild(div);
         $('chat-messages').scrollTop = $('chat-messages').scrollHeight;
+        if(!isMe) showToast(`Сообщение от ${m.user}`);
     });
 
-    // ТАБЫ ЧАТА
+    // Табы чата
     $('tab-chat-btn').onclick = () => { $('chat-messages').style.display='flex'; $('users-list').style.display='none'; $('tab-chat-btn').classList.add('active'); $('tab-users-btn').classList.remove('active'); };
     $('tab-users-btn').onclick = () => { $('users-list').style.display='flex'; $('chat-messages').style.display='none'; $('tab-users-btn').classList.add('active'); $('tab-chat-btn').classList.remove('active'); };
 
-    // --- РЕАКЦИИ ---
+    // Реакции
     document.querySelectorAll('.react-btn').forEach(btn => {
         btn.onclick = () => push(reactionsRef, { emoji: btn.dataset.emoji, ts: Date.now() });
     });
+
     onChildAdded(reactionsRef, (snap) => {
         const data = snap.val();
-        if(Date.now() - data.ts > 5000) return; 
+        if(Date.now() - data.ts > 5000) return;
         const el = document.createElement('div');
         el.className = 'floating-emoji';
         el.innerText = data.emoji;
@@ -257,37 +253,61 @@ function initRoomServices() {
         setTimeout(() => el.remove(), 3000);
     });
 
-    // --- ГОЛОС (Вызовы в voice.js) ---
-    $('mic-btn').onclick = () => VoiceManager.toggleMic(currentRoomId, db, auth, $('mic-btn'));
+    // --- ГОЛОС (WebRTC) ЧЕРЕЗ VOICEMANAGER ---
+    VoiceManager.init(); // Поднимаем PeerJS
+
+    $('mic-btn').onclick = async function() {
+        const isActive = this.classList.contains('active');
+        if (!isActive) {
+            // Включаем
+            const stream = await VoiceManager.startMic(this);
+            if (stream && VoiceManager.peer.id) {
+                set(ref(db, `rooms/${currentRoomId}/voice/${auth.currentUser.uid}`), VoiceManager.peer.id);
+                showToast("Микрофон на связи");
+            } else {
+                showToast("Ошибка микрофона!");
+            }
+        } else {
+            // Выключаем
+            VoiceManager.stopMic(this);
+            remove(ref(db, `rooms/${currentRoomId}/voice/${auth.currentUser.uid}`));
+            showToast("Микрофон спит");
+        }
+    };
 
     onValue(voiceRef, (snap) => {
         const data = snap.val() || {};
-        Object.values(data).forEach(peerId => {
-            if (VoiceManager.myStream && peerId !== VoiceManager.peer.id) {
-                VoiceManager.callPeer(peerId);
+        for (let uid in data) {
+            const targetPeerId = data[uid];
+            // Звоним другим, если наш микрофон тоже включен
+            if (uid !== auth.currentUser.uid && VoiceManager.myStream) {
+                VoiceManager.callPeer(targetPeerId);
             }
-        });
+        }
     });
 
     $('voice-volume').oninput = (e) => {
-        document.querySelectorAll('#remote-audio-container audio').forEach(a => a.volume = e.target.value);
+        VoiceManager.setVolume(e.target.value);
     };
 }
 
-// --- НЕЙРОСЕТЕВОЙ ФОН (Плексус) ---
+// --- НЕЙРОСЕТЕВОЙ ФОН ---
 const canvas = $('particle-canvas');
 const ctx = canvas.getContext('2d');
 let dots = [];
 function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-window.onresize = resize; resize();
+window.onresize = resize;
+resize();
 class Dot {
     constructor() { this.x = Math.random()*canvas.width; this.y = Math.random()*canvas.height; this.vx = (Math.random()-0.5)*0.5; this.vy = (Math.random()-0.5)*0.5; }
     draw() {
-        this.x += this.vx; this.y += this.vy;
+        this.x += this.vx;
+        this.y += this.vy;
         if(this.x<0 || this.x>canvas.width) this.vx *= -1;
         if(this.y<0 || this.y>canvas.height) this.vy *= -1;
         ctx.fillStyle = "rgba(255,255,255,0.3)";
-        ctx.beginPath(); ctx.arc(this.x, this.y, 1.5, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, 1.5, 0, Math.PI*2); ctx.fill();
     }
 }
 for(let i=0; i<80; i++) dots.push(new Dot());
@@ -298,7 +318,7 @@ function anim() {
         dots.forEach(d2 => {
             let dist = Math.sqrt((d.x-d2.x)**2 + (d.y-d2.y)**2);
             if(dist < 120) {
-                ctx.strokeStyle = `rgba(255,255,255,${0.2 - dist/600})`; 
+                ctx.strokeStyle = `rgba(255,255,255,${0.2 - dist/600})`;
                 ctx.lineWidth = 0.5;
                 ctx.beginPath(); ctx.moveTo(d.x, d.y); ctx.lineTo(d2.x, d2.y); ctx.stroke();
             }
