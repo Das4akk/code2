@@ -284,7 +284,96 @@ function initRoomServices() {
             showToast("Микрофон выключен");
         }
     };
+// ... (начало кода без изменений до момента с микрофоном)
 
+// Переменные для визуализатора
+let micAnalyser = null;
+let micAnimationId = null;
+
+// --- ФУНКЦИЯ ТАНЦУЮЩЕЙ ИКОНКИ ---
+function startMicVisualizer(stream) {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const source = audioContext.createMediaStreamSource(stream);
+    micAnalyser = audioContext.createAnalyser();
+    micAnalyser.fftSize = 64; // Нам не нужна высокая точность для иконки
+    source.connect(micAnalyser);
+
+    const dataArray = new Uint8Array(micAnalyser.frequencyBinCount);
+    const micBtn = $('mic-btn');
+
+    function animate() {
+        if (!myStream) return; // Остановить, если мик выключен
+        
+        micAnalyser.getByteFrequencyData(dataArray);
+        
+        // Считаем среднюю громкость
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+            sum += dataArray[i];
+        }
+        let average = sum / dataArray.length;
+        
+        // Нормализуем значения (от 0 до 1)
+        let volume = average / 128; 
+        
+        // ПРИМЕНЯЕМ ЭФФЕКТЫ:
+        // Масштаб от 1.0 до 1.5
+        let scale = 1 + (volume * 0.5);
+        // Сияние (drop-shadow для красоты или box-shadow)
+        let glow = volume * 30; // интенсивность свечения
+        
+        micBtn.style.transform = `scale(${scale})`;
+        micBtn.style.filter = `drop-shadow(0 0 ${glow}px rgba(0, 209, 255, 0.8))`;
+        
+        micAnimationId = requestAnimationFrame(animate);
+    }
+    animate();
+}
+
+// --- ОБНОВЛЕННЫЙ КЛИК ПО МИКРОФОНУ ---
+$('mic-btn').onclick = async function() {
+    const isActive = this.classList.toggle('active');
+    
+    if (isActive) {
+        try {
+            myStream = await navigator.mediaDevices.getUserMedia({ 
+                audio: { echoCancellation: true, noiseSuppression: true } 
+            });
+            
+            if (peer.id) {
+                set(ref(db, `rooms/${currentRoomId}/voice/${auth.currentUser.uid}`), peer.id);
+            }
+            
+            showToast("Микрофон на связи");
+            
+            // Запускаем визуальное мерцание от громкости
+            startMicVisualizer(myStream);
+            
+        } catch (e) { 
+            showToast("Ошибка микрофона!"); 
+            this.classList.remove('active'); 
+        }
+    } else {
+        // Выключение
+        if (myStream) {
+            myStream.getTracks().forEach(t => t.stop());
+            myStream = null;
+        }
+        
+        if (micAnimationId) cancelAnimationFrame(micAnimationId);
+        
+        // Сброс стилей кнопки в исходку
+        this.style.transform = `scale(1)`;
+        this.style.filter = `none`;
+        
+        remove(ref(db, `rooms/${currentRoomId}/voice/${auth.currentUser.uid}`));
+        activeCalls.clear();
+        $('remote-audio-container').innerHTML = '';
+        showToast("Микрофон спит");
+    }
+};
+
+// ... (дальше остальной твой код: чат, реакции, фон — без изменений)
     onValue(voiceRef, (snap) => {
         const data = snap.val() || {};
         for (let uid in data) {
