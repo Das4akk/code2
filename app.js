@@ -371,23 +371,7 @@ $('mic-btn').onclick = async function() {
         $('remote-audio-container').innerHTML = '';
         showToast("Микрофон спит");
     }
-};
-
-// ... (дальше остальной твой код: чат, реакции, фон — без изменений)
-    onValue(voiceRef, (snap) => {
-        const data = snap.val() || {};
-        for (let uid in data) {
-            const targetPeerId = data[uid];
-            if (uid !== auth.currentUser.uid && myStream && !activeCalls.has(targetPeerId)) {
-                const call = peer.call(targetPeerId, myStream);
-                call.on('stream', (remoteStream) => attachRemoteAudio(remoteStream, targetPeerId));
-            }
-        }
-    });
-
-    $('voice-volume').oninput = (e) => {
-        document.querySelectorAll('#remote-audio-container audio').forEach(a => a.volume = e.target.value);
-    };
+  };
 }
 
 // --- НЕЙРОСЕТЕВОЙ ФОН ---
