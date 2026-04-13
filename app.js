@@ -300,63 +300,132 @@ function initRoomServices() {
         chatMessages.scrollTop = chatMessages.scrollHeight;
     });
 
-    // ==========================================
-    // СТАРАЯ РАБОЧАЯ ЛОГИКА МИКРОФОНА (Строго из рабочего билда)
-    // ==========================================
-    
-    $('voice-volume').oninput = (e) => {
-        const vol = e.target.value;
-        remoteAudioElements.forEach(audio => audio.volume = vol);
-    };
+    // --- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ---
+let currentRoomId = null;
+let isHost = false;
+let isRemoteAction = false;
+let lastSyncTs = 0;
+let myStream = null;
+let roomListenerUnsubscribe = null;
 
-    function attachRemoteAudio(remoteStream, peerId) {
-        if (activeCalls[peerId]) return; 
-        activeCalls[peerId] = true;
+// Инициализация PeerJS с настройками для стабильности
+const peer = new Peer(undefined, {
+    host: '0.peerjs.com',
+    port: 443,
+    secure: true
+});
 
-        const audio = new Audio();
-        audio.srcObject = remoteStream; 
-        audio.volume = $('voice-volume').value; 
-        audio.play().catch(e => console.warn(e));
-        remoteAudioElements.push(audio);
-    }
+// ПЕРЕМЕННЫЕ МИКРОФОНА
+let activeCalls = new Set(); 
+let remoteAudioElements = []; 
 
-    peer.on('call', (call) => {
-        call.answer(myStream);
-        call.on('stream', (remoteStream) => attachRemoteAudio(remoteStream, call.peer));
+// 1. ГЛОБАЛЬНЫЙ ОБРАБОТЧИК ВХОДЯЩИХ ЗВОНКОВ
+peer.on('call', (call) => {
+    console.log("Входящий звонок от:", call.peer);
+    call.answer(myStream); // Отвечаем своим потоком (если он null, просто слушаем)
+    call.on('stream', (remoteStream) => {
+        attachRemoteAudio(remoteStream, call.peer);
     });
+});
 
+// Функция привязки звука
+function attachRemoteAudio(remoteStream, peerId) {
+    if (activeCalls.has(peerId)) return; 
+    activeCalls.add(peerId);
+
+    const audio = new Audio();
+    audio.srcObject = remoteStream;
+    audio.volume = $('voice-volume').value;
+    audio.play().catch(e => console.error("Ошибка автовоспроизведения звука:", e));
+    remoteAudioElements.push(audio);
+}
+
+// 2. ЛОГИКА ВНУТРИ КОМНАТЫ
+function initRoomServices() {
+    const videoRef = ref(db, `rooms/${currentRoomId}/sync`);
+    const chatRef = ref(db, `rooms/${currentRoomId}/chat`);
+    const voiceRef = ref(db, `rooms/${currentRoomId}/voice`);
+    const roomPresenceRef = ref(db, `rooms/${currentRoomId}/presence`);
+
+    // --- МИКРОФОН (КЛИК) ---
     $('mic-btn').onclick = async function() {
         const isActive = this.classList.toggle('active');
         
         if (isActive) {
             try {
                 myStream = await navigator.mediaDevices.getUserMedia({ 
-                    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } 
+                    audio: { 
+                        echoCancellation: true, 
+                        noiseSuppression: true, 
+                        autoGainControl: true 
+                    } 
                 });
-                set(ref(db, `rooms/${currentRoomId}/voice/${auth.currentUser.uid}`), peer.id);
+                
+                // Публикуем свой Peer ID в базу, чтобы другие могли нам позвонить
+                if (peer.id) {
+                    set(ref(db, `rooms/${currentRoomId}/voice/${auth.currentUser.uid}`), peer.id);
+                }
             } catch (e) { 
-                alert("Нет доступа к микрофону!"); 
+                alert("Ошибка доступа к микрофону. Проверьте разрешения в браузере."); 
                 this.classList.remove('active'); 
             }
         } else {
-            // Фикс передачи звука с телефона при отключении
+            // Мгновенная остановка всех треков для мобильных устройств
             if (myStream) {
-                myStream.getTracks().forEach(track => track.stop());
+                myStream.getTracks().forEach(track => {
+                    track.stop();
+                    track.enabled = false;
+                });
                 myStream = null;
             }
             remove(ref(db, `rooms/${currentRoomId}/voice/${auth.currentUser.uid}`));
+            // Очищаем активные вызовы при выключении своего микро
+            activeCalls.clear();
         }
     };
 
+    // --- МОНИТОРИНГ ПОДКЛЮЧЕНИЙ ГОЛОСА ---
     onValue(voiceRef, (snap) => {
         const data = snap.val() || {};
         for (let uid in data) {
-            const remotePeerId = data[uid];
-            if (uid !== auth.currentUser.uid && myStream && !activeCalls[remotePeerId]) {
-                const call = peer.call(remotePeerId, myStream);
-                call.on('stream', (rs) => attachRemoteAudio(rs, remotePeerId));
+            const targetPeerId = data[uid];
+            // Если в базе есть кто-то с микрофоном, и это не я, и я ему еще не звонил
+            if (uid !== auth.currentUser.uid && myStream && !activeCalls.has(targetPeerId)) {
+                console.log("Звоним пользователю:", targetPeerId);
+                const call = peer.call(targetPeerId, myStream);
+                call.on('stream', (remoteStream) => {
+                    attachRemoteAudio(remoteStream, targetPeerId);
+                });
             }
         }
+    });
+
+    // Громкость
+    $('voice-volume').oninput = (e) => {
+        const vol = e.target.value;
+        remoteAudioElements.forEach(audio => { audio.volume = vol; });
+    };
+
+    // Остальные сервисы (плеер, чат, присутствие)
+    setupPlayerSync(videoRef);
+    setupChat(chatRef);
+    setupPresence(roomPresenceRef);
+}
+
+// Вспомогательная функция для синхронизации плеера
+function setupPlayerSync(videoRef) {
+    player.onplay = () => { if(isHost && !isRemoteAction) set(videoRef, { type: 'play', time: player.currentTime, ts: Date.now() }); };
+    player.onpause = () => { if(isHost && !isRemoteAction) set(videoRef, { type: 'pause', time: player.currentTime, ts: Date.now() }); };
+    
+    onValue(videoRef, (snap) => {
+        if (isHost) return;
+        const d = snap.val();
+        if (!d || d.ts <= lastSyncTs) return;
+        lastSyncTs = d.ts;
+        isRemoteAction = true;
+        if (Math.abs(player.currentTime - d.time) > 1.5) player.currentTime = d.time;
+        d.type === 'play' ? player.play() : player.pause();
+        setTimeout(() => isRemoteAction = false, 800);
     });
 }
 
@@ -394,3 +463,4 @@ function anim() {
     requestAnimationFrame(anim);
 }
 anim();
+}
