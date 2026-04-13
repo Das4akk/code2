@@ -30,6 +30,60 @@ let activeCalls = {};
 let roomUnsubs = []; // Массив для отписки от базы данных при выходе из комнаты
 let globalRoomSub = null; 
 
+// --- ОСНОВНАЯ ЛОГИКА КОМНАТЫ ---
+function initRoomLogic() {
+    const player = $('native-player');
+    const roomRef = ref(db, `rooms/${currentRoomId}`);
+    
+    // Реакции
+    roomUnsubs.push(onChildAdded(ref(db, `rooms/${currentRoomId}/reactions`), (snap) => {
+        renderEmoji(snap.val().emoji);
+    }));
+
+    // Чат с таймкодами
+    roomUnsubs.push(onChildAdded(ref(db, `rooms/${currentRoomId}/chat`), (snap) => {
+        const d = snap.val();
+        const msg = document.createElement('div');
+        msg.className = `m-line ${d.u === auth.currentUser.displayName ? 'self' : ''}`;
+        msg.innerHTML = `<div class="bubble"><strong>${d.u}</strong>${formatMessageWithTimecodes(d.m)}</div>`;
+        $('chat-messages').appendChild(msg);
+        $('chat-messages').scrollTop = $('chat-messages').scrollHeight;
+    }));
+
+    // PeerJS события
+    peer.on('call', (call) => {
+        call.answer(myStream);
+        call.on('stream', (rs) => playRemoteStream(rs, call.peer));
+    });
+
+    roomUnsubs.push(onValue(ref(db, `rooms/${currentRoomId}/voice`), (snap) => {
+        const data = snap.val();
+        if(!data || !myStream) return;
+        Object.values(data).forEach(pId => {
+            if(pId !== peer.id && !activeCalls[pId]) {
+                const call = peer.call(pId, myStream);
+                call.on('stream', (rs) => playRemoteStream(rs, pId));
+                activeCalls[pId] = true;
+            }
+        });
+    }));
+
+    initAmbilight();
+    showToast("Вы вошли в комнату");
+}
+
+// Привязка кнопок реакций
+document.querySelectorAll('.react-btn').forEach(btn => {
+    btn.onclick = () => sendEmoji(btn.dataset.emoji);
+});
+
+// Фуллскрин для ОБЕРТКИ (чтобы UI не пропадал)
+$('btn-fullscreen').onclick = () => {
+    const wrapper = $('player-wrapper');
+    if (!document.fullscreenElement) wrapper.requestFullscreen();
+    else document.exitFullscreen();
+};
+
 // --- Навигация ---
 function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -399,6 +453,55 @@ function loop() {
             }
         });
     });
+    // --- ФИЧА 6: РЕАКЦИИ ---
+window.sendEmoji = (emoji) => {
+    const reactionsRef = ref(db, `rooms/${currentRoomId}/reactions`);
+    push(reactionsRef, { emoji, ts: Date.now() });
+};
+
+function renderEmoji(emoji) {
+    const container = $('reaction-layer');
+    const el = document.createElement('div');
+    el.className = 'floating-emoji';
+    el.innerText = emoji;
+    el.style.left = Math.random() * 80 + 10 + '%';
+    container.appendChild(el);
+    setTimeout(() => el.remove(), 3000);
+}
+
+// --- ФИЧА 20: УВЕДОМЛЕНИЯ ---
+function showToast(text) {
+    const container = $('room-notifications');
+    const toast = document.createElement('div');
+    toast.className = 'toast glass-panel';
+    toast.innerText = text;
+    container.appendChild(toast);
+    
+    // Звук уведомления
+    new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3').play().catch(()=>{});
+
+    setTimeout(() => toast.remove(), 4000);
+}
+
+// --- ФИЧА 21: AMBILIGHT ---
+const ambiCanvas = $('ambilight-canvas');
+const ambiCtx = ambiCanvas.getContext('2d');
+function updateAmbilight() {
+    const player = $('native-player');
+    if (player && !player.paused) {
+        ambiCtx.drawImage(player, 0, 0, ambiCanvas.width, ambiCanvas.height);
+    }
+    requestAnimationFrame(updateAmbilight);
+}
+updateAmbilight();
+
+// --- ФИЧА 24: АНАЛИТИКА (Упрощенно) ---
+let watchStart = Date.now();
+function getSessionStats() {
+    const duration = Math.floor((Date.now() - watchStart) / 1000 / 60);
+    return `Вы смотрели кино ${duration} мин.`;
+}
+// Вызывай showToast(getSessionStats()) при выходе из комнаты
     requestAnimationFrame(loop);
 }
 loop();
