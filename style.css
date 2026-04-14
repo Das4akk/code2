@@ -338,3 +338,98 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
 .room-header .danger-btn {
     width: auto;
 }
+
+.dm-modal-content {
+    width: min(720px, calc(100vw - 32px));
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.dm-modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+.dm-modal-header h2 {
+    margin: 0;
+}
+.dm-modal-header p {
+    margin: 6px 0 0;
+    font-size: 13px;
+    color: rgba(255,255,255,0.6);
+}
+.dm-messages {
+    min-height: 320px;
+    max-height: 52vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 4px 2px;
+}
+.dm-compose {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.dm-compose input {
+    margin-bottom: 0;
+}
+.dm-compose .primary-btn,
+.dm-modal-header .google-btn {
+    width: auto;
+    flex-shrink: 0;
+}
+.dm-line {
+    display: flex;
+}
+.dm-line.self {
+    justify-content: flex-end;
+}
+.dm-bubble {
+    max-width: 80%;
+    padding: 12px 14px;
+    border-radius: 16px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.06);
+}
+.dm-line.self .dm-bubble {
+    background: #fff;
+    color: #000;
+}
+.dm-bubble strong {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 11px;
+    opacity: 0.6;
+}
+.dm-empty {
+    padding: 18px;
+    border-radius: 16px;
+    background: rgba(255,255,255,0.03);
+    color: rgba(255,255,255,0.65);
+    text-align: center;
+}
+
+.user-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+    flex-wrap: wrap;
+}
+.perm-controls {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 10px;
+}
+.perm-controls label {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+    padding: 8px 10px;
+    justify-content: space-between;
+}

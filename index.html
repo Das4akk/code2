@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>COW — Co-Watching Space</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 </head>
 <body>
     <canvas id="particle-canvas"></canvas>
@@ -112,6 +111,23 @@
                     <div class="modal-buttons">
                         <button id="btn-profile-cancel" class="google-btn">Отмена</button>
                         <button id="btn-profile-save" class="primary-btn">Сохранить</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="modal-dm-chat" class="modal">
+                <div class="modal-content glass-panel dm-modal-content">
+                    <div class="dm-modal-header">
+                        <div>
+                            <h2 id="dm-chat-title">Личный чат</h2>
+                            <p id="dm-chat-status">Сообщения только между вами и другом</p>
+                        </div>
+                        <button id="btn-dm-close" class="google-btn" type="button">Закрыть</button>
+                    </div>
+                    <div id="dm-messages" class="dm-messages"></div>
+                    <div class="dm-compose">
+                        <input type="text" id="dm-input" placeholder="Написать другу..." autocomplete="off">
+                        <button id="btn-dm-send" class="primary-btn" type="button">Отправить</button>
                     </div>
                 </div>
             </div>

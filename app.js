@@ -63,17 +63,11 @@ function showToast(message) {
 }
 
 // --- WebRTC Инициализация ---
-const peer = new Peer(undefined, {
-    host: '0.peerjs.com',
-    port: 443,
-    secure: true,
-    config: {
-        iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' }
-        ]
-    }
-});
+const peer = {
+    id: null,
+    on() {},
+    call() { return null; }
+};
 let currentRoomId = null;
 let isHost = false;
 let myStream = null;
@@ -88,6 +82,12 @@ let currentPresenceCache = {};
 let latestVoicePeers = {};
 const remoteAudioAnalyzers = new Map();
 const REPORT_FORM_URL = '';
+let directChatUnsubscribe = null;
+let currentDirectChat = null;
+let voiceSignalCleanup = null;
+let voiceSessionId = null;
+let voicePeerConnections = new Map();
+let voiceParticipantsCache = {};
 
 function isAcceptedFriendRecord(record) {
     return record === true || (record && record.status === 'accepted');
@@ -1839,3 +1839,556 @@ leaveRoom = leaveRoomV2;
 initRoomServices = initRoomServicesV2;
 
 if ($('btn-leave-room')) $('btn-leave-room').onclick = leaveRoomV2;
+
+const RTC_CONFIG = {
+    iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' }
+    ]
+};
+
+function getDisplayName() {
+    return auth.currentUser?.displayName || auth.currentUser?.email || 'User';
+}
+
+function getDirectChatId(uidA, uidB) {
+    return [uidA, uidB].sort().join('__');
+}
+
+function getVoiceRefs(roomId) {
+    return {
+        root: ref(db, `rooms/${roomId}/rtc`),
+        participants: ref(db, `rooms/${roomId}/rtc/participants`),
+        offersForMe: ref(db, `rooms/${roomId}/rtc/offers/${auth.currentUser.uid}`),
+        answersForMe: ref(db, `rooms/${roomId}/rtc/answers/${auth.currentUser.uid}`),
+        candidatesForMe: ref(db, `rooms/${roomId}/rtc/candidates/${auth.currentUser.uid}`)
+    };
+}
+
+function cleanupRemoteAudioIndicator(uid) {
+    const entry = remoteAudioAnalyzers.get(uid);
+    if (entry?.animationId) cancelAnimationFrame(entry.animationId);
+    remoteAudioAnalyzers.delete(uid);
+    const indicator = document.querySelector(`.user-item[data-uid="${uid}"] .indicator`);
+    if (indicator) {
+        indicator.style.transform = 'scale(1)';
+        indicator.style.boxShadow = '0 0 8px #2ed573';
+    }
+}
+
+function attachRemoteAudioV3(stream, uid) {
+    if (!stream) return;
+    const container = $('remote-audio-container');
+    if (!container) return;
+
+    const audioId = `rtc-audio-${uid}`;
+    document.getElementById(audioId)?.remove();
+    cleanupRemoteAudioIndicator(uid);
+
+    const audio = document.createElement('audio');
+    audio.id = audioId;
+    audio.autoplay = true;
+    audio.playsInline = true;
+    audio.srcObject = stream;
+    audio.volume = parseFloat($('voice-volume')?.value || '1');
+    container.appendChild(audio);
+
+    const ensurePlay = () => {
+        audio.play().catch(() => {
+            document.addEventListener('click', () => audio.play().catch(() => {}), { once: true });
+        });
+    };
+
+    audio.oncanplay = () => {
+        createRemoteAudioAnalyzer(audio, uid);
+        ensurePlay();
+    };
+}
+
+function destroyVoiceConnection(remoteUid) {
+    const entry = voicePeerConnections.get(remoteUid);
+    if (entry?.pc) {
+        try { entry.pc.onicecandidate = null; } catch (e) {}
+        try { entry.pc.ontrack = null; } catch (e) {}
+        try { entry.pc.close(); } catch (e) {}
+    }
+    voicePeerConnections.delete(remoteUid);
+    document.getElementById(`rtc-audio-${remoteUid}`)?.remove();
+    cleanupRemoteAudioIndicator(remoteUid);
+}
+
+function destroyAllVoiceConnections() {
+    Array.from(voicePeerConnections.keys()).forEach((uid) => destroyVoiceConnection(uid));
+}
+
+function ensureVoicePeerConnection(remoteUid) {
+    const existing = voicePeerConnections.get(remoteUid);
+    if (existing?.pc && existing.pc.connectionState !== 'closed') return existing.pc;
+
+    const pc = new RTCPeerConnection(RTC_CONFIG);
+    const remoteParticipant = voiceParticipantsCache[remoteUid] || {};
+
+    if (myStream) {
+        myStream.getTracks().forEach((track) => pc.addTrack(track, myStream));
+    }
+
+    pc.onicecandidate = ({ candidate }) => {
+        if (!candidate || !currentRoomId || !voiceSessionId) return;
+        const targetSessionId = voiceParticipantsCache[remoteUid]?.sessionId;
+        if (!targetSessionId) return;
+        push(ref(db, `rooms/${currentRoomId}/rtc/candidates/${remoteUid}/${auth.currentUser.uid}`), {
+            candidate: candidate.toJSON(),
+            fromSessionId: voiceSessionId,
+            toSessionId: targetSessionId,
+            ts: Date.now()
+        });
+    };
+
+    pc.ontrack = (event) => {
+        const [stream] = event.streams || [];
+        if (stream) attachRemoteAudioV3(stream, remoteUid);
+    };
+
+    pc.onconnectionstatechange = () => {
+        if (['failed', 'disconnected', 'closed'].includes(pc.connectionState)) {
+            destroyVoiceConnection(remoteUid);
+        }
+    };
+
+    voicePeerConnections.set(remoteUid, {
+        pc,
+        remoteSessionId: remoteParticipant.sessionId || null
+    });
+    return pc;
+}
+
+async function publishVoiceParticipant() {
+    if (!currentRoomId || !voiceSessionId || !auth.currentUser) return;
+    await set(ref(db, `rooms/${currentRoomId}/rtc/participants/${auth.currentUser.uid}`), {
+        sessionId: voiceSessionId,
+        ts: Date.now()
+    });
+}
+
+async function createVoiceOfferFor(remoteUid) {
+    if (!myStream || !voiceSessionId || !currentRoomId || remoteUid === auth.currentUser.uid) return;
+    if (auth.currentUser.uid.localeCompare(remoteUid) >= 0) return;
+
+    const remoteSessionId = voiceParticipantsCache[remoteUid]?.sessionId;
+    if (!remoteSessionId) return;
+
+    const pc = ensureVoicePeerConnection(remoteUid);
+    if (pc.signalingState !== 'stable') return;
+
+    const offer = await pc.createOffer({ offerToReceiveAudio: true });
+    await pc.setLocalDescription(offer);
+
+    await set(ref(db, `rooms/${currentRoomId}/rtc/offers/${remoteUid}/${auth.currentUser.uid}`), {
+        description: pc.localDescription.toJSON(),
+        fromSessionId: voiceSessionId,
+        toSessionId: remoteSessionId,
+        ts: Date.now()
+    });
+}
+
+async function handleIncomingOffers(offers = {}) {
+    const localSessionId = voiceSessionId;
+    if (!localSessionId || !myStream || !currentRoomId) return;
+
+    for (const [fromUid, payload] of Object.entries(offers)) {
+        if (!payload?.description) continue;
+        const remoteParticipant = voiceParticipantsCache[fromUid];
+        if (!remoteParticipant?.sessionId) continue;
+        if (payload.toSessionId !== localSessionId || payload.fromSessionId !== remoteParticipant.sessionId) continue;
+
+        const pc = ensureVoicePeerConnection(fromUid);
+        try {
+            if (pc.signalingState !== 'stable') {
+                try { await pc.setLocalDescription({ type: 'rollback' }); } catch (e) {}
+            }
+            await pc.setRemoteDescription(new RTCSessionDescription(payload.description));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            await set(ref(db, `rooms/${currentRoomId}/rtc/answers/${fromUid}/${auth.currentUser.uid}`), {
+                description: pc.localDescription.toJSON(),
+                fromSessionId: localSessionId,
+                toSessionId: remoteParticipant.sessionId,
+                ts: Date.now()
+            });
+            await remove(ref(db, `rooms/${currentRoomId}/rtc/offers/${auth.currentUser.uid}/${fromUid}`));
+        } catch (e) {
+            console.error('offer handling failed', e);
+        }
+    }
+}
+
+async function handleIncomingAnswers(answers = {}) {
+    const localSessionId = voiceSessionId;
+    if (!localSessionId || !currentRoomId) return;
+
+    for (const [fromUid, payload] of Object.entries(answers)) {
+        if (!payload?.description) continue;
+        const remoteParticipant = voiceParticipantsCache[fromUid];
+        const pc = voicePeerConnections.get(fromUid)?.pc;
+        if (!pc || !remoteParticipant?.sessionId) continue;
+        if (payload.toSessionId !== localSessionId || payload.fromSessionId !== remoteParticipant.sessionId) continue;
+
+        try {
+            await pc.setRemoteDescription(new RTCSessionDescription(payload.description));
+            await remove(ref(db, `rooms/${currentRoomId}/rtc/answers/${auth.currentUser.uid}/${fromUid}`));
+        } catch (e) {
+            console.error('answer handling failed', e);
+        }
+    }
+}
+
+async function handleIncomingCandidates(candidateGroups = {}) {
+    const localSessionId = voiceSessionId;
+    if (!localSessionId || !currentRoomId) return;
+
+    for (const [fromUid, candidates] of Object.entries(candidateGroups)) {
+        const remoteParticipant = voiceParticipantsCache[fromUid];
+        if (!remoteParticipant?.sessionId) continue;
+        const pc = ensureVoicePeerConnection(fromUid);
+
+        for (const [candidateId, payload] of Object.entries(candidates || {})) {
+            if (!payload?.candidate) continue;
+            if (payload.toSessionId !== localSessionId || payload.fromSessionId !== remoteParticipant.sessionId) continue;
+
+            try {
+                await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
+            } catch (e) {
+                console.error('candidate handling failed', e);
+            }
+            await remove(ref(db, `rooms/${currentRoomId}/rtc/candidates/${auth.currentUser.uid}/${fromUid}/${candidateId}`));
+        }
+    }
+}
+
+function closeVoiceSignalLayer() {
+    if (voiceSignalCleanup) {
+        try { voiceSignalCleanup(); } catch (e) {}
+        voiceSignalCleanup = null;
+    }
+    destroyAllVoiceConnections();
+    voiceParticipantsCache = {};
+}
+
+async function enableMicrophoneNative(button) {
+    myStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+        }
+    });
+    voiceSessionId = crypto.randomUUID();
+    button?.classList.add('active');
+    await publishVoiceParticipant();
+    for (const remoteUid of Object.keys(voiceParticipantsCache)) {
+        await createVoiceOfferFor(remoteUid);
+    }
+    showToast('Микрофон включен');
+}
+
+async function disableMicrophoneNative({ notify = true } = {}) {
+    if (myStream) {
+        myStream.getTracks().forEach((track) => track.stop());
+    }
+    myStream = null;
+
+    if (currentRoomId && auth.currentUser) {
+        try { await remove(ref(db, `rooms/${currentRoomId}/rtc/participants/${auth.currentUser.uid}`)); } catch (e) {}
+    }
+
+    voiceSessionId = null;
+    $('mic-btn')?.classList.remove('active');
+    destroyAllVoiceConnections();
+
+    if (notify) showToast('Микрофон выключен');
+}
+
+function renderPermissionControls(uid, perms) {
+    return `
+        <div class="perm-controls">
+            <label><span>Чат</span><input class="perm-toggle" type="checkbox" data-uid="${uid}" data-perm="chat" ${perms.chat ? 'checked' : ''}></label>
+            <label><span>Voice</span><input class="perm-toggle" type="checkbox" data-uid="${uid}" data-perm="voice" ${perms.voice ? 'checked' : ''}></label>
+            <label><span>Плеер</span><input class="perm-toggle" type="checkbox" data-uid="${uid}" data-perm="player" ${perms.player ? 'checked' : ''}></label>
+            <label><span>Реакции</span><input class="perm-toggle" type="checkbox" data-uid="${uid}" data-perm="reactions" ${perms.reactions ? 'checked' : ''}></label>
+        </div>
+    `;
+}
+
+function closeDirectChatModal() {
+    if (directChatUnsubscribe) {
+        try { directChatUnsubscribe(); } catch (e) {}
+        directChatUnsubscribe = null;
+    }
+    currentDirectChat = null;
+    $('modal-dm-chat')?.classList.remove('active');
+    if ($('dm-messages')) $('dm-messages').innerHTML = '';
+    if ($('dm-input')) $('dm-input').value = '';
+}
+
+function renderDirectMessages(messages = []) {
+    const list = $('dm-messages');
+    if (!list) return;
+    if (!messages.length) {
+        list.innerHTML = '<div class="dm-empty">Сообщений пока нет</div>';
+        return;
+    }
+
+    list.innerHTML = messages.map((message) => {
+        const isSelf = message.fromUid === auth.currentUser.uid;
+        return `
+            <div class="dm-line ${isSelf ? 'self' : ''}">
+                <div class="dm-bubble">
+                    <strong>${escapeHtml(isSelf ? 'Вы' : (message.fromName || 'Друг'))}</strong>
+                    <div>${escapeHtml(message.text || '')}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    list.scrollTop = list.scrollHeight;
+}
+
+function openDirectChatModal(targetUid, targetName) {
+    if (!targetUid || !auth.currentUser) return;
+    closeDirectChatModal();
+
+    currentDirectChat = {
+        uid: targetUid,
+        name: targetName || 'Друг',
+        id: getDirectChatId(auth.currentUser.uid, targetUid)
+    };
+
+    if ($('dm-chat-title')) $('dm-chat-title').textContent = `Чат с ${currentDirectChat.name}`;
+    if ($('dm-chat-status')) $('dm-chat-status').textContent = 'Сообщения видны только вам двоим';
+    $('modal-dm-chat')?.classList.add('active');
+
+    const messagesRef = ref(db, `direct-messages/${currentDirectChat.id}/messages`);
+    const listener = (snap) => {
+        const raw = snap.val() || {};
+        const messages = Object.values(raw).sort((a, b) => (a.ts || 0) - (b.ts || 0));
+        renderDirectMessages(messages);
+    };
+    onValue(messagesRef, listener);
+    directChatUnsubscribe = () => off(messagesRef, 'value', listener);
+}
+
+async function sendDirectMessage() {
+    const input = $('dm-input');
+    if (!input || !currentDirectChat || !input.value.trim() || !auth.currentUser) return;
+
+    const text = input.value.trim();
+    input.value = '';
+
+    const baseRef = ref(db, `direct-messages/${currentDirectChat.id}`);
+    await update(baseRef, {
+        participants: {
+            [auth.currentUser.uid]: true,
+            [currentDirectChat.uid]: true
+        },
+        updatedAt: Date.now()
+    });
+    await push(ref(db, `direct-messages/${currentDirectChat.id}/messages`), {
+        fromUid: auth.currentUser.uid,
+        fromName: getDisplayName(),
+        text,
+        ts: Date.now()
+    });
+}
+
+function bindDirectChatUi() {
+    if ($('btn-dm-close')) $('btn-dm-close').onclick = closeDirectChatModal;
+    if ($('btn-dm-send')) $('btn-dm-send').onclick = sendDirectMessage;
+    if ($('dm-input')) {
+        $('dm-input').onkeydown = (event) => {
+            if (event.key === 'Enter') sendDirectMessage();
+        };
+    }
+    if ($('modal-dm-chat')) {
+        $('modal-dm-chat').addEventListener('click', (event) => {
+            if (event.target.id === 'modal-dm-chat') closeDirectChatModal();
+        });
+    }
+}
+
+bindDirectChatUi();
+
+function setupLobbyNotificationsV3() {
+    setupLobbyNotificationsV2();
+
+    const toggleButton = $('btn-toggle-friends');
+    const panel = $('friends-list-panel');
+    if (!toggleButton || !panel) return;
+
+    const baseHandler = toggleButton.onclick;
+    toggleButton.onclick = async () => {
+        if (typeof baseHandler === 'function') await baseHandler();
+        panel.querySelectorAll('.friend-dm-btn').forEach((button) => {
+            button.onclick = (event) => {
+                event.stopPropagation();
+                const card = button.closest('.friend-card');
+                const name = card?.querySelector('strong')?.textContent?.trim() || 'Друг';
+                openDirectChatModal(button.dataset.fuid, name);
+            };
+        });
+    };
+}
+
+function enterRoomV3(roomId, name, link, adminId) {
+    closeDirectChatModal();
+    enterRoomV2(roomId, name, link, adminId);
+}
+
+async function leaveRoomV3() {
+    closeVoiceSignalLayer();
+    await disableMicrophoneNative({ notify: false });
+    closeDirectChatModal();
+    await leaveRoomV2();
+}
+
+function initRoomServicesV3() {
+    initRoomServicesV2();
+
+    const roomId = currentRoomId;
+    const voiceRefs = getVoiceRefs(roomId);
+
+    const participantsListener = async (snap) => {
+        voiceParticipantsCache = snap.val() || {};
+        for (const remoteUid of Array.from(voicePeerConnections.keys())) {
+            if (!voiceParticipantsCache[remoteUid]) destroyVoiceConnection(remoteUid);
+        }
+        if (myStream && voiceSessionId) {
+            for (const remoteUid of Object.keys(voiceParticipantsCache)) {
+                await createVoiceOfferFor(remoteUid);
+            }
+        }
+    };
+    const offersListener = (snap) => handleIncomingOffers(snap.val() || {});
+    const answersListener = (snap) => handleIncomingAnswers(snap.val() || {});
+    const candidatesListener = (snap) => handleIncomingCandidates(snap.val() || {});
+
+    onValue(voiceRefs.participants, participantsListener);
+    onValue(voiceRefs.offersForMe, offersListener);
+    onValue(voiceRefs.answersForMe, answersListener);
+    onValue(voiceRefs.candidatesForMe, candidatesListener);
+
+    const previousVoiceCleanup = voiceSignalCleanup;
+    voiceSignalCleanup = () => {
+        try { off(voiceRefs.participants, 'value', participantsListener); } catch (e) {}
+        try { off(voiceRefs.offersForMe, 'value', offersListener); } catch (e) {}
+        try { off(voiceRefs.answersForMe, 'value', answersListener); } catch (e) {}
+        try { off(voiceRefs.candidatesForMe, 'value', candidatesListener); } catch (e) {}
+        if (typeof previousVoiceCleanup === 'function') previousVoiceCleanup();
+    };
+
+    const usersListEl = $('users-list');
+    const baseObserver = new MutationObserver(() => {
+        usersListEl.querySelectorAll('.dm-btn').forEach((button) => {
+            button.onclick = () => {
+                const card = button.closest('.user-item');
+                const name = card?.querySelector('.user-name')?.textContent?.replace(/^👥\s*/, '')?.trim() || 'Друг';
+                openDirectChatModal(button.dataset.uid, name);
+            };
+        });
+
+        usersListEl.querySelectorAll('.perm-toggle').forEach((toggle) => {
+            toggle.onchange = async (event) => {
+                if (!isHost) return;
+                const uid = event.currentTarget.dataset.uid;
+                const perm = event.currentTarget.dataset.perm;
+                const checked = event.currentTarget.checked;
+                try {
+                    await set(ref(db, `rooms/${currentRoomId}/presence/${uid}/perms/${perm}`), checked);
+                    if (perm === 'voice' && !checked) {
+                        await remove(ref(db, `rooms/${currentRoomId}/rtc/participants/${uid}`)).catch(() => {});
+                    }
+                } catch (e) {
+                    showToast('Ошибка при обновлении прав');
+                }
+            };
+        });
+    });
+    if (usersListEl) {
+        baseObserver.observe(usersListEl, { childList: true, subtree: true });
+        const prevRoomCleanup = roomListenerUnsubscribe;
+        roomListenerUnsubscribe = () => {
+            try { baseObserver.disconnect(); } catch (e) {}
+            if (typeof prevRoomCleanup === 'function') prevRoomCleanup();
+            if (typeof voiceSignalCleanup === 'function') voiceSignalCleanup();
+            voiceSignalCleanup = null;
+        };
+    }
+
+    const usersPresenceRef = ref(db, `rooms/${currentRoomId}/presence`);
+    const enhanceUsersListener = (snap) => {
+        const data = snap.val() || {};
+        const defaultPerms = { chat: true, voice: true, player: false, reactions: true };
+        const adminId = roomsCache[currentRoomId]?.admin || null;
+        const list = $('users-list');
+        if (!list) return;
+
+        list.querySelectorAll('.user-item').forEach((item) => {
+            const uid = item.dataset.uid;
+            if (!uid || uid === auth.currentUser.uid || !isHost) return;
+            if (item.querySelector('.perm-controls')) return;
+
+            const perms = { ...defaultPerms, ...(data[uid]?.perms || {}) };
+            item.insertAdjacentHTML('beforeend', renderPermissionControls(uid, perms));
+        });
+
+        const localNode = data[auth.currentUser.uid] || {};
+        const effectiveLocalPerms = isHost ? { chat: true, voice: true, player: true, reactions: true } : ({ chat: true, voice: true, player: false, reactions: true, ...(localNode.perms || {}) });
+        if (!effectiveLocalPerms.voice && myStream) {
+            disableMicrophoneNative({ notify: false }).then(() => showToast('Вам отключили голос'));
+        }
+        if ($('mic-btn')) $('mic-btn').disabled = !effectiveLocalPerms.voice;
+        if (effectiveLocalPerms.player || auth.currentUser.uid === adminId) {
+            player.style.pointerEvents = 'auto';
+            player.controls = true;
+        } else {
+            player.style.pointerEvents = 'none';
+            player.controls = false;
+        }
+        if ($('chat-input')) $('chat-input').disabled = !effectiveLocalPerms.chat;
+        if ($('send-btn')) $('send-btn').disabled = !effectiveLocalPerms.chat;
+        document.querySelectorAll('.react-btn').forEach((button) => {
+            button.disabled = !effectiveLocalPerms.reactions;
+        });
+    };
+    onValue(usersPresenceRef, enhanceUsersListener);
+    const prevCleanup = roomListenerUnsubscribe;
+    roomListenerUnsubscribe = () => {
+        try { off(usersPresenceRef, 'value', enhanceUsersListener); } catch (e) {}
+        if (typeof prevCleanup === 'function') prevCleanup();
+    };
+
+    if ($('mic-btn')) {
+        $('mic-btn').onclick = async function() {
+            const localNode = currentPresenceCache[auth.currentUser.uid] || {};
+            const effectivePerms = isHost ? { chat: true, voice: true, player: true, reactions: true } : ({ chat: true, voice: true, player: false, reactions: true, ...(localNode.perms || {}) });
+            if (!effectivePerms.voice) return;
+
+            if (myStream) {
+                await disableMicrophoneNative();
+                return;
+            }
+
+            try {
+                await enableMicrophoneNative(this);
+            } catch (e) {
+                this.classList.remove('active');
+                showToast('Ошибка доступа к микрофону');
+            }
+        };
+    }
+}
+
+setupLobbyNotifications = setupLobbyNotificationsV3;
+enterRoom = enterRoomV3;
+leaveRoom = leaveRoomV3;
+initRoomServices = initRoomServicesV3;
+
+if ($('btn-leave-room')) $('btn-leave-room').onclick = leaveRoomV3;
