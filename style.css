@@ -1,4 +1,4 @@
-:root { --bg: #050505; --accent: #fff; }
+:root { --bg: #050505; --accent: #f5f7fa; --accent-weak: rgba(255,255,255,0.12); --accent-strong: rgba(255,255,255,0.95); }
 * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
 body { background: var(--bg); color: #fff; overflow: hidden; height: 100vh; }
 
@@ -43,7 +43,7 @@ input:focus { border-color: rgba(255,255,255,0.5); }
 .lobby-layout { display: grid; grid-template-columns: 260px 1fr; gap: 20px; max-width: 1400px; margin: 0 auto; height: 100%; }
 .lobby-sidebar { padding: 20px; display: flex; flex-direction: column; }
 .user-profile { display: flex; align-items: center; gap: 12px; margin-bottom: 30px; }
-.avatar-circle { width: 45px; height: 45px; border-radius: 50%; background: linear-gradient(45deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%); }
+.avatar-circle { width: 56px; height: 56px; min-width:56px; min-height:56px; border-radius: 50%; background: linear-gradient(45deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%); background-size:cover; background-position:center; flex:0 0 auto; }
 .main-header { padding: 15px 25px; display: flex; justify-content: space-between; margin-bottom: 20px; }
 .main-header input { width: 300px; margin-bottom: 0; }
 .rooms-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; overflow-y: auto; height: calc(100vh - 120px); }
@@ -108,7 +108,7 @@ video { width: 100%; height: 100%; object-fit: contain; outline: none; }
 .self .timecode-btn:hover { background: #000; color: #fff; }
 
 /* Индикатор пользователя */
-.user-item { padding: 12px; display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.03); border-radius: 10px; }
+.user-item { padding: 12px; display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.03); border-radius: 10px; justify-content: space-between; }
 .indicator { width: 8px; height: 8px; background: #2ed573; border-radius: 50%; box-shadow: 0 0 8px #2ed573; }
 
 /* Доп. стили для списка пользователей и прав */
@@ -151,15 +151,15 @@ input[type="checkbox"] {
     transition: all 0.12s ease-in-out;
 }
 input[type="checkbox"]:hover { border-color: rgba(255,255,255,0.18); }
-input[type="checkbox"]:focus { outline: none; box-shadow: 0 0 0 4px rgba(0,209,255,0.06); }
+input[type="checkbox"]:focus { outline: none; box-shadow: 0 0 0 4px rgba(255,255,255,0.06); }
 input[type="checkbox"]:checked {
-    background: linear-gradient(135deg,#00d1ff,#6be7ff);
-    border-color: #00d1ff;
-    box-shadow: 0 6px 18px rgba(0,209,255,0.10);
+    background: linear-gradient(135deg,var(--accent), rgba(255,255,255,0.95));
+    border-color: var(--accent-strong);
+    box-shadow: 0 6px 18px rgba(255,255,255,0.06);
     background-repeat: no-repeat;
     background-position: center;
     background-size: 12px 12px;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23ffffff' d='M20.285 6.708l-11.025 11.026-5.545-5.545 1.414-1.414 4.131 4.13 9.611-9.611z'/></svg>");
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23000' d='M20.285 6.708l-11.025 11.026-5.545-5.545 1.414-1.414 4.131 4.13 9.611-9.611z'/></svg>");
 }
 .perm-controls input[type="checkbox"] { width: 18px; height: 18px; }
 
@@ -183,14 +183,14 @@ input[type="range"]::-webkit-slider-thumb {
     width: 16px;
     height: 16px;
     border-radius: 50%;
-    background: linear-gradient(135deg,#00d1ff,#6be7ff);
+    background: var(--accent);
     border: 2px solid rgba(255,255,255,0.95);
     margin-top: -4px;
     box-shadow: 0 6px 14px rgba(0,0,0,0.45);
 }
-input[type="range"]:focus::-webkit-slider-runnable-track { box-shadow: 0 0 8px rgba(0,209,255,0.06); }
+input[type="range"]:focus::-webkit-slider-runnable-track { box-shadow: 0 0 8px rgba(255,255,255,0.06); }
 input[type="range"]::-moz-range-track { height: 8px; background: rgba(255,255,255,0.08); border-radius: 999px; }
-input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: linear-gradient(135deg,#00d1ff,#6be7ff); border: 2px solid rgba(255,255,255,0.95); }
+input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--accent); border: 2px solid rgba(255,255,255,0.95); }
 
 /* Modal label alignment tweaks */
 .modal-content label { display:flex; gap:8px; align-items:center; }
