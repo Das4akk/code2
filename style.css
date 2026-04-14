@@ -15,13 +15,40 @@ button:active:not(:disabled) {
 /* Нейрофон */
 #particle-canvas { position: fixed; top: 0; left: 0; z-index: -1; width: 100%; height: 100%; opacity: 0.8; }
 
-/* Прозрачное стекло с сильным размытием */
-.glass-panel, .friends-list-panel {
-    background: rgba(10, 10, 10, 0.15) !important; /* Почти прозрачный фон */
-    backdrop-filter: blur(35px) saturate(180%) !important; /* Сильное размытие, чтобы фон читался */
-    -webkit-backdrop-filter: blur(35px) saturate(180%) !important;
-    border: 1px solid rgba(255, 255, 255, 0.06) !important; /* Очень тонкая белая рамка */
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3) !important;
+/* Базовый слой стекла */
+.glass-panel {
+    background: rgba(255, 255, 255, 0.03) !important;
+    backdrop-filter: blur(20px) saturate(150%) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(150%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 24px !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Исправляем наложение в комнате */
+.room-layout {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 20px;
+    padding: 20px;
+    height: calc(100vh - 40px);
+}
+
+.video-column, .chat-column {
+    background: rgba(10, 10, 10, 0.4) !important; /* Чуть темнее, чтобы отделить зоны */
+    border-radius: 24px;
+    overflow: hidden;
+}
+
+/* Системные логи по центру */
+.chat-message.system-log {
+    text-align: center;
+    width: 100%;
+    margin: 15px 0;
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.3);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
 }
 
 /* Карточки внутри тоже делаем легкими */
