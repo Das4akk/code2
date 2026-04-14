@@ -173,6 +173,11 @@ onAuthStateChanged(auth, (user) => {
             setupLobbyNotifications();
         }
         syncRooms();
+        
+        // --- ДОБАВЛЕНО СЮДА ---
+        bindSelfPresence();
+        subscribeToOwnProfile();
+        // ----------------------
     } else {
         showScreen('auth-screen');
     }
@@ -1678,15 +1683,15 @@ function initRoomServicesV2() {
     const presenceListener = (snap) => renderUsers(snap.val() || {});
     onValue(presenceDbRef, presenceListener);
 
-    if (isHost) {
-        player.onplay = () => { if (!isRemoteAction) set(videoRef, { type: 'play', time: player.currentTime, ts: Date.now() }); };
-        player.onpause = () => { if (!isRemoteAction) set(videoRef, { type: 'pause', time: player.currentTime, ts: Date.now() }); };
-        player.onseeked = () => { if (!isRemoteAction) set(videoRef, { type: 'seek', time: player.currentTime, ts: Date.now() }); };
-    } else {
-        player.onplay = null;
-        player.onpause = null;
-        player.onseeked = null;
-    }
+    const handleVideoSync = (type) => {
+    const localPerms = getEffectiveRoomPerms(currentPresenceCache[auth.currentUser.uid], isHost);
+    if (!(localPerms.player || isHost)) return; // Блокируем, если нет прав
+    if (!isRemoteAction) set(videoRef, { type: type, time: player.currentTime, ts: Date.now() });
+    };
+
+    player.onplay = () => handleVideoSync('play');
+    player.onpause = () => handleVideoSync('pause');
+    player.onseeked = () => handleVideoSync('seek');
 
     const videoListener = (snap) => {
         if (isHost) return;
@@ -2865,10 +2870,11 @@ function initRoomServicesV4() {
 
             let html = `<div class="user-item" data-uid="${uid}">`;
             html += `<div class="indicator ${status.online ? 'online' : ''}"></div>`;
+            // Стало (текстовый статус убран, закрывающий div оставлен):
             html += `<div class="user-main"><span class="user-name">${name}</span>`;
             if (isUserHost) html += `<span class="host-label">Host</span>`;
             if (isLocal) html += `<span class="you-label">(Вы)</span>`;
-            html += `<span class="friend-label">${escapeHtml(getOnlineLabel(status))}</span></div>`;
+            html += `</div>`;
             html += `<div class="user-card-actions">`;
             if (!isLocal) html += `<button type="button" class="report-btn" data-uid="${uid}">Report</button>`;
             if (!isLocal) html += `<button type="button" class="dm-btn" data-uid="${uid}">💬</button>`;
@@ -2944,15 +2950,17 @@ function initRoomServicesV4() {
     if ($('send-btn')) $('send-btn').onclick = sendRoomMessage;
     if ($('chat-input')) $('chat-input').onkeydown = (event) => { if (event.key === 'Enter') sendRoomMessage(); };
     if ($('chat-messages')) {
-        $('chat-messages').onclick = (event) => {
-            if (!isHost || !event.target.classList.contains('timecode-btn')) return;
-            const [mm, ss] = event.target.dataset.time.split(':').map((v) => parseInt(v, 10));
-            const seconds = (mm * 60) + ss;
-            player.currentTime = seconds;
-            player.play().catch(() => {});
-            set(videoRef, { type: 'seek', time: seconds, ts: Date.now() });
-        };
-    }
+    $('chat-messages').onclick = (event) => {
+        const localPerms = getEffectiveRoomPerms(currentPresenceCache[auth.currentUser.uid], isHost);
+        if (!(localPerms.player || isHost) || !event.target.classList.contains('timecode-btn')) return;
+
+        const [mm, ss] = event.target.dataset.time.split(':').map((v) => parseInt(v, 10));
+        const seconds = (mm * 60) + ss;
+        player.currentTime = seconds;
+        player.play().catch(() => {});
+        set(videoRef, { type: 'seek', time: seconds, ts: Date.now() });
+    };
+}
     bindChild(chatRef, (snap) => {
         const msg = snap.val();
         const id = snap.key;
@@ -3058,8 +3066,6 @@ function widenLobbyLayout() {
 }
 
 bindDirectChatUiV2();
-bindSelfPresence();
-subscribeToOwnProfile();
 bindCreateModalOverrides();
 widenLobbyLayout();
 

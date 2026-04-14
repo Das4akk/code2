@@ -15,8 +15,44 @@ button:active:not(:disabled) {
 /* Нейрофон */
 #particle-canvas { position: fixed; top: 0; left: 0; z-index: -1; width: 100%; height: 100%; opacity: 0.8; }
 
-/* Глассморфизм */
-.glass-panel { background: rgba(20, 20, 20, 0.4); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 20px; }
+/* Прозрачное стекло с сильным размытием */
+.glass-panel, .friends-list-panel {
+    background: rgba(10, 10, 10, 0.15) !important; /* Почти прозрачный фон */
+    backdrop-filter: blur(35px) saturate(180%) !important; /* Сильное размытие, чтобы фон читался */
+    -webkit-backdrop-filter: blur(35px) saturate(180%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.06) !important; /* Очень тонкая белая рамка */
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Карточки внутри тоже делаем легкими */
+.room-card, .friend-card {
+    background: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid rgba(255, 255, 255, 0.04) !important;
+}
+
+/* Фикс для панели друзей, чтобы она тоже стала полностью стеклянной и аккуратной */
+.friends-list-panel {
+    position: absolute; 
+    top: 70px; 
+    right: 20px; 
+    width: 360px; 
+    max-height: 560px;
+    overflow-y: auto; 
+    background: rgba(15, 15, 15, 0.7); 
+    border: 1px solid rgba(255, 255, 255, 0.08); 
+    border-radius: 24px; 
+    padding: 24px; 
+    z-index: 100; 
+    backdrop-filter: blur(28px) saturate(160%);
+    -webkit-backdrop-filter: blur(28px) saturate(160%);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* Карточки внутри тоже делаем легкими */
+.room-card, .friend-card {
+    background: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid rgba(255, 255, 255, 0.04) !important;
+}
 
 /* Экраны */
 .screen { display: none; height: 100vh; flex-direction: column; }
