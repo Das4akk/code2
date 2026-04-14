@@ -583,7 +583,8 @@ function initRoomServices() {
         if (!el) return;
         const v = parseFloat(el.value) || 0;
         const p = Math.round(v * 100);
-        el.style.background = `linear-gradient(90deg, #00d1ff ${p}%, rgba(255,255,255,0.12) ${p}%)`;
+        const accent = (typeof getComputedStyle !== 'undefined') ? getComputedStyle(document.documentElement).getPropertyValue('--accent') : '#f5f7fa';
+        el.style.background = `linear-gradient(90deg, ${accent.trim()} ${p}%, rgba(255,255,255,0.12) ${p}%)`;
     };
     if (voiceEl) {
         voiceEl.addEventListener('input', (e) => {
@@ -631,7 +632,8 @@ function startMicVisualizer(stream) {
         let glow = volume * 30; // интенсивность свечения
         
         micBtn.style.transform = `scale(${scale})`;
-        micBtn.style.filter = `drop-shadow(0 0 ${glow}px rgba(0, 209, 255, 0.8))`;
+        const accentColor = (typeof getComputedStyle !== 'undefined') ? getComputedStyle(document.documentElement).getPropertyValue('--accent') : '#f5f7fa';
+        micBtn.style.filter = `drop-shadow(0 0 ${glow}px ${accentColor.trim()})`;
         
         micAnimationId = requestAnimationFrame(animate);
     }
@@ -739,7 +741,7 @@ $('mic-btn').onclick = async function() {
         btnOpen.onclick = () => {
             if (!auth.currentUser) return showToast('Нужно войти');
             if (inpName) inpName.value = auth.currentUser.displayName || '';
-            if (inpColor) inpColor.value = '#7afcff';
+            if (inpColor) inpColor.value = '#f5f7fa';
             if (modal) modal.classList.add('active');
         };
     }
@@ -747,7 +749,7 @@ $('mic-btn').onclick = async function() {
     if (btnSave) btnSave.onclick = async () => {
         if (!auth.currentUser) return showToast('Нужно войти');
         const name = inpName ? inpName.value.trim() : '';
-        const color = inpColor ? inpColor.value : '#7afcff';
+        const color = inpColor ? inpColor.value : '#f5f7fa';
         try {
             await updateProfile(auth.currentUser, { displayName: name });
             await set(ref(db, `users/${auth.currentUser.uid}/profile`), { name, color });

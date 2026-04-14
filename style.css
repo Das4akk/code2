@@ -35,6 +35,7 @@ input:focus { border-color: rgba(255,255,255,0.5); }
 .google-btn { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,0.1); }
 .danger-btn { background: rgba(255, 71, 87, 0.1); color: #ff4757; border: 1px solid rgba(255, 71, 87, 0.3); }
 .danger-btn:hover { background: rgba(255, 71, 87, 0.3); }
+.primary-btn, .google-btn, .icon-btn { position: relative; z-index: 5; }
 .divider { margin: 20px 0; display: flex; align-items: center; gap: 10px; color: #555; font-size: 12px; }
 .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: #222; }
 
@@ -42,9 +43,11 @@ input:focus { border-color: rgba(255,255,255,0.5); }
 #lobby-screen { padding: 20px; }
 .lobby-layout { display: grid; grid-template-columns: 260px 1fr; gap: 20px; max-width: 1400px; margin: 0 auto; height: 100%; }
 .lobby-sidebar { padding: 20px; display: flex; flex-direction: column; }
-.user-profile { display: flex; align-items: center; gap: 12px; margin-bottom: 30px; }
+.user-profile { display: flex; align-items: center; gap: 12px; margin-bottom: 30px; justify-content: space-between; }
+.user-profile > div { flex: 1; min-width: 0; }
+#btn-edit-profile { margin-left: 12px; height:36px; align-self:center; }
 .avatar-circle { width: 56px; height: 56px; min-width:56px; min-height:56px; border-radius: 50%; background: linear-gradient(45deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%); background-size:cover; background-position:center; flex:0 0 auto; }
-.main-header { padding: 15px 25px; display: flex; justify-content: space-between; margin-bottom: 20px; }
+.main-header { padding: 15px 25px; display: flex; justify-content: space-between; margin-bottom: 20px; overflow: visible; align-items: center; }
 .main-header input { width: 300px; margin-bottom: 0; }
 .rooms-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; overflow-y: auto; height: calc(100vh - 120px); }
 .room-card { padding: 25px; display: flex; flex-direction: column; justify-content: space-between; border-radius: 16px; transition: 0.3s; cursor: pointer;}

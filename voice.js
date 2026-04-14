@@ -50,13 +50,15 @@ const VoiceManager = {
         source.connect(this.analyser);
         const data = new Uint8Array(this.analyser.frequencyBinCount);
 
+        const accentColor = (typeof getComputedStyle !== 'undefined') ? getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() : '#f5f7fa';
+
         const draw = () => {
             if (!this.myStream) return;
             this.analyser.getByteFrequencyData(data);
             let avg = data.reduce((a, b) => a + b, 0) / data.length;
             let vol = avg / 128;
             el.style.transform = `scale(${1 + vol * 0.5})`;
-            el.style.filter = `drop-shadow(0 0 ${vol * 30}px #00d1ff)`;
+            el.style.filter = `drop-shadow(0 0 ${vol * 30}px ${accentColor})`;
             this.animationId = requestAnimationFrame(draw);
         };
         draw();
