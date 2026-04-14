@@ -794,23 +794,23 @@ function initRoomServices() {
         }
     };
 
-    onChildAdded(chatRef, (snap) => {
-        const m = snap.val();
-        const id = snap.key;
-        if (processedMsgs.has(id)) return; // Защита от дублей
-        processedMsgs.add(id);
-
-        const isMe = m.user === auth.currentUser.displayName;
-        const div = document.createElement('div');
-        div.className = isMe ? 'm-line self' : 'm-line';
-        div.innerHTML = `<div class="bubble"><strong>${escapeHtml(m.user || 'User')}</strong><p>${parseTimecodes(m.content || '')}</p></div>`;
-        $('chat-messages').appendChild(div);
-        $('chat-messages').scrollTop = $('chat-messages').scrollHeight;
-        // Показываем тост только для новых сообщений (после входа в комнату)
-        if (!isMe && m.ts && m.ts >= (roomEnteredAt - 2000)) {
-            showToast(`Сообщение от ${escapeHtml(m.user || 'User')}`);
-        }
-    });
+    onChildAdded(chatRef, (data) => {
+    const msg = data.val();
+    const isMe = msg.senderId === auth.currentUser.uid;
+    const div = document.createElement('div');
+    
+    if (msg.isSystem) {
+        div.className = 'chat-message system-log';
+        div.innerHTML = `<span class="sys-text">${escapeHtml(msg.text)}</span>`;
+    } else {
+        div.className = `chat-message ${isMe ? 'self' : 'other'}`;
+        div.innerHTML = `<div class="msg-author">${escapeHtml(msg.senderName)}</div>
+                         <div class="msg-text">${escapeHtml(msg.text)}</div>`;
+    }
+    
+    $('chat-messages').appendChild(div);
+    $('chat-messages').scrollTop = $('chat-messages').scrollHeight;
+});
 
     // Табы чата
     $('tab-chat-btn').onclick = () => { $('chat-messages').style.display='flex'; $('users-list').style.display='none'; $('tab-chat-btn').classList.add('active'); $('tab-users-btn').classList.remove('active'); };
@@ -2429,9 +2429,28 @@ function getOnlineLabel(status) {
 
 function bindSelfPresence() {
     if (!auth.currentUser) return;
-    const statusRef = ref(db, `users/${auth.currentUser.uid}/status`);
-    set(statusRef, { online: true, lastSeen: Date.now() });
-    onDisconnect(statusRef).set({ online: false, lastSeen: Date.now() });
+    const uid = auth.currentUser.uid;
+    const userStatusRef = ref(db, `status/${uid}`);
+    const connectedRef = ref(db, '.info/connected');
+
+    onValue(connectedRef, (snap) => {
+        if (snap.val() === true) {
+            const isOnlineForDatabase = {
+                state: 'online',
+                last_changed: Date.now()
+            };
+            const isOfflineForDatabase = {
+                state: 'offline',
+                last_changed: Date.now()
+            };
+            
+            // При отключении от интернета/закрытии вкладки — ставим offline
+            onDisconnect(userStatusRef).set(isOfflineForDatabase).then(() => {
+                // Как только onDisconnect установлен, ставим online
+                set(userStatusRef, isOnlineForDatabase);
+            });
+        }
+    });
 }
 
 function subscribeToOwnProfile() {
@@ -3063,6 +3082,17 @@ function widenLobbyLayout() {
         layout.style.maxWidth = '95vw';
         layout.style.width = '95vw';
     }
+}
+
+function sendSystemMessage(text) {
+    if (!currentRoomId) return;
+    const chatRef = ref(db, `rooms/${currentRoomId}/chat`);
+    push(chatRef, {
+        senderId: 'system',
+        text: text,
+        timestamp: Date.now(),
+        isSystem: true // Специальный флаг
+    });
 }
 
 bindDirectChatUiV2();

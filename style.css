@@ -513,3 +513,18 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
     padding: 8px 10px;
     justify-content: space-between;
 }
+
+.chat-message.system-log {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    margin: 12px 0;
+}
+
+.chat-message.system-log .sys-text {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4); /* Монохромный тусклый цвет */
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-align: center;
+}
