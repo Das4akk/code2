@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, updateProfile, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getDatabase, ref, push, set, onValue, onChildAdded, onDisconnect, remove, off } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"; 
+import { getDatabase, ref, push, set, onValue, onChildAdded, onDisconnect, remove, off, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"; 
 
 const firebaseConfig = {
     apiKey: "AIzaSyCby2qPGnlHWRfxWAI3Y2aK_UndEh9nato",
@@ -72,6 +72,9 @@ let roomListenerUnsubscribe = null;
 let isRemoteAction = false;
 let lastSyncTs = 0;
 let processedMsgs = new Set(); // Защита от дублей сообщений
+let editingRoomId = null; // Если установлено - модал создания используется для редактирования
+// URL для репорт-формы (оставьте пустым, чтобы отключить кнопку Report)
+const REPORT_FORM_URL = '';
 
 setPersistence(auth, browserLocalPersistence);
 
@@ -95,8 +98,8 @@ $('btn-google-auth').onclick = async () => { try { await signInWithPopup(auth, n
 $('btn-logout').onclick = () => signOut(auth);
 
 // Лобби
-$('btn-open-modal').onclick = () => $('modal-create').classList.add('active');
-$('btn-close-modal').onclick = () => $('modal-create').classList.remove('active');
+$('btn-open-modal').onclick = () => { editingRoomId = null; $('modal-create').classList.add('active'); };
+$('btn-close-modal').onclick = () => { editingRoomId = null; $('modal-create').classList.remove('active'); if ($('room-password')) $('room-password').value = ''; if ($('room-private')) $('room-private').checked = false; };
 
 $('btn-delete-all-rooms').onclick = async () => {
     if(confirm("ВНИМАНИЕ! Вы удалите ВСЕ комнаты. Продолжить?")) {
@@ -111,8 +114,51 @@ $('btn-create-finish').onclick = async () => {
     if(!name || !link) return showToast("Заполни поля!");
     const isPrivate = $('room-private') ? $('room-private').checked : false;
     const password = $('room-password') ? $('room-password').value : '';
+    const preview = $('room-preview') ? $('room-preview').value : '';
+    const buttonColor = $('room-button-color') ? $('room-button-color').value : '';
+
+    // Если редактирование существующей комнаты
+    if (editingRoomId) {
+        const prev = roomsCache[editingRoomId] || {};
+        const updateData = { name, link, preview, buttonColor };
+        if (isPrivate) {
+            if (password && password.length >= 4) {
+                try {
+                    const salt = genSalt(16);
+                    const pwHash = await deriveKey(password, salt);
+                    updateData.private = true;
+                    updateData.pwSalt = salt;
+                    updateData.pwHash = pwHash;
+                } catch (e) { return showToast('Ошибка при установке пароля'); }
+            } else if (prev.private) {
+                // сохраняем старый хеш если пароль не поменяли
+                updateData.private = true;
+                updateData.pwSalt = prev.pwSalt;
+                updateData.pwHash = prev.pwHash;
+            } else {
+                // поставить приватность, но без пароля — не позволяем
+                return showToast('Укажите пароль для приватной комнаты (мин 4 символа)');
+            }
+        } else {
+            // Снимаем приватность — удаляем поля
+            updateData.private = null;
+            updateData.pwSalt = null;
+            updateData.pwHash = null;
+        }
+
+        try {
+            await update(ref(db, `rooms/${editingRoomId}`), updateData);
+            showToast('Комната обновлена');
+            editingRoomId = null;
+            $('modal-create').classList.remove('active');
+        } catch (e) { showToast('Ошибка при обновлении комнаты'); }
+
+        return;
+    }
+
+    // Создание новой комнаты
     const newRoomRef = push(ref(db, 'rooms'));
-    const roomData = { name, link, admin: auth.currentUser.uid, adminName: auth.currentUser.displayName || "User" };
+    const roomData = { name, link, admin: auth.currentUser.uid, adminName: auth.currentUser.displayName || "User", preview, buttonColor };
     if (isPrivate) {
         if (!password || password.length < 4) return showToast('Пароль должен быть минимум 4 символа');
         try {
@@ -153,7 +199,9 @@ function renderRooms(filter = '') {
         }
         // Используем JSON.stringify чтобы корректно экранировать аргументы для onclick
         const lock = room.private ? '🔒 ' : '';
-        grid.innerHTML += `\n            <div class="room-card glass-panel" onclick='window.joinRoom(${JSON.stringify(id)}, ${JSON.stringify(name)}, ${JSON.stringify(room.link || '')}, ${JSON.stringify(room.admin || '')})'>\n                <h4>${lock + escapeHtml(name)}</h4>\n                <p style=\"font-size:12px; opacity:0.6; margin-top:5px;\">Хост: ${escapeHtml(host)}</p>\n            </div>`;
+        const previewStyle = room.preview ? `background-image: url(${JSON.stringify(room.preview)});` : '';
+        const colorDot = room.buttonColor ? `<div class="room-color-indicator" style="background:${escapeHtml(room.buttonColor)}"></div>` : '';
+        grid.innerHTML += `\n            <div class="room-card glass-panel" onclick='window.joinRoom(${JSON.stringify(id)}, ${JSON.stringify(name)}, ${JSON.stringify(room.link || '')}, ${JSON.stringify(room.admin || '')})'>\n                ${colorDot}\n                <div class="room-thumb" style="${previewStyle}"></div>\n                <h4>${lock + escapeHtml(name)}</h4>\n                <p style=\"font-size:12px; opacity:0.6; margin-top:5px;\">Хост: ${escapeHtml(host)}</p>\n            </div>`;
     });
 }
 
@@ -204,6 +252,18 @@ function enterRoom(roomId, name, link, adminId) {
     isHost = (auth.currentUser.uid === adminId);
     $('room-title-text').innerText = name;
     player.src = link;
+    // Устанавливаем превью комнаты как фон плеера, если есть
+    const roomMeta = roomsCache[roomId] || {};
+    const pw = $('player-wrapper');
+    if (pw) {
+        if (roomMeta.preview) {
+            pw.style.backgroundImage = `url(${roomMeta.preview})`;
+            pw.style.backgroundSize = 'cover';
+            pw.style.backgroundPosition = 'center';
+        } else {
+            pw.style.backgroundImage = '';
+        }
+    }
     $('chat-messages').innerHTML = ''; 
     
     // ПРАВА ДОСТУПА: Хост управляет, зритель только смотрит
@@ -216,6 +276,7 @@ function enterRoom(roomId, name, link, adminId) {
     initRoomServices();
     // Показ/логика кнопки удаления комнаты (только для хоста)
     const delBtn = $('btn-delete-room');
+    const editBtn = $('btn-edit-room');
     if (delBtn) {
         delBtn.style.display = isHost ? 'inline-block' : 'none';
         delBtn.onclick = async () => {
@@ -230,6 +291,24 @@ function enterRoom(roomId, name, link, adminId) {
             }
         };
     }
+    if (editBtn) {
+        editBtn.style.display = isHost ? 'inline-block' : 'none';
+        editBtn.onclick = () => {
+            if (!isHost) return;
+            editingRoomId = currentRoomId;
+            const meta = roomsCache[currentRoomId] || {};
+            if ($('room-name')) $('room-name').value = meta.name || '';
+            if ($('room-link')) $('room-link').value = meta.link || '';
+            if ($('room-preview')) $('room-preview').value = meta.preview || '';
+            if ($('room-button-color')) $('room-button-color').value = meta.buttonColor || '#ffffff';
+            if ($('room-private')) {
+                $('room-private').checked = !!meta.private;
+                $('room-password').style.display = $('room-private').checked ? 'block' : 'none';
+            }
+            if ($('room-password')) $('room-password').value = '';
+            $('modal-create').classList.add('active');
+        };
+    }
     showToast(isHost ? "Вы зашли как Хост" : "Вы зашли как Зритель");
 }
 
@@ -241,6 +320,7 @@ function leaveRoom() {
     $('remote-audio-container').innerHTML = '';
     activeCalls.clear();
     const delBtn = $('btn-delete-room'); if (delBtn) delBtn.style.display = 'none';
+    const editBtn = $('btn-edit-room'); if (editBtn) editBtn.style.display = 'none';
     // Скрываем модалки на случай открытых
     const jm = $('modal-join'); if (jm) jm.classList.remove('active');
     presenceRef = null;
@@ -317,6 +397,11 @@ function initRoomServices() {
                 itemHtml += `</div>`;
             }
 
+            // Кнопка репорта (для всех, кроме себя)
+            if (!isLocal) {
+                itemHtml += `<button class="report-btn" data-uid="${uid}" title="Report" style="margin-left:8px; background:transparent; border:1px solid rgba(255,255,255,0.06); color:#fff; padding:6px 8px; border-radius:8px; cursor:pointer;">Report</button>`;
+            }
+
             itemHtml += `</div>`;
             usersListEl.innerHTML += itemHtml;
         });
@@ -335,6 +420,15 @@ function initRoomServices() {
                 });
             });
         }
+
+        // Кнопки репорта
+        document.querySelectorAll('.report-btn').forEach(b => {
+            b.addEventListener('click', (e) => {
+                const uid = e.target.dataset.uid;
+                if (!REPORT_FORM_URL) { showToast('Форма для репортов не настроена'); return; }
+                window.open(REPORT_FORM_URL + '?reported=' + encodeURIComponent(uid), '_blank');
+            });
+        });
 
         // Применяем локальные права (для текущего пользователя)
         const localNode = data[auth.currentUser.uid] || {};
@@ -484,9 +578,20 @@ function initRoomServices() {
         }
     });
 
-    $('voice-volume').oninput = (e) => {
-        document.querySelectorAll('#remote-audio-container audio').forEach(a => a.volume = e.target.value);
+    const voiceEl = $('voice-volume');
+    const setRangeFill = (el) => {
+        if (!el) return;
+        const v = parseFloat(el.value) || 0;
+        const p = Math.round(v * 100);
+        el.style.background = `linear-gradient(90deg, #00d1ff ${p}%, rgba(255,255,255,0.12) ${p}%)`;
     };
+    if (voiceEl) {
+        voiceEl.addEventListener('input', (e) => {
+            document.querySelectorAll('#remote-audio-container audio').forEach(a => a.volume = e.target.value);
+            setRangeFill(e.target);
+        });
+        setRangeFill(voiceEl);
+    }
     // ... (начало кода без изменений до момента с микрофоном)
 
 // Переменные для визуализатора
@@ -619,6 +724,39 @@ $('mic-btn').onclick = async function() {
         rpwd.style.display = rp.checked ? 'block' : 'none';
         rp.addEventListener('change', () => { rpwd.style.display = rp.checked ? 'block' : 'none'; if (rp.checked) rpwd.focus(); });
     }
+})();
+
+// --- МОДАЛКА: профиль пользователя ---
+(function setupProfile(){
+    const btnOpen = $('btn-edit-profile');
+    const modal = $('modal-profile');
+    const inpName = $('profile-name');
+    const inpColor = $('profile-color');
+    const btnSave = $('btn-profile-save');
+    const btnCancel = $('btn-profile-cancel');
+
+    if (btnOpen) {
+        btnOpen.onclick = () => {
+            if (!auth.currentUser) return showToast('Нужно войти');
+            if (inpName) inpName.value = auth.currentUser.displayName || '';
+            if (inpColor) inpColor.value = '#7afcff';
+            if (modal) modal.classList.add('active');
+        };
+    }
+    if (btnCancel) btnCancel.onclick = () => { if (modal) modal.classList.remove('active'); };
+    if (btnSave) btnSave.onclick = async () => {
+        if (!auth.currentUser) return showToast('Нужно войти');
+        const name = inpName ? inpName.value.trim() : '';
+        const color = inpColor ? inpColor.value : '#7afcff';
+        try {
+            await updateProfile(auth.currentUser, { displayName: name });
+            await set(ref(db, `users/${auth.currentUser.uid}/profile`), { name, color });
+            if ($('user-display-name')) $('user-display-name').innerText = name || auth.currentUser.email;
+            const av = $('my-avatar'); if (av) av.style.background = `linear-gradient(45deg, ${color}, rgba(255,255,255,0.06))`;
+            if (modal) modal.classList.remove('active');
+            showToast('Профиль сохранён');
+        } catch (e) { showToast('Ошибка сохранения профиля'); }
+    };
 })();
 
 // --- НЕЙРОСЕТЕВОЙ ФОН ---

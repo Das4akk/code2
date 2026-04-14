@@ -50,6 +50,10 @@ input:focus { border-color: rgba(255,255,255,0.5); }
 .room-card { padding: 25px; display: flex; flex-direction: column; justify-content: space-between; border-radius: 16px; transition: 0.3s; cursor: pointer;}
 .room-card:hover { transform: translateY(-5px); background: rgba(255,255,255,0.08); }
 
+.room-thumb { width: 100%; height: 140px; border-radius: 12px; background-size: cover; background-position: center; margin-bottom: 12px; background-color: rgba(255,255,255,0.02); }
+.room-color-indicator { position: absolute; right: 18px; top: 18px; width: 12px; height: 12px; border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.4); }
+.room-card { position: relative; }
+
 /* Комната и Плеер */
 #room-screen { padding: 15px; }
 .room-header { padding: 15px 25px; margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between; }
@@ -131,3 +135,65 @@ video { width: 100%; height: 100%; object-fit: contain; outline: none; }
 .modal.active { display: flex; }
 .modal-content { width: 400px; padding: 30px; }
 .modal-buttons { display: flex; gap: 10px; margin-top: 20px; }
+
+/* Custom checkboxes (consistent look across the UI) */
+input[type="checkbox"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.02);
+    display: inline-block;
+    vertical-align: middle;
+    cursor: pointer;
+    transition: all 0.12s ease-in-out;
+}
+input[type="checkbox"]:hover { border-color: rgba(255,255,255,0.18); }
+input[type="checkbox"]:focus { outline: none; box-shadow: 0 0 0 4px rgba(0,209,255,0.06); }
+input[type="checkbox"]:checked {
+    background: linear-gradient(135deg,#00d1ff,#6be7ff);
+    border-color: #00d1ff;
+    box-shadow: 0 6px 18px rgba(0,209,255,0.10);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 12px 12px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23ffffff' d='M20.285 6.708l-11.025 11.026-5.545-5.545 1.414-1.414 4.131 4.13 9.611-9.611z'/></svg>");
+}
+.perm-controls input[type="checkbox"] { width: 18px; height: 18px; }
+
+/* Range (slider) styles */
+input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 160px;
+    height: 14px;
+    background: transparent;
+    cursor: pointer;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+    height: 8px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 999px;
+}
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: linear-gradient(135deg,#00d1ff,#6be7ff);
+    border: 2px solid rgba(255,255,255,0.95);
+    margin-top: -4px;
+    box-shadow: 0 6px 14px rgba(0,0,0,0.45);
+}
+input[type="range"]:focus::-webkit-slider-runnable-track { box-shadow: 0 0 8px rgba(0,209,255,0.06); }
+input[type="range"]::-moz-range-track { height: 8px; background: rgba(255,255,255,0.08); border-radius: 999px; }
+input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: linear-gradient(135deg,#00d1ff,#6be7ff); border: 2px solid rgba(255,255,255,0.95); }
+
+/* Modal label alignment tweaks */
+.modal-content label { display:flex; gap:8px; align-items:center; }
+
+.report-btn { background: transparent; border: 1px solid rgba(255,255,255,0.06); color: #fff; padding: 6px 8px; border-radius: 8px; cursor: pointer; }
+.report-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.4); }

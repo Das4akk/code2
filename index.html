@@ -49,6 +49,7 @@
                             <h3 id="user-display-name">...</h3>
                             <span style="font-size: 12px; color: #aaa;">Онлайн</span>
                         </div>
+                        <button id="btn-edit-profile" class="icon-btn" style="margin-left: 12px; height:36px; align-self:center;">Профиль</button>
                     </div>
                     <nav class="sidebar-nav">
                         <button class="nav-item active glass-panel">Все комнаты</button>
@@ -72,6 +73,11 @@
                 <h2>Создать комнату</h2>
                 <input type="text" id="room-name" placeholder="Название комнаты" autocomplete="off">
                 <input type="text" id="room-link" placeholder="Ссылка на видео (mp4)" autocomplete="off">
+                <input type="text" id="room-preview" placeholder="Превью (URL изображения)" autocomplete="off" style="margin-top:8px;">
+                <div style="display:flex; align-items:center; gap:8px; margin-top:8px;">
+                    <label style="font-size:14px; color:#ddd;">Цвет кнопки:</label>
+                    <input type="color" id="room-button-color" value="#ffffff" style="width:44px; height:34px; padding:0; border-radius:8px; border:none;">
+                </div>
                 <label style="display:flex; align-items:center; gap:8px; margin-top:8px; font-size:14px; color:#ddd;">
                     <input type="checkbox" id="room-private"> Приватная комната
                 </label>
@@ -94,10 +100,27 @@
                 </div>
             </div>
 
+            <div id="modal-profile" class="modal">
+                <div class="modal-content glass-panel">
+                    <h2>Профиль</h2>
+                    <input type="text" id="profile-name" placeholder="Никнейм" autocomplete="off">
+                    <div style="display:flex; align-items:center; gap:8px; margin-top:8px;">
+                        <label style="font-size:14px; color:#ddd;">Цвет</label>
+                        <input type="color" id="profile-color" value="#7afcff" style="width:44px; height:34px; padding:0; border-radius:8px; border:none;">
+                    </div>
+                    <div class="modal-buttons">
+                        <button id="btn-profile-cancel" class="google-btn">Отмена</button>
+                        <button id="btn-profile-save" class="primary-btn">Сохранить</button>
+                    </div>
+                </div>
+            </div>
+
+
         <section id="room-screen" class="screen">
             <header class="room-header glass-panel">
                 <div style="display: flex; gap: 10px;">
                     <button id="btn-leave-room" class="google-btn leave-btn">← В лобби</button>
+                    <button id="btn-edit-room" class="google-btn" style="display:none;">Редактировать</button>
                     <button id="btn-delete-room" class="danger-btn" style="display:none;">Удалить комнату</button>
                 </div>
                 <h2 id="room-title-text" style="margin-left: 20px; flex-grow: 1;">Комната</h2>
