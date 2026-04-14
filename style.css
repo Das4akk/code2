@@ -54,7 +54,7 @@ input:focus { border-color: rgba(255,255,255,0.5); }
 .room-card:hover { transform: translateY(-5px); background: rgba(255,255,255,0.08); }
 
 .room-thumb { width: 100%; height: 140px; border-radius: 12px; background-size: cover; background-position: center; margin-bottom: 12px; background-color: rgba(255,255,255,0.02); }
-.room-color-indicator { position: absolute; right: 18px; top: 18px; width: 12px; height: 12px; border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.4); }
+.room-color-indicator { position: absolute; right: 12px; top: 12px; width: 36px; height: 36px; border-radius: 8px; box-shadow: 0 6px 16px rgba(0,0,0,0.6); z-index: 3; }
 .room-card { position: relative; }
 
 /* Комната и Плеер */
@@ -111,22 +111,33 @@ video { width: 100%; height: 100%; object-fit: contain; outline: none; }
 .self .timecode-btn:hover { background: #000; color: #fff; }
 
 /* Индикатор пользователя */
-.user-item { padding: 12px; display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.03); border-radius: 10px; justify-content: space-between; }
-.indicator { width: 8px; height: 8px; background: #2ed573; border-radius: 50%; box-shadow: 0 0 8px #2ed573; }
+.user-item { padding: 10px; display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.03); border-radius: 10px; }
+.indicator { width: 10px; height: 10px; background: #2ed573; border-radius: 50%; box-shadow: 0 0 8px #2ed573; flex: 0 0 auto; }
 
 /* Доп. стили для списка пользователей и прав */
-.user-main { display:flex; gap:8px; align-items:center; }
+.user-main { display:flex; gap:8px; align-items:center; min-width: 0; flex: 1 1 auto; }
+.user-name { display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .host-label { font-size:11px; background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 8px; margin-left:6px; color:#fff; font-weight:600; }
 .you-label { font-size:11px; opacity:0.7; margin-left:6px; }
-.perm-controls { display:flex; gap:8px; margin-left:auto; align-items:center; }
-.perm-controls label { font-size:12px; color:#ddd; display:flex; gap:6px; align-items:center; cursor: pointer; }
-.perm-controls input[type="checkbox"] { width:14px; height:14px; }
+.friend-label { font-size:11px; background: rgba(46, 204, 113, 0.12); padding: 2px 6px; border-radius: 8px; margin-left:6px; color:#2ed573; font-weight:700; }
+.perm-controls { display:flex; gap:6px; margin-left:8px; align-items:center; flex-shrink: 0; }
+.perm-controls label { font-size:12px; color:#ddd; display:flex; gap:6px; align-items:center; cursor: pointer; white-space:nowrap; }
+.perm-controls input[type="checkbox"] { width:16px; height:16px; }
+
+/* Small action buttons near user entries */
+.friend-btn, .invite-btn, .dm-btn { background: transparent; border: 1px solid rgba(255,255,255,0.06); color: #fff; padding: 6px 8px; border-radius: 8px; cursor: pointer; font-size: 12px; margin-left: 6px; }
+.friend-btn[disabled] { opacity: 0.6; cursor: default; }
+
+/* Speaking visual */
+.user-item .indicator.speaking { box-shadow: 0 0 20px var(--accent); transform: scale(1.2); }
+
+#remote-audio-container { display: none !important; }
 
 /* Микрофон и Ввод */
 .message-dock { padding: 15px; background: rgba(0,0,0,0.3); border-top: 1px solid rgba(255,255,255,0.05); }
 .beautiful-chat-input { display: flex; gap: 10px; padding: 5px 10px; align-items: center; border-radius: 30px; background: rgba(10,10,10,0.8); }
 .beautiful-chat-input input { margin-bottom: 0; border: none; background: none; flex: 1; outline: none; font-size: 14px; }
-.mic-icon-btn { background: none; border: none; font-size: 20px; cursor: pointer; opacity: 0.5; transition: 0.3s; padding: 5px; border-radius: 50%; }
+.mic-icon-btn { background: none; border: none; font-size: 18px; cursor: pointer; opacity: 0.7; transition: transform 0.12s ease, box-shadow 0.12s ease; padding: 0; width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; transform-origin: center center; will-change: transform, filter; -webkit-font-smoothing: antialiased; }
 /* ИНДИКАЦИЯ РАБОТЫ МИКРОФОНА */
 .mic-icon-btn.active { opacity: 1; background: rgba(46, 213, 115, 0.2); box-shadow: 0 0 15px rgba(46, 213, 115, 0.5); animation: pulseMic 1.5s infinite; }
 @keyframes pulseMic { 0% { transform: scale(1); } 50% { transform: scale(1.1); box-shadow: 0 0 25px rgba(46, 213, 115, 0.8); } 100% { transform: scale(1); } }
