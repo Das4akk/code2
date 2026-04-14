@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, updateProfile, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getDatabase, ref, push, set, onValue, onChildAdded, onDisconnect, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"; 
+import { getDatabase, ref, push, set, onValue, onChildAdded, onDisconnect, remove, off } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"; 
 
 const firebaseConfig = {
     apiKey: "AIzaSyCby2qPGnlHWRfxWAI3Y2aK_UndEh9nato",
@@ -153,7 +153,7 @@ function renderRooms(filter = '') {
         }
         // Используем JSON.stringify чтобы корректно экранировать аргументы для onclick
         const lock = room.private ? '🔒 ' : '';
-        grid.innerHTML += `\n            <div class="room-card glass-panel" onclick="window.joinRoom(${JSON.stringify(id)}, ${JSON.stringify(name)}, ${JSON.stringify(room.link || '')}, ${JSON.stringify(room.admin || '')})">\n                <h4>${lock + escapeHtml(name)}</h4>\n                <p style=\"font-size:12px; opacity:0.6; margin-top:5px;\">Хост: ${escapeHtml(host)}</p>\n            </div>`;
+        grid.innerHTML += `\n            <div class="room-card glass-panel" onclick='window.joinRoom(${JSON.stringify(id)}, ${JSON.stringify(name)}, ${JSON.stringify(room.link || '')}, ${JSON.stringify(room.admin || '')})'>\n                <h4>${lock + escapeHtml(name)}</h4>\n                <p style=\"font-size:12px; opacity:0.6; margin-top:5px;\">Хост: ${escapeHtml(host)}</p>\n            </div>`;
     });
 }
 
@@ -180,23 +180,17 @@ function syncRooms() {
         rp.addEventListener('change', () => { rpwd.style.display = rp.checked ? 'block' : 'none'; });
     }
 }
-window.joinRoom = async (id, name, link, admin) => {
-    // Если комната приватная — запросим пароль и проверим хеш
+let pendingJoin = null;
+window.joinRoom = (id, name, link, admin) => {
     const room = roomsCache[id] || null;
     if (room && room.private) {
-        for (let attempt = 0; attempt < 3; attempt++) {
-            const pw = prompt('Комната приватная. Введите пароль:');
-            if (pw === null) return; // пользователь отменил
-            try {
-                const derived = await deriveKey(pw, room.pwSalt);
-                if (derived === room.pwHash) {
-                    return enterRoom(id, name, link, admin);
-                } else {
-                    showToast('Неверный пароль');
-                }
-            } catch (e) { showToast('Ошибка проверки пароля'); return; }
-        }
-        return; // неудачные попытки
+        // Открываем модал ввода пароля
+        pendingJoin = { id, name, link, admin };
+        const m = $('modal-join');
+        const inp = $('join-password');
+        if (inp) inp.value = '';
+        if (m) { m.classList.add('active'); setTimeout(() => inp && inp.focus(), 120); }
+        return;
     }
     return enterRoom(id, name, link, admin);
 };
@@ -241,12 +235,15 @@ function enterRoom(roomId, name, link, adminId) {
 
 function leaveRoom() {
     if (presenceRef) remove(presenceRef);
-    if (roomListenerUnsubscribe) roomListenerUnsubscribe(); 
+    if (roomListenerUnsubscribe) { try { roomListenerUnsubscribe(); } catch(e) {} roomListenerUnsubscribe = null; }
     player.pause(); player.src = '';
     if (myStream) { myStream.getTracks().forEach(t => t.stop()); myStream = null; $('mic-btn').classList.remove('active'); }
     $('remote-audio-container').innerHTML = '';
     activeCalls.clear();
     const delBtn = $('btn-delete-room'); if (delBtn) delBtn.style.display = 'none';
+    // Скрываем модалки на случай открытых
+    const jm = $('modal-join'); if (jm) jm.classList.remove('active');
+    presenceRef = null;
     currentRoomId = null;
     showScreen('lobby-screen');
 }
@@ -272,9 +269,11 @@ function initRoomServices() {
     const presenceDbRef = ref(db, `rooms/${currentRoomId}/presence`);
     const reactionsRef = ref(db, `rooms/${currentRoomId}/reactions`);
 
-    roomListenerUnsubscribe = onValue(ref(db, `rooms/${currentRoomId}`), (snap) => {
-        if (!snap.exists() && currentRoomId) { showToast("Комната удалена"); leaveRoom(); }
-    });
+    // Слушатель комнаты — проверяем существование и сохраняем функцию отписки
+    const _roomRef = ref(db, `rooms/${currentRoomId}`);
+    const _roomListener = (snap) => { if (!snap.exists() && currentRoomId) { showToast("Комната удалена"); leaveRoom(); } };
+    onValue(_roomRef, _roomListener);
+    roomListenerUnsubscribe = () => { try { off(_roomRef, 'value', _roomListener); } catch(e) {} };
 
     $('btn-fullscreen').onclick = () => $('player-wrapper').requestFullscreen();
 
@@ -516,6 +515,48 @@ $('mic-btn').onclick = async function() {
 
 // ... (дальше остальной твой код: чат, реакции, фон — без изменений)
 }
+// --- МОДАЛЫ: вход в приватную комнату и поведение поля пароля при создании ---
+(function setupModals(){
+    const joinConfirm = $('btn-join-confirm');
+    const joinCancel = $('btn-join-cancel');
+    const joinModal = $('modal-join');
+    const joinPwdInput = $('join-password');
+
+    if (joinConfirm) {
+        joinConfirm.onclick = async () => {
+            if (!pendingJoin) return;
+            const room = roomsCache[pendingJoin.id];
+            if (!room) { showToast('Комната недоступна'); pendingJoin = null; joinModal.classList.remove('active'); return; }
+            const pw = (joinPwdInput && joinPwdInput.value) ? joinPwdInput.value : '';
+            try {
+                const derived = await deriveKey(pw, room.pwSalt);
+                if (derived === room.pwHash) {
+                    joinModal.classList.remove('active');
+                    const { id, name, link, admin } = pendingJoin;
+                    pendingJoin = null;
+                    enterRoom(id, name, link, admin);
+                } else {
+                    showToast('Неверный пароль');
+                }
+            } catch (e) { showToast('Ошибка проверки пароля'); }
+        };
+    }
+    if (joinCancel) {
+        joinCancel.onclick = () => { pendingJoin = null; if (joinModal) joinModal.classList.remove('active'); };
+    }
+    if (joinPwdInput) {
+        joinPwdInput.onkeydown = (e) => { if (e.key === 'Enter') { const c = $('btn-join-confirm'); c && c.click(); } };
+    }
+
+    // Тоггл для поля пароля при создании комнаты — добавляем здесь тоже, чтобы поле точно работало
+    const rp = $('room-private');
+    const rpwd = $('room-password');
+    if (rp && rpwd) {
+        // начально скрываем если не отмечено
+        rpwd.style.display = rp.checked ? 'block' : 'none';
+        rp.addEventListener('change', () => { rpwd.style.display = rp.checked ? 'block' : 'none'; if (rp.checked) rpwd.focus(); });
+    }
+})();
 
 // --- НЕЙРОСЕТЕВОЙ ФОН ---
 const canvas = $('particle-canvas');
