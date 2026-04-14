@@ -85,15 +85,15 @@ const REPORT_FORM_URL = '';
 let directChatUnsubscribe = null;
 let currentDirectChat = null;
 let voiceSignalCleanup = null;
-let voiceSelet roomProfileSubscriptions = new Map();
+let voiceSessionId = null;
+let voicePeerConnections = new Map();
+let voiceParticipantsCache = {};
+let roomProfileSubscriptions = new Map();
 let friendProfileSubscriptions = new Map();
 let dmIndexUnsubscribe = null;
 let lobbyFriendsListenerBound = false;
 let roomPreviewObserver = null;
 let latestRoomPresenceData = {};
-ssionId = null;
-let voicePeerConnections = new Map();
-let voiceParticipantsCache = {};
 
 function isAcceptedFriendRecord(record) {
     return record === true || (record && record.status === 'accepted');
@@ -1803,7 +1803,49 @@ function initRoomServicesV2() {
     };
     onValue(voiceRef, voiceListener);
     roomListenerUnsubscribe = () => {
-        try { off(roomRef, 'value', roomList
+        try { off(roomRef, 'value', roomListener); } catch (e) { /* ignore */ }
+        try { off(presenceDbRef, 'value', presenceListener); } catch (e) { /* ignore */ }
+        try { off(videoRef, 'value', videoListener); } catch (e) { /* ignore */ }
+        try { off(chatRef, 'child_added', chatListener); } catch (e) { /* ignore */ }
+        try { off(reactionsRef, 'child_added', reactionListener); } catch (e) { /* ignore */ }
+        try { off(voiceRef, 'value', voiceListener); } catch (e) { /* ignore */ }
+    };
+
+    const voiceEl = $('voice-volume');
+    const setRangeFill = (el) => {
+        if (!el) return;
+        const v = parseFloat(el.value) || 0;
+        const p = Math.round(v * 100);
+        const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent') || '#f5f7fa';
+        el.style.background = `linear-gradient(90deg, ${accent.trim()} ${p}%, rgba(255,255,255,0.12) ${p}%)`;
+    };
+    if (voiceEl) {
+        voiceEl.oninput = (event) => {
+            document.querySelectorAll('#remote-audio-container audio').forEach((audio) => {
+                audio.volume = event.target.value;
+            });
+            setRangeFill(event.target);
+        };
+        setRangeFill(voiceEl);
+    }
+}
+
+if ($('btn-open-room-invite')) $('btn-open-room-invite').onclick = openRoomInviteModal;
+if ($('btn-room-invite-close')) $('btn-room-invite-close').onclick = closeRoomInviteModal;
+if ($('modal-room-invite')) {
+    $('modal-room-invite').addEventListener('click', (event) => {
+        if (event.target.id === 'modal-room-invite') closeRoomInviteModal();
+    });
+}
+
+renderRooms = renderRoomsV2;
+setupLobbyNotifications = setupLobbyNotificationsV2;
+enterRoom = enterRoomV2;
+leaveRoom = leaveRoomV2;
+initRoomServices = initRoomServicesV2;
+
+if ($('btn-leave-room')) $('btn-leave-room').onclick = leaveRoomV2;
+
 const RTC_CONFIG = {
     iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
@@ -2335,7 +2377,28 @@ function initRoomServicesV3() {
             const effectivePerms = isHost ? { chat: true, voice: true, player: true, reactions: true } : ({ chat: true, voice: true, player: false, reactions: true, ...(localNode.perms || {}) });
             if (!effectivePerms.voice) return;
 
-            if (myStream)
+            if (myStream) {
+                await disableMicrophoneNative();
+                return;
+            }
+
+            try {
+                await enableMicrophoneNative(this);
+            } catch (e) {
+                this.classList.remove('active');
+                showToast('Ошибка доступа к микрофону');
+            }
+        };
+    }
+}
+
+setupLobbyNotifications = setupLobbyNotificationsV3;
+enterRoom = enterRoomV3;
+leaveRoom = leaveRoomV3;
+initRoomServices = initRoomServicesV3;
+
+if ($('btn-leave-room')) $('btn-leave-room').onclick = leaveRoomV3;
+
 function getDefaultRoomPerms(host = false) {
     return { chat: true, voice: true, player: !!host, reactions: true };
 }
@@ -2390,7 +2453,10 @@ function clearRoomProfileSubscriptions() {
 }
 
 function clearFriendProfileSubscriptions() {
-    friendProfileSubscriptions.forEach((unsubscribe) => { try { unsubscribe(); } catc
+    friendProfileSubscriptions.forEach((unsubscribe) => { try { unsubscribe(); } catch (e) {} });
+    friendProfileSubscriptions.clear();
+}
+
 function bindRoomPreviewLazyLoad() {
     roomPreviewObserver?.disconnect();
     roomPreviewObserver = new IntersectionObserver((entries) => {
@@ -2494,7 +2560,12 @@ function renderFriendsPanelLive(friendIds = []) {
         button.onclick = (event) => {
             event.stopPropagation();
             const card = button.closest('.friend-card');
-            const name = card?.querySelector('strong')?.textConten
+            const name = card?.querySelector('strong')?.textContent?.trim() || 'Друг';
+            openDirectChatModalV2(button.dataset.fuid, name);
+        };
+    });
+}
+
 function startDirectMessageNotifications() {
     if (dmIndexUnsubscribe || !auth.currentUser) return;
     const dmRoot = ref(db, 'direct-messages');
@@ -2623,7 +2694,10 @@ async function sendDirectMessageV2() {
 
 function bindDirectChatUiV2() {
     if ($('btn-dm-close')) $('btn-dm-close').onclick = closeDirectChatModal;
-    if ($('btn-dm-send')) $('btn-dm-send').onclick = sendDirec
+    if ($('btn-dm-send')) $('btn-dm-send').onclick = sendDirectMessageV2;
+    if ($('dm-input')) $('dm-input').onkeydown = (event) => { if (event.key === 'Enter') sendDirectMessageV2(); };
+}
+
 function setupLobbyNotificationsV4() {
     if (setupLobbyNotificationsV4.didInit || !auth.currentUser) return;
     setupLobbyNotificationsV4.didInit = true;
@@ -2676,7 +2750,11 @@ function subscribeRoomProfiles(uids = [], rerender) {
         onValue(statusRef, statusListener);
         roomProfileSubscriptions.set(uid, () => {
             off(profileRef, 'value', profileListener);
-            off(status
+            off(statusRef, 'value', statusListener);
+        });
+    });
+}
+
 function enterRoomV4(roomId, name, link, adminId) {
     closeDirectChatModal();
     currentRoomId = roomId;
@@ -2748,7 +2826,10 @@ async function leaveRoomV4() {
     latestRoomPresenceData = {};
     $('modal-join')?.classList.remove('active');
     const delBtn = $('btn-delete-room'); if (delBtn) delBtn.style.display = 'none';
-    const editBtn = $('btn-edit-room'); if (edi
+    const editBtn = $('btn-edit-room'); if (editBtn) editBtn.style.display = 'none';
+    showScreen('lobby-screen');
+}
+
 function initRoomServicesV4() {
     const roomId = currentRoomId;
     const roomRef = ref(db, `rooms/${roomId}`);
@@ -2940,7 +3021,15 @@ function initRoomServicesV4() {
 
     $('btn-fullscreen').onclick = () => $('player-wrapper')?.requestFullscreen();
     $('tab-chat-btn').onclick = () => { $('chat-messages').style.display = 'flex'; $('users-list').style.display = 'none'; $('tab-chat-btn').classList.add('active'); $('tab-users-btn').classList.remove('active'); };
-    $('tab-users-btn').onclick = () => { $('users-list').style.display = 'flex'; $('chat-messages').style.display = 'none'; $('tab-users-btn').classList.add('active'); $('tab-chat-btn').c
+    $('tab-users-btn').onclick = () => { $('users-list').style.display = 'flex'; $('chat-messages').style.display = 'none'; $('tab-users-btn').classList.add('active'); $('tab-chat-btn').classList.remove('active'); };
+
+    roomListenerUnsubscribe = () => {
+        teardown.forEach((fn) => fn());
+        closeVoiceSignalLayer();
+        clearRoomProfileSubscriptions();
+    };
+}
+
 function bindCreateModalOverrides() {
     if ($('btn-open-modal')) {
         $('btn-open-modal').onclick = () => {
@@ -2981,92 +3070,3 @@ leaveRoom = leaveRoomV4;
 initRoomServices = initRoomServicesV4;
 
 if ($('btn-leave-room')) $('btn-leave-room').onclick = leaveRoomV4;
-lassList.remove('active'); };
-
-    roomListenerUnsubscribe = () => {
-        teardown.forEach((fn) => fn());
-        closeVoiceSignalLayer();
-        clearRoomProfileSubscriptions();
-    };
-}
-tBtn) editBtn.style.display = 'none';
-    showScreen('lobby-screen');
-}
-Ref, 'value', statusListener);
-        });
-    });
-}
-tMessageV2;
-    if ($('dm-input')) $('dm-input').onkeydown = (event) => { if (event.key === 'Enter') sendDirectMessageV2(); };
-}
-t?.trim() || 'Друг';
-            openDirectChatModalV2(button.dataset.fuid, name);
-        };
-    });
-}
-h (e) {} });
-    friendProfileSubscriptions.clear();
-}
- {
-                await disableMicrophoneNative();
-                return;
-            }
-
-            try {
-                await enableMicrophoneNative(this);
-            } catch (e) {
-                this.classList.remove('active');
-                showToast('Ошибка доступа к микрофону');
-            }
-        };
-    }
-}
-
-setupLobbyNotifications = setupLobbyNotificationsV3;
-enterRoom = enterRoomV3;
-leaveRoom = leaveRoomV3;
-initRoomServices = initRoomServicesV3;
-
-if ($('btn-leave-room')) $('btn-leave-room').onclick = leaveRoomV3;
-ener); } catch (e) { /* ignore */ }
-        try { off(presenceDbRef, 'value', presenceListener); } catch (e) { /* ignore */ }
-        try { off(videoRef, 'value', videoListener); } catch (e) { /* ignore */ }
-        try { off(chatRef, 'child_added', chatListener); } catch (e) { /* ignore */ }
-        try { off(reactionsRef, 'child_added', reactionListener); } catch (e) { /* ignore */ }
-        try { off(voiceRef, 'value', voiceListener); } catch (e) { /* ignore */ }
-    };
-
-    const voiceEl = $('voice-volume');
-    const setRangeFill = (el) => {
-        if (!el) return;
-        const v = parseFloat(el.value) || 0;
-        const p = Math.round(v * 100);
-        const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent') || '#f5f7fa';
-        el.style.background = `linear-gradient(90deg, ${accent.trim()} ${p}%, rgba(255,255,255,0.12) ${p}%)`;
-    };
-    if (voiceEl) {
-        voiceEl.oninput = (event) => {
-            document.querySelectorAll('#remote-audio-container audio').forEach((audio) => {
-                audio.volume = event.target.value;
-            });
-            setRangeFill(event.target);
-        };
-        setRangeFill(voiceEl);
-    }
-}
-
-if ($('btn-open-room-invite')) $('btn-open-room-invite').onclick = openRoomInviteModal;
-if ($('btn-room-invite-close')) $('btn-room-invite-close').onclick = closeRoomInviteModal;
-if ($('modal-room-invite')) {
-    $('modal-room-invite').addEventListener('click', (event) => {
-        if (event.target.id === 'modal-room-invite') closeRoomInviteModal();
-    });
-}
-
-renderRooms = renderRoomsV2;
-setupLobbyNotifications = setupLobbyNotificationsV2;
-enterRoom = enterRoomV2;
-leaveRoom = leaveRoomV2;
-initRoomServices = initRoomServicesV2;
-
-if ($('btn-leave-room')) $('btn-leave-room').onclick = leaveRoomV2;
