@@ -279,19 +279,82 @@ function initRoomServices() {
 
     // Присутствие
     presenceRef = ref(db, `rooms/${currentRoomId}/presence/${auth.currentUser.uid}`);
-    set(presenceRef, { name: auth.currentUser.displayName || "User" });
+    // Значения прав по умолчанию (хост получает контроль плеера)
+    const defaultPerms = { chat: true, voice: true, player: isHost, reactions: true };
+    set(presenceRef, { name: auth.currentUser.displayName || "User", perms: defaultPerms });
     onDisconnect(presenceRef).remove(); 
+
     onValue(presenceDbRef, (snap) => {
         const data = snap.val() || {};
-        $('users-list').innerHTML = '';
-        $('users-count').innerText = Object.keys(data).length;
-        for (let uid in data) {
-            $('users-list').innerHTML += `
-                <div class="user-item">
-                    <div class="indicator"></div>
-                    <span>${data[uid].name} ${uid === auth.currentUser.uid ? '(Вы)' : ''}</span>
-                </div>`;
+        const usersListEl = $('users-list');
+        usersListEl.innerHTML = '';
+        const ids = Object.keys(data);
+        $('users-count').innerText = ids.length;
+
+        const adminId = (roomsCache[currentRoomId] && roomsCache[currentRoomId].admin) ? roomsCache[currentRoomId].admin : null;
+
+        ids.forEach(uid => {
+            const u = data[uid] || {};
+            const name = escapeHtml(u.name || 'User');
+            const perms = u.perms || defaultPerms;
+            const isLocal = uid === auth.currentUser.uid;
+            const isUserHost = uid === adminId;
+
+            let itemHtml = `<div class="user-item" data-uid="${uid}">`;
+            itemHtml += `<div class="indicator"></div>`;
+            itemHtml += `<div class="user-main"><span class="user-name">${name}</span>`;
+            if (isUserHost) itemHtml += `<span class="host-label">Host</span>`;
+            if (isLocal) itemHtml += `<span class="you-label">(Вы)</span>`;
+            itemHtml += `</div>`;
+
+            // Если текущий пользователь — хост, показываем переключатели прав
+            if (isHost) {
+                itemHtml += `<div class="perm-controls">`;
+                itemHtml += `<label title="Чат"><input type="checkbox" class="perm-toggle" data-uid="${uid}" data-perm="chat" ${perms.chat ? 'checked':''}>Чат</label>`;
+                itemHtml += `<label title="Голос"><input type="checkbox" class="perm-toggle" data-uid="${uid}" data-perm="voice" ${perms.voice ? 'checked':''}>Голос</label>`;
+                itemHtml += `<label title="Плеер"><input type="checkbox" class="perm-toggle" data-uid="${uid}" data-perm="player" ${perms.player ? 'checked':''}>Плеер</label>`;
+                itemHtml += `<label title="Реакции"><input type="checkbox" class="perm-toggle" data-uid="${uid}" data-perm="reactions" ${perms.reactions ? 'checked':''}>Реакции</label>`;
+                itemHtml += `</div>`;
+            }
+
+            itemHtml += `</div>`;
+            usersListEl.innerHTML += itemHtml;
+        });
+
+        // Подписываемся на переключатели прав (если хост)
+        if (isHost) {
+            document.querySelectorAll('.perm-toggle').forEach(el => {
+                el.addEventListener('change', async (e) => {
+                    const uid = e.target.dataset.uid;
+                    const perm = e.target.dataset.perm;
+                    const val = e.target.checked;
+                    try {
+                        await set(ref(db, `rooms/${currentRoomId}/presence/${uid}/perms/${perm}`), val);
+                        showToast('Права обновлены');
+                    } catch (err) { showToast('Ошибка при обновлении прав'); }
+                });
+            });
         }
+
+        // Применяем локальные права (для текущего пользователя)
+        const localNode = data[auth.currentUser.uid] || {};
+        const effectiveLocalPerms = isHost ? { chat: true, voice: true, player: true, reactions: true } : (localNode.perms || defaultPerms);
+
+        // Чат
+        if ($('chat-input')) $('chat-input').disabled = !effectiveLocalPerms.chat;
+        if ($('send-btn')) $('send-btn').disabled = !effectiveLocalPerms.chat;
+
+        // Голос
+        if (!effectiveLocalPerms.voice) {
+            if (myStream) { myStream.getTracks().forEach(t => t.stop()); myStream = null; $('mic-btn').classList.remove('active'); try { remove(ref(db, `rooms/${currentRoomId}/voice/${auth.currentUser.uid}`)); } catch(e){} activeCalls.clear(); $('remote-audio-container').innerHTML = ''; showToast('Вам отключили голос'); }
+        }
+        if ($('mic-btn')) $('mic-btn').disabled = !effectiveLocalPerms.voice;
+
+        // Плеер
+        if (effectiveLocalPerms.player || isHost) { player.style.pointerEvents = 'auto'; player.controls = true; } else { player.style.pointerEvents = 'none'; player.controls = isHost; }
+
+        // Реакции
+        document.querySelectorAll('.react-btn').forEach(b => b.disabled = !effectiveLocalPerms.reactions);
     });
 
     // --- ХИРУРГИЧЕСКАЯ СИНХРОНИЗАЦИЯ (Только хост отправляет данные) ---
