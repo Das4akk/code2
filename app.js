@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, updateProfile, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getDatabase, ref, push, set, onValue, onChildAdded, onDisconnect, remove, off, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"; 
+import { getDatabase, ref, push, set, get, onValue, onChildAdded, onDisconnect, remove, off, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"; 
 
 const firebaseConfig = {
     apiKey: "AIzaSyCby2qPGnlHWRfxWAI3Y2aK_UndEh9nato",
@@ -63,7 +63,17 @@ function showToast(message) {
 }
 
 // --- WebRTC Инициализация ---
-const peer = new Peer(undefined, { host: '0.peerjs.com', port: 443, secure: true });
+const peer = new Peer(undefined, {
+    host: '0.peerjs.com',
+    port: 443,
+    secure: true,
+    config: {
+        iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' }
+        ]
+    }
+});
 let currentRoomId = null;
 let isHost = false;
 let myStream = null;
@@ -74,7 +84,77 @@ let lastSyncTs = 0;
 let processedMsgs = new Set(); // Защита от дублей сообщений
 let editingRoomId = null; // Если установлено - модал создания используется для редактирования
 // URL для репорт-формы (оставьте пустым, чтобы отключить кнопку Report)
+let currentPresenceCache = {};
+let latestVoicePeers = {};
+const remoteAudioAnalyzers = new Map();
 const REPORT_FORM_URL = '';
+
+function isAcceptedFriendRecord(record) {
+    return record === true || (record && record.status === 'accepted');
+}
+
+function getRoomPreviewTime(syncState) {
+    const baseTime = Number(syncState?.time) || 0;
+    if (syncState?.type === 'play' && syncState?.ts) {
+        return Math.max(0, baseTime + ((Date.now() - Number(syncState.ts)) / 1000));
+    }
+    return Math.max(0, baseTime);
+}
+
+function applyRoomCardFrame(video) {
+    if (!video) return;
+    const targetTime = Math.max(0.05, Number(video.dataset.seekTime) || 0.05);
+    const seekToFrame = () => {
+        const rawDuration = Number(video.duration);
+        const hasDuration = Number.isFinite(rawDuration) && rawDuration > 0;
+        const safeTime = hasDuration ? Math.min(targetTime, Math.max(rawDuration - 0.15, 0.05)) : targetTime;
+        try { video.currentTime = safeTime; } catch (e) { /* ignore seek failures */ }
+        video.pause();
+        video.classList.add('ready');
+    };
+
+    if (video.readyState >= 1) {
+        seekToFrame();
+        return;
+    }
+
+    video.addEventListener('loadedmetadata', seekToFrame, { once: true });
+    video.addEventListener('error', () => video.closest('.room-thumb')?.classList.add('room-thumb-error'), { once: true });
+}
+
+function refreshRoomCardPreviews() {
+    document.querySelectorAll('.room-thumb-video').forEach((video) => applyRoomCardFrame(video));
+}
+
+function ensureRoomInviteUi() {
+    const headerActions = $('btn-leave-room')?.parentElement;
+    if (headerActions && !$('btn-open-room-invite')) {
+        const inviteBtn = document.createElement('button');
+        inviteBtn.id = 'btn-open-room-invite';
+        inviteBtn.type = 'button';
+        inviteBtn.className = 'google-btn';
+        inviteBtn.textContent = 'Пригласить друга';
+        headerActions.insertBefore(inviteBtn, $('btn-edit-room') || null);
+    }
+
+    if (!$('modal-room-invite')) {
+        const modal = document.createElement('div');
+        modal.id = 'modal-room-invite';
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content glass-panel">
+                <h2>Пригласить друга</h2>
+                <div id="room-invite-list" class="room-invite-list"></div>
+                <div class="modal-buttons">
+                    <button id="btn-room-invite-close" type="button" class="google-btn">Закрыть</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+}
+
+ensureRoomInviteUi();
 
 setPersistence(auth, browserLocalPersistence);
 
@@ -118,13 +198,12 @@ $('btn-create-finish').onclick = async () => {
     if(!name || !link) return showToast("Заполни поля!");
     const isPrivate = $('room-private') ? $('room-private').checked : false;
     const password = $('room-password') ? $('room-password').value : '';
-    const preview = $('room-preview') ? $('room-preview').value : '';
     const buttonColor = $('room-button-color') ? $('room-button-color').value : '';
 
     // Если редактирование существующей комнаты
     if (editingRoomId) {
         const prev = roomsCache[editingRoomId] || {};
-        const updateData = { name, link, preview, buttonColor };
+        const updateData = { name, link, buttonColor };
         if (isPrivate) {
             if (password && password.length >= 4) {
                 try {
@@ -162,7 +241,7 @@ $('btn-create-finish').onclick = async () => {
 
     // Создание новой комнаты
     const newRoomRef = push(ref(db, 'rooms'));
-    const roomData = { name, link, admin: auth.currentUser.uid, adminName: auth.currentUser.displayName || "User", preview, buttonColor };
+    const roomData = { name, link, admin: auth.currentUser.uid, adminName: auth.currentUser.displayName || "User", buttonColor };
     if (isPrivate) {
         if (!password || password.length < 4) return showToast('Пароль должен быть минимум 4 символа');
         try {
@@ -203,8 +282,12 @@ function renderRooms(filter = '') {
         }
         // Используем JSON.stringify чтобы корректно экранировать аргументы для onclick
         const lock = room.private ? '🔒 ' : '';
-        const previewStyle = room.preview ? `background-image: url(${JSON.stringify(room.preview)});` : '';
+        const previewTime = getRoomPreviewTime(room.sync || {});
+        const roomLink = room.link || '';
         const colorDot = room.buttonColor ? `<div class="room-color-indicator" style="background:${escapeHtml(room.buttonColor)}"></div>` : '';
+        const previewContent = roomLink
+            ? `<video class="room-thumb-video" muted playsinline preload="metadata" src="${escapeHtml(roomLink)}" data-seek-time="${previewTime}"></video><div class="room-thumb-label">Сейчас в плеере</div>`
+            : `<div class="room-thumb-placeholder">Видео не задано</div>`;
         grid.innerHTML += `\n            <div class="room-card glass-panel" onclick='window.joinRoom(${JSON.stringify(id)}, ${JSON.stringify(name)}, ${JSON.stringify(room.link || '')}, ${JSON.stringify(room.admin || '')})'>\n                ${colorDot}\n                <div class="room-thumb" style="${previewStyle}"></div>\n                <h4>${lock + escapeHtml(name)}</h4>\n                <p style=\"font-size:12px; opacity:0.6; margin-top:5px;\">Хост: ${escapeHtml(host)}</p>\n            </div>`;
     });
 }
@@ -959,3 +1042,800 @@ function anim() {
     requestAnimationFrame(anim);
 }
 anim();
+
+function renderRoomsV2(filter = '') {
+    const grid = $('rooms-grid');
+    if (!grid) return;
+
+    grid.innerHTML = '';
+    const data = roomsCache || {};
+    const q = String(filter || '').trim().toLowerCase();
+    const keys = Object.keys(data);
+
+    if (!keys.length) {
+        grid.innerHTML = '<div style="padding:20px; color:#888">Пока нет комнат</div>';
+        return;
+    }
+
+    keys.forEach((id) => {
+        const room = data[id] || {};
+        const name = room.name || '';
+        const host = room.adminName || '';
+        if (q) {
+            const hay = `${name} ${host}`.toLowerCase();
+            if (!hay.includes(q)) return;
+        }
+
+        const roomLink = room.link || '';
+        const previewTime = getRoomPreviewTime(room.sync || {});
+        const lock = room.private ? '🔒 ' : '';
+        const colorDot = room.buttonColor ? `<div class="room-color-indicator" style="background:${escapeHtml(room.buttonColor)}"></div>` : '';
+        const previewContent = roomLink
+            ? `<video class="room-thumb-video" muted playsinline preload="metadata" src="${escapeHtml(roomLink)}" data-seek-time="${previewTime}"></video><div class="room-thumb-label">Сейчас в плеере</div>`
+            : `<div class="room-thumb-placeholder">Видео не задано</div>`;
+
+        grid.innerHTML += `
+            <div class="room-card glass-panel" onclick='window.joinRoom(${JSON.stringify(id)}, ${JSON.stringify(name)}, ${JSON.stringify(roomLink)}, ${JSON.stringify(room.admin || '')})'>
+                ${colorDot}
+                <div class="room-thumb">${previewContent}</div>
+                <h4>${lock + escapeHtml(name)}</h4>
+                <p style="font-size:12px; opacity:0.6; margin-top:5px;">Хост: ${escapeHtml(host)}</p>
+            </div>`;
+    });
+
+    refreshRoomCardPreviews();
+}
+
+async function openRoomInviteModal() {
+    if (!auth.currentUser || !currentRoomId) return;
+    ensureRoomInviteUi();
+
+    const modal = $('modal-room-invite');
+    const list = $('room-invite-list');
+    if (!modal || !list) return;
+
+    modal.classList.add('active');
+    list.innerHTML = '<div class="room-invite-empty">Загружаю друзей...</div>';
+
+    try {
+        const friendsSnap = await get(ref(db, `users/${auth.currentUser.uid}/friends`));
+        const friendsData = friendsSnap.val() || {};
+        const acceptedIds = Object.keys(friendsData).filter((uid) => uid !== auth.currentUser.uid && isAcceptedFriendRecord(friendsData[uid]));
+        const presentIds = new Set(Object.keys(currentPresenceCache || {}));
+        const inviteableIds = acceptedIds.filter((uid) => !presentIds.has(uid));
+
+        if (!inviteableIds.length) {
+            list.innerHTML = '<div class="room-invite-empty">Сейчас некого приглашать: либо друзей нет, либо они уже в комнате.</div>';
+            return;
+        }
+
+        const friends = await Promise.all(inviteableIds.map(async (uid) => {
+            try {
+                const profileSnap = await get(ref(db, `users/${uid}/profile`));
+                const profile = profileSnap.val() || {};
+                return {
+                    uid,
+                    name: profile.name || 'User',
+                    color: profile.color || '#f5f7fa'
+                };
+            } catch (e) {
+                return { uid, name: 'User', color: '#f5f7fa' };
+            }
+        }));
+
+        list.innerHTML = friends.map((friend) => `
+            <div class="room-invite-card" data-uid="${friend.uid}">
+                <div class="room-invite-user">
+                    <div class="room-invite-avatar" style="background:linear-gradient(45deg, ${escapeHtml(friend.color)}, rgba(255,255,255,0.08));"></div>
+                    <strong>${escapeHtml(friend.name)}</strong>
+                </div>
+                <button type="button" class="invite-friend-btn" data-uid="${friend.uid}">Позвать</button>
+            </div>
+        `).join('');
+
+        list.querySelectorAll('.invite-friend-btn').forEach((button) => {
+            button.addEventListener('click', async () => {
+                if (button.disabled) return;
+                const uid = button.dataset.uid;
+                const roomMeta = roomsCache[currentRoomId] || {};
+
+                button.disabled = true;
+                try {
+                    await push(ref(db, `users/${uid}/room-invites`), {
+                        roomId: currentRoomId,
+                        roomName: roomMeta.name || 'Комната',
+                        roomLink: roomMeta.link || '',
+                        roomAdminId: roomMeta.admin || '',
+                        invitedBy: auth.currentUser.displayName || auth.currentUser.email || 'User',
+                        ts: Date.now()
+                    });
+                    button.textContent = 'Отправлено';
+                    button.classList.add('sent');
+                    showToast('Инвайт отправлен');
+                } catch (e) {
+                    button.disabled = false;
+                    showToast('Ошибка при отправке инвайта');
+                }
+            });
+        });
+    } catch (e) {
+        list.innerHTML = '<div class="room-invite-empty">Не удалось загрузить друзей.</div>';
+    }
+}
+
+function closeRoomInviteModal() {
+    $('modal-room-invite')?.classList.remove('active');
+}
+
+function setupLobbyNotificationsV2() {
+    if (setupLobbyNotificationsV2.didInit || !auth.currentUser) return;
+    setupLobbyNotificationsV2.didInit = true;
+
+    const btnToggleFriends = $('btn-toggle-friends');
+    const friendsPanel = $('friends-list-panel');
+
+    if (btnToggleFriends && friendsPanel) {
+        btnToggleFriends.onclick = async () => {
+            const isHidden = friendsPanel.style.display === 'none';
+            friendsPanel.style.display = isHidden ? 'block' : 'none';
+            if (!isHidden) return;
+
+            friendsPanel.innerHTML = '<h3>👥 Друзья</h3><div class="room-invite-empty">Загружаю...</div>';
+
+            try {
+                const friendsSnap = await get(ref(db, `users/${auth.currentUser.uid}/friends`));
+                const friendsData = friendsSnap.val() || {};
+                const acceptedIds = Object.keys(friendsData).filter((uid) => isAcceptedFriendRecord(friendsData[uid]));
+
+                if (!acceptedIds.length) {
+                    friendsPanel.innerHTML = '<h3>👥 Друзья</h3><div class="room-invite-empty">Нет друзей</div>';
+                    return;
+                }
+
+                const friends = await Promise.all(acceptedIds.map(async (uid) => {
+                    try {
+                        const profileSnap = await get(ref(db, `users/${uid}/profile`));
+                        const profile = profileSnap.val() || {};
+                        return { uid, name: profile.name || 'User', color: profile.color || '#f5f7fa' };
+                    } catch (e) {
+                        return { uid, name: 'User', color: '#f5f7fa' };
+                    }
+                }));
+
+                friendsPanel.innerHTML = `<h3>👥 Друзья</h3>${friends.map((friend) => `
+                    <div class="friend-card" data-fuid="${friend.uid}">
+                        <div style="width:24px; height:24px; border-radius:50%; background:linear-gradient(45deg, ${escapeHtml(friend.color)}, rgba(255,255,255,0.1)); border:1px solid rgba(255,255,255,0.1);"></div>
+                        <strong>${escapeHtml(friend.name)}</strong>
+                        <button type="button" class="friend-dm-btn" data-fuid="${friend.uid}">💬</button>
+                    </div>
+                `).join('')}`;
+
+                friendsPanel.querySelectorAll('.friend-dm-btn').forEach((button) => {
+                    button.onclick = (event) => {
+                        event.stopPropagation();
+                        showToast('💬 Чат с другом пока в разработке');
+                    };
+                });
+            } catch (e) {
+                friendsPanel.innerHTML = '<h3>👥 Друзья</h3><div class="room-invite-empty">Не удалось загрузить друзей</div>';
+            }
+        };
+    }
+
+    onChildAdded(ref(db, `users/${auth.currentUser.uid}/room-invites`), (snap) => {
+        const invite = snap.val();
+        const inviteId = snap.key;
+        if (!invite || Date.now() - invite.ts > 3600000) return;
+
+        const notif = document.createElement('div');
+        notif.className = 'toast interactive-toast';
+        notif.innerHTML = `
+            <div style="padding:12px; background:rgba(46,213,115,0.1); border:1px solid #2ed573; border-radius:8px;">
+                ${escapeHtml(invite.invitedBy || 'Друг')} приглашает в <strong>${escapeHtml(invite.roomName || 'комнату')}</strong>
+                <div style="display:flex; gap:8px; margin-top:10px;">
+                    <button type="button" class="invite-accept-btn" data-room-id="${escapeHtml(invite.roomId || '')}" data-invite-id="${escapeHtml(inviteId)}">Зайти</button>
+                </div>
+            </div>
+        `;
+        $('toast-container')?.appendChild(notif);
+
+        const btn = notif.querySelector('.invite-accept-btn');
+        btn?.addEventListener('click', async () => {
+            const roomId = btn.dataset.roomId;
+            try {
+                const roomSnap = await get(ref(db, `rooms/${roomId}`));
+                if (!roomSnap.exists()) {
+                    await remove(ref(db, `users/${auth.currentUser.uid}/room-invites/${inviteId}`));
+                    notif.remove();
+                    showToast('Комната больше недоступна');
+                    return;
+                }
+
+                const room = roomSnap.val() || {};
+                await remove(ref(db, `users/${auth.currentUser.uid}/room-invites/${inviteId}`));
+                notif.remove();
+                window.joinRoom(roomId, room.name || invite.roomName || 'Комната', room.link || invite.roomLink || '', room.admin || invite.roomAdminId || '');
+            } catch (e) {
+                showToast('Ошибка при принятии инвайта');
+            }
+        });
+
+        setTimeout(() => notif.remove(), 8000);
+    });
+
+    onChildAdded(ref(db, `users/${auth.currentUser.uid}/friend-requests`), (snap) => {
+        const req = snap.val();
+        const fromUid = snap.key;
+        if (!req) return;
+
+        const notif = document.createElement('div');
+        notif.className = 'toast interactive-toast';
+        notif.innerHTML = `
+            <div style="padding:12px; background:rgba(46,213,115,0.1); border:1px solid #2ed573; border-radius:8px;">
+                <strong>${escapeHtml(req.from || 'Пользователь')}</strong> хочет быть твоим другом
+                <div style="display:flex; gap:8px; margin-top:10px;">
+                    <button type="button" class="friend-req-accept" data-from-uid="${escapeHtml(fromUid)}">Принять</button>
+                    <button type="button" class="friend-req-decline" data-from-uid="${escapeHtml(fromUid)}">Отклонить</button>
+                </div>
+            </div>
+        `;
+        $('toast-container')?.appendChild(notif);
+
+        notif.querySelector('.friend-req-accept')?.addEventListener('click', async () => {
+            try {
+                await set(ref(db, `users/${auth.currentUser.uid}/friends/${fromUid}`), { status: 'accepted', ts: Date.now() });
+                await set(ref(db, `users/${fromUid}/friends/${auth.currentUser.uid}`), { status: 'accepted', ts: Date.now() });
+                await remove(ref(db, `users/${auth.currentUser.uid}/friend-requests/${fromUid}`));
+                notif.remove();
+                showToast('Друг добавлен');
+            } catch (e) {
+                showToast('Ошибка');
+            }
+        });
+
+        notif.querySelector('.friend-req-decline')?.addEventListener('click', async () => {
+            try {
+                await remove(ref(db, `users/${auth.currentUser.uid}/friend-requests/${fromUid}`));
+                notif.remove();
+            } catch (e) {
+                showToast('Ошибка');
+            }
+        });
+
+        setTimeout(() => notif.remove(), 8000);
+    });
+}
+
+function findUidByPeerId(peerId) {
+    return Object.keys(latestVoicePeers || {}).find((uid) => latestVoicePeers[uid] === peerId) || peerId;
+}
+
+function clearRemoteAudioState() {
+    activeCalls.clear();
+    const container = $('remote-audio-container');
+    if (container) container.innerHTML = '';
+    remoteAudioAnalyzers.forEach((entry) => {
+        if (entry?.animationId) cancelAnimationFrame(entry.animationId);
+    });
+    remoteAudioAnalyzers.clear();
+}
+
+function createRemoteAudioAnalyzer(audio, uid) {
+    const userItem = document.querySelector(`.user-item[data-uid="${uid}"]`);
+    if (!userItem) return;
+
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const source = audioCtx.createMediaElementAudioSource(audio);
+    const analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 256;
+    source.connect(analyser);
+    analyser.connect(audioCtx.destination);
+    audioCtx.resume().catch(() => {});
+
+    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+    let animId = null;
+
+    const animate = () => {
+        analyser.getByteFrequencyData(dataArray);
+        const avg = dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
+        const vol = avg / 256;
+        const indicator = userItem.querySelector('.indicator');
+
+        if (indicator && vol > 0.05) {
+            const scale = 1 + (vol * 0.4);
+            indicator.style.transform = `scale(${scale})`;
+            indicator.style.boxShadow = `0 0 ${vol * 20}px #2ed573`;
+        } else if (indicator) {
+            indicator.style.transform = 'scale(1)';
+            indicator.style.boxShadow = '0 0 8px #2ed573';
+        }
+
+        animId = requestAnimationFrame(animate);
+    };
+
+    animate();
+    remoteAudioAnalyzers.set(uid, { analyser, animationId: animId });
+}
+
+function attachRemoteAudio(stream, peerId, uid) {
+    if (!stream || activeCalls.has(peerId)) return;
+    activeCalls.add(peerId);
+
+    const container = $('remote-audio-container');
+    if (!container) return;
+
+    document.getElementById(`audio-${peerId}`)?.remove();
+
+    const audio = document.createElement('audio');
+    audio.id = `audio-${peerId}`;
+    audio.autoplay = true;
+    audio.playsInline = true;
+    audio.srcObject = stream;
+    audio.volume = parseFloat($('voice-volume')?.value || '1');
+    container.appendChild(audio);
+
+    const startPlayback = () => {
+        audio.play().catch(() => {
+            document.addEventListener('click', () => audio.play().catch(() => {}), { once: true });
+        });
+    };
+
+    audio.oncanplay = () => {
+        createRemoteAudioAnalyzer(audio, uid);
+        startPlayback();
+    };
+    audio.onended = () => activeCalls.delete(peerId);
+}
+
+async function publishLocalVoiceState() {
+    if (!currentRoomId || !auth.currentUser || !myStream || !peer.id) return;
+    await set(ref(db, `rooms/${currentRoomId}/voice/${auth.currentUser.uid}`), peer.id);
+}
+
+function connectToVoicePeers() {
+    if (!myStream || !peer.id) return;
+
+    Object.entries(latestVoicePeers || {}).forEach(([uid, targetPeerId]) => {
+        if (!targetPeerId || uid === auth.currentUser.uid || activeCalls.has(targetPeerId)) return;
+        const call = peer.call(targetPeerId, myStream);
+        if (!call) return;
+
+        call.on('stream', (remoteStream) => attachRemoteAudio(remoteStream, targetPeerId, uid));
+        call.on('close', () => activeCalls.delete(targetPeerId));
+        call.on('error', () => activeCalls.delete(targetPeerId));
+    });
+}
+
+async function enableMicrophone(button) {
+    myStream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true }
+    });
+
+    button?.classList.add('active');
+    await publishLocalVoiceState();
+    connectToVoicePeers();
+    showToast('Микрофон включен');
+}
+
+async function disableMicrophone({ notify = true } = {}) {
+    if (myStream) {
+        myStream.getTracks().forEach((track) => track.stop());
+    }
+    myStream = null;
+
+    if (currentRoomId && auth.currentUser) {
+        try { await remove(ref(db, `rooms/${currentRoomId}/voice/${auth.currentUser.uid}`)); } catch (e) { /* ignore */ }
+    }
+
+    $('mic-btn')?.classList.remove('active');
+    clearRemoteAudioState();
+
+    if (notify) showToast('Микрофон выключен');
+}
+
+peer.on('open', () => {
+    if (myStream) {
+        publishLocalVoiceState().catch(() => {});
+        connectToVoicePeers();
+    }
+});
+
+peer.on('call', (call) => {
+    if (!myStream) {
+        try { call.close(); } catch (e) { /* ignore */ }
+        return;
+    }
+
+    const uid = findUidByPeerId(call.peer);
+    call.answer(myStream);
+    call.on('stream', (remoteStream) => attachRemoteAudio(remoteStream, call.peer, uid));
+    call.on('close', () => activeCalls.delete(call.peer));
+    call.on('error', () => activeCalls.delete(call.peer));
+});
+
+function enterRoomV2(roomId, name, link, adminId) {
+    currentRoomId = roomId;
+    lastSyncTs = 0;
+    processedMsgs.clear();
+    currentPresenceCache = {};
+    latestVoicePeers = {};
+    isHost = auth.currentUser.uid === adminId;
+
+    if ($('room-title-text')) $('room-title-text').innerText = name;
+    player.src = link;
+    player.controls = isHost;
+    player.style.pointerEvents = isHost ? 'auto' : 'none';
+
+    const playerWrapper = $('player-wrapper');
+    if (playerWrapper) {
+        playerWrapper.style.backgroundImage = '';
+        playerWrapper.style.backgroundSize = '';
+        playerWrapper.style.backgroundPosition = '';
+    }
+
+    if ($('chat-messages')) $('chat-messages').innerHTML = '';
+    if ($('users-list')) $('users-list').innerHTML = '';
+
+    showScreen('room-screen');
+    closeRoomInviteModal();
+    roomEnteredAt = Date.now();
+    initRoomServicesV2();
+
+    const delBtn = $('btn-delete-room');
+    const editBtn = $('btn-edit-room');
+
+    if (delBtn) {
+        delBtn.style.display = isHost ? 'inline-block' : 'none';
+        delBtn.onclick = async () => {
+            if (!isHost) return;
+            if (!confirm('ВНИМАНИЕ! Удалить эту комнату навсегда?')) return;
+            try {
+                await remove(ref(db, `rooms/${currentRoomId}`));
+                showToast('Комната удалена');
+                leaveRoomV2();
+            } catch (e) {
+                showToast('Ошибка удаления комнаты');
+            }
+        };
+    }
+
+    if (editBtn) {
+        editBtn.style.display = isHost ? 'inline-block' : 'none';
+        editBtn.onclick = () => {
+            if (!isHost) return;
+            editingRoomId = currentRoomId;
+            const meta = roomsCache[currentRoomId] || {};
+            if ($('room-name')) $('room-name').value = meta.name || '';
+            if ($('room-link')) $('room-link').value = meta.link || '';
+            if ($('room-button-color')) $('room-button-color').value = meta.buttonColor || '#ffffff';
+            if ($('room-private')) {
+                $('room-private').checked = !!meta.private;
+                if ($('room-password')) $('room-password').style.display = $('room-private').checked ? 'block' : 'none';
+            }
+            if ($('room-password')) $('room-password').value = '';
+            $('modal-create')?.classList.add('active');
+        };
+    }
+
+    showToast(isHost ? 'Вы зашли как Хост' : 'Вы зашли как Зритель');
+}
+
+async function leaveRoomV2() {
+    closeRoomInviteModal();
+    if (presenceRef) remove(presenceRef);
+    if (roomListenerUnsubscribe) {
+        try { roomListenerUnsubscribe(); } catch (e) { /* ignore */ }
+        roomListenerUnsubscribe = null;
+    }
+
+    player.pause();
+    player.src = '';
+
+    await disableMicrophone({ notify: false });
+
+    currentPresenceCache = {};
+    latestVoicePeers = {};
+    const delBtn = $('btn-delete-room');
+    const editBtn = $('btn-edit-room');
+    if (delBtn) delBtn.style.display = 'none';
+    if (editBtn) editBtn.style.display = 'none';
+    $('modal-join')?.classList.remove('active');
+    presenceRef = null;
+    currentRoomId = null;
+    showScreen('lobby-screen');
+}
+
+function initRoomServicesV2() {
+    const videoRef = ref(db, `rooms/${currentRoomId}/sync`);
+    const chatRef = ref(db, `rooms/${currentRoomId}/chat`);
+    const voiceRef = ref(db, `rooms/${currentRoomId}/voice`);
+    const presenceDbRef = ref(db, `rooms/${currentRoomId}/presence`);
+    const reactionsRef = ref(db, `rooms/${currentRoomId}/reactions`);
+    const roomRef = ref(db, `rooms/${currentRoomId}`);
+
+    const roomListener = (snap) => {
+        if (!snap.exists() && currentRoomId) {
+            showToast('Комната удалена');
+            leaveRoomV2();
+        }
+    };
+    onValue(roomRef, roomListener);
+    roomListenerUnsubscribe = () => { try { off(roomRef, 'value', roomListener); } catch (e) { /* ignore */ } };
+
+    $('btn-fullscreen').onclick = () => $('player-wrapper')?.requestFullscreen();
+
+    presenceRef = ref(db, `rooms/${currentRoomId}/presence/${auth.currentUser.uid}`);
+    const defaultPerms = { chat: true, voice: true, player: isHost, reactions: true };
+    set(presenceRef, { name: auth.currentUser.displayName || 'User', perms: defaultPerms });
+    onDisconnect(presenceRef).remove();
+
+    const friends = new Set();
+    const renderUsers = (data = {}) => {
+        currentPresenceCache = data;
+        const usersListEl = $('users-list');
+        if (!usersListEl) return;
+
+        usersListEl.innerHTML = '';
+        const ids = Object.keys(data);
+        if ($('users-count')) $('users-count').innerText = ids.length;
+
+        const adminId = roomsCache[currentRoomId]?.admin || null;
+        ids.forEach((uid) => {
+            const userData = data[uid] || {};
+            const name = escapeHtml(userData.name || 'User');
+            const perms = userData.perms || defaultPerms;
+            const isLocal = uid === auth.currentUser.uid;
+            const isFriend = friends.has(uid);
+            const isUserHost = uid === adminId;
+
+            let itemHtml = `<div class="user-item" data-uid="${uid}">`;
+            itemHtml += `<div class="indicator"></div>`;
+            itemHtml += `<div class="user-main"><span class="user-name">${isFriend ? '👥 ' : ''}${name}</span>`;
+            if (isUserHost) itemHtml += `<span class="host-label">Host</span>`;
+            if (isFriend && !isLocal) itemHtml += `<span class="friend-label">Друг</span>`;
+            if (isLocal) itemHtml += `<span class="you-label">(Вы)</span>`;
+            itemHtml += `</div>`;
+
+            if (!isLocal && isFriend) itemHtml += `<button type="button" class="dm-btn" data-uid="${uid}" title="Direct Message">💬</button>`;
+            if (!isLocal) itemHtml += `<button type="button" class="report-btn" data-uid="${uid}" title="Report">Report</button>`;
+            if (!isLocal && !isFriend) itemHtml += `<button type="button" class="add-friend-btn" data-uid="${uid}" title="Add Friend">+Доб</button>`;
+            itemHtml += `</div>`;
+
+            usersListEl.innerHTML += itemHtml;
+
+            if (!perms.voice) {
+                const indicator = usersListEl.querySelector(`.user-item[data-uid="${uid}"] .indicator`);
+                if (indicator) indicator.style.opacity = '0.35';
+            }
+        });
+
+        document.querySelectorAll('.report-btn').forEach((button) => {
+            button.onclick = (event) => {
+                const uid = event.currentTarget.dataset.uid;
+                if (!REPORT_FORM_URL) {
+                    showToast('Форма для репортов не настроена');
+                    return;
+                }
+                window.open(`${REPORT_FORM_URL}?reported=${encodeURIComponent(uid)}`, '_blank');
+            };
+        });
+
+        document.querySelectorAll('.add-friend-btn').forEach((button) => {
+            button.onclick = async (event) => {
+                const uid = event.currentTarget.dataset.uid;
+                try {
+                    await set(ref(db, `users/${auth.currentUser.uid}/friends/${uid}`), { status: 'pending', ts: Date.now() });
+                    await set(ref(db, `users/${uid}/friend-requests/${auth.currentUser.uid}`), { from: auth.currentUser.displayName, ts: Date.now() });
+                    showToast('Запрос отправлен');
+                } catch (e) {
+                    showToast('Ошибка при отправке запроса');
+                }
+            };
+        });
+
+        document.querySelectorAll('.dm-btn').forEach((button) => {
+            button.onclick = () => showToast('💬 Личные сообщения пока в разработке');
+        });
+
+        const localNode = data[auth.currentUser.uid] || {};
+        const effectiveLocalPerms = isHost ? { chat: true, voice: true, player: true, reactions: true } : (localNode.perms || defaultPerms);
+
+        if ($('chat-input')) $('chat-input').disabled = !effectiveLocalPerms.chat;
+        if ($('send-btn')) $('send-btn').disabled = !effectiveLocalPerms.chat;
+
+        if (!effectiveLocalPerms.voice && myStream) {
+            disableMicrophone({ notify: false }).then(() => showToast('Вам отключили голос'));
+        }
+        if ($('mic-btn')) $('mic-btn').disabled = !effectiveLocalPerms.voice;
+
+        if (effectiveLocalPerms.player || isHost) {
+            player.style.pointerEvents = 'auto';
+            player.controls = true;
+        } else {
+            player.style.pointerEvents = 'none';
+            player.controls = isHost;
+        }
+
+        document.querySelectorAll('.react-btn').forEach((button) => {
+            button.disabled = !effectiveLocalPerms.reactions;
+        });
+    };
+
+    get(ref(db, `users/${auth.currentUser.uid}/friends`)).then((snap) => {
+        const friendData = snap.val() || {};
+        Object.keys(friendData).forEach((uid) => {
+            if (isAcceptedFriendRecord(friendData[uid])) friends.add(uid);
+        });
+        renderUsers(currentPresenceCache);
+    }).catch(() => {});
+
+    const presenceListener = (snap) => renderUsers(snap.val() || {});
+    onValue(presenceDbRef, presenceListener);
+
+    if (isHost) {
+        player.onplay = () => { if (!isRemoteAction) set(videoRef, { type: 'play', time: player.currentTime, ts: Date.now() }); };
+        player.onpause = () => { if (!isRemoteAction) set(videoRef, { type: 'pause', time: player.currentTime, ts: Date.now() }); };
+        player.onseeked = () => { if (!isRemoteAction) set(videoRef, { type: 'seek', time: player.currentTime, ts: Date.now() }); };
+    } else {
+        player.onplay = null;
+        player.onpause = null;
+        player.onseeked = null;
+    }
+
+    const videoListener = (snap) => {
+        if (isHost) return;
+        const syncState = snap.val();
+        if (!syncState || syncState.ts <= lastSyncTs) return;
+
+        lastSyncTs = syncState.ts;
+        isRemoteAction = true;
+        if (Math.abs(player.currentTime - syncState.time) > 2) player.currentTime = syncState.time;
+        syncState.type === 'play' ? player.play() : player.pause();
+        setTimeout(() => { isRemoteAction = false; }, 500);
+    };
+    onValue(videoRef, videoListener);
+
+    const parseTimecodes = (text) => escapeHtml(text).replace(/(\d{1,2}:\d{2})/g, '<button class="timecode-btn" data-time="$1">$1</button>');
+    const sendMsg = () => {
+        const input = $('chat-input');
+        if (input && input.value.trim()) {
+            push(chatRef, { user: auth.currentUser.displayName, content: input.value.trim(), ts: Date.now() });
+            input.value = '';
+        }
+    };
+
+    if ($('send-btn')) $('send-btn').onclick = sendMsg;
+    if ($('chat-input')) {
+        $('chat-input').onkeydown = (event) => {
+            if (event.key === 'Enter') sendMsg();
+        };
+    }
+
+    if ($('chat-messages')) {
+        $('chat-messages').onclick = (event) => {
+            if (!event.target.classList.contains('timecode-btn')) return;
+            const parts = event.target.dataset.time.split(':');
+            const seconds = (parseInt(parts[0], 10) * 60) + parseInt(parts[1], 10);
+            player.currentTime = seconds;
+            if (isHost) {
+                player.play();
+                set(videoRef, { type: 'seek', time: seconds, ts: Date.now() });
+            }
+        };
+    }
+
+    const chatListener = (snap) => {
+        const message = snap.val();
+        const id = snap.key;
+        if (processedMsgs.has(id)) return;
+        processedMsgs.add(id);
+
+        const isMe = message.user === auth.currentUser.displayName;
+        const div = document.createElement('div');
+        div.className = isMe ? 'm-line self' : 'm-line';
+        div.innerHTML = `<div class="bubble"><strong>${escapeHtml(message.user || 'User')}</strong><p>${parseTimecodes(message.content || '')}</p></div>`;
+        $('chat-messages')?.appendChild(div);
+        if ($('chat-messages')) $('chat-messages').scrollTop = $('chat-messages').scrollHeight;
+        if (!isMe && message.ts && message.ts >= (roomEnteredAt - 2000)) {
+            showToast(`Сообщение от ${escapeHtml(message.user || 'User')}`);
+        }
+    };
+    onChildAdded(chatRef, chatListener);
+
+    if ($('tab-chat-btn')) {
+        $('tab-chat-btn').onclick = () => {
+            $('chat-messages').style.display = 'flex';
+            $('users-list').style.display = 'none';
+            $('tab-chat-btn').classList.add('active');
+            $('tab-users-btn').classList.remove('active');
+        };
+    }
+    if ($('tab-users-btn')) {
+        $('tab-users-btn').onclick = () => {
+            $('users-list').style.display = 'flex';
+            $('chat-messages').style.display = 'none';
+            $('tab-users-btn').classList.add('active');
+            $('tab-chat-btn').classList.remove('active');
+        };
+    }
+
+    document.querySelectorAll('.react-btn').forEach((button) => {
+        button.onclick = () => push(reactionsRef, { emoji: button.dataset.emoji, ts: Date.now() });
+    });
+
+    const reactionListener = (snap) => {
+        const reaction = snap.val();
+        if (Date.now() - reaction.ts > 5000) return;
+        const el = document.createElement('div');
+        el.className = 'floating-emoji';
+        el.innerText = reaction.emoji;
+        el.style.left = `${Math.random() * 80 + 10}%`;
+        $('reaction-layer')?.appendChild(el);
+        setTimeout(() => el.remove(), 3000);
+    };
+    onChildAdded(reactionsRef, reactionListener);
+
+    if ($('mic-btn')) {
+        $('mic-btn').onclick = async function() {
+            if (this.classList.contains('active')) {
+                await disableMicrophone();
+                return;
+            }
+
+            try {
+                await enableMicrophone(this);
+            } catch (e) {
+                this.classList.remove('active');
+                showToast('Ошибка доступа к микрофону');
+            }
+        };
+    }
+
+    const voiceListener = (snap) => {
+        latestVoicePeers = snap.val() || {};
+        connectToVoicePeers();
+    };
+    onValue(voiceRef, voiceListener);
+    roomListenerUnsubscribe = () => {
+        try { off(roomRef, 'value', roomListener); } catch (e) { /* ignore */ }
+        try { off(presenceDbRef, 'value', presenceListener); } catch (e) { /* ignore */ }
+        try { off(videoRef, 'value', videoListener); } catch (e) { /* ignore */ }
+        try { off(chatRef, 'child_added', chatListener); } catch (e) { /* ignore */ }
+        try { off(reactionsRef, 'child_added', reactionListener); } catch (e) { /* ignore */ }
+        try { off(voiceRef, 'value', voiceListener); } catch (e) { /* ignore */ }
+    };
+
+    const voiceEl = $('voice-volume');
+    const setRangeFill = (el) => {
+        if (!el) return;
+        const v = parseFloat(el.value) || 0;
+        const p = Math.round(v * 100);
+        const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent') || '#f5f7fa';
+        el.style.background = `linear-gradient(90deg, ${accent.trim()} ${p}%, rgba(255,255,255,0.12) ${p}%)`;
+    };
+    if (voiceEl) {
+        voiceEl.oninput = (event) => {
+            document.querySelectorAll('#remote-audio-container audio').forEach((audio) => {
+                audio.volume = event.target.value;
+            });
+            setRangeFill(event.target);
+        };
+        setRangeFill(voiceEl);
+    }
+}
+
+if ($('btn-open-room-invite')) $('btn-open-room-invite').onclick = openRoomInviteModal;
+if ($('btn-room-invite-close')) $('btn-room-invite-close').onclick = closeRoomInviteModal;
+if ($('modal-room-invite')) {
+    $('modal-room-invite').addEventListener('click', (event) => {
+        if (event.target.id === 'modal-room-invite') closeRoomInviteModal();
+    });
+}
+
+renderRooms = renderRoomsV2;
+setupLobbyNotifications = setupLobbyNotificationsV2;
+enterRoom = enterRoomV2;
+leaveRoom = leaveRoomV2;
+initRoomServices = initRoomServicesV2;
+
+if ($('btn-leave-room')) $('btn-leave-room').onclick = leaveRoomV2;
