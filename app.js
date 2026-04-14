@@ -152,7 +152,8 @@ function renderRooms(filter = '') {
             if (!hay.includes(q)) return;
         }
         // Используем JSON.stringify чтобы корректно экранировать аргументы для onclick
-        grid.innerHTML += `\n            <div class="room-card glass-panel" onclick="window.joinRoom(${JSON.stringify(id)}, ${JSON.stringify(name)}, ${JSON.stringify(room.link || '')}, ${JSON.stringify(room.admin || '')})">\n                <h4>${escapeHtml(name)}</h4>\n                <p style=\"font-size:12px; opacity:0.6; margin-top:5px;\">Хост: ${escapeHtml(host)}</p>\n            </div>`;
+        const lock = room.private ? '🔒 ' : '';
+        grid.innerHTML += `\n            <div class="room-card glass-panel" onclick="window.joinRoom(${JSON.stringify(id)}, ${JSON.stringify(name)}, ${JSON.stringify(room.link || '')}, ${JSON.stringify(room.admin || '')})">\n                <h4>${lock + escapeHtml(name)}</h4>\n                <p style=\"font-size:12px; opacity:0.6; margin-top:5px;\">Хост: ${escapeHtml(host)}</p>\n            </div>`;
     });
 }
 
@@ -172,8 +173,33 @@ function syncRooms() {
             t = setTimeout(() => renderRooms(e.target.value), 120);
         });
     }
+    // Управление видимостью поля пароля в модалке
+    const rp = $('room-private');
+    const rpwd = $('room-password');
+    if (rp && rpwd) {
+        rp.addEventListener('change', () => { rpwd.style.display = rp.checked ? 'block' : 'none'; });
+    }
 }
-window.joinRoom = (id, name, link, admin) => enterRoom(id, name, link, admin);
+window.joinRoom = async (id, name, link, admin) => {
+    // Если комната приватная — запросим пароль и проверим хеш
+    const room = roomsCache[id] || null;
+    if (room && room.private) {
+        for (let attempt = 0; attempt < 3; attempt++) {
+            const pw = prompt('Комната приватная. Введите пароль:');
+            if (pw === null) return; // пользователь отменил
+            try {
+                const derived = await deriveKey(pw, room.pwSalt);
+                if (derived === room.pwHash) {
+                    return enterRoom(id, name, link, admin);
+                } else {
+                    showToast('Неверный пароль');
+                }
+            } catch (e) { showToast('Ошибка проверки пароля'); return; }
+        }
+        return; // неудачные попытки
+    }
+    return enterRoom(id, name, link, admin);
+};
 
 const player = $('native-player');
 let presenceRef = null;
