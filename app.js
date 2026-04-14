@@ -235,6 +235,72 @@ function syncRooms() {
 
 // --- УВЕДОМЛЕНИЯ В ЛОББИ: приглашения друзей и в комнаты ---
 function setupLobbyNotifications() {
+    // Загрузка и отображение списка друзей
+    const btnToggleFriends = $('btn-toggle-friends');
+    const friendsPanel = $('friends-list-panel');
+    
+    if (btnToggleFriends && friendsPanel) {
+        btnToggleFriends.onclick = () => {
+            const isHidden = friendsPanel.style.display === 'none';
+            friendsPanel.style.display = isHidden ? 'block' : 'none';
+            
+            if (isHidden) {
+                // Загружаем друзей
+                let friendsList = new Set();
+                onValue(ref(db, `users/${auth.currentUser.uid}/friends`), (snap) => {
+                    friendsList.clear();
+                    friendsPanel.innerHTML = '<h3>👥 Друзья</h3>';
+                    
+                    if (!snap.val()) {
+                        friendsPanel.innerHTML += '<div style="padding:12px; opacity:0.6; font-size:12px;">Нет друзей</div>';
+                        return;
+                    }
+                    
+                    Object.keys(snap.val()).forEach(fuid => {
+                        const fdata = snap.val()[fuid];
+                        if (fdata === true || (fdata && fdata.status === 'accepted')) {
+                            friendsList.add(fuid);
+                            // Загружаем информацию о друге из профиля
+                            onValue(ref(db, `users/${fuid}/profile`), (psnap) => {
+                                const profile = psnap.val() || {};
+                                const friendName = profile.name || 'User';
+                                const friendColor = profile.color || '#f5f7fa';
+                                
+                                let html = `<div class="friend-card" data-fuid="${fuid}">`;
+                                html += `<div style="width:24px; height:24px; border-radius:50%; background: linear-gradient(45deg, ${escapeHtml(friendColor)}, rgba(255,255,255,0.1)); border: 1px solid rgba(255,255,255,0.1);"></div>`;
+                                html += `<strong>${escapeHtml(friendName)}</strong>`;
+                                html += `<button class="friend-dm-btn" data-fuid="${fuid}">💬</button>`;
+                                html += `</div>`;
+                                
+                                let existing = friendsPanel.querySelector(`[data-fuid="${fuid}"]`);
+                                if (!existing) {
+                                    // Вставляем новую карточку после заголовка
+                                    const h3 = friendsPanel.querySelector('h3');
+                                    if (h3) {
+                                        const div = document.createElement('div');
+                                        div.innerHTML = html;
+                                        h3.parentNode.insertBefore(div.firstElementChild, h3.nextSibling);
+                                    }
+                                }
+                            }, { onlyOnce: true });
+                        }
+                    });
+                }, { onlyOnce: true });
+                
+                // Обработчики DM кнопок
+                setTimeout(() => {
+                    document.querySelectorAll('.friend-dm-btn').forEach(b => {
+                        b.onclick = (e) => {
+                            e.stopPropagation();
+                            const fuid = b.dataset.fuid;
+                            showToast('💬 Открываю чат...');
+                        };
+                    });
+                }, 100);
+            }
+        };
+    }
+    
     // Приглашения в комнату
     onChildAdded(ref(db, `users/${auth.currentUser.uid}/room-invites`), (snap) => {
         const invite = snap.val();
@@ -447,19 +513,17 @@ function initRoomServices() {
     set(presenceRef, { name: auth.currentUser.displayName || "User", perms: defaultPerms });
     onDisconnect(presenceRef).remove(); 
 
-    // Загрузка списка друзей (для текущего пользователя)
+    // Загрузка списка друзей (синхронно через onValue)
     let friends = new Set();
-    try {
-        const friendsSnap = await (new Promise((resolve) => {
-            const unsubscribe = onValue(ref(db, `users/${auth.currentUser.uid}/friends`), resolve, { onlyOnce: true });
-        }));
-        if (friendsSnap.val()) {
-            Object.keys(friendsSnap.val()).forEach(fuid => {
-                const fdata = friendsSnap.val()[fuid];
+    onValue(ref(db, `users/${auth.currentUser.uid}/friends`), (snap) => {
+        friends.clear();
+        if (snap.val()) {
+            Object.keys(snap.val()).forEach(fuid => {
+                const fdata = snap.val()[fuid];
                 if (fdata === true || (fdata && fdata.status === 'accepted')) friends.add(fuid);
             });
         }
-    } catch (e) {}
+    }, { onlyOnce: true });
 
     onValue(presenceDbRef, (snap) => {
         const data = snap.val() || {};
@@ -480,22 +544,16 @@ function initRoomServices() {
 
             let itemHtml = `<div class="user-item" data-uid="${uid}">`;
             itemHtml += `<div class="indicator"></div>`;
-            itemHtml += `<div class="user-main"><span class="user-name">${name}</span>`;
+            itemHtml += `<div class="user-main"><span class="user-name">${isFriend ? '👥 ' : ''}${name}</span>`;
             if (isUserHost) itemHtml += `<span class="host-label">Host</span>`;
             if (isFriend && !isLocal) itemHtml += `<span class="friend-label">Друг</span>`;
             if (isLocal) itemHtml += `<span class="you-label">(Вы)</span>`;
             itemHtml += `</div>`;
 
-            // Если текущий пользователь — хост И видимый пользователь НЕ является хостом, показываем переключатели прав
-            if (isHost && !isUserHost) {
-                itemHtml += `<div class="perm-controls">`;
-                itemHtml += `<label><input type="checkbox" class="perm-toggle" data-uid="${uid}" data-perm="chat" ${perms.chat ? 'checked':''}>Чат</label>`;
-                itemHtml += `<label><input type="checkbox" class="perm-toggle" data-uid="${uid}" data-perm="voice" ${perms.voice ? 'checked':''}>Голос</label>`;
-                itemHtml += `<label><input type="checkbox" class="perm-toggle" data-uid="${uid}" data-perm="player" ${perms.player ? 'checked':''}>Плеер</label>`;
-                itemHtml += `<label><input type="checkbox" class="perm-toggle" data-uid="${uid}" data-perm="reactions" ${perms.reactions ? 'checked':''}>Реак</label>`;
-                itemHtml += `</div>`;
+            // Кнопка личных сообщений (для друзей)
+            if (!isLocal && isFriend) {
+                itemHtml += `<button class="dm-btn" data-uid="${uid}" title="Direct Message">💬</button>`;
             }
-
             // Кнопка репорта (для всех, кроме себя)
             if (!isLocal) {
                 itemHtml += `<button class="report-btn" data-uid="${uid}" title="Report">Report</button>`;
@@ -563,6 +621,17 @@ function initRoomServices() {
                     });
                     showToast('Инвайт отправлен');
                 } catch (err) { showToast('Ошибка при отправке инвайта'); }
+            });
+        });
+
+        // Кнопки личных сообщений
+        document.querySelectorAll('.dm-btn').forEach(b => {
+            b.addEventListener('click', (e) => {
+                const uid = e.target.dataset.uid;
+                const userData = data[uid] || {};
+                const friendName = escapeHtml(userData.name || 'User');
+                showToast(`💬 ДМ с ${friendName}...`);
+                // TODO: Реализовать полный UI для ДМ чата
             });
         });
 
