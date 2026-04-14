@@ -72,6 +72,10 @@
                 <h2>Создать комнату</h2>
                 <input type="text" id="room-name" placeholder="Название комнаты" autocomplete="off">
                 <input type="text" id="room-link" placeholder="Ссылка на видео (mp4)" autocomplete="off">
+                <label style="display:flex; align-items:center; gap:8px; margin-top:8px; font-size:14px; color:#ddd;">
+                    <input type="checkbox" id="room-private"> Приватная комната
+                </label>
+                <input type="password" id="room-password" placeholder="Пароль комнаты" autocomplete="new-password" style="display:none; margin-top:8px;">
                 <div class="modal-buttons">
                     <button id="btn-close-modal" class="google-btn">Отмена</button>
                     <button id="btn-create-finish" class="primary-btn">Запустить</button>
@@ -83,6 +87,7 @@
             <header class="room-header glass-panel">
                 <div style="display: flex; gap: 10px;">
                     <button id="btn-leave-room" class="google-btn leave-btn">← В лобби</button>
+                    <button id="btn-delete-room" class="danger-btn" style="display:none;">Удалить комнату</button>
                 </div>
                 <h2 id="room-title-text" style="margin-left: 20px; flex-grow: 1;">Комната</h2>
                 <div class="voice-volume-control" style="margin-right: 20px;">

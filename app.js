@@ -15,6 +15,41 @@ const auth = getAuth(app);
 const db = getDatabase(app);
 
 const $ = (id) => document.getElementById(id);
+// Безопасное экранирование текста для вставки в innerHTML
+function escapeHtml(str) {
+    return String(str || '').replace(/[&<>"']/g, (s) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[s]);
+}
+
+// Кэш комнат (используется для поиска/фильтрации)
+let roomsCache = {};
+// Временная метка входа в комнату — чтобы не показывать старые тосты
+let roomEnteredAt = 0;
+// --- Криптографические утилиты для приватных комнат ---
+function bufToBase64(buf){
+    const bytes = new Uint8Array(buf);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary);
+}
+function base64ToBuf(b64){
+    const binary = atob(b64);
+    const len = binary.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+}
+function genSalt(len=16){
+    const a = new Uint8Array(len);
+    crypto.getRandomValues(a);
+    return bufToBase64(a.buffer);
+}
+async function deriveKey(password, saltBase64, iterations=10000){
+    const enc = new TextEncoder();
+    const salt = base64ToBuf(saltBase64);
+    const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), {name:'PBKDF2'}, false, ['deriveBits']);
+    const derivedBits = await crypto.subtle.deriveBits({name:'PBKDF2', salt, iterations, hash:'SHA-256'}, keyMaterial, 256);
+    return bufToBase64(derivedBits);
+}
 function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); if($(id)) $(id).classList.add('active'); }
 
 // --- УЛУЧШЕННЫЕ ТОСТЫ ---
@@ -74,27 +109,69 @@ $('btn-create-finish').onclick = async () => {
     const name = $('room-name').value;
     const link = $('room-link').value;
     if(!name || !link) return showToast("Заполни поля!");
+    const isPrivate = $('room-private') ? $('room-private').checked : false;
+    const password = $('room-password') ? $('room-password').value : '';
     const newRoomRef = push(ref(db, 'rooms'));
-    await set(newRoomRef, { name, link, admin: auth.currentUser.uid, adminName: auth.currentUser.displayName || "User" });
+    const roomData = { name, link, admin: auth.currentUser.uid, adminName: auth.currentUser.displayName || "User" };
+    if (isPrivate) {
+        if (!password || password.length < 4) return showToast('Пароль должен быть минимум 4 символа');
+        try {
+            const salt = genSalt(16);
+            const pwHash = await deriveKey(password, salt);
+            roomData.private = true;
+            roomData.pwSalt = salt;
+            roomData.pwHash = pwHash;
+        } catch (e) {
+            return showToast('Ошибка при установке пароля');
+        }
+    }
+    await set(newRoomRef, roomData);
     $('modal-create').classList.remove('active');
+    // очистим поля
+    if ($('room-password')) $('room-password').value = '';
+    if ($('room-private')) $('room-private').checked = false;
     enterRoom(newRoomRef.key, name, link, auth.currentUser.uid);
 };
 
+function renderRooms(filter = '') {
+    const grid = $('rooms-grid');
+    grid.innerHTML = '';
+    const data = roomsCache || {};
+    const q = String(filter || '').trim().toLowerCase();
+    const keys = Object.keys(data);
+    if (!keys.length) {
+        grid.innerHTML = '<div style="padding:20px; color:#888">Пока нет комнат</div>';
+        return;
+    }
+    keys.forEach(id => {
+        const room = data[id];
+        const name = room.name || '';
+        const host = room.adminName || '';
+        if (q) {
+            const hay = (name + ' ' + host).toLowerCase();
+            if (!hay.includes(q)) return;
+        }
+        // Используем JSON.stringify чтобы корректно экранировать аргументы для onclick
+        grid.innerHTML += `\n            <div class="room-card glass-panel" onclick="window.joinRoom(${JSON.stringify(id)}, ${JSON.stringify(name)}, ${JSON.stringify(room.link || '')}, ${JSON.stringify(room.admin || '')})">\n                <h4>${escapeHtml(name)}</h4>\n                <p style=\"font-size:12px; opacity:0.6; margin-top:5px;\">Хост: ${escapeHtml(host)}</p>\n            </div>`;
+    });
+}
+
 function syncRooms() {
     onValue(ref(db, 'rooms'), (snap) => {
-        const grid = $('rooms-grid');
-        grid.innerHTML = '';
-        const data = snap.val();
-        if(data) {
-            Object.entries(data).forEach(([id, room]) => {
-                grid.innerHTML += `
-                    <div class="room-card glass-panel" onclick="window.joinRoom('${id}','${room.name}','${room.link}','${room.admin}')">
-                        <h4>${room.name}</h4>
-                        <p style="font-size:12px; opacity:0.6; margin-top:5px;">Хост: ${room.adminName}</p>
-                    </div>`;
-            });
-        }
+        roomsCache = snap.val() || {};
+        // сразу отрендерим с учётом текущего поиска
+        const si = $('search-rooms');
+        renderRooms(si ? si.value : '');
     });
+    // Подписка на ввод поиска (легкий debounce)
+    const search = $('search-rooms');
+    if (search) {
+        let t = null;
+        search.addEventListener('input', (e) => {
+            clearTimeout(t);
+            t = setTimeout(() => renderRooms(e.target.value), 120);
+        });
+    }
 }
 window.joinRoom = (id, name, link, admin) => enterRoom(id, name, link, admin);
 
@@ -114,7 +191,25 @@ function enterRoom(roomId, name, link, adminId) {
     player.style.pointerEvents = isHost ? "auto" : "none";
     
     showScreen('room-screen');
+    // Фикс: помечаем время входа, чтобы не показывать старые уведомления
+    roomEnteredAt = Date.now();
     initRoomServices();
+    // Показ/логика кнопки удаления комнаты (только для хоста)
+    const delBtn = $('btn-delete-room');
+    if (delBtn) {
+        delBtn.style.display = isHost ? 'inline-block' : 'none';
+        delBtn.onclick = async () => {
+            if (!isHost) return;
+            if (!confirm('ВНИМАНИЕ! Удалить эту комнату навсегда?')) return;
+            try {
+                await remove(ref(db, `rooms/${currentRoomId}`));
+                showToast('Комната удалена');
+                leaveRoom();
+            } catch (e) {
+                showToast('Ошибка удаления комнаты');
+            }
+        };
+    }
     showToast(isHost ? "Вы зашли как Хост" : "Вы зашли как Зритель");
 }
 
@@ -125,6 +220,7 @@ function leaveRoom() {
     if (myStream) { myStream.getTracks().forEach(t => t.stop()); myStream = null; $('mic-btn').classList.remove('active'); }
     $('remote-audio-container').innerHTML = '';
     activeCalls.clear();
+    const delBtn = $('btn-delete-room'); if (delBtn) delBtn.style.display = 'none';
     currentRoomId = null;
     showScreen('lobby-screen');
 }
@@ -194,7 +290,8 @@ function initRoomServices() {
     });
 
     // --- ЧАТ И ТАЙМКОДЫ ---
-    const parseTimecodes = (text) => text.replace(/(\d{1,2}:\d{2})/g, '<button class="timecode-btn" data-time="$1">$1</button>');
+    // Экранируем текст перед вставкой и затем подменяем паттерны таймкодов
+    const parseTimecodes = (text) => escapeHtml(text).replace(/(\d{1,2}:\d{2})/g, '<button class="timecode-btn" data-time="$1">$1</button>');
     
     const sendMsg = () => {
         const inp = $('chat-input');
@@ -225,10 +322,13 @@ function initRoomServices() {
         const isMe = m.user === auth.currentUser.displayName;
         const div = document.createElement('div');
         div.className = isMe ? 'm-line self' : 'm-line';
-        div.innerHTML = `<div class="bubble"><strong>${m.user}</strong><p>${parseTimecodes(m.content)}</p></div>`;
+        div.innerHTML = `<div class="bubble"><strong>${escapeHtml(m.user || 'User')}</strong><p>${parseTimecodes(m.content || '')}</p></div>`;
         $('chat-messages').appendChild(div);
         $('chat-messages').scrollTop = $('chat-messages').scrollHeight;
-        if(!isMe) showToast(`Сообщение от ${m.user}`);
+        // Показываем тост только для новых сообщений (после входа в комнату)
+        if (!isMe && m.ts && m.ts >= (roomEnteredAt - 2000)) {
+            showToast(`Сообщение от ${escapeHtml(m.user || 'User')}`);
+        }
     });
 
     // Табы чата
