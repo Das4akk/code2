@@ -64,14 +64,6 @@ function showToast(message) {
 
 // --- WebRTC Инициализация ---
 const peer = new Peer(undefined, { host: '0.peerjs.com', port: 443, secure: true });
-// When peer opens, register peer id in voice map if we're in a room and mic active
-peer.on('open', (id) => {
-    try {
-        if (currentRoomId && auth.currentUser && $('mic-btn') && $('mic-btn').classList.contains('active')) {
-            set(ref(db, `rooms/${currentRoomId}/voice/${auth.currentUser.uid}`), id);
-        }
-    } catch (e) { /* ignore */ }
-});
 let currentRoomId = null;
 let isHost = false;
 let myStream = null;
@@ -81,14 +73,6 @@ let isRemoteAction = false;
 let lastSyncTs = 0;
 let processedMsgs = new Set(); // Защита от дублей сообщений
 let editingRoomId = null; // Если установлено - модал создания используется для редактирования
-// Social + voice helper maps
-let friendsMap = {};
-let friendsUnsub = null;
-let friendReqUnsub = null;
-let invitesUnsub = null;
-let inboxUnsub = null;
-let voicePeerMap = {}; // peerId -> uid
-let remoteAnalysers = {}; // peerId -> { audioCtx, analyser, data, uid, raf }
 // URL для репорт-формы (оставьте пустым, чтобы отключить кнопку Report)
 const REPORT_FORM_URL = '';
 
@@ -97,77 +81,16 @@ setPersistence(auth, browserLocalPersistence);
 onAuthStateChanged(auth, (user) => {
     if (user) {
         $('user-display-name').innerText = user.displayName || user.email;
-        if(!currentRoomId) showScreen('lobby-screen'); 
+        if(!currentRoomId) {
+            showScreen('lobby-screen');
+            // Загрузка уведомлений о друзьях и инвайтах в лобби
+            setupLobbyNotifications();
+        }
         syncRooms();
-        // setup social listeners (friends/requests/invites/inbox)
-        try { setupSocialListeners(user.uid); } catch(e){}
     } else {
-        // remove social listeners when signed out
-        try { removeSocialListeners(); } catch(e){}
         showScreen('auth-screen');
     }
 });
-
-function setupSocialListeners(uid) {
-    // friends list
-    const fRef = ref(db, `users/${uid}/friends`);
-    const fHandler = (snap) => { friendsMap = snap.val() || {}; };
-    onValue(fRef, fHandler);
-    friendsUnsub = () => off(fRef, 'value', fHandler);
-
-    // incoming friend requests — ask to accept
-    const frRef = ref(db, `users/${uid}/friendRequests`);
-    const frHandler = async (snap) => {
-        const req = snap.val(); if (!req) return;
-        const key = snap.key;
-        const fromUid = req.fromUid || req.from;
-        const fromName = req.fromName || req.name || 'User';
-        if (confirm(`${fromName} хочет добавить вас в друзья. Принять?`)) {
-            await set(ref(db, `users/${uid}/friends/${fromUid}`), true);
-            await set(ref(db, `users/${fromUid}/friends/${uid}`), true);
-            showToast('Теперь вы друзья');
-        }
-        // remove request entry
-        await remove(ref(db, `users/${uid}/friendRequests/${key}`));
-    };
-    onChildAdded(frRef, frHandler);
-    friendReqUnsub = () => off(frRef, 'child_added', frHandler);
-
-    // invites
-    const invRef = ref(db, `users/${uid}/invites`);
-    const invHandler = (snap) => {
-        const inv = snap.val(); if (!inv) return; const id = snap.key;
-        const fromName = inv.fromName || inv.fromUid || 'User';
-        const message = inv.message || 'Приглашение';
-        const roomId = inv.roomId;
-        const el = document.createElement('div'); el.className = 'toast';
-        el.innerHTML = `${escapeHtml(fromName)}: ${escapeHtml(message)} <button class='join-invite' style='background:#2ecc71;border:none;color:#000;padding:6px 8px;border-radius:8px;margin-left:8px;'>Зайти</button>`;
-        $('toast-container').appendChild(el);
-        el.querySelector('.join-invite').onclick = async () => {
-            if (roomsCache[roomId]) enterRoom(roomId, roomsCache[roomId].name, roomsCache[roomId].link, roomsCache[roomId].admin);
-            else showToast('Комната недоступна');
-            await remove(ref(db, `users/${uid}/invites/${id}`));
-            el.remove();
-        };
-        setTimeout(()=>el.remove(), 20000);
-    };
-    onChildAdded(invRef, invHandler);
-    invitesUnsub = () => off(invRef, 'child_added', invHandler);
-
-    // inbox (DMs)
-    const inboxRef = ref(db, `users/${uid}/inbox`);
-    const inboxHandler = (snap) => { const msg = snap.val(); if (!msg) return; showToast(`DM от ${escapeHtml(msg.fromName || 'User')}: ${escapeHtml(msg.content || '')}`); remove(ref(db, `users/${uid}/inbox/${snap.key}`)); };
-    onChildAdded(inboxRef, inboxHandler);
-    inboxUnsub = () => off(inboxRef, 'child_added', inboxHandler);
-}
-
-function removeSocialListeners() {
-    try { friendsUnsub && friendsUnsub(); friendsUnsub = null; } catch(e){}
-    try { friendReqUnsub && friendReqUnsub(); friendReqUnsub = null; } catch(e){}
-    try { invitesUnsub && invitesUnsub(); invitesUnsub = null; } catch(e){}
-    try { inboxUnsub && inboxUnsub(); inboxUnsub = null; } catch(e){}
-    friendsMap = {};
-}
 
 // Авторизация
 $('tab-login').onclick = () => { $('form-login').classList.add('active-form'); $('form-login').classList.remove('hidden-form', 'left'); $('form-register').classList.add('hidden-form', 'right'); $('form-register').classList.remove('active-form'); $('tab-login').classList.add('active'); $('tab-register').classList.remove('active'); };
@@ -309,6 +232,85 @@ function syncRooms() {
         rp.addEventListener('change', () => { rpwd.style.display = rp.checked ? 'block' : 'none'; });
     }
 }
+
+// --- УВЕДОМЛЕНИЯ В ЛОББИ: приглашения друзей и в комнаты ---
+function setupLobbyNotifications() {
+    // Приглашения в комнату
+    onChildAdded(ref(db, `users/${auth.currentUser.uid}/room-invites`), (snap) => {
+        const invite = snap.val();
+        const inviteId = snap.key;
+        if (!invite || Date.now() - invite.ts > 3600000) return; // Игнорируем старые инвайты (>1ч)
+        
+        const link = `<button class="invite-accept-btn" data-room-id="${invite.roomId}" data-invite-id="${inviteId}" style="background:linear-gradient(135deg,#2ed573,#22c55e); border:none; padding:8px 16px; border-radius:8px; color:#fff; font-weight:600; cursor:pointer; margin:5px 0;">Зайти в комнату</button>`;
+        const Toast_html = `<div style="padding:12px; background:rgba(46,213,115,0.1); border: 1px solid #2ed573; border-radius:8px; margin:5px 0;">${escapeHtml(invite.invitedBy)} приглашает: <strong>${escapeHtml(invite.roomName)}</strong><br>${link}</div>`;
+        
+        const container = $('toast-container');
+        const notif = document.createElement('div');
+        notif.innerHTML = Toast_html;
+        container.appendChild(notif);
+        
+        // Обработчик кнопки
+        const btn = notif.querySelector('.invite-accept-btn');
+        if (btn) {
+            btn.addEventListener('click', async () => {
+                const roomId = btn.dataset.roomId;
+                const iid = btn.dataset.inviteId;
+                // Удаляем инвайт и заходим в комнату
+                try {
+                    await remove(ref(db, `users/${auth.currentUser.uid}/room-invites/${iid}`));
+                    if (roomsCache[roomId]) {
+                        window.joinRoom(roomId, roomsCache[roomId].name, roomsCache[roomId].link, roomsCache[roomId].admin);
+                    }
+                } catch (e) { showToast('Ошибка'); }
+            });
+        }
+        
+        setTimeout(() => notif.remove(), 5000);
+    });
+    
+    // Запросы друзей
+    onChildAdded(ref(db, `users/${auth.currentUser.uid}/friend-requests`), (snap) => {
+        const req = snap.val();
+        const fromUid = snap.key;
+        if (!req) return;
+        
+        const acceptBtn = `<button class="friend-req-accept" data-from-uid="${fromUid}" style="background:#2ed573; border:none; padding:6px 12px; border-radius:6px; color:#000; font-weight:600; cursor:pointer; margin-right:5px;">Принять</button>`;
+        const declineBtn = `<button class="friend-req-decline" data-from-uid="${fromUid}" style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:6px 12px; border-radius:6px; color:#fff; cursor:pointer;">Отклонить</button>`;
+        const Toast_html = `<div style="padding:12px; background:rgba(46,213,115,0.1); border: 1px solid #2ed573; border-radius:8px; margin:5px 0;"><strong>${escapeHtml(req.from)}</strong> хочет быть твоим другом<br>${acceptBtn}${declineBtn}</div>`;
+        
+        const container = $('toast-container');
+        const notif = document.createElement('div');
+        notif.innerHTML = Toast_html;
+        container.appendChild(notif);
+        
+        // Обработчики кнопок
+        const acceptB = notif.querySelector('.friend-req-accept');
+        const declineB = notif.querySelector('.friend-req-decline');
+        if (acceptB) {
+            acceptB.addEventListener('click', async () => {
+                const uid = acceptB.dataset.fromUid;
+                try {
+                    await set(ref(db, `users/${auth.currentUser.uid}/friends/${uid}`), { status: 'accepted', ts: Date.now() });
+                    await set(ref(db, `users/${uid}/friends/${auth.currentUser.uid}`), { status: 'accepted', ts: Date.now() });
+                    await remove(ref(db, `users/${auth.currentUser.uid}/friend-requests/${uid}`));
+                    showToast('Друг добавлен!');
+                    notif.remove();
+                } catch (e) { showToast('Ошибка'); }
+            });
+        }
+        if (declineB) {
+            declineB.addEventListener('click', async () => {
+                const uid = declineB.dataset.fromUid;
+                try {
+                    await remove(ref(db, `users/${auth.currentUser.uid}/friend-requests/${uid}`));
+                    notif.remove();
+                } catch (e) { showToast('Ошибка'); }
+            });
+        }
+        
+        setTimeout(() => { if (notif.parentNode) notif.remove(); }, 8000);
+    });
+}
 let pendingJoin = null;
 window.joinRoom = (id, name, link, admin) => {
     const room = roomsCache[id] || null;
@@ -395,18 +397,9 @@ function enterRoom(roomId, name, link, adminId) {
 
 function leaveRoom() {
     if (presenceRef) remove(presenceRef);
-    try { if (currentRoomId && auth.currentUser) remove(ref(db, `rooms/${currentRoomId}/voice/${auth.currentUser.uid}`)); } catch(e){}
     if (roomListenerUnsubscribe) { try { roomListenerUnsubscribe(); } catch(e) {} roomListenerUnsubscribe = null; }
     player.pause(); player.src = '';
     if (myStream) { myStream.getTracks().forEach(t => t.stop()); myStream = null; $('mic-btn').classList.remove('active'); }
-    // cleanup remote audio elements and analysers
-    try {
-        Object.keys(remoteAnalysers).forEach(pid => {
-            const r = remoteAnalysers[pid];
-            if (r) { if (r.raf) cancelAnimationFrame(r.raf); try { r.audioCtx && r.audioCtx.close(); } catch(e){} }
-            delete remoteAnalysers[pid];
-        });
-    } catch(e){}
     $('remote-audio-container').innerHTML = '';
     activeCalls.clear();
     const delBtn = $('btn-delete-room'); if (delBtn) delBtn.style.display = 'none';
@@ -454,6 +447,20 @@ function initRoomServices() {
     set(presenceRef, { name: auth.currentUser.displayName || "User", perms: defaultPerms });
     onDisconnect(presenceRef).remove(); 
 
+    // Загрузка списка друзей (для текущего пользователя)
+    let friends = new Set();
+    try {
+        const friendsSnap = await (new Promise((resolve) => {
+            const unsubscribe = onValue(ref(db, `users/${auth.currentUser.uid}/friends`), resolve, { onlyOnce: true });
+        }));
+        if (friendsSnap.val()) {
+            Object.keys(friendsSnap.val()).forEach(fuid => {
+                const fdata = friendsSnap.val()[fuid];
+                if (fdata === true || (fdata && fdata.status === 'accepted')) friends.add(fuid);
+            });
+        }
+    } catch (e) {}
+
     onValue(presenceDbRef, (snap) => {
         const data = snap.val() || {};
         const usersListEl = $('users-list');
@@ -463,75 +470,65 @@ function initRoomServices() {
 
         const adminId = (roomsCache[currentRoomId] && roomsCache[currentRoomId].admin) ? roomsCache[currentRoomId].admin : null;
 
-        // local aliases for friends (client-side)
-        const aliases = JSON.parse(localStorage.getItem('friendAliases') || '{}');
-
         ids.forEach(uid => {
             const u = data[uid] || {};
+            const name = escapeHtml(u.name || 'User');
             const perms = u.perms || defaultPerms;
             const isLocal = uid === auth.currentUser.uid;
             const isUserHost = uid === adminId;
-            const displayName = escapeHtml(u.name || 'User');
-            const alias = aliases[uid] || null;
-            const isFriend = !!(friendsMap && friendsMap[uid]);
+            const isFriend = friends.has(uid);
 
             let itemHtml = `<div class="user-item" data-uid="${uid}">`;
-            itemHtml += `<div class="indicator" title="online"></div>`;
-            itemHtml += `<div class="user-main"><span class="user-name">${alias ? escapeHtml(alias) + ` <span style="opacity:.6">(${displayName})</span>` : displayName}</span>`;
+            itemHtml += `<div class="indicator"></div>`;
+            itemHtml += `<div class="user-main"><span class="user-name">${name}</span>`;
             if (isUserHost) itemHtml += `<span class="host-label">Host</span>`;
-            if (isFriend) itemHtml += `<span class="friend-label">Friend</span>`;
+            if (isFriend && !isLocal) itemHtml += `<span class="friend-label">Друг</span>`;
             if (isLocal) itemHtml += `<span class="you-label">(Вы)</span>`;
             itemHtml += `</div>`;
 
-            // Если текущий пользователь — хост, показываем переключатели прав, но не для самого хоста
-            if (isHost && uid !== adminId) {
+            // Если текущий пользователь — хост И видимый пользователь НЕ является хостом, показываем переключатели прав
+            if (isHost && !isUserHost) {
                 itemHtml += `<div class="perm-controls">`;
-                itemHtml += `<label title="Чат"><input type="checkbox" class="perm-toggle" data-uid="${uid}" data-perm="chat" ${perms.chat ? 'checked':''}></label>`;
-                itemHtml += `<label title="Голос"><input type="checkbox" class="perm-toggle" data-uid="${uid}" data-perm="voice" ${perms.voice ? 'checked':''}></label>`;
-                itemHtml += `<label title="Плеер"><input type="checkbox" class="perm-toggle" data-uid="${uid}" data-perm="player" ${perms.player ? 'checked':''}></label>`;
-                itemHtml += `<label title="Реакции"><input type="checkbox" class="perm-toggle" data-uid="${uid}" data-perm="reactions" ${perms.reactions ? 'checked':''}></label>`;
+                itemHtml += `<label><input type="checkbox" class="perm-toggle" data-uid="${uid}" data-perm="chat" ${perms.chat ? 'checked':''}>Чат</label>`;
+                itemHtml += `<label><input type="checkbox" class="perm-toggle" data-uid="${uid}" data-perm="voice" ${perms.voice ? 'checked':''}>Голос</label>`;
+                itemHtml += `<label><input type="checkbox" class="perm-toggle" data-uid="${uid}" data-perm="player" ${perms.player ? 'checked':''}>Плеер</label>`;
+                itemHtml += `<label><input type="checkbox" class="perm-toggle" data-uid="${uid}" data-perm="reactions" ${perms.reactions ? 'checked':''}>Реак</label>`;
                 itemHtml += `</div>`;
             }
 
-            // Actions for non-local users: friend, DM, invite, report
+            // Кнопка репорта (для всех, кроме себя)
             if (!isLocal) {
-                if (isFriend) {
-                    // show friend label already
-                } else {
-                    itemHtml += `<button class="friend-btn" data-uid="${uid}">Добавить</button>`;
-                }
-                itemHtml += `<button class="dm-btn" data-uid="${uid}">DM</button>`;
-                itemHtml += `<button class="invite-btn" data-uid="${uid}">Invite</button>`;
-                itemHtml += `<button class="report-btn" data-uid="${uid}" title="Report" style="margin-left:6px;">Report</button>`;
+                itemHtml += `<button class="report-btn" data-uid="${uid}" title="Report">Report</button>`;
+            }
+            // Кнопка добавления в друзья (для всех, кроме себя и уже друзей)
+            if (!isLocal && !isFriend) {
+                itemHtml += `<button class="add-friend-btn" data-uid="${uid}" title="Add Friend">+Доб</button>`;
+            }
+            // Кнопка инвайта в комнату (для всех, кроме себя)
+            if (!isLocal) {
+                itemHtml += `<button class="invite-btn" data-uid="${uid}" title="Invite to room">Инв</button>`;
             }
 
             itemHtml += `</div>`;
             usersListEl.innerHTML += itemHtml;
         });
 
-        // Perm toggles (only those rendered exist)
-        document.querySelectorAll('.perm-toggle').forEach(el => {
-            el.addEventListener('change', async (e) => {
-                const uid = e.target.dataset.uid;
-                const perm = e.target.dataset.perm;
-                const val = e.target.checked;
-                try {
-                    await set(ref(db, `rooms/${currentRoomId}/presence/${uid}/perms/${perm}`), val);
-                    showToast('Права обновлены');
-                } catch (err) { showToast('Ошибка при обновлении прав'); }
+        // Подписываемся на переключатели прав (если хост)
+        if (isHost) {
+            document.querySelectorAll('.perm-toggle').forEach(el => {
+                el.addEventListener('change', async (e) => {
+                    const uid = e.target.dataset.uid;
+                    const perm = e.target.dataset.perm;
+                    const val = e.target.checked;
+                    try {
+                        await set(ref(db, `rooms/${currentRoomId}/presence/${uid}/perms/${perm}`), val);
+                        showToast('Права обновлены');
+                    } catch (err) { showToast('Ошибка при обновлении прав'); }
+                });
             });
-        });
+        }
 
-        // Friend / DM / Invite / Report handlers
-        document.querySelectorAll('.friend-btn').forEach(b => b.addEventListener('click', async (e) => {
-            const uid = e.target.dataset.uid; try { await set(ref(db, `users/${uid}/friendRequests/${auth.currentUser.uid}`), { fromUid: auth.currentUser.uid, fromName: auth.currentUser.displayName || 'User', ts: Date.now() }); showToast('Запрос отправлен'); e.target.innerText = 'Pending'; e.target.disabled = true; } catch (err) { showToast('Ошибка'); }
-        }));
-        document.querySelectorAll('.dm-btn').forEach(b => b.addEventListener('click', async (e) => {
-            const uid = e.target.dataset.uid; const msg = prompt('Введите сообщение:'); if (!msg) return; try { await push(ref(db, `users/${uid}/inbox`), { fromUid: auth.currentUser.uid, fromName: auth.currentUser.displayName || 'User', content: msg, ts: Date.now() }); showToast('Сообщение отправлено'); } catch(err){ showToast('Ошибка отправки'); }
-        }));
-        document.querySelectorAll('.invite-btn').forEach(b => b.addEventListener('click', async (e) => {
-            const uid = e.target.dataset.uid; if (!currentRoomId) return showToast('Сначала зайдите в комнату'); const roomMeta = roomsCache[currentRoomId] || {}; try { await push(ref(db, `users/${uid}/invites`), { fromUid: auth.currentUser.uid, fromName: auth.currentUser.displayName || 'User', roomId: currentRoomId, roomName: roomMeta.name || '', message: 'Привет!Заходи к нам в комнату!', ts: Date.now() }); showToast('Приглашение отправлено'); } catch(e){ showToast('Ошибка приглашения'); }
-        }));
+        // Кнопки репорта
         document.querySelectorAll('.report-btn').forEach(b => {
             b.addEventListener('click', (e) => {
                 const uid = e.target.dataset.uid;
@@ -540,30 +537,34 @@ function initRoomServices() {
             });
         });
 
-        // Local alias editing for friends: double-click name to set local alias
-        try {
-            const aliases = JSON.parse(localStorage.getItem('friendAliases') || '{}');
-            document.querySelectorAll('.user-item').forEach(item => {
-                const uid = item.dataset.uid;
-                const nameEl = item.querySelector('.user-name');
-                if (!nameEl) return;
-                if (friendsMap && friendsMap[uid]) {
-                    nameEl.title = 'Двойной клик — локальный ник';
-                    nameEl.ondblclick = () => {
-                        const current = aliases[uid] || '';
-                        const v = prompt('Локальный ник для друга', current);
-                        if (v === null) return;
-                        aliases[uid] = v.trim();
-                        localStorage.setItem('friendAliases', JSON.stringify(aliases));
-                        // update display immediately
-                        const orig = (data[uid] && data[uid].name) ? data[uid].name : 'User';
-                        nameEl.innerHTML = `${escapeHtml(aliases[uid])} <span style="opacity:.6">(${escapeHtml(orig)})</span>`;
-                    };
-                } else {
-                    nameEl.ondblclick = null;
-                }
+        // Кнопки добавления в друзья
+        document.querySelectorAll('.add-friend-btn').forEach(b => {
+            b.addEventListener('click', async (e) => {
+                const uid = e.target.dataset.uid;
+                try {
+                    await set(ref(db, `users/${auth.currentUser.uid}/friends/${uid}`), { status: 'pending', ts: Date.now() });
+                    await set(ref(db, `users/${uid}/friend-requests/${auth.currentUser.uid}`), { from: auth.currentUser.displayName, ts: Date.now() });
+                    showToast('Запрос отправлен');
+                } catch (err) { showToast('Ошибка при отправке запроса'); }
             });
-        } catch(e) { /* ignore */ }
+        });
+
+        // Кнопки инвайта в комнату
+        document.querySelectorAll('.invite-btn').forEach(b => {
+            b.addEventListener('click', async (e) => {
+                const uid = e.target.dataset.uid;
+                try {
+                    await push(ref(db, `users/${uid}/room-invites`), {
+                        roomId: currentRoomId,
+                        roomName: roomsCache[currentRoomId]?.name || 'Комната',
+                        invitedBy: auth.currentUser.displayName,
+                        message: `Привет! Заходи к нам в комнату!`,
+                        ts: Date.now()
+                    });
+                    showToast('Инвайт отправлен');
+                } catch (err) { showToast('Ошибка при отправке инвайта'); }
+            });
+        });
 
         // Применяем локальные права (для текущего пользователя)
         const localNode = data[auth.currentUser.uid] || {};
@@ -667,78 +668,96 @@ function initRoomServices() {
         setTimeout(() => el.remove(), 3000);
     });
 
-    // --- ГОЛОС (WebRTC) ---
-    function attachRemoteAudio(stream, peerId) {
-        // avoid duplicates and self-play
-        if (!peerId || activeCalls.has(peerId)) return;
-        const mappedUid = voicePeerMap[peerId] || null;
-        if (mappedUid === auth.currentUser.uid) return; // don't play own stream
+    // --- ГОЛОС (WebRTC) с визуализацией входящего звука ---
+    const remoteAudioAnalyzers = new Map(); // uid -> { analyser, dataArray, animationId }
+    
+    function createRemoteAudioAnalyzer(audio, uid) {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioCtx.createMediaElementAudioSource(audio);
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 256;
+        source.connect(analyser);
+        analyser.connect(audioCtx.destination);
+        
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        let animId = null;
+        
+        const userItem = document.querySelector(`.user-item[data-uid="${uid}"]`);
+        if (!userItem) return;
+        
+        const animate = () => {
+            analyser.getByteFrequencyData(dataArray);
+            let avg = 0;
+            for (let i = 0; i < dataArray.length; i++) avg += dataArray[i];
+            avg /= dataArray.length;
+            
+            const vol = avg / 256;
+            const scale = 1 + (vol * 0.4);
+            const glow = vol * 20;
+            
+            const indicator = userItem.querySelector('.indicator');
+            if (indicator && vol > 0.05) {
+                indicator.style.transform = `scale(${scale})`;
+                indicator.style.boxShadow = `0 0 ${glow}px #2ed573`;
+            } else if (indicator) {
+                indicator.style.transform = 'scale(1)';
+                indicator.style.boxShadow = '0 0 8px #2ed573';
+            }
+            
+            animId = requestAnimationFrame(animate);
+        };
+        
+        animate();
+        remoteAudioAnalyzers.set(uid, { analyser, dataArray, animationId: animId });
+    }
+    
+    function attachRemoteAudio(stream, peerId, uid) {
+        if (activeCalls.has(peerId)) return;
         activeCalls.add(peerId);
         const audio = document.createElement('audio');
         audio.id = `audio-${peerId}`;
         audio.autoplay = true;
         audio.srcObject = stream;
-        audio.volume = $('voice-volume') ? $('voice-volume').value : 1;
+        audio.volume = $('voice-volume').value;
         $('remote-audio-container').appendChild(audio);
-
-        // Create analyser for per-user visualization
-        try {
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const src = audioCtx.createMediaStreamSource(stream);
-            const analyser = audioCtx.createAnalyser();
-            analyser.fftSize = 64;
-            src.connect(analyser);
-            const data = new Uint8Array(analyser.frequencyBinCount);
-            // start RAF loop
-            const tick = () => {
-                analyser.getByteFrequencyData(data);
-                let avg = 0; for (let i = 0; i < data.length; i++) avg += data[i];
-                avg = avg / data.length;
-                const vol = Math.min(1, avg / 128);
-                // update UI for mapped uid
-                if (mappedUid) {
-                    const el = document.querySelector(`.user-item[data-uid="${mappedUid}"]`);
-                    if (el) {
-                        const ind = el.querySelector('.indicator');
-                        if (ind) {
-                            if (vol > 0.05) ind.classList.add('speaking'); else ind.classList.remove('speaking');
-                            ind.style.boxShadow = `0 0 ${Math.round(vol * 30)}px var(--accent)`;
-                            ind.style.transform = `scale(${1 + vol * 0.25})`;
-                        }
-                    }
-                }
-                remoteAnalysers[peerId].raf = requestAnimationFrame(tick);
-            };
-            remoteAnalysers[peerId] = { audioCtx, analyser, data, uid: mappedUid, raf: requestAnimationFrame(tick) };
-        } catch (e) { /* ignore visualizer errors */ }
+        
+        // Создаём анализатор входящего звука для этого пользователя
+        audio.oncanplay = () => createRemoteAudioAnalyzer(audio, uid);
     }
 
     peer.on('call', (call) => {
-        // answer with our stream (may be null)
-        try { call.answer(myStream); } catch(e) {}
-        call.on('stream', (remoteStream) => attachRemoteAudio(remoteStream, call.peer));
+        call.answer(myStream);
+        call.on('stream', (remoteStream) => attachRemoteAudio(remoteStream, call.peer, call.peer));
     });
 
-    
+    $('mic-btn').onclick = async function() {
+        const isActive = this.classList.toggle('active');
+        if (isActive) {
+            try {
+                myStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+                if (peer.id) set(ref(db, `rooms/${currentRoomId}/voice/${auth.currentUser.uid}`), peer.id);
+                showToast("Микрофон включен");
+                // НЕ запускаем визуализацию для собственного микрофона
+            } catch (e) { showToast("Ошибка доступа к микрофону"); this.classList.remove('active'); }
+        } else {
+            if (myStream) myStream.getTracks().forEach(t => t.stop());
+            myStream = null;
+            remove(ref(db, `rooms/${currentRoomId}/voice/${auth.currentUser.uid}`));
+            activeCalls.clear();
+            $('remote-audio-container').innerHTML = '';
+            remoteAudioAnalyzers.forEach(a => { if (a.animationId) cancelAnimationFrame(a.animationId); });
+            remoteAudioAnalyzers.clear();
+            showToast("Микрофон выключен");
+        }
+    };
 
     onValue(voiceRef, (snap) => {
         const data = snap.val() || {};
-        // rebuild peerId -> uid map
-        voicePeerMap = {};
-        for (let uid in data) {
-            const pid = data[uid]; if (pid) voicePeerMap[pid] = uid;
-        }
         for (let uid in data) {
             const targetPeerId = data[uid];
-            if (!targetPeerId) continue;
-            // don't call self
-            if (uid === auth.currentUser.uid) continue;
-            // To prevent duplicate bi-directional calls, only the peer with smaller id initiates
-            if (myStream && peer && peer.id && !activeCalls.has(targetPeerId) && peer.id < targetPeerId) {
-                try {
-                    const call = peer.call(targetPeerId, myStream);
-                    call.on('stream', (remoteStream) => attachRemoteAudio(remoteStream, targetPeerId));
-                } catch (e) { /* ignore call errors */ }
+            if (uid !== auth.currentUser.uid && myStream && !activeCalls.has(targetPeerId)) {
+                const call = peer.call(targetPeerId, myStream);
+                call.on('stream', (remoteStream) => attachRemoteAudio(remoteStream, targetPeerId, uid));
             }
         }
     });
@@ -760,95 +779,7 @@ function initRoomServices() {
     }
     // ... (начало кода без изменений до момента с микрофоном)
 
-// Переменные для визуализатора
-let micAnalyser = null;
-let micAnimationId = null;
-
-// --- ФУНКЦИЯ ТАНЦУЮЩЕЙ ИКОНКИ ---
-function startMicVisualizer(stream) {
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const source = audioContext.createMediaStreamSource(stream);
-    micAnalyser = audioContext.createAnalyser();
-    micAnalyser.fftSize = 64; // Нам не нужна высокая точность для иконки
-    source.connect(micAnalyser);
-
-    const dataArray = new Uint8Array(micAnalyser.frequencyBinCount);
-    const micBtn = $('mic-btn');
-
-    function animate() {
-        if (!myStream) return; // Остановить, если мик выключен
-        
-        micAnalyser.getByteFrequencyData(dataArray);
-        
-        // Считаем среднюю громкость
-        let sum = 0;
-        for (let i = 0; i < dataArray.length; i++) {
-            sum += dataArray[i];
-        }
-        let average = sum / dataArray.length;
-        
-        // Нормализуем значения (от 0 до 1)
-        let volume = average / 128; 
-        
-        // ПРИМЕНЯЕМ ЭФФЕКТЫ:
-        // Масштаб от 1.0 до 1.5
-        let scale = 1 + (volume * 0.5);
-        // Сияние (drop-shadow для красоты или box-shadow)
-        let glow = volume * 30; // интенсивность свечения
-        
-        micBtn.style.transform = `scale(${scale})`;
-        const accentColor = (typeof getComputedStyle !== 'undefined') ? getComputedStyle(document.documentElement).getPropertyValue('--accent') : '#f5f7fa';
-        micBtn.style.filter = `drop-shadow(0 0 ${glow}px ${accentColor.trim()})`;
-        
-        micAnimationId = requestAnimationFrame(animate);
-    }
-    animate();
-}
-
-// --- ОБНОВЛЕННЫЙ КЛИК ПО МИКРОФОНУ ---
-$('mic-btn').onclick = async function() {
-    const isActive = this.classList.toggle('active');
-    
-    if (isActive) {
-        try {
-            myStream = await navigator.mediaDevices.getUserMedia({ 
-                audio: { echoCancellation: true, noiseSuppression: true } 
-            });
-            
-            if (peer.id) {
-                set(ref(db, `rooms/${currentRoomId}/voice/${auth.currentUser.uid}`), peer.id);
-            }
-            
-            showToast("Микрофон на связи");
-            
-            // Запускаем визуальное мерцание от громкости
-            startMicVisualizer(myStream);
-            
-        } catch (e) { 
-            showToast("Ошибка микрофона!"); 
-            this.classList.remove('active'); 
-        }
-    } else {
-        // Выключение
-        if (myStream) {
-            myStream.getTracks().forEach(t => t.stop());
-            myStream = null;
-        }
-        
-        if (micAnimationId) cancelAnimationFrame(micAnimationId);
-        
-        // Сброс стилей кнопки в исходку
-        this.style.transform = `scale(1)`;
-        this.style.filter = `none`;
-        
-        remove(ref(db, `rooms/${currentRoomId}/voice/${auth.currentUser.uid}`));
-        activeCalls.clear();
-        $('remote-audio-container').innerHTML = '';
-        showToast("Микрофон спит");
-    }
-};
-
-// ... (дальше остальной твой код: чат, реакции, фон — без изменений)
+    // --- НЕЙРОСЕТЕВОЙ ФОН ---
 }
 // --- МОДАЛЫ: вход в приватную комнату и поведение поля пароля при создании ---
 (function setupModals(){
