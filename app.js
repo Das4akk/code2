@@ -13,19 +13,13 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getDatabase(app);
+const createNoopPeerCall = () => ({ on: () => {}, close: () => {}, answer: () => {} });
+const peer = (typeof window !== 'undefined' && typeof window.Peer === 'function')
+    ? new window.Peer()
+    : { id: null, on: () => {}, call: () => createNoopPeerCall() };
 
 const $ = (id) => document.getElementById(id);
-// Безопасное экранирование текста для вставки в innerHTML
-const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;'
-}[char]));
-
-// Базовые состояния приложения (могут переиспользоваться более новыми V4-блоками ниже)
-const player = $('player');
+const player = $('native-player');
 let roomsCache = {};
 let currentRoomId = null;
 let presenceRef = null;
@@ -35,58 +29,25 @@ let isHost = false;
 let isRemoteAction = false;
 let lastSyncTs = 0;
 let editingRoomId = null;
-let roomEnteredAt = 0;
 let pendingJoin = null;
-const activeCalls = new Map();
-const REPORT_FORM_URL = '';
-let currentDirectChat = null;
-let directChatUnsubscribe = null;
-let lobbyFriendsListenerBound = false;
-let directNotificationStopper = null;
+let roomEnteredAt = 0;
+let latestVoicePeers = {};
 let currentPresenceCache = {};
 let latestRoomPresenceData = {};
+const activeCalls = new Map();
+const processedMsgs = new Set();
 const roomProfileSubscriptions = new Map();
 const friendProfileSubscriptions = new Map();
+const voicePeerConnections = new Map();
+const REPORT_FORM_URL = '';
 
-function showScreen(screenId) {
-    document.querySelectorAll('.screen').forEach((el) => el.classList.remove('active'));
-    const target = $(screenId);
-    if (target) target.classList.add('active');
-}
-
-function showToast(text, timeout = 3500) {
-    const container = $('toast-container');
-    if (!container) {
-        console.log(String(text ?? ''));
-        return;
-    }
-    const node = document.createElement('div');
-    node.className = 'toast';
-    node.textContent = String(text ?? '');
-    container.appendChild(node);
-    setTimeout(() => node.remove(), timeout);
-}
-
-function getRoomPreviewTime(syncState = {}) {
-    const raw = Number(syncState.time ?? syncState.currentTime ?? 0);
-    return Number.isFinite(raw) && raw > 0 ? raw : 0;
-}
-
-function genSalt(length = 16) {
-    const alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    const random = new Uint8Array(length);
-    crypto.getRandomValues(random);
-    let out = '';
-    for (let i = 0; i < random.length; i += 1) out += alphabet[random[i] % alphabet.length];
-    return out;
-}
-
-async function deriveKey(password, salt) {
-    const source = `${String(password ?? '')}:${String(salt ?? '')}`;
-    const encoded = new TextEncoder().encode(source);
-    const digest = await crypto.subtle.digest('SHA-256', encoded);
-    return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
-}
+const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+}[char]));
 
 function renderRooms(filter = '') {
     const grid = $('rooms-grid');
@@ -267,11 +228,9 @@ function setupLobbyNotifications() {
                     await set(ref(db, `users/${auth.currentUser.uid}/friends/${fromUid}`), { status: 'accepted', ts: Date.now() });
                     await set(ref(db, `users/${fromUid}/friends/${auth.currentUser.uid}`), { status: 'accepted', ts: Date.now() });
                     await remove(ref(db, `users/${auth.currentUser.uid}/friend-requests/${fromUid}`));
-                    showToast('Заявка в друзья принята');
+                    showToast('Друг добавлен');
                     notif.remove();
-                } catch (e) {
-                    showToast('Не удалось принять заявку');
-                }
+                } catch (e) { showToast('Ошибка'); }
             };
         }
         if (declineB) {
@@ -279,13 +238,76 @@ function setupLobbyNotifications() {
                 try {
                     await remove(ref(db, `users/${auth.currentUser.uid}/friend-requests/${fromUid}`));
                     notif.remove();
-                } catch (e) {
-                    showToast('Не удалось отклонить заявку');
-                }
+                } catch (e) { showToast('Ошибка'); }
             };
         }
-        setTimeout(() => notif.remove(), 5000);
+        setTimeout(() => notif.remove(), 8000);
     });
+}
+function enterRoom(roomId, name, link, adminId) {
+    currentRoomId = roomId;
+    isHost = auth.currentUser?.uid === adminId;
+    lastSyncTs = 0;
+    $('room-title-text').innerText = name;
+    player.src = link;
+    // Устанавливаем превью комнаты как фон плеера, если есть
+    const roomMeta = roomsCache[roomId] || {};
+    const pw = $('player-wrapper');
+    if (pw) {
+        if (roomMeta.preview) {
+            pw.style.backgroundImage = `url(${roomMeta.preview})`;
+            pw.style.backgroundSize = 'cover';
+            pw.style.backgroundPosition = 'center';
+        } else {
+            pw.style.backgroundImage = '';
+        }
+    }
+    $('chat-messages').innerHTML = ''; 
+    
+    // ПРАВА ДОСТУПА: Хост управляет, зритель только смотрит
+    player.controls = isHost;
+    player.style.pointerEvents = isHost ? "auto" : "none";
+    
+    showScreen('room-screen');
+    // Фикс: помечаем время входа, чтобы не показывать старые уведомления
+    roomEnteredAt = Date.now();
+    initRoomServices();
+    // Показ/логика кнопки удаления комнаты (только для хоста)
+    const delBtn = $('btn-delete-room');
+    const editBtn = $('btn-edit-room');
+    if (delBtn) {
+        delBtn.style.display = isHost ? 'inline-block' : 'none';
+        delBtn.onclick = async () => {
+            if (!isHost) return;
+            if (!confirm('ВНИМАНИЕ! Удалить эту комнату навсегда?')) return;
+            try {
+                await remove(ref(db, `rooms/${currentRoomId}`));
+                showToast('Комната удалена');
+                leaveRoom();
+            } catch (e) {
+                showToast('Ошибка удаления комнаты');
+            }
+        };
+    }
+    if (editBtn) {
+        editBtn.style.display = isHost ? 'inline-block' : 'none';
+        editBtn.onclick = () => {
+            if (!isHost) return;
+            editingRoomId = currentRoomId;
+            const meta = roomsCache[currentRoomId] || {};
+            if ($('room-name')) $('room-name').value = meta.name || '';
+            if ($('room-link')) $('room-link').value = meta.link || '';
+            if ($('room-preview')) $('room-preview').value = meta.preview || '';
+            if ($('room-button-color')) $('room-button-color').value = meta.buttonColor || '#ffffff';
+            if ($('room-private')) {
+                $('room-private').checked = !!meta.private;
+                $('room-password').style.display = $('room-private').checked ? 'block' : 'none';
+            }
+            if ($('room-password')) $('room-password').value = '';
+            $('modal-create').classList.add('active');
+        };
+    }
+    showToast(isHost ? "Вы зашли как Хост" : "Вы зашли как Зритель");
 }
 
 function leaveRoom() {
@@ -303,13 +325,12 @@ function leaveRoom() {
     currentRoomId = null;
     showScreen('lobby-screen');
 }
-if ($('btn-leave-room')) $('btn-leave-room').onclick = leaveRoom;
+$('btn-leave-room').onclick = leaveRoom;
 
 // --- AMBILIGHT ---
 const ambiCanvas = $('ambilight-canvas');
-const ambiCtx = ambiCanvas ? ambiCanvas.getContext('2d', { willReadFrequently: true }) : null;
+const ambiCtx = ambiCanvas.getContext('2d', { willReadFrequently: true });
 function drawAmbilight() {
-    if (!ambiCanvas || !ambiCtx || !player) return;
     if (currentRoomId && !player.paused && !player.ended) {
         ambiCanvas.width = player.clientWidth / 10;
         ambiCanvas.height = player.clientHeight / 10;
@@ -317,7 +338,7 @@ function drawAmbilight() {
     }
     requestAnimationFrame(drawAmbilight);
 }
-if (player) player.addEventListener('play', () => drawAmbilight());
+player.addEventListener('play', () => drawAmbilight());
 
 function initRoomServices() {
     // Cleanup any previous room listeners to avoid duplicate handlers
@@ -2867,6 +2888,14 @@ bindDirectChatUiV2();
 bindCreateModalOverrides();
 widenLobbyLayout();
 
+// Кнопка пропуска авторизации (гость)
+if ($('btn-skip-auth')) {
+    $('btn-skip-auth').onclick = () => {
+        showScreen('lobby-screen');
+        showToast('Гостевой режим: некоторые функции могут быть недоступны');
+    };
+}
+
 renderRooms = renderRoomsV4;
 setupLobbyNotifications = setupLobbyNotificationsV4;
 enterRoom = enterRoomV4;
@@ -2899,189 +2928,3 @@ async function cleanupInactiveRooms() {
 
 setInterval(cleanupInactiveRooms, 10 * 60 * 1000);
 cleanupInactiveRooms().catch(() => {});
-
-// --- RECOVERY BOOTSTRAP: auth + basic bindings ---
-let appBootstrapped = false;
-let lobbyBootstrapped = false;
-
-function switchAuthTab(mode) {
-    const loginTab = $('tab-login');
-    const registerTab = $('tab-register');
-    const loginForm = $('form-login');
-    const registerForm = $('form-register');
-    if (!loginTab || !registerTab || !loginForm || !registerForm) return;
-    const isLogin = mode !== 'register';
-    loginTab.classList.toggle('active', isLogin);
-    registerTab.classList.toggle('active', !isLogin);
-    loginForm.className = `auth-form ${isLogin ? 'active-form' : 'hidden-form left'}`;
-    registerForm.className = `auth-form ${isLogin ? 'hidden-form right' : 'active-form'}`;
-}
-
-function updateLobbyHeader(user) {
-    const displayName = user?.displayName || user?.email || 'User';
-    if ($('user-display-name')) $('user-display-name').textContent = displayName;
-    if ($('profile-name') && !$('profile-name').value) $('profile-name').value = user?.displayName || '';
-}
-
-async function ensureLobbyBootstrap() {
-    if (lobbyBootstrapped) return;
-    lobbyBootstrapped = true;
-    window.joinRoom = async (roomId, roomName, roomLink, roomAdminId) => {
-        if (!auth.currentUser) {
-            showToast('Сначала нужно войти');
-            return;
-        }
-        const room = roomsCache[roomId] || {};
-        if (room.private) {
-            pendingJoin = { roomId, roomName, roomLink, roomAdminId };
-            $('join-password').value = '';
-            $('modal-join')?.classList.add('active');
-            return;
-        }
-        enterRoom(roomId, roomName, roomLink, roomAdminId);
-    };
-
-    if ($('btn-join-cancel')) {
-        $('btn-join-cancel').onclick = () => {
-            pendingJoin = null;
-            $('modal-join')?.classList.remove('active');
-        };
-    }
-    if ($('btn-join-confirm')) {
-        $('btn-join-confirm').onclick = async () => {
-            if (!pendingJoin) return;
-            const room = roomsCache[pendingJoin.roomId];
-            if (!room) {
-                showToast('Комната недоступна');
-                $('modal-join')?.classList.remove('active');
-                pendingJoin = null;
-                return;
-            }
-            const pw = $('join-password')?.value || '';
-            try {
-                const hash = await deriveKey(pw, room.pwSalt || '');
-                if (hash !== room.pwHash) {
-                    showToast('Неверный пароль');
-                    return;
-                }
-                $('modal-join')?.classList.remove('active');
-                enterRoom(pendingJoin.roomId, pendingJoin.roomName, pendingJoin.roomLink, pendingJoin.roomAdminId);
-                pendingJoin = null;
-            } catch (e) {
-                showToast('Ошибка проверки пароля');
-            }
-        };
-    }
-
-    if ($('btn-create-finish')) {
-        $('btn-create-finish').onclick = async () => {
-            if (!auth.currentUser) return showToast('Нужно войти');
-            const name = ($('room-name')?.value || '').trim();
-            const link = ($('room-link')?.value || '').trim();
-            const buttonColor = $('room-button-color')?.value || '#ffffff';
-            const isPrivate = !!$('room-private')?.checked;
-            const password = $('room-password')?.value || '';
-            if (!name) return showToast('Введите название комнаты');
-            if (!link) return showToast('Укажите ссылку на видео');
-            const roomData = {
-                name,
-                link,
-                admin: auth.currentUser.uid,
-                adminName: auth.currentUser.displayName || auth.currentUser.email || 'User',
-                buttonColor,
-                createdAt: Date.now(),
-                lastActive: Date.now()
-            };
-            if (isPrivate) {
-                if (password.length < 4) return showToast('Пароль должен быть минимум 4 символа');
-                const salt = genSalt(16);
-                roomData.private = true;
-                roomData.pwSalt = salt;
-                roomData.pwHash = await deriveKey(password, salt);
-            }
-            const createdRef = push(ref(db, 'rooms'));
-            await set(createdRef, roomData);
-            $('modal-create')?.classList.remove('active');
-            if ($('room-name')) $('room-name').value = '';
-            if ($('room-link')) $('room-link').value = '';
-            if ($('room-password')) $('room-password').value = '';
-            if ($('room-private')) $('room-private').checked = false;
-            enterRoom(createdRef.key, roomData.name, roomData.link, roomData.admin);
-        };
-    }
-
-    syncRooms();
-    setupLobbyNotifications();
-}
-
-function bindAuthRecoveryUi() {
-    if (appBootstrapped) return;
-    appBootstrapped = true;
-    switchAuthTab('login');
-
-    if ($('tab-login')) $('tab-login').onclick = () => switchAuthTab('login');
-    if ($('tab-register')) $('tab-register').onclick = () => switchAuthTab('register');
-
-    if ($('btn-login-email')) {
-        $('btn-login-email').onclick = async () => {
-            const email = ($('login-email')?.value || '').trim();
-            const password = $('login-password')?.value || '';
-            if (!email || !password) return showToast('Введите email и пароль');
-            try {
-                await signInWithEmailAndPassword(auth, email, password);
-            } catch (e) {
-                showToast('Ошибка входа: проверьте email/пароль');
-            }
-        };
-    }
-
-    if ($('btn-register-email')) {
-        $('btn-register-email').onclick = async () => {
-            const name = ($('reg-name')?.value || '').trim();
-            const email = ($('reg-email')?.value || '').trim();
-            const password = $('reg-password')?.value || '';
-            if (!name || !email || !password) return showToast('Заполните все поля');
-            if (password.length < 6) return showToast('Пароль минимум 6 символов');
-            try {
-                const cred = await createUserWithEmailAndPassword(auth, email, password);
-                await updateProfile(cred.user, { displayName: name });
-                updateLobbyHeader(cred.user);
-            } catch (e) {
-                showToast('Ошибка регистрации');
-            }
-        };
-    }
-
-    if ($('btn-google-auth')) {
-        $('btn-google-auth').onclick = async () => {
-            try {
-                await signInWithPopup(auth, new GoogleAuthProvider());
-            } catch (e) {
-                showToast('Не удалось войти через Google');
-            }
-        };
-    }
-
-    if ($('btn-logout')) {
-        $('btn-logout').onclick = async () => {
-            try {
-                await signOut(auth);
-            } catch (e) {
-                showToast('Ошибка выхода');
-            }
-        };
-    }
-
-    setPersistence(auth, browserLocalPersistence).catch(() => {});
-    onAuthStateChanged(auth, async (user) => {
-        if (!user) {
-            showScreen('auth-screen');
-            return;
-        }
-        updateLobbyHeader(user);
-        showScreen('lobby-screen');
-        await ensureLobbyBootstrap();
-    });
-}
-
-bindAuthRecoveryUi();
