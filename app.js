@@ -36,7 +36,7 @@ class P {
     constructor() { this.x = Math.random()*canvas.width; this.y = Math.random()*canvas.height; this.vx = (Math.random()-0.5)*0.5; this.vy = (Math.random()-0.5)*0.5; }
     update() {
         this.x += this.vx; this.y += this.vy;
-        if (this.x<0  this.x>canvas.width) this.vx*=-1; if (this.y<0  this.y>canvas.height) this.vy*=-1;
+        if (this.x<0 || this.x>canvas.width || this.y<0 || this.y>canvas.height) this.vy*=-1;
     }
 }
 for (let i=0; i<60; i++) particles.push(new P());
@@ -47,7 +47,7 @@ function animate() {
         ctx.fillStyle = 'rgba(150,150,150,0.4)'; ctx.beginPath(); ctx.arc(p.x,p.y,1.2,0,Math.PI*2); ctx.fill();
         for (let j=i+1; j<particles.length; j++){
             let dx=p.x-particles[j].x, dy=p.y-particles[j].y, dist=Math.sqrt(dx*dx+dy*dy);
-            if(dist<150){ ctx.strokeStyle=rgba(150,150,150,${1-dist/150}); ctx.lineWidth=0.5; ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(particles[j].x,particles[j].y); ctx.stroke(); }
+            if(dist<150){ ctx.strokeStyle=`rgba(150,150,150,${1-dist/150})`; ctx.lineWidth=0.5; ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(particles[j].x,particles[j].y); ctx.stroke(); }
         }
     });
     requestAnimationFrame(animate);
@@ -101,7 +101,7 @@ player.onplay = () => { if(!isRemoteAction) set(videoRef, { type: 'play', time: 
 player.onpause = () => { if(!isRemoteAction) set(videoRef, { type: 'pause', time: player.currentTime, user: myUser.name, ts: Date.now() }); };
 onValue(videoRef, (snap) => {
     const d = snap.val();
-    if (!d  d.ts <= lastSyncTs) return;
+    if (!d || d.ts <= lastSyncTs) return;
     lastSyncTs = d.ts;
     isRemoteAction = true;
     if (d.type === 'play') { player.currentTime = d.time; player.play(); }
@@ -120,7 +120,7 @@ onChildAdded(chatRef, (snap) => {
     const m = snap.val();
     const div = document.createElement('div');
     div.className = m.user === myUser.name ? 'm-line self' : 'm-line';
-    div.innerHTML = <div class="bubble"><strong>${m.user}</strong><p>${m.content}</p></div>;
+    div.innerHTML = `<div class="bubble"><strong>${m.user}</strong><p>${m.content}</p></div>`;
     chatMessages.appendChild(div);
     chatMessages.scrollTop = chatMessages.scrollHeight;
 });
