@@ -43,13 +43,14 @@ function genSalt(len=16){
     crypto.getRandomValues(a);
     return bufToBase64(a.buffer);
 }
-async function deriveKey(password, saltBase64, iterations=10000){
+async function deriveKey(password, saltBase64, iterations=3000){
     const enc = new TextEncoder();
     const salt = base64ToBuf(saltBase64);
     const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), {name:'PBKDF2'}, false, ['deriveBits']);
     const derivedBits = await crypto.subtle.deriveBits({name:'PBKDF2', salt, iterations, hash:'SHA-256'}, keyMaterial, 256);
     return bufToBase64(derivedBits);
 }
+
 function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); if($(id)) $(id).classList.add('active'); }
 
 // --- УЛУЧШЕННЫЕ ТОСТЫ ---
@@ -588,6 +589,11 @@ function drawAmbilight() {
 player.addEventListener('play', () => drawAmbilight());
 
 function initRoomServices() {
+    // Cleanup any previous room listeners to avoid duplicate handlers
+    if (typeof roomListenerUnsubscribe === 'function') {
+        try { roomListenerUnsubscribe(); } catch(e) {}
+        roomListenerUnsubscribe = null;
+    }
     const videoRef = ref(db, `rooms/${currentRoomId}/sync`);
     const chatRef = ref(db, `rooms/${currentRoomId}/chat`);
     const voiceRef = ref(db, `rooms/${currentRoomId}/voice`);
@@ -664,7 +670,12 @@ function initRoomServices() {
             }
 
             itemHtml += `</div>`;
-            usersListEl.innerHTML += itemHtml;
+            const existingNode = usersListEl.querySelector(`.user-item[data-uid="${uid}"]`);
+            if (existingNode) {
+                existingNode.outerHTML = itemHtml;
+            } else {
+                usersListEl.innerHTML += itemHtml;
+            }
         });
 
         // Подписываемся на переключатели прав (если хост)
@@ -1578,6 +1589,11 @@ async function leaveRoomV2() {
 }
 
 function initRoomServicesV2() {
+    // Cleanup any previous room listeners to avoid duplicate handlers
+    if (typeof roomListenerUnsubscribe === 'function') {
+        try { roomListenerUnsubscribe(); } catch(e) {}
+        roomListenerUnsubscribe = null;
+    }
     const videoRef = ref(db, `rooms/${currentRoomId}/sync`);
     const chatRef = ref(db, `rooms/${currentRoomId}/chat`);
     const voiceRef = ref(db, `rooms/${currentRoomId}/voice`);
@@ -1633,7 +1649,12 @@ function initRoomServicesV2() {
             if (!isLocal && !isFriend) itemHtml += `<button type="button" class="add-friend-btn" data-uid="${uid}" title="Add Friend">+Доб</button>`;
             itemHtml += `</div>`;
 
-            usersListEl.innerHTML += itemHtml;
+            const existingNode2 = usersListEl.querySelector(`.user-item[data-uid="${uid}"]`);
+            if (existingNode2) {
+                existingNode2.outerHTML = itemHtml;
+            } else {
+                usersListEl.innerHTML += itemHtml;
+            }
 
             if (!perms.voice) {
                 const indicator = usersListEl.querySelector(`.user-item[data-uid="${uid}"] .indicator`);
@@ -2282,6 +2303,11 @@ async function leaveRoomV3() {
 }
 
 function initRoomServicesV3() {
+    // Cleanup any previous room listeners to avoid duplicate handlers
+    if (typeof roomListenerUnsubscribe === 'function') {
+        try { roomListenerUnsubscribe(); } catch(e) {}
+        roomListenerUnsubscribe = null;
+    }
     initRoomServicesV2();
 
     const roomId = currentRoomId;
@@ -2891,6 +2917,11 @@ async function leaveRoomV4() {
 }
 
 function initRoomServicesV4() {
+    // Cleanup any previous room listeners to avoid duplicate handlers
+    if (typeof roomListenerUnsubscribe === 'function') {
+        try { roomListenerUnsubscribe(); } catch(e) {}
+        roomListenerUnsubscribe = null;
+    }
     const roomId = currentRoomId;
     const roomRef = ref(db, `rooms/${roomId}`);
     const videoRef = ref(db, `rooms/${roomId}/sync`);
@@ -2936,7 +2967,12 @@ function initRoomServicesV4() {
             html += `</div>`;
             if (isHost && !isLocal) html += renderPermissionControls(uid, perms);
             html += `</div>`;
-            usersListEl.innerHTML += html;
+            const existingNode3 = usersListEl.querySelector(`.user-item[data-uid="${uid}"]`);
+            if (existingNode3) {
+                existingNode3.outerHTML = html;
+            } else {
+                usersListEl.innerHTML += html;
+            }
         });
 
         usersListEl.querySelectorAll('.dm-btn').forEach((button) => {
