@@ -24,6 +24,70 @@ const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => 
     "'": '&#39;'
 }[char]));
 
+// Базовые состояния приложения (могут переиспользоваться более новыми V4-блоками ниже)
+const player = $('player');
+let roomsCache = {};
+let currentRoomId = null;
+let presenceRef = null;
+let roomListenerUnsubscribe = null;
+let myStream = null;
+let isHost = false;
+let isRemoteAction = false;
+let lastSyncTs = 0;
+let editingRoomId = null;
+let roomEnteredAt = 0;
+let pendingJoin = null;
+const activeCalls = new Map();
+const REPORT_FORM_URL = '';
+let currentDirectChat = null;
+let directChatUnsubscribe = null;
+let lobbyFriendsListenerBound = false;
+let directNotificationStopper = null;
+let currentPresenceCache = {};
+let latestRoomPresenceData = {};
+const roomProfileSubscriptions = new Map();
+const friendProfileSubscriptions = new Map();
+
+function showScreen(screenId) {
+    document.querySelectorAll('.screen').forEach((el) => el.classList.remove('active'));
+    const target = $(screenId);
+    if (target) target.classList.add('active');
+}
+
+function showToast(text, timeout = 3500) {
+    const container = $('toast-container');
+    if (!container) {
+        console.log(String(text ?? ''));
+        return;
+    }
+    const node = document.createElement('div');
+    node.className = 'toast';
+    node.textContent = String(text ?? '');
+    container.appendChild(node);
+    setTimeout(() => node.remove(), timeout);
+}
+
+function getRoomPreviewTime(syncState = {}) {
+    const raw = Number(syncState.time ?? syncState.currentTime ?? 0);
+    return Number.isFinite(raw) && raw > 0 ? raw : 0;
+}
+
+function genSalt(length = 16) {
+    const alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    const random = new Uint8Array(length);
+    crypto.getRandomValues(random);
+    let out = '';
+    for (let i = 0; i < random.length; i += 1) out += alphabet[random[i] % alphabet.length];
+    return out;
+}
+
+async function deriveKey(password, salt) {
+    const source = `${String(password ?? '')}:${String(salt ?? '')}`;
+    const encoded = new TextEncoder().encode(source);
+    const digest = await crypto.subtle.digest('SHA-256', encoded);
+    return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 function renderRooms(filter = '') {
     const grid = $('rooms-grid');
     grid.innerHTML = '';
@@ -239,12 +303,13 @@ function leaveRoom() {
     currentRoomId = null;
     showScreen('lobby-screen');
 }
-$('btn-leave-room').onclick = leaveRoom;
+if ($('btn-leave-room')) $('btn-leave-room').onclick = leaveRoom;
 
 // --- AMBILIGHT ---
 const ambiCanvas = $('ambilight-canvas');
-const ambiCtx = ambiCanvas.getContext('2d', { willReadFrequently: true });
+const ambiCtx = ambiCanvas ? ambiCanvas.getContext('2d', { willReadFrequently: true }) : null;
 function drawAmbilight() {
+    if (!ambiCanvas || !ambiCtx || !player) return;
     if (currentRoomId && !player.paused && !player.ended) {
         ambiCanvas.width = player.clientWidth / 10;
         ambiCanvas.height = player.clientHeight / 10;
@@ -252,7 +317,7 @@ function drawAmbilight() {
     }
     requestAnimationFrame(drawAmbilight);
 }
-player.addEventListener('play', () => drawAmbilight());
+if (player) player.addEventListener('play', () => drawAmbilight());
 
 function initRoomServices() {
     // Cleanup any previous room listeners to avoid duplicate handlers
