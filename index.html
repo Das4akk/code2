@@ -11,7 +11,7 @@
     
     <div id="toast-container"></div>
     
-    <div id="remote-audio-container" style="display: none;"></div>
+    <div id="remote-audio-container"></div>
 
     <div id="app-container">
         <section id="auth-screen" class="screen active">
@@ -36,6 +36,7 @@
                 </div>
                 <div class="divider"><span>или</span></div>
                 <button type="button" id="btn-google-auth" class="google-btn">Войти через Google</button>
+                <button type="button" id="btn-skip-auth" class="google-btn" style="margin-top:8px;">Пропустить</button>
             </div>
         </section>
 
@@ -107,6 +108,11 @@
                     <div style="display:flex; align-items:center; gap:8px; margin-top:8px;">
                         <label style="font-size:14px; color:#ddd;">Цвет</label>
                         <input type="color" id="profile-color" value="#f5f7fa" style="width:44px; height:34px; padding:0; border-radius:8px; border:none;">
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px; margin-top:8px;">
+                        <label style="font-size:14px; color:#ddd;">Аватар</label>
+                        <button type="button" id="avatar-type-color" class="google-btn">Цвет</button>
+                        <button type="button" id="avatar-type-silhouette" class="google-btn">Ч/Б человечек</button>
                     </div>
                     <div class="modal-buttons">
                         <button id="btn-profile-cancel" class="google-btn">Отмена</button>

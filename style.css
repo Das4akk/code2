@@ -1,4 +1,4 @@
-:root { --bg: #050505; --accent: #f5f7fa; --accent-weak: rgba(255,255,255,0.12); --accent-strong: rgba(255,255,255,0.95); }
+:root { --bg: #050505; --accent: #f5f7fa; --accent-dark: #bdbdbd; --accent-weak: rgba(255,255,255,0.12); --accent-strong: rgba(255,255,255,0.95); }
 * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
 body { background: var(--bg); color: #fff; overflow: hidden; height: 100vh; }
 button {
@@ -14,6 +14,9 @@ button:active:not(:disabled) {
 
 /* Нейрофон */
 #particle-canvas { position: fixed; top: 0; left: 0; z-index: -1; width: 100%; height: 100%; opacity: 0.8; }
+
+/* Контейнер для скрытого воспроизведения удалённого аудио (нужен для mobile autoplay) */
+#remote-audio-container { position: fixed; left: -9999px; top: 0; width: 1px; height: 1px; overflow: hidden; z-index: -1; }
 
 /* Базовый слой стекла */
 .glass-panel {
@@ -56,6 +59,10 @@ button:active:not(:disabled) {
     background: rgba(255, 255, 255, 0.03) !important;
     border: 1px solid rgba(255, 255, 255, 0.04) !important;
 }
+
+/* Сайдбар - пункт навигации */
+.sidebar-nav .nav-item { display: block; width: 100%; padding: 12px 14px; text-align: left; border-radius: 12px; background: transparent; color: #dfe6eb; border: 1px solid transparent; cursor: pointer; }
+.sidebar-nav .nav-item.active { background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)); border-color: rgba(255,255,255,0.12); box-shadow: 0 8px 30px rgba(0,0,0,0.35); color: #fff; font-weight: 800; }
 
 /* Фикс для панели друзей, чтобы она тоже стала полностью стеклянной и аккуратной */
 .friends-list-panel {
@@ -229,7 +236,11 @@ video { width: 100%; height: 100%; object-fit: contain; outline: none; }
 /* Модалка */
 .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(10px); }
 .modal.active { display: flex; }
-.modal-content { width: 400px; padding: 30px; }
+.modal-content { width: 400px; padding: 30px; transform: translateY(-10px); opacity: 0; transition: transform 240ms ease, opacity 240ms ease; }
+.modal.active .modal-content { transform: translateY(0); opacity: 1; }
+
+/* Плавная подсветка для плашек (создать комнату и др.) */
+.glass-panel { transition: transform 220ms ease, box-shadow 220ms ease, background 220ms ease; }
 .modal-buttons { display: flex; gap: 10px; margin-top: 20px; }
 
 /* Custom checkboxes (consistent look across the UI) */
@@ -279,14 +290,27 @@ input[type="range"]::-webkit-slider-thumb {
     width: 16px;
     height: 16px;
     border-radius: 50%;
-    background: var(--accent);
-    border: 2px solid rgba(255,255,255,0.95);
+    background: var(--accent-dark);
+    border: 2px solid rgba(0,0,0,0.6);
     margin-top: -4px;
     box-shadow: 0 6px 14px rgba(0,0,0,0.45);
 }
 input[type="range"]:focus::-webkit-slider-runnable-track { box-shadow: 0 0 8px rgba(255,255,255,0.06); }
 input[type="range"]::-moz-range-track { height: 8px; background: rgba(255,255,255,0.08); border-radius: 999px; }
-input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--accent); border: 2px solid rgba(255,255,255,0.95); }
+input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--accent-dark); border: 2px solid rgba(0,0,0,0.6); }
+
+/* Responsive: mobile fixes */
+@media (max-width: 880px) {
+    .lobby-layout { grid-template-columns: 1fr; width: calc(100vw - 24px); max-width: 100%; }
+    .lobby-sidebar { position: relative; width: 100%; display: flex; flex-direction: row; gap: 12px; align-items: center; padding: 12px; border-radius: 12px; }
+    .lobby-sidebar .user-profile { margin-bottom: 0; }
+    .main-header input { width: 100%; }
+    .rooms-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); height: auto; }
+    .modal-content { width: min(92vw, 420px); padding: 18px; }
+    .main-layout-room { grid-template-columns: 1fr; }
+    .chat-column { order: 2; }
+    .video-column { order: 1; }
+}
 
 /* Modal label alignment tweaks */
 .modal-content label { display:flex; gap:8px; align-items:center; }

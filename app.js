@@ -215,6 +215,7 @@ $('btn-create-finish').onclick = async () => {
     if (editingRoomId) {
         const prev = roomsCache[editingRoomId] || {};
         const updateData = { name, link, buttonColor };
+        updateData.lastActive = Date.now();
         if (isPrivate) {
             if (password && password.length >= 4) {
                 try {
@@ -252,7 +253,8 @@ $('btn-create-finish').onclick = async () => {
 
     // Создание новой комнаты
     const newRoomRef = push(ref(db, 'rooms'));
-    const roomData = { name, link, admin: auth.currentUser.uid, adminName: auth.currentUser.displayName || "User", buttonColor };
+    const now = Date.now();
+    const roomData = { name, link, admin: auth.currentUser.uid, adminName: auth.currentUser.displayName || "User", buttonColor, createdAt: now, lastActive: now };
     if (isPrivate) {
         if (!password || password.length < 4) return showToast('Пароль должен быть минимум 4 символа');
         try {
@@ -996,11 +998,27 @@ function initRoomServices() {
     const btnSave = $('btn-profile-save');
     const btnCancel = $('btn-profile-cancel');
 
+    const avColorBtn = $('avatar-type-color');
+    const avSilBtn = $('avatar-type-silhouette');
+    let avatarChoice = 'color';
+    if (avColorBtn && avSilBtn) {
+        avColorBtn.onclick = () => { avatarChoice = 'color'; avColorBtn.classList.add('active'); avSilBtn.classList.remove('active'); };
+        avSilBtn.onclick = () => { avatarChoice = 'silhouette'; avSilBtn.classList.add('active'); avColorBtn.classList.remove('active'); };
+    }
+
     if (btnOpen) {
         btnOpen.onclick = () => {
             if (!auth.currentUser) return showToast('Нужно войти');
             if (inpName) inpName.value = auth.currentUser.displayName || '';
             if (inpColor) inpColor.value = '#f5f7fa';
+            // Попробуем загрузить текущий профиль, чтобы выставить аватар
+            try {
+                get(ref(db, `users/${auth.currentUser.uid}/profile`)).then((snap) => {
+                    const profile = snap.val() || {};
+                    if (profile.avatar === 'silhouette') { avatarChoice = 'silhouette'; avSilBtn?.classList.add('active'); avColorBtn?.classList.remove('active'); }
+                    else { avatarChoice = 'color'; avColorBtn?.classList.add('active'); avSilBtn?.classList.remove('active'); }
+                }).catch(() => {});
+            } catch (e) {}
             if (modal) modal.classList.add('active');
         };
     }
@@ -1011,7 +1029,7 @@ function initRoomServices() {
         const color = inpColor ? inpColor.value : '#f5f7fa';
         try {
             await updateProfile(auth.currentUser, { displayName: name });
-            await set(ref(db, `users/${auth.currentUser.uid}/profile`), { name, color });
+            await set(ref(db, `users/${auth.currentUser.uid}/profile`), { name, color, avatar: avatarChoice });
             if ($('user-display-name')) $('user-display-name').innerText = name || auth.currentUser.email;
             const av = $('my-avatar'); if (av) av.style.background = `linear-gradient(45deg, ${color}, rgba(255,255,255,0.06))`;
             if (modal) modal.classList.remove('active');
@@ -1026,8 +1044,9 @@ const ctx = canvas.getContext('2d');
 let dots = [];
 function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
 window.onresize = resize; resize();
+
 class Dot {
-    constructor() { this.x = Math.random()*canvas.width; this.y = Math.random()*canvas.height; this.vx = (Math.random()-0.5)*0.5; this.vy = (Math.random()-0.5)*0.5; }
+    constructor() { this.x = Math.random()*canvas.width; this.y = Math.random()*canvas.height; this.vx = (Math.random()-0.5)*0.18; this.vy = (Math.random()-0.5)*0.18; }
     draw() {
         this.x += this.vx; this.y += this.vy;
         if(this.x<0 || this.x>canvas.width) this.vx *= -1;
@@ -1036,7 +1055,8 @@ class Dot {
         ctx.beginPath(); ctx.arc(this.x, this.y, 1.5, 0, Math.PI*2); ctx.fill();
     }
 }
-for(let i=0; i<80; i++) dots.push(new Dot());
+
+for(let i=0; i<60; i++) dots.push(new Dot());
 function anim() {
     ctx.clearRect(0,0,canvas.width,canvas.height);
     dots.forEach(d => {
@@ -1488,6 +1508,7 @@ function enterRoomV2(roomId, name, link, adminId) {
     if ($('users-list')) $('users-list').innerHTML = '';
 
     showScreen('room-screen');
+    try { update(ref(db, `rooms/${currentRoomId}`), { lastActive: Date.now() }); } catch(e) { /* ignore */ }
     closeRoomInviteModal();
     roomEnteredAt = Date.now();
     initRoomServicesV2();
@@ -2461,7 +2482,22 @@ function subscribeToOwnProfile() {
         const displayName = profile.name || auth.currentUser.displayName || auth.currentUser.email || 'User';
         if ($('user-display-name')) $('user-display-name').innerText = displayName;
         const avatar = $('my-avatar');
-        if (avatar) avatar.style.background = `linear-gradient(45deg, ${profile.color || '#f5f7fa'}, rgba(255,255,255,0.08))`;
+            if (avatar) {
+                if (profile.avatar === 'silhouette') {
+                    // Показываем простую ч/б силуэтную иконку
+                    avatar.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="56" height="56"><circle cx="32" cy="20" r="12" fill="#000"/><path d="M12 56c0-11 9-20 20-20s20 9 20 20z" fill="#000"/></svg>';
+                    avatar.style.background = profile.color || '#f5f7fa';
+                    avatar.style.backgroundSize = 'cover';
+                    avatar.style.filter = 'grayscale(100%)';
+                    avatar.style.display = 'flex';
+                    avatar.style.alignItems = 'center';
+                    avatar.style.justifyContent = 'center';
+                } else {
+                    avatar.innerHTML = '';
+                    avatar.style.filter = '';
+                    avatar.style.background = `linear-gradient(45deg, ${profile.color || '#f5f7fa'}, rgba(255,255,255,0.08))`;
+                }
+            }
         if (currentRoomId && presenceRef) update(presenceRef, { name: displayName }).catch(() => {});
         Object.entries(roomsCache || {}).forEach(([roomId, room]) => {
             if (room?.admin === auth.currentUser.uid && room.adminName !== displayName) {
@@ -2965,6 +3001,8 @@ function initRoomServicesV4() {
         if (!input || !input.value.trim() || !localPerms.chat) return;
         push(chatRef, { user: getDisplayName(), fromUid: auth.currentUser.uid, content: input.value.trim(), ts: Date.now() });
         input.value = '';
+        // Обновим метку активности комнаты
+        try { update(ref(db, `rooms/${roomId}`), { lastActive: Date.now() }); } catch (e) { /* ignore */ }
     };
     if ($('send-btn')) $('send-btn').onclick = sendRoomMessage;
     if ($('chat-input')) $('chat-input').onkeydown = (event) => { if (event.key === 'Enter') sendRoomMessage(); };
@@ -2998,6 +3036,7 @@ function initRoomServicesV4() {
             const localPerms = getEffectiveRoomPerms(currentPresenceCache[auth.currentUser.uid], isHost);
             if (!localPerms.reactions) return;
             push(reactionsRef, { emoji: btn.dataset.emoji, ts: Date.now() });
+            try { update(ref(db, `rooms/${roomId}`), { lastActive: Date.now() }); } catch (e) { /* ignore */ }
         };
     });
     bindChild(reactionsRef, (snap) => {
@@ -3037,9 +3076,9 @@ function initRoomServicesV4() {
         document.querySelectorAll('#remote-audio-container audio').forEach((audio) => { audio.volume = event.target.value; });
     };
     if (isHost) {
-        player.onplay = () => { if (!isRemoteAction) set(videoRef, { type: 'play', time: player.currentTime, ts: Date.now() }); };
-        player.onpause = () => { if (!isRemoteAction) set(videoRef, { type: 'pause', time: player.currentTime, ts: Date.now() }); };
-        player.onseeked = () => { if (!isRemoteAction) set(videoRef, { type: 'seek', time: player.currentTime, ts: Date.now() }); };
+        player.onplay = () => { if (!isRemoteAction) { set(videoRef, { type: 'play', time: player.currentTime, ts: Date.now() }); try { update(roomRef, { lastActive: Date.now() }); } catch(e){} } };
+        player.onpause = () => { if (!isRemoteAction) { set(videoRef, { type: 'pause', time: player.currentTime, ts: Date.now() }); try { update(roomRef, { lastActive: Date.now() }); } catch(e){} } };
+        player.onseeked = () => { if (!isRemoteAction) { set(videoRef, { type: 'seek', time: player.currentTime, ts: Date.now() }); try { update(roomRef, { lastActive: Date.now() }); } catch(e){} } };
     } else {
         player.onplay = null;
         player.onpause = null;
@@ -3099,6 +3138,14 @@ bindDirectChatUiV2();
 bindCreateModalOverrides();
 widenLobbyLayout();
 
+// Кнопка пропуска авторизации (гость)
+if ($('btn-skip-auth')) {
+    $('btn-skip-auth').onclick = () => {
+        showScreen('lobby-screen');
+        showToast('Гостевой режим: некоторые функции могут быть недоступны');
+    };
+}
+
 renderRooms = renderRoomsV4;
 setupLobbyNotifications = setupLobbyNotificationsV4;
 enterRoom = enterRoomV4;
@@ -3106,3 +3153,28 @@ leaveRoom = leaveRoomV4;
 initRoomServices = initRoomServicesV4;
 
 if ($('btn-leave-room')) $('btn-leave-room').onclick = leaveRoomV4;
+
+// Автоудаление неактивных комнат: если поле lastActive старше 1 часа и в комнате нет присутствующих — удаляем
+async function cleanupInactiveRooms() {
+    try {
+        const threshold = Date.now() - (60 * 60 * 1000); // 1 час
+        const data = roomsCache || {};
+        for (const [rid, room] of Object.entries(data)) {
+            if (!room) continue;
+            if (room.autoDelete === false) continue;
+            const last = Number(room.lastActive || room.createdAt || 0);
+            if (!last || last > threshold) continue;
+            try {
+                const presSnap = await get(ref(db, `rooms/${rid}/presence`));
+                const pres = presSnap.val() || {};
+                if (!Object.keys(pres).length) {
+                    await remove(ref(db, `rooms/${rid}`));
+                    console.log('Removed inactive room', rid);
+                }
+            } catch (e) { /* ignore per-room failures */ }
+        }
+    } catch (e) { console.warn('cleanupInactiveRooms failed', e); }
+}
+
+setInterval(cleanupInactiveRooms, 10 * 60 * 1000);
+cleanupInactiveRooms().catch(() => {});
