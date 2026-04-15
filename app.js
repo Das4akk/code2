@@ -2899,3 +2899,189 @@ async function cleanupInactiveRooms() {
 
 setInterval(cleanupInactiveRooms, 10 * 60 * 1000);
 cleanupInactiveRooms().catch(() => {});
+
+// --- RECOVERY BOOTSTRAP: auth + basic bindings ---
+let appBootstrapped = false;
+let lobbyBootstrapped = false;
+
+function switchAuthTab(mode) {
+    const loginTab = $('tab-login');
+    const registerTab = $('tab-register');
+    const loginForm = $('form-login');
+    const registerForm = $('form-register');
+    if (!loginTab || !registerTab || !loginForm || !registerForm) return;
+    const isLogin = mode !== 'register';
+    loginTab.classList.toggle('active', isLogin);
+    registerTab.classList.toggle('active', !isLogin);
+    loginForm.className = `auth-form ${isLogin ? 'active-form' : 'hidden-form left'}`;
+    registerForm.className = `auth-form ${isLogin ? 'hidden-form right' : 'active-form'}`;
+}
+
+function updateLobbyHeader(user) {
+    const displayName = user?.displayName || user?.email || 'User';
+    if ($('user-display-name')) $('user-display-name').textContent = displayName;
+    if ($('profile-name') && !$('profile-name').value) $('profile-name').value = user?.displayName || '';
+}
+
+async function ensureLobbyBootstrap() {
+    if (lobbyBootstrapped) return;
+    lobbyBootstrapped = true;
+    window.joinRoom = async (roomId, roomName, roomLink, roomAdminId) => {
+        if (!auth.currentUser) {
+            showToast('Сначала нужно войти');
+            return;
+        }
+        const room = roomsCache[roomId] || {};
+        if (room.private) {
+            pendingJoin = { roomId, roomName, roomLink, roomAdminId };
+            $('join-password').value = '';
+            $('modal-join')?.classList.add('active');
+            return;
+        }
+        enterRoom(roomId, roomName, roomLink, roomAdminId);
+    };
+
+    if ($('btn-join-cancel')) {
+        $('btn-join-cancel').onclick = () => {
+            pendingJoin = null;
+            $('modal-join')?.classList.remove('active');
+        };
+    }
+    if ($('btn-join-confirm')) {
+        $('btn-join-confirm').onclick = async () => {
+            if (!pendingJoin) return;
+            const room = roomsCache[pendingJoin.roomId];
+            if (!room) {
+                showToast('Комната недоступна');
+                $('modal-join')?.classList.remove('active');
+                pendingJoin = null;
+                return;
+            }
+            const pw = $('join-password')?.value || '';
+            try {
+                const hash = await deriveKey(pw, room.pwSalt || '');
+                if (hash !== room.pwHash) {
+                    showToast('Неверный пароль');
+                    return;
+                }
+                $('modal-join')?.classList.remove('active');
+                enterRoom(pendingJoin.roomId, pendingJoin.roomName, pendingJoin.roomLink, pendingJoin.roomAdminId);
+                pendingJoin = null;
+            } catch (e) {
+                showToast('Ошибка проверки пароля');
+            }
+        };
+    }
+
+    if ($('btn-create-finish')) {
+        $('btn-create-finish').onclick = async () => {
+            if (!auth.currentUser) return showToast('Нужно войти');
+            const name = ($('room-name')?.value || '').trim();
+            const link = ($('room-link')?.value || '').trim();
+            const buttonColor = $('room-button-color')?.value || '#ffffff';
+            const isPrivate = !!$('room-private')?.checked;
+            const password = $('room-password')?.value || '';
+            if (!name) return showToast('Введите название комнаты');
+            if (!link) return showToast('Укажите ссылку на видео');
+            const roomData = {
+                name,
+                link,
+                admin: auth.currentUser.uid,
+                adminName: auth.currentUser.displayName || auth.currentUser.email || 'User',
+                buttonColor,
+                createdAt: Date.now(),
+                lastActive: Date.now()
+            };
+            if (isPrivate) {
+                if (password.length < 4) return showToast('Пароль должен быть минимум 4 символа');
+                const salt = genSalt(16);
+                roomData.private = true;
+                roomData.pwSalt = salt;
+                roomData.pwHash = await deriveKey(password, salt);
+            }
+            const createdRef = push(ref(db, 'rooms'));
+            await set(createdRef, roomData);
+            $('modal-create')?.classList.remove('active');
+            if ($('room-name')) $('room-name').value = '';
+            if ($('room-link')) $('room-link').value = '';
+            if ($('room-password')) $('room-password').value = '';
+            if ($('room-private')) $('room-private').checked = false;
+            enterRoom(createdRef.key, roomData.name, roomData.link, roomData.admin);
+        };
+    }
+
+    syncRooms();
+    setupLobbyNotifications();
+}
+
+function bindAuthRecoveryUi() {
+    if (appBootstrapped) return;
+    appBootstrapped = true;
+    switchAuthTab('login');
+
+    if ($('tab-login')) $('tab-login').onclick = () => switchAuthTab('login');
+    if ($('tab-register')) $('tab-register').onclick = () => switchAuthTab('register');
+
+    if ($('btn-login-email')) {
+        $('btn-login-email').onclick = async () => {
+            const email = ($('login-email')?.value || '').trim();
+            const password = $('login-password')?.value || '';
+            if (!email || !password) return showToast('Введите email и пароль');
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+            } catch (e) {
+                showToast('Ошибка входа: проверьте email/пароль');
+            }
+        };
+    }
+
+    if ($('btn-register-email')) {
+        $('btn-register-email').onclick = async () => {
+            const name = ($('reg-name')?.value || '').trim();
+            const email = ($('reg-email')?.value || '').trim();
+            const password = $('reg-password')?.value || '';
+            if (!name || !email || !password) return showToast('Заполните все поля');
+            if (password.length < 6) return showToast('Пароль минимум 6 символов');
+            try {
+                const cred = await createUserWithEmailAndPassword(auth, email, password);
+                await updateProfile(cred.user, { displayName: name });
+                updateLobbyHeader(cred.user);
+            } catch (e) {
+                showToast('Ошибка регистрации');
+            }
+        };
+    }
+
+    if ($('btn-google-auth')) {
+        $('btn-google-auth').onclick = async () => {
+            try {
+                await signInWithPopup(auth, new GoogleAuthProvider());
+            } catch (e) {
+                showToast('Не удалось войти через Google');
+            }
+        };
+    }
+
+    if ($('btn-logout')) {
+        $('btn-logout').onclick = async () => {
+            try {
+                await signOut(auth);
+            } catch (e) {
+                showToast('Ошибка выхода');
+            }
+        };
+    }
+
+    setPersistence(auth, browserLocalPersistence).catch(() => {});
+    onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+            showScreen('auth-screen');
+            return;
+        }
+        updateLobbyHeader(user);
+        showScreen('lobby-screen');
+        await ensureLobbyBootstrap();
+    });
+}
+
+bindAuthRecoveryUi();
