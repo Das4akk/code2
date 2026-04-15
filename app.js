@@ -13,6 +13,10 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getDatabase(app);
+// Debug: confirm module load and capture global errors/rejections
+console.log('app.js loaded');
+window.addEventListener('error', (e) => { try { console.error('Global error:', e && e.message, e && e.error); } catch (er) {} });
+window.addEventListener('unhandledrejection', (e) => { try { console.error('Unhandled rejection:', e && e.reason); } catch (er) {} });
 const createNoopPeerCall = () => ({ on: () => {}, close: () => {}, answer: () => {} });
 const peer = (typeof window !== 'undefined' && typeof window.Peer === 'function')
     ? new window.Peer()
