@@ -166,8 +166,6 @@ setPersistence(auth, browserLocalPersistence);
 
 onAuthStateChanged(auth, (user) => {
     if (user) {
-        bindSelfPresence();
-        renderRooms();
         $('user-display-name').innerText = user.displayName || user.email;
         if(!currentRoomId) {
             showScreen('lobby-screen');
@@ -175,7 +173,6 @@ onAuthStateChanged(auth, (user) => {
             setupLobbyNotifications();
         }
         syncRooms();
-        bindSelfPresence();
     } else {
         showScreen('auth-screen');
     }
@@ -582,155 +579,6 @@ function drawAmbilight() {
     requestAnimationFrame(drawAmbilight);
 }
 player.addEventListener('play', () => drawAmbilight());
-
-// --- 1. ОНЛАЙН И ПРИСУТСТВИЕ (RTDB) ---
-function bindSelfPresence() {
-    if (!auth.currentUser) return;
-    const uid = auth.currentUser.uid;
-    const userStatusRef = ref(db, `users/${uid}/status`);
-    const connectedRef = ref(db, '.info/connected');
-
-    onValue(connectedRef, (snap) => {
-        if (snap.val() === true) {
-            onDisconnect(userStatusRef).set({
-                online: false,
-                lastSeen: Date.now(),
-                currentRoom: null
-            });
-            update(userStatusRef, {
-                online: true,
-                lastSeen: Date.now()
-            });
-        }
-    });
-
-    // Глобальный счетчик онлайна
-    const globalOnlineRef = ref(db, 'status/onlineCount');
-    // Логика инкремента/декремента на сервере или через Cloud Functions, 
-    // для клиента просто слушаем общее кол-во активных узлов в users/
-    onValue(ref(db, 'users'), (snap) => {
-        let count = 0;
-        snap.forEach(u => { if(u.val().status?.online) count++; });
-        if($('global-online-count')) $('global-online-count').innerText = count;
-    });
-}
-
-// --- 2. СИСТЕМНЫЕ СООБЩЕНИЯ В ЧАТЕ ---
-function pushSystemMessage(roomId, text) {
-    const chatRef = ref(db, `rooms/${roomId}/chat`);
-    push(chatRef, {
-        type: 'system',
-        content: `------ ${text} ------`,
-        ts: Date.now()
-    });
-}
-
-// В initRoomServicesV4 добавить:
-// onChildAdded(presenceRef, (snap) => { pushSystemMessage(roomId, `${snap.val().name} вошел`); });
-// onChildRemoved(presenceRef, (snap) => { pushSystemMessage(roomId, `${snap.val().name} вышел`); });
-
-// --- 3. ГОРЯЧИЕ КЛАВИШИ ---
-function bindHotkeys() {
-    window.addEventListener('keydown', (e) => {
-        if (document.activeElement.tagName === 'INPUT') return;
-        if (!currentRoomId) return;
-
-        const isLocalHost = isHost; // Ваша переменная прав
-        const video = $('main-player');
-
-        switch(e.code) {
-            case 'Space':
-                e.preventDefault();
-                if(isLocalHost) video.paused ? video.play() : video.pause();
-                break;
-            case 'KeyM':
-                video.muted = !video.muted;
-                showToast(video.muted ? 'Звук выключен' : 'Звук включен');
-                break;
-            case 'ArrowLeft':
-                if(isLocalHost) video.currentTime -= 5;
-                break;
-            case 'ArrowRight':
-                if(isLocalHost) video.currentTime += 5;
-                break;
-        }
-    });
-}
-
-// --- 4. РЕДАКТОР ПРОФИЛЯ ---
-async function saveUserProfile() {
-    const uid = auth.currentUser.uid;
-    const updates = {
-        name: $('edit-display-name').value,
-        statusText: $('edit-status-text').value,
-        nameColor: $('edit-name-color').value,
-        bio: $('edit-bio').value,
-        defaultVolume: parseFloat($('edit-default-volume').value)
-    };
-
-    // Аватар (если был выбран файл, конвертируем в Base64 для простоты или загружаем в Storage)
-    const file = $('input-avatar-file').files[0];
-    if (file) {
-        const base64 = await toBase64(file);
-        updates.photoURL = base64;
-    }
-
-    await update(ref(db, `users/${uid}/profile`), updates);
-    showToast('Профиль обновлен');
-    $('modal-profile').classList.remove('active');
-}
-
-const toBase64 = file => new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = error => reject(error);
-});
-
-// --- 5. ФУНКЦИЯ ПРЕДПРОСМОТРА (Preview) ---
-function updateRoomPreview(roomId) {
-    const video = $('main-player');
-    if (!isHost || video.paused) return;
-
-    const canvas = document.createElement('canvas');
-    canvas.width = 320; canvas.height = 180;
-    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-    
-    const previewData = canvas.toDataURL('image/jpeg', 0.5);
-    update(ref(db, `rooms/${roomId}`), { preview: previewData });
-}
-
-// Вызывать каждые 30 секунд если пользователь - хост
-// setInterval(() => { if(currentRoomId && isHost) updateRoomPreview(currentRoomId); }, 30000);
-
-// --- Инициализация ---
-document.addEventListener('DOMContentLoaded', () => {
-    bindHotkeys();
-    // Замедление фона
-    // (Код вашего particle-canvas: уменьшите скорость инкремента координат частиц в 2-3 раза)
-    // Привязка кнопок профиля
-if ($('open-profile-btn')) {
-    $('open-profile-btn').onclick = () => {
-        // Заполняем поля текущими данными перед открытием
-        const profile = myProfileCache || {};
-        $('edit-display-name').value = profile.name || '';
-        $('edit-status-text').value = profile.statusText || '';
-        $('edit-bio').value = profile.bio || '';
-        $('edit-name-color').value = profile.nameColor || '#ffffff';
-        $('modal-profile').classList.add('active');
-    };
-}
-
-if ($('btn-save-profile')) {
-    $('btn-save-profile').onclick = saveUserProfile;
-}
-
-if ($('btn-close-profile')) {
-    $('btn-close-profile').onclick = () => $('modal-profile').classList.remove('active');
-}
-});
-
-
 
 function initRoomServices() {
     const videoRef = ref(db, `rooms/${currentRoomId}/sync`);
@@ -2574,6 +2422,23 @@ function getOnlineLabel(status) {
     return 'Не в сети';
 }
 
+function bindSelfPresence() {
+    if (!auth.currentUser) return;
+    
+    const connectedRef = ref(db, '.info/connected');
+    const statusRef = ref(db, `users/${auth.currentUser.uid}/status`);
+
+    onValue(connectedRef, (snap) => {
+        if (snap.val() === true) {
+            // Обязательно: сначала регистрируем действие на случай отключения сервера
+            onDisconnect(statusRef).set({ online: false, lastSeen: Date.now() }).then(() => {
+                // Только после этого ставим статус "онлайн"
+                set(statusRef, { online: true, lastSeen: Date.now() });
+            });
+        }
+    });
+}
+
 function subscribeToOwnProfile() {
     if (!auth.currentUser) return;
     const profileRef = ref(db, `users/${auth.currentUser.uid}/profile`);
@@ -2984,7 +2849,6 @@ function initRoomServicesV4() {
     const reactionsRef = ref(db, `rooms/${roomId}/reactions`);
     const adminId = roomsCache[roomId]?.admin || null;
     const teardown = [];
-
     
     const bindValue = (dbRef, handler) => { 
         onValue(dbRef, handler); 
@@ -2992,7 +2856,6 @@ function initRoomServicesV4() {
     };
     const bindChild = (dbRef, handler) => { 
         onChildAdded(dbRef, handler);
-        pushSystemMessage(roomId, `${userData.name || 'Кто-то'} вошел в комнату`);
         teardown.push(() => { try { off(dbRef, 'child_added', handler); } catch (e) {} }); 
     };
 
@@ -3252,13 +3115,6 @@ function initRoomServicesV4() {
         teardown.forEach((fn) => fn());
         closeVoiceSignalLayer();
         clearRoomProfileSubscriptions();
-        // Авто-обновление превью каждые 30 сек, если ты хост
-const previewInterval = setInterval(() => {
-    if (currentRoomId && isHost) updateRoomPreview(currentRoomId);
-}, 30000);
-
-// Добавь очистку интервала в teardown
-teardown.push(() => clearInterval(previewInterval));
     };
 }
 
@@ -3287,10 +3143,10 @@ function widenLobbyLayout() {
         layout.style.maxWidth = '95vw';
         layout.style.width = '95vw';
     }
-    bindHotkeys();
 }
 
 bindDirectChatUiV2();
+bindSelfPresence();
 subscribeToOwnProfile();
 bindCreateModalOverrides();
 widenLobbyLayout();
@@ -3300,31 +3156,5 @@ setupLobbyNotifications = setupLobbyNotificationsV4;
 enterRoom = enterRoomV4;
 leaveRoom = leaveRoomV4;
 initRoomServices = initRoomServicesV4;
-
-// Открытие модалки профиля
-if ($('open-profile-btn')) {
-    $('open-profile-btn').onclick = () => {
-        const p = myProfileCache || {};
-        // Заполняем поля текущими данными
-        if ($('edit-display-name')) $('edit-display-name').value = p.name || '';
-        if ($('edit-status-text')) $('edit-status-text').value = p.statusText || '';
-        if ($('edit-bio')) $('edit-bio').value = p.bio || '';
-        if ($('edit-name-color')) $('edit-name-color').value = p.nameColor || '#ffffff';
-        
-        $('modal-profile').classList.add('active');
-    };
-}
-
-// Кнопка "Сохранить"
-if ($('btn-save-profile')) {
-    $('btn-save-profile').onclick = saveUserProfile;
-}
-
-// Кнопка "Отмена"
-if ($('btn-close-profile')) {
-    $('btn-close-profile').onclick = () => {
-        $('modal-profile').classList.remove('active');
-    };
-}
 
 if ($('btn-leave-room')) $('btn-leave-room').onclick = leaveRoomV4;
