@@ -166,6 +166,8 @@ setPersistence(auth, browserLocalPersistence);
 
 onAuthStateChanged(auth, (user) => {
     if (user) {
+        bindSelfPresence();
+        renderRooms();
         $('user-display-name').innerText = user.displayName || user.email;
         if(!currentRoomId) {
             showScreen('lobby-screen');
@@ -173,6 +175,7 @@ onAuthStateChanged(auth, (user) => {
             setupLobbyNotifications();
         }
         syncRooms();
+        bindSelfPresence();
     } else {
         showScreen('auth-screen');
     }
@@ -705,6 +708,26 @@ document.addEventListener('DOMContentLoaded', () => {
     bindHotkeys();
     // Замедление фона
     // (Код вашего particle-canvas: уменьшите скорость инкремента координат частиц в 2-3 раза)
+    // Привязка кнопок профиля
+if ($('open-profile-btn')) {
+    $('open-profile-btn').onclick = () => {
+        // Заполняем поля текущими данными перед открытием
+        const profile = myProfileCache || {};
+        $('edit-display-name').value = profile.name || '';
+        $('edit-status-text').value = profile.statusText || '';
+        $('edit-bio').value = profile.bio || '';
+        $('edit-name-color').value = profile.nameColor || '#ffffff';
+        $('modal-profile').classList.add('active');
+    };
+}
+
+if ($('btn-save-profile')) {
+    $('btn-save-profile').onclick = saveUserProfile;
+}
+
+if ($('btn-close-profile')) {
+    $('btn-close-profile').onclick = () => $('modal-profile').classList.remove('active');
+}
 });
 
 
@@ -2961,6 +2984,7 @@ function initRoomServicesV4() {
     const reactionsRef = ref(db, `rooms/${roomId}/reactions`);
     const adminId = roomsCache[roomId]?.admin || null;
     const teardown = [];
+
     
     const bindValue = (dbRef, handler) => { 
         onValue(dbRef, handler); 
@@ -2968,6 +2992,7 @@ function initRoomServicesV4() {
     };
     const bindChild = (dbRef, handler) => { 
         onChildAdded(dbRef, handler);
+        pushSystemMessage(roomId, `${userData.name || 'Кто-то'} вошел в комнату`);
         teardown.push(() => { try { off(dbRef, 'child_added', handler); } catch (e) {} }); 
     };
 
@@ -3227,6 +3252,13 @@ function initRoomServicesV4() {
         teardown.forEach((fn) => fn());
         closeVoiceSignalLayer();
         clearRoomProfileSubscriptions();
+        // Авто-обновление превью каждые 30 сек, если ты хост
+const previewInterval = setInterval(() => {
+    if (currentRoomId && isHost) updateRoomPreview(currentRoomId);
+}, 30000);
+
+// Добавь очистку интервала в teardown
+teardown.push(() => clearInterval(previewInterval));
     };
 }
 
@@ -3258,7 +3290,6 @@ function widenLobbyLayout() {
 }
 
 bindDirectChatUiV2();
-bindSelfPresence();
 subscribeToOwnProfile();
 bindCreateModalOverrides();
 widenLobbyLayout();
@@ -3268,5 +3299,31 @@ setupLobbyNotifications = setupLobbyNotificationsV4;
 enterRoom = enterRoomV4;
 leaveRoom = leaveRoomV4;
 initRoomServices = initRoomServicesV4;
+
+// Открытие модалки профиля
+if ($('open-profile-btn')) {
+    $('open-profile-btn').onclick = () => {
+        const p = myProfileCache || {};
+        // Заполняем поля текущими данными
+        if ($('edit-display-name')) $('edit-display-name').value = p.name || '';
+        if ($('edit-status-text')) $('edit-status-text').value = p.statusText || '';
+        if ($('edit-bio')) $('edit-bio').value = p.bio || '';
+        if ($('edit-name-color')) $('edit-name-color').value = p.nameColor || '#ffffff';
+        
+        $('modal-profile').classList.add('active');
+    };
+}
+
+// Кнопка "Сохранить"
+if ($('btn-save-profile')) {
+    $('btn-save-profile').onclick = saveUserProfile;
+}
+
+// Кнопка "Отмена"
+if ($('btn-close-profile')) {
+    $('btn-close-profile').onclick = () => {
+        $('modal-profile').classList.remove('active');
+    };
+}
 
 if ($('btn-leave-room')) $('btn-leave-room').onclick = leaveRoomV4;
