@@ -3,45 +3,190 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Co-Watch | Live Voice</title>
-    <link rel="stylesheet" href="style.css?v=12">
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <title>COW — Co-Watching Space</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <canvas id="particle-canvas"></canvas>
+    
+    <div id="toast-container"></div>
+    
+    <div id="remote-audio-container" style="display: none;"></div>
 
-    <section id="auth-screen" class="screen active">
-        <div class="auth-box">
-            <div class="auth-logo">CO<span>W</span></div>
-            <div class="input-wrapper glass">
-                <input type="text" id="username-input" placeholder="Никнейм" autocomplete="off">
+    <div id="app-container">
+        <section id="auth-screen" class="screen active">
+            <div class="auth-wrapper glass-panel">
+                <h1 class="logo">COW</h1>
+                <div class="auth-tabs">
+                    <button type="button" id="tab-login" class="active">Вход</button>
+                    <button type="button" id="tab-register">Регистрация</button>
+                </div>
+                <div class="form-container">
+                    <div id="form-login" class="auth-form active-form">
+                        <input type="email" id="login-email" placeholder="Email" autocomplete="off">
+                        <input type="password" id="login-password" placeholder="Пароль">
+                        <button type="button" id="btn-login-email" class="primary-btn">Войти</button>
+                    </div>
+                    <div id="form-register" class="auth-form hidden-form right">
+                        <input type="text" id="reg-name" placeholder="Никнейм" autocomplete="off">
+                        <input type="email" id="reg-email" placeholder="Email" autocomplete="off">
+                        <input type="password" id="reg-password" placeholder="Пароль">
+                        <button type="button" id="btn-register-email" class="primary-btn">Создать аккаунт</button>
+                    </div>
+                </div>
+                <div class="divider"><span>или</span></div>
+                <button type="button" id="btn-google-auth" class="google-btn">Войти через Google</button>
             </div>
-            <button id="login-btn" class="primary-btn">Войти</button>
-        </div>
-    </section>
+        </section>
 
-    <section id="main-app" class="screen">
-        <main class="main-layout">
-            <div class="video-column">
-                <div class="player-container glass-player">
-                    <video id="native-player" controls playsinline>
-                        <source src="https://www.dropbox.com/scl/fi/w6ne3u4cu0etalghat2p9/Doktor_Strendzh_2016_720-kinovasek.net.mp4?rlkey=zt2j541gmovz2bodz94t3dse5&st=tt9m2hw8&raw=1" type="video/mp4">
-                    </video>
+        <section id="lobby-screen" class="screen">
+            <div class="lobby-layout">
+                <aside class="lobby-sidebar glass-panel">
+                    <div class="user-profile">
+                        <div class="avatar-circle" id="my-avatar"></div>
+                        <div>
+                            <h3 id="user-display-name">...</h3>
+                            <span style="font-size: 12px; color: #aaa;">Онлайн</span>
+                        </div>
+                        <button id="btn-edit-profile" class="icon-btn">Профиль</button>
+                    </div>
+                    <nav class="sidebar-nav">
+                        <button class="nav-item active glass-panel">Все комнаты</button>
+                    </nav>
+                    <button id="btn-delete-all-rooms" class="danger-btn" style="margin-top: 20px;">Удалить ВСЕ комнаты</button>
+                    <button id="btn-logout" class="google-btn logout-btn" style="margin-top: auto;">Выход</button>
+                </aside>
+
+                <main class="lobby-main">
+                    <header class="main-header glass-panel">
+                        <input type="text" id="search-rooms" placeholder="Поиск комнат...">
+                        <button id="btn-toggle-friends" class="google-btn">👥 Друзья</button>
+                        <button id="btn-open-modal" class="primary-btn create-btn">+ Создать</button>
+                    </header>
+                    <div id="rooms-grid" class="rooms-grid"></div>
+                    <div id="friends-list-panel" class="friends-list-panel" style="display: none;"></div>
+                </main>
+            </div>
+        </section>
+
+        <div id="modal-create" class="modal">
+            <div class="modal-content glass-panel">
+                <h2>Создать комнату</h2>
+                <input type="text" id="room-name" placeholder="Название комнаты" autocomplete="off">
+                <input type="text" id="room-link" placeholder="Ссылка на видео (mp4)" autocomplete="off">
+                <div style="display:flex; align-items:center; gap:8px; margin-top:8px;">
+                    <label style="font-size:14px; color:#ddd;">Цвет кнопки:</label>
+                    <input type="color" id="room-button-color" value="#ffffff" style="width:44px; height:34px; padding:0; border-radius:8px; border:none;">
+                </div>
+                <label style="display:flex; align-items:center; gap:8px; margin-top:8px; font-size:14px; color:#ddd;">
+                    <input type="checkbox" id="room-private"> Приватная комната
+                </label>
+                <input type="password" id="room-password" placeholder="Пароль комнаты" autocomplete="new-password" style="display:none; margin-top:8px;">
+                <div class="modal-buttons">
+                    <button id="btn-close-modal" class="google-btn">Отмена</button>
+                    <button id="btn-create-finish" class="primary-btn">Запустить</button>
                 </div>
             </div>
-            <div class="chat-column glass-chat">
-                <div class="chat-area" id="chat-messages"></div>
-                <div class="message-dock">
-                    <div class="beautiful-chat-input glass">
-                        <button id="mic-btn" class="mic-icon-btn">🎤</button>
-                        <input type="text" id="chat-input" placeholder="Написать..." autocomplete="off">
-                        <button id="send-btn" class="send-btn">↑</button>
+        </div>
+
+            <div id="modal-join" class="modal">
+                <div class="modal-content glass-panel">
+                    <h2>Войти в приватную комнату</h2>
+                    <input type="password" id="join-password" placeholder="Пароль комнаты" autocomplete="off">
+                    <div class="modal-buttons">
+                        <button id="btn-join-cancel" class="google-btn">Отмена</button>
+                        <button id="btn-join-confirm" class="primary-btn">Войти</button>
                     </div>
                 </div>
             </div>
-        </main>
-    </section>
 
-    <script type="module" src="app.js?v=12"></script>
+            <div id="modal-profile" class="modal">
+                <div class="modal-content glass-panel">
+                    <h2>Профиль</h2>
+                    <input type="text" id="profile-name" placeholder="Никнейм" autocomplete="off">
+                    <div style="display:flex; align-items:center; gap:8px; margin-top:8px;">
+                        <label style="font-size:14px; color:#ddd;">Цвет</label>
+                        <input type="color" id="profile-color" value="#f5f7fa" style="width:44px; height:34px; padding:0; border-radius:8px; border:none;">
+                    </div>
+                    <div class="modal-buttons">
+                        <button id="btn-profile-cancel" class="google-btn">Отмена</button>
+                        <button id="btn-profile-save" class="primary-btn">Сохранить</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="modal-dm-chat" class="modal">
+                <div class="modal-content glass-panel dm-modal-content">
+                    <div class="dm-modal-header">
+                        <div>
+                            <h2 id="dm-chat-title">Личный чат</h2>
+                            <p id="dm-chat-status">Сообщения только между вами и другом</p>
+                        </div>
+                        <button id="btn-dm-close" class="google-btn" type="button">Закрыть</button>
+                    </div>
+                    <div id="dm-messages" class="dm-messages"></div>
+                    <div class="dm-compose">
+                        <input type="text" id="dm-input" placeholder="Написать другу..." autocomplete="off">
+                        <button id="btn-dm-send" class="primary-btn" type="button">Отправить</button>
+                    </div>
+                </div>
+            </div>
+
+
+        <section id="room-screen" class="screen">
+            <header class="room-header glass-panel">
+                <div style="display: flex; gap: 10px;">
+                    <button id="btn-leave-room" class="google-btn leave-btn">← В лобби</button>
+                    <button id="btn-edit-room" class="google-btn" style="display:none;">Редактировать</button>
+                    <button id="btn-delete-room" class="danger-btn" style="display:none;">Удалить комнату</button>
+                </div>
+                <h2 id="room-title-text" style="margin-left: 20px; flex-grow: 1;">Комната</h2>
+                <div class="voice-volume-control" style="margin-right: 20px;">
+                    <span title="Громкость голосового чата">🎙️ Динамик:</span>
+                    <input type="range" id="voice-volume" min="0" max="1" step="0.1" value="1">
+                </div>
+            </header>
+            
+            <main class="main-layout-room">
+                <div class="video-column">
+                    <canvas id="ambilight-canvas"></canvas>
+                    
+                    <div class="player-wrapper glass-panel" id="player-wrapper">
+                        <video id="native-player" playsinline preload="metadata"></video>
+                        <div id="reaction-layer"></div>
+                    </div>
+                    
+                    <div class="reaction-bar glass-panel">
+                        <button class="react-btn" data-emoji="🔥">🔥</button>
+                        <button class="react-btn" data-emoji="😂">😂</button>
+                        <button class="react-btn" data-emoji="😱">😱</button>
+                        <button class="react-btn" data-emoji="❤️">❤️</button>
+                        <button class="react-btn" data-emoji="👏">👏</button>
+                        <button id="btn-fullscreen" class="icon-btn" style="margin-left: auto;">⛶ Фуллскрин</button>
+                    </div>
+                </div>
+                
+                <div class="chat-column glass-panel">
+                    <div class="chat-tabs">
+                        <button id="tab-chat-btn" class="active">Чат</button>
+                        <button id="tab-users-btn">Люди (<span id="users-count">1</span>)</button>
+                    </div>
+
+                    <div class="chat-area active-area" id="chat-messages"></div>
+                    <div class="users-area" id="users-list" style="display: none;"></div>
+
+                    <div class="message-dock" id="message-dock-container">
+                        <div class="beautiful-chat-input glass-panel">
+                            <button id="mic-btn" class="mic-icon-btn" title="Включить микрофон">🎤</button>
+                            <input type="text" id="chat-input" placeholder="Написать (00:00 для таймкода)..." autocomplete="off">
+                            <button id="send-btn" class="send-btn">↑</button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </section>
+    </div>
+
+    <script type="module" src="app.js"></script>
 </body>
 </html>
