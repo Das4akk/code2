@@ -2422,18 +2422,29 @@ function getOnlineLabel(status) {
     return 'Не в сети';
 }
 
+import { serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
 function bindSelfPresence() {
     if (!auth.currentUser) return;
-    
+
+    const uid = auth.currentUser.uid;
+    const statusRef = ref(db, `users/${uid}/status`);
     const connectedRef = ref(db, '.info/connected');
-    const statusRef = ref(db, `users/${auth.currentUser.uid}/status`);
 
     onValue(connectedRef, (snap) => {
         if (snap.val() === true) {
-            // Обязательно: сначала регистрируем действие на случай отключения сервера
-            onDisconnect(statusRef).set({ online: false, lastSeen: Date.now() }).then(() => {
-                // Только после этого ставим статус "онлайн"
-                set(statusRef, { online: true, lastSeen: Date.now() });
+            // Сначала ставим хук на удаление/изменение при дисконнекте
+            const onDisconnectRef = onDisconnect(statusRef);
+            
+            onDisconnectRef.set({
+                online: false,
+                lastSeen: serverTimestamp() // Время сервера, а не клиента
+            }).then(() => {
+                // Только после регистрации хука ставим "онлайн"
+                set(statusRef, {
+                    online: true,
+                    lastSeen: serverTimestamp()
+                });
             });
         }
     });
