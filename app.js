@@ -85,7 +85,6 @@ const REPORT_FORM_URL = '';
 let directChatUnsubscribe = null;
 let currentDirectChat = null;
 let voiceSignalCleanup = null;
-let voiceSessionId = null;
 let voicePeerConnections = new Map();
 let voiceParticipantsCache = {};
 let roomProfileSubscriptions = new Map();
@@ -216,179 +215,29 @@ $('btn-create-finish').onclick = async () => {
                     const salt = genSalt(16);
                     const pwHash = await deriveKey(password, salt);
                     updateData.private = true;
-                    updateData.pwSalt = salt;
                     updateData.pwHash = pwHash;
+                    updateData.pwSalt = salt;
                 } catch (e) { return showToast('Ошибка при установке пароля'); }
-            } else if (prev.private) {
-                // сохраняем старый хеш если пароль не поменяли
-                updateData.private = true;
-                updateData.pwSalt = prev.pwSalt;
-                updateData.pwHash = prev.pwHash;
             } else {
-                // поставить приватность, но без пароля — не позволяем
-                return showToast('Укажите пароль для приватной комнаты (мин 4 символа)');
+                return showToast('Пароль должен быть не менее 4 символов');
             }
-        } else {
-            // Снимаем приватность — удаляем поля
-            updateData.private = null;
-            updateData.pwSalt = null;
-            updateData.pwHash = null;
         }
 
         try {
-            await update(ref(db, `rooms/${editingRoomId}`), updateData);
+            // Сохраняем обновлённую мета-информацию комнаты
+            await set(ref(db, `rooms/${editingRoomId}`), Object.assign({}, prev, updateData));
             showToast('Комната обновлена');
             editingRoomId = null;
-            $('modal-create').classList.remove('active');
-        } catch (e) { showToast('Ошибка при обновлении комнаты'); }
-
-        return;
-    }
-
-    // Создание новой комнаты
-    const newRoomRef = push(ref(db, 'rooms'));
-    const roomData = { name, link, admin: auth.currentUser.uid, adminName: auth.currentUser.displayName || "User", buttonColor };
-    if (isPrivate) {
-        if (!password || password.length < 4) return showToast('Пароль должен быть минимум 4 символа');
-        try {
-            const salt = genSalt(16);
-            const pwHash = await deriveKey(password, salt);
-            roomData.private = true;
-            roomData.pwSalt = salt;
-            roomData.pwHash = pwHash;
+            $('modal-create')?.classList.remove('active');
+            // Обновляем локальный кэш если он есть
+            if (roomsCache[editingRoomId]) roomsCache[editingRoomId] = Object.assign({}, roomsCache[editingRoomId], updateData);
         } catch (e) {
-            return showToast('Ошибка при установке пароля');
+            showToast('Ошибка обновления комнаты');
         }
-    }
-    await set(newRoomRef, roomData);
-    $('modal-create').classList.remove('active');
-    // очистим поля
-    if ($('room-password')) $('room-password').value = '';
-    if ($('room-private')) $('room-private').checked = false;
-    enterRoom(newRoomRef.key, name, link, auth.currentUser.uid);
-};
 
-function renderRooms(filter = '') {
-    const grid = $('rooms-grid');
-    grid.innerHTML = '';
-    const data = roomsCache || {};
-    const q = String(filter || '').trim().toLowerCase();
-    const keys = Object.keys(data);
-    if (!keys.length) {
-        grid.innerHTML = '<div style="padding:20px; color:#888">Пока нет комнат</div>';
         return;
     }
-    keys.forEach(id => {
-        const room = data[id];
-        const name = room.name || '';
-        const host = room.adminName || '';
-        if (q) {
-            const hay = (name + ' ' + host).toLowerCase();
-            if (!hay.includes(q)) return;
-        }
-        // Используем JSON.stringify чтобы корректно экранировать аргументы для onclick
-        const lock = room.private ? '🔒 ' : '';
-        const previewTime = getRoomPreviewTime(room.sync || {});
-        const roomLink = room.link || '';
-        const colorDot = room.buttonColor ? `<div class="room-color-indicator" style="background:${escapeHtml(room.buttonColor)}"></div>` : '';
-        const previewContent = roomLink
-            ? `<video class="room-thumb-video" muted playsinline preload="metadata" src="${escapeHtml(roomLink)}" data-seek-time="${previewTime}"></video><div class="room-thumb-label">Сейчас в плеере</div>`
-            : `<div class="room-thumb-placeholder">Видео не задано</div>`;
-        grid.innerHTML += `\n            <div class="room-card glass-panel" onclick='window.joinRoom(${JSON.stringify(id)}, ${JSON.stringify(name)}, ${JSON.stringify(room.link || '')}, ${JSON.stringify(room.admin || '')})'>\n                ${colorDot}\n                <div class="room-thumb" style="${previewStyle}"></div>\n                <h4>${lock + escapeHtml(name)}</h4>\n                <p style=\"font-size:12px; opacity:0.6; margin-top:5px;\">Хост: ${escapeHtml(host)}</p>\n            </div>`;
-    });
-}
 
-function syncRooms() {
-    onValue(ref(db, 'rooms'), (snap) => {
-        roomsCache = snap.val() || {};
-        // сразу отрендерим с учётом текущего поиска
-        const si = $('search-rooms');
-        renderRooms(si ? si.value : '');
-    });
-    // Подписка на ввод поиска (легкий debounce)
-    const search = $('search-rooms');
-    if (search) {
-        let t = null;
-        search.addEventListener('input', (e) => {
-            clearTimeout(t);
-            t = setTimeout(() => renderRooms(e.target.value), 120);
-        });
-    }
-    // Управление видимостью поля пароля в модалке
-    const rp = $('room-private');
-    const rpwd = $('room-password');
-    if (rp && rpwd) {
-        rp.addEventListener('change', () => { rpwd.style.display = rp.checked ? 'block' : 'none'; });
-    }
-}
-
-// --- УВЕДОМЛЕНИЯ В ЛОББИ: приглашения друзей и в комнаты ---
-function setupLobbyNotifications() {
-    // Загрузка и отображение списка друзей
-    const btnToggleFriends = $('btn-toggle-friends');
-    const friendsPanel = $('friends-list-panel');
-    
-    if (btnToggleFriends && friendsPanel) {
-        btnToggleFriends.onclick = () => {
-            const isHidden = friendsPanel.style.display === 'none';
-            friendsPanel.style.display = isHidden ? 'block' : 'none';
-            
-            if (isHidden) {
-                // Загружаем друзей
-                let friendsList = new Set();
-                onValue(ref(db, `users/${auth.currentUser.uid}/friends`), (snap) => {
-                    friendsList.clear();
-                    friendsPanel.innerHTML = '<h3>👥 Друзья</h3>';
-                    
-                    if (!snap.val()) {
-                        friendsPanel.innerHTML += '<div style="padding:12px; opacity:0.6; font-size:12px;">Нет друзей</div>';
-                        return;
-                    }
-                    
-                    Object.keys(snap.val()).forEach(fuid => {
-                        const fdata = snap.val()[fuid];
-                        if (fdata === true || (fdata && fdata.status === 'accepted')) {
-                            friendsList.add(fuid);
-                            // Загружаем информацию о друге из профиля
-                            onValue(ref(db, `users/${fuid}/profile`), (psnap) => {
-                                const profile = psnap.val() || {};
-                                const friendName = profile.name || 'User';
-                                const friendColor = profile.color || '#f5f7fa';
-                                
-                                let html = `<div class="friend-card" data-fuid="${fuid}">`;
-                                html += `<div style="width:24px; height:24px; border-radius:50%; background: linear-gradient(45deg, ${escapeHtml(friendColor)}, rgba(255,255,255,0.1)); border: 1px solid rgba(255,255,255,0.1);"></div>`;
-                                html += `<strong>${escapeHtml(friendName)}</strong>`;
-                                html += `<button class="friend-dm-btn" data-fuid="${fuid}">💬</button>`;
-                                html += `</div>`;
-                                
-                                let existing = friendsPanel.querySelector(`[data-fuid="${fuid}"]`);
-                                if (!existing) {
-                                    // Вставляем новую карточку после заголовка
-                                    const h3 = friendsPanel.querySelector('h3');
-                                    if (h3) {
-                                        const div = document.createElement('div');
-                                        div.innerHTML = html;
-                                        h3.parentNode.insertBefore(div.firstElementChild, h3.nextSibling);
-                                    }
-                                }
-                            }, { onlyOnce: true });
-                        }
-                    });
-                }, { onlyOnce: true });
-                
-                // Обработчики DM кнопок
-                setTimeout(() => {
-                    document.querySelectorAll('.friend-dm-btn').forEach(b => {
-                        b.onclick = (e) => {
-                            e.stopPropagation();
-                            const fuid = b.dataset.fuid;
-                            showToast('💬 Открываю чат...');
-                        };
-                    });
-                }, 100);
-            }
-        };
-    }
     
     // Приглашения в комнату
     onChildAdded(ref(db, `users/${auth.currentUser.uid}/room-invites`), (snap) => {
@@ -465,7 +314,7 @@ function setupLobbyNotifications() {
         
         setTimeout(() => { if (notif.parentNode) notif.remove(); }, 8000);
     });
-}
+
 let pendingJoin = null;
 window.joinRoom = (id, name, link, admin) => {
     const room = roomsCache[id] || null;
@@ -1156,7 +1005,7 @@ async function openRoomInviteModal() {
                         ts: Date.now()
                     });
                     button.textContent = 'Отправлено';
-                    button.classList.add('sent');
+                     button.classList.add('sent');
                     showToast('Инвайт отправлен');
                 } catch (e) {
                     button.disabled = false;
@@ -1932,20 +1781,19 @@ function ensureVoicePeerConnection(remoteUid) {
     if (existing?.pc && existing.pc.connectionState !== 'closed') return existing.pc;
 
     const pc = new RTCPeerConnection(RTC_CONFIG);
-    const remoteParticipant = voiceParticipantsCache[remoteUid] || {};
+    const remoteEntry = voiceParticipantsCache[remoteUid];
+    const remotePeerId = (remoteEntry && typeof remoteEntry === 'object') ? (remoteEntry.peerId || remoteEntry.sessionId || null) : (remoteEntry || null);
 
     if (myStream) {
         myStream.getTracks().forEach((track) => pc.addTrack(track, myStream));
     }
 
     pc.onicecandidate = ({ candidate }) => {
-        if (!candidate || !currentRoomId || !voiceSessionId) return;
-        const targetSessionId = voiceParticipantsCache[remoteUid]?.sessionId;
-        if (!targetSessionId) return;
+        if (!candidate || !currentRoomId) return;
         push(ref(db, `rooms/${currentRoomId}/rtc/candidates/${remoteUid}/${auth.currentUser.uid}`), {
             candidate: candidate.toJSON(),
-            fromSessionId: voiceSessionId,
-            toSessionId: targetSessionId,
+            fromPeerId: peer?.id || null,
+            toPeerId: remotePeerId || null,
             ts: Date.now()
         });
     };
@@ -1961,27 +1809,42 @@ function ensureVoicePeerConnection(remoteUid) {
         }
     };
 
+    voicePeerConnections.set(remoteUid, { pc, remotePeerId });
+    return pc;
+
+    pc.ontrack = (event) => {
+        const [stream] = event.streams || [];
+        if (stream) attachRemoteAudioV3(stream, remoteUid);
+    };
+
+    pc.onconnectionstatechange = () => {
+        if (['failed', 'disconnected', 'closed'].includes(pc.connectionState)) {
+            destroyVoiceConnection(remoteUid);
+        }
+    };
+
     voicePeerConnections.set(remoteUid, {
         pc,
-        remoteSessionId: remoteParticipant.sessionId || null
+        remotePeerId: remotePeerId
     });
     return pc;
 }
 
 async function publishVoiceParticipant() {
-    if (!currentRoomId || !voiceSessionId || !auth.currentUser) return;
+    if (!currentRoomId || !auth.currentUser || !peer?.id) return;
     await set(ref(db, `rooms/${currentRoomId}/rtc/participants/${auth.currentUser.uid}`), {
-        sessionId: voiceSessionId,
+        peerId: peer.id,
         ts: Date.now()
     });
 }
 
 async function createVoiceOfferFor(remoteUid) {
-    if (!myStream || !voiceSessionId || !currentRoomId || remoteUid === auth.currentUser.uid) return;
+    if (!myStream || !currentRoomId || remoteUid === auth.currentUser.uid) return;
     if (auth.currentUser.uid.localeCompare(remoteUid) >= 0) return;
 
-    const remoteSessionId = voiceParticipantsCache[remoteUid]?.sessionId;
-    if (!remoteSessionId) return;
+    const remoteEntry = voiceParticipantsCache[remoteUid];
+    const remotePeerId = (remoteEntry && typeof remoteEntry === 'object') ? (remoteEntry.peerId || remoteEntry.sessionId || null) : (remoteEntry || null);
+    if (!remotePeerId) return;
 
     const pc = ensureVoicePeerConnection(remoteUid);
     if (pc.signalingState !== 'stable') return;
@@ -1991,21 +1854,20 @@ async function createVoiceOfferFor(remoteUid) {
 
     await set(ref(db, `rooms/${currentRoomId}/rtc/offers/${remoteUid}/${auth.currentUser.uid}`), {
         description: pc.localDescription.toJSON(),
-        fromSessionId: voiceSessionId,
-        toSessionId: remoteSessionId,
+        fromPeerId: peer?.id || null,
+        toPeerId: remotePeerId,
         ts: Date.now()
     });
 }
 
 async function handleIncomingOffers(offers = {}) {
-    const localSessionId = voiceSessionId;
-    if (!localSessionId || !myStream || !currentRoomId) return;
+    if (!myStream || !currentRoomId) return;
 
     for (const [fromUid, payload] of Object.entries(offers)) {
         if (!payload?.description) continue;
-        const remoteParticipant = voiceParticipantsCache[fromUid];
-        if (!remoteParticipant?.sessionId) continue;
-        if (payload.toSessionId !== localSessionId || payload.fromSessionId !== remoteParticipant.sessionId) continue;
+        const remoteEntry = voiceParticipantsCache[fromUid];
+        const remotePeerId = ((remoteEntry && typeof remoteEntry === 'object') ? (remoteEntry.peerId || remoteEntry.sessionId || null) : (remoteEntry || null)) || payload.fromPeerId;
+        if (!remotePeerId) continue;
 
         const pc = ensureVoicePeerConnection(fromUid);
         try {
@@ -2017,8 +1879,8 @@ async function handleIncomingOffers(offers = {}) {
             await pc.setLocalDescription(answer);
             await set(ref(db, `rooms/${currentRoomId}/rtc/answers/${fromUid}/${auth.currentUser.uid}`), {
                 description: pc.localDescription.toJSON(),
-                fromSessionId: localSessionId,
-                toSessionId: remoteParticipant.sessionId,
+                fromPeerId: peer?.id || null,
+                toPeerId: payload.fromPeerId || remotePeerId,
                 ts: Date.now()
             });
             await remove(ref(db, `rooms/${currentRoomId}/rtc/offers/${auth.currentUser.uid}/${fromUid}`));
@@ -2029,15 +1891,12 @@ async function handleIncomingOffers(offers = {}) {
 }
 
 async function handleIncomingAnswers(answers = {}) {
-    const localSessionId = voiceSessionId;
-    if (!localSessionId || !currentRoomId) return;
+    if (!currentRoomId) return;
 
     for (const [fromUid, payload] of Object.entries(answers)) {
         if (!payload?.description) continue;
-        const remoteParticipant = voiceParticipantsCache[fromUid];
         const pc = voicePeerConnections.get(fromUid)?.pc;
-        if (!pc || !remoteParticipant?.sessionId) continue;
-        if (payload.toSessionId !== localSessionId || payload.fromSessionId !== remoteParticipant.sessionId) continue;
+        if (!pc) continue;
 
         try {
             await pc.setRemoteDescription(new RTCSessionDescription(payload.description));
@@ -2049,24 +1908,19 @@ async function handleIncomingAnswers(answers = {}) {
 }
 
 async function handleIncomingCandidates(candidateGroups = {}) {
-    const localSessionId = voiceSessionId;
-    if (!localSessionId || !currentRoomId) return;
+    if (!currentRoomId) return;
 
     for (const [fromUid, candidates] of Object.entries(candidateGroups)) {
-        const remoteParticipant = voiceParticipantsCache[fromUid];
-        if (!remoteParticipant?.sessionId) continue;
-        const pc = ensureVoicePeerConnection(fromUid);
+        const pc = voicePeerConnections.get(fromUid)?.pc || null;
 
         for (const [candidateId, payload] of Object.entries(candidates || {})) {
             if (!payload?.candidate) continue;
-            if (payload.toSessionId !== localSessionId || payload.fromSessionId !== remoteParticipant.sessionId) continue;
-
             try {
-                await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
+                if (pc) await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
             } catch (e) {
                 console.error('candidate handling failed', e);
             }
-            await remove(ref(db, `rooms/${currentRoomId}/rtc/candidates/${auth.currentUser.uid}/${fromUid}/${candidateId}`));
+            try { await remove(ref(db, `rooms/${currentRoomId}/rtc/candidates/${auth.currentUser.uid}/${fromUid}/${candidateId}`)); } catch (e) {}
         }
     }
 }
@@ -2088,7 +1942,6 @@ async function enableMicrophoneNative(button) {
             autoGainControl: true
         }
     });
-    voiceSessionId = crypto.randomUUID();
     button?.classList.add('active');
     await publishVoiceParticipant();
     for (const remoteUid of Object.keys(voiceParticipantsCache)) {
@@ -2106,8 +1959,6 @@ async function disableMicrophoneNative({ notify = true } = {}) {
     if (currentRoomId && auth.currentUser) {
         try { await remove(ref(db, `rooms/${currentRoomId}/rtc/participants/${auth.currentUser.uid}`)); } catch (e) {}
     }
-
-    voiceSessionId = null;
     $('mic-btn')?.classList.remove('active');
     destroyAllVoiceConnections();
 
@@ -2266,7 +2117,7 @@ function initRoomServicesV3() {
         for (const remoteUid of Array.from(voicePeerConnections.keys())) {
             if (!voiceParticipantsCache[remoteUid]) destroyVoiceConnection(remoteUid);
         }
-        if (myStream && voiceSessionId) {
+        if (myStream) {
             for (const remoteUid of Object.keys(voiceParticipantsCache)) {
                 await createVoiceOfferFor(remoteUid);
             }
@@ -3085,7 +2936,7 @@ function initRoomServicesV4() {
         for (const remoteUid of Array.from(voicePeerConnections.keys())) {
             if (!voiceParticipantsCache[remoteUid]) destroyVoiceConnection(remoteUid);
         }
-        if (myStream && voiceSessionId) {
+        if (myStream) {
             for (const remoteUid of Object.keys(voiceParticipantsCache)) await createVoiceOfferFor(remoteUid);
         }
     });
