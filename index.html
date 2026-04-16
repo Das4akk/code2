@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>COW — Liquid Glass</title>
+    <title>COW — Co-Watching Space</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
 </head>
@@ -13,13 +13,6 @@
     <div id="remote-audio-container" style="display: none;"></div>
 
     <div id="app-container">
-        <aside id="sidebar-friends" class="glass-panel">
-            <div class="sidebar-header">
-                <h3>Друзья</h3>
-            </div>
-            <div id="friends-list-container"></div>
-        </aside>
-
         <section id="auth-screen" class="screen active">
             <div class="auth-wrapper glass-panel">
                 <h1 class="logo">COW</h1>
@@ -34,7 +27,7 @@
                         <button id="btn-login-email" class="primary-btn">Войти</button>
                     </div>
                     <div id="form-register" class="auth-form">
-                        <input type="text" id="reg-name" placeholder="Имя">
+                        <input type="text" id="reg-name" placeholder="Ваше имя">
                         <input type="email" id="reg-email" placeholder="Email">
                         <input type="password" id="reg-password" placeholder="Пароль">
                         <button id="btn-register-email" class="primary-btn">Создать аккаунт</button>
@@ -45,100 +38,92 @@
 
         <section id="lobby-screen" class="screen">
             <header class="lobby-header glass-panel">
-                <div class="user-profile-brief" id="open-profile-btn">
-                    <div class="avatar-container">
-                        <img id="my-avatar-preview" src="https://via.placeholder.com/40" alt="Avatar">
+                <div class="user-profile-trigger" id="open-profile-btn">
+                    <div class="avatar-mini" id="my-avatar-preview"></div>
+                    <div class="user-info">
+                        <span id="my-display-name">Загрузка...</span>
+                        <small id="my-status-preview">Online</small>
                     </div>
-                    <span id="my-name-display">Загрузка...</span>
                 </div>
                 <div class="header-actions">
-                    <button id="btn-quick-room" class="secondary-btn">🎲 Рандом</button>
-                    <button id="btn-open-modal" class="primary-btn">Создать комнату</button>
-                    <button id="btn-logout" class="icon-btn">🚪</button>
+                    <button id="btn-open-modal" class="icon-btn">Создать комнату</button>
+                    <button id="btn-logout" class="secondary-btn">Выйти</button>
                 </div>
             </header>
 
             <main class="lobby-layout">
-                <div class="rooms-section">
-                    <div class="section-title">
-                        <h2>Все комнаты</h2>
-                        <div class="room-filters">
-                            <span class="filter active">Популярные</span>
-                            <span class="filter">Недавние</span>
-                        </div>
+                <div class="rooms-grid" id="rooms-list">
                     </div>
-                    <div id="rooms-grid" class="rooms-grid"></div>
-                </div>
             </main>
-            
-            <div id="global-stats">Сейчас онлайн: <span id="global-online-count">0</span></div>
         </section>
 
         <section id="room-screen" class="screen">
             <div class="room-container">
-                <div class="player-column">
-                    <div id="player-wrapper" class="glass-panel">
+                <div class="video-side">
+                    <div class="video-wrapper glass-panel">
                         <video id="main-player" playsinline></video>
-                        <div id="reaction-layer"></div>
+                        <div id="video-placeholder">Ожидание потока...</div>
                     </div>
-                    <div class="room-controls glass-panel">
-                        <button class="react-btn" data-emoji="❤️">❤️</button>
-                        <button class="react-btn" data-emoji="😂">😂</button>
-                        <button class="react-btn" data-emoji="👍">👍</button>
-                        <button id="btn-fullscreen" class="icon-btn">⛶</button>
+                    <div class="video-controls glass-panel">
+                        <button id="btn-play-pause">⏯</button>
+                        <input type="range" id="video-progress" value="0">
+                        <button id="btn-fullscreen">⛶</button>
                     </div>
                 </div>
-                
-                <div class="chat-column glass-panel">
+
+                <div class="chat-side glass-panel">
                     <div class="chat-tabs">
                         <button id="tab-chat-btn" class="active">Чат</button>
                         <button id="tab-users-btn">Люди (<span id="users-count">0</span>)</button>
                     </div>
-                    <div class="chat-area active-area" id="chat-messages"></div>
-                    <div class="users-area" id="users-list" style="display: none;"></div>
-                    <div class="message-dock">
-                        <div class="beautiful-chat-input glass-panel">
-                            <button id="mic-btn" class="mic-icon-btn">🎤</button>
-                            <input type="text" id="chat-input" placeholder="Сообщение...">
-                            <button id="send-btn" class="send-btn">↑</button>
-                        </div>
+                    <div class="chat-content">
+                        <div id="chat-messages" class="chat-area active"></div>
+                        <div id="users-list" class="users-area"></div>
                     </div>
+                    <div class="chat-input-wrapper">
+                        <input type="text" id="chat-input" placeholder="Сообщение...">
+                        <button id="send-btn">↑</button>
+                    </div>
+                    <button id="btn-leave-room" class="leave-btn">Покинуть комнату</button>
                 </div>
             </div>
         </section>
     </div>
 
-    <div id="modal-profile" class="modal">
+    <div id="modal-profile" class="modal-overlay">
         <div class="modal-content glass-panel">
-            <h2>Редактор профиля</h2>
-            <div class="edit-profile-grid">
-                <div class="edit-avatar-section">
-                    <div class="avatar-big-container">
-                        <img id="edit-avatar-img" src="" alt="Avatar">
-                    </div>
-                    <input type="file" id="input-avatar-file" hidden accept="image/*">
-                    <button onclick="$('input-avatar-file').click()" class="secondary-btn">Сменить фото</button>
-                </div>
-                <div class="edit-info-section">
-                    <label>Имя</label>
-                    <input type="text" id="edit-display-name">
-                    
-                    <label>Статус (Emoji + Текст)</label>
-                    <input type="text" id="edit-status-text" placeholder="Напр: 🍿 Смотрю кино">
-                    
-                    <label>Цвет ника</label>
-                    <input type="color" id="edit-name-color" value="#ffffff">
-                    
-                    <label>О себе (Bio)</label>
-                    <textarea id="edit-bio" maxlength="120"></textarea>
-                    
-                    <label>Громкость голоса (по умолчанию)</label>
-                    <input type="range" id="edit-default-volume" min="0" max="1" step="0.1">
-                </div>
+            <h2>Настройки профиля</h2>
+            <div class="edit-group">
+                <label>Имя в чате</label>
+                <input type="text" id="edit-display-name">
             </div>
-            <div class="modal-buttons">
+            <div class="edit-group">
+                <label>Статус</label>
+                <input type="text" id="edit-status-text" placeholder="Что у вас нового?">
+            </div>
+            <div class="edit-group">
+                <label>Цвет ника</label>
+                <input type="color" id="edit-name-color" value="#ffffff">
+            </div>
+            <div class="edit-group">
+                <label>О себе</label>
+                <textarea id="edit-bio"></textarea>
+            </div>
+            <div class="modal-actions">
                 <button id="btn-save-profile" class="primary-btn">Сохранить</button>
                 <button id="btn-close-profile" class="secondary-btn">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-create" class="modal-overlay">
+        <div class="modal-content glass-panel">
+            <h2 id="modal-create-title">Новая комната</h2>
+            <input type="text" id="room-name" placeholder="Название комнаты">
+            <input type="password" id="room-password" placeholder="Пароль (опционально)">
+            <div class="modal-actions">
+                <button id="btn-confirm-create" class="primary-btn">Создать</button>
+                <button id="btn-close-modal" class="secondary-btn">Закрыть</button>
             </div>
         </div>
     </div>
