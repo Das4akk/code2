@@ -65,7 +65,6 @@ function showToast(message) {
 // --- WebRTC Инициализация ---
 // WebRTC state (using RTCPeerConnection + Firebase signalling)
 let currentRoomId = null;
-let currentRoomId = null;
 let isHost = false;
 let myStream = null;
 let activeCalls = new Set();
