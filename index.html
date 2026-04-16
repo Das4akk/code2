@@ -56,42 +56,43 @@
         </section>
 
         <section id="room-screen" class="screen">
-            <div class="room-container">
-                <div class="video-side">
-                    <div class="video-wrapper glass-panel">
-                        <video id="main-player" playsinline></video>
-                        <div id="video-placeholder">Ожидание потока...</div>
-                    </div>
-                    <div class="video-controls glass-panel">
-                        <button id="btn-play-pause">⏯</button>
-                        <input type="range" id="video-progress" value="0">
-                        <button id="btn-fullscreen">⛶</button>
-                        <div class="reactions">
-                            <button class="react-btn" data-emoji="❤️">❤️</button>
-                            <button class="react-btn" data-emoji="👏">👏</button>
-                            <button class="react-btn" data-emoji="🔥">🔥</button>
-                        </div>
-                    </div>
+    <div class="room-main-layout">
+        <div class="video-column">
+            <div class="video-wrapper glass-panel">
+                <video id="main-player" playsinline></video>
+                <div id="video-placeholder">Ожидание потока...</div>
+            </div>
+            <div class="video-controls glass-panel">
+                <button id="btn-play-pause">⏯</button>
+                <input type="range" id="video-progress" value="0">
+                <div class="reactions">
+                    <button class="react-btn" data-emoji="❤️">❤️</button>
+                    <button class="react-btn" data-emoji="👏">👏</button>
                 </div>
+                <button id="btn-fullscreen" class="icon-btn">⛶</button>
+            </div>
+        </div>
 
-                <div class="chat-side glass-panel">
-                    <div class="chat-tabs">
-                        <button id="tab-chat-btn" class="active">Чат</button>
-                        <button id="tab-users-btn">Люди (<span id="users-count">0</span>)</button>
-                    </div>
-                    <div id="chat-messages" class="chat-area active"></div>
-                    <div id="users-list" class="users-area" style="display:none;"></div>
-                    
-                    <div class="chat-input-wrapper">
-                        <button id="mic-btn" class="mic-btn">🎤</button>
-                        <input type="text" id="chat-input" placeholder="Сообщение...">
-                        <button id="send-btn">↑</button>
-                    </div>
-                    <button id="btn-leave-room" class="leave-btn">Выход</button>
+        <div class="chat-column glass-panel">
+            <div class="chat-tabs">
+                <button id="tab-chat-btn" class="active">Чат</button>
+                <button id="tab-users-btn">Люди (<span id="users-count">0</span>)</button>
+            </div>
+            
+            <div id="chat-messages" class="chat-area active-area"></div>
+            <div id="users-list" class="users-area" style="display: none;"></div>
+
+            <div class="message-dock">
+                <div class="input-group glass-panel">
+                    <button id="mic-btn" class="mic-btn">🎤</button>
+                    <input type="text" id="chat-input" placeholder="Сообщение...">
+                    <button id="send-btn">↑</button>
                 </div>
             </div>
-        </section>
+            <button id="btn-leave-room" class="leave-btn">Выйти из комнаты</button>
+        </div>
     </div>
+</section>
 
     <div id="modal-profile" class="modal-overlay">
         <div class="modal-content glass-panel">
