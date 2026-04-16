@@ -3287,6 +3287,7 @@ function widenLobbyLayout() {
         layout.style.maxWidth = '95vw';
         layout.style.width = '95vw';
     }
+    bindHotkeys();
 }
 
 bindDirectChatUiV2();
