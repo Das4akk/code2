@@ -97,6 +97,7 @@ let latestRoomPresenceData = {};
 // Default no-op placeholders to avoid ReferenceError before implementations are defined
 let setupLobbyNotifications = () => {};
 let renderRooms = () => {};
+let syncRooms = () => {};
 
 function isAcceptedFriendRecord(record) {
     return record === true || (record && record.status === 'accepted');
