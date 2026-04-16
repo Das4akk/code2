@@ -2457,4 +2457,4 @@ enterRoom = enterRoomV4;
 leaveRoom = leaveRoomV4;
 initRoomServices = initRoomServicesV4;
 
-if ($('btn-leave-room')) $('btn-leave-room').onclick = leaveRoomV4;
+if ($('btn-leave-room')) $('btn-leave-room').onclick = leaveRoomV4};
