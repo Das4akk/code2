@@ -30,7 +30,7 @@
                         <input type="text" id="reg-name" placeholder="Ваше имя">
                         <input type="email" id="reg-email" placeholder="Email">
                         <input type="password" id="reg-password" placeholder="Пароль">
-                        <button id="btn-register-email" class="primary-btn">Создать аккаунт</button>
+                        <button id="btn-register-email" class="primary-btn">Создать</button>
                     </div>
                 </div>
             </div>
@@ -50,10 +50,8 @@
                     <button id="btn-logout" class="secondary-btn">Выйти</button>
                 </div>
             </header>
-
             <main class="lobby-layout">
-                <div class="rooms-grid" id="rooms-list">
-                    </div>
+                <div class="rooms-grid" id="rooms-list"></div>
             </main>
         </section>
 
@@ -68,6 +66,11 @@
                         <button id="btn-play-pause">⏯</button>
                         <input type="range" id="video-progress" value="0">
                         <button id="btn-fullscreen">⛶</button>
+                        <div class="reactions">
+                            <button class="react-btn" data-emoji="❤️">❤️</button>
+                            <button class="react-btn" data-emoji="👏">👏</button>
+                            <button class="react-btn" data-emoji="🔥">🔥</button>
+                        </div>
                     </div>
                 </div>
 
@@ -76,15 +79,15 @@
                         <button id="tab-chat-btn" class="active">Чат</button>
                         <button id="tab-users-btn">Люди (<span id="users-count">0</span>)</button>
                     </div>
-                    <div class="chat-content">
-                        <div id="chat-messages" class="chat-area active"></div>
-                        <div id="users-list" class="users-area"></div>
-                    </div>
+                    <div id="chat-messages" class="chat-area active"></div>
+                    <div id="users-list" class="users-area" style="display:none;"></div>
+                    
                     <div class="chat-input-wrapper">
+                        <button id="mic-btn" class="mic-btn">🎤</button>
                         <input type="text" id="chat-input" placeholder="Сообщение...">
                         <button id="send-btn">↑</button>
                     </div>
-                    <button id="btn-leave-room" class="leave-btn">Покинуть комнату</button>
+                    <button id="btn-leave-room" class="leave-btn">Выход</button>
                 </div>
             </div>
         </section>
@@ -92,26 +95,14 @@
 
     <div id="modal-profile" class="modal-overlay">
         <div class="modal-content glass-panel">
-            <h2>Настройки профиля</h2>
-            <div class="edit-group">
-                <label>Имя в чате</label>
-                <input type="text" id="edit-display-name">
-            </div>
-            <div class="edit-group">
-                <label>Статус</label>
-                <input type="text" id="edit-status-text" placeholder="Что у вас нового?">
-            </div>
-            <div class="edit-group">
-                <label>Цвет ника</label>
-                <input type="color" id="edit-name-color" value="#ffffff">
-            </div>
-            <div class="edit-group">
-                <label>О себе</label>
-                <textarea id="edit-bio"></textarea>
-            </div>
+            <h2>Профиль</h2>
+            <input type="text" id="edit-display-name" placeholder="Имя">
+            <input type="text" id="edit-status-text" placeholder="Статус">
+            <input type="color" id="edit-name-color" title="Цвет ника">
+            <textarea id="edit-bio" placeholder="О себе..."></textarea>
             <div class="modal-actions">
                 <button id="btn-save-profile" class="primary-btn">Сохранить</button>
-                <button id="btn-close-profile" class="secondary-btn">Отмена</button>
+                <button id="btn-close-profile" class="secondary-btn">Закрыть</button>
             </div>
         </div>
     </div>
@@ -119,15 +110,14 @@
     <div id="modal-create" class="modal-overlay">
         <div class="modal-content glass-panel">
             <h2 id="modal-create-title">Новая комната</h2>
-            <input type="text" id="room-name" placeholder="Название комнаты">
-            <input type="password" id="room-password" placeholder="Пароль (опционально)">
+            <input type="text" id="room-name" placeholder="Название">
+            <input type="password" id="room-password" placeholder="Пароль (опц)">
             <div class="modal-actions">
                 <button id="btn-confirm-create" class="primary-btn">Создать</button>
-                <button id="btn-close-modal" class="secondary-btn">Закрыть</button>
+                <button id="btn-close-modal" class="secondary-btn">Отмена</button>
             </div>
         </div>
     </div>
-
     <script type="module" src="app.js"></script>
 </body>
 </html>

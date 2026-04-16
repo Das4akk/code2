@@ -168,4 +168,63 @@ video { width: 100%; height: 100%; }
 /* Скроллбар */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+.video-controls {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 10px 20px;
+    margin-top: 10px;
+}
 
+.reactions {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+}
+
+.react-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 20px;
+    transition: transform 0.2s;
+}
+
+.react-btn:hover { transform: scale(1.3); }
+
+.chat-input-wrapper {
+    display: flex;
+    gap: 10px;
+    padding: 10px 0;
+    align-items: center;
+}
+
+.mic-btn {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: #fff;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    cursor: pointer;
+}
+
+.mic-btn.active {
+    background: #ff4444;
+    border-color: #ff4444;
+}
+
+.users-area {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.leave-btn {
+    margin-top: 10px;
+    padding: 10px;
+    background: rgba(255, 68, 68, 0.2);
+    color: #ff6666;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+}
