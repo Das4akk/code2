@@ -1,6 +1,6 @@
 import { db, auth } from 'JS/firebase.js';
 import { ref, set, onChildAdded, onValue, off, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-import { UI } from 'JS/ui.js';
+import { UI } from 'js/ui.js';
 
 export const VoiceSystem = {
     localStream: null,

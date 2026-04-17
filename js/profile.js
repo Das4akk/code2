@@ -1,7 +1,7 @@
 import { auth, db } from 'js/firebase.js';
 import { ref, get, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 import { updateProfile } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { UI } from 'JS/ui.js';
+import { UI } from 'js/ui.js';
 
 let currentProfileUnsubscribe = null;
 
