@@ -1,6 +1,6 @@
-import { auth, db } from 'JS/js/firebase.js';
+import { auth, db } from './firebase.js';
 import { ref, get, set, remove, onValue, onChildAdded, off } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-import { UI } from 'js/ui.js';
+import { UI } from './ui.js';
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 let requestsUnsubscribe = null;
