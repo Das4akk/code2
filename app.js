@@ -1572,6 +1572,14 @@ async function enableMicrophone(btn) {
   connectToVoicePeers();
 }
 
+$('mic-btn').onclick = async function() {
+  if (myStream) {
+    await disableMicrophone();
+  } else {
+    await enableMicrophone(this);
+  }
+};
+
 async function disableMicrophone({ notify = true } = {}) {
     if (myStream) {
         myStream.getTracks().forEach((track) => track.stop());
