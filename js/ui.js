@@ -88,6 +88,39 @@ bindAuth(loginCb, regCb, googleCb) {
             els['my-avatar'].src = generateAvatarSvgDataUri(name, color);
         }
     },
+    // Добавить в ui.js внутри объекта UI:
+    
+    getProfileData() {
+        return {
+            name: els['profile-name']?.value,
+            status: els['profile-status']?.value,
+            bio: els['profile-bio']?.value,
+            color: els['profile-color']?.value,
+            volume: els['profile-volume']?.value
+        };
+    },
+
+    bindProfile(saveCb) {
+        if (els['btn-edit-profile']) {
+            els['btn-edit-profile'].onclick = () => els['modal-profile'].classList.add('active');
+        }
+        if (els['btn-profile-save']) {
+            els['btn-profile-save'].onclick = () => {
+                saveCb();
+                els['modal-profile'].classList.remove('active');
+            };
+        }
+        if (els['btn-profile-cancel']) {
+            els['btn-profile-cancel'].onclick = () => els['modal-profile'].classList.remove('active');
+        }
+    },
+
+    // Также добавим метод для входа в комнаты, если его нет
+    bindRoomJoinAuth(joinCb) {
+        if (els['btn-join-confirm']) {
+            els['btn-join-confirm'].onclick = () => joinCb();
+        }
+    },
 
     renderRooms(rooms, filter, onJoin) {
         if (!els['rooms-grid']) return;

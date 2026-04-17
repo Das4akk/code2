@@ -49,6 +49,7 @@ async function bootstrap() {
     () => AuthSystem.loginWithGoogle()
 );
 
+
     UI.bindProfile(
         (cb) => cb(currentProfile),
         () => ProfileSystem.saveProfile(UI.getProfileInput())
