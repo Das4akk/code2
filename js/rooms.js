@@ -1,4 +1,4 @@
-import { db, auth } from 'JS/js/firebase.js';
+import { db, auth } from 'js/firebase.js';
 import { ref, set, push, get, onValue, off, remove, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 // Измени импорт VoiceSystem:
 import { UI } from 'JS/ui.js';

@@ -1,4 +1,4 @@
-import { auth, db } from 'JS/js/firebase.js';
+import { auth, db } from 'js/firebase.js';
 import { ref, set, onValue, onDisconnect, off } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 let connectionUnsubscribe = null;
