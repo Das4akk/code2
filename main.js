@@ -1,4 +1,3 @@
-// Было с './js/...', должно стать:
 import { UI } from './ui.js';
 import { AuthSystem } from './auth.js';
 import { ProfileSystem } from './profile.js';
