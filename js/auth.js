@@ -8,7 +8,7 @@ import {
     updateProfile 
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 // Измени: import { UI } from './js/ui.js';
-import { UI } from './ui.js';
+import { UI } from '../ui.js';
 export const AuthSystem = {
     /**
      * @param {Function} onLoginCallback - Вызывается при успешном входе

@@ -1,4 +1,4 @@
-import { auth, db } from './firebase.js';
+import { auth, db } from './js/firebase.js';
 import { ref, get, set, remove, onValue, onChildAdded, off } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 import { UI } from './js/ui.js';
 

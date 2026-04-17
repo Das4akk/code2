@@ -1,9 +1,9 @@
-import { UI } from './ui.js';
+import { UI } from '../ui.js';
 import { AuthSystem } from './auth.js';
-import { ProfileSystem } from './profile.js';
-import { OnlineSystem } from './online.js';
+import { ProfileSystem } from '../profile.js';
+import { OnlineSystem } from '../online.js';
 import { FriendsSystem } from './friends.js';
-import { RoomSystem } from './rooms.js';
+import { RoomSystem } from '../rooms.js';
 import { ChatSystem } from './chat.js';
 import { VoiceSystem } from './voice.js';
 
