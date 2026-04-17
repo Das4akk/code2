@@ -53,4 +53,7 @@ export function parseTimecodes(text, canControlPlayer) {
     return canControlPlayer
         ? escaped.replace(/(\d{1,2}:\d{2})/g, '<button class="timecode-btn" data-time="$1">$1</button>')
         : escaped.replace(/(\d{1,2}:\d{2})/g, '<span class="timecode-btn disabled">$1</span>');
+        export function parseTimecodes(text) {
+    return text; // Временная заглушка
+}
 }

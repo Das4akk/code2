@@ -4,9 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>COW — Co-Watching Space</title>
-    
-    <link rel="icon" href="data:,">
-    
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,15 +13,12 @@
     <canvas id="particle-canvas"></canvas>
     
     <div id="toast-container"></div>
-    
     <div id="online-counter" class="online-counter" style="display:none;">
         <span id="online-count">1</span> онлайн
     </div>
-
     <div id="remote-audio-container" style="display: none;"></div>
 
     <div id="app-container">
-        
         <section id="auth-screen" class="screen active">
             <div class="auth-wrapper glass-panel">
                 <h1 class="logo">COW</h1>
@@ -33,22 +27,22 @@
                     <button type="button" id="tab-register">Регистрация</button>
                 </div>
 
-                <form id="form-login" class="auth-form active" onsubmit="return false;">
-                    <input type="email" id="login-email" placeholder="Email" autocomplete="email">
-                    <input type="password" id="login-password" placeholder="Пароль" autocomplete="current-password">
-                    <button type="button" id="btn-login-email" class="primary-btn">Войти</button>
+                <form id="form-login" class="auth-form active">
+                    <input type="email" id="login-email" placeholder="Email" required>
+                    <input type="password" id="login-password" placeholder="Пароль" required>
+                    <button type="submit" id="btn-login-email" class="primary-btn">Войти</button>
                 </form>
 
-                <form id="form-register" class="auth-form" onsubmit="return false;">
-                    <input type="text" id="reg-name" placeholder="Ваше имя" autocomplete="name">
-                    <input type="email" id="reg-email" placeholder="Email" autocomplete="email">
-                    <input type="password" id="reg-password" placeholder="Пароль (мин. 6 симв.)" autocomplete="new-password">
-                    <button type="button" id="btn-register-email" class="primary-btn">Создать аккаунт</button>
+                <form id="form-register" class="auth-form">
+                    <input type="text" id="reg-name" placeholder="Ваше имя" required>
+                    <input type="email" id="reg-email" placeholder="Email" required>
+                    <input type="password" id="reg-password" placeholder="Пароль (мин. 6 символов)" required>
+                    <button type="submit" id="btn-register-email" class="primary-btn">Создать аккаунт</button>
                 </form>
 
                 <div class="auth-divider"><span>или</span></div>
-                <button type="button" id="btn-google-auth" class="secondary-btn">
-                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" width="18">
+                <button id="btn-google-auth" class="google-btn">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/action/done.svg" alt="" style="display:none">
                     Войти через Google
                 </button>
             </div>
@@ -56,17 +50,20 @@
 
         <section id="lobby-screen" class="screen">
             <aside class="sidebar glass-panel">
-                <div class="profile-mini" id="btn-edit-profile">
-                    <img id="my-avatar" class="avatar-img" src="" alt="">
-                    <div class="profile-info">
-                        <div id="user-display-name" class="name">Загрузка...</div>
-                        <div id="user-online-status" class="status">Онлайн</div>
+                <div class="user-card">
+                    <div class="avatar-wrapper">
+                        <img id="my-avatar" src="" alt="Avatar">
                     </div>
+                    <div class="user-info">
+                        <h4 id="user-display-name">Загрузка...</h4>
+                        <span id="user-online-status">Онлайн</span>
+                    </div>
+                    <button id="btn-edit-profile" class="icon-btn">⚙️</button>
                 </div>
                 
                 <nav class="sidebar-nav">
-                    <button id="btn-all-rooms" class="nav-btn active">Комнаты</button>
-                    <button id="btn-friends-sidebar" class="nav-btn">Друзья</button>
+                    <button id="btn-all-rooms" class="nav-item active">🏠 Комнаты</button>
+                    <button id="btn-friends-sidebar" class="nav-item">👥 Друзья</button>
                 </nav>
 
                 <div id="sidebar-friends" class="friends-list" style="display:none;">
@@ -80,9 +77,8 @@
                     <div class="search-bar glass-panel">
                         <input type="text" id="search-rooms" placeholder="Поиск комнат...">
                     </div>
-                    <button id="btn-open-modal" class="primary-btn">+ Создать комнату</button>
+                    <button id="btn-open-modal" class="primary-btn">+ Создать</button>
                 </header>
-
                 <div id="rooms-grid" class="rooms-grid">
                     </div>
             </main>
@@ -90,56 +86,61 @@
 
         <section id="room-screen" class="screen">
             <div class="room-layout">
-                <div class="video-section">
-                    <div class="room-nav">
-                        <button id="btn-leave-room" class="icon-btn">←</button>
+                <div class="video-area">
+                    <header class="room-nav">
+                        <button id="btn-leave-room" class="back-btn">← Выйти</button>
                         <h2 id="room-title">Название комнаты</h2>
-                    </div>
+                    </header>
                     <div id="video-container" class="video-container glass-panel">
                         </div>
-                    <div class="player-controls">
-                        <button id="mic-btn" class="mic-btn muted">🎤</button>
-                        <input type="range" id="voice-volume" min="0" max="100" value="100">
-                    </div>
                 </div>
 
-                <div class="chat-section glass-panel">
-                    <div id="chat-messages" class="chat-messages"></div>
-                    <div class="chat-input-area">
-                        <input type="text" id="chat-input" placeholder="Сообщение...">
-                        <button id="send-btn" class="send-btn">🚀</button>
+                <aside class="room-sidebar glass-panel">
+                    <div class="room-tabs">
+                        <button id="tab-chat" class="active">Чат</button>
+                        <button id="tab-members">Люди</button>
                     </div>
-                </div>
+
+                    <div id="chat-messages" class="chat-messages"></div>
+
+                    <div id="room-users" class="room-users" style="display:none;"></div>
+
+                    <div class="chat-input-area">
+                        <div class="chat-controls">
+                            <button id="mic-btn" class="icon-btn muted">🎤</button>
+                            <input type="range" id="voice-volume" min="0" max="100" value="100">
+                        </div>
+                        <div class="input-wrapper">
+                            <input type="text" id="chat-input" placeholder="Сообщение...">
+                            <button id="send-btn">🚀</button>
+                        </div>
+                    </div>
+                </aside>
             </div>
         </section>
     </div>
 
     <div id="modal-create" class="modal">
         <form class="modal-content glass-panel" onsubmit="return false;">
-            <h3 id="modal-create-title">Создать комнату</h3>
-            <input type="text" id="room-name" placeholder="Название комнаты">
+            <h3>Создать комнату</h3>
+            <input type="text" id="room-name" placeholder="Название">
             <input type="text" id="room-link" placeholder="Ссылка на видео (YouTube)">
-            
-            <label class="checkbox-container"> 
-                Приватная 
-                <input type="checkbox" id="room-private"> 
+            <label class="checkbox-container">
+                Приватная комната
+                <input type="checkbox" id="room-private">
             </label>
-            
-            <input type="text" autocomplete="username" style="display:none;">
             <input type="password" id="room-password" placeholder="Пароль" style="display:none;" autocomplete="new-password">
-            
             <div class="modal-actions">
                 <button type="button" id="btn-create-finish" class="primary-btn">Запустить</button>
-                <button type="button" class="secondary-btn btn-close-modal" onclick="document.getElementById('modal-create').classList.remove('active')">Отмена</button>
+                <button type="button" class="secondary-btn" onclick="document.getElementById('modal-create').classList.remove('active')">Отмена</button>
             </div>
         </form>
     </div>
 
     <div id="modal-join" class="modal">
         <form class="modal-content glass-panel" onsubmit="return false;">
-            <h3>Приватная комната</h3>
-            <p>Введите пароль для входа:</p>
-            <input type="text" autocomplete="username" style="display:none;">
+            <h3>Вход в комнату</h3>
+            <p>Эта комната защищена паролем</p>
             <input type="password" id="join-password" placeholder="Пароль" autocomplete="current-password">
             <div class="modal-actions">
                 <button type="button" id="btn-join-confirm" class="primary-btn">Войти</button>
@@ -148,32 +149,6 @@
         </form>
     </div>
 
-    <div id="modal-profile" class="modal">
-        <form class="modal-content glass-panel" onsubmit="return false;">
-            <h3>Настройки профиля</h3>
-            <div class="field-group">
-                <label>Имя</label>
-                <input type="text" id="profile-name" placeholder="Ваш никнейм">
-            </div>
-            <div class="field-group">
-                <label>Статус</label>
-                <input type="text" id="profile-status" placeholder="Что на уме?">
-            </div>
-            <div class="field-group">
-                <label>Цвет профиля</label>
-                <input type="color" id="profile-color">
-            </div>
-            <div class="field-group">
-                <label>О себе</label>
-                <textarea id="profile-bio" placeholder="Расскажите о себе..."></textarea>
-            </div>
-            <div class="modal-actions">
-                <button type="button" id="btn-profile-save" class="primary-btn">Сохранить</button>
-                <button type="button" id="btn-profile-cancel" class="secondary-btn" onclick="document.getElementById('modal-profile').classList.remove('active')">Закрыть</button>
-            </div>
-        </form>
-    </div>
-
-    <script type="module" src="js/main.js"></script>
+    <script type="module" src="main.js"></script>
 </body>
 </html>
