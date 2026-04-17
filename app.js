@@ -890,6 +890,27 @@ function initRoomServices() {
         call.on('stream', (remoteStream) => attachRemoteAudio(remoteStream, call.peer, call.peer));
     });
 
+    $('mic-btn').onclick = async function() {
+        const isActive = this.classList.toggle('active');
+        if (isActive) {
+            try {
+                myStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+                if (peer.id) set(ref(db, `rooms/${currentRoomId}/voice/${auth.currentUser.uid}`), peer.id);
+                showToast("Микрофон включен");
+                // НЕ запускаем визуализацию для собственного микрофона
+            } catch (e) { showToast("Ошибка доступа к микрофону"); this.classList.remove('active'); }
+        } else {
+            if (myStream) myStream.getTracks().forEach(t => t.stop());
+            myStream = null;
+            remove(ref(db, `rooms/${currentRoomId}/voice/${auth.currentUser.uid}`));
+            activeCalls.clear();
+            $('remote-audio-container').innerHTML = '';
+            remoteAudioAnalyzers.forEach(a => { if (a.animationId) cancelAnimationFrame(a.animationId); });
+            remoteAudioAnalyzers.clear();
+            showToast("Микрофон выключен");
+        }
+    };
+
     onValue(voiceRef, (snap) => {
         const data = snap.val() || {};
         for (let uid in data) {
@@ -1556,29 +1577,16 @@ function connectToVoicePeers() {
     });
 }
 
-async function enableMicrophone(btn) {
-  if (myStream) return;
+async function enableMicrophone(button) {
+    myStream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true }
+    });
 
-  myStream = await navigator.mediaDevices.getUserMedia({
-    audio: {
-      echoCancellation: true,
-      noiseSuppression: true
-    }
-  });
-
-  btn.classList.add('active');
-
-  await publishLocalVoiceState();
-  connectToVoicePeers();
+    button?.classList.add('active');
+    await publishLocalVoiceState();
+    connectToVoicePeers();
+    showToast('Микрофон включен');
 }
-
-$('mic-btn').onclick = async function() {
-  if (myStream) {
-    await disableMicrophone();
-  } else {
-    await enableMicrophone(this);
-  }
-};
 
 async function disableMicrophone({ notify = true } = {}) {
     if (myStream) {
@@ -1937,6 +1945,23 @@ function initRoomServicesV2() {
         setTimeout(() => el.remove(), 3000);
     };
     onChildAdded(reactionsRef, reactionListener);
+
+    if ($('mic-btn')) {
+        $('mic-btn').onclick = async function() {
+            if (this.classList.contains('active')) {
+                await disableMicrophone();
+                return;
+            }
+
+            try {
+                await enableMicrophone(this);
+            } catch (e) {
+                this.classList.remove('active');
+                showToast('Ошибка доступа к микрофону');
+            }
+        };
+    }
+
     const voiceListener = (snap) => {
         latestVoicePeers = snap.val() || {};
         connectToVoicePeers();
@@ -2513,6 +2538,27 @@ function initRoomServicesV3() {
         try { off(usersPresenceRef, 'value', enhanceUsersListener); } catch (e) {}
         if (typeof prevCleanup === 'function') prevCleanup();
     };
+
+    if ($('mic-btn')) {
+        $('mic-btn').onclick = async function() {
+            const localNode = currentPresenceCache[auth.currentUser.uid] || {};
+            const effectivePerms = isHost ? { chat: true, voice: true, player: true, reactions: true } : ({ chat: true, voice: true, player: false, reactions: true, ...(localNode.perms || {}) });
+            if (!effectivePerms.voice) return;
+
+            if (myStream) {
+                await disableMicrophoneNative();
+                return;
+            }
+
+            try {
+                await enableMicrophoneNative(this);
+            } catch (e) {
+                this.classList.remove('active');
+                showToast('Ошибка доступа к микрофону');
+            }
+        };
+    }
+}
 
 setupLobbyNotifications = setupLobbyNotificationsV3;
 enterRoom = enterRoomV3;
@@ -3308,6 +3354,16 @@ function initRoomServicesV4() {
     bindValue(voiceRefs.offersForMe, (snap) => handleIncomingOffers(snap.val() || {}));
     bindValue(voiceRefs.answersForMe, (snap) => handleIncomingAnswers(snap.val() || {}));
     bindValue(voiceRefs.candidatesForMe, (snap) => handleIncomingCandidates(snap.val() || {}));
+
+    if ($('mic-btn')) {
+        $('mic-btn').onclick = async function() {
+            const localPerms = getEffectiveRoomPerms(currentPresenceCache[auth.currentUser.uid], isHost);
+            if (!localPerms.voice) return;
+            if (myStream) return disableMicrophoneNative();
+            try { await enableMicrophoneNative(this); } catch (e) { this.classList.remove('active'); showToast('Ошибка доступа к микрофону'); }
+        };
+    }
+
     if ($('voice-volume')) $('voice-volume').oninput = (event) => {
         document.querySelectorAll('#remote-audio-container audio').forEach((audio) => { audio.volume = event.target.value; });
     };
@@ -3362,4 +3418,4 @@ enterRoom = enterRoomV4;
 leaveRoom = leaveRoomV4;
 initRoomServices = initRoomServicesV4;
 
-if ($('btn-leave-room')) $('btn-leave-room').onclick = leaveRoomV4;}
+if ($('btn-leave-room')) $('btn-leave-room').onclick = leaveRoomV4;
