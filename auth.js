@@ -7,7 +7,7 @@ import {
     signOut, 
     updateProfile 
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { UI } from './ui.js';
+import { UI } from './js/ui.js';
 
 export const AuthSystem = {
     /**
