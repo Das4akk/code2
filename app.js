@@ -68,6 +68,8 @@ const peer = {
     on() {},
     call() { return null; }
 };
+let voiceRef = null;
+let onlineUsersCache = {};
 let currentRoomId = null;
 let isHost = false;
 let myStream = null;
@@ -1049,6 +1051,169 @@ function anim() {
 }
 anim();
 
+async function saveProfileEnhanced() {
+    if (!auth.currentUser) return showToast('Нужно войти');
+    const name = $('profile-name')?.value.trim() || '';
+    const status = $('profile-status')?.value.trim() || '';
+    const bio = $('profile-bio')?.value.trim() || '';
+    const color = $('profile-color')?.value || '#f5f7fa';
+    const volume = Math.max(0, Math.min(100, parseInt($('profile-volume')?.value || 100))) / 100;
+    
+    try {
+        await updateProfile(auth.currentUser, { displayName: name });
+        await set(ref(db, `users/${auth.currentUser.uid}/profile`), {
+            name,
+            status,
+            bio,
+            color,
+            defaultVolume: volume,
+            updatedAt: Date.now()
+        });
+        
+        if ($('user-display-name')) $('user-display-name').innerText = name || auth.currentUser.email;
+        const av = $('my-avatar');
+        if (av) av.style.background = `linear-gradient(135deg, ${color}, rgba(255,255,255,0.08))`;
+        
+        if ($('modal-profile')) $('modal-profile').classList.remove('active');
+        showToast('Профиль сохранён');
+    } catch (e) { showToast('Ошибка сохранения'); }
+}
+
+async function updatePresenceWithOnlineStatus(statusText = 'Онлайн') {
+    if (!currentRoomId || !auth.currentUser) return;
+    
+    try {
+        const now = Date.now();
+        await set(ref(db, `rooms/${currentRoomId}/presence/${auth.currentUser.uid}`), {
+            name: auth.currentUser.displayName || 'User',
+            perms: { chat: true, voice: true, player: isHost, reactions: true },
+            online: true,
+            status: statusText,
+            lastSeen: now,
+            connectedAt: now
+        });
+        
+        onDisconnect(ref(db, `rooms/${currentRoomId}/presence/${auth.currentUser.uid}`)).update({
+            online: false,
+            lastSeen: Date.now()
+        });
+    } catch (e) {}
+}
+
+function setupOnlineTracking() {
+    if (!currentRoomId) return;
+    
+    const presenceDbRef = ref(db, `rooms/${currentRoomId}/presence`);
+    onValue(presenceDbRef, (snap) => {
+        const data = snap.val() || {};
+        onlineUsersCache = data;
+        updateOnlineCounter();
+        
+        // Обновить индикаторы онлайна в списке пользователей
+        Object.entries(data).forEach(([uid, userData]) => {
+            const indicator = document.querySelector(`.user-item[data-uid="${uid}"] .indicator`);
+            if (indicator && userData.online) {
+                indicator.classList.add('online');
+            } else if (indicator) {
+                indicator.classList.remove('online');
+            }
+        });
+    });
+}
+
+function renderFriendsSidebar(friendsList = []) {
+    const container = $('sidebar-friends');
+    if (!container) return;
+    
+    if (!friendsList.length) {
+        container.innerHTML = '<div style="padding:12px; font-size:12px; color:rgba(255,255,255,0.5); text-align:center;">Нет друзей</div>';
+        return;
+    }
+    
+    container.innerHTML = friendsList.map(f => `
+        <div class="friend-card" data-fuid="${f.uid}" style="margin-bottom:8px;">
+            <div class="friend-live-avatar"></div>
+            <div class="friend-card-meta">
+                <strong>${escapeHtml(f.name || 'User')}</strong>
+                <span class="friend-status-text">${f.online ? '● Онлайн' : 'Был: ' + (f.lastSeen ? new Date(f.lastSeen).toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'}) : '—')}</span>
+            </div>
+            <div class="friend-online-dot${f.online ? ' online' : ''}"></div>
+        </div>
+    `).join('');
+}
+
+function loadFriendsSidebar() {
+    if (!auth.currentUser) return;
+    
+    get(ref(db, `users/${auth.currentUser.uid}/friends`)).then(snap => {
+        const friends = snap.val() || {};
+        const accepted = Object.entries(friends)
+            .filter(([uid, record]) => isAcceptedFriendRecord(record))
+            .map(([uid, _]) => uid);
+        
+        // Загрузить статусы друзей
+        Promise.all(accepted.map(uid => 
+            get(ref(db, `users/${uid}/profile`)).then(s => ({
+                uid,
+                ...s.val() || {}
+            }))
+        )).then(profiles => {
+            renderFriendsSidebar(profiles);
+        });
+    });
+}
+
+if ($('btn-toggle-friends')) {
+    $('btn-toggle-friends').style.display = 'none';
+}
+
+if ($('btn-friends-sidebar')) {
+    $('btn-friends-sidebar').onclick = () => {
+        const sidebar = $('sidebar-friends');
+        if (sidebar) {
+            const hidden = sidebar.style.display === 'none';
+            sidebar.style.display = hidden ? 'block' : 'none';
+            if (hidden) loadFriendsSidebar();
+        }
+    };
+}
+
+if ($('btn-all-rooms')) {
+    $('btn-all-rooms').onclick = () => {
+        if ($('sidebar-friends')) $('sidebar-friends').style.display = 'none';
+        $('btn-all-rooms').classList.add('active');
+        $('btn-friends-sidebar').classList.remove('active');
+        $('rooms-grid').style.display = 'grid';
+        renderRooms();
+    };
+}
+
+if ($('btn-profile-save')) {
+    $('btn-profile-save').onclick = saveProfileEnhanced;
+}
+
+if ($('btn-edit-profile')) {
+    $('btn-edit-profile').onclick = () => {
+        if (!auth.currentUser) return showToast('Нужно войти');
+        if ($('profile-name')) $('profile-name').value = auth.currentUser.displayName || '';
+        if ($('profile-status')) $('profile-status').value = '';
+        if ($('profile-bio')) $('profile-bio').value = '';
+        if ($('profile-color')) $('profile-color').value = '#f5f7fa';
+        if ($('profile-volume')) $('profile-volume').value = '100';
+        if ($('modal-profile')) $('modal-profile').classList.add('active');
+    };
+}
+
+// Убрать цвет кнопки из создания комнаты (опционально оставить, но скрыть)
+const roomColorDiv = document.querySelector('[style*="Цвет кнопки"]')?.parentElement;
+if (roomColorDiv) roomColorDiv.style.display = 'none';
+
+// Voice ref обновить
+function setupVoiceRef() {
+    if (!currentRoomId) return;
+    voiceRef = ref(db, `rooms/${currentRoomId}/voice`);
+}
+
 function renderRoomsV2(filter = '') {
     const grid = $('rooms-grid');
     if (!grid) return;
@@ -1827,6 +1992,9 @@ function initRoomServicesV2() {
             setRangeFill(event.target);
         };
         setRangeFill(voiceEl);
+        setupOnlineTracking();
+        setupVoiceRef();
+        updatePresenceWithOnlineStatus();
     }
 }
 
@@ -2422,6 +2590,15 @@ function getOnlineLabel(status) {
     return 'Не в сети';
 }
 
+function updateOnlineCounter() {
+    const count = Object.keys(onlineUsersCache || {}).length;
+    const counter = $('online-counter');
+    if (counter) {
+        $('online-count').innerText = count || 1;
+        counter.style.display = count > 0 ? 'flex' : 'none';
+    }
+}
+
 function bindSelfPresence() {
     if (!auth.currentUser) return;
     
@@ -2706,6 +2883,90 @@ function bindDirectChatUiV2() {
     if ($('btn-dm-close')) $('btn-dm-close').onclick = closeDirectChatModal;
     if ($('btn-dm-send')) $('btn-dm-send').onclick = sendDirectMessageV2;
     if ($('dm-input')) $('dm-input').onkeydown = (event) => { if (event.key === 'Enter') sendDirectMessageV2(); };
+}
+
+function addSystemMessage(text) {
+    const div = document.createElement('div');
+    div.className = 'm-line system';
+    div.innerHTML = `<div class="bubble">------ ${escapeHtml(text)} ------</div>`;
+    $('chat-messages')?.appendChild(div);
+    $('chat-messages').scrollTop = $('chat-messages').scrollHeight;
+}
+
+async function openRoomInviteModalV3() {
+    if (!auth.currentUser || !currentRoomId) return;
+    ensureRoomInviteUi();
+
+    const modal = $('modal-room-invite');
+    const list = $('room-invite-list');
+    if (!modal || !list) return;
+
+    modal.classList.add('active');
+    list.innerHTML = '<div class="room-invite-empty">Загружаю...</div>';
+
+    try {
+        const friendsSnap = await get(ref(db, `users/${auth.currentUser.uid}/friends`));
+        const friendsData = friendsSnap.val() || {};
+        const acceptedIds = Object.keys(friendsData).filter(uid => uid !== auth.currentUser.uid && isAcceptedFriendRecord(friendsData[uid]));
+        const presentIds = new Set(Object.keys(onlineUsersCache || {}));
+        const inviteableIds = acceptedIds.filter(uid => !presentIds.has(uid));
+
+        if (!inviteableIds.length) {
+            list.innerHTML = '<div class="room-invite-empty">Некого приглашать</div>';
+            return;
+        }
+
+        const friends = await Promise.all(inviteableIds.map(async (uid) => {
+            try {
+                const snap = await get(ref(db, `users/${uid}/profile`));
+                const profile = snap.val() || {};
+                return { uid, name: profile.name || 'User', color: profile.color || '#f5f7fa' };
+            } catch (e) { return { uid, name: 'User', color: '#f5f7fa' }; }
+        }));
+
+        list.innerHTML = friends.map(f => `
+            <div class="room-invite-card">
+                <div class="room-invite-user">
+                    <div class="room-invite-avatar" style="background:linear-gradient(135deg, ${escapeHtml(f.color)}, rgba(255,255,255,0.08));"></div>
+                    <strong>${escapeHtml(f.name)}</strong>
+                </div>
+                <button type="button" class="invite-friend-btn" data-uid="${f.uid}">Позвать</button>
+            </div>
+        `).join('');
+
+        list.querySelectorAll('.invite-friend-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                if (btn.disabled) return;
+                const uid = btn.dataset.uid;
+                const roomMeta = roomsCache[currentRoomId] || {};
+                btn.disabled = true;
+                try {
+                    await push(ref(db, `users/${uid}/room-invites`), {
+                        roomId: currentRoomId,
+                        roomName: roomMeta.name || 'Комната',
+                        roomLink: roomMeta.link || '',
+                        roomAdminId: roomMeta.admin || '',
+                        invitedBy: auth.currentUser.displayName || 'User',
+                        ts: Date.now()
+                    });
+                    btn.textContent = 'Отправлено';
+                    btn.classList.add('sent');
+                    showToast('Инвайт отправлен');
+                } catch (e) { btn.disabled = false; showToast('Ошибка'); }
+            });
+        });
+    } catch (e) {
+        list.innerHTML = '<div class="room-invite-empty">Ошибка загрузки</div>';
+    }
+}
+
+function setupSystemMessages() {
+    // Пример: вход пользователя
+    // addSystemMessage('${userName} вошёл в комнату');
+    // Пример: выход
+    // addSystemMessage('${userName} вышел из комнаты');
+    // Пример: выдача прав
+    // addSystemMessage('${userName} получил право: модератор');
 }
 
 function setupLobbyNotificationsV4() {
