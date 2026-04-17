@@ -35,6 +35,16 @@ export const UI = {
         this.setupChatTabs();
         this.setupModalLogic();
     },
+    // Добавьте это внутрь объекта UI в ui.js
+getSearchQuery() {
+    return els['search-rooms']?.value || '';
+},
+
+bindAuth(loginCb, regCb, googleCb) {
+    if (els['btn-login-email']) els['btn-login-email'].onclick = (e) => { e.preventDefault(); loginCb(); };
+    if (els['btn-register-email']) els['btn-register-email'].onclick = (e) => { e.preventDefault(); regCb(); };
+    if (els['btn-google-auth']) els['btn-google-auth'].onclick = googleCb;
+},
 
     // --- ЭКРАНЫ ---
     showScreen(screenId) {

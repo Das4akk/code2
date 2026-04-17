@@ -44,11 +44,10 @@ async function bootstrap() {
 
     // Bindings
     UI.bindAuth(
-        () => AuthSystem.loginWithEmail(UI.getAuthInput().le, UI.getAuthInput().lp),
-        () => AuthSystem.registerWithEmail(UI.getAuthInput().rn, UI.getAuthInput().re, UI.getAuthInput().rp),
-        () => AuthSystem.loginWithGoogle(),
-        () => AuthSystem.logout()
-    );
+    () => AuthSystem.loginWithEmail(UI.getAuthData().login.e, UI.getAuthData().login.p),
+    () => AuthSystem.registerWithEmail(UI.getAuthData().reg.n, UI.getAuthData().reg.e, UI.getAuthData().reg.p),
+    () => AuthSystem.loginWithGoogle()
+);
 
     UI.bindProfile(
         (cb) => cb(currentProfile),
