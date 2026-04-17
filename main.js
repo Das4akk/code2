@@ -1,11 +1,12 @@
-import { UI } from './js/ui.js';
+// Было с './js/...', должно стать:
+import { UI } from './ui.js';
 import { AuthSystem } from './auth.js';
-import { ProfileSystem } from './js/profile.js';
+import { ProfileSystem } from './profile.js';
 import { OnlineSystem } from './online.js';
 import { FriendsSystem } from './friends.js';
-import { RoomSystem } from './js/rooms.js';
+import { RoomSystem } from './rooms.js';
 import { ChatSystem } from './chat.js';
-import { VoiceSystem } from './js/voice.js';
+import { VoiceSystem } from './voice.js';
 
 let currentUser = null;
 let currentProfile = {};

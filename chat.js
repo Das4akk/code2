@@ -1,6 +1,7 @@
 import { db, auth } from './firebase.js';
 import { ref, push, set, onChildAdded, off, limitToLast, query } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-import { UI } from './js/ui.js';
+// Измени: import { UI } from './js/ui.js';
+import { UI } from './ui.js';
 
 export const ChatSystem = {
     roomUnsubscribe: null,
