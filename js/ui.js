@@ -1,4 +1,4 @@
-import { escapeHtml, generateAvatarSvgDataUri, parseTimecodes } from './utils.js'; // Убедитесь, что здесь НЕТ слова /js/
+import { escapeHtml, generateAvatarSvgDataUri, parseTimecodes } from 'JS/utils.js'; // Убедитесь, что здесь НЕТ слова /js/
 
 // --- STRICT UI ISOLATION LAYER ---
 // Это ЕДИНСТВЕННЫЙ файл, которому разрешено использовать document.getElementById, querySelector и манипулировать DOM.

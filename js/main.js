@@ -1,11 +1,11 @@
-import { UI } from './ui.js';
-import { AuthSystem } from './auth.js';
-import { ProfileSystem } from '../profile.js';
-import { OnlineSystem } from '../online.js';
-import { FriendsSystem } from './friends.js';
-import { RoomSystem } from '../rooms.js';
-import { ChatSystem } from './chat.js';
-import { VoiceSystem } from './voice.js';
+import { UI } from 'js/ui.js';
+import { AuthSystem } from 'JS/auth.js';
+import { ProfileSystem } from '.JS/profile.js';
+import { OnlineSystem } from '.JS/online.js';
+import { FriendsSystem } from 'JS/friends.js';
+import { RoomSystem } from '.JS/rooms.js';
+import { ChatSystem } from 'JS/chat.js';
+import { VoiceSystem } from 'JS/voice.js';
 
 let currentUser = null;
 let currentProfile = {};
