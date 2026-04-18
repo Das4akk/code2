@@ -710,126 +710,6 @@ function setupVoiceRef() {
     voiceRef = ref(db, `rooms/${currentRoomId}/voice`);
 }
 
-function renderRoomsV2(filter = '') {
-    const grid = $('rooms-grid');
-    if (!grid) return;
-
-    grid.innerHTML = '';
-    const data = roomsCache || {};
-    const q = String(filter || '').trim().toLowerCase();
-    const keys = Object.keys(data);
-
-    if (!keys.length) {
-        grid.innerHTML = '<div style="padding:20px; color:#888">Пока нет комнат</div>';
-        return;
-    }
-
-    keys.forEach((id) => {
-        const room = data[id] || {};
-        const name = room.name || '';
-        const host = room.adminName || '';
-        if (q) {
-            const hay = `${name} ${host}`.toLowerCase();
-            if (!hay.includes(q)) return;
-        }
-
-        const roomLink = room.link || '';
-        const previewTime = getRoomPreviewTime(room.sync || {});
-        const lock = room.private ? '🔒 ' : '';
-        const colorDot = room.buttonColor ? `<div class="room-color-indicator" style="background:${escapeHtml(room.buttonColor)}"></div>` : '';
-        const previewContent = roomLink
-            ? `<video class="room-thumb-video" muted playsinline preload="metadata" src="${escapeHtml(roomLink)}" data-seek-time="${previewTime}"></video><div class="room-thumb-label">Сейчас в плеере</div>`
-            : `<div class="room-thumb-placeholder">Видео не задано</div>`;
-
-        grid.innerHTML += `
-            <div class="room-card glass-panel" onclick='window.joinRoom(${JSON.stringify(id)}, ${JSON.stringify(name)}, ${JSON.stringify(roomLink)}, ${JSON.stringify(room.admin || '')})'>
-                ${colorDot}
-                <div class="room-thumb">${previewContent}</div>
-                <h4>${lock + escapeHtml(name)}</h4>
-                <p style="font-size:12px; opacity:0.6; margin-top:5px;">Хост: ${escapeHtml(host)}</p>
-            </div>`;
-    });
-
-    refreshRoomCardPreviews();
-}
-
-async function openRoomInviteModal() {
-    if (!auth.currentUser || !currentRoomId) return;
-    ensureRoomInviteUi();
-
-    const modal = $('modal-room-invite');
-    const list = $('room-invite-list');
-    if (!modal || !list) return;
-
-    modal.classList.add('active');
-    list.innerHTML = '<div class="room-invite-empty">Загружаю друзей...</div>';
-
-    try {
-        const friendsSnap = await get(ref(db, `users/${auth.currentUser.uid}/friends`));
-        const friendsData = friendsSnap.val() || {};
-        const acceptedIds = Object.keys(friendsData).filter((uid) => uid !== auth.currentUser.uid && isAcceptedFriendRecord(friendsData[uid]));
-        const presentIds = new Set(Object.keys(currentPresenceCache || {}));
-        const inviteableIds = acceptedIds.filter((uid) => !presentIds.has(uid));
-
-        if (!inviteableIds.length) {
-            list.innerHTML = '<div class="room-invite-empty">Сейчас некого приглашать: либо друзей нет, либо они уже в комнате.</div>';
-            return;
-        }
-
-        const friends = await Promise.all(inviteableIds.map(async (uid) => {
-            try {
-                const profileSnap = await get(ref(db, `users/${uid}/profile`));
-                const profile = profileSnap.val() || {};
-                return {
-                    uid,
-                    name: profile.name || 'User',
-                    color: profile.color || '#f5f7fa'
-                };
-            } catch (e) {
-                return { uid, name: 'User', color: '#f5f7fa' };
-            }
-        }));
-
-        list.innerHTML = friends.map((friend) => `
-            <div class="room-invite-card" data-uid="${friend.uid}">
-                <div class="room-invite-user">
-                    <div class="room-invite-avatar" style="background:linear-gradient(45deg, ${escapeHtml(friend.color)}, rgba(255,255,255,0.08));"></div>
-                    <strong>${escapeHtml(friend.name)}</strong>
-                </div>
-                <button type="button" class="invite-friend-btn" data-uid="${friend.uid}">Позвать</button>
-            </div>
-        `).join('');
-
-        list.querySelectorAll('.invite-friend-btn').forEach((button) => {
-            button.addEventListener('click', async () => {
-                if (button.disabled) return;
-                const uid = button.dataset.uid;
-                const roomMeta = roomsCache[currentRoomId] || {};
-
-                button.disabled = true;
-                try {
-                    await push(ref(db, `users/${uid}/room-invites`), {
-                        roomId: currentRoomId,
-                        roomName: roomMeta.name || 'Комната',
-                        roomLink: roomMeta.link || '',
-                        roomAdminId: roomMeta.admin || '',
-                        invitedBy: auth.currentUser.displayName || auth.currentUser.email || 'User',
-                        ts: Date.now()
-                    });
-                    button.textContent = 'Отправлено';
-                    button.classList.add('sent');
-                    showToast('Инвайт отправлен');
-                } catch (e) {
-                    button.disabled = false;
-                    showToast('Ошибка при отправке инвайта');
-                }
-            });
-        });
-    } catch (e) {
-        list.innerHTML = '<div class="room-invite-empty">Не удалось загрузить друзей.</div>';
-    }
-}
-
 function closeRoomInviteModal() {
     $('modal-room-invite')?.classList.remove('active');
 }
@@ -1413,42 +1293,31 @@ function bindRoomPreviewLazyLoad() {
     });
 }
 
-function renderRooms(filter = '') {
-    const grid = $('rooms-grid');
-    if (!grid) return;
-    grid.innerHTML = '';
-    const data = roomsCache || {};
-    const q = String(filter || '').trim().toLowerCase();
-    const keys = Object.keys(data);
-    if (!keys.length) {
-        grid.innerHTML = '<div style="padding:20px; color:#888">Пока нет комнат</div>';
-        return;
-    }
-
-    keys.forEach((id) => {
-        const room = data[id] || {};
-        const name = room.name || '';
-        const host = room.adminName || '';
-        if (q && !`${name} ${host}`.toLowerCase().includes(q)) return;
-
-        const roomLink = room.link || '';
-        const previewTime = getRoomPreviewTime(room.sync || {});
-        const lock = room.private ? '🔒 ' : '';
-        const colorDot = room.buttonColor ? `<div class="room-color-indicator" style="background:${escapeHtml(room.buttonColor)}"></div>` : '';
-        const previewContent = roomLink
-            ? `<video class="room-thumb-video" muted playsinline preload="none" data-src="${escapeHtml(roomLink)}" data-seek-time="${previewTime}"></video><div class="room-thumb-label">Сейчас в плеере</div>`
-            : `<div class="room-thumb-placeholder">Видео не задано</div>`;
-
-        grid.innerHTML += `
-            <div class="room-card glass-panel" onclick='window.joinRoom(${JSON.stringify(id)}, ${JSON.stringify(name)}, ${JSON.stringify(roomLink)}, ${JSON.stringify(room.admin || '')})'>
-                ${colorDot}
-                <div class="room-thumb">${previewContent}</div>
-                <h4>${lock + escapeHtml(name)}</h4>
-                <p style="font-size:12px; opacity:0.6; margin-top:5px;">Хост: ${escapeHtml(host)}</p>
-            </div>`;
+function renderRooms() {
+    const container = $('rooms-grid');
+    if (!container) return;
+    onValue(ref(db, 'rooms'), (snapshot) => {
+        container.innerHTML = ''; // Обязательная очистка перед рендером
+        const rooms = snapshot.val();
+        if (!rooms) {
+            container.innerHTML = '<div class="empty-state">Комнат пока нет. Создайте первую!</div>';
+            return;
+        }
+        Object.keys(rooms).forEach(id => {
+            const r = rooms[id];
+            const card = document.createElement('div');
+            card.className = 'room-card glass-panel';
+            card.innerHTML = `
+                <div class="room-preview">${r.videoTitle || '🍿'}</div>
+                <div class="room-info">
+                    <h3>${escapeHtml(r.name)}</h3>
+                    <p>${r.isPrivate ? '🔒 Приватная' : '🌍 Публичная'}</p>
+                </div>
+            `;
+            card.onclick = () => enterRoomV4(id, r.password);
+            container.appendChild(card);
+        });
     });
-
-    bindRoomPreviewLazyLoad();
 }
 
 function renderFriendsPanelLive(friendIds = []) {
@@ -2189,5 +2058,79 @@ setupLobbyNotifications = setupLobbyNotifications;
 enterRoom = enterRoom;
 leaveRoom = leaveRoom;
 initRoomServices = initRoomServices;
+
+function initApp() {
+    // 1. Инициализация систем
+    bindSelfPresence();
+    subscribeToOwnProfile();
+    widenLobbyLayout();
+    renderRooms();
+    setupLobbyTabsV2();
+    bindGlobalOnline(); // Добавь эту функцию из прошлого гайда для счетчика
+
+    // 2. Кнопки профиля
+    if ($('btn-edit-profile')) {
+        $('btn-edit-profile').onclick = () => $('modal-profile').classList.add('active');
+    }
+    if ($('btn-close-profile')) {
+        $('btn-close-profile').onclick = () => $('modal-profile').classList.remove('active');
+    }
+    if ($('btn-save-profile')) {
+        $('btn-save-profile').onclick = saveProfileEnhanced;
+    }
+
+    // 3. Создание комнаты (Подтверждение)
+    if ($('btn-create-confirm')) {
+        $('btn-create-confirm').onclick = handleCreateRoomV4;
+    }
+
+    // 4. Микрофон в чате
+    const micBtn = $('mic-btn');
+    if (micBtn) {
+        micBtn.onclick = async () => {
+            if (window.localStream) {
+                await disableMicrophoneNative();
+                micBtn.classList.remove('active', 'pulseMic');
+                showToast('Микрофон выключен');
+            } else {
+                const success = await enableMicrophoneNative();
+                if (success) {
+                    micBtn.classList.add('active', 'pulseMic');
+                    showToast('Микрофон включен');
+                }
+            }
+        };
+    }
+
+    // 5. Вкладки Лобби (Все комнаты / Друзья)
+    if ($('tab-rooms')) {
+        $('tab-rooms').onclick = () => {
+            $('lobby-rooms-section').style.display = 'block';
+            $('lobby-friends-section').style.display = 'none';
+            $('tab-rooms').classList.add('active');
+            $('tab-friends').classList.remove('active');
+        };
+    }
+    if ($('tab-friends')) {
+        $('tab-friends').onclick = () => {
+            $('lobby-rooms-section').style.display = 'none';
+            $('lobby-friends-section').style.display = 'block';
+            $('tab-friends').classList.add('active');
+            $('tab-rooms').classList.remove('active');
+            renderFriendsListV2(); // Убедись, что эта функция есть в коде
+        };
+    }
+}
+
+// ЗАПУСК ПРИ ЗАГРУЗКЕ
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        initApp();
+    } else {
+        // Логика возврата на экран логина
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        $('auth-screen').classList.add('active');
+    }
+});
 
 if ($('btn-leave-room')) $('btn-leave-room').onclick = leaveRoom;
