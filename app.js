@@ -2311,7 +2311,7 @@ bindSelfPresence();
 subscribeToOwnProfile();
 bindCreateModalOverrides();
 widenLobbyLayout();
-
+listenFriendSystem();
 
 renderRoomsV4 = renderRoomsV4;
 setupLobbyNotificationsV4 = setupLobbyNotificationsV4;
