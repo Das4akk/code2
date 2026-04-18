@@ -17,97 +17,52 @@ const db = getDatabase(app);
 const $ = (id) => document.getElementById(id);
 // --- СИСТЕМА ДРУЗЕЙ И ПРОФИЛЕЙ ---
 
-// --- СИСТЕМА ДРУЗЕЙ ---
-
-async function sendFriendRequest(targetUid) {
-    if (!auth.currentUser || auth.currentUser.uid === targetUid) return;
-    const myUid = auth.currentUser.uid;
-    try {
-        await update(ref(db), {
-            [`users/${myUid}/friends/${targetUid}`]: { status: 'outgoing', ts: Date.now() },
-            [`users/${targetUid}/friendRequests/${myUid}`]: { 
-                status: 'pending', 
-                fromName: auth.currentUser.displayName || 'User',
-                ts: Date.now() 
-            }
-        });
-        if (typeof showToast === 'function') showToast('Запрос отправлен');
-    } catch (e) { console.error(e); }
-}
-
-async function acceptFriendRequest(friendUid) {
-    if (!auth.currentUser) return;
-    const myUid = auth.currentUser.uid;
-    try {
-        await update(ref(db), {
-            [`users/${myUid}/friends/${friendUid}`]: { status: 'accepted', ts: Date.now() },
-            [`users/${friendUid}/friends/${myUid}`]: { status: 'accepted', ts: Date.now() },
-            [`users/${myUid}/friendRequests/${friendUid}`]: null
-        });
-        if (typeof showToast === 'function') showToast('Дружба принята');
-    } catch (e) { console.error(e); }
-}
-
-async function rejectFriendRequest(friendUid) {
-    if (!auth.currentUser) return;
-    try {
-        await remove(ref(db, `users/${auth.currentUser.uid}/friendRequests/${friendUid}`));
-    } catch (e) { console.error(e); }
-}
-
-async function openUserProfile(uid) {
-    try {
-        const snap = await get(ref(db, `users/${uid}`));
-        const data = snap.val();
-        if (!data) return;
-        
-        const profile = data.profile || {};
-        const status = data.status || {};
-
-        if ($('modal-user-name')) $('modal-user-name').innerText = profile.nickname || 'User';
-        if ($('modal-user-bio')) $('modal-user-bio').innerText = profile.bio || '';
-        if ($('modal-user-status')) {
-            $('modal-user-status').innerText = status.online ? '🟢 В сети' : '🔴 Оффлайн';
-        }
-        $('modal-profile')?.classList.add('active');
-    } catch (e) { console.error(e); }
-}
-
+// Слушатель списка друзей и заявок в реальном времени
 function listenFriendSystem() {
     if (!auth.currentUser) return;
     const myUid = auth.currentUser.uid;
 
-    // Слушаем входящие заявки
+    // 1. Слушаем заявки (входящие)
     onValue(ref(db, `users/${myUid}/friendRequests`), (snap) => {
         const requests = snap.val() || {};
-        const container = $('friend-requests-list');
-        if (!container) return;
-        
-        container.innerHTML = Object.keys(requests).map(uid => `
-            <div class="friend-request-card">
-                <span>${escapeHtml(requests[uid].fromName)}</span>
-                <div class="btns">
-                    <button onclick="acceptFriendRequest('${uid}')">✅</button>
-                    <button onclick="rejectFriendRequest('${uid}')">❌</button>
-                </div>
-            </div>
-        `).join('');
+        renderFriendRequestsUI(requests);
     });
 
-    // Слушаем онлайн друзей
+    // 2. Слушаем сам список друзей
     onValue(ref(db, `users/${myUid}/friends`), (snap) => {
         const friends = snap.val() || {};
-        Object.keys(friends).forEach(uid => {
-            if (friends[uid].status === 'accepted') {
-                onValue(ref(db, `users/${uid}/status`), (sSnap) => {
-                    const status = sSnap.val();
-                    const el = document.querySelector(`.friend-indicator-${uid}`);
-                    if (el) el.style.color = status?.online ? '#2ecc71' : '#95a5a6';
-                });
+        const acceptedIds = Object.keys(friends).filter(id => friends[id].status === 'accepted');
+        updateFriendsActivity(acceptedIds);
+    });
+}
+
+// Рендер заявок
+function renderFriendRequestsUI(requests) {
+    const container = $('friend-requests-list');
+    if (!container) return;
+    
+    container.innerHTML = Object.keys(requests).map(uid => `
+        <div class="request-item">
+            <span>${escapeHtml(requests[uid].fromName)}</span>
+            <button onclick="acceptFriendRequest('${uid}')">✅</button>
+            <button onclick="rejectFriendRequest('${uid}')">❌</button>
+        </div>
+    `).join('');
+}
+
+// Отслеживание онлайна друзей
+function updateFriendsActivity(uids) {
+    uids.forEach(uid => {
+        onValue(ref(db, `users/${uid}/status`), (snap) => {
+            const status = snap.val() || { online: false };
+            const friendEl = document.querySelector(`.friend-item[data-uid="${uid}"]`);
+            if (friendEl) {
+                friendEl.classList.toggle('online', status.online);
             }
         });
     });
 }
+
 // Безопасное экранирование текста для вставки в innerHTML
 function escapeHtml(str) {
     return String(str || '').replace(/[&<>"']/g, (s) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[s]);
