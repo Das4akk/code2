@@ -10,57 +10,6 @@ const firebaseConfig = {
     storageBucket: "das4akk-1.firebasestorage.app"
 };
 
-// --- EMERGENCY ENVIRONMENT BRIDGE ---
-const $ = (id) => document.getElementById(id);
-let myStream = null;
-let processedMsgs = new Set();
-let currentRoomId = window.currentRoomId || null; 
-let isHost = window.isHost || false;
-
-// Защита от отсутствующих функций в старом коде
-window.showToast = window.showToast || ((m) => console.log("Toast:", m));
-window.getDisplayName = window.getDisplayName || (() => auth?.currentUser?.displayName || "Аноним");
-
-async function initVoice() {
-    console.log('[Voice] System Ready');
-    if (myStream) return;
-}
-
-async function enableMic() {
-    try {
-        myStream = await navigator.mediaDevices.getUserMedia({
-            audio: { echoCancellation: true, noiseSuppression: true }
-        });
-        showToast("Микрофон на связи");
-        connectPeers();
-    } catch (e) {
-        showToast("Доступ к микрофону отклонен");
-    }
-}
-
-function disableMic() {
-    if (myStream) {
-        myStream.getTracks().forEach(t => t.stop());
-        myStream = null;
-    }
-    cleanupVoice();
-    showToast("Микрофон выключен");
-}
-
-function connectPeers() {
-    if (!myStream || !currentRoomId) return;
-    console.log("[Voice] Connecting to room:", currentRoomId);
-    // Здесь будет вызов твоей существующей логики сигналинга
-}
-
-function cleanupVoice() {
-    if (auth.currentUser && currentRoomId) {
-        const voiceRef = ref(db, `rooms/${currentRoomId}/voice/${auth.currentUser.uid}`);
-        remove(voiceRef).catch(() => {});
-    }
-}
-
-
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getDatabase(app);
@@ -160,77 +109,6 @@ function getRoomPreviewTime(syncState) {
     return Math.max(0, baseTime);
 }
 
-function generateVideoPreview(videoUrl, targetTime) {
-    return new Promise((resolve) => {
-        const video = document.createElement('video');
-        video.crossOrigin = 'anonymous';
-        video.src = videoUrl;
-        video.currentTime = targetTime || 1;
-        video.onloadeddata = () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-            resolve(canvas.toDataURL('image/jpeg', 0.5));
-        };
-        video.onerror = () => resolve(null);
-    });
-}
-
-async function updateRoomState(roomId, newStateObj) {
-    if (!isHost) return;
-    try {
-        await update(ref(db, `rooms/${roomId}`), {
-            ...newStateObj,
-            lastUpdated: Date.now()
-        });
-    } catch (e) {
-        console.error('State update failed', e);
-    }
-}
-
-async function renameRoomSlug(roomId, newName) {
-    if (!isHost) return;
-    await updateRoomState(roomId, { name: newName });
-    pushSystemMessage(`Хост переименовал комнату в "${newName}"`);
-}
-
-function generateVideoPreview(videoUrl, targetTime) {
-    return new Promise((resolve) => {
-        const video = document.createElement('video');
-        video.crossOrigin = 'anonymous';
-        video.src = videoUrl;
-        video.currentTime = targetTime || 1;
-        video.onloadeddata = () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-            resolve(canvas.toDataURL('image/jpeg', 0.5));
-        };
-        video.onerror = () => resolve(null);
-    });
-}
-
-async function updateRoomState(roomId, newStateObj) {
-    if (!isHost) return;
-    try {
-        await update(ref(db, `rooms/${roomId}`), {
-            ...newStateObj,
-            lastUpdated: Date.now()
-        });
-    } catch (e) {
-        console.error('State update failed', e);
-    }
-}
-
-async function renameRoomSlug(roomId, newName) {
-    if (!isHost) return;
-    await updateRoomState(roomId, { name: newName });
-    pushSystemMessage(`Хост переименовал комнату в "${newName}"`);
-}
-
-
 function applyRoomCardFrame(video) {
     if (!video) return;
     const targetTime = Math.max(0.05, Number(video.dataset.seekTime) || 0.05);
@@ -290,9 +168,6 @@ setPersistence(auth, browserLocalPersistence);
 
 onAuthStateChanged(auth, (user) => {
     if (user) {
-        initOnlinePresence();
-        fixMobileInput();
-        listenMessages();
         $('user-display-name').innerText = user.displayName || user.email;
         if(!currentRoomId) {
             showScreen('lobby-screen');
@@ -395,36 +270,6 @@ $('btn-create-finish').onclick = async () => {
     enterRoomV4(newRoomRef.key, name, link, auth.currentUser.uid);
 };
 
-function initOnlinePresence() {
-    if (!auth.currentUser) return;
-
-    const connectedRef = ref(db, ".info/connected");
-    const userStatusRef = ref(db, `users/${auth.currentUser.uid}/status`);
-
-    onValue(connectedRef, (snap) => {
-        if (snap.val() === true) {
-            // Когда отключаемся — Firebase сам удалит/обновит эти данные
-            onDisconnect(userStatusRef).set({ online: false, lastSeen: serverTimestamp() });
-            
-            // Мы онлайн
-            set(userStatusRef, { online: true, lastSeen: serverTimestamp() });
-            updateGlobalOnlineCount();
-        }
-    });
-}
-
-function updateGlobalOnlineCount() {
-    const usersRef = ref(db, 'users');
-    onValue(usersRef, (snap) => {
-        let count = 0;
-        snap.forEach((child) => {
-            if (child.val().status?.online) count++;
-        });
-        const el = $('global-online-count');
-        if (el) el.innerText = `Сейчас онлайн: ${count}`;
-    });
-}
-
 function renderRoomsV4(filter = '') {
     const grid = $('rooms-grid');
     if (!grid) return;
@@ -515,58 +360,6 @@ function setupLobbyNotificationsV4() {
         };
     }
 
-    async function sendFriendRequest(targetUid) {
-    if (!auth.currentUser || auth.currentUser.uid === targetUid) return;
-    try {
-        await set(ref(db, `users/${auth.currentUser.uid}/friends/${targetUid}`), { status: 'pending', ts: Date.now() });
-        await set(ref(db, `users/${targetUid}/friend-requests/${auth.currentUser.uid}`), { from: auth.currentUser.displayName || 'User', ts: Date.now() });
-        showToast('Запрос в друзья отправлен');
-    } catch (e) {
-        showToast('Ошибка отправки запроса');
-    }
-}
-
-async function acceptFriendRequest(uid) {
-    if (!auth.currentUser) return;
-    try {
-        await set(ref(db, `users/${auth.currentUser.uid}/friends/${uid}`), { status: 'accepted', ts: Date.now() });
-        await set(ref(db, `users/${uid}/friends/${auth.currentUser.uid}`), { status: 'accepted', ts: Date.now() });
-        await remove(ref(db, `users/${auth.currentUser.uid}/friend-requests/${uid}`));
-        showToast('Запрос принят');
-    } catch (e) {
-        showToast('Ошибка принятия запроса');
-    }
-}
-
-async function rejectFriendRequest(uid) {
-    if (!auth.currentUser) return;
-    try {
-        await remove(ref(db, `users/${auth.currentUser.uid}/friend-requests/${uid}`));
-        showToast('Запрос отклонен');
-    } catch (e) {
-        showToast('Ошибка отклонения');
-    }
-}
-
-async function removeFriend(uid) {
-    if (!auth.currentUser || !confirm('Удалить из друзей?')) return;
-    try {
-        await remove(ref(db, `users/${auth.currentUser.uid}/friends/${uid}`));
-        await remove(ref(db, `users/${uid}/friends/${auth.currentUser.uid}`));
-        showToast('Пользователь удален из друзей');
-    } catch (e) {
-        showToast('Ошибка удаления');
-    }
-}
-
-function listenFriendUpdates() {
-    if (!auth.currentUser) return;
-    onValue(ref(db, `users/${auth.currentUser.uid}/friends`), (snap) => {
-        const data = snap.val() || {};
-        const acceptedIds = Object.keys(data).filter(uid => isAcceptedFriendRecord(data[uid]));
-        renderFriendsPanelLive(acceptedIds);
-    });
-}
     
     // Приглашения в комнату
     onChildAdded(ref(db, `users/${auth.currentUser.uid}/room-invites`), (snap) => {
@@ -923,12 +716,13 @@ function initRoomServicesV4() {
             : escaped.replace(/(\d{1,2}:\d{2})/g, '<span class="timecode-btn disabled">$1</span>');
     };
 
-    function sendRoomMessage() {
-    const input = $('chat-input');
-    if (!input) return;
-    sendMessage(input.value);
-    input.value = '';
-}
+    const sendRoomMessage = () => {
+        const input = $('chat-input');
+        const localPerms = getEffectiveRoomPerms(currentPresenceCache[auth.currentUser.uid], isHost);
+        if (!input || !input.value.trim() || !localPerms.chat) return;
+        push(chatRef, { user: getDisplayName(), fromUid: auth.currentUser.uid, content: input.value.trim(), ts: Date.now() });
+        input.value = '';
+    };
 
     if ($('send-btn')) $('send-btn').onclick = sendRoomMessage;
     if ($('chat-input')) $('chat-input').onkeydown = (event) => { if (event.key === 'Enter') sendRoomMessage(); };
@@ -987,63 +781,45 @@ function initRoomServicesV4() {
         $('reaction-layer')?.appendChild(el);
         setTimeout(() => el.remove(), 3000);
     });
-}
 
     // --- ГОЛОСОВЫЕ ФУНКЦИИ ---
-function initVoice() {
-    if (myStream) return;
-    console.log('[Voice] Инициализация WebRTC подсистемы...');
-    activeCalls = new Set();
-}
-
-async function enableMic() {
-    initVoice();
-    try {
-        myStream = await navigator.mediaDevices.getUserMedia({
-            audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
-        });
-        showToast('Микрофон включен');
-        const micBtn = $('mic-btn');
-        if (micBtn) micBtn.classList.add('active');
-        connectPeers();
-    } catch (e) {
-        showToast('Ошибка доступа к микрофону: ' + e.message);
-        const micBtn = $('mic-btn');
-        if (micBtn) micBtn.classList.remove('active');
-    }
-}
-
-function disableMic() {
-    if (myStream) {
-        myStream.getTracks().forEach(track => track.stop());
-        myStream = null;
-    }
-    const micBtn = $('mic-btn');
-    if (micBtn) micBtn.classList.remove('active');
-    cleanupVoice();
-    showToast('Микрофон выключен');
-}
-
-function connectPeers() {
-    if (!myStream || !auth.currentUser || !currentRoomId) return;
-    publishLocalVoiceState().catch(console.error);
-    connectToVoicePeers();
-}
-
-function cleanupVoice() {
-    // HYPER FIX: Проверяем, существует ли функция уничтожения соединений
-    if (typeof destroyAllVoiceConnections === 'function') {
-        destroyAllVoiceConnections();
-    }
-    
-    if (currentRoomId && auth?.currentUser) {
-        try {
-            remove(ref(db, `rooms/${currentRoomId}/voice/${auth.currentUser.uid}`)).catch(e => console.warn('Очистка voice пропущена:', e));
-            remove(ref(db, `rooms/${currentRoomId}/rtc/participants/${auth.currentUser.uid}`)).catch(e => console.warn('Очистка rtc пропущена:', e));
-        } catch (error) {
-            console.error('[Voice] Критическая ошибка очистки:', error);
+    const voiceRefs = getVoiceRefs(roomId);
+    bindValue(voiceRefs.participants, async (snap) => {
+        voiceParticipantsCache = snap.val() || {};
+        for (const remoteUid of Array.from(voicePeerConnections.keys())) {
+            if (!voiceParticipantsCache[remoteUid]) destroyVoiceConnection(remoteUid);
         }
+        if (myStream && voiceSessionId) {
+            for (const remoteUid of Object.keys(voiceParticipantsCache)) await createVoiceOfferFor(remoteUid);
+        }
+    });
+
+    bindValue(voiceRefs.offersForMe, (snap) => handleIncomingOffers(snap.val() || {}));
+    bindValue(voiceRefs.answersForMe, (snap) => handleIncomingAnswers(snap.val() || {}));
+    bindValue(voiceRefs.candidatesForMe, (snap) => handleIncomingCandidates(snap.val() || {}));
+
+    if ($('mic-btn')) {
+        $('mic-btn').onclick = async function() {
+            const localPerms = getEffectiveRoomPerms(currentPresenceCache[auth.currentUser.uid], isHost);
+            if (!localPerms.voice) return;
+            if (myStream) return disableMicrophoneNative();
+            try { await enableMicrophoneNative(this); } catch (e) { this.classList.remove('active'); showToast('Ошибка доступа к микрофону'); }
+        };
     }
+
+    if ($('voice-volume')) $('voice-volume').oninput = (event) => {
+        document.querySelectorAll('#remote-audio-container audio').forEach((audio) => { audio.volume = event.target.value; });
+    };
+
+    $('btn-fullscreen').onclick = () => $('player-wrapper')?.requestFullscreen();
+    $('tab-chat-btn').onclick = () => { $('chat-messages').style.display = 'flex'; $('users-list').style.display = 'none'; $('tab-chat-btn').classList.add('active'); $('tab-users-btn').classList.remove('active'); };
+    $('tab-users-btn').onclick = () => { $('users-list').style.display = 'flex'; $('chat-messages').style.display = 'none'; $('tab-users-btn').classList.add('active'); $('tab-chat-btn').classList.remove('active'); };
+    
+    roomListenerUnsubscribe = () => {
+        teardown.forEach((fn) => fn());
+        closeVoiceSignalLayer();
+        clearRoomProfileSubscriptions();
+    };
 }
 
 // --- МОДАЛЫ: вход в приватную комнату и поведение поля пароля при создании ---
@@ -1090,49 +866,37 @@ function cleanupVoice() {
 })();
 
 // --- МОДАЛКА: профиль пользователя ---
-async function loadProfile(uid) {
-    try {
-        const snap = await get(ref(db, `users/${uid}/profile`));
-        return snap.val() || { name: 'User', color: '#f5f7fa', bio: '', status: '' };
-    } catch (e) {
-        console.error('[Profile] Ошибка загрузки', e);
-        return null;
+(function setupProfile(){
+    const btnOpen = $('btn-edit-profile');
+    const modal = $('modal-profile');
+    const inpName = $('profile-name');
+    const inpColor = $('profile-color');
+    const btnSave = $('btn-profile-save');
+    const btnCancel = $('btn-profile-cancel');
+
+    if (btnOpen) {
+        btnOpen.onclick = () => {
+            if (!auth.currentUser) return showToast('Нужно войти');
+            if (inpName) inpName.value = auth.currentUser.displayName || '';
+            if (inpColor) inpColor.value = '#f5f7fa';
+            if (modal) modal.classList.add('active');
+        };
     }
-}
-
-async function saveProfile(profileData) {
-    if (!auth.currentUser) return;
-    try {
-        await updateProfile(auth.currentUser, { displayName: profileData.name });
-        await set(ref(db, `users/${auth.currentUser.uid}/profile`), {
-            ...profileData,
-            updatedAt: Date.now()
-        });
-        updateAvatarPreview(profileData.color);
-        showToast('Профиль успешно сохранен');
-    } catch (e) {
-        showToast('Ошибка сохранения профиля');
-    }
-}
-
-function updateAvatarPreview(color) {
-    const av = $('my-avatar');
-    if (av) av.style.background = `linear-gradient(135deg, ${color || '#f5f7fa'}, rgba(255,255,255,0.08))`;
-}
-
-async function openUserProfile(uid) {
-    const profile = await loadProfile(uid);
-    if (!profile) return showToast('Не удалось загрузить профиль');
-    
-    // Интеграция с UI (если модалка расширенного профиля существует)
-    if ($('profile-name')) $('profile-name').value = profile.name || '';
-    if ($('profile-bio')) $('profile-bio').value = profile.bio || '';
-    if ($('profile-status')) $('profile-status').value = profile.status || '';
-    if ($('profile-color')) $('profile-color').value = profile.color || '#f5f7fa';
-    updateAvatarPreview(profile.color);
-    
-    $('modal-profile')?.classList.add('active');
-}
+    if (btnCancel) btnCancel.onclick = () => { if (modal) modal.classList.remove('active'); };
+    if (btnSave) btnSave.onclick = async () => {
+        if (!auth.currentUser) return showToast('Нужно войти');
+        const name = inpName ? inpName.value.trim() : '';
+        const color = inpColor ? inpColor.value : '#f5f7fa';
+        try {
+            await updateProfile(auth.currentUser, { displayName: name });
+            await set(ref(db, `users/${auth.currentUser.uid}/profile`), { name, color });
+            if ($('user-display-name')) $('user-display-name').innerText = name || auth.currentUser.email;
+            const av = $('my-avatar'); if (av) av.style.background = `linear-gradient(45deg, ${color}, rgba(255,255,255,0.06))`;
+            if (modal) modal.classList.remove('active');
+            showToast('Профиль сохранён');
+        } catch (e) { showToast('Ошибка сохранения профиля'); }
+    };
+})();
 
 // --- НЕЙРОСЕТЕВОЙ ФОН ---
 const canvas = $('particle-canvas');
@@ -1893,11 +1657,37 @@ function closeVoiceSignalLayer() {
 }
 
 async function enableMicrophoneNative(button) {
-    await enableMic();
+    myStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+        }
+    });
+    voiceSessionId = crypto.randomUUID();
+    button?.classList.add('active');
+    await publishVoiceParticipant();
+    for (const remoteUid of Object.keys(voiceParticipantsCache)) {
+        await createVoiceOfferFor(remoteUid);
+    }
+    showToast('Микрофон включен');
 }
 
 async function disableMicrophoneNative({ notify = true } = {}) {
-    disableMic();
+    if (myStream) {
+        myStream.getTracks().forEach((track) => track.stop());
+    }
+    myStream = null;
+
+    if (currentRoomId && auth.currentUser) {
+        try { await remove(ref(db, `rooms/${currentRoomId}/rtc/participants/${auth.currentUser.uid}`)); } catch (e) {}
+    }
+
+    voiceSessionId = null;
+    $('mic-btn')?.classList.remove('active');
+    destroyAllVoiceConnections();
+
+    if (notify) showToast('Микрофон выключен');
 }
 
 function renderPermissionControls(uid, perms) {
@@ -2054,39 +1844,6 @@ function bindSelfPresence() {
         }
     });
 }
-
-function initOnlinePresence() {
-    if (!auth.currentUser) return;
-    console.log('[Presence] Инициализация глобального онлайна');
-    listenOnlineUsers();
-}
-
-async function updateOnlineStatus(isOnline = true) {
-    if (!auth.currentUser) return;
-    const statusRef = ref(db, `users/${auth.currentUser.uid}/status`);
-    await set(statusRef, { online: isOnline, lastSeen: Date.now() });
-}
-
-function handleDisconnect() {
-    if (!auth.currentUser) return;
-    const statusRef = ref(db, `users/${auth.currentUser.uid}/status`);
-    onDisconnect(statusRef).set({ online: false, lastSeen: Date.now() });
-    
-    if (currentRoomId) {
-        const roomPresenceRef = ref(db, `rooms/${currentRoomId}/presence/${auth.currentUser.uid}`);
-        onDisconnect(roomPresenceRef).remove();
-    }
-}
-
-function listenOnlineUsers() {
-    const globalPresenceRef = ref(db, 'users');
-    // Облегченный слушатель для обновления статусов друзей в реальном времени
-    onValue(globalPresenceRef, (snap) => {
-        // Логика реактивности обрабатывается в listenFriendUpdates
-        updateGlobalOnlineCount();
-    });
-}
-
 
 function subscribeToOwnProfile() {
     if (!auth.currentUser) return;
@@ -2321,50 +2078,6 @@ function addSystemMessage(text) {
     $('chat-messages').scrollTop = $('chat-messages').scrollHeight;
 }
 
-function sendMessage(content) {
-    if (!content.trim() || !auth.currentUser || !currentRoomId) return;
-    const localPerms = getEffectiveRoomPerms(currentPresenceCache[auth.currentUser.uid], isHost);
-    if (!localPerms.chat) return showToast('Чат отключен для вас');
-    
-    push(ref(db, `rooms/${currentRoomId}/chat`), {
-        user: getDisplayName(),
-        fromUid: auth.currentUser.uid,
-        content: content.trim(),
-        ts: Date.now()
-    });
-}
-
-function listenMessages() {
-    if (!currentRoomId) return;
-    // HYPER FIX: Защита от потери контекста БД
-    const chatRef = ref(db, `rooms/${currentRoomId}/chat`);
-    onChildAdded(chatRef, (snap) => {
-        const msg = snap.val();
-        if (!msg) return;
-        
-        // Гарантируем, что Set существует
-        if (!window.processedMsgs) window.processedMsgs = new Set();
-        
-        if (window.processedMsgs.has(snap.key)) return;
-        window.processedMsgs.add(snap.key);
-        
-        if (typeof notifyNewMessage === 'function') {
-            notifyNewMessage(msg);
-        }
-    });
-}
-
-function pushSystemMessage(text) {
-    if (!currentRoomId || !isHost) return; 
-    push(ref(db, `rooms/${currentRoomId}/chat`), {
-        user: 'Система',
-        fromUid: 'system',
-        content: `------ ${text} ------`,
-        ts: Date.now(),
-        isSystem: true
-    });
-}
-
 async function openRoomInviteModalV3() {
     if (!auth.currentUser || !currentRoomId) return;
     ensureRoomInviteUi();
@@ -2496,74 +2209,11 @@ function widenLobbyLayout() {
     }
 }
 
-function fixMobileInput() {
-    window.addEventListener('resize', () => {
-        if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') {
-            setTimeout(() => {
-                document.activeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }, 100);
-        }
-    });
-    
-    // Фикс для iOS Safari 100vh
-    const doc = document.documentElement;
-    doc.style.setProperty('--app-height', `${window.innerHeight}px`);
-    window.addEventListener('resize', () => {
-        doc.style.setProperty('--app-height', `${window.innerHeight}px`);
-    });
-}
-
-function updateGlobalOnlineCount() {
-    get(ref(db, 'users')).then(snap => {
-        let onlineCount = 0;
-        snap.forEach(child => {
-            const status = child.val().status;
-            if (status && status.online) onlineCount++;
-        });
-        const headerCount = $('global-online-count');
-        if (headerCount) headerCount.innerText = `Сейчас онлайн: ${onlineCount}`;
-    });
-}
-
-function notifyNewMessage(msg) {
-    if (msg.fromUid === auth.currentUser.uid || msg.isSystem) return;
-    
-    // Если чат свернут, показываем уведомление
-    const chatPanel = $('chat-messages');
-    if (chatPanel && chatPanel.style.display === 'none') {
-        showToast(`💬 ${msg.user}: ${msg.content.substring(0, 20)}...`);
-    }
-}
-
-function fixMobileInput() {
-    const input = $('chat-input');
-    if (!input) return;
-
-    input.addEventListener('focus', () => {
-        setTimeout(() => {
-            window.scrollTo(0, document.body.scrollHeight);
-        }, 300);
-    });
-}
-
-function pushSystemMessage(action) {
-    if (!currentRoomId) return;
-    const chatRef = ref(db, `rooms/${currentRoomId}/chat`);
-    const name = getDisplayName();
-    
-    push(chatRef, {
-        content: `------ ${name} ${action} ------`,
-        ts: serverTimestamp(),
-        type: 'system'
-    });
-}
-
 bindDirectChatUiV2();
 bindSelfPresence();
 subscribeToOwnProfile();
 bindCreateModalOverrides();
 widenLobbyLayout();
-
 
 renderRoomsV4 = renderRoomsV4;
 setupLobbyNotificationsV4 = setupLobbyNotificationsV4;
