@@ -1274,33 +1274,6 @@ function bindRoomPreviewLazyLoad() {
     });
 }
 
-function renderRooms() {
-    const container = $('rooms-grid');
-    if (!container) return;
-    onValue(ref(db, 'rooms'), (snapshot) => {
-        container.innerHTML = ''; // Обязательная очистка перед рендером
-        const rooms = snapshot.val();
-        if (!rooms) {
-            container.innerHTML = '<div class="empty-state">Комнат пока нет. Создайте первую!</div>';
-            return;
-        }
-        Object.keys(rooms).forEach(id => {
-            const r = rooms[id];
-            const card = document.createElement('div');
-            card.className = 'room-card glass-panel';
-            card.innerHTML = `
-                <div class="room-preview">${r.videoTitle || '🍿'}</div>
-                <div class="room-info">
-                    <h3>${escapeHtml(r.name)}</h3>
-                    <p>${r.isPrivate ? '🔒 Приватная' : '🌍 Публичная'}</p>
-                </div>
-            `;
-            card.onclick = () => enterRoomV4(id, r.password);
-            container.appendChild(card);
-        });
-    });
-}
-
 function renderFriendsPanelLive(friendIds = []) {
     const panel = $('friends-list-panel');
     if (!panel) return;
