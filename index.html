@@ -103,6 +103,8 @@
         <div id="modal-profile" class="modal">
             <div class="modal-content glass-panel">
                 <h2>Профиль</h2>
+                <label style="font-size:14px; color:#ddd; display:block; margin-bottom:8px;">Аватар (PNG/JPG):</label>
+                <input type="file" id="profile-avatar-upload" accept="image/*" style="margin-bottom:12px;">
                 <input type="text" id="profile-name" placeholder="Никнейм" autocomplete="off">
                 <input type="text" id="profile-status" placeholder="Статус (напр. 'В кино' или 'Занят')" autocomplete="off" style="margin-bottom:12px;">
                 <input type="number" id="profile-volume" placeholder="Громкость по умолчанию (0-100)" min="0" max="100" value="100" style="margin-bottom:12px;">
@@ -192,7 +194,7 @@
 
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://www.youtube.com/iframe_api"></script> 
-    
+
     <script type="module" src="app.js"></script>
 </body>
 </html>

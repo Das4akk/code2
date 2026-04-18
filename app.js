@@ -1,6 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, updateProfile, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getDatabase, ref, push, set, get, onValue, onChildAdded, onDisconnect, remove, off, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"; 
+import { getDatabase, ref, push, set, get, onValue, onChildAdded, onDisconnect, remove, off, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCby2qPGnlHWRfxWAI3Y2aK_UndEh9nato",
@@ -13,6 +14,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getDatabase(app);
+const storage = getStorage(app);
 
 const $ = (id) => document.getElementById(id);
 // Безопасное экранирование текста для вставки в innerHTML
@@ -63,11 +65,8 @@ function showToast(message) {
 }
 
 // --- WebRTC Инициализация ---
-const peer = {
-    id: null,
-    on() {},
-    call() { return null; }
-};
+
+
 let voiceRef = null;
 let onlineUsersCache = {};
 let currentRoomId = null;
@@ -168,6 +167,7 @@ setPersistence(auth, browserLocalPersistence);
 
 onAuthStateChanged(auth, (user) => {
     if (user) {
+        bindGlobalOnline();
         $('user-display-name').innerText = user.displayName || user.email;
         if(!currentRoomId) {
             showScreen('lobby-screen');
@@ -324,74 +324,6 @@ function syncRooms() {
     }
 }
 
-// --- УВЕДОМЛЕНИЯ В ЛОББИ: приглашения друзей и в комнаты ---
-function setupLobbyNotifications() {
-    // Загрузка и отображение списка друзей
-    const btnToggleFriends = $('btn-toggle-friends');
-    const friendsPanel = $('friends-list-panel');
-    
-    if (btnToggleFriends && friendsPanel) {
-        btnToggleFriends.onclick = () => {
-            const isHidden = friendsPanel.style.display === 'none';
-            friendsPanel.style.display = isHidden ? 'block' : 'none';
-            
-            if (isHidden) {
-                // Загружаем друзей
-                let friendsList = new Set();
-                onValue(ref(db, `users/${auth.currentUser.uid}/friends`), (snap) => {
-                    friendsList.clear();
-                    friendsPanel.innerHTML = '<h3>👥 Друзья</h3>';
-                    
-                    if (!snap.val()) {
-                        friendsPanel.innerHTML += '<div style="padding:12px; opacity:0.6; font-size:12px;">Нет друзей</div>';
-                        return;
-                    }
-                    
-                    Object.keys(snap.val()).forEach(fuid => {
-                        const fdata = snap.val()[fuid];
-                        if (fdata === true || (fdata && fdata.status === 'accepted')) {
-                            friendsList.add(fuid);
-                            // Загружаем информацию о друге из профиля
-                            onValue(ref(db, `users/${fuid}/profile`), (psnap) => {
-                                const profile = psnap.val() || {};
-                                const friendName = profile.name || 'User';
-                                const friendColor = profile.color || '#f5f7fa';
-                                
-                                let html = `<div class="friend-card" data-fuid="${fuid}">`;
-                                html += `<div style="width:24px; height:24px; border-radius:50%; background: linear-gradient(45deg, ${escapeHtml(friendColor)}, rgba(255,255,255,0.1)); border: 1px solid rgba(255,255,255,0.1);"></div>`;
-                                html += `<strong>${escapeHtml(friendName)}</strong>`;
-                                html += `<button class="friend-dm-btn" data-fuid="${fuid}">💬</button>`;
-                                html += `</div>`;
-                                
-                                let existing = friendsPanel.querySelector(`[data-fuid="${fuid}"]`);
-                                if (!existing) {
-                                    // Вставляем новую карточку после заголовка
-                                    const h3 = friendsPanel.querySelector('h3');
-                                    if (h3) {
-                                        const div = document.createElement('div');
-                                        div.innerHTML = html;
-                                        h3.parentNode.insertBefore(div.firstElementChild, h3.nextSibling);
-                                    }
-                                }
-                            }, { onlyOnce: true });
-                        }
-                    });
-                }, { onlyOnce: true });
-                
-                // Обработчики DM кнопок
-                setTimeout(() => {
-                    document.querySelectorAll('.friend-dm-btn').forEach(b => {
-                        b.onclick = (e) => {
-                            e.stopPropagation();
-                            const fuid = b.dataset.fuid;
-                            showToast('💬 Открываю чат...');
-                        };
-                    });
-                }, 100);
-            }
-        };
-    }
-    
     // Приглашения в комнату
     onChildAdded(ref(db, `users/${auth.currentUser.uid}/room-invites`), (snap) => {
         const invite = snap.val();
@@ -466,8 +398,9 @@ function setupLobbyNotifications() {
         }
         
         setTimeout(() => { if (notif.parentNode) notif.remove(); }, 8000);
-    });
-}
+     });
+
+
 let pendingJoin = null;
 window.joinRoom = (id, name, link, admin) => {
     const room = roomsCache[id] || null;
@@ -486,89 +419,6 @@ window.joinRoom = (id, name, link, admin) => {
 const player = $('native-player');
 let presenceRef = null;
 
-function enterRoom(roomId, name, link, adminId) {
-    currentRoomId = roomId;
-    processedMsgs.clear(); // Очистка при входе в новую комнату
-    isHost = (auth.currentUser.uid === adminId);
-    $('room-title-text').innerText = name;
-    player.src = link;
-    // Устанавливаем превью комнаты как фон плеера, если есть
-    const roomMeta = roomsCache[roomId] || {};
-    const pw = $('player-wrapper');
-    if (pw) {
-        if (roomMeta.preview) {
-            pw.style.backgroundImage = `url(${roomMeta.preview})`;
-            pw.style.backgroundSize = 'cover';
-            pw.style.backgroundPosition = 'center';
-        } else {
-            pw.style.backgroundImage = '';
-        }
-    }
-    $('chat-messages').innerHTML = ''; 
-    
-    // ПРАВА ДОСТУПА: Хост управляет, зритель только смотрит
-    player.controls = isHost;
-    player.style.pointerEvents = isHost ? "auto" : "none";
-    
-    showScreen('room-screen');
-    // Фикс: помечаем время входа, чтобы не показывать старые уведомления
-    roomEnteredAt = Date.now();
-    initRoomServices();
-    // Показ/логика кнопки удаления комнаты (только для хоста)
-    const delBtn = $('btn-delete-room');
-    const editBtn = $('btn-edit-room');
-    if (delBtn) {
-        delBtn.style.display = isHost ? 'inline-block' : 'none';
-        delBtn.onclick = async () => {
-            if (!isHost) return;
-            if (!confirm('ВНИМАНИЕ! Удалить эту комнату навсегда?')) return;
-            try {
-                await remove(ref(db, `rooms/${currentRoomId}`));
-                showToast('Комната удалена');
-                leaveRoom();
-            } catch (e) {
-                showToast('Ошибка удаления комнаты');
-            }
-        };
-    }
-    if (editBtn) {
-        editBtn.style.display = isHost ? 'inline-block' : 'none';
-        editBtn.onclick = () => {
-            if (!isHost) return;
-            editingRoomId = currentRoomId;
-            const meta = roomsCache[currentRoomId] || {};
-            if ($('room-name')) $('room-name').value = meta.name || '';
-            if ($('room-link')) $('room-link').value = meta.link || '';
-            if ($('room-preview')) $('room-preview').value = meta.preview || '';
-            if ($('room-button-color')) $('room-button-color').value = meta.buttonColor || '#ffffff';
-            if ($('room-private')) {
-                $('room-private').checked = !!meta.private;
-                $('room-password').style.display = $('room-private').checked ? 'block' : 'none';
-            }
-            if ($('room-password')) $('room-password').value = '';
-            $('modal-create').classList.add('active');
-        };
-    }
-    showToast(isHost ? "Вы зашли как Хост" : "Вы зашли как Зритель");
-}
-
-function leaveRoom() {
-    if (presenceRef) remove(presenceRef);
-    if (roomListenerUnsubscribe) { try { roomListenerUnsubscribe(); } catch(e) {} roomListenerUnsubscribe = null; }
-    player.pause(); player.src = '';
-    if (myStream) { myStream.getTracks().forEach(t => t.stop()); myStream = null; $('mic-btn').classList.remove('active'); }
-    $('remote-audio-container').innerHTML = '';
-    activeCalls.clear();
-    const delBtn = $('btn-delete-room'); if (delBtn) delBtn.style.display = 'none';
-    const editBtn = $('btn-edit-room'); if (editBtn) editBtn.style.display = 'none';
-    // Скрываем модалки на случай открытых
-    const jm = $('modal-join'); if (jm) jm.classList.remove('active');
-    presenceRef = null;
-    currentRoomId = null;
-    showScreen('lobby-screen');
-}
-$('btn-leave-room').onclick = leaveRoom;
-
 // --- AMBILIGHT ---
 const ambiCanvas = $('ambilight-canvas');
 const ambiCtx = ambiCanvas.getContext('2d', { willReadFrequently: true });
@@ -582,366 +432,7 @@ function drawAmbilight() {
 }
 player.addEventListener('play', () => drawAmbilight());
 
-function initRoomServices() {
-    const videoRef = ref(db, `rooms/${currentRoomId}/sync`);
-    const chatRef = ref(db, `rooms/${currentRoomId}/chat`);
-    const voiceRef = ref(db, `rooms/${currentRoomId}/voice`);
-    const presenceDbRef = ref(db, `rooms/${currentRoomId}/presence`);
-    const reactionsRef = ref(db, `rooms/${currentRoomId}/reactions`);
 
-    // Слушатель комнаты — проверяем существование и сохраняем функцию отписки
-    const _roomRef = ref(db, `rooms/${currentRoomId}`);
-    const _roomListener = (snap) => { if (!snap.exists() && currentRoomId) { showToast("Комната удалена"); leaveRoom(); } };
-    onValue(_roomRef, _roomListener);
-    roomListenerUnsubscribe = () => { try { off(_roomRef, 'value', _roomListener); } catch(e) {} };
-
-    $('btn-fullscreen').onclick = () => $('player-wrapper').requestFullscreen();
-
-    // Присутствие
-    presenceRef = ref(db, `rooms/${currentRoomId}/presence/${auth.currentUser.uid}`);
-    // Значения прав по умолчанию (хост получает контроль плеера)
-    const defaultPerms = { chat: true, voice: true, player: isHost, reactions: true };
-    set(presenceRef, { name: auth.currentUser.displayName || "User", perms: defaultPerms });
-    onDisconnect(presenceRef).remove(); 
-
-    // Загрузка списка друзей (синхронно через onValue)
-    let friends = new Set();
-    onValue(ref(db, `users/${auth.currentUser.uid}/friends`), (snap) => {
-        friends.clear();
-        if (snap.val()) {
-            Object.keys(snap.val()).forEach(fuid => {
-                const fdata = snap.val()[fuid];
-                if (fdata === true || (fdata && fdata.status === 'accepted')) friends.add(fuid);
-            });
-        }
-    }, { onlyOnce: true });
-
-    onValue(presenceDbRef, (snap) => {
-        const data = snap.val() || {};
-        const usersListEl = $('users-list');
-        usersListEl.innerHTML = '';
-        const ids = Object.keys(data);
-        $('users-count').innerText = ids.length;
-
-        const adminId = (roomsCache[currentRoomId] && roomsCache[currentRoomId].admin) ? roomsCache[currentRoomId].admin : null;
-
-        ids.forEach(uid => {
-            const u = data[uid] || {};
-            const name = escapeHtml(u.name || 'User');
-            const perms = u.perms || defaultPerms;
-            const isLocal = uid === auth.currentUser.uid;
-            const isUserHost = uid === adminId;
-            const isFriend = friends.has(uid);
-
-            let itemHtml = `<div class="user-item" data-uid="${uid}">`;
-            itemHtml += `<div class="indicator"></div>`;
-            itemHtml += `<div class="user-main"><span class="user-name">${isFriend ? '👥 ' : ''}${name}</span>`;
-            if (isUserHost) itemHtml += `<span class="host-label">Host</span>`;
-            if (isFriend && !isLocal) itemHtml += `<span class="friend-label">Друг</span>`;
-            if (isLocal) itemHtml += `<span class="you-label">(Вы)</span>`;
-            itemHtml += `</div>`;
-
-            // Кнопка личных сообщений (для друзей)
-            if (!isLocal && isFriend) {
-                itemHtml += `<button class="dm-btn" data-uid="${uid}" title="Direct Message">💬</button>`;
-            }
-            // Кнопка репорта (для всех, кроме себя)
-            if (!isLocal) {
-                itemHtml += `<button class="report-btn" data-uid="${uid}" title="Report">Report</button>`;
-            }
-            // Кнопка добавления в друзья (для всех, кроме себя и уже друзей)
-            if (!isLocal && !isFriend) {
-                itemHtml += `<button class="add-friend-btn" data-uid="${uid}" title="Add Friend">+Доб</button>`;
-            }
-            // Кнопка инвайта в комнату (для всех, кроме себя)
-            if (!isLocal) {
-                itemHtml += `<button class="invite-btn" data-uid="${uid}" title="Invite to room">Инв</button>`;
-            }
-
-            itemHtml += `</div>`;
-            usersListEl.innerHTML += itemHtml;
-        });
-
-        // Подписываемся на переключатели прав (если хост)
-        if (isHost) {
-            document.querySelectorAll('.perm-toggle').forEach(el => {
-                el.addEventListener('change', async (e) => {
-                    const uid = e.target.dataset.uid;
-                    const perm = e.target.dataset.perm;
-                    const val = e.target.checked;
-                    try {
-                        await set(ref(db, `rooms/${currentRoomId}/presence/${uid}/perms/${perm}`), val);
-                        showToast('Права обновлены');
-                    } catch (err) { showToast('Ошибка при обновлении прав'); }
-                });
-            });
-        }
-
-        // Кнопки репорта
-        document.querySelectorAll('.report-btn').forEach(b => {
-            b.addEventListener('click', (e) => {
-                const uid = e.target.dataset.uid;
-                if (!REPORT_FORM_URL) { showToast('Форма для репортов не настроена'); return; }
-                window.open(REPORT_FORM_URL + '?reported=' + encodeURIComponent(uid), '_blank');
-            });
-        });
-
-        // Кнопки добавления в друзья
-        document.querySelectorAll('.add-friend-btn').forEach(b => {
-            b.addEventListener('click', async (e) => {
-                const uid = e.target.dataset.uid;
-                try {
-                    await set(ref(db, `users/${auth.currentUser.uid}/friends/${uid}`), { status: 'pending', ts: Date.now() });
-                    await set(ref(db, `users/${uid}/friend-requests/${auth.currentUser.uid}`), { from: auth.currentUser.displayName, ts: Date.now() });
-                    showToast('Запрос отправлен');
-                } catch (err) { showToast('Ошибка при отправке запроса'); }
-            });
-        });
-
-        // Кнопки инвайта в комнату
-        document.querySelectorAll('.invite-btn').forEach(b => {
-            b.addEventListener('click', async (e) => {
-                const uid = e.target.dataset.uid;
-                try {
-                    await push(ref(db, `users/${uid}/room-invites`), {
-                        roomId: currentRoomId,
-                        roomName: roomsCache[currentRoomId]?.name || 'Комната',
-                        invitedBy: auth.currentUser.displayName,
-                        message: `Привет! Заходи к нам в комнату!`,
-                        ts: Date.now()
-                    });
-                    showToast('Инвайт отправлен');
-                } catch (err) { showToast('Ошибка при отправке инвайта'); }
-            });
-        });
-
-        // Кнопки личных сообщений
-        document.querySelectorAll('.dm-btn').forEach(b => {
-            b.addEventListener('click', (e) => {
-                const uid = e.target.dataset.uid;
-                const userData = data[uid] || {};
-                const friendName = escapeHtml(userData.name || 'User');
-                showToast(`💬 ДМ с ${friendName}...`);
-                // TODO: Реализовать полный UI для ДМ чата
-            });
-        });
-
-        // Применяем локальные права (для текущего пользователя)
-        const localNode = data[auth.currentUser.uid] || {};
-        const effectiveLocalPerms = isHost ? { chat: true, voice: true, player: true, reactions: true } : (localNode.perms || defaultPerms);
-
-        // Чат
-        if ($('chat-input')) $('chat-input').disabled = !effectiveLocalPerms.chat;
-        if ($('send-btn')) $('send-btn').disabled = !effectiveLocalPerms.chat;
-
-        // Голос
-        if (!effectiveLocalPerms.voice) {
-            if (myStream) { myStream.getTracks().forEach(t => t.stop()); myStream = null; $('mic-btn').classList.remove('active'); try { remove(ref(db, `rooms/${currentRoomId}/voice/${auth.currentUser.uid}`)); } catch(e){} activeCalls.clear(); $('remote-audio-container').innerHTML = ''; showToast('Вам отключили голос'); }
-        }
-        if ($('mic-btn')) $('mic-btn').disabled = !effectiveLocalPerms.voice;
-
-        // Плеер
-        if (effectiveLocalPerms.player || isHost) { player.style.pointerEvents = 'auto'; player.controls = true; } else { player.style.pointerEvents = 'none'; player.controls = isHost; }
-
-        // Реакции
-        document.querySelectorAll('.react-btn').forEach(b => b.disabled = !effectiveLocalPerms.reactions);
-    });
-
-    // --- ХИРУРГИЧЕСКАЯ СИНХРОНИЗАЦИЯ (Только хост отправляет данные) ---
-    if (isHost) {
-        player.onplay = () => { if(!isRemoteAction) set(videoRef, { type: 'play', time: player.currentTime, ts: Date.now() }); };
-        player.onpause = () => { if(!isRemoteAction) set(videoRef, { type: 'pause', time: player.currentTime, ts: Date.now() }); };
-        player.onseeked = () => { if(!isRemoteAction) set(videoRef, { type: 'seek', time: player.currentTime, ts: Date.now() }); };
-    }
-
-    onValue(videoRef, (snap) => {
-        if (isHost) return; // Хост никогда не принимает синхронизацию от других
-        const d = snap.val();
-        if (!d || d.ts <= lastSyncTs) return;
-        lastSyncTs = d.ts;
-        isRemoteAction = true;
-        
-        if (Math.abs(player.currentTime - d.time) > 2) player.currentTime = d.time;
-        d.type === 'play' ? player.play() : player.pause();
-        
-        setTimeout(() => isRemoteAction = false, 500);
-    });
-
-    // --- ЧАТ И ТАЙМКОДЫ ---
-    // Экранируем текст перед вставкой и затем подменяем паттерны таймкодов
-    const parseTimecodes = (text) => escapeHtml(text).replace(/(\d{1,2}:\d{2})/g, '<button class="timecode-btn" data-time="$1">$1</button>');
-    
-    const sendMsg = () => {
-        const inp = $('chat-input');
-        if (inp.value.trim()) { push(chatRef, { user: auth.currentUser.displayName, content: inp.value.trim(), ts: Date.now() }); inp.value = ''; }
-    };
-    $('send-btn').onclick = sendMsg;
-    $('chat-input').onkeydown = (e) => { if(e.key==='Enter') sendMsg(); };
-    
-    $('chat-messages').onclick = (e) => {
-        if(e.target.classList.contains('timecode-btn')) {
-            const parts = e.target.dataset.time.split(':');
-            const seconds = parseInt(parts[0]) * 60 + parseInt(parts[1]);
-            player.currentTime = seconds;
-            // Если нажал хост - мотаем у всех
-            if(isHost) {
-                player.play();
-                set(videoRef, { type: 'seek', time: seconds, ts: Date.now() });
-            }
-        }
-    };
-
-    onChildAdded(chatRef, (snap) => {
-        const m = snap.val();
-        const id = snap.key;
-        if (processedMsgs.has(id)) return; // Защита от дублей
-        processedMsgs.add(id);
-
-        const isMe = m.user === auth.currentUser.displayName;
-        const div = document.createElement('div');
-        div.className = isMe ? 'm-line self' : 'm-line';
-        div.innerHTML = `<div class="bubble"><strong>${escapeHtml(m.user || 'User')}</strong><p>${parseTimecodes(m.content || '')}</p></div>`;
-        $('chat-messages').appendChild(div);
-        $('chat-messages').scrollTop = $('chat-messages').scrollHeight;
-        // Показываем тост только для новых сообщений (после входа в комнату)
-        if (!isMe && m.ts && m.ts >= (roomEnteredAt - 2000)) {
-            showToast(`Сообщение от ${escapeHtml(m.user || 'User')}`);
-        }
-    });
-
-    // Табы чата
-    $('tab-chat-btn').onclick = () => { $('chat-messages').style.display='flex'; $('users-list').style.display='none'; $('tab-chat-btn').classList.add('active'); $('tab-users-btn').classList.remove('active'); };
-    $('tab-users-btn').onclick = () => { $('users-list').style.display='flex'; $('chat-messages').style.display='none'; $('tab-users-btn').classList.add('active'); $('tab-chat-btn').classList.remove('active'); };
-
-    // Реакции
-    document.querySelectorAll('.react-btn').forEach(btn => {
-        btn.onclick = () => push(reactionsRef, { emoji: btn.dataset.emoji, ts: Date.now() });
-    });
-    onChildAdded(reactionsRef, (snap) => {
-        const data = snap.val();
-        if(Date.now() - data.ts > 5000) return;
-        const el = document.createElement('div');
-        el.className = 'floating-emoji';
-        el.innerText = data.emoji;
-        el.style.left = Math.random() * 80 + 10 + '%';
-        $('reaction-layer').appendChild(el);
-        setTimeout(() => el.remove(), 3000);
-    });
-
-    // --- ГОЛОС (WebRTC) с визуализацией входящего звука ---
-    const remoteAudioAnalyzers = new Map(); // uid -> { analyser, dataArray, animationId }
-    
-    function createRemoteAudioAnalyzer(audio, uid) {
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const source = audioCtx.createMediaElementAudioSource(audio);
-        const analyser = audioCtx.createAnalyser();
-        analyser.fftSize = 256;
-        source.connect(analyser);
-        analyser.connect(audioCtx.destination);
-        
-        const dataArray = new Uint8Array(analyser.frequencyBinCount);
-        let animId = null;
-        
-        const userItem = document.querySelector(`.user-item[data-uid="${uid}"]`);
-        if (!userItem) return;
-        
-        const animate = () => {
-            analyser.getByteFrequencyData(dataArray);
-            let avg = 0;
-            for (let i = 0; i < dataArray.length; i++) avg += dataArray[i];
-            avg /= dataArray.length;
-            
-            const vol = avg / 256;
-            const scale = 1 + (vol * 0.4);
-            const glow = vol * 20;
-            
-            const indicator = userItem.querySelector('.indicator');
-            if (indicator && vol > 0.05) {
-                indicator.style.transform = `scale(${scale})`;
-                indicator.style.boxShadow = `0 0 ${glow}px #2ed573`;
-            } else if (indicator) {
-                indicator.style.transform = 'scale(1)';
-                indicator.style.boxShadow = '0 0 8px #2ed573';
-            }
-            
-            animId = requestAnimationFrame(animate);
-        };
-        
-        animate();
-        remoteAudioAnalyzers.set(uid, { analyser, dataArray, animationId: animId });
-    }
-    
-    function attachRemoteAudio(stream, peerId, uid) {
-        if (activeCalls.has(peerId)) return;
-        activeCalls.add(peerId);
-        const audio = document.createElement('audio');
-        audio.id = `audio-${peerId}`;
-        audio.autoplay = true;
-        audio.srcObject = stream;
-        audio.volume = $('voice-volume').value;
-        $('remote-audio-container').appendChild(audio);
-        
-        // Создаём анализатор входящего звука для этого пользователя
-        audio.oncanplay = () => createRemoteAudioAnalyzer(audio, uid);
-    }
-
-    peer.on('call', (call) => {
-        call.answer(myStream);
-        call.on('stream', (remoteStream) => attachRemoteAudio(remoteStream, call.peer, call.peer));
-    });
-
-    $('mic-btn').onclick = async function() {
-        const isActive = this.classList.toggle('active');
-        if (isActive) {
-            try {
-                myStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
-                if (peer.id) set(ref(db, `rooms/${currentRoomId}/voice/${auth.currentUser.uid}`), peer.id);
-                showToast("Микрофон включен");
-                // НЕ запускаем визуализацию для собственного микрофона
-            } catch (e) { showToast("Ошибка доступа к микрофону"); this.classList.remove('active'); }
-        } else {
-            if (myStream) myStream.getTracks().forEach(t => t.stop());
-            myStream = null;
-            remove(ref(db, `rooms/${currentRoomId}/voice/${auth.currentUser.uid}`));
-            activeCalls.clear();
-            $('remote-audio-container').innerHTML = '';
-            remoteAudioAnalyzers.forEach(a => { if (a.animationId) cancelAnimationFrame(a.animationId); });
-            remoteAudioAnalyzers.clear();
-            showToast("Микрофон выключен");
-        }
-    };
-
-    onValue(voiceRef, (snap) => {
-        const data = snap.val() || {};
-        for (let uid in data) {
-            const targetPeerId = data[uid];
-            if (uid !== auth.currentUser.uid && myStream && !activeCalls.has(targetPeerId)) {
-                const call = peer.call(targetPeerId, myStream);
-                call.on('stream', (remoteStream) => attachRemoteAudio(remoteStream, targetPeerId, uid));
-            }
-        }
-    });
-
-    const voiceEl = $('voice-volume');
-    const setRangeFill = (el) => {
-        if (!el) return;
-        const v = parseFloat(el.value) || 0;
-        const p = Math.round(v * 100);
-        const accent = (typeof getComputedStyle !== 'undefined') ? getComputedStyle(document.documentElement).getPropertyValue('--accent') : '#f5f7fa';
-        el.style.background = `linear-gradient(90deg, ${accent.trim()} ${p}%, rgba(255,255,255,0.12) ${p}%)`;
-    };
-    if (voiceEl) {
-        voiceEl.addEventListener('input', (e) => {
-            document.querySelectorAll('#remote-audio-container audio').forEach(a => a.volume = e.target.value);
-            setRangeFill(e.target);
-        });
-        setRangeFill(voiceEl);
-    }
-    // ... (начало кода без изменений до момента с микрофоном)
-
-    // --- НЕЙРОСЕТЕВОЙ ФОН ---
-}
-// --- МОДАЛЫ: вход в приватную комнату и поведение поля пароля при создании ---
 (function setupModals(){
     const joinConfirm = $('btn-join-confirm');
     const joinCancel = $('btn-join-cancel');
@@ -1059,24 +550,29 @@ async function saveProfileEnhanced() {
     const color = $('profile-color')?.value || '#f5f7fa';
     const volume = Math.max(0, Math.min(100, parseInt($('profile-volume')?.value || 100))) / 100;
     
+    let avatarUrl = auth.currentUser.photoURL || '';
+    const fileInput = $('profile-avatar-upload');
+    
     try {
-        await updateProfile(auth.currentUser, { displayName: name });
+        if (fileInput && fileInput.files[0]) {
+            showToast('Загрузка аватара...');
+            const file = fileInput.files[0];
+            const fileRef = sRef(storage, `avatars/${auth.currentUser.uid}`);
+            await uploadBytes(fileRef, file);
+            avatarUrl = await getDownloadURL(fileRef);
+        }
+
+        await updateProfile(auth.currentUser, { displayName: name, photoURL: avatarUrl });
         await set(ref(db, `users/${auth.currentUser.uid}/profile`), {
-            name,
-            status,
-            bio,
-            color,
-            defaultVolume: volume,
-            updatedAt: Date.now()
+            name, status, bio, color, avatar: avatarUrl, defaultVolume: volume, updatedAt: Date.now()
         });
-        
+
         if ($('user-display-name')) $('user-display-name').innerText = name || auth.currentUser.email;
-        const av = $('my-avatar');
-        if (av) av.style.background = `linear-gradient(135deg, ${color}, rgba(255,255,255,0.08))`;
-        
         if ($('modal-profile')) $('modal-profile').classList.remove('active');
         showToast('Профиль сохранён');
-    } catch (e) { showToast('Ошибка сохранения'); }
+    } catch (e) { 
+        showToast('Ошибка сохранения: ' + e.message); 
+    }
 }
 
 async function updatePresenceWithOnlineStatus(statusText = 'Онлайн') {
@@ -1338,145 +834,6 @@ function closeRoomInviteModal() {
     $('modal-room-invite')?.classList.remove('active');
 }
 
-function setupLobbyNotificationsV2() {
-    if (setupLobbyNotificationsV2.didInit || !auth.currentUser) return;
-    setupLobbyNotificationsV2.didInit = true;
-
-    const btnToggleFriends = $('btn-toggle-friends');
-    const friendsPanel = $('friends-list-panel');
-
-    if (btnToggleFriends && friendsPanel) {
-        btnToggleFriends.onclick = async () => {
-            const isHidden = friendsPanel.style.display === 'none';
-            friendsPanel.style.display = isHidden ? 'block' : 'none';
-            if (!isHidden) return;
-
-            friendsPanel.innerHTML = '<h3>👥 Друзья</h3><div class="room-invite-empty">Загружаю...</div>';
-
-            try {
-                const friendsSnap = await get(ref(db, `users/${auth.currentUser.uid}/friends`));
-                const friendsData = friendsSnap.val() || {};
-                const acceptedIds = Object.keys(friendsData).filter((uid) => isAcceptedFriendRecord(friendsData[uid]));
-
-                if (!acceptedIds.length) {
-                    friendsPanel.innerHTML = '<h3>👥 Друзья</h3><div class="room-invite-empty">Нет друзей</div>';
-                    return;
-                }
-
-                const friends = await Promise.all(acceptedIds.map(async (uid) => {
-                    try {
-                        const profileSnap = await get(ref(db, `users/${uid}/profile`));
-                        const profile = profileSnap.val() || {};
-                        return { uid, name: profile.name || 'User', color: profile.color || '#f5f7fa' };
-                    } catch (e) {
-                        return { uid, name: 'User', color: '#f5f7fa' };
-                    }
-                }));
-
-                friendsPanel.innerHTML = `<h3>👥 Друзья</h3>${friends.map((friend) => `
-                    <div class="friend-card" data-fuid="${friend.uid}">
-                        <div style="width:24px; height:24px; border-radius:50%; background:linear-gradient(45deg, ${escapeHtml(friend.color)}, rgba(255,255,255,0.1)); border:1px solid rgba(255,255,255,0.1);"></div>
-                        <strong>${escapeHtml(friend.name)}</strong>
-                        <button type="button" class="friend-dm-btn" data-fuid="${friend.uid}">💬</button>
-                    </div>
-                `).join('')}`;
-
-                friendsPanel.querySelectorAll('.friend-dm-btn').forEach((button) => {
-                    button.onclick = (event) => {
-                        event.stopPropagation();
-                        showToast('💬 Чат с другом пока в разработке');
-                    };
-                });
-            } catch (e) {
-                friendsPanel.innerHTML = '<h3>👥 Друзья</h3><div class="room-invite-empty">Не удалось загрузить друзей</div>';
-            }
-        };
-    }
-
-    onChildAdded(ref(db, `users/${auth.currentUser.uid}/room-invites`), (snap) => {
-        const invite = snap.val();
-        const inviteId = snap.key;
-        if (!invite || Date.now() - invite.ts > 3600000) return;
-
-        const notif = document.createElement('div');
-        notif.className = 'toast interactive-toast';
-        notif.innerHTML = `
-            <div style="padding:12px; background:rgba(46,213,115,0.1); border:1px solid #2ed573; border-radius:8px;">
-                ${escapeHtml(invite.invitedBy || 'Друг')} приглашает в <strong>${escapeHtml(invite.roomName || 'комнату')}</strong>
-                <div style="display:flex; gap:8px; margin-top:10px;">
-                    <button type="button" class="invite-accept-btn" data-room-id="${escapeHtml(invite.roomId || '')}" data-invite-id="${escapeHtml(inviteId)}">Зайти</button>
-                </div>
-            </div>
-        `;
-        $('toast-container')?.appendChild(notif);
-
-        const btn = notif.querySelector('.invite-accept-btn');
-        btn?.addEventListener('click', async () => {
-            const roomId = btn.dataset.roomId;
-            try {
-                const roomSnap = await get(ref(db, `rooms/${roomId}`));
-                if (!roomSnap.exists()) {
-                    await remove(ref(db, `users/${auth.currentUser.uid}/room-invites/${inviteId}`));
-                    notif.remove();
-                    showToast('Комната больше недоступна');
-                    return;
-                }
-
-                const room = roomSnap.val() || {};
-                await remove(ref(db, `users/${auth.currentUser.uid}/room-invites/${inviteId}`));
-                notif.remove();
-                window.joinRoom(roomId, room.name || invite.roomName || 'Комната', room.link || invite.roomLink || '', room.admin || invite.roomAdminId || '');
-            } catch (e) {
-                showToast('Ошибка при принятии инвайта');
-            }
-        });
-
-        setTimeout(() => notif.remove(), 8000);
-    });
-
-    onChildAdded(ref(db, `users/${auth.currentUser.uid}/friend-requests`), (snap) => {
-        const req = snap.val();
-        const fromUid = snap.key;
-        if (!req) return;
-
-        const notif = document.createElement('div');
-        notif.className = 'toast interactive-toast';
-        notif.innerHTML = `
-            <div style="padding:12px; background:rgba(46,213,115,0.1); border:1px solid #2ed573; border-radius:8px;">
-                <strong>${escapeHtml(req.from || 'Пользователь')}</strong> хочет быть твоим другом
-                <div style="display:flex; gap:8px; margin-top:10px;">
-                    <button type="button" class="friend-req-accept" data-from-uid="${escapeHtml(fromUid)}">Принять</button>
-                    <button type="button" class="friend-req-decline" data-from-uid="${escapeHtml(fromUid)}">Отклонить</button>
-                </div>
-            </div>
-        `;
-        $('toast-container')?.appendChild(notif);
-
-        notif.querySelector('.friend-req-accept')?.addEventListener('click', async () => {
-            try {
-                await set(ref(db, `users/${auth.currentUser.uid}/friends/${fromUid}`), { status: 'accepted', ts: Date.now() });
-                await set(ref(db, `users/${fromUid}/friends/${auth.currentUser.uid}`), { status: 'accepted', ts: Date.now() });
-                await remove(ref(db, `users/${auth.currentUser.uid}/friend-requests/${fromUid}`));
-                notif.remove();
-                showToast('Друг добавлен');
-            } catch (e) {
-                showToast('Ошибка');
-            }
-        });
-
-        notif.querySelector('.friend-req-decline')?.addEventListener('click', async () => {
-            try {
-                await remove(ref(db, `users/${auth.currentUser.uid}/friend-requests/${fromUid}`));
-                notif.remove();
-            } catch (e) {
-                showToast('Ошибка');
-            }
-        });
-
-        setTimeout(() => notif.remove(), 8000);
-    });
-}
-
 function findUidByPeerId(peerId) {
     return Object.keys(latestVoicePeers || {}).find((uid) => latestVoicePeers[uid] === peerId) || peerId;
 }
@@ -1528,82 +885,6 @@ function createRemoteAudioAnalyzer(audio, uid) {
     remoteAudioAnalyzers.set(uid, { analyser, animationId: animId });
 }
 
-function attachRemoteAudio(stream, peerId, uid) {
-    if (!stream || activeCalls.has(peerId)) return;
-    activeCalls.add(peerId);
-
-    const container = $('remote-audio-container');
-    if (!container) return;
-
-    document.getElementById(`audio-${peerId}`)?.remove();
-
-    const audio = document.createElement('audio');
-    audio.id = `audio-${peerId}`;
-    audio.autoplay = true;
-    audio.playsInline = true;
-    audio.srcObject = stream;
-    audio.volume = parseFloat($('voice-volume')?.value || '1');
-    container.appendChild(audio);
-
-    const startPlayback = () => {
-        audio.play().catch(() => {
-            document.addEventListener('click', () => audio.play().catch(() => {}), { once: true });
-        });
-    };
-
-    audio.oncanplay = () => {
-        createRemoteAudioAnalyzer(audio, uid);
-        startPlayback();
-    };
-    audio.onended = () => activeCalls.delete(peerId);
-}
-
-async function publishLocalVoiceState() {
-    if (!currentRoomId || !auth.currentUser || !myStream || !peer.id) return;
-    await set(ref(db, `rooms/${currentRoomId}/voice/${auth.currentUser.uid}`), peer.id);
-}
-
-function connectToVoicePeers() {
-    if (!myStream || !peer.id) return;
-
-    Object.entries(latestVoicePeers || {}).forEach(([uid, targetPeerId]) => {
-        if (!targetPeerId || uid === auth.currentUser.uid || activeCalls.has(targetPeerId)) return;
-        const call = peer.call(targetPeerId, myStream);
-        if (!call) return;
-
-        call.on('stream', (remoteStream) => attachRemoteAudio(remoteStream, targetPeerId, uid));
-        call.on('close', () => activeCalls.delete(targetPeerId));
-        call.on('error', () => activeCalls.delete(targetPeerId));
-    });
-}
-
-async function enableMicrophone(button) {
-    myStream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true }
-    });
-
-    button?.classList.add('active');
-    await publishLocalVoiceState();
-    connectToVoicePeers();
-    showToast('Микрофон включен');
-}
-
-async function disableMicrophone({ notify = true } = {}) {
-    if (myStream) {
-        myStream.getTracks().forEach((track) => track.stop());
-    }
-    myStream = null;
-
-    if (currentRoomId && auth.currentUser) {
-        try { await remove(ref(db, `rooms/${currentRoomId}/voice/${auth.currentUser.uid}`)); } catch (e) { /* ignore */ }
-    }
-
-    $('mic-btn')?.classList.remove('active');
-    clearRemoteAudioState();
-
-    if (notify) showToast('Микрофон выключен');
-}
-
 peer.on('open', () => {
     if (myStream) {
         publishLocalVoiceState().catch(() => {});
@@ -1624,380 +905,6 @@ peer.on('call', (call) => {
     call.on('error', () => activeCalls.delete(call.peer));
 });
 
-function enterRoomV2(roomId, name, link, adminId) {
-    currentRoomId = roomId;
-    lastSyncTs = 0;
-    processedMsgs.clear();
-    currentPresenceCache = {};
-    latestVoicePeers = {};
-    isHost = auth.currentUser.uid === adminId;
-
-    if ($('room-title-text')) $('room-title-text').innerText = name;
-    player.src = link;
-    player.controls = isHost;
-    player.style.pointerEvents = isHost ? 'auto' : 'none';
-
-    const playerWrapper = $('player-wrapper');
-    if (playerWrapper) {
-        playerWrapper.style.backgroundImage = '';
-        playerWrapper.style.backgroundSize = '';
-        playerWrapper.style.backgroundPosition = '';
-    }
-
-    if ($('chat-messages')) $('chat-messages').innerHTML = '';
-    if ($('users-list')) $('users-list').innerHTML = '';
-
-    showScreen('room-screen');
-    closeRoomInviteModal();
-    roomEnteredAt = Date.now();
-    initRoomServicesV2();
-
-    const delBtn = $('btn-delete-room');
-    const editBtn = $('btn-edit-room');
-
-    if (delBtn) {
-        delBtn.style.display = isHost ? 'inline-block' : 'none';
-        delBtn.onclick = async () => {
-            if (!isHost) return;
-            if (!confirm('ВНИМАНИЕ! Удалить эту комнату навсегда?')) return;
-            try {
-                await remove(ref(db, `rooms/${currentRoomId}`));
-                showToast('Комната удалена');
-                leaveRoomV2();
-            } catch (e) {
-                showToast('Ошибка удаления комнаты');
-            }
-        };
-    }
-
-    if (editBtn) {
-        editBtn.style.display = isHost ? 'inline-block' : 'none';
-        editBtn.onclick = () => {
-            if (!isHost) return;
-            editingRoomId = currentRoomId;
-            const meta = roomsCache[currentRoomId] || {};
-            if ($('room-name')) $('room-name').value = meta.name || '';
-            if ($('room-link')) $('room-link').value = meta.link || '';
-            if ($('room-button-color')) $('room-button-color').value = meta.buttonColor || '#ffffff';
-            if ($('room-private')) {
-                $('room-private').checked = !!meta.private;
-                if ($('room-password')) $('room-password').style.display = $('room-private').checked ? 'block' : 'none';
-            }
-            if ($('room-password')) $('room-password').value = '';
-            $('modal-create')?.classList.add('active');
-        };
-    }
-
-    showToast(isHost ? 'Вы зашли как Хост' : 'Вы зашли как Зритель');
-}
-
-async function leaveRoomV2() {
-    closeRoomInviteModal();
-    if (presenceRef) remove(presenceRef);
-    if (roomListenerUnsubscribe) {
-        try { roomListenerUnsubscribe(); } catch (e) { /* ignore */ }
-        roomListenerUnsubscribe = null;
-    }
-
-    player.pause();
-    player.src = '';
-
-    await disableMicrophone({ notify: false });
-
-    currentPresenceCache = {};
-    latestVoicePeers = {};
-    const delBtn = $('btn-delete-room');
-    const editBtn = $('btn-edit-room');
-    if (delBtn) delBtn.style.display = 'none';
-    if (editBtn) editBtn.style.display = 'none';
-    $('modal-join')?.classList.remove('active');
-    presenceRef = null;
-    currentRoomId = null;
-    showScreen('lobby-screen');
-}
-
-function initRoomServicesV2() {
-    const videoRef = ref(db, `rooms/${currentRoomId}/sync`);
-    const chatRef = ref(db, `rooms/${currentRoomId}/chat`);
-    const voiceRef = ref(db, `rooms/${currentRoomId}/voice`);
-    const presenceDbRef = ref(db, `rooms/${currentRoomId}/presence`);
-    const reactionsRef = ref(db, `rooms/${currentRoomId}/reactions`);
-    const roomRef = ref(db, `rooms/${currentRoomId}`);
-
-    const roomListener = (snap) => {
-        if (!snap.exists() && currentRoomId) {
-            showToast('Комната удалена');
-            leaveRoomV2();
-        }
-    };
-    onValue(roomRef, roomListener);
-    roomListenerUnsubscribe = () => { try { off(roomRef, 'value', roomListener); } catch (e) { /* ignore */ } };
-
-    $('btn-fullscreen').onclick = () => $('player-wrapper')?.requestFullscreen();
-
-    presenceRef = ref(db, `rooms/${currentRoomId}/presence/${auth.currentUser.uid}`);
-    const defaultPerms = { chat: true, voice: true, player: isHost, reactions: true };
-    set(presenceRef, { name: auth.currentUser.displayName || 'User', perms: defaultPerms });
-    onDisconnect(presenceRef).remove();
-
-    const friends = new Set();
-    const renderUsers = (data = {}) => {
-        currentPresenceCache = data;
-        const usersListEl = $('users-list');
-        if (!usersListEl) return;
-
-        usersListEl.innerHTML = '';
-        const ids = Object.keys(data);
-        if ($('users-count')) $('users-count').innerText = ids.length;
-
-        const adminId = roomsCache[currentRoomId]?.admin || null;
-        ids.forEach((uid) => {
-            const userData = data[uid] || {};
-            const name = escapeHtml(userData.name || 'User');
-            const perms = userData.perms || defaultPerms;
-            const isLocal = uid === auth.currentUser.uid;
-            const isFriend = friends.has(uid);
-            const isUserHost = uid === adminId;
-
-            let itemHtml = `<div class="user-item" data-uid="${uid}">`;
-            itemHtml += `<div class="indicator"></div>`;
-            itemHtml += `<div class="user-main"><span class="user-name">${isFriend ? '👥 ' : ''}${name}</span>`;
-            if (isUserHost) itemHtml += `<span class="host-label">Host</span>`;
-            if (isFriend && !isLocal) itemHtml += `<span class="friend-label">Друг</span>`;
-            if (isLocal) itemHtml += `<span class="you-label">(Вы)</span>`;
-            itemHtml += `</div>`;
-
-            if (!isLocal && isFriend) itemHtml += `<button type="button" class="dm-btn" data-uid="${uid}" title="Direct Message">💬</button>`;
-            if (!isLocal) itemHtml += `<button type="button" class="report-btn" data-uid="${uid}" title="Report">Report</button>`;
-            if (!isLocal && !isFriend) itemHtml += `<button type="button" class="add-friend-btn" data-uid="${uid}" title="Add Friend">+Доб</button>`;
-            itemHtml += `</div>`;
-
-            usersListEl.innerHTML += itemHtml;
-
-            if (!perms.voice) {
-                const indicator = usersListEl.querySelector(`.user-item[data-uid="${uid}"] .indicator`);
-                if (indicator) indicator.style.opacity = '0.35';
-            }
-        });
-
-        document.querySelectorAll('.report-btn').forEach((button) => {
-            button.onclick = (event) => {
-                const uid = event.currentTarget.dataset.uid;
-                if (!REPORT_FORM_URL) {
-                    showToast('Форма для репортов не настроена');
-                    return;
-                }
-                window.open(`${REPORT_FORM_URL}?reported=${encodeURIComponent(uid)}`, '_blank');
-            };
-        });
-
-        document.querySelectorAll('.add-friend-btn').forEach((button) => {
-            button.onclick = async (event) => {
-                const uid = event.currentTarget.dataset.uid;
-                try {
-                    await set(ref(db, `users/${auth.currentUser.uid}/friends/${uid}`), { status: 'pending', ts: Date.now() });
-                    await set(ref(db, `users/${uid}/friend-requests/${auth.currentUser.uid}`), { from: auth.currentUser.displayName, ts: Date.now() });
-                    showToast('Запрос отправлен');
-                } catch (e) {
-                    showToast('Ошибка при отправке запроса');
-                }
-            };
-        });
-
-        document.querySelectorAll('.dm-btn').forEach((button) => {
-            button.onclick = () => showToast('💬 Личные сообщения пока в разработке');
-        });
-
-        const localNode = data[auth.currentUser.uid] || {};
-        const effectiveLocalPerms = isHost ? { chat: true, voice: true, player: true, reactions: true } : (localNode.perms || defaultPerms);
-
-        if ($('chat-input')) $('chat-input').disabled = !effectiveLocalPerms.chat;
-        if ($('send-btn')) $('send-btn').disabled = !effectiveLocalPerms.chat;
-
-        if (!effectiveLocalPerms.voice && myStream) {
-            disableMicrophone({ notify: false }).then(() => showToast('Вам отключили голос'));
-        }
-        if ($('mic-btn')) $('mic-btn').disabled = !effectiveLocalPerms.voice;
-
-        if (effectiveLocalPerms.player || isHost) {
-            player.style.pointerEvents = 'auto';
-            player.controls = true;
-        } else {
-            player.style.pointerEvents = 'none';
-            player.controls = isHost;
-        }
-
-        document.querySelectorAll('.react-btn').forEach((button) => {
-            button.disabled = !effectiveLocalPerms.reactions;
-        });
-    };
-
-    get(ref(db, `users/${auth.currentUser.uid}/friends`)).then((snap) => {
-        const friendData = snap.val() || {};
-        Object.keys(friendData).forEach((uid) => {
-            if (isAcceptedFriendRecord(friendData[uid])) friends.add(uid);
-        });
-        renderUsers(currentPresenceCache);
-    }).catch(() => {});
-
-    const presenceListener = (snap) => renderUsers(snap.val() || {});
-    onValue(presenceDbRef, presenceListener);
-
-    if (isHost) {
-        player.onplay = () => { if (!isRemoteAction) set(videoRef, { type: 'play', time: player.currentTime, ts: Date.now() }); };
-        player.onpause = () => { if (!isRemoteAction) set(videoRef, { type: 'pause', time: player.currentTime, ts: Date.now() }); };
-        player.onseeked = () => { if (!isRemoteAction) set(videoRef, { type: 'seek', time: player.currentTime, ts: Date.now() }); };
-    } else {
-        player.onplay = null;
-        player.onpause = null;
-        player.onseeked = null;
-    }
-
-    const videoListener = (snap) => {
-        if (isHost) return;
-        const syncState = snap.val();
-        if (!syncState || syncState.ts <= lastSyncTs) return;
-
-        lastSyncTs = syncState.ts;
-        isRemoteAction = true;
-        if (Math.abs(player.currentTime - syncState.time) > 2) player.currentTime = syncState.time;
-        syncState.type === 'play' ? player.play() : player.pause();
-        setTimeout(() => { isRemoteAction = false; }, 500);
-    };
-    onValue(videoRef, videoListener);
-
-    const parseTimecodes = (text) => escapeHtml(text).replace(/(\d{1,2}:\d{2})/g, '<button class="timecode-btn" data-time="$1">$1</button>');
-    const sendMsg = () => {
-        const input = $('chat-input');
-        if (input && input.value.trim()) {
-            push(chatRef, { user: auth.currentUser.displayName, content: input.value.trim(), ts: Date.now() });
-            input.value = '';
-        }
-    };
-
-    if ($('send-btn')) $('send-btn').onclick = sendMsg;
-    if ($('chat-input')) {
-        $('chat-input').onkeydown = (event) => {
-            if (event.key === 'Enter') sendMsg();
-        };
-    }
-
-    if ($('chat-messages')) {
-        $('chat-messages').onclick = (event) => {
-            if (!event.target.classList.contains('timecode-btn')) return;
-            const parts = event.target.dataset.time.split(':');
-            const seconds = (parseInt(parts[0], 10) * 60) + parseInt(parts[1], 10);
-            player.currentTime = seconds;
-            if (isHost) {
-                player.play();
-                set(videoRef, { type: 'seek', time: seconds, ts: Date.now() });
-            }
-        };
-    }
-
-    const chatListener = (snap) => {
-        const message = snap.val();
-        const id = snap.key;
-        if (processedMsgs.has(id)) return;
-        processedMsgs.add(id);
-
-        const isMe = message.user === auth.currentUser.displayName;
-        const div = document.createElement('div');
-        div.className = isMe ? 'm-line self' : 'm-line';
-        div.innerHTML = `<div class="bubble"><strong>${escapeHtml(message.user || 'User')}</strong><p>${parseTimecodes(message.content || '')}</p></div>`;
-        $('chat-messages')?.appendChild(div);
-        if ($('chat-messages')) $('chat-messages').scrollTop = $('chat-messages').scrollHeight;
-        if (!isMe && message.ts && message.ts >= (roomEnteredAt - 2000)) {
-            showToast(`Сообщение от ${escapeHtml(message.user || 'User')}`);
-        }
-    };
-    onChildAdded(chatRef, chatListener);
-
-    if ($('tab-chat-btn')) {
-        $('tab-chat-btn').onclick = () => {
-            $('chat-messages').style.display = 'flex';
-            $('users-list').style.display = 'none';
-            $('tab-chat-btn').classList.add('active');
-            $('tab-users-btn').classList.remove('active');
-        };
-    }
-    if ($('tab-users-btn')) {
-        $('tab-users-btn').onclick = () => {
-            $('users-list').style.display = 'flex';
-            $('chat-messages').style.display = 'none';
-            $('tab-users-btn').classList.add('active');
-            $('tab-chat-btn').classList.remove('active');
-        };
-    }
-
-    document.querySelectorAll('.react-btn').forEach((button) => {
-        button.onclick = () => push(reactionsRef, { emoji: button.dataset.emoji, ts: Date.now() });
-    });
-
-    const reactionListener = (snap) => {
-        const reaction = snap.val();
-        if (Date.now() - reaction.ts > 5000) return;
-        const el = document.createElement('div');
-        el.className = 'floating-emoji';
-        el.innerText = reaction.emoji;
-        el.style.left = `${Math.random() * 80 + 10}%`;
-        $('reaction-layer')?.appendChild(el);
-        setTimeout(() => el.remove(), 3000);
-    };
-    onChildAdded(reactionsRef, reactionListener);
-
-    if ($('mic-btn')) {
-        $('mic-btn').onclick = async function() {
-            if (this.classList.contains('active')) {
-                await disableMicrophone();
-                return;
-            }
-
-            try {
-                await enableMicrophone(this);
-            } catch (e) {
-                this.classList.remove('active');
-                showToast('Ошибка доступа к микрофону');
-            }
-        };
-    }
-
-    const voiceListener = (snap) => {
-        latestVoicePeers = snap.val() || {};
-        connectToVoicePeers();
-    };
-    onValue(voiceRef, voiceListener);
-    roomListenerUnsubscribe = () => {
-        try { off(roomRef, 'value', roomListener); } catch (e) { /* ignore */ }
-        try { off(presenceDbRef, 'value', presenceListener); } catch (e) { /* ignore */ }
-        try { off(videoRef, 'value', videoListener); } catch (e) { /* ignore */ }
-        try { off(chatRef, 'child_added', chatListener); } catch (e) { /* ignore */ }
-        try { off(reactionsRef, 'child_added', reactionListener); } catch (e) { /* ignore */ }
-        try { off(voiceRef, 'value', voiceListener); } catch (e) { /* ignore */ }
-    };
-
-    const voiceEl = $('voice-volume');
-    const setRangeFill = (el) => {
-        if (!el) return;
-        const v = parseFloat(el.value) || 0;
-        const p = Math.round(v * 100);
-        const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent') || '#f5f7fa';
-        el.style.background = `linear-gradient(90deg, ${accent.trim()} ${p}%, rgba(255,255,255,0.12) ${p}%)`;
-    };
-    if (voiceEl) {
-        voiceEl.oninput = (event) => {
-            document.querySelectorAll('#remote-audio-container audio').forEach((audio) => {
-                audio.volume = event.target.value;
-            });
-            setRangeFill(event.target);
-        };
-        setRangeFill(voiceEl);
-        setupOnlineTracking();
-        setupVoiceRef();
-        updatePresenceWithOnlineStatus();
-    }
-}
-
 if ($('btn-open-room-invite')) $('btn-open-room-invite').onclick = openRoomInviteModal;
 if ($('btn-room-invite-close')) $('btn-room-invite-close').onclick = closeRoomInviteModal;
 if ($('modal-room-invite')) {
@@ -2008,11 +915,11 @@ if ($('modal-room-invite')) {
 
 renderRooms = renderRoomsV2;
 setupLobbyNotifications = setupLobbyNotificationsV2;
-enterRoom = enterRoomV2;
-leaveRoom = leaveRoomV2;
-initRoomServices = initRoomServicesV2;
+enterRoom = enterRoom;
+leaveRoom = leaveRoom;
+initRoomServices = initRoomServices;
 
-if ($('btn-leave-room')) $('btn-leave-room').onclick = leaveRoomV2;
+if ($('btn-leave-room')) $('btn-leave-room').onclick = leaveRoom;
 
 const RTC_CONFIG = {
     iceServers: [
@@ -2136,14 +1043,6 @@ function ensureVoicePeerConnection(remoteUid) {
     return pc;
 }
 
-async function publishVoiceParticipant() {
-    if (!currentRoomId || !voiceSessionId || !auth.currentUser) return;
-    await set(ref(db, `rooms/${currentRoomId}/rtc/participants/${auth.currentUser.uid}`), {
-        sessionId: voiceSessionId,
-        ts: Date.now()
-    });
-}
-
 async function createVoiceOfferFor(remoteUid) {
     if (!myStream || !voiceSessionId || !currentRoomId || remoteUid === auth.currentUser.uid) return;
     if (auth.currentUser.uid.localeCompare(remoteUid) >= 0) return;
@@ -2248,7 +1147,7 @@ function closeVoiceSignalLayer() {
     voiceParticipantsCache = {};
 }
 
-async function enableMicrophoneNative(button) {
+async function enableMicrophone(button) {
     myStream = await navigator.mediaDevices.getUserMedia({
         audio: {
             echoCancellation: true,
@@ -2265,7 +1164,7 @@ async function enableMicrophoneNative(button) {
     showToast('Микрофон включен');
 }
 
-async function disableMicrophoneNative({ notify = true } = {}) {
+async function disableMicrophone({ notify = true } = {}) {
     if (myStream) {
         myStream.getTracks().forEach((track) => track.stop());
     }
@@ -2389,183 +1288,12 @@ function bindDirectChatUi() {
 }
 
 bindDirectChatUi();
-
-function setupLobbyNotificationsV3() {
-    setupLobbyNotificationsV2();
-
-    const toggleButton = $('btn-toggle-friends');
-    const panel = $('friends-list-panel');
-    if (!toggleButton || !panel) return;
-
-    const baseHandler = toggleButton.onclick;
-    toggleButton.onclick = async () => {
-        if (typeof baseHandler === 'function') await baseHandler();
-        panel.querySelectorAll('.friend-dm-btn').forEach((button) => {
-            button.onclick = (event) => {
-                event.stopPropagation();
-                const card = button.closest('.friend-card');
-                const name = card?.querySelector('strong')?.textContent?.trim() || 'Друг';
-                openDirectChatModal(button.dataset.fuid, name);
-            };
-        });
-    };
-}
-
-function enterRoomV3(roomId, name, link, adminId) {
-    closeDirectChatModal();
-    enterRoomV2(roomId, name, link, adminId);
-}
-
-async function leaveRoomV3() {
-    closeVoiceSignalLayer();
-    await disableMicrophoneNative({ notify: false });
-    closeDirectChatModal();
-    await leaveRoomV2();
-}
-
-function initRoomServicesV3() {
-    initRoomServicesV2();
-
-    const roomId = currentRoomId;
-    const voiceRefs = getVoiceRefs(roomId);
-
-    const participantsListener = async (snap) => {
-        voiceParticipantsCache = snap.val() || {};
-        for (const remoteUid of Array.from(voicePeerConnections.keys())) {
-            if (!voiceParticipantsCache[remoteUid]) destroyVoiceConnection(remoteUid);
-        }
-        if (myStream && voiceSessionId) {
-            for (const remoteUid of Object.keys(voiceParticipantsCache)) {
-                await createVoiceOfferFor(remoteUid);
-            }
-        }
-    };
-    const offersListener = (snap) => handleIncomingOffers(snap.val() || {});
-    const answersListener = (snap) => handleIncomingAnswers(snap.val() || {});
-    const candidatesListener = (snap) => handleIncomingCandidates(snap.val() || {});
-
-    onValue(voiceRefs.participants, participantsListener);
-    onValue(voiceRefs.offersForMe, offersListener);
-    onValue(voiceRefs.answersForMe, answersListener);
-    onValue(voiceRefs.candidatesForMe, candidatesListener);
-
-    const previousVoiceCleanup = voiceSignalCleanup;
-    voiceSignalCleanup = () => {
-        try { off(voiceRefs.participants, 'value', participantsListener); } catch (e) {}
-        try { off(voiceRefs.offersForMe, 'value', offersListener); } catch (e) {}
-        try { off(voiceRefs.answersForMe, 'value', answersListener); } catch (e) {}
-        try { off(voiceRefs.candidatesForMe, 'value', candidatesListener); } catch (e) {}
-        if (typeof previousVoiceCleanup === 'function') previousVoiceCleanup();
-    };
-
-    const usersListEl = $('users-list');
-    const baseObserver = new MutationObserver(() => {
-        usersListEl.querySelectorAll('.dm-btn').forEach((button) => {
-            button.onclick = () => {
-                const card = button.closest('.user-item');
-                const name = card?.querySelector('.user-name')?.textContent?.replace(/^👥\s*/, '')?.trim() || 'Друг';
-                openDirectChatModal(button.dataset.uid, name);
-            };
-        });
-
-        usersListEl.querySelectorAll('.perm-toggle').forEach((toggle) => {
-            toggle.onchange = async (event) => {
-                if (!isHost) return;
-                const uid = event.currentTarget.dataset.uid;
-                const perm = event.currentTarget.dataset.perm;
-                const checked = event.currentTarget.checked;
-                try {
-                    await set(ref(db, `rooms/${currentRoomId}/presence/${uid}/perms/${perm}`), checked);
-                    if (perm === 'voice' && !checked) {
-                        await remove(ref(db, `rooms/${currentRoomId}/rtc/participants/${uid}`)).catch(() => {});
-                    }
-                } catch (e) {
-                    showToast('Ошибка при обновлении прав');
-                }
-            };
-        });
-    });
-    if (usersListEl) {
-        baseObserver.observe(usersListEl, { childList: true, subtree: true });
-        const prevRoomCleanup = roomListenerUnsubscribe;
-        roomListenerUnsubscribe = () => {
-            try { baseObserver.disconnect(); } catch (e) {}
-            if (typeof prevRoomCleanup === 'function') prevRoomCleanup();
-            if (typeof voiceSignalCleanup === 'function') voiceSignalCleanup();
-            voiceSignalCleanup = null;
-        };
-    }
-
-    const usersPresenceRef = ref(db, `rooms/${currentRoomId}/presence`);
-    const enhanceUsersListener = (snap) => {
-        const data = snap.val() || {};
-        const defaultPerms = { chat: true, voice: true, player: false, reactions: true };
-        const adminId = roomsCache[currentRoomId]?.admin || null;
-        const list = $('users-list');
-        if (!list) return;
-
-        list.querySelectorAll('.user-item').forEach((item) => {
-            const uid = item.dataset.uid;
-            if (!uid || uid === auth.currentUser.uid || !isHost) return;
-            if (item.querySelector('.perm-controls')) return;
-
-            const perms = { ...defaultPerms, ...(data[uid]?.perms || {}) };
-            item.insertAdjacentHTML('beforeend', renderPermissionControls(uid, perms));
-        });
-
-        const localNode = data[auth.currentUser.uid] || {};
-        const effectiveLocalPerms = isHost ? { chat: true, voice: true, player: true, reactions: true } : ({ chat: true, voice: true, player: false, reactions: true, ...(localNode.perms || {}) });
-        if (!effectiveLocalPerms.voice && myStream) {
-            disableMicrophoneNative({ notify: false }).then(() => showToast('Вам отключили голос'));
-        }
-        if ($('mic-btn')) $('mic-btn').disabled = !effectiveLocalPerms.voice;
-        if (effectiveLocalPerms.player || auth.currentUser.uid === adminId) {
-            player.style.pointerEvents = 'auto';
-            player.controls = true;
-        } else {
-            player.style.pointerEvents = 'none';
-            player.controls = false;
-        }
-        if ($('chat-input')) $('chat-input').disabled = !effectiveLocalPerms.chat;
-        if ($('send-btn')) $('send-btn').disabled = !effectiveLocalPerms.chat;
-        document.querySelectorAll('.react-btn').forEach((button) => {
-            button.disabled = !effectiveLocalPerms.reactions;
-        });
-    };
-    onValue(usersPresenceRef, enhanceUsersListener);
-    const prevCleanup = roomListenerUnsubscribe;
-    roomListenerUnsubscribe = () => {
-        try { off(usersPresenceRef, 'value', enhanceUsersListener); } catch (e) {}
-        if (typeof prevCleanup === 'function') prevCleanup();
-    };
-
-    if ($('mic-btn')) {
-        $('mic-btn').onclick = async function() {
-            const localNode = currentPresenceCache[auth.currentUser.uid] || {};
-            const effectivePerms = isHost ? { chat: true, voice: true, player: true, reactions: true } : ({ chat: true, voice: true, player: false, reactions: true, ...(localNode.perms || {}) });
-            if (!effectivePerms.voice) return;
-
-            if (myStream) {
-                await disableMicrophoneNative();
-                return;
-            }
-
-            try {
-                await enableMicrophoneNative(this);
-            } catch (e) {
-                this.classList.remove('active');
-                showToast('Ошибка доступа к микрофону');
-            }
-        };
-    }
-}
-
 setupLobbyNotifications = setupLobbyNotificationsV3;
-enterRoom = enterRoomV3;
-leaveRoom = leaveRoomV3;
-initRoomServices = initRoomServicesV3;
+enterRoom = enterRoom;
+leaveRoom = leaveRoom;
+initRoomServices = initRoomServices;
 
-if ($('btn-leave-room')) $('btn-leave-room').onclick = leaveRoomV3;
+if ($('btn-leave-room')) $('btn-leave-room').onclick = leaveRoom;
 
 function getDefaultRoomPerms(host = false) {
     return { chat: true, voice: true, player: !!host, reactions: true };
@@ -2616,6 +1344,23 @@ function bindSelfPresence() {
     });
 }
 
+function bindGlobalOnline() {
+    const globalOnlineRef = ref(db, 'users-online-count');
+    // Обновляем счетчик для всех пользователей
+    onValue(ref(db, 'users'), (snap) => {
+        let count = 0;
+        snap.forEach((childSnap) => {
+            if (childSnap.val()?.status?.online) count++;
+        });
+        const counterEl = $('online-counter');
+        const countSpan = $('online-count');
+        if (counterEl && countSpan) {
+            countSpan.innerText = count;
+            counterEl.style.display = count > 0 ? 'flex' : 'none';
+        }
+    });
+}
+
 function subscribeToOwnProfile() {
     if (!auth.currentUser) return;
     const profileRef = ref(db, `users/${auth.currentUser.uid}/profile`);
@@ -2623,14 +1368,19 @@ function subscribeToOwnProfile() {
         const profile = snap.val() || {};
         const displayName = profile.name || auth.currentUser.displayName || auth.currentUser.email || 'User';
         if ($('user-display-name')) $('user-display-name').innerText = displayName;
-        const avatar = $('my-avatar');
-        if (avatar) avatar.style.background = `linear-gradient(45deg, ${profile.color || '#f5f7fa'}, rgba(255,255,255,0.08))`;
-        if (currentRoomId && presenceRef) update(presenceRef, { name: displayName }).catch(() => {});
-        Object.entries(roomsCache || {}).forEach(([roomId, room]) => {
-            if (room?.admin === auth.currentUser.uid && room.adminName !== displayName) {
-                update(ref(db, `rooms/${roomId}`), { adminName: displayName }).catch(() => {});
+        
+        const avatarContainer = $('my-avatar');
+        if (avatarContainer) {
+            if (profile.avatar) {
+                avatarContainer.innerHTML = `<img src="${escapeHtml(profile.avatar)}" alt="avatar">`;
+                avatarContainer.style.background = 'none';
+            } else {
+                avatarContainer.innerHTML = '';
+                avatarContainer.style.background = `linear-gradient(45deg, ${profile.color || '#f5f7fa'}, rgba(255,255,255,0.08))`;
             }
-        });
+        }
+        
+        if (currentRoomId && presenceRef) update(presenceRef, { name: displayName }).catch(() => {});
     });
 }
 
@@ -3026,7 +1776,7 @@ function subscribeRoomProfiles(uids = [], rerender) {
     });
 }
 
-function enterRoomV4(roomId, name, link, adminId) {
+function enterRoom(roomId, name, link, adminId) {
     closeDirectChatModal();
     currentRoomId = roomId;
     lastSyncTs = 0;
@@ -3078,14 +1828,14 @@ function enterRoomV4(roomId, name, link, adminId) {
         };
     }
 
-    initRoomServicesV4();
+    initRoomServices();
     showToast(isHost ? 'Вы зашли как Хост' : 'Вы зашли как Зритель');
 }
 
-async function leaveRoomV4() {
+async function leaveRoom() {
     closeDirectChatModal();
     closeVoiceSignalLayer();
-    await disableMicrophoneNative({ notify: false });
+    await disableMicrophone({ notify: false });
     clearRoomProfileSubscriptions();
     if (presenceRef) { try { await remove(presenceRef); } catch (e) {} }
     if (roomListenerUnsubscribe) { try { roomListenerUnsubscribe(); } catch (e) {} roomListenerUnsubscribe = null; }
@@ -3101,7 +1851,7 @@ async function leaveRoomV4() {
     showScreen('lobby-screen');
 }
 
-function initRoomServicesV4() {
+function initRoomServices() {
     const roomId = currentRoomId;
     const roomRef = ref(db, `rooms/${roomId}`);
     const videoRef = ref(db, `rooms/${roomId}/sync`);
@@ -3199,7 +1949,7 @@ function initRoomServicesV4() {
         if ($('chat-input')) $('chat-input').disabled = !localPerms.chat;
         if ($('send-btn')) $('send-btn').disabled = !localPerms.chat;
         if ($('mic-btn')) $('mic-btn').disabled = !localPerms.voice;
-        if (!localPerms.voice && myStream) disableMicrophoneNative({ notify: false }).then(() => showToast('Вам отключили голос'));
+        if (!localPerms.voice && myStream) disableMicrophone({ notify: false }).then(() => showToast('Вам отключили голос'));
         player.controls = !!localPerms.player || isHost;
         player.style.pointerEvents = (localPerms.player || isHost) ? 'auto' : 'none';
         document.querySelectorAll('.react-btn').forEach((btn) => { btn.disabled = !localPerms.reactions; });
@@ -3208,13 +1958,35 @@ function initRoomServicesV4() {
     bindValue(roomRef, (snap) => {
         if (!snap.exists() && currentRoomId) {
             showToast('Комната удалена');
-            leaveRoomV4();
+            leaveRoom;
         }
     });
 
     bindValue(presenceDbRef, (snap) => {
         currentPresenceCache = snap.val() || {};
         rerenderUsers();
+        bindValue(presenceDbRef, (snap) => {
+        const newData = snap.val() || {};
+        
+        // Логика системных сообщений (Join/Leave)
+        if (Object.keys(currentPresenceCache).length > 0) {
+            Object.keys(newData).forEach(uid => {
+                if (!currentPresenceCache[uid]) {
+                    const name = newData[uid]?.name || 'User';
+                    addSystemMessage(`${name} присоединился к комнате`);
+                }
+            });
+            Object.keys(currentPresenceCache).forEach(uid => {
+                if (!newData[uid]) {
+                    const name = currentPresenceCache[uid]?.name || 'User';
+                    addSystemMessage(`${name} покинул комнату`);
+                }
+            });
+        }
+        
+        currentPresenceCache = newData;
+        rerenderUsers();
+    });
     });
 
     // --- ПЛЕЕР И СИНХРОНИЗАЦИЯ ---
@@ -3359,8 +2131,8 @@ function initRoomServicesV4() {
         $('mic-btn').onclick = async function() {
             const localPerms = getEffectiveRoomPerms(currentPresenceCache[auth.currentUser.uid], isHost);
             if (!localPerms.voice) return;
-            if (myStream) return disableMicrophoneNative();
-            try { await enableMicrophoneNative(this); } catch (e) { this.classList.remove('active'); showToast('Ошибка доступа к микрофону'); }
+            if (myStream) return disableMicrophone();
+            try { await enableMicrophone(this); } catch (e) { this.classList.remove('active'); showToast('Ошибка доступа к микрофону'); }
         };
     }
 
@@ -3414,8 +2186,8 @@ widenLobbyLayout();
 
 renderRooms = renderRoomsV4;
 setupLobbyNotifications = setupLobbyNotificationsV4;
-enterRoom = enterRoomV4;
-leaveRoom = leaveRoomV4;
-initRoomServices = initRoomServicesV4;
+enterRoom = enterRoom;
+leaveRoom = leaveRoom;
+initRoomServices = initRoomServices;
 
-if ($('btn-leave-room')) $('btn-leave-room').onclick = leaveRoomV4;
+if ($('btn-leave-room')) $('btn-leave-room').onclick = leaveRoom;
