@@ -1452,12 +1452,6 @@ async function sendDirectMessageV2() {
     sessionStorage.setItem(`dmSeen:${currentDirectChat.id}`, String(payload.ts));
 }
 
-function bindDirectChatUi() {
-    if ($('btn-dm-close')) $('btn-dm-close').onclick = closeDirectChatModal;
-    if ($('btn-dm-send')) $('btn-dm-send').onclick = sendDirectMessageV2;
-    if ($('dm-input')) $('dm-input').onkeydown = (event) => { if (event.key === 'Enter') sendDirectMessageV2(); };
-}
-
 function addSystemMessage(text) {
     const div = document.createElement('div');
     div.className = 'm-line system';
