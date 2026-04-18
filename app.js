@@ -10,20 +10,56 @@ const firebaseConfig = {
     storageBucket: "das4akk-1.firebasestorage.app"
 };
 
-// --- HYPER FIX: Глобальные переменные ---
-window.$ = window.$ || ((id) => document.getElementById(id)); // Безопасный селектор
+// --- EMERGENCY ENVIRONMENT BRIDGE ---
+const $ = (id) => document.getElementById(id);
 let myStream = null;
-let activeCalls = new Set();
-let processedMsgs = new Set(); 
-let currentPresenceCache = currentPresenceCache || {}; // Защита от undefined
-let isHost = isHost || false;
+let processedMsgs = new Set();
+let currentRoomId = window.currentRoomId || null; 
+let isHost = window.isHost || false;
 
-// --- HYPER FIX: Безопасные заглушки (Fallbacks) ---
-window.showToast = window.showToast || ((msg) => console.log('[Toast]', msg));
-window.getDisplayName = window.getDisplayName || (() => auth?.currentUser?.displayName || 'Аноним');
-window.isAcceptedFriendRecord = window.isAcceptedFriendRecord || ((record) => record && record.status === 'accepted');
-window.renderFriendsPanelLive = window.renderFriendsPanelLive || ((ids) => console.log('Обновление списка друзей:', ids));
-window.getEffectiveRoomPerms = window.getEffectiveRoomPerms || (() => ({ chat: true, voice: true })); // По умолчанию всё разрешено
+// Защита от отсутствующих функций в старом коде
+window.showToast = window.showToast || ((m) => console.log("Toast:", m));
+window.getDisplayName = window.getDisplayName || (() => auth?.currentUser?.displayName || "Аноним");
+
+async function initVoice() {
+    console.log('[Voice] System Ready');
+    if (myStream) return;
+}
+
+async function enableMic() {
+    try {
+        myStream = await navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation: true, noiseSuppression: true }
+        });
+        showToast("Микрофон на связи");
+        connectPeers();
+    } catch (e) {
+        showToast("Доступ к микрофону отклонен");
+    }
+}
+
+function disableMic() {
+    if (myStream) {
+        myStream.getTracks().forEach(t => t.stop());
+        myStream = null;
+    }
+    cleanupVoice();
+    showToast("Микрофон выключен");
+}
+
+function connectPeers() {
+    if (!myStream || !currentRoomId) return;
+    console.log("[Voice] Connecting to room:", currentRoomId);
+    // Здесь будет вызов твоей существующей логики сигналинга
+}
+
+function cleanupVoice() {
+    if (auth.currentUser && currentRoomId) {
+        const voiceRef = ref(db, `rooms/${currentRoomId}/voice/${auth.currentUser.uid}`);
+        remove(voiceRef).catch(() => {});
+    }
+}
+
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -254,6 +290,9 @@ setPersistence(auth, browserLocalPersistence);
 
 onAuthStateChanged(auth, (user) => {
     if (user) {
+        initOnlinePresence();
+        fixMobileInput();
+        listenMessages();
         $('user-display-name').innerText = user.displayName || user.email;
         if(!currentRoomId) {
             showScreen('lobby-screen');
@@ -355,6 +394,36 @@ $('btn-create-finish').onclick = async () => {
     if ($('room-private')) $('room-private').checked = false;
     enterRoomV4(newRoomRef.key, name, link, auth.currentUser.uid);
 };
+
+function initOnlinePresence() {
+    if (!auth.currentUser) return;
+
+    const connectedRef = ref(db, ".info/connected");
+    const userStatusRef = ref(db, `users/${auth.currentUser.uid}/status`);
+
+    onValue(connectedRef, (snap) => {
+        if (snap.val() === true) {
+            // Когда отключаемся — Firebase сам удалит/обновит эти данные
+            onDisconnect(userStatusRef).set({ online: false, lastSeen: serverTimestamp() });
+            
+            // Мы онлайн
+            set(userStatusRef, { online: true, lastSeen: serverTimestamp() });
+            updateGlobalOnlineCount();
+        }
+    });
+}
+
+function updateGlobalOnlineCount() {
+    const usersRef = ref(db, 'users');
+    onValue(usersRef, (snap) => {
+        let count = 0;
+        snap.forEach((child) => {
+            if (child.val().status?.online) count++;
+        });
+        const el = $('global-online-count');
+        if (el) el.innerText = `Сейчас онлайн: ${count}`;
+    });
+}
 
 function renderRoomsV4(filter = '') {
     const grid = $('rooms-grid');
@@ -2464,6 +2533,29 @@ function notifyNewMessage(msg) {
     if (chatPanel && chatPanel.style.display === 'none') {
         showToast(`💬 ${msg.user}: ${msg.content.substring(0, 20)}...`);
     }
+}
+
+function fixMobileInput() {
+    const input = $('chat-input');
+    if (!input) return;
+
+    input.addEventListener('focus', () => {
+        setTimeout(() => {
+            window.scrollTo(0, document.body.scrollHeight);
+        }, 300);
+    });
+}
+
+function pushSystemMessage(action) {
+    if (!currentRoomId) return;
+    const chatRef = ref(db, `rooms/${currentRoomId}/chat`);
+    const name = getDisplayName();
+    
+    push(chatRef, {
+        content: `------ ${name} ${action} ------`,
+        ts: serverTimestamp(),
+        type: 'system'
+    });
 }
 
 bindDirectChatUiV2();
