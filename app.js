@@ -1914,25 +1914,6 @@ function subscribeToOwnProfile() {
     });
 }
 
-// Слушатель списка друзей и заявок в реальном времени
-function listenFriendSystem() {
-    if (!auth.currentUser) return;
-    const myUid = auth.currentUser.uid;
-
-    // 1. Слушаем заявки (входящие)
-    onValue(ref(db, `users/${myUid}/friendRequests`), (snap) => {
-        const requests = snap.val() || {};
-        renderFriendRequestsUI(requests);
-    });
-
-    // 2. Слушаем сам список друзей
-    onValue(ref(db, `users/${myUid}/friends`), (snap) => {
-        const friends = snap.val() || {};
-        const acceptedIds = Object.keys(friends).filter(id => friends[id].status === 'accepted');
-        updateFriendsActivity(acceptedIds);
-    });
-}
-
 // Рендер заявок
 function renderFriendRequestsUI(requests) {
     const container = $('friend-requests-list');
