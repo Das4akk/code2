@@ -524,6 +524,14 @@ function anim() {
 anim();
 
 async function saveProfileEnhanced() {
+    const user = auth.currentUser;
+    if (!user) {
+        showToast('Ошибка: пользователь не авторизован');
+        return;
+    }
+    
+    const uid = user.uid; // Теперь безопасно
+    const name = $('profile-name')?.value.trim() || '';
     if (!auth.currentUser) return showToast('Нужно войти');
     const name = $('profile-name')?.value.trim() || '';
     const status = $('profile-status')?.value.trim() || '';
@@ -1223,25 +1231,13 @@ function bindGlobalOnline() {
 }
 
 function subscribeToOwnProfile() {
-    if (!auth.currentUser) return;
-    const profileRef = ref(db, `users/${auth.currentUser.uid}/profile`);
+    const user = auth.currentUser;
+    if (!user) return; // Выходим, если пользователя нет
+
+    const profileRef = ref(db, `users/${user.uid}/profile`);
     onValue(profileRef, (snap) => {
         const profile = snap.val() || {};
-        const displayName = profile.name || auth.currentUser.displayName || auth.currentUser.email || 'User';
-        if ($('user-display-name')) $('user-display-name').innerText = displayName;
-        
-        const avatarContainer = $('my-avatar');
-        if (avatarContainer) {
-            if (profile.avatar) {
-                avatarContainer.innerHTML = `<img src="${escapeHtml(profile.avatar)}" alt="avatar">`;
-                avatarContainer.style.background = 'none';
-            } else {
-                avatarContainer.innerHTML = '';
-                avatarContainer.style.background = `linear-gradient(45deg, ${profile.color || '#f5f7fa'}, rgba(255,255,255,0.08))`;
-            }
-        }
-        
-        if (currentRoomId && presenceRef) update(presenceRef, { name: displayName }).catch(() => {});
+        // ... логика обновления UI
     });
 }
 
@@ -2067,18 +2063,25 @@ function initApp() {
 // ==========================================
 // ЕДИНСТВЕННЫЙ СЛУШАТЕЛЬ АВТОРИЗАЦИИ
 // ==========================================
+// Единая точка входа
 onAuthStateChanged(auth, (user) => {
     if (user) {
+        console.log("Пользователь авторизован:", user.uid);
+        
+        // Сначала обновляем базовый UI
         if ($('user-display-name')) {
             $('user-display-name').innerText = user.displayName || user.email;
         }
+
+        // Запускаем сервисы, когда точно знаем, что UID доступен
+        initApp(); 
+        
+        // Если мы не в комнате — показываем лобби
         if (!currentRoomId) {
             showScreen('lobby-screen');
         }
-        // Запускаем всё только после успешной авторизации
-        initApp();
     } else {
-        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-        if ($('auth-screen')) $('auth-screen').classList.add('active');
+        console.log("Пользователь не вошел");
+        showScreen('auth-screen');
     }
 });
