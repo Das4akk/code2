@@ -318,16 +318,6 @@ function handleVideoSync(state) {
 // ----------------------------------------------------
 // 6. УТИЛИТЫ (ТОСТЫ, СЧЕТЧИКИ)
 // ----------------------------------------------------
-export function showToast(msg, type = 'info') {
-    const container = $('toast-container');
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-    toast.style.background = type === 'error' ? 'rgba(255, 71, 87, 0.9)' : 'rgba(46, 213, 115, 0.9)';
-    toast.style.padding = '10px 20px'; toast.style.borderRadius = '8px'; toast.style.marginBottom = '10px';
-    toast.innerText = msg;
-    container.appendChild(toast);
-    setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
-}
 
 function updateOnlineCounter(count) {
     if ($('online-counter') && $('online-count')) {
