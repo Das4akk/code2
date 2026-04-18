@@ -1,26 +1,17 @@
 // app.js
-import { subscribeToOwnProfile, initCoreComponents } from './core.js';
-import { 
-    bindDirectChatUiV2, 
-    bindSelfPresence, 
-    bindCreateModalOverrides, 
-    widenLobbyLayout,
-    renderInitialUI 
-} from './ui.js';
+import { initCore } from './core.js';
+import { initUI } from './ui.js';
 
-/**
- * Главный bootstrap-файл приложения.
- * Отвечает ТОЛЬКО за инициализацию и связывание слоев core и ui.
- */
-document.addEventListener('DOMContentLoaded', () => {
-    // 1. Инициализация базового UI и слушателей
-    renderInitialUI();
-    bindDirectChatUiV2();
-    bindSelfPresence();
-    bindCreateModalOverrides();
-    widenLobbyLayout();
-
-    // 2. Инициализация бизнес-логики и подписок
-    initCoreComponents();
-    subscribeToOwnProfile();
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        // 1. Сначала запускаем движок (Firebase, WebRTC, State)
+        await initCore();
+        
+        // 2. Затем натягиваем интерфейс на новые DOM элементы
+        initUI();
+        
+        console.log('✅ COW System v2.0: Core & UI Initialized');
+    } catch (error) {
+        console.error('❌ Ошибка инициализации системы:', error);
+    }
 });

@@ -1,31 +1,16 @@
 // core.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { 
-    getAuth, 
-    onAuthStateChanged, 
-    signInWithEmailAndPassword, 
-    createUserWithEmailAndPassword, 
-    signInWithPopup, 
-    GoogleAuthProvider, 
-    signOut, 
-    updateProfile, 
-    setPersistence, 
-    browserLocalPersistence 
+    getAuth, onAuthStateChanged, signInWithEmailAndPassword, 
+    createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, 
+    signOut, updateProfile 
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { 
-    getDatabase, 
-    ref, 
-    push, 
-    set, 
-    get, 
-    onValue, 
-    onChildAdded, 
-    onDisconnect, 
-    remove, 
-    off, 
-    update 
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"; 
+    getDatabase, ref, push, set, get, onValue, onChildAdded, 
+    onDisconnect, remove, off, update 
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
+// 🔧 КОНФИГУРАЦИЯ FIREBASE
 const firebaseConfig = {
     apiKey: "AIzaSyCby2qPGnlHWRfxWAI3Y2aK_UndEh9nato",
     authDomain: "das4akk-1.firebaseapp.com",
@@ -34,332 +19,240 @@ const firebaseConfig = {
     storageBucket: "das4akk-1.firebasestorage.app"
 };
 
-export const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-export const db = getDatabase(app);
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getDatabase(app);
+const googleProvider = new GoogleAuthProvider();
 
-// Глобальный State Management (замена window. variables)
+// 🧠 ГЛОБАЛЬНОЕ СОСТОЯНИЕ (STATE)
 export const AppState = {
-    currentUser: null,
-    editingRoomId: null,
-    teardown: [],
+    user: null,
+    currentRoomId: null,
+    isOwner: false,
+    peer: null,
+    localStream: null,
+    activeCalls: {},
+    isMicMuted: true,
     roomSubscriptions: [],
-    
-    setEditingRoom(id) {
-        this.editingRoomId = id;
-    },
-    
-    addTeardown(fn) {
-        this.teardown.push(fn);
-    },
-    
-    clearTeardown() {
-        this.teardown.forEach(fn => fn());
-        this.teardown = [];
+
+    clearRoomState() {
+        this.roomSubscriptions.forEach(unsub => unsub());
+        this.roomSubscriptions = [];
+        this.currentRoomId = null;
+        this.isOwner = false;
+        
+        if (this.peer) {
+            Object.values(this.activeCalls).forEach(call => call.close());
+            this.activeCalls = {};
+            this.peer.destroy();
+            this.peer = null;
+        }
+        if (this.localStream) {
+            this.localStream.getTracks().forEach(t => t.stop());
+            this.localStream = null;
+        }
     }
 };
 
-// Утилиты
-export function escapeHtml(str) {
-    return String(str || '').replace(/[&<>"']/g, (s) => ({
-        '&':'&amp;',
-        '<':'&lt;',
-        '>':'&gt;',
-        '"':'&quot;',
-        "'":'&#39;'
-    }[s]));
-}
-
-// Core системы
-export function initCoreComponents() {
-    onAuthStateChanged(auth, (user) => {
-        AppState.currentUser = user;
-        // Триггер обновления UI через кастомный event или callback, 
-        // чтобы не импортировать UI в Core (сохраняем однонаправленный поток данных)
-        document.dispatchEvent(new CustomEvent('core:authChanged', { detail: user }));
+// 🚀 ИНИЦИАЛИЗАЦИЯ CORE
+export function initCore() {
+    return new Promise((resolve) => {
+        onAuthStateChanged(auth, (user) => {
+            AppState.user = user;
+            if (user) {
+                initGlobalPresence(user.uid);
+                listenGlobalOnlineCount();
+            }
+            document.dispatchEvent(new CustomEvent('core:authChanged', { detail: user }));
+            resolve();
+        });
     });
 }
 
-export function subscribeToOwnProfile() {
-    if (!AppState.currentUser) return;
-    const userRef = ref(db, `users/${AppState.currentUser.uid}`);
+// 🔐 АВТОРИЗАЦИЯ
+export const authActions = {
+    login: (email, pass) => signInWithEmailAndPassword(auth, email, pass),
+    register: async (email, pass, name) => {
+        const res = await createUserWithEmailAndPassword(auth, email, pass);
+        await updateProfile(res.user, { displayName: name });
+        await set(ref(db, `users/${res.user.uid}`), { displayName: name, email });
+        return res;
+    },
+    loginGoogle: () => signInWithPopup(auth, googleProvider),
+    logout: () => {
+        AppState.clearRoomState();
+        return signOut(auth);
+    }
+};
+
+// 🏠 КОМНАТЫ
+export const roomActions = {
+    create: async (data) => {
+        const roomRef = push(ref(db, 'rooms'));
+        const roomData = {
+            id: roomRef.key,
+            owner: AppState.user.uid,
+            name: data.name || 'Новая комната',
+            videoUrl: data.videoUrl,
+            private: data.private || false,
+            password: data.password || '',
+            createdAt: Date.now(),
+            state: { isPlaying: false, currentTime: 0, updatedAt: Date.now() }
+        };
+        await set(roomRef, roomData);
+        return roomRef.key;
+    },
     
-    const unsubscribe = onValue(userRef, (snapshot) => {
-        const data = snapshot.val();
-        document.dispatchEvent(new CustomEvent('core:profileUpdated', { detail: data }));
-    });
-    
-    AppState.addTeardown(() => off(userRef, 'value', unsubscribe));
-}
-
-export function roomListenerUnsubscribe() {
-    AppState.clearTeardown();
-    closeVoiceSignalLayer();
-    clearRoomProfileSubscriptions();
-}
-
-function closeVoiceSignalLayer() {
-    // WebRTC / PeerJS логика отключения
-    document.dispatchEvent(new CustomEvent('core:voiceLayerClosed'));
-}
-
-function clearRoomProfileSubscriptions() {
-    AppState.roomSubscriptions.forEach(unsub => unsub());
-    AppState.roomSubscriptions = [];
-}
-// core.js (ПРОДОЛЖЕНИЕ)
-
-import { set, onChildAdded, onValue, onDisconnect, remove, update, get, ref } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-
-// ==========================================
-// 1. ONLINE PRESENCE SYSTEM
-// ==========================================
-export function initPresenceSystem() {
-    const connectedRef = ref(db, '.info/connected');
-    onValue(connectedRef, (snap) => {
-        if (snap.val() === true && AppState.currentUser) {
-            const myConnectionsRef = ref(db, `users/${AppState.currentUser.uid}/connections`);
-            const lastOnlineRef = ref(db, `users/${AppState.currentUser.uid}/lastOnline`);
-            
-            const con = push(myConnectionsRef);
-            onDisconnect(con).remove();
-            onDisconnect(lastOnlineRef).set(Date.now());
-            set(con, true);
-        }
-    });
-}
-
-// ==========================================
-// 2. ROOMS & VIDEO SYNC LOGIC
-// ==========================================
-export async function createRoom(roomData) {
-    if (!AppState.currentUser) return;
-    const roomRef = push(ref(db, 'rooms'));
-    const newRoom = {
-        id: roomRef.key,
-        ownerId: AppState.currentUser.uid,
-        name: roomData.name || 'Новая комната',
-        videoUrl: roomData.videoUrl || '',
-        isPrivate: roomData.isPrivate || false,
-        password: roomData.password || '',
-        createdAt: Date.now(),
-        state: { isPlaying: false, currentTime: 0, updatedAt: Date.now() }
-    };
-    await set(roomRef, newRoom);
-    return roomRef.key;
-}
-
-export function joinRoomCore(roomId, password = '') {
-    return new Promise(async (resolve, reject) => {
-        const roomRef = ref(db, `rooms/${roomId}`);
-        const snapshot = await get(roomRef);
-        
-        if (!snapshot.exists()) return reject('Комната не найдена');
-        
+    join: async (roomId, password = '') => {
+        const snapshot = await get(ref(db, `rooms/${roomId}`));
+        if (!snapshot.exists()) throw new Error('Комната не существует');
         const room = snapshot.val();
-        if (room.isPrivate && room.password !== password) {
-            return reject('Неверный пароль');
-        }
-
+        
+        if (room.private && room.password !== password) throw new Error('Неверный пароль');
+        
         AppState.currentRoomId = roomId;
+        AppState.isOwner = room.owner === AppState.user.uid;
         
-        // Подписка на состояние плеера
-        const stateRef = ref(db, `rooms/${roomId}/state`);
-        const unsubState = onValue(stateRef, (snap) => {
-            const state = snap.val();
-            if (state) document.dispatchEvent(new CustomEvent('core:videoStateChanged', { detail: state }));
-        });
-        
-        AppState.roomSubscriptions.push(() => off(stateRef, 'value', unsubState));
-        
-        // Инициализация голосового чата для комнаты
-        initVoiceSignalLayer(roomId);
-        resolve(room);
-    });
-}
+        subscribeToRoom(roomId);
+        initPeerJS(roomId);
+        return room;
+    },
 
-export function syncVideoState(roomId, isPlaying, currentTime) {
-    if (!AppState.currentUser) return;
-    const stateRef = ref(db, `rooms/${roomId}/state`);
-    update(stateRef, {
-        isPlaying,
-        currentTime,
-        updatedAt: Date.now(),
-        updatedBy: AppState.currentUser.uid
-    });
-}
-
-// ==========================================
-// 3. WEBRTC / PEERJS (VOICE CHAT LAYER)
-// ==========================================
-let peer = null;
-let activeCalls = {};
-
-export function initVoiceSignalLayer(roomId) {
-    if (!AppState.currentUser) return;
-    
-    // Инициализация PeerJS (ожидается, что Peer доступен глобально через CDN)
-    peer = new Peer(AppState.currentUser.uid, {
-        debug: 1,
-        config: {'iceServers': [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' }
-        ]}
-    });
-
-    peer.on('open', (id) => {
-        console.log('PeerJS подключен:', id);
-        joinVoiceRoomDb(roomId, id);
-    });
-
-    peer.on('call', (call) => {
-        navigator.mediaDevices.getUserMedia({ video: false, audio: true })
-            .then((stream) => {
-                call.answer(stream);
-                handleCallStream(call);
-            })
-            .catch(err => console.error('Ошибка доступа к микрофону:', err));
-    });
-}
-
-function joinVoiceRoomDb(roomId, peerId) {
-    const participantsRef = ref(db, `rooms/${roomId}/participants/${AppState.currentUser.uid}`);
-    set(participantsRef, { peerId, joinedAt: Date.now() });
-    onDisconnect(participantsRef).remove();
-
-    // Слушаем новых участников, чтобы позвонить им
-    const roomPartsRef = ref(db, `rooms/${roomId}/participants`);
-    const unsubParts = onChildAdded(roomPartsRef, (snap) => {
-        const participant = snap.val();
-        if (snap.key !== AppState.currentUser.uid) {
-            connectToPeer(participant.peerId);
+    leave: () => {
+        if (AppState.currentRoomId && AppState.user) {
+            remove(ref(db, `rooms/${AppState.currentRoomId}/participants/${AppState.user.uid}`));
         }
-    });
-    AppState.roomSubscriptions.push(() => off(roomPartsRef, 'child_added', unsubParts));
-}
+        AppState.clearRoomState();
+    },
 
-function connectToPeer(targetPeerId) {
-    navigator.mediaDevices.getUserMedia({ video: false, audio: true })
-        .then((stream) => {
-            const call = peer.call(targetPeerId, stream);
-            handleCallStream(call);
+    syncVideo: (isPlaying, currentTime) => {
+        if (!AppState.currentRoomId || !AppState.isOwner) return;
+        update(ref(db, `rooms/${AppState.currentRoomId}/state`), {
+            isPlaying, currentTime, updatedAt: Date.now(), updatedBy: AppState.user.uid
         });
+    }
+};
+
+// 💬 ЧАТ И ПОДПИСКИ НА КОМНАТУ
+function subscribeToRoom(roomId) {
+    const stateRef = ref(db, `rooms/${roomId}/state`);
+    const chatRef = ref(db, `rooms/${roomId}/messages`);
+    const usersRef = ref(db, `rooms/${roomId}/participants`);
+
+    // Видео стейт
+    const unsubState = onValue(stateRef, snap => {
+        if (snap.val()) document.dispatchEvent(new CustomEvent('core:videoSync', { detail: snap.val() }));
+    });
+    
+    // Новые сообщения
+    const unsubChat = onChildAdded(chatRef, snap => {
+        document.dispatchEvent(new CustomEvent('core:chatMessage', { detail: snap.val() }));
+    });
+
+    // Участники
+    const unsubUsers = onValue(usersRef, snap => {
+        const users = [];
+        snap.forEach(child => { users.push({ uid: child.key, ...child.val() }); });
+        document.dispatchEvent(new CustomEvent('core:roomUsers', { detail: users }));
+    });
+
+    AppState.roomSubscriptions.push(
+        () => off(stateRef, 'value', unsubState),
+        () => off(chatRef, 'child_added', unsubChat),
+        () => off(usersRef, 'value', unsubUsers)
+    );
 }
 
-function handleCallStream(call) {
-    call.on('stream', (remoteStream) => {
-        document.dispatchEvent(new CustomEvent('core:remoteStreamAdded', { 
-            detail: { peerId: call.peer, stream: remoteStream } 
-        }));
+export const chatActions = {
+    send: (text) => {
+        if (!AppState.currentRoomId || !text.trim()) return;
+        push(ref(db, `rooms/${AppState.currentRoomId}/messages`), {
+            senderId: AppState.user.uid,
+            senderName: AppState.user.displayName || 'Пользователь',
+            text: text.trim(),
+            timestamp: Date.now()
+        });
+    }
+};
+
+// 🎤 WEBRTC / PEERJS (Голосовой чат)
+function initPeerJS(roomId) {
+    AppState.peer = new Peer(AppState.user.uid, {
+        config: {'iceServers': [{ urls: 'stun:stun.l.google.com:19302' }]}
+    });
+
+    AppState.peer.on('open', (id) => {
+        const pRef = ref(db, `rooms/${roomId}/participants/${AppState.user.uid}`);
+        set(pRef, { peerId: id, name: AppState.user.displayName || 'Аноним', joinedAt: Date.now() });
+        onDisconnect(pRef).remove();
+
+        // Звоним новым участникам
+        const unsubNewUsers = onChildAdded(ref(db, `rooms/${roomId}/participants`), snap => {
+            if (snap.key !== AppState.user.uid) callPeer(snap.val().peerId);
+        });
+        AppState.roomSubscriptions.push(() => off(ref(db, `rooms/${roomId}/participants`), 'child_added', unsubNewUsers));
+    });
+
+    AppState.peer.on('call', async (call) => {
+        const stream = await getLocalStream();
+        call.answer(stream);
+        handleCall(call);
+    });
+}
+
+async function getLocalStream() {
+    if (!AppState.localStream) {
+        AppState.localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        AppState.localStream.getAudioTracks()[0].enabled = !AppState.isMicMuted;
+    }
+    return AppState.localStream;
+}
+
+async function callPeer(peerId) {
+    const stream = await getLocalStream();
+    const call = AppState.peer.call(peerId, stream);
+    handleCall(call);
+}
+
+function handleCall(call) {
+    call.on('stream', remoteStream => {
+        document.dispatchEvent(new CustomEvent('core:remoteAudio', { detail: { peerId: call.peer, stream: remoteStream }}));
     });
     call.on('close', () => {
-        document.dispatchEvent(new CustomEvent('core:remoteStreamRemoved', { detail: call.peer }));
+        document.dispatchEvent(new CustomEvent('core:remoteAudioRemove', { detail: call.peer }));
     });
-    activeCalls[call.peer] = call;
+    AppState.activeCalls[call.peer] = call;
 }
 
-export function closeVoiceSignalLayer() {
-    if (peer) {
-        Object.values(activeCalls).forEach(call => call.close());
-        activeCalls = {};
-        peer.destroy();
-        peer = null;
+export const voiceActions = {
+    toggleMic: async () => {
+        const stream = await getLocalStream();
+        AppState.isMicMuted = !AppState.isMicMuted;
+        stream.getAudioTracks()[0].enabled = !AppState.isMicMuted;
+        return !AppState.isMicMuted; // возвращает true если мик ВКЛЮЧЕН
     }
-}
+};
 
-// ==========================================
-// 4. CHAT SYSTEM
-// ==========================================
-export function sendChatMessage(roomId, text) {
-    if (!AppState.currentUser || !text.trim()) return;
-    const msgRef = push(ref(db, `rooms/${roomId}/messages`));
-    set(msgRef, {
-        senderId: AppState.currentUser.uid,
-        text: escapeHtml(text.trim()),
-        timestamp: Date.now()
-    });
-}
-
-export function subscribeToChat(roomId) {
-    const messagesRef = ref(db, `rooms/${roomId}/messages`);
-    const unsubMsg = onChildAdded(messagesRef, (snap) => {
-        document.dispatchEvent(new CustomEvent('core:chatMessageReceived', { detail: snap.val() }));
-    });
-    AppState.roomSubscriptions.push(() => off(messagesRef, 'child_added', unsubMsg));
-}
-// core.js (ФИНАЛ)
-
-import { ref, set, get, remove, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-
-// ==========================================
-// 5. GLOBAL ONLINE COUNTER
-// ==========================================
-export function initGlobalOnlineCounter() {
-    const usersRef = ref(db, 'users');
-    onValue(usersRef, (snapshot) => {
-        let count = 0;
-        snapshot.forEach((childSnap) => {
-            const userData = childSnap.val();
-            // Считаем пользователя онлайн, если у него есть активные соединения
-            if (userData.connections) {
-                count++;
-            }
-        });
-        document.dispatchEvent(new CustomEvent('core:onlineCountUpdated', { detail: count }));
-    });
-}
-
-// ==========================================
-// 6. FRIENDS SYSTEM
-// ==========================================
-export function subscribeToFriends() {
-    if (!AppState.currentUser) return;
-    const friendsRef = ref(db, `users/${AppState.currentUser.uid}/friends`);
-    
-    const unsub = onValue(friendsRef, async (snapshot) => {
-        const friendsList = [];
-        if (snapshot.exists()) {
-            const promises = [];
-            snapshot.forEach((childSnap) => {
-                const friendId = childSnap.key;
-                const friendUserRef = ref(db, `users/${friendId}`);
-                promises.push(get(friendUserRef).then(res => res.val()));
-            });
-            const results = await Promise.all(promises);
-            results.forEach(user => { if (user) friendsList.push(user); });
+// 🌍 СТАТУС ОНЛАЙН
+function initGlobalPresence(uid) {
+    const statusRef = ref(db, `users/${uid}/status`);
+    onValue(ref(db, '.info/connected'), snap => {
+        if (snap.val() === true) {
+            onDisconnect(statusRef).set('offline');
+            set(statusRef, 'online');
         }
-        document.dispatchEvent(new CustomEvent('core:friendsUpdated', { detail: friendsList }));
     });
-    
-    AppState.addTeardown(() => off(friendsRef, 'value', unsub));
 }
 
-export async function addFriend(friendUid) {
-    if (!AppState.currentUser || friendUid === AppState.currentUser.uid) return false;
-    
-    // Проверяем, существует ли пользователь
-    const userRef = ref(db, `users/${friendUid}`);
-    const snapshot = await get(userRef);
-    if (!snapshot.exists()) throw new Error("Пользователь не найден");
-
-    const myFriendRef = ref(db, `users/${AppState.currentUser.uid}/friends/${friendUid}`);
-    await set(myFriendRef, true);
-    return true;
+function listenGlobalOnlineCount() {
+    onValue(ref(db, 'users'), snap => {
+        let count = 0;
+        snap.forEach(u => { if (u.val().status === 'online') count++; });
+        document.dispatchEvent(new CustomEvent('core:onlineCount', { detail: count }));
+    });
 }
 
-export async function removeFriend(friendUid) {
-    if (!AppState.currentUser) return;
-    const myFriendRef = ref(db, `users/${AppState.currentUser.uid}/friends/${friendUid}`);
-    await remove(myFriendRef);
-}
-
-export async function updateUserProfile(displayName, photoURL) {
-    if (!AppState.currentUser) return;
-    const updates = {};
-    if (displayName) updates.displayName = displayName;
-    if (photoURL) updates.photoURL = photoURL;
-    
-    await updateProfile(AppState.currentUser, updates);
-    const userDbRef = ref(db, `users/${AppState.currentUser.uid}`);
-    await update(userDbRef, updates);
+// 🛡️ БЕЗОПАСНОСТЬ
+export function escapeHtml(str) {
+    return String(str || '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
 }
