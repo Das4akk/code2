@@ -4,19 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>COW — Co-Watching Space</title>
+    <!-- Подключаем стили (в реальной среде они могут быть внешними, здесь я оставляю структуру под app.js) -->
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* Интегрируем нейросетевой фон прямо здесь для надежности */
+        #particle-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: radial-gradient(circle at center, #0a0a0f 0%, #050505 100%);
+        }
+    </style>
 </head>
 <body>
     <canvas id="particle-canvas"></canvas>
     
     <div id="toast-container"></div>
-    <div id="online-counter" class="online-counter" style="display:none;">
-        <span id="online-count">1</span> онлайн
-    </div>
     
-    <div id="remote-audio-container" style="display: none;"></div>
-
     <div id="app-container">
+        <!-- ЭКРАН АВТОРИЗАЦИИ -->
         <section id="auth-screen" class="screen active">
             <div class="auth-wrapper glass-panel">
                 <h1 class="logo">COW</h1>
@@ -28,161 +37,110 @@
                     <div id="form-login" class="auth-form active-form">
                         <input type="email" id="login-email" placeholder="Email" autocomplete="off">
                         <input type="password" id="login-password" placeholder="Пароль">
-                        <button type="button" id="btn-login-email" class="primary-btn">Войти</button>
+                        <button id="btn-login-submit" class="primary-btn">Войти</button>
                     </div>
-                    <div id="form-register" class="auth-form hidden-form right">
-                        <input type="text" id="reg-name" placeholder="Никнейм" autocomplete="off">
-                        <input type="email" id="reg-email" placeholder="Email" autocomplete="off">
+                    <div id="form-register" class="auth-form">
+                        <input type="text" id="reg-name" placeholder="Имя (отображаемое)">
+                        <input type="text" id="reg-username" placeholder="@username (уникальный)">
+                        <input type="email" id="reg-email" placeholder="Email">
                         <input type="password" id="reg-password" placeholder="Пароль">
-                        <button type="button" id="btn-register-email" class="primary-btn">Создать аккаунт</button>
+                        <button id="btn-register-submit" class="primary-btn">Создать аккаунт</button>
                     </div>
                 </div>
-                <div class="divider"><span>или</span></div>
-                <button type="button" id="btn-google-auth" class="google-btn">Войти через Google</button>
+                <div class="auth-divider">или</div>
+                <button id="btn-google-auth" class="google-btn">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/action/google.svg" alt="G">
+                    Продолжить с Google
+                </button>
             </div>
         </section>
 
+        <!-- ЛОББИ -->
         <section id="lobby-screen" class="screen">
-            <div class="lobby-layout">
-                <aside class="lobby-sidebar glass-panel">
-                    <div class="user-profile">
-                        <div class="avatar-circle" id="my-avatar"></div>
-                        <div>
-                            <h3 id="user-display-name">...</h3>
-                            <span id="user-online-status" style="font-size: 12px; color: #2ed573;">● Онлайн</span>
-                        </div>
-                        <button id="btn-edit-profile" class="icon-btn">✎</button>
+            <header class="lobby-header glass-panel">
+                <div class="user-brief" id="my-profile-trigger">
+                    <div class="avatar-circle" id="my-avatar-display"></div>
+                    <div class="user-info">
+                        <div class="user-name" id="my-name-display">Загрузка...</div>
+                        <div class="user-status-text" id="my-username-display">@user</div>
                     </div>
-                    <nav class="sidebar-nav">
-                        <button id="btn-all-rooms" class="nav-item active glass-panel">📺 Все комнаты</button>
-                        <button id="btn-friends-sidebar" class="nav-item glass-panel">👥 Друзья</button>
-                    </nav>
-                    <div id="sidebar-friends" style="display:none; flex:1; overflow-y:auto; margin-bottom:20px;"></div>
-                    <button id="btn-delete-all-rooms" class="danger-btn" style="margin-top: auto;">⚠ Удалить ВСЕ</button>
-                    <button id="btn-logout" class="google-btn logout-btn">← Выход</button>
-                </aside>
-
-                <main class="lobby-main">
-                    <header class="main-header glass-panel">
-                        <input type="text" id="search-rooms" placeholder="Поиск комнат...">
-                        <button id="btn-open-modal" class="primary-btn create-btn">+ Создать</button>
-                    </header>
-                    <div id="rooms-grid" class="rooms-grid"></div>
-                    <div id="friends-list-panel" class="friends-list-panel" style="display: none;"></div>
-                </main>
-            </div>
-        </section>
-
-        <div id="modal-create" class="modal">
-            <div class="modal-content glass-panel">
-                <h2>Создать комнату</h2>
-                <input type="text" id="room-name" placeholder="Название комнаты" autocomplete="off">
-                <input type="text" id="room-link" placeholder="Ссылка на видео (mp4)" autocomplete="off">
-                <label style="display:flex; align-items:center; gap:8px; margin-top:12px; font-size:14px; color:#ddd;">
-                    <input type="checkbox" id="room-private"> Приватная
-                </label>
-                <input type="password" id="room-password" placeholder="Пароль" autocomplete="new-password" style="display:none; margin-top:8px;">
-                <div class="modal-buttons">
-                    <button id="btn-close-modal" class="google-btn">Отмена</button>
-                    <button id="btn-create-finish" class="primary-btn">Создать</button>
                 </div>
-            </div>
-        </div>
-
-        <div id="modal-join" class="modal">
-            <div class="modal-content glass-panel">
-                <h2>Приватная комната</h2>
-                <input type="password" id="join-password" placeholder="Пароль" autocomplete="off">
-                <div class="modal-buttons">
-                    <button id="btn-join-cancel" class="google-btn">Отмена</button>
-                    <button id="btn-join-confirm" class="primary-btn">Войти</button>
-                </div>
-            </div>
-        </div>
-
-        <div id="modal-profile" class="modal">
-            <div class="modal-content glass-panel">
-                <h2>Профиль</h2>
-                <input type="text" id="profile-name" placeholder="Никнейм" autocomplete="off">
-                <input type="text" id="profile-status" placeholder="Статус (напр. 'В кино' или 'Занят')" autocomplete="off" style="margin-bottom:12px;">
-                <input type="number" id="profile-volume" placeholder="Громкость по умолчанию (0-100)" min="0" max="100" value="100" style="margin-bottom:12px;">
-                <textarea id="profile-bio" placeholder="О себе (до 120 символов)" maxlength="120" style="width:100%; padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.06); color:#fff; resize:none; margin-bottom:12px; font-family:inherit;"></textarea>
-                <label style="font-size:14px; color:#ddd; display:block; margin-bottom:8px;">Цвет ника:</label>
-                <div style="display:flex; gap:8px; align-items:center; margin-bottom:12px;">
-                    <input type="color" id="profile-color" value="#f5f7fa" style="width:50px; height:40px; padding:0; border-radius:10px; border:none; cursor:pointer;">
-                    <span id="profile-color-name" style="font-size:12px; color:#aaa;">Стандартный</span>
-                </div>
-                <div class="modal-buttons">
-                    <button id="btn-profile-cancel" class="google-btn">Отмена</button>
-                    <button id="btn-profile-save" class="primary-btn">Сохранить</button>
-                </div>
-            </div>
-        </div>
-
-        <div id="modal-dm-chat" class="modal">
-            <div class="modal-content glass-panel dm-modal-content">
-                <div class="dm-modal-header">
-                    <div>
-                        <h2 id="dm-chat-title">Личный чат</h2>
-                        <p id="dm-chat-status">Сообщения только между вами и другом</p>
-                    </div>
-                    <button id="btn-dm-close" class="google-btn" type="button">✕</button>
-                </div>
-                <div id="dm-messages" class="dm-messages"></div>
-                <div class="dm-compose">
-                    <input type="text" id="dm-input" placeholder="Написать другу..." autocomplete="off">
-                    <button id="btn-dm-send" class="primary-btn" type="button">↑</button>
-                </div>
-            </div>
-        </div>
-
-        <section id="room-screen" class="screen">
-            <header class="room-header glass-panel">
-                <div style="display: flex; gap: 10px; flex-wrap:wrap;">
-                    <button id="btn-leave-room" class="google-btn leave-btn">← Лобби</button>
-                    <button id="btn-edit-room" class="google-btn" style="display:none;">✎ Редактировать</button>
-                    <button id="btn-delete-room" class="danger-btn" style="display:none;">🗑 Удалить</button>
-                </div>
-                <h2 id="room-title-text" style="margin-left: 20px; flex-grow: 1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">Комната</h2>
-                <div class="voice-volume-control" style="margin-right: 20px; display:flex; gap:8px; align-items:center;">
-                    <span title="Громкость">🔊</span>
-                    <input type="range" id="voice-volume" min="0" max="1" step="0.05" value="1" style="width:120px;">
+                <div class="header-actions">
+                    <button id="btn-open-friends" class="icon-btn" title="Друзья">👥</button>
+                    <button id="btn-open-create" class="primary-btn">+ Создать</button>
+                    <button id="btn-logout" class="secondary-btn">Выйти</button>
                 </div>
             </header>
-            
-            <main class="main-layout-room">
-                <div class="video-column">
-                    <canvas id="ambilight-canvas"></canvas>
-                    
-                    <div class="player-wrapper glass-panel" id="player-wrapper">
-                        <video id="native-player" playsinline preload="metadata"></video>
-                        <div id="reaction-layer"></div>
+
+            <main class="lobby-layout">
+                <div class="rooms-container">
+                    <div class="section-title">
+                        <h2>Открытые комнаты</h2>
+                        <span id="rooms-count-label">0 активных</span>
+                    </div>
+                    <div id="rooms-grid" class="rooms-grid">
+                        <!-- Сюда прилетят комнаты -->
+                    </div>
+                </div>
+            </main>
+        </section>
+
+        <!-- КОМНАТА -->
+        <section id="room-screen" class="screen">
+            <header class="room-header glass-panel">
+                <button id="btn-leave-room" class="back-btn">← Выйти</button>
+                <div class="room-title-block">
+                    <h2 id="room-name-display">Название комнаты</h2>
+                    <span id="room-status-tag" class="status-tag">Live</span>
+                </div>
+                <div class="room-actions">
+                    <button id="btn-room-settings" class="icon-btn">⚙️</button>
+                </div>
+            </header>
+
+            <main class="room-grid">
+                <div class="player-column">
+                    <div class="video-container glass-panel" id="player-wrapper">
+                        <!-- Плеер или заглушка -->
+                        <div id="player-placeholder">
+                            <p>Ожидание контента...</p>
+                        </div>
                     </div>
                     
-                    <div class="reaction-bar glass-panel">
+                    <div class="player-controls glass-panel">
+                        <div class="control-row">
+                            <button id="btn-play-pause" class="ctrl-btn">Play</button>
+                            <input type="range" id="sync-progress" value="0" step="0.1">
+                            <span id="sync-time">00:00</span>
+                        </div>
+                        <div class="input-row">
+                            <input type="text" id="video-url-input" placeholder="Вставьте ссылку (YouTube/HLS)...">
+                            <button id="btn-set-video">Загрузить</button>
+                        </div>
+                    </div>
+
+                    <div class="reactions-bar glass-panel">
                         <button class="react-btn" data-emoji="🔥">🔥</button>
                         <button class="react-btn" data-emoji="😂">😂</button>
                         <button class="react-btn" data-emoji="😱">😱</button>
                         <button class="react-btn" data-emoji="❤️">❤️</button>
-                        <button class="react-btn" data-emoji="👏">👏</button>
-                        <button id="btn-fullscreen" class="icon-btn" style="margin-left: auto;">⛶ ФСкрин</button>
+                        <button id="btn-fullscreen" class="icon-btn" style="margin-left: auto;">⛶</button>
                     </div>
                 </div>
                 
                 <div class="chat-column glass-panel">
                     <div class="chat-tabs">
-                        <button id="tab-chat-btn" class="active">💬 Чат</button>
-                        <button id="tab-users-btn">👥 Люди (<span id="users-count">1</span>)</button>
+                        <button id="tab-chat-btn" class="active">Чат</button>
+                        <button id="tab-users-btn">Люди (<span id="users-count">1</span>)</button>
                     </div>
 
                     <div class="chat-area active-area" id="chat-messages"></div>
                     <div class="users-area" id="users-list" style="display: none;"></div>
 
-                    <div class="message-dock" id="message-dock-container">
-                        <div class="beautiful-chat-input glass-panel">
-                            <button id="mic-btn" class="mic-icon-btn" title="Микрофон">🎤</button>
-                            <input type="text" id="chat-input" placeholder="Сообщение или :00 таймкод..." autocomplete="off">
-                            <button id="send-btn" class="send-btn">↑</button>
+                    <div class="message-dock">
+                        <div class="chat-input-wrapper">
+                            <input type="text" id="chat-input" placeholder="Напишите сообщение..." autocomplete="off">
+                            <button id="send-btn">↑</button>
                         </div>
                     </div>
                 </div>
@@ -190,6 +148,174 @@
         </section>
     </div>
 
+    <!-- МОДАЛЬНЫЕ ОКНА -->
+    
+    <!-- Свой профиль -->
+    <div id="modal-my-profile" class="modal">
+        <div class="modal-content glass-panel profile-modal">
+            <div class="profile-header">
+                <div class="avatar-large" id="edit-avatar-preview"></div>
+                <div class="profile-main-info">
+                    <input type="text" id="edit-display-name" class="profile-name-input" placeholder="Ваше имя">
+                    <div class="username-badge" id="display-username">@loading</div>
+                </div>
+            </div>
+            <div class="profile-body">
+                <label>Статус</label>
+                <input type="text" id="edit-status" placeholder="Что у вас нового?">
+                
+                <label>Ссылка на аватар</label>
+                <input type="text" id="edit-avatar-url" placeholder="https://...">
+                
+                <label>Уникальный @username</label>
+                <div class="username-edit-row">
+                    <input type="text" id="edit-username-input" placeholder="danya">
+                    <button id="btn-check-username" class="secondary-btn">Проверить</button>
+                </div>
+                <small id="username-hint">Только латиница, цифры и точки.</small>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-close-profile" class="secondary-btn">Отмена</button>
+                <button id="btn-save-profile" class="primary-btn">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Чужой профиль -->
+    <div id="modal-user-profile" class="modal">
+        <div class="modal-content glass-panel profile-modal">
+            <div class="profile-header">
+                <div class="avatar-large" id="user-view-avatar"></div>
+                <div class="profile-main-info">
+                    <h2 id="user-view-name">Имя пользователя</h2>
+                    <div class="username-badge" id="user-view-username">@username</div>
+                </div>
+            </div>
+            <div class="profile-body">
+                <p id="user-view-status" class="status-quote">"Без статуса"</p>
+                <div class="profile-stats">
+                    <div class="stat-item">
+                        <span id="user-view-friends-count">0</span>
+                        <label>друзей</label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" id="user-view-actions">
+                <!-- Кнопки добавления в друзья будут здесь динамически -->
+            </div>
+            <button class="close-modal-x" onclick="document.getElementById('modal-user-profile').classList.remove('active')">×</button>
+        </div>
+    </div>
+
+    <!-- Окно друзей -->
+    <div id="modal-friends" class="modal">
+        <div class="modal-content glass-panel friends-modal">
+            <div class="friends-tabs">
+                <button class="f-tab active" data-tab="f-list">Друзья</button>
+                <button class="f-tab" data-tab="f-requests">Заявки <span id="req-count-badge" style="display:none">0</span></button>
+                <button class="f-tab" data-tab="f-search">Поиск</button>
+            </div>
+            
+            <div id="f-list" class="friends-tab-content active">
+                <div id="friends-list-container" class="scroll-list">
+                    <!-- Список друзей -->
+                </div>
+            </div>
+            
+            <div id="f-requests" class="friends-tab-content">
+                <div id="requests-list-container" class="scroll-list">
+                    <!-- Список заявок -->
+                </div>
+            </div>
+            
+            <div id="f-search" class="friends-tab-content">
+                <div class="search-row">
+                    <input type="text" id="friend-search-input" placeholder="Введите @username...">
+                    <button id="btn-do-search" class="primary-btn">Найти</button>
+                </div>
+                <div id="search-results-container" class="scroll-list"></div>
+            </div>
+
+            <button class="close-modal-x" onclick="document.getElementById('modal-friends').classList.remove('active')">×</button>
+        </div>
+    </div>
+
+    <!-- Модалка создания комнаты -->
+    <div id="modal-create" class="modal">
+        <div class="modal-content glass-panel">
+            <h3>Создание комнаты</h3>
+            <input type="text" id="room-name-input" placeholder="Название комнаты">
+            <div class="checkbox-row">
+                <input type="checkbox" id="room-private-check">
+                <label for="room-private-check">Приватная комната</label>
+            </div>
+            <input type="password" id="room-pass-input" placeholder="Пароль (если приватная)" style="display:none">
+            
+            <div class="modal-footer">
+                <button id="btn-close-modal" class="secondary-btn">Отмена</button>
+                <button id="btn-confirm-create" class="primary-btn">Создать</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK и основной скрипт -->
     <script type="module" src="app.js"></script>
+    <script>
+        // Небольшой скрипт для Canvas Фона (Нейросетевой эффект)
+        const canvas = document.getElementById('particle-canvas');
+        const ctx = canvas.getContext('2d');
+        let dots = [];
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.onresize = resize;
+        resize();
+
+        class Dot {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.vx = (Math.random() - 0.5) * 0.5;
+                this.vy = (Math.random() - 0.5) * 0.5;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                if(this.x < 0 || this.x > canvas.width) this.vx *= -1;
+                if(this.y < 0 || this.y > canvas.height) this.vy *= -1;
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 1.5, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                ctx.fill();
+            }
+        }
+
+        for(let i=0; i<60; i++) dots.push(new Dot());
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            dots.forEach(d => {
+                d.update();
+                d.draw();
+                dots.forEach(d2 => {
+                    let dist = Math.hypot(d.x - d2.x, d.y - d2.y);
+                    if(dist < 150) {
+                        ctx.beginPath();
+                        ctx.moveTo(d.x, d.y);
+                        ctx.lineTo(d2.x, d2.y);
+                        ctx.strokeStyle = `rgba(255,255,255,${0.15 * (1 - dist/150)})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.stroke();
+                    }
+                });
+            });
+            requestAnimationFrame(animate);
+        }
+        animate();
+    </script>
 </body>
 </html>
