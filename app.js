@@ -1,7 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, updateProfile, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getDatabase, ref, push, set, get, onValue, onChildAdded, onDisconnect, remove, off, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+import { getDatabase, ref, push, set, get, onValue, onChildAdded, onDisconnect, remove, off, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"; 
 
 const firebaseConfig = {
     apiKey: "AIzaSyCby2qPGnlHWRfxWAI3Y2aK_UndEh9nato",
@@ -14,7 +13,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getDatabase(app);
-const storage = getStorage(app);
 
 const $ = (id) => document.getElementById(id);
 // Безопасное экранирование текста для вставки в innerHTML
@@ -65,8 +63,11 @@ function showToast(message) {
 }
 
 // --- WebRTC Инициализация ---
-
-
+const peer = {
+    id: null,
+    on() {},
+    call() { return null; }
+};
 let voiceRef = null;
 let onlineUsersCache = {};
 let currentRoomId = null;
@@ -165,6 +166,20 @@ ensureRoomInviteUi();
 
 setPersistence(auth, browserLocalPersistence);
 
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        $('user-display-name').innerText = user.displayName || user.email;
+        if(!currentRoomId) {
+            showScreen('lobby-screen');
+            // Загрузка уведомлений о друзьях и инвайтах в лобби
+            setupLobbyNotificationsV4();
+        }
+        syncRooms();
+    } else {
+        showScreen('auth-screen');
+    }
+});
+
 // Авторизация
 $('tab-login').onclick = () => { $('form-login').classList.add('active-form'); $('form-login').classList.remove('hidden-form', 'left'); $('form-register').classList.add('hidden-form', 'right'); $('form-register').classList.remove('active-form'); $('tab-login').classList.add('active'); $('tab-register').classList.remove('active'); };
 $('tab-register').onclick = () => { $('form-register').classList.add('active-form'); $('form-register').classList.remove('hidden-form', 'right'); $('form-login').classList.add('hidden-form', 'left'); $('form-login').classList.remove('active-form'); $('tab-register').classList.add('active'); $('tab-login').classList.remove('active'); };
@@ -173,6 +188,10 @@ $('btn-login-email').onclick = async () => { try { await signInWithEmailAndPassw
 $('btn-register-email').onclick = async () => { try { const res = await createUserWithEmailAndPassword(auth, $('reg-email').value, $('reg-password').value); await updateProfile(res.user, { displayName: $('reg-name').value }); $('user-display-name').innerText = $('reg-name').value; } catch(e) { showToast("Ошибка: " + e.message); } };
 $('btn-google-auth').onclick = async () => { try { await signInWithPopup(auth, new GoogleAuthProvider()); } catch(e) { showToast("Ошибка Google"); } };
 $('btn-logout').onclick = () => signOut(auth);
+
+// Лобби
+$('btn-open-modal').onclick = () => { editingRoomId = null; $('modal-create').classList.add('active'); };
+$('btn-close-modal').onclick = () => { editingRoomId = null; $('modal-create').classList.remove('active'); if ($('room-password')) $('room-password').value = ''; if ($('room-private')) $('room-private').checked = false; };
 
 $('btn-delete-all-rooms').onclick = async () => {
     if(confirm("ВНИМАНИЕ! Вы удалите ВСЕ комнаты. Продолжить?")) {
@@ -248,11 +267,12 @@ $('btn-create-finish').onclick = async () => {
     // очистим поля
     if ($('room-password')) $('room-password').value = '';
     if ($('room-private')) $('room-private').checked = false;
-    enterRoom(newRoomRef.key, name, link, auth.currentUser.uid);
+    enterRoomV4(newRoomRef.key, name, link, auth.currentUser.uid);
 };
 
-function renderRooms(filter = '') {
+function renderRoomsV4(filter = '') {
     const grid = $('rooms-grid');
+    if (!grid) return;
     grid.innerHTML = '';
     const data = roomsCache || {};
     const q = String(filter || '').trim().toLowerCase();
@@ -261,24 +281,31 @@ function renderRooms(filter = '') {
         grid.innerHTML = '<div style="padding:20px; color:#888">Пока нет комнат</div>';
         return;
     }
-    keys.forEach(id => {
-        const room = data[id];
+
+    keys.forEach((id) => {
+        const room = data[id] || {};
         const name = room.name || '';
         const host = room.adminName || '';
-        if (q) {
-            const hay = (name + ' ' + host).toLowerCase();
-            if (!hay.includes(q)) return;
-        }
-        // Используем JSON.stringify чтобы корректно экранировать аргументы для onclick
-        const lock = room.private ? '🔒 ' : '';
-        const previewTime = getRoomPreviewTime(room.sync || {});
+        if (q && !`${name} ${host}`.toLowerCase().includes(q)) return;
+
         const roomLink = room.link || '';
+        const previewTime = getRoomPreviewTime(room.sync || {});
+        const lock = room.private ? '🔒 ' : '';
         const colorDot = room.buttonColor ? `<div class="room-color-indicator" style="background:${escapeHtml(room.buttonColor)}"></div>` : '';
         const previewContent = roomLink
-            ? `<video class="room-thumb-video" muted playsinline preload="metadata" src="${escapeHtml(roomLink)}" data-seek-time="${previewTime}"></video><div class="room-thumb-label">Сейчас в плеере</div>`
+            ? `<video class="room-thumb-video" muted playsinline preload="none" data-src="${escapeHtml(roomLink)}" data-seek-time="${previewTime}"></video><div class="room-thumb-label">Сейчас в плеере</div>`
             : `<div class="room-thumb-placeholder">Видео не задано</div>`;
-        grid.innerHTML += `\n            <div class="room-card glass-panel" onclick='window.joinRoom(${JSON.stringify(id)}, ${JSON.stringify(name)}, ${JSON.stringify(room.link || '')}, ${JSON.stringify(room.admin || '')})'>\n                ${colorDot}\n                <div class="room-thumb" style="${previewStyle}"></div>\n                <h4>${lock + escapeHtml(name)}</h4>\n                <p style=\"font-size:12px; opacity:0.6; margin-top:5px;\">Хост: ${escapeHtml(host)}</p>\n            </div>`;
+
+        grid.innerHTML += `
+            <div class="room-card glass-panel" onclick='window.joinRoom(${JSON.stringify(id)}, ${JSON.stringify(name)}, ${JSON.stringify(roomLink)}, ${JSON.stringify(room.admin || '')})'>
+                ${colorDot}
+                <div class="room-thumb">${previewContent}</div>
+                <h4>${lock + escapeHtml(name)}</h4>
+                <p style="font-size:12px; opacity:0.6; margin-top:5px;">Хост: ${escapeHtml(host)}</p>
+            </div>`;
     });
+
+    bindRoomPreviewLazyLoad();
 }
 
 function syncRooms() {
@@ -286,7 +313,7 @@ function syncRooms() {
         roomsCache = snap.val() || {};
         // сразу отрендерим с учётом текущего поиска
         const si = $('search-rooms');
-        renderRooms(si ? si.value : '');
+        renderRoomsV4(si ? si.value : '');
     });
     // Подписка на ввод поиска (легкий debounce)
     const search = $('search-rooms');
@@ -294,7 +321,7 @@ function syncRooms() {
         let t = null;
         search.addEventListener('input', (e) => {
             clearTimeout(t);
-            t = setTimeout(() => renderRooms(e.target.value), 120);
+            t = setTimeout(() => renderRoomsV4(e.target.value), 120);
         });
     }
     // Управление видимостью поля пароля в модалке
@@ -305,6 +332,35 @@ function syncRooms() {
     }
 }
 
+// --- УВЕДОМЛЕНИЯ В ЛОББИ: приглашения друзей и в комнаты ---
+function setupLobbyNotificationsV4() {
+    if (setupLobbyNotificationsV4.didInit || !auth.currentUser) return;
+    setupLobbyNotificationsV4.didInit = true;
+    setupLobbyNotificationsV4();
+    startDirectMessageNotifications();
+
+    const btnToggleFriends = $('btn-toggle-friends');
+    const panel = $('friends-list-panel');
+    if (btnToggleFriends && panel && !lobbyFriendsListenerBound) {
+        lobbyFriendsListenerBound = true;
+        btnToggleFriends.onclick = async () => {
+            const isHidden = panel.style.display === 'none';
+            panel.style.display = isHidden ? 'block' : 'none';
+            if (!isHidden) return;
+            clearFriendProfileSubscriptions();
+            panel.innerHTML = '<h3>👥 Друзья</h3><div class="room-invite-empty">Загружаю...</div>';
+            try {
+                const friendsSnap = await get(ref(db, `users/${auth.currentUser.uid}/friends`));
+                const data = friendsSnap.val() || {};
+                const acceptedIds = Object.keys(data).filter((uid) => isAcceptedFriendRecord(data[uid]));
+                renderFriendsPanelLive(acceptedIds);
+            } catch (e) {
+                panel.innerHTML = '<h3>👥 Друзья</h3><div class="room-invite-empty">Не удалось загрузить друзей</div>';
+            }
+        };
+    }
+
+    
     // Приглашения в комнату
     onChildAdded(ref(db, `users/${auth.currentUser.uid}/room-invites`), (snap) => {
         const invite = snap.val();
@@ -379,9 +435,8 @@ function syncRooms() {
         }
         
         setTimeout(() => { if (notif.parentNode) notif.remove(); }, 8000);
-     });
-
-
+    });
+}
 let pendingJoin = null;
 window.joinRoom = (id, name, link, admin) => {
     const room = roomsCache[id] || null;
@@ -394,11 +449,87 @@ window.joinRoom = (id, name, link, admin) => {
         if (m) { m.classList.add('active'); setTimeout(() => inp && inp.focus(), 120); }
         return;
     }
-    return enterRoom(id, name, link, admin);
+    return enterRoomV4(id, name, link, admin);
 };
 
 const player = $('native-player');
 let presenceRef = null;
+
+function enterRoomV4(roomId, name, link, adminId) {
+    closeDirectChatModal();
+    currentRoomId = roomId;
+    lastSyncTs = 0;
+    processedMsgs.clear();
+    currentPresenceCache = {};
+    latestRoomPresenceData = {};
+    isHost = auth.currentUser.uid === adminId;
+    if ($('room-title-text')) $('room-title-text').innerText = name;
+    player.src = link;
+    player.controls = isHost;
+    player.style.pointerEvents = isHost ? 'auto' : 'none';
+    const playerWrapper = $('player-wrapper');
+    if (playerWrapper) {
+        playerWrapper.style.backgroundImage = '';
+        playerWrapper.style.backgroundSize = '';
+        playerWrapper.style.backgroundPosition = '';
+    }
+    if ($('chat-messages')) $('chat-messages').innerHTML = '';
+    if ($('users-list')) $('users-list').innerHTML = '';
+    showScreen('room-screen');
+    closeRoomInviteModal();
+    roomEnteredAt = Date.now();
+
+    const delBtn = $('btn-delete-room');
+    const editBtn = $('btn-edit-room');
+    if (delBtn) {
+        delBtn.style.display = isHost ? 'inline-block' : 'none';
+        delBtn.onclick = async () => {
+            if (!isHost) return;
+            if (!confirm('ВНИМАНИЕ! Удалить эту комнату навсегда?')) return;
+            await remove(ref(db, `rooms/${currentRoomId}`)).catch(() => showToast('Ошибка удаления комнаты'));
+        };
+    }
+    if (editBtn) {
+        editBtn.style.display = isHost ? 'inline-block' : 'none';
+        editBtn.onclick = () => {
+            editingRoomId = currentRoomId;
+            setCreateModalMode('edit');
+            const meta = roomsCache[currentRoomId] || {};
+            if ($('room-name')) $('room-name').value = meta.name || '';
+            if ($('room-link')) $('room-link').value = meta.link || '';
+            if ($('room-button-color')) $('room-button-color').value = meta.buttonColor || '#ffffff';
+            if ($('room-private')) {
+                $('room-private').checked = !!meta.private;
+                if ($('room-password')) $('room-password').style.display = $('room-private').checked ? 'block' : 'none';
+            }
+            if ($('room-password')) $('room-password').value = '';
+            $('modal-create')?.classList.add('active');
+        };
+    }
+
+    initRoomServicesV4();
+    showToast(isHost ? 'Вы зашли как Хост' : 'Вы зашли как Зритель');
+}
+
+async function leaveRoomV4() {
+    closeDirectChatModal();
+    closeVoiceSignalLayer();
+    await disableMicrophoneNative({ notify: false });
+    clearRoomProfileSubscriptions();
+    if (presenceRef) { try { await remove(presenceRef); } catch (e) {} }
+    if (roomListenerUnsubscribe) { try { roomListenerUnsubscribe(); } catch (e) {} roomListenerUnsubscribe = null; }
+    player.pause();
+    player.src = '';
+    presenceRef = null;
+    currentRoomId = null;
+    currentPresenceCache = {};
+    latestRoomPresenceData = {};
+    $('modal-join')?.classList.remove('active');
+    const delBtn = $('btn-delete-room'); if (delBtn) delBtn.style.display = 'none';
+    const editBtn = $('btn-edit-room'); if (editBtn) editBtn.style.display = 'none';
+    showScreen('lobby-screen');
+}
+$('btn-leave-room').onclick = leaveRoomV4;
 
 // --- AMBILIGHT ---
 const ambiCanvas = $('ambilight-canvas');
@@ -413,7 +544,285 @@ function drawAmbilight() {
 }
 player.addEventListener('play', () => drawAmbilight());
 
+function initRoomServicesV4() {
+    const roomId = currentRoomId;
+    const roomRef = ref(db, `rooms/${roomId}`);
+    const videoRef = ref(db, `rooms/${roomId}/sync`);
+    const chatRef = ref(db, `rooms/${roomId}/chat`);
+    const presenceDbRef = ref(db, `rooms/${roomId}/presence`);
+    const reactionsRef = ref(db, `rooms/${roomId}/reactions`);
+    const adminId = roomsCache[roomId]?.admin || null;
+    const teardown = [];
+    
+    const bindValue = (dbRef, handler) => { 
+        onValue(dbRef, handler); 
+        teardown.push(() => { try { off(dbRef, 'value', handler); } catch (e) {} });
+    };
+    const bindChild = (dbRef, handler) => { 
+        onChildAdded(dbRef, handler);
+        teardown.push(() => { try { off(dbRef, 'child_added', handler); } catch (e) {} }); 
+    };
 
+    presenceRef = ref(db, `rooms/${roomId}/presence/${auth.currentUser.uid}`);
+    set(presenceRef, { name: getDisplayName(), perms: getDefaultRoomPerms(isHost) });
+    onDisconnect(presenceRef).remove();
+
+    // --- Рендер пользователей в комнате ---
+    const rerenderUsers = () => {
+        const usersListEl = $('users-list');
+        if (!usersListEl) return;
+        usersListEl.innerHTML = '';
+        const ids = Object.keys(currentPresenceCache);
+        if ($('users-count')) $('users-count').innerText = ids.length;
+        subscribeRoomProfiles(ids, rerenderUsers);
+        
+        ids.forEach((uid) => {
+            const presenceNode = currentPresenceCache[uid] || {};
+            const profile = latestRoomPresenceData[uid]?._profile || {};
+            const perms = getEffectiveRoomPerms(presenceNode, uid === adminId);
+            const isLocal = uid === auth.currentUser.uid;
+            const isUserHost = uid === adminId;
+            const name = escapeHtml(profile.name || presenceNode.name || 'User');
+
+            let html = `<div class="user-item" data-uid="${uid}">`;
+            // Индикатор всегда горит зеленым, так как человек находится в комнате
+            html += `<div class="indicator online"></div>`; 
+            html += `<div class="user-main"><span class="user-name">${name}</span>`;
+            if (isUserHost) html += `<span class="host-label">Host</span>`;
+            if (isLocal) html += `<span class="you-label">(Вы)</span>`;
+            html += `</div>`;
+
+            html += `<div class="user-card-actions">`;
+            if (!isLocal) {
+                html += `<button type="button" class="report-btn" data-uid="${uid}">Report</button>`;
+                html += `<button type="button" class="dm-btn" data-uid="${uid}">💬</button>`;
+                // Возвращаем кнопку добавления в друзья для зрителей
+                html += `<button type="button" class="add-friend-btn" data-uid="${uid}">+Доб</button>`;
+            }
+            html += `</div>`;
+            if (isHost && !isLocal) html += renderPermissionControls(uid, perms);
+            html += `</div>`;
+            usersListEl.innerHTML += html;
+        });
+
+        // Бинды кнопок интерфейса пользователей
+        usersListEl.querySelectorAll('.dm-btn').forEach((button) => {
+            button.onclick = () => {
+                const item = button.closest('.user-item');
+                const name = item?.querySelector('.user-name')?.textContent?.trim() || 'Друг';
+                openDirectChatModalV2(button.dataset.uid, name);
+            };
+        });
+
+        usersListEl.querySelectorAll('.add-friend-btn').forEach((button) => {
+            button.onclick = async (event) => {
+                const targetUid = event.currentTarget.dataset.uid;
+                try {
+                    await set(ref(db, `users/${auth.currentUser.uid}/friends/${targetUid}`), { status: 'pending', ts: Date.now() });
+                    await set(ref(db, `users/${targetUid}/friend-requests/${auth.currentUser.uid}`), { from: auth.currentUser.displayName, ts: Date.now() });
+                    showToast('Запрос отправлен');
+                } catch (e) {
+                    showToast('Ошибка при отправке запроса');
+                }
+            };
+        });
+
+        usersListEl.querySelectorAll('.perm-toggle').forEach((toggle) => {
+            toggle.onchange = async (event) => {
+                if (!isHost) return;
+                const uid = event.currentTarget.dataset.uid;
+                const perm = event.currentTarget.dataset.perm;
+                const checked = event.currentTarget.checked;
+                await set(ref(db, `rooms/${roomId}/presence/${uid}/perms/${perm}`), checked).catch(() => showToast('Ошибка при обновлении прав'));
+                if (perm === 'voice' && !checked) await remove(ref(db, `rooms/${roomId}/rtc/participants/${uid}`)).catch(() => {});
+            };
+        });
+
+        const localPerms = getEffectiveRoomPerms(currentPresenceCache[auth.currentUser.uid], isHost);
+        if ($('chat-input')) $('chat-input').disabled = !localPerms.chat;
+        if ($('send-btn')) $('send-btn').disabled = !localPerms.chat;
+        if ($('mic-btn')) $('mic-btn').disabled = !localPerms.voice;
+        if (!localPerms.voice && myStream) disableMicrophoneNative({ notify: false }).then(() => showToast('Вам отключили голос'));
+        player.controls = !!localPerms.player || isHost;
+        player.style.pointerEvents = (localPerms.player || isHost) ? 'auto' : 'none';
+        document.querySelectorAll('.react-btn').forEach((btn) => { btn.disabled = !localPerms.reactions; });
+    };
+
+    bindValue(roomRef, (snap) => {
+        if (!snap.exists() && currentRoomId) {
+            showToast('Комната удалена');
+            leaveRoomV4();
+        }
+    });
+
+    bindValue(presenceDbRef, (snap) => {
+        currentPresenceCache = snap.val() || {};
+        rerenderUsers();
+    });
+
+    // --- ПЛЕЕР И СИНХРОНИЗАЦИЯ ---
+    
+    // 1. Динамическая проверка прав (может ли пользователь управлять плеером)
+    const canControlPlayer = () => {
+        const localPerms = getEffectiveRoomPerms(currentPresenceCache[auth.currentUser.uid], isHost);
+        return localPerms.player || isHost;
+    };
+
+    // 2. Универсальная трансляция состояния
+    const broadcastVideoState = (type) => {
+        if (isRemoteAction || !canControlPlayer()) return;
+        set(videoRef, {
+            type,
+            time: player.currentTime,
+            ts: Date.now(),
+            by: auth.currentUser.uid,
+            state: (type === 'play' || !player.paused) ? 'playing' : 'paused'
+        });
+    };
+
+    player.onplay = () => broadcastVideoState('play');
+    player.onpause = () => broadcastVideoState('pause');
+    player.onseeked = () => broadcastVideoState('seek');
+
+    // 3. Единый слушатель синхронизации для всех клиентов
+    bindValue(videoRef, (snap) => {
+        const d = snap.val();
+        if (!d || d.ts <= lastSyncTs) return;
+        
+        // Защита от "эхо" (игнорируем обновления, которые мы сами инициировали доли секунды назад)
+        if (d.by === auth.currentUser.uid && (Date.now() - d.ts < 800)) return;
+
+        lastSyncTs = d.ts;
+        isRemoteAction = true;
+        
+        if (Math.abs(player.currentTime - d.time) > 0.5) {
+            player.currentTime = d.time;
+        }
+        
+        if (d.state === 'playing' || d.type === 'play') {
+            player.play().catch(() => {});
+        } else {
+            player.pause();
+        }
+        
+        setTimeout(() => { isRemoteAction = false; }, 300);
+    });
+
+    // --- ЧАТ И ТАЙМКОДЫ ---
+    const parseTimecodes = (text) => {
+        const escaped = escapeHtml(text);
+        return canControlPlayer()
+            ? escaped.replace(/(\d{1,2}:\d{2})/g, '<button class="timecode-btn" data-time="$1">$1</button>')
+            : escaped.replace(/(\d{1,2}:\d{2})/g, '<span class="timecode-btn disabled">$1</span>');
+    };
+
+    const sendRoomMessage = () => {
+        const input = $('chat-input');
+        const localPerms = getEffectiveRoomPerms(currentPresenceCache[auth.currentUser.uid], isHost);
+        if (!input || !input.value.trim() || !localPerms.chat) return;
+        push(chatRef, { user: getDisplayName(), fromUid: auth.currentUser.uid, content: input.value.trim(), ts: Date.now() });
+        input.value = '';
+    };
+
+    if ($('send-btn')) $('send-btn').onclick = sendRoomMessage;
+    if ($('chat-input')) $('chat-input').onkeydown = (event) => { if (event.key === 'Enter') sendRoomMessage(); };
+    
+    // Глобальная обработка клика по таймкоду
+    if ($('chat-messages')) {
+        $('chat-messages').onclick = (event) => {
+            if (!event.target.classList.contains('timecode-btn') || !canControlPlayer()) return;
+            
+            const [mm, ss] = event.target.dataset.time.split(':').map((v) => parseInt(v, 10));
+            const seconds = (mm * 60) + ss;
+
+            isRemoteAction = true;
+            player.currentTime = seconds;
+            player.play().catch(() => {});
+            setTimeout(() => { isRemoteAction = false; }, 300);
+
+            set(videoRef, {
+                type: 'seek',
+                time: seconds,
+                ts: Date.now(),
+                by: auth.currentUser.uid,
+                state: 'playing'
+            });
+        };
+    }
+
+    bindChild(chatRef, (snap) => {
+        const msg = snap.val();
+        const id = snap.key;
+        if (processedMsgs.has(id)) return;
+        processedMsgs.add(id);
+        const isMe = msg.fromUid === auth.currentUser.uid;
+        const line = document.createElement('div');
+        line.className = isMe ? 'm-line self' : 'm-line';
+        line.innerHTML = `<div class="bubble"><strong>${escapeHtml(msg.user || 'User')}</strong><p>${parseTimecodes(msg.content || '')}</p></div>`;
+        $('chat-messages')?.appendChild(line);
+        if ($('chat-messages')) $('chat-messages').scrollTop = $('chat-messages').scrollHeight;
+    });
+
+    document.querySelectorAll('.react-btn').forEach((btn) => {
+        btn.onclick = () => {
+            const localPerms = getEffectiveRoomPerms(currentPresenceCache[auth.currentUser.uid], isHost);
+            if (!localPerms.reactions) return;
+            push(reactionsRef, { emoji: btn.dataset.emoji, ts: Date.now() });
+        };
+    });
+
+    bindChild(reactionsRef, (snap) => {
+        const reaction = snap.val();
+        if (!reaction || Date.now() - reaction.ts > 5000) return;
+        const el = document.createElement('div');
+        el.className = 'floating-emoji';
+        el.innerText = reaction.emoji;
+        el.style.left = `${Math.random() * 80 + 10}%`;
+        $('reaction-layer')?.appendChild(el);
+        setTimeout(() => el.remove(), 3000);
+    });
+
+    // --- ГОЛОСОВЫЕ ФУНКЦИИ ---
+    const voiceRefs = getVoiceRefs(roomId);
+    bindValue(voiceRefs.participants, async (snap) => {
+        voiceParticipantsCache = snap.val() || {};
+        for (const remoteUid of Array.from(voicePeerConnections.keys())) {
+            if (!voiceParticipantsCache[remoteUid]) destroyVoiceConnection(remoteUid);
+        }
+        if (myStream && voiceSessionId) {
+            for (const remoteUid of Object.keys(voiceParticipantsCache)) await createVoiceOfferFor(remoteUid);
+        }
+    });
+
+    bindValue(voiceRefs.offersForMe, (snap) => handleIncomingOffers(snap.val() || {}));
+    bindValue(voiceRefs.answersForMe, (snap) => handleIncomingAnswers(snap.val() || {}));
+    bindValue(voiceRefs.candidatesForMe, (snap) => handleIncomingCandidates(snap.val() || {}));
+
+    if ($('mic-btn')) {
+        $('mic-btn').onclick = async function() {
+            const localPerms = getEffectiveRoomPerms(currentPresenceCache[auth.currentUser.uid], isHost);
+            if (!localPerms.voice) return;
+            if (myStream) return disableMicrophoneNative();
+            try { await enableMicrophoneNative(this); } catch (e) { this.classList.remove('active'); showToast('Ошибка доступа к микрофону'); }
+        };
+    }
+
+    if ($('voice-volume')) $('voice-volume').oninput = (event) => {
+        document.querySelectorAll('#remote-audio-container audio').forEach((audio) => { audio.volume = event.target.value; });
+    };
+
+    $('btn-fullscreen').onclick = () => $('player-wrapper')?.requestFullscreen();
+    $('tab-chat-btn').onclick = () => { $('chat-messages').style.display = 'flex'; $('users-list').style.display = 'none'; $('tab-chat-btn').classList.add('active'); $('tab-users-btn').classList.remove('active'); };
+    $('tab-users-btn').onclick = () => { $('users-list').style.display = 'flex'; $('chat-messages').style.display = 'none'; $('tab-users-btn').classList.add('active'); $('tab-chat-btn').classList.remove('active'); };
+    
+    roomListenerUnsubscribe = () => {
+        teardown.forEach((fn) => fn());
+        closeVoiceSignalLayer();
+        clearRoomProfileSubscriptions();
+    };
+}
+
+// --- МОДАЛЫ: вход в приватную комнату и поведение поля пароля при создании ---
 (function setupModals(){
     const joinConfirm = $('btn-join-confirm');
     const joinCancel = $('btn-join-cancel');
@@ -432,7 +841,7 @@ player.addEventListener('play', () => drawAmbilight());
                     joinModal.classList.remove('active');
                     const { id, name, link, admin } = pendingJoin;
                     pendingJoin = null;
-                    enterRoom(id, name, link, admin);
+                    enterRoomV4(id, name, link, admin);
                 } else {
                     showToast('Неверный пароль');
                 }
@@ -524,14 +933,6 @@ function anim() {
 anim();
 
 async function saveProfileEnhanced() {
-    const user = auth.currentUser;
-    if (!user) {
-        showToast('Ошибка: пользователь не авторизован');
-        return;
-    }
-    
-    const uid = user.uid; // Теперь безопасно
-    const name = $('profile-name')?.value.trim() || '';
     if (!auth.currentUser) return showToast('Нужно войти');
     const name = $('profile-name')?.value.trim() || '';
     const status = $('profile-status')?.value.trim() || '';
@@ -539,29 +940,24 @@ async function saveProfileEnhanced() {
     const color = $('profile-color')?.value || '#f5f7fa';
     const volume = Math.max(0, Math.min(100, parseInt($('profile-volume')?.value || 100))) / 100;
     
-    let avatarUrl = auth.currentUser.photoURL || '';
-    const fileInput = $('profile-avatar-upload');
-    
     try {
-        if (fileInput && fileInput.files[0]) {
-            showToast('Загрузка аватара...');
-            const file = fileInput.files[0];
-            const fileRef = sRef(storage, `avatars/${auth.currentUser.uid}`);
-            await uploadBytes(fileRef, file);
-            avatarUrl = await getDownloadURL(fileRef);
-        }
-
-        await updateProfile(auth.currentUser, { displayName: name, photoURL: avatarUrl });
+        await updateProfile(auth.currentUser, { displayName: name });
         await set(ref(db, `users/${auth.currentUser.uid}/profile`), {
-            name, status, bio, color, avatar: avatarUrl, defaultVolume: volume, updatedAt: Date.now()
+            name,
+            status,
+            bio,
+            color,
+            defaultVolume: volume,
+            updatedAt: Date.now()
         });
-
+        
         if ($('user-display-name')) $('user-display-name').innerText = name || auth.currentUser.email;
+        const av = $('my-avatar');
+        if (av) av.style.background = `linear-gradient(135deg, ${color}, rgba(255,255,255,0.08))`;
+        
         if ($('modal-profile')) $('modal-profile').classList.remove('active');
         showToast('Профиль сохранён');
-    } catch (e) { 
-        showToast('Ошибка сохранения: ' + e.message); 
-    }
+    } catch (e) { showToast('Ошибка сохранения'); }
 }
 
 async function updatePresenceWithOnlineStatus(statusText = 'Онлайн') {
@@ -669,7 +1065,7 @@ if ($('btn-all-rooms')) {
         $('btn-all-rooms').classList.add('active');
         $('btn-friends-sidebar').classList.remove('active');
         $('rooms-grid').style.display = 'grid';
-        renderRooms();
+        renderRoomsV4();
     };
 }
 
@@ -699,8 +1095,168 @@ function setupVoiceRef() {
     voiceRef = ref(db, `rooms/${currentRoomId}/voice`);
 }
 
+async function openRoomInviteModal() {
+    if (!auth.currentUser || !currentRoomId) return;
+    ensureRoomInviteUi();
+
+    const modal = $('modal-room-invite');
+    const list = $('room-invite-list');
+    if (!modal || !list) return;
+
+    modal.classList.add('active');
+    list.innerHTML = '<div class="room-invite-empty">Загружаю друзей...</div>';
+
+    try {
+        const friendsSnap = await get(ref(db, `users/${auth.currentUser.uid}/friends`));
+        const friendsData = friendsSnap.val() || {};
+        const acceptedIds = Object.keys(friendsData).filter((uid) => uid !== auth.currentUser.uid && isAcceptedFriendRecord(friendsData[uid]));
+        const presentIds = new Set(Object.keys(currentPresenceCache || {}));
+        const inviteableIds = acceptedIds.filter((uid) => !presentIds.has(uid));
+
+        if (!inviteableIds.length) {
+            list.innerHTML = '<div class="room-invite-empty">Сейчас некого приглашать: либо друзей нет, либо они уже в комнате.</div>';
+            return;
+        }
+
+        const friends = await Promise.all(inviteableIds.map(async (uid) => {
+            try {
+                const profileSnap = await get(ref(db, `users/${uid}/profile`));
+                const profile = profileSnap.val() || {};
+                return {
+                    uid,
+                    name: profile.name || 'User',
+                    color: profile.color || '#f5f7fa'
+                };
+            } catch (e) {
+                return { uid, name: 'User', color: '#f5f7fa' };
+            }
+        }));
+
+        list.innerHTML = friends.map((friend) => `
+            <div class="room-invite-card" data-uid="${friend.uid}">
+                <div class="room-invite-user">
+                    <div class="room-invite-avatar" style="background:linear-gradient(45deg, ${escapeHtml(friend.color)}, rgba(255,255,255,0.08));"></div>
+                    <strong>${escapeHtml(friend.name)}</strong>
+                </div>
+                <button type="button" class="invite-friend-btn" data-uid="${friend.uid}">Позвать</button>
+            </div>
+        `).join('');
+
+        list.querySelectorAll('.invite-friend-btn').forEach((button) => {
+            button.addEventListener('click', async () => {
+                if (button.disabled) return;
+                const uid = button.dataset.uid;
+                const roomMeta = roomsCache[currentRoomId] || {};
+
+                button.disabled = true;
+                try {
+                    await push(ref(db, `users/${uid}/room-invites`), {
+                        roomId: currentRoomId,
+                        roomName: roomMeta.name || 'Комната',
+                        roomLink: roomMeta.link || '',
+                        roomAdminId: roomMeta.admin || '',
+                        invitedBy: auth.currentUser.displayName || auth.currentUser.email || 'User',
+                        ts: Date.now()
+                    });
+                    button.textContent = 'Отправлено';
+                    button.classList.add('sent');
+                    showToast('Инвайт отправлен');
+                } catch (e) {
+                    button.disabled = false;
+                    showToast('Ошибка при отправке инвайта');
+                }
+            });
+        });
+    } catch (e) {
+        list.innerHTML = '<div class="room-invite-empty">Не удалось загрузить друзей.</div>';
+    }
+}
+
 function closeRoomInviteModal() {
     $('modal-room-invite')?.classList.remove('active');
+
+    onChildAdded(ref(db, `users/${auth.currentUser.uid}/room-invites`), (snap) => {
+        const invite = snap.val();
+        const inviteId = snap.key;
+        if (!invite || Date.now() - invite.ts > 3600000) return;
+
+        const notif = document.createElement('div');
+        notif.className = 'toast interactive-toast';
+        notif.innerHTML = `
+            <div style="padding:12px; background:rgba(46,213,115,0.1); border:1px solid #2ed573; border-radius:8px;">
+                ${escapeHtml(invite.invitedBy || 'Друг')} приглашает в <strong>${escapeHtml(invite.roomName || 'комнату')}</strong>
+                <div style="display:flex; gap:8px; margin-top:10px;">
+                    <button type="button" class="invite-accept-btn" data-room-id="${escapeHtml(invite.roomId || '')}" data-invite-id="${escapeHtml(inviteId)}">Зайти</button>
+                </div>
+            </div>
+        `;
+        $('toast-container')?.appendChild(notif);
+
+        const btn = notif.querySelector('.invite-accept-btn');
+        btn?.addEventListener('click', async () => {
+            const roomId = btn.dataset.roomId;
+            try {
+                const roomSnap = await get(ref(db, `rooms/${roomId}`));
+                if (!roomSnap.exists()) {
+                    await remove(ref(db, `users/${auth.currentUser.uid}/room-invites/${inviteId}`));
+                    notif.remove();
+                    showToast('Комната больше недоступна');
+                    return;
+                }
+
+                const room = roomSnap.val() || {};
+                await remove(ref(db, `users/${auth.currentUser.uid}/room-invites/${inviteId}`));
+                notif.remove();
+                window.joinRoom(roomId, room.name || invite.roomName || 'Комната', room.link || invite.roomLink || '', room.admin || invite.roomAdminId || '');
+            } catch (e) {
+                showToast('Ошибка при принятии инвайта');
+            }
+        });
+
+        setTimeout(() => notif.remove(), 8000);
+    });
+
+    onChildAdded(ref(db, `users/${auth.currentUser.uid}/friend-requests`), (snap) => {
+        const req = snap.val();
+        const fromUid = snap.key;
+        if (!req) return;
+
+        const notif = document.createElement('div');
+        notif.className = 'toast interactive-toast';
+        notif.innerHTML = `
+            <div style="padding:12px; background:rgba(46,213,115,0.1); border:1px solid #2ed573; border-radius:8px;">
+                <strong>${escapeHtml(req.from || 'Пользователь')}</strong> хочет быть твоим другом
+                <div style="display:flex; gap:8px; margin-top:10px;">
+                    <button type="button" class="friend-req-accept" data-from-uid="${escapeHtml(fromUid)}">Принять</button>
+                    <button type="button" class="friend-req-decline" data-from-uid="${escapeHtml(fromUid)}">Отклонить</button>
+                </div>
+            </div>
+        `;
+        $('toast-container')?.appendChild(notif);
+
+        notif.querySelector('.friend-req-accept')?.addEventListener('click', async () => {
+            try {
+                await set(ref(db, `users/${auth.currentUser.uid}/friends/${fromUid}`), { status: 'accepted', ts: Date.now() });
+                await set(ref(db, `users/${fromUid}/friends/${auth.currentUser.uid}`), { status: 'accepted', ts: Date.now() });
+                await remove(ref(db, `users/${auth.currentUser.uid}/friend-requests/${fromUid}`));
+                notif.remove();
+                showToast('Друг добавлен');
+            } catch (e) {
+                showToast('Ошибка');
+            }
+        });
+
+        notif.querySelector('.friend-req-decline')?.addEventListener('click', async () => {
+            try {
+                await remove(ref(db, `users/${auth.currentUser.uid}/friend-requests/${fromUid}`));
+                notif.remove();
+            } catch (e) {
+                showToast('Ошибка');
+            }
+        });
+
+        setTimeout(() => notif.remove(), 8000);
+    });
 }
 
 function findUidByPeerId(peerId) {
@@ -754,6 +1310,82 @@ function createRemoteAudioAnalyzer(audio, uid) {
     remoteAudioAnalyzers.set(uid, { analyser, animationId: animId });
 }
 
+function attachRemoteAudio(stream, peerId, uid) {
+    if (!stream || activeCalls.has(peerId)) return;
+    activeCalls.add(peerId);
+
+    const container = $('remote-audio-container');
+    if (!container) return;
+
+    document.getElementById(`audio-${peerId}`)?.remove();
+
+    const audio = document.createElement('audio');
+    audio.id = `audio-${peerId}`;
+    audio.autoplay = true;
+    audio.playsInline = true;
+    audio.srcObject = stream;
+    audio.volume = parseFloat($('voice-volume')?.value || '1');
+    container.appendChild(audio);
+
+    const startPlayback = () => {
+        audio.play().catch(() => {
+            document.addEventListener('click', () => audio.play().catch(() => {}), { once: true });
+        });
+    };
+
+    audio.oncanplay = () => {
+        createRemoteAudioAnalyzer(audio, uid);
+        startPlayback();
+    };
+    audio.onended = () => activeCalls.delete(peerId);
+}
+
+async function publishLocalVoiceState() {
+    if (!currentRoomId || !auth.currentUser || !myStream || !peer.id) return;
+    await set(ref(db, `rooms/${currentRoomId}/voice/${auth.currentUser.uid}`), peer.id);
+}
+
+function connectToVoicePeers() {
+    if (!myStream || !peer.id) return;
+
+    Object.entries(latestVoicePeers || {}).forEach(([uid, targetPeerId]) => {
+        if (!targetPeerId || uid === auth.currentUser.uid || activeCalls.has(targetPeerId)) return;
+        const call = peer.call(targetPeerId, myStream);
+        if (!call) return;
+
+        call.on('stream', (remoteStream) => attachRemoteAudio(remoteStream, targetPeerId, uid));
+        call.on('close', () => activeCalls.delete(targetPeerId));
+        call.on('error', () => activeCalls.delete(targetPeerId));
+    });
+}
+
+async function enableMicrophone(button) {
+    myStream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true }
+    });
+
+    button?.classList.add('active');
+    await publishLocalVoiceState();
+    connectToVoicePeers();
+    showToast('Микрофон включен');
+}
+
+async function disableMicrophone({ notify = true } = {}) {
+    if (myStream) {
+        myStream.getTracks().forEach((track) => track.stop());
+    }
+    myStream = null;
+
+    if (currentRoomId && auth.currentUser) {
+        try { await remove(ref(db, `rooms/${currentRoomId}/voice/${auth.currentUser.uid}`)); } catch (e) { /* ignore */ }
+    }
+
+    $('mic-btn')?.classList.remove('active');
+    clearRemoteAudioState();
+
+    if (notify) showToast('Микрофон выключен');
+}
+
 peer.on('open', () => {
     if (myStream) {
         publishLocalVoiceState().catch(() => {});
@@ -782,13 +1414,13 @@ if ($('modal-room-invite')) {
     });
 }
 
-renderRooms = renderRoomsV2;
-setupLobbyNotifications = setupLobbyNotificationsV2;
-enterRoom = enterRoom;
-leaveRoom = leaveRoom;
-initRoomServices = initRoomServices;
+renderRoomsV4 = renderRoomsV4;
+setupLobbyNotificationsV4 = setupLobbyNotificationsV4V2;
+enterRoomV4 = enterRoomV4V2;
+leaveRoomV4 = leaveRoomV4V2;
+initRoomServicesV4 = initRoomServicesV4V2;
 
-if ($('btn-leave-room')) $('btn-leave-room').onclick = leaveRoom;
+if ($('btn-leave-room')) $('btn-leave-room').onclick = leaveRoomV4V2;
 
 const RTC_CONFIG = {
     iceServers: [
@@ -912,6 +1544,14 @@ function ensureVoicePeerConnection(remoteUid) {
     return pc;
 }
 
+async function publishVoiceParticipant() {
+    if (!currentRoomId || !voiceSessionId || !auth.currentUser) return;
+    await set(ref(db, `rooms/${currentRoomId}/rtc/participants/${auth.currentUser.uid}`), {
+        sessionId: voiceSessionId,
+        ts: Date.now()
+    });
+}
+
 async function createVoiceOfferFor(remoteUid) {
     if (!myStream || !voiceSessionId || !currentRoomId || remoteUid === auth.currentUser.uid) return;
     if (auth.currentUser.uid.localeCompare(remoteUid) >= 0) return;
@@ -1016,7 +1656,7 @@ function closeVoiceSignalLayer() {
     voiceParticipantsCache = {};
 }
 
-async function enableMicrophone(button) {
+async function enableMicrophoneNative(button) {
     myStream = await navigator.mediaDevices.getUserMedia({
         audio: {
             echoCancellation: true,
@@ -1033,7 +1673,7 @@ async function enableMicrophone(button) {
     showToast('Микрофон включен');
 }
 
-async function disableMicrophone({ notify = true } = {}) {
+async function disableMicrophoneNative({ notify = true } = {}) {
     if (myStream) {
         myStream.getTracks().forEach((track) => track.stop());
     }
@@ -1141,28 +1781,20 @@ async function sendDirectMessage() {
     });
 }
 
-function bindDirectChatUi() {
+function bindDirectChatUiV2() {
     if ($('btn-dm-close')) $('btn-dm-close').onclick = closeDirectChatModal;
-    if ($('btn-dm-send')) $('btn-dm-send').onclick = sendDirectMessage;
-    if ($('dm-input')) {
-        $('dm-input').onkeydown = (event) => {
-            if (event.key === 'Enter') sendDirectMessage();
-        };
-    }
-    if ($('modal-dm-chat')) {
-        $('modal-dm-chat').addEventListener('click', (event) => {
-            if (event.target.id === 'modal-dm-chat') closeDirectChatModal();
-        });
-    }
+    if ($('btn-dm-send')) $('btn-dm-send').onclick = sendDirectMessageV2;
+    if ($('dm-input')) $('dm-input').onkeydown = (event) => { if (event.key === 'Enter') sendDirectMessageV2(); };
 }
 
-bindDirectChatUi();
-setupLobbyNotifications = setupLobbyNotificationsV3;
-enterRoom = enterRoom;
-leaveRoom = leaveRoom;
-initRoomServices = initRoomServices;
+bindDirectChatUiV2();
 
-if ($('btn-leave-room')) $('btn-leave-room').onclick = leaveRoom;
+setupLobbyNotificationsV4 = setupLobbyNotificationsV4V3;
+enterRoomV4 = enterRoomV4V3;
+leaveRoomV4 = leaveRoomV4V3;
+initRoomServicesV4 = initRoomServicesV4V3;
+
+if ($('btn-leave-room')) $('btn-leave-room').onclick = leaveRoomV4V3;
 
 function getDefaultRoomPerms(host = false) {
     return { chat: true, voice: true, player: !!host, reactions: true };
@@ -1213,31 +1845,21 @@ function bindSelfPresence() {
     });
 }
 
-function bindGlobalOnline() {
-    const globalOnlineRef = ref(db, 'users-online-count');
-    // Обновляем счетчик для всех пользователей
-    onValue(ref(db, 'users'), (snap) => {
-        let count = 0;
-        snap.forEach((childSnap) => {
-            if (childSnap.val()?.status?.online) count++;
-        });
-        const counterEl = $('online-counter');
-        const countSpan = $('online-count');
-        if (counterEl && countSpan) {
-            countSpan.innerText = count;
-            counterEl.style.display = count > 0 ? 'flex' : 'none';
-        }
-    });
-}
-
 function subscribeToOwnProfile() {
-    const user = auth.currentUser;
-    if (!user) return; // Выходим, если пользователя нет
-
-    const profileRef = ref(db, `users/${user.uid}/profile`);
+    if (!auth.currentUser) return;
+    const profileRef = ref(db, `users/${auth.currentUser.uid}/profile`);
     onValue(profileRef, (snap) => {
         const profile = snap.val() || {};
-        // ... логика обновления UI
+        const displayName = profile.name || auth.currentUser.displayName || auth.currentUser.email || 'User';
+        if ($('user-display-name')) $('user-display-name').innerText = displayName;
+        const avatar = $('my-avatar');
+        if (avatar) avatar.style.background = `linear-gradient(45deg, ${profile.color || '#f5f7fa'}, rgba(255,255,255,0.08))`;
+        if (currentRoomId && presenceRef) update(presenceRef, { name: displayName }).catch(() => {});
+        Object.entries(roomsCache || {}).forEach(([roomId, room]) => {
+            if (room?.admin === auth.currentUser.uid && room.adminName !== displayName) {
+                update(ref(db, `rooms/${roomId}`), { adminName: displayName }).catch(() => {});
+            }
+        });
     });
 }
 
@@ -1532,34 +2154,6 @@ function setupSystemMessages() {
     // addSystemMessage('${userName} получил право: модератор');
 }
 
-function setupLobbyNotifications() {
-    if (setupLobbyNotifications.didInit || !auth.currentUser) return;
-    setupLobbyNotifications.didInit = true;
-    setupLobbyNotificationsV3();
-    startDirectMessageNotifications();
-
-    const btnToggleFriends = $('btn-toggle-friends');
-    const panel = $('friends-list-panel');
-    if (btnToggleFriends && panel && !lobbyFriendsListenerBound) {
-        lobbyFriendsListenerBound = true;
-        btnToggleFriends.onclick = async () => {
-            const isHidden = panel.style.display === 'none';
-            panel.style.display = isHidden ? 'block' : 'none';
-            if (!isHidden) return;
-            clearFriendProfileSubscriptions();
-            panel.innerHTML = '<h3>👥 Друзья</h3><div class="room-invite-empty">Загружаю...</div>';
-            try {
-                const friendsSnap = await get(ref(db, `users/${auth.currentUser.uid}/friends`));
-                const data = friendsSnap.val() || {};
-                const acceptedIds = Object.keys(data).filter((uid) => isAcceptedFriendRecord(data[uid]));
-                renderFriendsPanelLive(acceptedIds);
-            } catch (e) {
-                panel.innerHTML = '<h3>👥 Друзья</h3><div class="room-invite-empty">Не удалось загрузить друзей</div>';
-            }
-        };
-    }
-}
-
 function subscribeRoomProfiles(uids = [], rerender) {
     const needed = new Set(uids);
     Array.from(roomProfileSubscriptions.keys()).forEach((uid) => {
@@ -1588,500 +2182,43 @@ function subscribeRoomProfiles(uids = [], rerender) {
         });
     });
 }
-
-function enterRoom(roomId, name, link, adminId) {
-    closeDirectChatModal();
-    currentRoomId = roomId;
-    lastSyncTs = 0;
-    processedMsgs.clear();
-    currentPresenceCache = {};
-    latestRoomPresenceData = {};
-    isHost = auth.currentUser.uid === adminId;
-    if ($('room-title-text')) $('room-title-text').innerText = name;
-    player.src = link;
-    player.controls = isHost;
-    player.style.pointerEvents = isHost ? 'auto' : 'none';
-    const playerWrapper = $('player-wrapper');
-    if (playerWrapper) {
-        playerWrapper.style.backgroundImage = '';
-        playerWrapper.style.backgroundSize = '';
-        playerWrapper.style.backgroundPosition = '';
-    }
-    if ($('chat-messages')) $('chat-messages').innerHTML = '';
-    if ($('users-list')) $('users-list').innerHTML = '';
-    showScreen('room-screen');
-    closeRoomInviteModal();
-    roomEnteredAt = Date.now();
-
-    const delBtn = $('btn-delete-room');
-    const editBtn = $('btn-edit-room');
-    if (delBtn) {
-        delBtn.style.display = isHost ? 'inline-block' : 'none';
-        delBtn.onclick = async () => {
-            if (!isHost) return;
-            if (!confirm('ВНИМАНИЕ! Удалить эту комнату навсегда?')) return;
-            await remove(ref(db, `rooms/${currentRoomId}`)).catch(() => showToast('Ошибка удаления комнаты'));
-        };
-    }
-    if (editBtn) {
-        editBtn.style.display = isHost ? 'inline-block' : 'none';
-        editBtn.onclick = () => {
-            editingRoomId = currentRoomId;
-            setCreateModalMode('edit');
-            const meta = roomsCache[currentRoomId] || {};
-            if ($('room-name')) $('room-name').value = meta.name || '';
-            if ($('room-link')) $('room-link').value = meta.link || '';
-            if ($('room-button-color')) $('room-button-color').value = meta.buttonColor || '#ffffff';
-            if ($('room-private')) {
-                $('room-private').checked = !!meta.private;
-                if ($('room-password')) $('room-password').style.display = $('room-private').checked ? 'block' : 'none';
-            }
-            if ($('room-password')) $('room-password').value = '';
-            $('modal-create')?.classList.add('active');
-        };
-    }
-
-    initRoomServices();
-    showToast(isHost ? 'Вы зашли как Хост' : 'Вы зашли как Зритель');
-}
-
-async function leaveRoom() {
-    closeDirectChatModal();
-    closeVoiceSignalLayer();
-    await disableMicrophone({ notify: false });
-    clearRoomProfileSubscriptions();
-    if (presenceRef) { try { await remove(presenceRef); } catch (e) {} }
-    if (roomListenerUnsubscribe) { try { roomListenerUnsubscribe(); } catch (e) {} roomListenerUnsubscribe = null; }
-    player.pause();
-    player.src = '';
-    presenceRef = null;
-    currentRoomId = null;
-    currentPresenceCache = {};
-    latestRoomPresenceData = {};
-    $('modal-join')?.classList.remove('active');
-    const delBtn = $('btn-delete-room'); if (delBtn) delBtn.style.display = 'none';
-    const editBtn = $('btn-edit-room'); if (editBtn) editBtn.style.display = 'none';
-    showScreen('lobby-screen');
-}
-
-function initRoomServices() {
-    const roomId = currentRoomId;
-    const roomRef = ref(db, `rooms/${roomId}`);
-    const videoRef = ref(db, `rooms/${roomId}/sync`);
-    const chatRef = ref(db, `rooms/${roomId}/chat`);
-    const presenceDbRef = ref(db, `rooms/${roomId}/presence`);
-    const reactionsRef = ref(db, `rooms/${roomId}/reactions`);
-    const adminId = roomsCache[roomId]?.admin || null;
-    const teardown = [];
-    
-    const bindValue = (dbRef, handler) => { 
-        onValue(dbRef, handler); 
-        teardown.push(() => { try { off(dbRef, 'value', handler); } catch (e) {} });
-    };
-    const bindChild = (dbRef, handler) => { 
-        onChildAdded(dbRef, handler);
-        teardown.push(() => { try { off(dbRef, 'child_added', handler); } catch (e) {} }); 
-    };
-
-    presenceRef = ref(db, `rooms/${roomId}/presence/${auth.currentUser.uid}`);
-    set(presenceRef, { name: getDisplayName(), perms: getDefaultRoomPerms(isHost) });
-    onDisconnect(presenceRef).remove();
-
-    // --- Рендер пользователей в комнате ---
-    const rerenderUsers = () => {
-        const usersListEl = $('users-list');
-        if (!usersListEl) return;
-        usersListEl.innerHTML = '';
-        const ids = Object.keys(currentPresenceCache);
-        if ($('users-count')) $('users-count').innerText = ids.length;
-        subscribeRoomProfiles(ids, rerenderUsers);
-        
-        ids.forEach((uid) => {
-            const presenceNode = currentPresenceCache[uid] || {};
-            const profile = latestRoomPresenceData[uid]?._profile || {};
-            const perms = getEffectiveRoomPerms(presenceNode, uid === adminId);
-            const isLocal = uid === auth.currentUser.uid;
-            const isUserHost = uid === adminId;
-            const name = escapeHtml(profile.name || presenceNode.name || 'User');
-
-            let html = `<div class="user-item" data-uid="${uid}">`;
-            // Индикатор всегда горит зеленым, так как человек находится в комнате
-            html += `<div class="indicator online"></div>`; 
-            html += `<div class="user-main"><span class="user-name">${name}</span>`;
-            if (isUserHost) html += `<span class="host-label">Host</span>`;
-            if (isLocal) html += `<span class="you-label">(Вы)</span>`;
-            html += `</div>`;
-
-            html += `<div class="user-card-actions">`;
-            if (!isLocal) {
-                html += `<button type="button" class="report-btn" data-uid="${uid}">Report</button>`;
-                html += `<button type="button" class="dm-btn" data-uid="${uid}">💬</button>`;
-                // Возвращаем кнопку добавления в друзья для зрителей
-                html += `<button type="button" class="add-friend-btn" data-uid="${uid}">+Доб</button>`;
-            }
-            html += `</div>`;
-            if (isHost && !isLocal) html += renderPermissionControls(uid, perms);
-            html += `</div>`;
-            usersListEl.innerHTML += html;
-        });
-
-        // Бинды кнопок интерфейса пользователей
-        usersListEl.querySelectorAll('.dm-btn').forEach((button) => {
-            button.onclick = () => {
-                const item = button.closest('.user-item');
-                const name = item?.querySelector('.user-name')?.textContent?.trim() || 'Друг';
-                openDirectChatModalV2(button.dataset.uid, name);
-            };
-        });
-
-        usersListEl.querySelectorAll('.add-friend-btn').forEach((button) => {
-            button.onclick = async (event) => {
-                const targetUid = event.currentTarget.dataset.uid;
-                try {
-                    await set(ref(db, `users/${auth.currentUser.uid}/friends/${targetUid}`), { status: 'pending', ts: Date.now() });
-                    await set(ref(db, `users/${targetUid}/friend-requests/${auth.currentUser.uid}`), { from: auth.currentUser.displayName, ts: Date.now() });
-                    showToast('Запрос отправлен');
-                } catch (e) {
-                    showToast('Ошибка при отправке запроса');
-                }
-            };
-        });
-
-        usersListEl.querySelectorAll('.perm-toggle').forEach((toggle) => {
-            toggle.onchange = async (event) => {
-                if (!isHost) return;
-                const uid = event.currentTarget.dataset.uid;
-                const perm = event.currentTarget.dataset.perm;
-                const checked = event.currentTarget.checked;
-                await set(ref(db, `rooms/${roomId}/presence/${uid}/perms/${perm}`), checked).catch(() => showToast('Ошибка при обновлении прав'));
-                if (perm === 'voice' && !checked) await remove(ref(db, `rooms/${roomId}/rtc/participants/${uid}`)).catch(() => {});
-            };
-        });
-
-        const localPerms = getEffectiveRoomPerms(currentPresenceCache[auth.currentUser.uid], isHost);
-        if ($('chat-input')) $('chat-input').disabled = !localPerms.chat;
-        if ($('send-btn')) $('send-btn').disabled = !localPerms.chat;
-        if ($('mic-btn')) $('mic-btn').disabled = !localPerms.voice;
-        if (!localPerms.voice && myStream) disableMicrophone({ notify: false }).then(() => showToast('Вам отключили голос'));
-        player.controls = !!localPerms.player || isHost;
-        player.style.pointerEvents = (localPerms.player || isHost) ? 'auto' : 'none';
-        document.querySelectorAll('.react-btn').forEach((btn) => { btn.disabled = !localPerms.reactions; });
-    };
-
-    bindValue(roomRef, (snap) => {
-        if (!snap.exists() && currentRoomId) {
-            showToast('Комната удалена');
-            leaveRoom;
-        }
-    });
-
-    bindValue(presenceDbRef, (snap) => {
-        currentPresenceCache = snap.val() || {};
-        rerenderUsers();
-        bindValue(presenceDbRef, (snap) => {
-        const newData = snap.val() || {};
-        
-        // Логика системных сообщений (Join/Leave)
-        if (Object.keys(currentPresenceCache).length > 0) {
-            Object.keys(newData).forEach(uid => {
-                if (!currentPresenceCache[uid]) {
-                    const name = newData[uid]?.name || 'User';
-                    addSystemMessage(`${name} присоединился к комнате`);
-                }
-            });
-            Object.keys(currentPresenceCache).forEach(uid => {
-                if (!newData[uid]) {
-                    const name = currentPresenceCache[uid]?.name || 'User';
-                    addSystemMessage(`${name} покинул комнату`);
-                }
-            });
-        }
-        
-        currentPresenceCache = newData;
-        rerenderUsers();
-    });
-    });
-
-    // --- ПЛЕЕР И СИНХРОНИЗАЦИЯ ---
-    
-    // 1. Динамическая проверка прав (может ли пользователь управлять плеером)
-    const canControlPlayer = () => {
-        const localPerms = getEffectiveRoomPerms(currentPresenceCache[auth.currentUser.uid], isHost);
-        return localPerms.player || isHost;
-    };
-
-    // 2. Универсальная трансляция состояния
-    const broadcastVideoState = (type) => {
-        if (isRemoteAction || !canControlPlayer()) return;
-        set(videoRef, {
-            type,
-            time: player.currentTime,
-            ts: Date.now(),
-            by: auth.currentUser.uid,
-            state: (type === 'play' || !player.paused) ? 'playing' : 'paused'
-        });
-    };
-
-    player.onplay = () => broadcastVideoState('play');
-    player.onpause = () => broadcastVideoState('pause');
-    player.onseeked = () => broadcastVideoState('seek');
-
-    // 3. Единый слушатель синхронизации для всех клиентов
-    bindValue(videoRef, (snap) => {
-        const d = snap.val();
-        if (!d || d.ts <= lastSyncTs) return;
-        
-        // Защита от "эхо" (игнорируем обновления, которые мы сами инициировали доли секунды назад)
-        if (d.by === auth.currentUser.uid && (Date.now() - d.ts < 800)) return;
-
-        lastSyncTs = d.ts;
-        isRemoteAction = true;
-        
-        if (Math.abs(player.currentTime - d.time) > 0.5) {
-            player.currentTime = d.time;
-        }
-        
-        if (d.state === 'playing' || d.type === 'play') {
-            player.play().catch(() => {});
-        } else {
-            player.pause();
-        }
-        
-        setTimeout(() => { isRemoteAction = false; }, 300);
-    });
-
-    // --- ЧАТ И ТАЙМКОДЫ ---
-    const parseTimecodes = (text) => {
-        const escaped = escapeHtml(text);
-        return canControlPlayer()
-            ? escaped.replace(/(\d{1,2}:\d{2})/g, '<button class="timecode-btn" data-time="$1">$1</button>')
-            : escaped.replace(/(\d{1,2}:\d{2})/g, '<span class="timecode-btn disabled">$1</span>');
-    };
-
-    const sendRoomMessage = () => {
-        const input = $('chat-input');
-        const localPerms = getEffectiveRoomPerms(currentPresenceCache[auth.currentUser.uid], isHost);
-        if (!input || !input.value.trim() || !localPerms.chat) return;
-        push(chatRef, { user: getDisplayName(), fromUid: auth.currentUser.uid, content: input.value.trim(), ts: Date.now() });
-        input.value = '';
-    };
-
-    if ($('send-btn')) $('send-btn').onclick = sendRoomMessage;
-    if ($('chat-input')) $('chat-input').onkeydown = (event) => { if (event.key === 'Enter') sendRoomMessage(); };
-    
-    // Глобальная обработка клика по таймкоду
-    if ($('chat-messages')) {
-        $('chat-messages').onclick = (event) => {
-            if (!event.target.classList.contains('timecode-btn') || !canControlPlayer()) return;
-            
-            const [mm, ss] = event.target.dataset.time.split(':').map((v) => parseInt(v, 10));
-            const seconds = (mm * 60) + ss;
-
-            isRemoteAction = true;
-            player.currentTime = seconds;
-            player.play().catch(() => {});
-            setTimeout(() => { isRemoteAction = false; }, 300);
-
-            set(videoRef, {
-                type: 'seek',
-                time: seconds,
-                ts: Date.now(),
-                by: auth.currentUser.uid,
-                state: 'playing'
-            });
-        };
-    }
-
-    bindChild(chatRef, (snap) => {
-        const msg = snap.val();
-        const id = snap.key;
-        if (processedMsgs.has(id)) return;
-        processedMsgs.add(id);
-        const isMe = msg.fromUid === auth.currentUser.uid;
-        const line = document.createElement('div');
-        line.className = isMe ? 'm-line self' : 'm-line';
-        line.innerHTML = `<div class="bubble"><strong>${escapeHtml(msg.user || 'User')}</strong><p>${parseTimecodes(msg.content || '')}</p></div>`;
-        $('chat-messages')?.appendChild(line);
-        if ($('chat-messages')) $('chat-messages').scrollTop = $('chat-messages').scrollHeight;
-    });
-
-    document.querySelectorAll('.react-btn').forEach((btn) => {
-        btn.onclick = () => {
-            const localPerms = getEffectiveRoomPerms(currentPresenceCache[auth.currentUser.uid], isHost);
-            if (!localPerms.reactions) return;
-            push(reactionsRef, { emoji: btn.dataset.emoji, ts: Date.now() });
-        };
-    });
-
-    bindChild(reactionsRef, (snap) => {
-        const reaction = snap.val();
-        if (!reaction || Date.now() - reaction.ts > 5000) return;
-        const el = document.createElement('div');
-        el.className = 'floating-emoji';
-        el.innerText = reaction.emoji;
-        el.style.left = `${Math.random() * 80 + 10}%`;
-        $('reaction-layer')?.appendChild(el);
-        setTimeout(() => el.remove(), 3000);
-    });
-
-    // --- ГОЛОСОВЫЕ ФУНКЦИИ ---
-    const voiceRefs = getVoiceRefs(roomId);
-    bindValue(voiceRefs.participants, async (snap) => {
-        voiceParticipantsCache = snap.val() || {};
-        for (const remoteUid of Array.from(voicePeerConnections.keys())) {
-            if (!voiceParticipantsCache[remoteUid]) destroyVoiceConnection(remoteUid);
-        }
-        if (myStream && voiceSessionId) {
-            for (const remoteUid of Object.keys(voiceParticipantsCache)) await createVoiceOfferFor(remoteUid);
-        }
-    });
-
-    bindValue(voiceRefs.offersForMe, (snap) => handleIncomingOffers(snap.val() || {}));
-    bindValue(voiceRefs.answersForMe, (snap) => handleIncomingAnswers(snap.val() || {}));
-    bindValue(voiceRefs.candidatesForMe, (snap) => handleIncomingCandidates(snap.val() || {}));
-
-    if ($('mic-btn')) {
-        $('mic-btn').onclick = async function() {
-            const localPerms = getEffectiveRoomPerms(currentPresenceCache[auth.currentUser.uid], isHost);
-            if (!localPerms.voice) return;
-            if (myStream) return disableMicrophone();
-            try { await enableMicrophone(this); } catch (e) { this.classList.remove('active'); showToast('Ошибка доступа к микрофону'); }
-        };
-    }
-
-    if ($('voice-volume')) $('voice-volume').oninput = (event) => {
-        document.querySelectorAll('#remote-audio-container audio').forEach((audio) => { audio.volume = event.target.value; });
-    };
-
-    $('btn-fullscreen').onclick = () => $('player-wrapper')?.requestFullscreen();
-    $('tab-chat-btn').onclick = () => { $('chat-messages').style.display = 'flex'; $('users-list').style.display = 'none'; $('tab-chat-btn').classList.add('active'); $('tab-users-btn').classList.remove('active'); };
-    $('tab-users-btn').onclick = () => { $('users-list').style.display = 'flex'; $('chat-messages').style.display = 'none'; $('tab-users-btn').classList.add('active'); $('tab-chat-btn').classList.remove('active'); };
-    
-    roomListenerUnsubscribe = () => {
-        teardown.forEach((fn) => fn());
-        closeVoiceSignalLayer();
-        clearRoomProfileSubscriptions();
-    };
-}
-
-// ==========================================
-// ГЛАВНАЯ ИНИЦИАЛИЗАЦИЯ И ПРИВЯЗКА ИНТЕРФЕЙСА
-// ==========================================
-function initApp() {
-    // 1. Системные бинды
-    bindSelfPresence();
-    subscribeToOwnProfile();
-    widenLobbyLayout();
-    bindGlobalOnline();
-    renderRooms();
-    bindDirectChatUi();
-
-    // 2. Управление профилем (Точные ID из твоего HTML)
-    if ($('btn-edit-profile')) {
-        $('btn-edit-profile').onclick = () => {
-            if ($('profile-name')) $('profile-name').value = auth.currentUser.displayName || '';
-            $('modal-profile').classList.add('active');
-        };
-    }
-    if ($('btn-profile-cancel')) {
-        $('btn-profile-cancel').onclick = () => $('modal-profile').classList.remove('active');
-    }
-    if ($('btn-profile-save')) {
-        $('btn-profile-save').onclick = saveProfileEnhanced;
-    }
-
-    // 3. Управление модалкой создания комнаты
+function bindCreateModalOverrides() {
     if ($('btn-open-modal')) {
         $('btn-open-modal').onclick = () => {
             editingRoomId = null;
-            if (typeof setCreateModalMode === 'function') setCreateModalMode('create');
-            $('modal-create').classList.add('active');
+            setCreateModalMode('create');
+            $('modal-create')?.classList.add('active');
         };
     }
     if ($('btn-close-modal')) {
         $('btn-close-modal').onclick = () => {
             editingRoomId = null;
-            $('modal-create').classList.remove('active');
+            setCreateModalMode('create');
+            $('modal-create')?.classList.remove('active');
             if ($('room-password')) $('room-password').value = '';
             if ($('room-private')) $('room-private').checked = false;
         };
     }
+}
 
-    // 4. Переключение вкладок: Все комнаты / Друзья
-    if ($('btn-all-rooms')) {
-        $('btn-all-rooms').onclick = () => {
-            $('rooms-grid').style.display = 'grid';
-            if ($('sidebar-friends')) $('sidebar-friends').style.display = 'none';
-            if ($('friends-list-panel')) $('friends-list-panel').style.display = 'none';
-            $('btn-all-rooms').classList.add('active');
-            $('btn-friends-sidebar').classList.remove('active');
-            renderRooms();
-        };
-    }
-    if ($('btn-friends-sidebar')) {
-        $('btn-friends-sidebar').onclick = () => {
-            $('rooms-grid').style.display = 'none';
-            if ($('sidebar-friends')) $('sidebar-friends').style.display = 'block';
-            if ($('friends-list-panel')) $('friends-list-panel').style.display = 'block';
-            $('btn-friends-sidebar').classList.add('active');
-            $('btn-all-rooms').classList.remove('active');
-            
-            // Запускаем подгрузку друзей
-            loadFriendsSidebar();
-            if (typeof setupLobbyNotifications === 'function') setupLobbyNotifications();
-        };
-    }
-
-    // 5. Выход из комнаты
-    if ($('btn-leave-room')) {
-        $('btn-leave-room').onclick = () => {
-            leaveRoom();
-        };
-    }
-
-    // 6. Микрофон в чате
-    const micBtn = $('mic-btn');
-    if (micBtn) {
-        micBtn.onclick = async function() {
-            // Используем глобальную переменную myStream, которая есть в твоем коде
-            if (myStream) {
-                await disableMicrophone({ notify: true });
-                this.classList.remove('active', 'pulseMic');
-            } else {
-                try {
-                    await enableMicrophone(this);
-                    this.classList.add('active', 'pulseMic');
-                } catch (e) {
-                    this.classList.remove('active');
-                    showToast('Ошибка микрофона');
-                }
-            }
-        };
+function widenLobbyLayout() {
+    const layout = document.querySelector('.lobby-layout');
+    if (layout) {
+        layout.style.maxWidth = '95vw';
+        layout.style.width = '95vw';
     }
 }
 
-// ==========================================
-// ЕДИНСТВЕННЫЙ СЛУШАТЕЛЬ АВТОРИЗАЦИИ
-// ==========================================
-// Единая точка входа
-onAuthStateChanged(auth, (user) => {
-    if (user) {
-        console.log("Пользователь авторизован:", user.uid);
-        
-        // Сначала обновляем базовый UI
-        if ($('user-display-name')) {
-            $('user-display-name').innerText = user.displayName || user.email;
-        }
+bindDirectChatUiV2();
+bindSelfPresence();
+subscribeToOwnProfile();
+bindCreateModalOverrides();
+widenLobbyLayout();
 
-        // Запускаем сервисы, когда точно знаем, что UID доступен
-        initApp(); 
-        
-        // Если мы не в комнате — показываем лобби
-        if (!currentRoomId) {
-            showScreen('lobby-screen');
-        }
-    } else {
-        console.log("Пользователь не вошел");
-        showScreen('auth-screen');
-    }
-});
+renderRoomsV4 = renderRoomsV4;
+setupLobbyNotificationsV4 = setupLobbyNotificationsV4;
+enterRoomV4 = enterRoomV4;
+leaveRoomV4 = leaveRoomV4;
+initRoomServicesV4 = initRoomServicesV4;
+
+if ($('btn-leave-room')) $('btn-leave-room').onclick = leaveRoomV4;
