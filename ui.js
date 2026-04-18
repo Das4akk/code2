@@ -1,22 +1,74 @@
-// ui.js
-import { authActions, roomActions, chatActions, voiceActions, AppState, escapeHtml } from './core.js';
+import { authActions, roomActions, chatActions, AppState, escapeHtml } from './core.js';
 
 const $ = (id) => document.getElementById(id);
 
 export function initUI() {
-    bindAuth();
-    bindModals();
-    bindChatTabs();
-    bindRoomControls();
+    console.log("UI Initializing...");
     
-    // Подписки на события ядра
-    document.addEventListener('core:authChanged', e => handleAuthScreen(e.detail));
-    document.addEventListener('core:onlineCount', e => updateOnlineCounter(e.detail));
-    document.addEventListener('core:chatMessage', e => renderMessage(e.detail));
-    document.addEventListener('core:roomUsers', e => renderRoomUsers(e.detail));
-    document.addEventListener('core:remoteAudio', e => attachRemoteAudio(e.detail.peerId, e.detail.stream));
-    document.addEventListener('core:remoteAudioRemove', e => removeRemoteAudio(e.detail));
-    document.addEventListener('core:videoSync', e => handleVideoSync(e.detail));
+    // ТАБЫ АВТОРИЗАЦИИ
+    $('tab-login')?.addEventListener('click', () => {
+        $('tab-login').classList.add('active'); $('tab-register').classList.remove('active');
+        $('form-login').classList.add('active-form'); $('form-register').classList.remove('active-form');
+    });
+
+    $('tab-register')?.addEventListener('click', () => {
+        $('tab-register').classList.add('active'); $('tab-login').classList.remove('active');
+        $('form-register').classList.add('active-form'); $('form-login').classList.remove('active-form');
+    });
+
+    // КНОПКИ ВХОДА/РЕГИ
+    $('login-btn')?.addEventListener('click', async () => {
+        try {
+            await authActions.login($('login-email').value, $('login-password').value);
+        } catch (e) { alert("Ошибка входа: " + e.message); }
+    });
+
+    $('register-btn')?.addEventListener('click', async () => {
+        try {
+            await authActions.register($('reg-email').value, $('reg-password').value, $('reg-name').value);
+        } catch (e) { alert("Ошибка регистрации: " + e.message); }
+    });
+
+    // ЧАТ ТАБЫ
+    $('tab-chat-btn')?.addEventListener('click', () => {
+        $('tab-chat-btn').classList.add('active'); $('tab-users-btn').classList.remove('active');
+        $('chat-messages').style.display = 'block'; $('users-list').style.display = 'none';
+    });
+
+    $('tab-users-btn')?.addEventListener('click', () => {
+        $('tab-users-btn').classList.add('active'); $('tab-chat-btn').classList.remove('active');
+        $('users-list').style.display = 'block'; $('chat-messages').style.display = 'none';
+    });
+
+    // ОТПРАВКА СООБЩЕНИЙ
+    const sendMsg = () => {
+        chatActions.send($('chat-input').value);
+        $('chat-input').value = '';
+    };
+    $('send-btn')?.addEventListener('click', sendMsg);
+    $('chat-input')?.addEventListener('keypress', (e) => { if(e.key === 'Enter') sendMsg(); });
+
+    // СЛУШАТЕЛЬ СОБЫТИЙ ЯДРА
+    document.addEventListener('core:authChanged', (e) => {
+        const user = e.detail;
+        if (user) {
+            $('auth-screen').classList.remove('active');
+            // Здесь можно вызвать загрузку списка комнат
+        } else {
+            $('auth-screen').classList.add('active');
+        }
+    });
+}
+
+function showToast(msg) {
+    const t = $('toast-container');
+    if(t) {
+        const div = document.createElement('div');
+        div.className = 'toast';
+        div.innerText = msg;
+        t.appendChild(div);
+        setTimeout(() => div.remove(), 3000);
+    }
 }
 
 // ----------------------------------------------------
