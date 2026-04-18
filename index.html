@@ -103,6 +103,7 @@
         <div id="modal-profile" class="modal">
             <div class="modal-content glass-panel">
                 <h2>Профиль</h2>
+                <input type="file" id="profile-avatar-upload" accept="image/png, image/jpeg">
                 <label style="font-size:14px; color:#ddd; display:block; margin-bottom:8px;">Аватар (PNG/JPG):</label>
                 <input type="file" id="profile-avatar-upload" accept="image/*" style="margin-bottom:12px;">
                 <input type="text" id="profile-name" placeholder="Никнейм" autocomplete="off">
@@ -116,7 +117,7 @@
                 </div>
                 <div class="modal-buttons">
                     <button id="btn-profile-cancel" class="google-btn">Отмена</button>
-                    <button id="btn-profile-save" class="primary-btn">Сохранить</button>
+                    <button id="btn-profile-save">Сохранить</button>
                 </div>
             </div>
         </div>
@@ -174,6 +175,7 @@
                 <div class="chat-column glass-panel">
                     <div class="chat-tabs">
                         <button id="tab-chat-btn" class="active">💬 Чат</button>
+                        <div id="lobby-notifications-container"></div>
                         <button id="tab-users-btn">👥 Люди (<span id="users-count">1</span>)</button>
                     </div>
 
