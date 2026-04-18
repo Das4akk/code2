@@ -3,89 +3,129 @@ import { authActions, roomActions, AppState } from './core.js';
 
 const $ = (id) => document.getElementById(id);
 
+// Безопасная привязка события
+function bind(id, event, fn) {
+    const el = $(id);
+    if (el) {
+        el.addEventListener(event, fn);
+        console.log(`✅ Привязано событие ${event} к #${id}`);
+    } else {
+        console.warn(`⚠️ Элемент #${id} не найден в HTML`);
+    }
+}
+
 export function initUI() {
-    // 1. Переключение экранов (Главная логика)
+    console.log("🎨 UI: Инициализация интерфейса...");
+
+    // Функция переключения экранов
     function showScreen(screenId) {
+        console.log(`🖥️ Переключение на экран: ${screenId}`);
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         const target = $(screenId);
-        if (target) target.classList.add('active');
-        else console.error("Screen not found:", screenId);
+        if (target) {
+            target.classList.add('active');
+        } else {
+            console.error(`❌ Ошибка: Экран #${screenId} отсутствует в HTML!`);
+        }
     }
 
-    // 2. Слушатель авторизации
+    // 1. Обработка авторизации
     document.addEventListener('core:authChanged', (e) => {
         const user = e.detail;
         if (user) {
-            console.log("Юзер залогинен, открываю лобби");
-            showScreen('lobby-screen'); 
-            if($('user-name-display')) $('user-name-display').innerText = user.displayName || "Пользователь";
+            showScreen('lobby-screen');
+            const nameEl = $('user-name-display');
+            if (nameEl) nameEl.innerText = user.displayName || "Пользователь";
         } else {
             showScreen('auth-screen');
         }
     });
 
-    // 3. Обработка списка комнат
-    document.addEventListener('core:roomsUpdated', (e) => {
-        const rooms = e.detail;
-        const grid = $('rooms-grid');
-        if (!grid) return;
-        grid.innerHTML = '';
-        
-        rooms.forEach(room => {
-            const card = document.createElement('div');
-            card.className = 'room-card glass-panel';
-            card.innerHTML = `
-                <div class="room-info">
-                    <h4>${room.name}</h4>
-                    <p>${room.private ? '🔒 Приватная' : '🔓 Открытая'}</p>
-                </div>
-                <button class="primary-btn">Войти</button>
-            `;
-            grid.appendChild(card);
-        });
-    });
-
-    // 4. Кнопки входа/регистрации
-    $('login-btn')?.addEventListener('click', async () => {
-        try {
-            await authActions.login($('login-email').value, $('login-password').value);
-        } catch (e) { alert("Ошибка: " + e.message); }
-    });
-
-    $('register-btn')?.addEventListener('click', async () => {
-        try {
-            await authActions.register($('reg-email').value, $('reg-password').value, $('reg-name').value);
-        } catch (e) { alert("Ошибка: " + e.message); }
-    });
-
-    // 5. Табы авторизации
-    $('tab-login')?.addEventListener('click', () => {
+    // 2. Табы авторизации (Вход / Регистрация)
+    bind('tab-login', 'click', () => {
         $('tab-login').classList.add('active'); $('tab-register').classList.remove('active');
         $('form-login').classList.add('active-form'); $('form-register').classList.remove('active-form');
     });
 
-    $('tab-register')?.addEventListener('click', () => {
+    bind('tab-register', 'click', () => {
         $('tab-register').classList.add('active'); $('tab-login').classList.remove('active');
         $('form-register').classList.add('active-form'); $('form-login').classList.remove('active-form');
     });
 
-    // 6. Модалка создания
-    $('btn-open-modal')?.addEventListener('click', () => $('modal-create').classList.add('active'));
+    // 3. Кнопки входа и регистрации
+    bind('login-btn', 'click', async () => {
+        const email = $('login-email')?.value;
+        const pass = $('login-password')?.value;
+        if (!email || !pass) return showToast("Заполните все поля", "error");
+        try { await authActions.login(email, pass); } catch (e) { showToast(e.message, "error"); }
+    });
+
+    bind('register-btn', 'click', async () => {
+        const email = $('reg-email')?.value;
+        const pass = $('reg-password')?.value;
+        const name = $('reg-name')?.value;
+        if (!email || !pass || !name) return showToast("Заполните все поля", "error");
+        try { await authActions.register(email, pass, name); } catch (e) { showToast(e.message, "error"); }
+    });
+
+    // 4. Модалка создания комнаты
+    bind('btn-open-modal', 'click', () => $('modal-create').classList.add('active'));
     
-    $('room-private')?.addEventListener('change', (e) => {
-        $('room-password').style.display = e.target.checked ? 'block' : 'none';
+    bind('room-private', 'change', (e) => {
+        if ($('room-password')) $('room-password').style.display = e.target.checked ? 'block' : 'none';
+    });
+
+    bind('btn-create-finish', 'click', async () => {
+        const data = {
+            name: $('room-name').value,
+            videoUrl: $('room-link').value,
+            private: $('room-private').checked,
+            password: $('room-password').value
+        };
+        try {
+            const roomId = await roomActions.create(data);
+            $('modal-create').classList.remove('active');
+            showToast("Комната создана!");
+            // Тут можно добавить автоматический вход в комнату
+        } catch (e) { showToast(e.message, "error"); }
+    });
+
+    // 5. Отрисовка комнат в лобби
+    document.addEventListener('core:roomsUpdated', (e) => {
+        console.log('🎉 Обновлен список комнат');
+        const grid = $('rooms-grid');
+        if (!grid) return;
+        grid.innerHTML = '';
+        e.detail.forEach(room => {
+            const div = document.createElement('div');
+            div.className = 'room-card glass-panel';
+            div.innerHTML = `
+                <div class="room-info">
+                    <h4>${room.name}</h4>
+                    <p>${room.private ? '🔒 Приватная' : '🔓 Открытая'}</p>
+                </div>
+                <button class="primary-btn" data-id="${room.id}">Войти</button>
+            `;
+            // Слушаем клик на кнопку "Войти" через делегирование
+            div.querySelector('button').onclick = () => {
+                showToast("Вход в " + room.name);
+                showScreen('room-screen'); // Переход в саму комнату
+            };
+            grid.appendChild(div);
+        });
     });
 }
 
-function showToast(msg) {
-    const t = $('toast-container');
-    if(t) {
-        const div = document.createElement('div');
-        div.className = 'toast';
-        div.innerText = msg;
-        t.appendChild(div);
-        setTimeout(() => div.remove(), 3000);
-    }
+// Утилита уведомлений
+export function showToast(msg, type = "info") {
+    console.log(`📢 Toast: ${msg}`);
+    const container = $('toast-container');
+    if (!container) return;
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerText = msg;
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
 }
 
 // ----------------------------------------------------

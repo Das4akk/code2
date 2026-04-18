@@ -12,20 +12,24 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getDatabase(app);
+export const auth = getAuth(app);
+export const db = getDatabase(app);
 
-
-export const AppState = { user: null, currentRoomId: null };
+export const AppState = { 
+    user: null, 
+    currentRoomId: null,
+    isOwner: false
+};
 
 export function initCore() {
+    console.log('📡 Core: Подключение к Firebase...');
     onAuthStateChanged(auth, (user) => {
         AppState.user = user;
-        // Отправляем событие о смене юзера
+        console.log('🔑 Статус пользователя изменился:', user ? user.email : 'Выход');
         document.dispatchEvent(new CustomEvent('core:authChanged', { detail: user }));
         
         if (user) {
-            listenRooms(); // Начинаем слушать список комнат
+            listenRooms();
         }
     });
 }
@@ -33,7 +37,11 @@ export function initCore() {
 function listenRooms() {
     onValue(ref(db, 'rooms'), (snap) => {
         const rooms = [];
-        snap.forEach(child => { rooms.push(child.val()); });
+        snap.forEach(child => { 
+            const data = child.val();
+            data.id = child.key;
+            rooms.push(data); 
+        });
         document.dispatchEvent(new CustomEvent('core:roomsUpdated', { detail: rooms }));
     });
 }
@@ -54,31 +62,12 @@ export const roomActions = {
         const roomData = {
             id: roomRef.key,
             owner: auth.currentUser.uid,
-            name: data.name,
-            videoUrl: data.videoUrl,
-            private: data.private,
-            password: data.password
+            name: data.name || "Без названия",
+            videoUrl: data.videoUrl || "",
+            private: data.private || false,
+            password: data.password || ""
         };
         await set(roomRef, roomData);
         return roomRef.key;
-        
     }
 };
-
-export const chatActions = {
-    send: (text) => {
-        if (!AppState.currentRoomId || !text.trim()) return;
-        push(ref(db, `rooms/${AppState.currentRoomId}/messages`), {
-            senderId: AppState.user.uid,
-            senderName: AppState.user.displayName || 'Anon',
-            text: text,
-            timestamp: Date.now()
-        });
-    }
-};
-
-export function escapeHtml(str) {
-    const p = document.createElement('p');
-    p.textContent = str;
-    return p.innerHTML;
-}
