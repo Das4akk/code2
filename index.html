@@ -2,765 +2,194 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>COW — Co-Watching Space</title>
-    <style>
-        :root { --bg: #050505; --accent: #f5f7fa; --accent-weak: rgba(255,255,255,0.12); --accent-strong: rgba(255,255,255,0.95); }
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
-        body { background: var(--bg); color: #fff; overflow: hidden; height: 100vh; width: 100vw; }
-        
-        #particle-canvas { position: fixed; top: 0; left: 0; z-index: -1; width: 100%; height: 100%; opacity: 0.3; }
-        
-        .glass-panel { background: rgba(15, 15, 20, 0.6); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; }
-        
-        /* Screens */
-        .screen { display: none; height: 100vh; width: 100vw; flex-direction: column; overflow: hidden; }
-        .screen.active { display: flex; animation: fadeInScreen 0.4s ease; }
-        @keyframes fadeInScreen { from { opacity: 0; } to { opacity: 1; } }
-
-        /* Auth Screen */
-        #auth-screen { align-items: center; justify-content: center; }
-        .auth-wrapper { width: 400px; padding: 40px; text-align: center; max-width: 90%; }
-        .logo { font-size: 48px; font-weight: 900; margin-bottom: 30px; letter-spacing: -2px; }
-        .auth-tabs { display: flex; gap: 10px; margin-bottom: 20px; background: rgba(255,255,255,0.05); padding: 5px; border-radius: 12px; }
-        .auth-tabs button { flex: 1; padding: 10px; border: none; background: none; color: #888; cursor: pointer; border-radius: 8px; font-weight: 600; transition: 0.3s; }
-        .auth-tabs button.active { background: #fff; color: #000; }
-        .auth-form { display: none; flex-direction: column; gap: 12px; }
-        .auth-form.active-form { display: flex; }
-        
-        input, textarea { width: 100%; padding: 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: #fff; outline: none; transition: 0.2s; }
-        input:focus { border-color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.08); }
-        
-        .primary-btn { width: 100%; padding: 14px; border-radius: 12px; border: none; background: #fff; color: #000; font-weight: 700; cursor: pointer; transition: 0.3s; }
-        .primary-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255,255,255,0.2); }
-        .secondary-btn { width: 100%; padding: 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: #fff; cursor: pointer; transition: 0.2s; }
-
-        /* Lobby Screen */
-        .lobby-layout { display: grid; grid-template-columns: 300px 1fr; gap: 20px; padding: 20px; height: 100vh; }
-        .sidebar { display: flex; flex-direction: column; gap: 20px; padding: 25px; overflow-y: auto; }
-        .user-card { display: flex; align-items: center; gap: 12px; padding: 15px; border-radius: 18px; background: rgba(255,255,255,0.05); cursor: pointer; }
-        .avatar { width: 45px; height: 45px; border-radius: 50%; background: #333; display: flex; align-items: center; justify-content: center; font-weight: bold; overflow: hidden; }
-        .avatar img { width: 100%; height: 100%; object-fit: cover; }
-        
-        .nav-menu { display: flex; flex-direction: column; gap: 8px; }
-        .nav-item { padding: 14px 18px; border-radius: 14px; cursor: pointer; display: flex; align-items: center; gap: 12px; transition: 0.2s; color: #aaa; font-weight: 500; }
-        .nav-item:hover, .nav-item.active { background: rgba(255,255,255,0.08); color: #fff; }
-        
-        .rooms-container { overflow-y: auto; padding-right: 10px; }
-        .rooms-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 20px; }
-        .room-card { padding: 0; overflow: hidden; position: relative; cursor: pointer; transition: 0.3s; min-height: 240px; display: flex; flex-direction: column; }
-        .room-card:hover { transform: scale(1.02); border-color: rgba(255,255,255,0.3); }
-        .room-preview { width: 100%; height: 160px; background: #111; position: relative; overflow: hidden; }
-        .room-preview video { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
-        .room-info { padding: 15px; }
-        
-        /* Room Screen */
-        .room-layout { display: grid; grid-template-columns: 1fr 380px; gap: 20px; padding: 20px; height: 100vh; }
-        .player-section { display: flex; flex-direction: column; gap: 15px; }
-        .video-container { flex: 1; background: #000; border-radius: 24px; position: relative; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); }
-        video#main-video { width: 100%; height: 100%; }
-        
-        .chat-section { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
-        .chat-messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
-        .message { display: flex; flex-direction: column; gap: 4px; max-width: 85%; }
-        .message.self { align-self: flex-end; align-items: flex-end; }
-        .msg-bubble { padding: 12px 16px; border-radius: 18px; background: rgba(255,255,255,0.08); font-size: 14px; line-height: 1.4; }
-        .self .msg-bubble { background: #fff; color: #000; border-bottom-right-radius: 4px; }
-        .msg-author { font-size: 11px; color: #666; font-weight: 600; margin-left: 5px; }
-        .system-msg { align-self: center; color: #555; font-size: 12px; margin: 10px 0; font-weight: 500; text-transform: uppercase; letter-spacing: 1px; }
-
-        .chat-input-area { padding: 15px; display: flex; gap: 10px; align-items: center; }
-        .mic-btn { width: 45px; height: 45px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: #fff; cursor: pointer; transition: 0.3s; display: flex; align-items: center; justify-content: center; font-size: 20px; }
-        .mic-btn.active { background: #ff4757; border-color: #ff4757; box-shadow: 0 0 15px rgba(255, 71, 87, 0.4); }
-
-        /* Modals */
-        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
-        .modal.active { display: flex; }
-        .modal-content { width: 500px; max-width: 100%; padding: 35px; }
-
-        /* Online status */
-        .online-dot { width: 8px; height: 8px; background: #2ed573; border-radius: 50%; display: inline-block; margin-right: 5px; box-shadow: 0 0 8px #2ed573; }
-        .offline-dot { width: 8px; height: 8px; background: #555; border-radius: 50%; display: inline-block; margin-right: 5px; }
-
-        /* Mobile specific */
-        .mobile-header { display: none; padding: 15px 20px; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .burger-btn { font-size: 24px; background: none; border: none; color: #fff; cursor: pointer; }
-        
-        @media (max-width: 1024px) {
-            .lobby-layout { grid-template-columns: 1fr; padding: 0; }
-            .sidebar { 
-                position: fixed; left: -100%; top: 0; height: 100%; width: 280px; 
-                z-index: 1000; transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
-                background: #0a0a0f; border-right: 1px solid rgba(255,255,255,0.1);
-            }
-            .sidebar.open { left: 0; }
-            .mobile-header { display: flex; }
-            .room-layout { grid-template-columns: 1fr; padding: 10px; overflow-y: auto; height: auto; }
-            .video-container { height: 240px; flex: none; }
-            .chat-section { height: 500px; }
-            .chat-messages { padding: 10px; }
-        }
-
-        /* Toast notifications */
-        #toast-container { position: fixed; top: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; }
-        .toast { padding: 14px 24px; border-radius: 12px; background: #fff; color: #000; font-weight: 600; font-size: 14px; animation: slideInToast 0.3s ease; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        @keyframes slideInToast { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-
-        /* Friend requests */
-        .friend-request-item { display: flex; align-items: center; justify-content: space-between; padding: 12px; border-radius: 12px; background: rgba(255,255,255,0.05); margin-bottom: 8px; }
-        .friend-btn-group { display: flex; gap: 5px; }
-        .btn-small { padding: 6px 10px; border-radius: 8px; font-size: 12px; border: none; cursor: pointer; }
-        .btn-accept { background: #2ed573; color: #000; }
-        .btn-decline { background: #ff4757; color: #fff; }
-
-        .online-counter-badge { position: fixed; bottom: 20px; left: 20px; padding: 8px 16px; border-radius: 20px; background: rgba(0,0,0,0.6); border: 1px solid rgba(46,213,115,0.3); color: #2ed573; font-size: 12px; font-weight: bold; z-index: 100; }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
     <canvas id="particle-canvas"></canvas>
-    <div id="toast-container"></div>
-    <div class="online-counter-badge">В сети: <span id="global-online-count">0</span></div>
     
-    <!-- AUTH SCREEN -->
-    <section id="auth-screen" class="screen active">
-        <div class="auth-wrapper glass-panel">
-            <div class="logo">COW</div>
-            <div class="auth-tabs">
-                <button id="tab-login-btn" class="active">Вход</button>
-                <button id="tab-reg-btn">Регистрация</button>
-            </div>
-            
-            <div id="login-form" class="auth-form active-form">
-                <input type="email" id="login-email" placeholder="Электронная почта">
-                <input type="password" id="login-pass" placeholder="Пароль">
-                <button class="primary-btn" id="btn-do-login">Войти</button>
-            </div>
-            
-            <div id="reg-form" class="auth-form">
-                <input type="text" id="reg-user" placeholder="Уникальный никнейм">
-                <input type="email" id="reg-email" placeholder="Электронная почта">
-                <input type="password" id="reg-pass" placeholder="Пароль">
-                <button class="primary-btn" id="btn-do-reg">Создать аккаунт</button>
-            </div>
-        </div>
-    </section>
+    <div id="toast-container"></div>
+    <div id="online-counter" class="online-counter" style="display:none;">
+        <span id="online-count">1</span> онлайн
+    </div>
+    
+    <div id="remote-audio-container" style="display: none;"></div>
 
-    <!-- LOBBY SCREEN -->
-    <section id="lobby-screen" class="screen">
-        <div class="mobile-header">
-            <div class="logo" style="font-size: 24px; margin-bottom: 0;">COW</div>
-            <button class="burger-btn" id="toggle-sidebar">☰</button>
+    <div id="app-container">
+        <section id="auth-screen" class="screen active">
+            <div class="auth-wrapper glass-panel">
+                <h1 class="logo">COW</h1>
+                <div class="auth-tabs">
+                    <button type="button" id="tab-login" class="active">Вход</button>
+                    <button type="button" id="tab-register">Регистрация</button>
+                </div>
+                <div class="form-container">
+                    <div id="form-login" class="auth-form active-form">
+                        <input type="email" id="login-email" placeholder="Email" autocomplete="off">
+                        <input type="password" id="login-password" placeholder="Пароль">
+                        <button type="button" id="btn-login-email" class="primary-btn">Войти</button>
+                    </div>
+                    <div id="form-register" class="auth-form hidden-form right">
+                        <input type="text" id="reg-name" placeholder="Никнейм" autocomplete="off">
+                        <input type="email" id="reg-email" placeholder="Email" autocomplete="off">
+                        <input type="password" id="reg-password" placeholder="Пароль">
+                        <button type="button" id="btn-register-email" class="primary-btn">Создать аккаунт</button>
+                    </div>
+                </div>
+                <div class="divider"><span>или</span></div>
+                <button type="button" id="btn-google-auth" class="google-btn">Войти через Google</button>
+            </div>
+        </section>
+
+        <section id="lobby-screen" class="screen">
+            <div class="lobby-layout">
+                <aside class="lobby-sidebar glass-panel">
+                    <div class="user-profile">
+                        <div class="avatar-circle" id="my-avatar"></div>
+                        <div>
+                            <h3 id="user-display-name">...</h3>
+                            <span id="user-online-status" style="font-size: 12px; color: #2ed573;">● Онлайн</span>
+                        </div>
+                        <button id="btn-edit-profile" class="icon-btn">✎</button>
+                    </div>
+                    <nav class="sidebar-nav">
+                        <button id="btn-all-rooms" class="nav-item active glass-panel">📺 Все комнаты</button>
+                        <button id="btn-friends-sidebar" class="nav-item glass-panel">👥 Друзья</button>
+                    </nav>
+                    <div id="sidebar-friends" style="display:none; flex:1; overflow-y:auto; margin-bottom:20px;"></div>
+                    <button id="btn-delete-all-rooms" class="danger-btn" style="margin-top: auto;">⚠ Удалить ВСЕ</button>
+                    <button id="btn-logout" class="google-btn logout-btn">← Выход</button>
+                </aside>
+
+                <main class="lobby-main">
+                    <header class="main-header glass-panel">
+                        <input type="text" id="search-rooms" placeholder="Поиск комнат...">
+                        <button id="btn-open-modal" class="primary-btn create-btn">+ Создать</button>
+                    </header>
+                    <div id="rooms-grid" class="rooms-grid"></div>
+                    <div id="friends-list-panel" class="friends-list-panel" style="display: none;"></div>
+                </main>
+            </div>
+        </section>
+
+        <div id="modal-create" class="modal">
+            <div class="modal-content glass-panel">
+                <h2>Создать комнату</h2>
+                <input type="text" id="room-name" placeholder="Название комнаты" autocomplete="off">
+                <input type="text" id="room-link" placeholder="Ссылка на видео (mp4)" autocomplete="off">
+                <label style="display:flex; align-items:center; gap:8px; margin-top:12px; font-size:14px; color:#ddd;">
+                    <input type="checkbox" id="room-private"> Приватная
+                </label>
+                <input type="password" id="room-password" placeholder="Пароль" autocomplete="new-password" style="display:none; margin-top:8px;">
+                <div class="modal-buttons">
+                    <button id="btn-close-modal" class="google-btn">Отмена</button>
+                    <button id="btn-create-finish" class="primary-btn">Создать</button>
+                </div>
+            </div>
         </div>
-        <div class="lobby-layout">
-            <aside class="sidebar glass-panel" id="main-sidebar">
-                <div class="user-card" id="open-my-profile">
-                    <div class="avatar" id="my-avatar-display">?</div>
+
+        <div id="modal-join" class="modal">
+            <div class="modal-content glass-panel">
+                <h2>Приватная комната</h2>
+                <input type="password" id="join-password" placeholder="Пароль" autocomplete="off">
+                <div class="modal-buttons">
+                    <button id="btn-join-cancel" class="google-btn">Отмена</button>
+                    <button id="btn-join-confirm" class="primary-btn">Войти</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="modal-profile" class="modal">
+            <div class="modal-content glass-panel">
+                <h2>Профиль</h2>
+                <input type="text" id="profile-name" placeholder="Никнейм" autocomplete="off">
+                <input type="text" id="profile-status" placeholder="Статус (напр. 'В кино' или 'Занят')" autocomplete="off" style="margin-bottom:12px;">
+                <input type="number" id="profile-volume" placeholder="Громкость по умолчанию (0-100)" min="0" max="100" value="100" style="margin-bottom:12px;">
+                <textarea id="profile-bio" placeholder="О себе (до 120 символов)" maxlength="120" style="width:100%; padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.06); color:#fff; resize:none; margin-bottom:12px; font-family:inherit;"></textarea>
+                <label style="font-size:14px; color:#ddd; display:block; margin-bottom:8px;">Цвет ника:</label>
+                <div style="display:flex; gap:8px; align-items:center; margin-bottom:12px;">
+                    <input type="color" id="profile-color" value="#f5f7fa" style="width:50px; height:40px; padding:0; border-radius:10px; border:none; cursor:pointer;">
+                    <span id="profile-color-name" style="font-size:12px; color:#aaa;">Стандартный</span>
+                </div>
+                <div class="modal-buttons">
+                    <button id="btn-profile-cancel" class="google-btn">Отмена</button>
+                    <button id="btn-profile-save" class="primary-btn">Сохранить</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="modal-dm-chat" class="modal">
+            <div class="modal-content glass-panel dm-modal-content">
+                <div class="dm-modal-header">
                     <div>
-                        <div id="my-name-display" style="font-weight: bold;">Загрузка...</div>
-                        <div style="font-size: 11px; color: #2ed573;">● В сети</div>
+                        <h2 id="dm-chat-title">Личный чат</h2>
+                        <p id="dm-chat-status">Сообщения только между вами и другом</p>
+                    </div>
+                    <button id="btn-dm-close" class="google-btn" type="button">✕</button>
+                </div>
+                <div id="dm-messages" class="dm-messages"></div>
+                <div class="dm-compose">
+                    <input type="text" id="dm-input" placeholder="Написать другу..." autocomplete="off">
+                    <button id="btn-dm-send" class="primary-btn" type="button">↑</button>
+                </div>
+            </div>
+        </div>
+
+        <section id="room-screen" class="screen">
+            <header class="room-header glass-panel">
+                <div style="display: flex; gap: 10px; flex-wrap:wrap;">
+                    <button id="btn-leave-room" class="google-btn leave-btn">← Лобби</button>
+                    <button id="btn-edit-room" class="google-btn" style="display:none;">✎ Редактировать</button>
+                    <button id="btn-delete-room" class="danger-btn" style="display:none;">🗑 Удалить</button>
+                </div>
+                <h2 id="room-title-text" style="margin-left: 20px; flex-grow: 1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">Комната</h2>
+                <div class="voice-volume-control" style="margin-right: 20px; display:flex; gap:8px; align-items:center;">
+                    <span title="Громкость">🔊</span>
+                    <input type="range" id="voice-volume" min="0" max="1" step="0.05" value="1" style="width:120px;">
+                </div>
+            </header>
+            
+            <main class="main-layout-room">
+                <div class="video-column">
+                    <canvas id="ambilight-canvas"></canvas>
+                    
+                    <div class="player-wrapper glass-panel" id="player-wrapper">
+                        <video id="native-player" playsinline preload="metadata"></video>
+                        <div id="reaction-layer"></div>
+                    </div>
+                    
+                    <div class="reaction-bar glass-panel">
+                        <button class="react-btn" data-emoji="🔥">🔥</button>
+                        <button class="react-btn" data-emoji="😂">😂</button>
+                        <button class="react-btn" data-emoji="😱">😱</button>
+                        <button class="react-btn" data-emoji="❤️">❤️</button>
+                        <button class="react-btn" data-emoji="👏">👏</button>
+                        <button id="btn-fullscreen" class="icon-btn" style="margin-left: auto;">⛶ ФСкрин</button>
                     </div>
                 </div>
                 
-                <nav class="nav-menu">
-                    <div class="nav-item active" id="nav-rooms"><span style="font-size: 20px;">📺</span> Комнаты</div>
-                    <div class="nav-item" id="nav-friends"><span style="font-size: 20px;">👥</span> Друзья</div>
-                    <div class="nav-item" id="btn-open-create-room"><span style="font-size: 20px;">➕</span> Создать комнату</div>
-                </nav>
+                <div class="chat-column glass-panel">
+                    <div class="chat-tabs">
+                        <button id="tab-chat-btn" class="active">💬 Чат</button>
+                        <button id="tab-users-btn">👥 Люди (<span id="users-count">1</span>)</button>
+                    </div>
 
-                <div id="friends-section" style="display: none; flex: 1; flex-direction: column;">
-                    <h4 style="margin-bottom: 10px; font-size: 13px; color: #555;">ЗАЯВКИ</h4>
-                    <div id="friend-requests-list"></div>
-                    <h4 style="margin-top: 20px; margin-bottom: 10px; font-size: 13px; color: #555;">СПИСОК ДРУЗЕЙ</h4>
-                    <div id="friends-list" style="overflow-y: auto;"></div>
-                </div>
+                    <div class="chat-area active-area" id="chat-messages"></div>
+                    <div class="users-area" id="users-list" style="display: none;"></div>
 
-                <div style="margin-top: auto; display: flex; flex-direction: column; gap: 8px;">
-                    <button class="secondary-btn" id="btn-edit-profile">Изменить профиль</button>
-                    <button class="secondary-btn" id="btn-delete-all-my-rooms" style="border-color: rgba(255,71,87,0.3); color: #ff4757;">Удалить мои комнаты</button>
-                    <button class="secondary-btn" id="btn-logout">Выйти</button>
-                </div>
-            </aside>
-            
-            <main class="rooms-container">
-                <h1 id="lobby-title">Публичные комнаты</h1>
-                <div class="rooms-grid" id="rooms-grid">
-                    <!-- Rooms inject here -->
+                    <div class="message-dock" id="message-dock-container">
+                        <div class="beautiful-chat-input glass-panel">
+                            <button id="mic-btn" class="mic-icon-btn" title="Микрофон">🎤</button>
+                            <input type="text" id="chat-input" placeholder="Сообщение или :00 таймкод..." autocomplete="off">
+                            <button id="send-btn" class="send-btn">↑</button>
+                        </div>
+                    </div>
                 </div>
             </main>
-        </div>
-    </section>
-
-    <!-- ROOM SCREEN -->
-    <section id="room-screen" class="screen">
-        <div class="room-layout">
-            <div class="player-section">
-                <div class="video-container glass-panel">
-                    <video id="main-video" controls playsinline></video>
-                </div>
-                <div class="glass-panel" style="padding: 15px; display: flex; justify-content: space-between; align-items: center;">
-                    <div id="current-room-name" style="font-weight: bold; font-size: 18px;">Название комнаты</div>
-                    <button class="secondary-btn" id="btn-leave-room" style="width: auto; padding: 10px 20px;">Выйти из комнаты</button>
-                </div>
-            </div>
-            
-            <div class="chat-section glass-panel">
-                <div style="padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between;">
-                    <span>Чат комнаты</span>
-                    <span id="room-users-count" style="color: #666;">1 чел.</span>
-                </div>
-                <div class="chat-messages" id="chat-messages"></div>
-                <div class="chat-input-area">
-                    <button class="mic-btn" id="mic-toggle">🎤</button>
-                    <input type="text" id="chat-input" placeholder="Напишите сообщение...">
-                    <button class="primary-btn" id="btn-send-msg" style="width: auto; padding: 10px 15px;">↑</button>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- MODAL: CREATE ROOM -->
-    <div class="modal" id="modal-create-room">
-        <div class="modal-content glass-panel">
-            <h2>Создать новую комнату</h2>
-            <div style="margin-top: 20px; display: flex; flex-direction: column; gap: 15px;">
-                <input type="text" id="new-room-name" placeholder="Название комнаты">
-                <input type="text" id="new-room-slug" placeholder="Slug (уникальный ID ссылки, напр. cool-party)">
-                <input type="text" id="new-room-video" placeholder="Ссылка на видео (mp4)">
-                <div style="display: flex; gap: 10px;">
-                    <button class="secondary-btn" id="btn-cancel-create">Отмена</button>
-                    <button class="primary-btn" id="btn-confirm-create">Создать</button>
-                </div>
-            </div>
-        </div>
+        </section>
     </div>
 
-    <!-- MODAL: EDIT PROFILE -->
-    <div class="modal" id="modal-edit-profile">
-        <div class="modal-content glass-panel">
-            <h2>Настройки профиля</h2>
-            <div style="margin-top: 20px; display: flex; flex-direction: column; gap: 15px;">
-                <div style="display: flex; gap: 15px; align-items: center;">
-                    <div class="avatar" id="edit-avatar-preview" style="width: 80px; height: 80px; font-size: 30px;">?</div>
-                    <input type="text" id="edit-avatar-url" placeholder="URL аватарки (прямая ссылка)">
-                </div>
-                <input type="text" id="edit-username" placeholder="Никнейм">
-                <textarea id="edit-bio" placeholder="О себе..." rows="3"></textarea>
-                <div style="display: flex; gap: 10px;">
-                    <button class="secondary-btn" id="btn-cancel-edit">Отмена</button>
-                    <button class="primary-btn" id="btn-confirm-edit">Сохранить</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL: VIEW OTHER PROFILE -->
-    <div class="modal" id="modal-view-profile">
-        <div class="modal-content glass-panel" style="text-align: center;">
-            <div class="avatar" id="view-avatar" style="width: 100px; height: 100px; margin: 0 auto 15px; font-size: 40px;">?</div>
-            <h2 id="view-name">Пользователь</h2>
-            <p id="view-bio" style="color: #888; margin: 15px 0; font-size: 14px;"></p>
-            <div id="view-profile-actions">
-                <button class="primary-btn" id="btn-add-friend">Добавить в друзья</button>
-            </div>
-            <button class="secondary-btn" id="btn-close-view" style="margin-top: 15px;">Закрыть</button>
-        </div>
-    </div>
-
-    <!-- AUDIO CONTAINER FOR WEBRTC -->
-    <div id="remote-audios" style="display: none;"></div>
-
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getDatabase, ref, set, get, push, onValue, onDisconnect, remove, update, child } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyCby2qPGnlHWRfxWAI3Y2aK_UndEh9nato",
-            authDomain: "das4akk-1.firebaseapp.com",
-            databaseURL: "https://das4akk-1-default-rtdb.firebaseio.com",
-            projectId: "das4akk-1",
-            storageBucket: "das4akk-1.firebasestorage.app"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getDatabase(app);
-
-        // --- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ---
-        let currentUser = null;
-        let currentRoom = null;
-        let localStream = null;
-        const peerConnections = {}; // uid -> pc
-        const configuration = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
-
-        // --- УТИЛИТЫ ---
-        const $ = id => document.getElementById(id);
-        const toast = msg => {
-            const div = document.createElement('div');
-            div.className = 'toast';
-            div.innerText = msg;
-            $('toast-container').appendChild(div);
-            setTimeout(() => div.remove(), 4000);
-        };
-
-        const showScreen = id => {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            $(id).classList.add('active');
-        };
-
-        // --- AUTH LOGIC ---
-        $('tab-login-btn').onclick = () => {
-            $('tab-login-btn').classList.add('active');
-            $('tab-reg-btn').classList.remove('active');
-            $('login-form').classList.add('active-form');
-            $('reg-form').classList.remove('active-form');
-        };
-
-        $('tab-reg-btn').onclick = () => {
-            $('tab-reg-btn').classList.add('active');
-            $('tab-login-btn').classList.remove('active');
-            $('reg-form').classList.add('active-form');
-            $('login-form').classList.remove('active-form');
-        };
-
-        $('btn-do-login').onclick = async () => {
-            const email = $('login-email').value;
-            const pass = $('login-pass').value;
-            try {
-                await signInWithEmailAndPassword(auth, email, pass);
-            } catch (e) { toast("Ошибка входа: " + e.message); }
-        };
-
-        $('btn-do-reg').onclick = async () => {
-            const user = $('reg-user').value.trim();
-            const email = $('reg-email').value;
-            const pass = $('reg-pass').value;
-            
-            if(!user || user.length < 3) return toast("Никнейм слишком короткий");
-
-            try {
-                // Проверка уникальности
-                const nameCheck = await get(ref(db, `usernames/${user.toLowerCase()}`));
-                if(nameCheck.exists()) return toast("Этот ник уже занят");
-
-                const res = await createUserWithEmailAndPassword(auth, email, pass);
-                await updateProfile(res.user, { displayName: user });
-                
-                // Создаем профиль
-                await set(ref(db, `users/${res.user.uid}/profile`), {
-                    username: user,
-                    bio: "Новый пользователь COW",
-                    avatar: "",
-                    createdAt: Date.now()
-                });
-                await set(ref(db, `usernames/${user.toLowerCase()}`), res.user.uid);
-                
-                toast("Успешная регистрация!");
-            } catch (e) { toast("Ошибка: " + e.message); }
-        };
-
-        onAuthStateChanged(auth, user => {
-            if (user) {
-                currentUser = user;
-                showScreen('lobby-screen');
-                initLobby();
-            } else {
-                currentUser = null;
-                showScreen('auth-screen');
-            }
-        });
-
-        $('btn-logout').onclick = () => signOut(auth);
-
-        // --- LOBBY & PROFILE ---
-        function initLobby() {
-            // Online tracking
-            const myStatusRef = ref(db, `status/${currentUser.uid}`);
-            onDisconnect(myStatusRef).set({ online: false, lastSeen: Date.now() });
-            set(myStatusRef, { online: true, lastSeen: Date.now() });
-
-            onValue(ref(db, 'status'), snap => {
-                let count = 0;
-                snap.forEach(s => { if(s.val().online) count++; });
-                $('global-online-count').innerText = count;
-            });
-
-            // My profile
-            onValue(ref(db, `users/${currentUser.uid}/profile`), snap => {
-                const data = snap.val();
-                if(data) {
-                    $('my-name-display').innerText = data.username;
-                    $('my-avatar-display').innerHTML = data.avatar ? `<img src="${data.avatar}">` : data.username[0].toUpperCase();
-                }
-            });
-
-            // Rooms List
-            onValue(ref(db, 'rooms'), snap => {
-                const grid = $('rooms-grid');
-                grid.innerHTML = '';
-                snap.forEach(roomSnap => {
-                    const r = roomSnap.val();
-                    const id = roomSnap.key;
-                    const card = document.createElement('div');
-                    card.className = 'room-card glass-panel';
-                    card.innerHTML = `
-                        <div class="room-preview">
-                            <video src="${r.videoUrl}#t=10" muted playsinline></video>
-                        </div>
-                        <div class="room-info">
-                            <div style="font-weight:bold;">${r.name}</div>
-                            <div style="font-size:12px; color:#666; margin-top:4px;">ID: ${r.slug}</div>
-                        </div>
-                    `;
-                    card.onclick = () => joinRoom(id);
-                    grid.appendChild(card);
-                });
-            });
-        }
-
-        // --- ROOM LOGIC ---
-        async function joinRoom(id) {
-            currentRoom = id;
-            showScreen('room-screen');
-            
-            const roomRef = ref(db, `rooms/${id}`);
-            const snap = await get(roomRef);
-            const data = snap.val();
-            
-            $('current-room-name').innerText = data.name;
-            $('main-video').src = data.videoUrl;
-            
-            // Sys msg
-            sendSystemMessage(`${currentUser.displayName} вошел в комнату`);
-
-            // Listen chat
-            onValue(ref(db, `chats/${id}`), chatSnap => {
-                const chatBox = $('chat-messages');
-                chatBox.innerHTML = '';
-                chatSnap.forEach(msgSnap => {
-                    const m = msgSnap.val();
-                    const div = document.createElement('div');
-                    if(m.type === 'system') {
-                        div.className = 'system-msg';
-                        div.innerText = `------ ${m.text} ------`;
-                    } else {
-                        div.className = `message ${m.uid === currentUser.uid ? 'self' : ''}`;
-                        div.innerHTML = `
-                            <div class="msg-author">${m.author}</div>
-                            <div class="msg-bubble">${m.text}</div>
-                        `;
-                    }
-                    chatBox.appendChild(div);
-                });
-                chatBox.scrollTop = chatBox.scrollHeight;
-            });
-
-            // Signaling for Voice
-            setupVoiceSignaling();
-        }
-
-        $('btn-send-msg').onclick = () => {
-            const input = $('chat-input');
-            const text = input.value.trim();
-            if(!text) return;
-            push(ref(db, `chats/${currentRoom}`), {
-                uid: currentUser.uid,
-                author: currentUser.displayName,
-                text: text,
-                time: Date.now()
-            });
-            input.value = '';
-        };
-
-        function sendSystemMessage(text) {
-            push(ref(db, `chats/${currentRoom}`), {
-                type: 'system',
-                text: text,
-                time: Date.now()
-            });
-        }
-
-        $('btn-leave-room').onclick = () => {
-            sendSystemMessage(`${currentUser.displayName} покинул комнату`);
-            stopMic();
-            currentRoom = null;
-            showScreen('lobby-screen');
-        };
-
-        // --- MIC / WEBRTC LOGIC (FIXED) ---
-        $('mic-toggle').onclick = async () => {
-            if (localStream) {
-                stopMic();
-            } else {
-                try {
-                    localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    $('mic-toggle').classList.add('active');
-                    toast("Микрофон включен");
-                    
-                    // Обновляем все существующие пиры
-                    Object.values(peerConnections).forEach(pc => {
-                        localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-                    });
-                } catch (e) {
-                    toast("Ошибка доступа к микрофону");
-                    console.error(e);
-                }
-            }
-        };
-
-        function stopMic() {
-            if (localStream) {
-                localStream.getTracks().forEach(t => t.stop());
-                localStream = null;
-                $('mic-toggle').classList.remove('active');
-                toast("Микрофон выключен");
-            }
-        }
-
-        async function setupVoiceSignaling() {
-            const roomPeersRef = ref(db, `rooms/${currentRoom}/peers`);
-            const myPeerRef = ref(db, `rooms/${currentRoom}/peers/${currentUser.uid}`);
-            
-            // При дисконнекте удаляем себя из пиров
-            onDisconnect(myPeerRef).remove();
-            
-            // Наблюдаем за новыми участниками
-            onChildAdded(roomPeersRef, async (snap) => {
-                const otherUid = snap.key;
-                if (otherUid === currentUser.uid) return;
-                
-                createPeerConnection(otherUid, true); // Мы инициируем
-            });
-
-            // Наблюдаем за сигналами (offers/answers/ice)
-            const signalsRef = ref(db, `signals/${currentRoom}/${currentUser.uid}`);
-            onChildAdded(signalsRef, async (snap) => {
-                const signal = snap.val();
-                const fromUid = signal.from;
-                
-                if (!peerConnections[fromUid]) createPeerConnection(fromUid, false);
-                const pc = peerConnections[fromUid];
-
-                if (signal.type === 'offer') {
-                    await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
-                    const answer = await pc.createAnswer();
-                    await pc.setLocalDescription(answer);
-                    sendSignal(fromUid, { type: 'answer', sdp: answer });
-                } else if (signal.type === 'answer') {
-                    await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
-                } else if (signal.type === 'ice') {
-                    await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
-                }
-                remove(snap.ref); // Очищаем сигнал после обработки
-            });
-        }
-
-        function createPeerConnection(otherUid, isOffer) {
-            const pc = new RTCPeerConnection(configuration);
-            peerConnections[otherUid] = pc;
-
-            if (localStream) {
-                localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-            }
-
-            pc.onicecandidate = e => {
-                if (e.candidate) sendSignal(otherUid, { type: 'ice', candidate: e.candidate });
-            };
-
-            pc.ontrack = e => {
-                let audio = $(`audio-${otherUid}`);
-                if (!audio) {
-                    audio = document.createElement('audio');
-                    audio.id = `audio-${otherUid}`;
-                    audio.autoplay = true;
-                    $('remote-audios').appendChild(audio);
-                }
-                audio.srcObject = e.streams[0];
-            };
-
-            if (isOffer) {
-                pc.onnegotiationneeded = async () => {
-                    const offer = await pc.createOffer();
-                    await pc.setLocalDescription(offer);
-                    sendSignal(otherUid, { type: 'offer', sdp: offer });
-                };
-            }
-        }
-
-        function sendSignal(toUid, data) {
-            push(ref(db, `signals/${currentRoom}/${toUid}`), { ...data, from: currentUser.uid });
-        }
-
-        // --- FRIENDS & UI ---
-        $('nav-friends').onclick = () => {
-            $('nav-friends').classList.add('active');
-            $('nav-rooms').classList.remove('active');
-            $('friends-section').style.display = 'flex';
-            $('rooms-grid').parentElement.style.display = 'none';
-            loadFriends();
-        };
-
-        $('nav-rooms').onclick = () => {
-            $('nav-rooms').classList.add('active');
-            $('nav-friends').classList.remove('active');
-            $('friends-section').style.display = 'none';
-            $('rooms-grid').parentElement.style.display = 'block';
-        };
-
-        function loadFriends() {
-            // Requests
-            onValue(ref(db, `users/${currentUser.uid}/requests`), snap => {
-                const list = $('friend-requests-list');
-                list.innerHTML = '';
-                snap.forEach(reqSnap => {
-                    const req = reqSnap.val();
-                    const uid = reqSnap.key;
-                    const item = document.createElement('div');
-                    item.className = 'friend-request-item';
-                    item.innerHTML = `
-                        <span>${req.username}</span>
-                        <div class="friend-btn-group">
-                            <button class="btn-small btn-accept" onclick="acceptFriend('${uid}', '${req.username}')">Да</button>
-                            <button class="btn-small btn-decline" onclick="declineFriend('${uid}')">Нет</button>
-                        </div>
-                    `;
-                    list.appendChild(item);
-                });
-            });
-
-            // Friends list
-            onValue(ref(db, `users/${currentUser.uid}/friends`), snap => {
-                const list = $('friends-list');
-                list.innerHTML = '';
-                snap.forEach(fSnap => {
-                    const f = fSnap.val();
-                    const item = document.createElement('div');
-                    item.className = 'nav-item';
-                    item.innerHTML = `<span>👤</span> ${f.username}`;
-                    item.onclick = () => openUserProfile(fSnap.key);
-                    list.appendChild(item);
-                });
-            });
-        }
-
-        window.acceptFriend = async (uid, name) => {
-            await update(ref(db, `users/${currentUser.uid}/friends/${uid}`), { username: name });
-            await update(ref(db, `users/${uid}/friends/${currentUser.uid}`), { username: currentUser.displayName });
-            await remove(ref(db, `users/${currentUser.uid}/requests/${uid}`));
-            toast("Друг добавлен!");
-        };
-
-        window.declineFriend = async (uid) => {
-            await remove(ref(db, `users/${currentUser.uid}/requests/${uid}`));
-        };
-
-        async function openUserProfile(uid) {
-            const snap = await get(ref(db, `users/${uid}/profile`));
-            const p = snap.val();
-            if(!p) return;
-
-            $('view-name').innerText = p.username;
-            $('view-bio').innerText = p.bio;
-            $('view-avatar').innerHTML = p.avatar ? `<img src="${p.avatar}">` : p.username[0].toUpperCase();
-            
-            $('btn-add-friend').onclick = () => {
-                set(ref(db, `users/${uid}/requests/${currentUser.uid}`), { username: currentUser.displayName });
-                toast("Заявка отправлена!");
-            };
-
-            $('modal-view-profile').classList.add('active');
-        }
-
-        $('btn-close-view').onclick = () => $('modal-view-profile').classList.remove('active');
-
-        // --- CREATE ROOM ---
-        $('btn-open-create-room').onclick = () => $('modal-create-room').classList.add('active');
-        $('btn-cancel-create').onclick = () => $('modal-create-room').classList.remove('active');
-        
-        $('btn-confirm-create').onclick = async () => {
-            const name = $('new-room-name').value;
-            const slug = $('new-room-slug').value.trim();
-            const video = $('new-room-video').value;
-            
-            if(!name || !slug || !video) return toast("Заполните все поля");
-            
-            const newRoom = {
-                name, slug, videoUrl: video,
-                owner: currentUser.uid,
-                createdAt: Date.now()
-            };
-            
-            await push(ref(db, 'rooms'), newRoom);
-            $('modal-create-room').classList.remove('active');
-            toast("Комната создана!");
-        };
-
-        // --- EDIT PROFILE ---
-        $('btn-edit-profile').onclick = async () => {
-            const snap = await get(ref(db, `users/${currentUser.uid}/profile`));
-            const p = snap.val();
-            $('edit-username').value = p.username;
-            $('edit-bio').value = p.bio;
-            $('edit-avatar-url').value = p.avatar || '';
-            $('modal-edit-profile').classList.add('active');
-        };
-
-        $('btn-confirm-edit').onclick = async () => {
-            const username = $('edit-username').value.trim();
-            const bio = $('edit-bio').value;
-            const avatar = $('edit-avatar-url').value;
-            
-            await update(ref(db, `users/${currentUser.uid}/profile`), { username, bio, avatar });
-            await updateProfile(auth.currentUser, { displayName: username });
-            
-            $('modal-edit-profile').classList.remove('active');
-            toast("Профиль обновлен");
-        };
-
-        $('btn-cancel-edit').onclick = () => $('modal-edit-profile').classList.remove('active');
-
-        // Sidebar toggle
-        $('toggle-sidebar').onclick = () => $('main-sidebar').classList.toggle('open');
-        
-        // Particles
-        const canvas = $('particle-canvas');
-        const ctx = canvas.getContext('2d');
-        let particles = [];
-        
-        function initParticles() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            particles = [];
-            for(let i=0; i<50; i++) {
-                particles.push({
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * canvas.height,
-                    vx: (Math.random() - 0.5) * 0.5,
-                    vy: (Math.random() - 0.5) * 0.5,
-                    size: Math.random() * 2
-                });
-            }
-        }
-        
-        function animate() {
-            ctx.clearRect(0,0,canvas.width, canvas.height);
-            ctx.fillStyle = 'rgba(255,255,255,0.2)';
-            particles.forEach(p => {
-                p.x += p.vx; p.y += p.vy;
-                if(p.x < 0 || p.x > canvas.width) p.vx *= -1;
-                if(p.y < 0 || p.y > canvas.height) p.vy *= -1;
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
-                ctx.fill();
-            });
-            requestAnimationFrame(animate);
-        }
-        
-        window.onresize = initParticles;
-        initParticles();
-        animate();
-
-    </script>
+    <script type="module" src="app.js"></script>
 </body>
 </html>
