@@ -165,21 +165,6 @@ ensureRoomInviteUi();
 
 setPersistence(auth, browserLocalPersistence);
 
-onAuthStateChanged(auth, (user) => {
-    if (user) {
-        bindGlobalOnline();
-        $('user-display-name').innerText = user.displayName || user.email;
-        if(!currentRoomId) {
-            showScreen('lobby-screen');
-            // Загрузка уведомлений о друзьях и инвайтах в лобби
-            setupLobbyNotifications();
-        }
-        syncRooms();
-    } else {
-        showScreen('auth-screen');
-    }
-});
-
 // Авторизация
 $('tab-login').onclick = () => { $('form-login').classList.add('active-form'); $('form-login').classList.remove('hidden-form', 'left'); $('form-register').classList.add('hidden-form', 'right'); $('form-register').classList.remove('active-form'); $('tab-login').classList.add('active'); $('tab-register').classList.remove('active'); };
 $('tab-register').onclick = () => { $('form-register').classList.add('active-form'); $('form-register').classList.remove('hidden-form', 'right'); $('form-login').classList.add('hidden-form', 'left'); $('form-login').classList.remove('active-form'); $('tab-register').classList.add('active'); $('tab-login').classList.remove('active'); };
@@ -188,10 +173,6 @@ $('btn-login-email').onclick = async () => { try { await signInWithEmailAndPassw
 $('btn-register-email').onclick = async () => { try { const res = await createUserWithEmailAndPassword(auth, $('reg-email').value, $('reg-password').value); await updateProfile(res.user, { displayName: $('reg-name').value }); $('user-display-name').innerText = $('reg-name').value; } catch(e) { showToast("Ошибка: " + e.message); } };
 $('btn-google-auth').onclick = async () => { try { await signInWithPopup(auth, new GoogleAuthProvider()); } catch(e) { showToast("Ошибка Google"); } };
 $('btn-logout').onclick = () => signOut(auth);
-
-// Лобби
-$('btn-open-modal').onclick = () => { editingRoomId = null; $('modal-create').classList.add('active'); };
-$('btn-close-modal').onclick = () => { editingRoomId = null; $('modal-create').classList.remove('active'); if ($('room-password')) $('room-password').value = ''; if ($('room-private')) $('room-private').checked = false; };
 
 $('btn-delete-all-rooms').onclick = async () => {
     if(confirm("ВНИМАНИЕ! Вы удалите ВСЕ комнаты. Продолжить?")) {
@@ -2020,117 +2001,117 @@ function initRoomServices() {
     };
 }
 
-function bindCreateModalOverrides() {
+// ==========================================
+// ГЛАВНАЯ ИНИЦИАЛИЗАЦИЯ И ПРИВЯЗКА ИНТЕРФЕЙСА
+// ==========================================
+function initApp() {
+    // 1. Системные бинды
+    bindSelfPresence();
+    subscribeToOwnProfile();
+    widenLobbyLayout();
+    bindGlobalOnline();
+    renderRooms();
+    bindDirectChatUi();
+
+    // 2. Управление профилем (Точные ID из твоего HTML)
+    if ($('btn-edit-profile')) {
+        $('btn-edit-profile').onclick = () => {
+            if ($('profile-name')) $('profile-name').value = auth.currentUser.displayName || '';
+            $('modal-profile').classList.add('active');
+        };
+    }
+    if ($('btn-profile-cancel')) {
+        $('btn-profile-cancel').onclick = () => $('modal-profile').classList.remove('active');
+    }
+    if ($('btn-profile-save')) {
+        $('btn-profile-save').onclick = saveProfileEnhanced;
+    }
+
+    // 3. Управление модалкой создания комнаты
     if ($('btn-open-modal')) {
         $('btn-open-modal').onclick = () => {
             editingRoomId = null;
-            setCreateModalMode('create');
-            $('modal-create')?.classList.add('active');
+            if (typeof setCreateModalMode === 'function') setCreateModalMode('create');
+            $('modal-create').classList.add('active');
         };
     }
     if ($('btn-close-modal')) {
         $('btn-close-modal').onclick = () => {
             editingRoomId = null;
-            setCreateModalMode('create');
-            $('modal-create')?.classList.remove('active');
+            $('modal-create').classList.remove('active');
             if ($('room-password')) $('room-password').value = '';
             if ($('room-private')) $('room-private').checked = false;
         };
     }
-}
 
-function widenLobbyLayout() {
-    const layout = document.querySelector('.lobby-layout');
-    if (layout) {
-        layout.style.maxWidth = '95vw';
-        layout.style.width = '95vw';
+    // 4. Переключение вкладок: Все комнаты / Друзья
+    if ($('btn-all-rooms')) {
+        $('btn-all-rooms').onclick = () => {
+            $('rooms-grid').style.display = 'grid';
+            if ($('sidebar-friends')) $('sidebar-friends').style.display = 'none';
+            if ($('friends-list-panel')) $('friends-list-panel').style.display = 'none';
+            $('btn-all-rooms').classList.add('active');
+            $('btn-friends-sidebar').classList.remove('active');
+            renderRooms();
+        };
     }
-}
-
-bindDirectChatUi();
-bindSelfPresence();
-subscribeToOwnProfile();
-bindCreateModalOverrides();
-widenLobbyLayout();
-
-renderRooms = renderRooms;
-setupLobbyNotifications = setupLobbyNotifications;
-enterRoom = enterRoom;
-leaveRoom = leaveRoom;
-initRoomServices = initRoomServices;
-
-function initApp() {
-    // 1. Инициализация систем
-    bindSelfPresence();
-    subscribeToOwnProfile();
-    widenLobbyLayout();
-    renderRooms();
-    setupLobbyTabsV2();
-    bindGlobalOnline(); // Добавь эту функцию из прошлого гайда для счетчика
-
-    // 2. Кнопки профиля
-    if ($('btn-edit-profile')) {
-        $('btn-edit-profile').onclick = () => $('modal-profile').classList.add('active');
-    }
-    if ($('btn-close-profile')) {
-        $('btn-close-profile').onclick = () => $('modal-profile').classList.remove('active');
-    }
-    if ($('btn-save-profile')) {
-        $('btn-save-profile').onclick = saveProfileEnhanced;
+    if ($('btn-friends-sidebar')) {
+        $('btn-friends-sidebar').onclick = () => {
+            $('rooms-grid').style.display = 'none';
+            if ($('sidebar-friends')) $('sidebar-friends').style.display = 'block';
+            if ($('friends-list-panel')) $('friends-list-panel').style.display = 'block';
+            $('btn-friends-sidebar').classList.add('active');
+            $('btn-all-rooms').classList.remove('active');
+            
+            // Запускаем подгрузку друзей
+            loadFriendsSidebar();
+            if (typeof setupLobbyNotifications === 'function') setupLobbyNotifications();
+        };
     }
 
-    // 3. Создание комнаты (Подтверждение)
-    if ($('btn-create-confirm')) {
-        $('btn-create-confirm').onclick = handleCreateRoomV4;
+    // 5. Выход из комнаты
+    if ($('btn-leave-room')) {
+        $('btn-leave-room').onclick = () => {
+            leaveRoom();
+        };
     }
 
-    // 4. Микрофон в чате
+    // 6. Микрофон в чате
     const micBtn = $('mic-btn');
     if (micBtn) {
-        micBtn.onclick = async () => {
-            if (window.localStream) {
-                await disableMicrophoneNative();
-                micBtn.classList.remove('active', 'pulseMic');
-                showToast('Микрофон выключен');
+        micBtn.onclick = async function() {
+            // Используем глобальную переменную myStream, которая есть в твоем коде
+            if (myStream) {
+                await disableMicrophone({ notify: true });
+                this.classList.remove('active', 'pulseMic');
             } else {
-                const success = await enableMicrophoneNative();
-                if (success) {
-                    micBtn.classList.add('active', 'pulseMic');
-                    showToast('Микрофон включен');
+                try {
+                    await enableMicrophone(this);
+                    this.classList.add('active', 'pulseMic');
+                } catch (e) {
+                    this.classList.remove('active');
+                    showToast('Ошибка микрофона');
                 }
             }
         };
     }
-
-    // 5. Вкладки Лобби (Все комнаты / Друзья)
-    if ($('tab-rooms')) {
-        $('tab-rooms').onclick = () => {
-            $('lobby-rooms-section').style.display = 'block';
-            $('lobby-friends-section').style.display = 'none';
-            $('tab-rooms').classList.add('active');
-            $('tab-friends').classList.remove('active');
-        };
-    }
-    if ($('tab-friends')) {
-        $('tab-friends').onclick = () => {
-            $('lobby-rooms-section').style.display = 'none';
-            $('lobby-friends-section').style.display = 'block';
-            $('tab-friends').classList.add('active');
-            $('tab-rooms').classList.remove('active');
-            renderFriendsListV2(); // Убедись, что эта функция есть в коде
-        };
-    }
 }
 
-// ЗАПУСК ПРИ ЗАГРУЗКЕ
+// ==========================================
+// ЕДИНСТВЕННЫЙ СЛУШАТЕЛЬ АВТОРИЗАЦИИ
+// ==========================================
 onAuthStateChanged(auth, (user) => {
     if (user) {
+        if ($('user-display-name')) {
+            $('user-display-name').innerText = user.displayName || user.email;
+        }
+        if (!currentRoomId) {
+            showScreen('lobby-screen');
+        }
+        // Запускаем всё только после успешной авторизации
         initApp();
     } else {
-        // Логика возврата на экран логина
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-        $('auth-screen').classList.add('active');
+        if ($('auth-screen')) $('auth-screen').classList.add('active');
     }
 });
-
-if ($('btn-leave-room')) $('btn-leave-room').onclick = leaveRoom;
