@@ -10,6 +10,21 @@ const firebaseConfig = {
     storageBucket: "das4akk-1.firebasestorage.app"
 };
 
+// --- HYPER FIX: Глобальные переменные ---
+window.$ = window.$ || ((id) => document.getElementById(id)); // Безопасный селектор
+let myStream = null;
+let activeCalls = new Set();
+let processedMsgs = new Set(); 
+let currentPresenceCache = currentPresenceCache || {}; // Защита от undefined
+let isHost = isHost || false;
+
+// --- HYPER FIX: Безопасные заглушки (Fallbacks) ---
+window.showToast = window.showToast || ((msg) => console.log('[Toast]', msg));
+window.getDisplayName = window.getDisplayName || (() => auth?.currentUser?.displayName || 'Аноним');
+window.isAcceptedFriendRecord = window.isAcceptedFriendRecord || ((record) => record && record.status === 'accepted');
+window.renderFriendsPanelLive = window.renderFriendsPanelLive || ((ids) => console.log('Обновление списка друзей:', ids));
+window.getEffectiveRoomPerms = window.getEffectiveRoomPerms || (() => ({ chat: true, voice: true })); // По умолчанию всё разрешено
+
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getDatabase(app);
@@ -947,10 +962,18 @@ function connectPeers() {
 }
 
 function cleanupVoice() {
-    destroyAllVoiceConnections();
-    if (currentRoomId && auth.currentUser) {
-        remove(ref(db, `rooms/${currentRoomId}/voice/${auth.currentUser.uid}`)).catch(() => {});
-        remove(ref(db, `rooms/${currentRoomId}/rtc/participants/${auth.currentUser.uid}`)).catch(() => {});
+    // HYPER FIX: Проверяем, существует ли функция уничтожения соединений
+    if (typeof destroyAllVoiceConnections === 'function') {
+        destroyAllVoiceConnections();
+    }
+    
+    if (currentRoomId && auth?.currentUser) {
+        try {
+            remove(ref(db, `rooms/${currentRoomId}/voice/${auth.currentUser.uid}`)).catch(e => console.warn('Очистка voice пропущена:', e));
+            remove(ref(db, `rooms/${currentRoomId}/rtc/participants/${auth.currentUser.uid}`)).catch(e => console.warn('Очистка rtc пропущена:', e));
+        } catch (error) {
+            console.error('[Voice] Критическая ошибка очистки:', error);
+        }
     }
 }
 
@@ -2244,11 +2267,21 @@ function sendMessage(content) {
 
 function listenMessages() {
     if (!currentRoomId) return;
-    onChildAdded(ref(db, `rooms/${currentRoomId}/chat`), (snap) => {
+    // HYPER FIX: Защита от потери контекста БД
+    const chatRef = ref(db, `rooms/${currentRoomId}/chat`);
+    onChildAdded(chatRef, (snap) => {
         const msg = snap.val();
-        if (processedMsgs.has(snap.key)) return;
-        processedMsgs.add(snap.key);
-        notifyNewMessage(msg);
+        if (!msg) return;
+        
+        // Гарантируем, что Set существует
+        if (!window.processedMsgs) window.processedMsgs = new Set();
+        
+        if (window.processedMsgs.has(snap.key)) return;
+        window.processedMsgs.add(snap.key);
+        
+        if (typeof notifyNewMessage === 'function') {
+            notifyNewMessage(msg);
+        }
     });
 }
 
