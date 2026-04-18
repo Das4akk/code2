@@ -333,65 +333,109 @@ function syncRooms() {
 }
 
 // --- УВЕДОМЛЕНИЯ В ЛОББИ: приглашения друзей и в комнаты ---
-function setupLobbyNotifications() {
-    const user = auth.currentUser;
-    if (!user) return;
+function setupLobbyNotificationsV4() {
+    if (setupLobbyNotificationsV4.didInit || !auth.currentUser) return;
+    setupLobbyNotificationsV4.didInit = true;
+    setupLobbyNotificationsV4();
+    startDirectMessageNotifications();
 
-    const notifContainer = $('lobby-notifications-container'); // Убедись, что такой ID есть в HTML
-    if (!notifContainer) return;
-
-    // Очищаем и ставим делегирование (один раз)
-    notifContainer.onclick = (e) => {
-        const btn = e.target;
-        const uid = btn.dataset.uid;
-        if (!uid) return;
-
-        if (btn.classList.contains('accept-friend')) acceptFriendRequestV2(uid);
-        if (btn.classList.contains('decline-friend')) declineFriendRequestV2(uid);
-        if (btn.classList.contains('open-dm')) openDirectChatV2(uid);
-    };
-
-    // Слушаем запросы в друзья
-    onValue(ref(db, `users/${user.uid}/friendRequests`), (snap) => {
-        const requests = snap.val();
-        renderNotificationHtml(requests, 'friend');
-    });
-
-    // Слушаем новые сообщения (упрощенно)
-    onValue(ref(db, `users/${user.uid}/unreadDms`), (snap) => {
-        const dms = snap.val();
-        renderNotificationHtml(dms, 'dm');
-    });
-}
-
-function renderNotificationHtml(data, type) {
-    const container = $('lobby-notifications-container');
-    if (!container || !data) {
-        if (!data) container.innerHTML = ''; 
-        return;
+    const btnToggleFriends = $('btn-toggle-friends');
+    const panel = $('friends-list-panel');
+    if (btnToggleFriends && panel && !lobbyFriendsListenerBound) {
+        lobbyFriendsListenerBound = true;
+        btnToggleFriends.onclick = async () => {
+            const isHidden = panel.style.display === 'none';
+            panel.style.display = isHidden ? 'block' : 'none';
+            if (!isHidden) return;
+            clearFriendProfileSubscriptions();
+            panel.innerHTML = '<h3>👥 Друзья</h3><div class="room-invite-empty">Загружаю...</div>';
+            try {
+                const friendsSnap = await get(ref(db, `users/${auth.currentUser.uid}/friends`));
+                const data = friendsSnap.val() || {};
+                const acceptedIds = Object.keys(data).filter((uid) => isAcceptedFriendRecord(data[uid]));
+                renderFriendsPanelLive(acceptedIds);
+            } catch (e) {
+                panel.innerHTML = '<h3>👥 Друзья</h3><div class="room-invite-empty">Не удалось загрузить друзей</div>';
+            }
+        };
     }
 
-    let html = '';
-    Object.keys(data).forEach(id => {
-        const item = data[id];
-        if (type === 'friend') {
-            html += `
-                <div class="notif-item glass-panel">
-                    <span>Запрос в друзья от <b>${escapeHtml(item.name || 'Пользователь')}</b></span>
-                    <div class="notif-btns">
-                        <button class="accept-friend" data-uid="${id}">✅</button>
-                        <button class="decline-friend" data-uid="${id}">❌</button>
-                    </div>
-                </div>`;
-        } else {
-            html += `
-                <div class="notif-item glass-panel">
-                    <span>Новое сообщение от <b>${escapeHtml(item.name)}</b></span>
-                    <button class="open-dm" data-uid="${id}">Открыть</button>
-                </div>`;
+    
+    // Приглашения в комнату
+    onChildAdded(ref(db, `users/${auth.currentUser.uid}/room-invites`), (snap) => {
+        const invite = snap.val();
+        const inviteId = snap.key;
+        if (!invite || Date.now() - invite.ts > 3600000) return; // Игнорируем старые инвайты (>1ч)
+        
+        const link = `<button class="invite-accept-btn" data-room-id="${invite.roomId}" data-invite-id="${inviteId}" style="background:linear-gradient(135deg,#2ed573,#22c55e); border:none; padding:8px 16px; border-radius:8px; color:#fff; font-weight:600; cursor:pointer; margin:5px 0;">Зайти в комнату</button>`;
+        const Toast_html = `<div style="padding:12px; background:rgba(46,213,115,0.1); border: 1px solid #2ed573; border-radius:8px; margin:5px 0;">${escapeHtml(invite.invitedBy)} приглашает: <strong>${escapeHtml(invite.roomName)}</strong><br>${link}</div>`;
+        
+        const container = $('toast-container');
+        const notif = document.createElement('div');
+        notif.innerHTML = Toast_html;
+        container.appendChild(notif);
+        
+        // Обработчик кнопки
+        const btn = notif.querySelector('.invite-accept-btn');
+        if (btn) {
+            btn.addEventListener('click', async () => {
+                const roomId = btn.dataset.roomId;
+                const iid = btn.dataset.inviteId;
+                // Удаляем инвайт и заходим в комнату
+                try {
+                    await remove(ref(db, `users/${auth.currentUser.uid}/room-invites/${iid}`));
+                    if (roomsCache[roomId]) {
+                        window.joinRoom(roomId, roomsCache[roomId].name, roomsCache[roomId].link, roomsCache[roomId].admin);
+                    }
+                } catch (e) { showToast('Ошибка'); }
+            });
         }
+        
+        setTimeout(() => notif.remove(), 5000);
     });
-    container.innerHTML = html;
+    
+    // Запросы друзей
+    onChildAdded(ref(db, `users/${auth.currentUser.uid}/friend-requests`), (snap) => {
+        const req = snap.val();
+        const fromUid = snap.key;
+        if (!req) return;
+        
+        const acceptBtn = `<button class="friend-req-accept" data-from-uid="${fromUid}" style="background:#2ed573; border:none; padding:6px 12px; border-radius:6px; color:#000; font-weight:600; cursor:pointer; margin-right:5px;">Принять</button>`;
+        const declineBtn = `<button class="friend-req-decline" data-from-uid="${fromUid}" style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:6px 12px; border-radius:6px; color:#fff; cursor:pointer;">Отклонить</button>`;
+        const Toast_html = `<div style="padding:12px; background:rgba(46,213,115,0.1); border: 1px solid #2ed573; border-radius:8px; margin:5px 0;"><strong>${escapeHtml(req.from)}</strong> хочет быть твоим другом<br>${acceptBtn}${declineBtn}</div>`;
+        
+        const container = $('toast-container');
+        const notif = document.createElement('div');
+        notif.innerHTML = Toast_html;
+        container.appendChild(notif);
+        
+        // Обработчики кнопок
+        const acceptB = notif.querySelector('.friend-req-accept');
+        const declineB = notif.querySelector('.friend-req-decline');
+        if (acceptB) {
+            acceptB.addEventListener('click', async () => {
+                const uid = acceptB.dataset.fromUid;
+                try {
+                    await set(ref(db, `users/${auth.currentUser.uid}/friends/${uid}`), { status: 'accepted', ts: Date.now() });
+                    await set(ref(db, `users/${uid}/friends/${auth.currentUser.uid}`), { status: 'accepted', ts: Date.now() });
+                    await remove(ref(db, `users/${auth.currentUser.uid}/friend-requests/${uid}`));
+                    showToast('Друг добавлен!');
+                    notif.remove();
+                } catch (e) { showToast('Ошибка'); }
+            });
+        }
+        if (declineB) {
+            declineB.addEventListener('click', async () => {
+                const uid = declineB.dataset.fromUid;
+                try {
+                    await remove(ref(db, `users/${auth.currentUser.uid}/friend-requests/${uid}`));
+                    notif.remove();
+                } catch (e) { showToast('Ошибка'); }
+            });
+        }
+        
+        setTimeout(() => { if (notif.parentNode) notif.remove(); }, 8000);
+    });
 }
 let pendingJoin = null;
 window.joinRoom = (id, name, link, admin) => {
@@ -889,51 +933,31 @@ function anim() {
 anim();
 
 async function saveProfileEnhanced() {
-    const user = auth.currentUser;
-    if (!user) return showToast('Ошибка: вы не авторизованы');
-
-    const name = $('profile-name')?.value.trim();
+    if (!auth.currentUser) return showToast('Нужно войти');
+    const name = $('profile-name')?.value.trim() || '';
     const status = $('profile-status')?.value.trim() || '';
     const bio = $('profile-bio')?.value.trim() || '';
     const color = $('profile-color')?.value || '#f5f7fa';
+    const volume = Math.max(0, Math.min(100, parseInt($('profile-volume')?.value || 100))) / 100;
     
-    const fileInput = $('profile-avatar-upload');
-    let avatarUrl = user.photoURL || '';
-
     try {
-        // 1. Загрузка аватара, если файл выбран
-        if (fileInput && fileInput.files[0]) {
-            const file = fileInput.files[0];
-            if (file.size > 2 * 1024 * 1024) throw new Error("Файл слишком большой (макс 2МБ)");
-            
-            showToast('Загрузка изображения...');
-            const storageRef = sRef(storage, `avatars/${user.uid}`);
-            await uploadBytes(storageRef, file);
-            avatarUrl = await getDownloadURL(storageRef);
-        }
-
-        // 2. Обновляем профиль в Firebase Auth
-        await updateProfile(user, { 
-            displayName: name || user.email, 
-            photoURL: avatarUrl 
-        });
-
-        // 3. Сохраняем расширенные данные в Database
-        await set(ref(db, `users/${user.uid}/profile`), {
-            name: name || user.email,
-            status: status,
-            bio: bio,
-            color: color,
-            avatar: avatarUrl,
+        await updateProfile(auth.currentUser, { displayName: name });
+        await set(ref(db, `users/${auth.currentUser.uid}/profile`), {
+            name,
+            status,
+            bio,
+            color,
+            defaultVolume: volume,
             updatedAt: Date.now()
         });
-
-        showToast('Профиль успешно обновлен!');
-        $('modal-profile')?.classList.remove('active');
-    } catch (e) {
-        console.error(e);
-        showToast('Ошибка сохранения: ' + e.message);
-    }
+        
+        if ($('user-display-name')) $('user-display-name').innerText = name || auth.currentUser.email;
+        const av = $('my-avatar');
+        if (av) av.style.background = `linear-gradient(135deg, ${color}, rgba(255,255,255,0.08))`;
+        
+        if ($('modal-profile')) $('modal-profile').classList.remove('active');
+        showToast('Профиль сохранён');
+    } catch (e) { showToast('Ошибка сохранения'); }
 }
 
 async function updatePresenceWithOnlineStatus(statusText = 'Онлайн') {
