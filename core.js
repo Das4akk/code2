@@ -1,6 +1,7 @@
+// core.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getDatabase, ref, push, set, get, onValue, onChildAdded, onDisconnect, remove, off, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getDatabase, ref, push, set, onValue, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCby2qPGnlHWRfxWAI3Y2aK_UndEh9nato",
@@ -13,37 +14,27 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getDatabase(app);
-const googleProvider = new GoogleAuthProvider();
 
-export const AppState = {
-    user: null,
-    currentRoomId: null,
-    isOwner: false,
-    peer: null,
-    roomSubscriptions: [],
-    isMicMuted: true
-};
 
-export async function initCore() {
-    // Слушатель авторизации (Автологин тут)
+export const AppState = { user: null, currentRoomId: null };
+
+export function initCore() {
     onAuthStateChanged(auth, (user) => {
         AppState.user = user;
-        if (user) {
-            console.log("Автологин: ", user.displayName);
-            setupPresence(user.uid);
-        }
-        // Уведомляем UI, что статус юзера изменился
+        // Отправляем событие о смене юзера
         document.dispatchEvent(new CustomEvent('core:authChanged', { detail: user }));
+        
+        if (user) {
+            listenRooms(); // Начинаем слушать список комнат
+        }
     });
 }
 
-function setupPresence(uid) {
-    const statusRef = ref(db, `users/${uid}/status`);
-    onValue(ref(db, '.info/connected'), snap => {
-        if (snap.val()) {
-            onDisconnect(statusRef).set('offline');
-            set(statusRef, 'online');
-        }
+function listenRooms() {
+    onValue(ref(db, 'rooms'), (snap) => {
+        const rooms = [];
+        snap.forEach(child => { rooms.push(child.val()); });
+        document.dispatchEvent(new CustomEvent('core:roomsUpdated', { detail: rooms }));
     });
 }
 
@@ -62,23 +53,15 @@ export const roomActions = {
         const roomRef = push(ref(db, 'rooms'));
         const roomData = {
             id: roomRef.key,
-            owner: AppState.user.uid,
+            owner: auth.currentUser.uid,
             name: data.name,
             videoUrl: data.videoUrl,
-            private: data.private || false,
-            password: data.password || '',
-            state: { isPlaying: false, currentTime: 0 }
+            private: data.private,
+            password: data.password
         };
         await set(roomRef, roomData);
         return roomRef.key;
-    },
-    join: async (roomId, password = '') => {
-        const snap = await get(ref(db, `rooms/${roomId}`));
-        if (!snap.exists()) throw new Error("Комната не найдена");
-        if (snap.val().private && snap.val().password !== password) throw new Error("Неверный пароль");
-        AppState.currentRoomId = roomId;
-        AppState.isOwner = snap.val().owner === AppState.user.uid;
-        return snap.val();
+        
     }
 };
 

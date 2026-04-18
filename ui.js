@@ -1,11 +1,64 @@
-import { authActions, roomActions, chatActions, AppState, escapeHtml } from './core.js';
+// ui.js
+import { authActions, roomActions, AppState } from './core.js';
 
 const $ = (id) => document.getElementById(id);
 
 export function initUI() {
-    console.log("UI Initializing...");
-    
-    // ТАБЫ АВТОРИЗАЦИИ
+    // 1. Переключение экранов (Главная логика)
+    function showScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        const target = $(screenId);
+        if (target) target.classList.add('active');
+        else console.error("Screen not found:", screenId);
+    }
+
+    // 2. Слушатель авторизации
+    document.addEventListener('core:authChanged', (e) => {
+        const user = e.detail;
+        if (user) {
+            console.log("Юзер залогинен, открываю лобби");
+            showScreen('lobby-screen'); 
+            if($('user-name-display')) $('user-name-display').innerText = user.displayName || "Пользователь";
+        } else {
+            showScreen('auth-screen');
+        }
+    });
+
+    // 3. Обработка списка комнат
+    document.addEventListener('core:roomsUpdated', (e) => {
+        const rooms = e.detail;
+        const grid = $('rooms-grid');
+        if (!grid) return;
+        grid.innerHTML = '';
+        
+        rooms.forEach(room => {
+            const card = document.createElement('div');
+            card.className = 'room-card glass-panel';
+            card.innerHTML = `
+                <div class="room-info">
+                    <h4>${room.name}</h4>
+                    <p>${room.private ? '🔒 Приватная' : '🔓 Открытая'}</p>
+                </div>
+                <button class="primary-btn">Войти</button>
+            `;
+            grid.appendChild(card);
+        });
+    });
+
+    // 4. Кнопки входа/регистрации
+    $('login-btn')?.addEventListener('click', async () => {
+        try {
+            await authActions.login($('login-email').value, $('login-password').value);
+        } catch (e) { alert("Ошибка: " + e.message); }
+    });
+
+    $('register-btn')?.addEventListener('click', async () => {
+        try {
+            await authActions.register($('reg-email').value, $('reg-password').value, $('reg-name').value);
+        } catch (e) { alert("Ошибка: " + e.message); }
+    });
+
+    // 5. Табы авторизации
     $('tab-login')?.addEventListener('click', () => {
         $('tab-login').classList.add('active'); $('tab-register').classList.remove('active');
         $('form-login').classList.add('active-form'); $('form-register').classList.remove('active-form');
@@ -16,47 +69,11 @@ export function initUI() {
         $('form-register').classList.add('active-form'); $('form-login').classList.remove('active-form');
     });
 
-    // КНОПКИ ВХОДА/РЕГИ
-    $('login-btn')?.addEventListener('click', async () => {
-        try {
-            await authActions.login($('login-email').value, $('login-password').value);
-        } catch (e) { alert("Ошибка входа: " + e.message); }
-    });
-
-    $('register-btn')?.addEventListener('click', async () => {
-        try {
-            await authActions.register($('reg-email').value, $('reg-password').value, $('reg-name').value);
-        } catch (e) { alert("Ошибка регистрации: " + e.message); }
-    });
-
-    // ЧАТ ТАБЫ
-    $('tab-chat-btn')?.addEventListener('click', () => {
-        $('tab-chat-btn').classList.add('active'); $('tab-users-btn').classList.remove('active');
-        $('chat-messages').style.display = 'block'; $('users-list').style.display = 'none';
-    });
-
-    $('tab-users-btn')?.addEventListener('click', () => {
-        $('tab-users-btn').classList.add('active'); $('tab-chat-btn').classList.remove('active');
-        $('users-list').style.display = 'block'; $('chat-messages').style.display = 'none';
-    });
-
-    // ОТПРАВКА СООБЩЕНИЙ
-    const sendMsg = () => {
-        chatActions.send($('chat-input').value);
-        $('chat-input').value = '';
-    };
-    $('send-btn')?.addEventListener('click', sendMsg);
-    $('chat-input')?.addEventListener('keypress', (e) => { if(e.key === 'Enter') sendMsg(); });
-
-    // СЛУШАТЕЛЬ СОБЫТИЙ ЯДРА
-    document.addEventListener('core:authChanged', (e) => {
-        const user = e.detail;
-        if (user) {
-            $('auth-screen').classList.remove('active');
-            // Здесь можно вызвать загрузку списка комнат
-        } else {
-            $('auth-screen').classList.add('active');
-        }
+    // 6. Модалка создания
+    $('btn-open-modal')?.addEventListener('click', () => $('modal-create').classList.add('active'));
+    
+    $('room-private')?.addEventListener('change', (e) => {
+        $('room-password').style.display = e.target.checked ? 'block' : 'none';
     });
 }
 
