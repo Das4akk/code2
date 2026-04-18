@@ -1413,7 +1413,7 @@ function bindRoomPreviewLazyLoad() {
     });
 }
 
-function renderRoomsV4(filter = '') {
+function renderRooms(filter = '') {
     const grid = $('rooms-grid');
     if (!grid) return;
     grid.innerHTML = '';
@@ -1629,7 +1629,7 @@ async function sendDirectMessageV2() {
     sessionStorage.setItem(`dmSeen:${currentDirectChat.id}`, String(payload.ts));
 }
 
-function bindDirectChatUiV2() {
+function bindDirectChatUi() {
     if ($('btn-dm-close')) $('btn-dm-close').onclick = closeDirectChatModal;
     if ($('btn-dm-send')) $('btn-dm-send').onclick = sendDirectMessageV2;
     if ($('dm-input')) $('dm-input').onkeydown = (event) => { if (event.key === 'Enter') sendDirectMessageV2(); };
@@ -1719,9 +1719,9 @@ function setupSystemMessages() {
     // addSystemMessage('${userName} получил право: модератор');
 }
 
-function setupLobbyNotificationsV4() {
-    if (setupLobbyNotificationsV4.didInit || !auth.currentUser) return;
-    setupLobbyNotificationsV4.didInit = true;
+function setupLobbyNotifications() {
+    if (setupLobbyNotifications.didInit || !auth.currentUser) return;
+    setupLobbyNotifications.didInit = true;
     setupLobbyNotificationsV3();
     startDirectMessageNotifications();
 
@@ -2178,14 +2178,14 @@ function widenLobbyLayout() {
     }
 }
 
-bindDirectChatUiV2();
+bindDirectChatUi();
 bindSelfPresence();
 subscribeToOwnProfile();
 bindCreateModalOverrides();
 widenLobbyLayout();
 
-renderRooms = renderRoomsV4;
-setupLobbyNotifications = setupLobbyNotificationsV4;
+renderRooms = renderRooms;
+setupLobbyNotifications = setupLobbyNotifications;
 enterRoom = enterRoom;
 leaveRoom = leaveRoom;
 initRoomServices = initRoomServices;
