@@ -109,7 +109,7 @@ function clearRoomProfileSubscriptions() {
 }
 // core.js (ПРОДОЛЖЕНИЕ)
 
-import { push, set, onChildAdded, onValue, onDisconnect, remove, update, get, ref } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { set, onChildAdded, onValue, onDisconnect, remove, update, get, ref } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 // ==========================================
 // 1. ONLINE PRESENCE SYSTEM
