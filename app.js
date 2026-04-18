@@ -268,6 +268,7 @@ onAuthStateChanged(auth, (user) => {
             setupLobbyNotificationsV4();
         }
         syncRooms();
+        listenFriendSystem();
         subscribeToOwnProfile();
         listenFriendSystem();
     } else {
@@ -2356,12 +2357,6 @@ subscribeToOwnProfile();
 bindCreateModalOverrides();
 widenLobbyLayout();
 
-// Интеграция системы друзей
-onAuthStateChanged(auth, (user) => {
-    if (user) {
-        listenFriendSystem();
-    }
-});
 
 renderRoomsV4 = renderRoomsV4;
 setupLobbyNotificationsV4 = setupLobbyNotificationsV4;
