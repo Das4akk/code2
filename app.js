@@ -1,3 +1,11 @@
+/**
+ * @fileoverview COW Core Engine v4.0 - The Ultimate Edition
+ * @description Интегрированы все фиксы: MPA-подобная стабильность, обход пароля по инвайтам,
+ * улучшенный интерактивный нейрофон, левитация элементов, фикс мобильного скролла,
+ * статистика профилей и строгая защита уникальных юзернеймов.
+ * + ПАТЧ: Система ролей (Создатель / Модератор) с защитой приоритетов.
+ */
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { 
     getAuth, onAuthStateChanged, signInWithEmailAndPassword, 
