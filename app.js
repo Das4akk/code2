@@ -49,7 +49,8 @@ const AppState = {
         audioElements: new Map(),   
         voiceParticipantsCache: {}
     },
-    currentDirectChat: null
+    currentDirectChat: null,
+    usersListRenderToken: 0
 };
 
 // ============================================================================
@@ -718,6 +719,16 @@ class FriendsManager {
 class DirectMessages {
     static getChatId(uid1, uid2) { return [uid1, uid2].sort().join('_'); }
 
+    static closeChat() {
+        if (this.unsubCurrent) {
+            this.unsubCurrent();
+            this.unsubCurrent = null;
+        }
+        AppState.currentDirectChat = null;
+        const modal = Utils.$('modal-dm-chat');
+        if (modal) modal.classList.remove('active');
+    }
+
     static startNotifications() {
         if (!AppState.currentUser) return;
         const dmRoot = ref(db, 'direct-messages');
@@ -779,11 +790,7 @@ class DirectMessages {
         sendBtn.onclick = sendAction;
         input.onkeydown = (e) => { if(e.key === 'Enter') sendAction(); };
         
-        Utils.$('modal-dm-chat').querySelector('.btn-close-modal').onclick = () => {
-            if (this.unsubCurrent) { this.unsubCurrent(); this.unsubCurrent = null; }
-            AppState.currentDirectChat = null;
-            Utils.$('modal-dm-chat').classList.remove('active');
-        };
+        Utils.$('modal-dm-chat').querySelector('.btn-close-modal').onclick = () => this.closeChat();
     }
 
     static renderMessages(messages) {
@@ -825,12 +832,12 @@ class DirectMessages {
     }
 
     static async sendRoomInvite(targetUid) {
-        if (!AppState.currentRoomId) return;
+        if (!AppState.currentRoomId || !targetUid || targetUid === AppState.currentUser.uid) return;
         const roomData = AppState.roomsCache.get(AppState.currentRoomId);
-        if (!roomData) return;
+        if (!roomData) return Utils.toast('Комната больше не существует', 'error');
 
         const chatId = this.getChatId(AppState.currentUser.uid, targetUid);
-        const membersCount = roomData.presence ? Object.keys(roomData.presence).length : 1;
+        const membersCount = Object.keys(AppState.currentPresenceCache || {}).length || 1;
 
         const payload = { 
             type: 'invite',
@@ -852,11 +859,13 @@ class DirectMessages {
     }
 }
 
+window.DirectMessages = DirectMessages;
+
 // Глобальная функция для кнопок в ЛС (Моментальный обход пароля)
 window.acceptRoomInvite = async (roomId) => {
     const roomData = AppState.roomsCache.get(roomId);
     if (!roomData) return Utils.toast('Комната больше не существует', 'error');
-    Utils.$('modal-dm-chat').classList.remove('active');
+    DirectMessages.closeChat();
     RoomManager.enterRoomFinal(roomId, roomData); // Обход пароля!
 };
 
@@ -991,14 +1000,36 @@ class RoomManager {
 
     // ВОССТАНОВЛЕННАЯ ЛОГИКА ИЗ ОРИГИНАЛА
     static enterRoomFinal(roomId, roomData) {
+        RTCManager.destroy();
         AppState.currentRoomId = roomId;
         AppState.isHost = (roomData.hostId === AppState.currentUser.uid);
+        AppState.currentPresenceCache = {};
+        AppState.usersListRenderToken++;
         AppState.roomSubscriptions.forEach(fn => fn()); AppState.roomSubscriptions = [];
         
         Utils.$('room-title-text').innerText = Utils.escapeHtml(roomData.name);
         const vid = Utils.$('native-player');
-        if(vid.src !== roomData.videoUrl) vid.src = Utils.escapeHtml(roomData.videoUrl || '');
-        vid.controls = AppState.isHost; 
+        const nextVideoUrl = String(roomData.videoUrl || '').trim();
+
+        if (vid) {
+            if (vid.dataset.roomUrl !== nextVideoUrl) {
+                vid.pause();
+                vid.removeAttribute('src');
+                vid.load();
+
+                if (nextVideoUrl) {
+                    vid.src = nextVideoUrl;
+                    vid.load();
+                }
+
+                vid.dataset.roomUrl = nextVideoUrl;
+            }
+
+            vid.controls = AppState.isHost;
+            vid.playsInline = true;
+            vid.preload = 'auto';
+            vid.onerror = () => Utils.toast('Плеер не смог загрузить видео. Нужна прямая ссылка на медиафайл.', 'error');
+        }
         
         // Инжект кнопки Поделиться
         let shareBtn = Utils.$('btn-share-room');
@@ -1172,15 +1203,25 @@ class RoomManager {
 
     static rerenderUsersList() {
         const container = Utils.$('users-list');
-        const cache = AppState.currentPresenceCache;
+        const cache = AppState.currentPresenceCache || {};
         const ids = Object.keys(cache);
-        Utils.$('users-count').innerText = ids.length;
+        const renderToken = ++AppState.usersListRenderToken;
+        const renderRoomId = AppState.currentRoomId;
 
+        Utils.$('users-count').innerText = ids.length;
         container.innerHTML = '';
+        
+        const ensureActualRender = () => {
+            if (renderToken !== AppState.usersListRenderToken) return false;
+            if (!AppState.currentRoomId || AppState.currentRoomId !== renderRoomId) return false;
+            return true;
+        };
         
         // Инъекция списка ДРУЗЕЙ для приглашения (Share)
         if (AppState.currentUser) {
             get(ref(db, `users/${AppState.currentUser.uid}/friends`)).then(snap => {
+                if (!ensureActualRender()) return;
+
                 const fr = snap.val() || {};
                 const friendsIds = Object.keys(fr).filter(k => fr[k].status === 'accepted' && !ids.includes(k)); // Только те, кого нет в комнате
                 if (friendsIds.length > 0) {
@@ -1192,7 +1233,10 @@ class RoomManager {
                                 <button class="primary-btn" style="width:auto; padding:4px 8px; font-size:11px;" onclick="DirectMessages.sendRoomInvite('${fid}')">Пригласить</button>
                             </div>
                         `;
-                        ProfileManager.loadUser(fid).then(p => { if(Utils.$(`inv-name-${fid}`)) Utils.$(`inv-name-${fid}`).innerText = p.name; });
+                        ProfileManager.loadUser(fid).then(p => {
+                            if (!ensureActualRender() || !p) return;
+                            if (Utils.$(`inv-name-${fid}`)) Utils.$(`inv-name-${fid}`).innerText = p.name;
+                        });
                     });
                     container.innerHTML += inviteHtml + `<div style="font-size:11px; color:var(--text-muted); margin: 15px 0 5px; text-transform:uppercase;">В комнате</div>`;
                 }
@@ -1203,6 +1247,7 @@ class RoomManager {
         }
 
         function renderRoomUsers() {
+            if (!ensureActualRender()) return;
             ids.forEach(uid => {
                 const user = cache[uid];
                 const isLocal = uid === AppState.currentUser.uid;
@@ -1264,10 +1309,23 @@ class RoomManager {
         RTCManager.destroy();
         
         const vid = Utils.$('native-player');
-        if(vid) { vid.pause(); vid.src = ''; }
+        if (vid) {
+            vid.pause();
+            vid.removeAttribute('src');
+            vid.load();
+            delete vid.dataset.roomUrl;
+            vid.onplay = null;
+            vid.onpause = null;
+            vid.onseeked = null;
+            vid.onerror = null;
+        }
         
+        AppState.currentPresenceCache = {};
+        AppState.usersListRenderToken++;
         AppState.currentRoomId = null;
         AppState.isHost = false;
+        if (Utils.$('users-list')) Utils.$('users-list').innerHTML = '';
+        if (Utils.$('users-count')) Utils.$('users-count').innerText = '0';
         Utils.showScreen('lobby-screen');
     }
 }
@@ -1448,7 +1506,8 @@ class RTCManager {
         if (this.isMicActive && AppState.currentUser && this.roomId) remove(ref(db, `rooms/${this.roomId}/rtc/participants/${this.uid}`)).catch(()=>{});
         this.isMicActive = false;
         Utils.$('mic-btn')?.classList.remove('active');
-        this.unsubs.forEach(fn => fn());
+        (this.unsubs || []).forEach(fn => fn());
+        this.unsubs = [];
     }
 }
 
