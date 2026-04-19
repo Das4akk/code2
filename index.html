@@ -28,26 +28,16 @@
         /* ========================================================= */
         /* BACKGROUNDS & GLOBAL COMPONENTS */
         /* ========================================================= */
-        #particle-canvas { position: fixed; top: 0; left: 0; z-index: -1; width: 100%; height: 100%; opacity: 0.12; pointer-events: none; }
+        #particle-canvas { position: fixed; top: 0; left: 0; z-index: -1; width: 100%; height: 100%; opacity: 0.15; pointer-events: none; }
         
-        .glass-panel { 
-            background: var(--panel); 
-            border: 1px solid var(--border); 
-            border-radius: 20px; 
-            box-shadow: 0 15px 35px rgba(0,0,0,0.9);
-        }
+        .glass-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.9); }
         
         button { cursor: pointer; transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94); font-weight: 600; outline: none; border: none; }
         button:hover:not(:disabled) { transform: translateY(-2px); }
         button:active:not(:disabled) { transform: translateY(0) scale(0.98); }
         button:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        input, textarea { 
-            width: 100%; padding: 14px 16px; border-radius: 12px; 
-            border: 1px solid var(--border-light); background: #040404; 
-            color: var(--text-main); outline: none; transition: 0.2s; 
-            font-size: 14px; margin-bottom: 12px;
-        }
+        input, textarea { width: 100%; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--border-light); background: #040404; color: var(--text-main); outline: none; transition: 0.2s; font-size: 14px; margin-bottom: 12px; }
         input::placeholder, textarea::placeholder { color: var(--text-muted); }
         input:focus, textarea:focus { border-color: var(--accent); background: #0a0a0a; box-shadow: 0 0 0 2px rgba(46, 213, 115, 0.15); }
         
@@ -68,11 +58,9 @@
         #auth-screen { align-items: center; justify-content: center; }
         .auth-wrapper { width: 420px; padding: 40px; text-align: center; max-width: 90%; }
         .logo { font-size: 52px; font-weight: 900; margin-bottom: 25px; letter-spacing: -2px; }
-        
         .auth-tabs { display: flex; gap: 8px; margin-bottom: 20px; background: #040404; padding: 6px; border-radius: 12px; border: 1px solid var(--border); }
         .auth-tabs button { flex: 1; padding: 10px; background: transparent; color: var(--text-muted); border-radius: 8px; transition: 0.3s; }
         .auth-tabs button.active { background: var(--panel-hover); color: var(--text-main); box-shadow: 0 2px 8px rgba(0,0,0,0.5); border: 1px solid var(--border-light); }
-        
         .auth-form { display: none; flex-direction: column; gap: 4px; }
         .auth-form.active-form { display: flex; animation: fadeIn 0.3s ease; }
 
@@ -81,9 +69,7 @@
         /* ========================================================= */
         .lobby-layout { display: grid; grid-template-columns: 320px 1fr; gap: 20px; padding: 20px; height: 100vh; max-width: 1600px; margin: 0 auto; width: 100%; }
         
-        /* Sidebar */
         .sidebar { display: flex; flex-direction: column; padding: 20px; overflow-y: hidden; }
-        
         .user-card { display: flex; align-items: center; gap: 14px; padding: 16px; border-radius: 16px; background: rgba(255,255,255,0.02); cursor: pointer; border: 1px solid transparent; transition: 0.2s; margin-bottom: 24px; }
         .user-card:hover { background: rgba(255,255,255,0.05); border-color: var(--border-light); }
         .avatar { width: 48px; height: 48px; border-radius: 50%; background: #111; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 20px; overflow: hidden; border: 1px solid var(--border-light); flex-shrink: 0; }
@@ -97,10 +83,8 @@
         .nav-item:hover { background: rgba(255,255,255,0.02); color: var(--text-main); }
         .nav-item.active { background: rgba(255,255,255,0.05); color: var(--text-main); border-color: var(--border-light); }
         .nav-badge { background: var(--accent); color: #000; font-size: 10px; padding: 2px 6px; border-radius: 10px; display: none; }
-        .nav-badge.show { display: block; animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        @keyframes popIn { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+        .nav-badge.show { display: block; }
         
-        /* Friends System */
         .friends-container { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; padding-right: 5px; }
         .friends-container::-webkit-scrollbar { width: 4px; }
         .friends-container::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 4px; }
@@ -123,7 +107,6 @@
         .btn-decline { background: rgba(255, 71, 87, 0.1); color: var(--danger); border: 1px solid rgba(255, 71, 87, 0.25); }
         .btn-decline:hover { background: var(--danger); color: #fff; }
         
-        /* Main Rooms Area */
         .rooms-main { display: flex; flex-direction: column; gap: 20px; overflow: hidden; }
         .lobby-header { display: flex; justify-content: space-between; align-items: center; gap: 20px; background: var(--panel); padding: 16px 24px; border-radius: 20px; border: 1px solid var(--border); }
         .lobby-header input { margin: 0; max-width: 300px; border: none; background: #040404; }
@@ -146,15 +129,25 @@
         /* ========================================================= */
         /* ROOM SCREEN */
         /* ========================================================= */
-        .room-layout { display: grid; grid-template-columns: 1fr 360px; gap: 20px; padding: 20px; height: 100vh; max-width: 1800px; margin: 0 auto; width: 100%; }
+        .room-layout { display: grid; grid-template-columns: 1fr 380px; gap: 20px; padding: 20px; height: 100vh; max-width: 1800px; margin: 0 auto; width: 100%; }
         
-        .player-section { display: flex; flex-direction: column; gap: 15px; min-width: 0; }
+        .player-section { display: flex; flex-direction: column; gap: 15px; min-width: 0; position: relative; }
         .room-top-bar { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; }
         .room-title-wrapper { flex: 1; overflow: hidden; margin: 0 15px; }
         .room-title-wrapper h2 { font-size: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; }
+        
         .video-container { flex: 1; background: #000; border-radius: 20px; position: relative; overflow: hidden; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; }
         video#main-video { width: 100%; height: 100%; max-height: 100%; outline: none; }
         
+        /* Reactions Layer */
+        .reaction-bar { display: flex; gap: 15px; align-items: center; justify-content: center; padding: 10px; background: rgba(0,0,0,0.5); border-radius: 16px; border: 1px solid var(--border-light); position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 10; backdrop-filter: blur(10px); }
+        .react-btn { background: none; border: none; font-size: 24px; cursor: pointer; transition: all 0.25s ease; }
+        .react-btn:hover { transform: scale(1.4); filter: drop-shadow(0 0 12px rgba(255,255,255,0.3)); }
+        .react-btn:disabled { opacity: 0.4; cursor: default; }
+        #reaction-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; overflow: hidden; z-index: 50; }
+        .floating-emoji { position: absolute; bottom: -30px; font-size: 32px; animation: floatUp 3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
+        @keyframes floatUp { 0% { transform: translateY(0) scale(0.6); opacity: 1; } 50% { transform: translateY(-150px) translateX(20px) scale(1.6); opacity: 1; } 100% { transform: translateY(-350px) translateX(-20px) scale(0.8); opacity: 0; } }
+
         .chat-section { display: flex; flex-direction: column; height: 100%; overflow: hidden; border: 1px solid var(--border); }
         .chat-tabs { display: flex; padding: 10px; border-bottom: 1px solid var(--border); gap: 5px; }
         .chat-tabs button { flex: 1; padding: 10px; background: transparent; color: var(--text-muted); border-radius: 10px; font-size: 13px; font-weight: 600; }
@@ -164,85 +157,90 @@
         .chat-content-area::-webkit-scrollbar { width: 4px; }
         .chat-content-area::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 4px; }
         
-        /* Messages */
-        .msg-line { display: flex; flex-direction: column; animation: fadeIn 0.2s ease; margin-bottom: 4px; }
-        .msg-line.self { align-items: flex-end; }
-        .msg-bubble { padding: 10px 14px; border-radius: 16px; background: rgba(255,255,255,0.04); font-size: 14px; max-width: 85%; line-height: 1.4; border: 1px solid var(--border-light); word-wrap: break-word; }
-        .self .msg-bubble { background: var(--text-main); color: #000; border-color: var(--text-main); border-bottom-right-radius: 4px; }
-        .msg-author { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; padding: 0 4px; font-weight: 600; }
-        .self .msg-author { display: none; }
+        .m-line { display: flex; flex-direction: column; animation: fadeIn 0.2s ease; margin-bottom: 4px; }
+        .m-line.self { align-items: flex-end; }
+        .bubble { padding: 10px 14px; border-radius: 16px; background: rgba(255,255,255,0.04); font-size: 14px; max-width: 85%; line-height: 1.4; border: 1px solid var(--border-light); word-wrap: break-word; }
+        .self .bubble { background: var(--text-main); color: #000; border-color: var(--text-main); border-bottom-right-radius: 4px; }
+        .m-line strong { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; padding: 0 4px; font-weight: 600; display: block; }
+        .self strong { display: none; }
         .sys-msg { text-align: center; font-size: 11px; color: var(--text-muted); margin: 10px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+        .timecode-btn { background: rgba(46, 213, 115, 0.15); border: 1px solid rgba(46, 213, 115, 0.3); color: var(--accent); padding: 2px 6px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 12px; transition: 0.2s; }
+        .timecode-btn:hover { background: var(--accent); color: #000; }
+        .timecode-btn.disabled { opacity: 0.5; cursor: default; }
 
-        /* Input Area */
         .chat-input-area { padding: 12px; border-top: 1px solid var(--border); background: var(--panel); }
         .input-wrapper { display: flex; gap: 8px; background: #040404; border: 1px solid var(--border-light); border-radius: 16px; padding: 6px; align-items: center; }
         .input-wrapper input { border: none; background: transparent; margin: 0; padding: 8px 10px; flex: 1; }
-        .input-wrapper input:focus { box-shadow: none; }
         
-        .mic-btn { width: 38px; height: 38px; border-radius: 12px; background: rgba(255,255,255,0.05); color: var(--text-main); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; transition: 0.3s; }
-        .mic-btn.active { background: rgba(46, 213, 115, 0.15); color: var(--accent); border: 1px solid var(--accent); box-shadow: 0 0 15px rgba(46, 213, 115, 0.2); animation: pulse 2s infinite; }
+        .mic-icon-btn { width: 38px; height: 38px; border-radius: 12px; background: rgba(255,255,255,0.05); color: var(--text-main); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; transition: 0.3s; }
+        .mic-icon-btn.active { background: rgba(46, 213, 115, 0.15); color: var(--accent); border: 1px solid var(--accent); box-shadow: 0 0 15px rgba(46, 213, 115, 0.2); animation: pulse 2s infinite; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(46, 213, 115, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(46, 213, 115, 0); } 100% { box-shadow: 0 0 0 0 rgba(46, 213, 115, 0); } }
         
         .send-btn { width: 38px; height: 38px; border-radius: 12px; background: var(--text-main); color: #000; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; }
         .send-btn:hover { background: #e0e0e0; }
 
-        /* Room Users List */
-        .room-user-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; transition: 0.2s; }
-        .room-user-row:hover { background: rgba(255,255,255,0.03); }
-        .room-user-row .avatar { width: 32px; height: 32px; font-size: 12px; }
-        .room-user-row-name { font-size: 13px; font-weight: 600; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px;}
-        .role-badge { font-size: 9px; padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.1); color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;}
-        .role-badge.host { background: rgba(255, 193, 7, 0.15); color: #ffc107; }
+        /* Room Users List with Permissions */
+        .user-item { padding: 12px; display: flex; align-items: flex-start; gap: 12px; background: rgba(255,255,255,0.02); border-radius: 12px; flex-wrap: wrap; border: 1px solid var(--border-light); }
+        .user-item .indicator { width: 8px; height: 8px; background: rgba(255,255,255,0.2); border-radius: 50%; flex-shrink: 0; margin-top: 5px; transition: 0.3s; }
+        .user-item .indicator.online { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+        .user-main { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; flex: 1; }
+        .user-name { font-size: 14px; font-weight: 600; }
+        .host-label { font-size: 10px; background: rgba(255, 193, 7, 0.15); color: #ffc107; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; font-weight: 700; }
+        .you-label { font-size: 11px; opacity: 0.5; }
+        .user-card-actions { display: flex; gap: 6px; margin-left: auto; }
+        .dm-btn, .add-friend-btn { background: rgba(255,255,255,0.05); border: 1px solid var(--border-light); color: #fff; padding: 6px 10px; border-radius: 8px; font-size: 11px; transition: 0.2s; }
+        .dm-btn:hover, .add-friend-btn:hover { background: rgba(255,255,255,0.1); }
+        .perm-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; width: 100%; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+        .perm-controls label { font-size: 11px; color: var(--text-muted); display: flex; gap: 4px; align-items: center; cursor: pointer; }
 
         /* ========================================================= */
         /* MODALS & TOASTS */
         /* ========================================================= */
         .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px; opacity: 0; transition: opacity 0.25s ease; }
         .modal.active { display: flex; opacity: 1; }
-        .modal-content { width: 440px; max-width: 100%; padding: 30px; transform: translateY(20px) scale(0.95); transition: 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); max-height: 90vh; overflow-y: auto; }
+        .modal-content { width: 440px; max-width: 100%; padding: 30px; transform: translateY(20px) scale(0.95); transition: 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); max-height: 90vh; overflow-y: auto; background: var(--panel); border: 1px solid var(--border-light); border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.9); }
         .modal.active .modal-content { transform: translateY(0) scale(1); }
         .modal h2 { margin-bottom: 20px; font-size: 22px; font-weight: 800; }
         .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+
+        /* DM Modal specific */
+        .dm-modal-content { width: min(600px, 100%); display: flex; flex-direction: column; gap: 16px; padding: 20px; }
+        .dm-modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 15px; margin-bottom: 5px; }
+        .dm-messages { height: 350px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 5px; }
+        .dm-compose { display: flex; gap: 10px; margin-top: 10px; }
+        .dm-compose input { margin: 0; flex: 1; }
 
         #toast-container { position: fixed; top: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
         .toast { padding: 14px 20px; border-radius: 12px; background: var(--panel); border: 1px solid var(--border-light); color: var(--text-main); font-size: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); animation: slideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
         @keyframes slideIn { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 
-        /* Global counters & audio */
         .online-counter-badge { position: fixed; bottom: 20px; left: 20px; padding: 8px 16px; border-radius: 20px; background: rgba(0,0,0,0.8); border: 1px solid rgba(46,213,115,0.2); color: var(--accent); font-size: 12px; font-weight: 700; z-index: 100; backdrop-filter: blur(10px); display: flex; align-items: center; gap: 6px; }
         .online-counter-badge::before { content: ''; display: block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
-        #remote-audios { display: none; }
+        #remote-audio-container { display: none; }
 
-        /* ========================================================= */
-        /* RESPONSIVE / MOBILE */
-        /* ========================================================= */
-        .mobile-header { display: none; padding: 15px 20px; justify-content: space-between; align-items: center; background: var(--panel); border-bottom: 1px solid var(--border); }
-        .burger-btn { font-size: 24px; background: none; color: var(--text-main); padding: 5px; }
-        
         @media (max-width: 1024px) {
             .lobby-layout { grid-template-columns: 1fr; padding: 0; }
             .sidebar { position: fixed; left: -100%; top: 0; height: 100%; width: 300px; z-index: 500; background: #050505; border-right: 1px solid var(--border); transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); padding-top: 80px; box-shadow: 20px 0 50px rgba(0,0,0,0.8); }
             .sidebar.open { left: 0; }
             .mobile-header { display: flex; position: sticky; top: 0; z-index: 400; }
             .rooms-main { padding: 15px; }
-            
             .room-layout { grid-template-columns: 1fr; padding: 10px; height: auto; display: flex; flex-direction: column; }
             .video-container { height: 35vh; flex: none; }
             .chat-section { height: 55vh; flex: none; }
             .room-top-bar { padding: 10px; }
-            .room-title-wrapper h2 { font-size: 16px; }
+            .reaction-bar { bottom: 10px; padding: 6px 12px; }
         }
     </style>
 </head>
 <body>
 
-    <!-- Optimized Slow Neural Network Background -->
+    <!-- Neural Network Background -->
     <canvas id="particle-canvas"></canvas>
     
     <!-- Global Elements -->
     <div id="toast-container"></div>
     <div class="online-counter-badge">Всего в сети: <span id="global-online-count">0</span></div>
-    <div id="remote-audios"></div>
+    <div id="remote-audio-container"></div>
 
     <!-- ========================================================================= -->
     <!-- AUTH SCREEN -->
@@ -281,9 +279,7 @@
         </div>
         
         <div class="lobby-layout">
-            <!-- Sidebar -->
             <aside class="sidebar glass-panel" id="main-sidebar">
-                <!-- My Profile Card -->
                 <div class="user-card" id="btn-open-my-profile">
                     <div class="avatar" id="my-avatar-display">?</div>
                     <div class="user-card-info">
@@ -292,18 +288,14 @@
                     </div>
                 </div>
                 
-                <!-- Navigation -->
                 <nav class="nav-menu">
-                    <div class="nav-item active" id="nav-rooms">
-                        <span>📺 Комнаты</span>
-                    </div>
+                    <div class="nav-item active" id="nav-rooms"><span>📺 Комнаты</span></div>
                     <div class="nav-item" id="nav-friends">
                         <span>👥 Друзья</span>
                         <div class="nav-badge" id="friend-req-badge">0</div>
                     </div>
                 </nav>
 
-                <!-- Friends Section (Toggled) -->
                 <div id="friends-section" class="friends-container" style="display: none;">
                     <div class="section-title">Заявки в друзья</div>
                     <div id="friend-requests-list">
@@ -311,27 +303,21 @@
                     </div>
                     
                     <div class="section-title" style="margin-top: 15px;">Мои друзья</div>
-                    <div id="friends-list">
-                        <!-- Dynamic friends here via Virtual DOM -->
-                    </div>
+                    <div id="friends-list"></div>
                 </div>
 
-                <!-- Footer Actions -->
                 <div style="margin-top: auto; display: flex; flex-direction: column; gap: 10px; padding-top: 20px;">
                     <button class="secondary-btn" id="btn-logout" style="border-color: rgba(255,255,255,0.1); color: var(--text-muted);">Выйти из аккаунта</button>
                 </div>
             </aside>
             
-            <!-- Main Content -->
             <main class="rooms-main">
                 <header class="lobby-header glass-panel">
                     <input type="text" id="search-rooms" placeholder="Поиск комнат по названию...">
                     <button class="primary-btn" id="btn-open-create-room">+ Создать комнату</button>
                 </header>
                 
-                <div class="rooms-grid" id="rooms-grid">
-                    <!-- Dynamic Rooms inject here via Virtual DOM -->
-                </div>
+                <div class="rooms-grid" id="rooms-grid"></div>
             </main>
         </div>
     </section>
@@ -341,44 +327,42 @@
     <!-- ========================================================================= -->
     <section id="room-screen" class="screen">
         <div class="room-layout">
-            <!-- Left: Video & Controls -->
             <div class="player-section">
                 <div class="room-top-bar glass-panel">
                     <button class="secondary-btn" id="btn-leave-room" style="width: auto; padding: 10px 16px;">← Выйти</button>
                     <div class="room-title-wrapper">
-                        <h2 id="current-room-name">Загрузка комнаты...</h2>
+                        <h2 id="room-title-text">Загрузка комнаты...</h2>
                     </div>
                     <button class="secondary-btn" id="btn-room-settings" style="width: auto; padding: 10px 16px; display: none;">⚙️ Настройки</button>
                 </div>
                 
                 <div class="video-container glass-panel">
-                    <video id="main-video" playsinline></video>
+                    <video id="native-player" playsinline></video>
+                    <div id="reaction-layer"></div>
+                    <div class="reaction-bar">
+                        <button class="react-btn" data-emoji="🔥">🔥</button>
+                        <button class="react-btn" data-emoji="😂">😂</button>
+                        <button class="react-btn" data-emoji="😱">😱</button>
+                        <button class="react-btn" data-emoji="❤️">❤️</button>
+                        <button class="react-btn" data-emoji="👏">👏</button>
+                    </div>
                 </div>
             </div>
             
-            <!-- Right: Chat & Users -->
             <div class="chat-section glass-panel">
                 <div class="chat-tabs">
-                    <button id="tab-chat" class="active">Чат</button>
-                    <button id="tab-users">Люди (<span id="room-users-count">0</span>)</button>
+                    <button id="tab-chat-btn" class="active">💬 Чат</button>
+                    <button id="tab-users-btn">👥 Люди (<span id="users-count">0</span>)</button>
                 </div>
                 
-                <!-- Chat Area -->
-                <div class="chat-content-area" id="chat-messages">
-                    <div class="sys-msg">Добро пожаловать в комнату!</div>
-                </div>
+                <div class="chat-content-area" id="chat-messages"></div>
+                <div class="chat-content-area" id="users-list" style="display: none;"></div>
                 
-                <!-- Users Area (Hidden by default) -->
-                <div class="chat-content-area" id="room-users-list" style="display: none;">
-                    <!-- Dynamic Users via Virtual DOM -->
-                </div>
-                
-                <!-- Input Area -->
                 <div class="chat-input-area" id="chat-input-container">
                     <div class="input-wrapper">
-                        <button class="mic-btn" id="mic-toggle" title="Включить/Выключить микрофон">🎤</button>
-                        <input type="text" id="chat-input" placeholder="Написать сообщение или таймкод..." autocomplete="off">
-                        <button class="send-btn" id="btn-send-msg">↑</button>
+                        <button class="mic-icon-btn" id="mic-btn" title="Микрофон">🎤</button>
+                        <input type="text" id="chat-input" placeholder="Написать или :00 таймкод..." autocomplete="off">
+                        <button class="send-btn" id="send-btn">↑</button>
                     </div>
                 </div>
             </div>
@@ -389,13 +373,12 @@
     <!-- MODALS -->
     <!-- ========================================================================= -->
     
-    <!-- Profile Edit Modal -->
     <div class="modal" id="modal-edit-profile">
         <div class="modal-content glass-panel">
             <h2>Настройки профиля</h2>
             <div style="display: flex; flex-direction: column; gap: 12px;">
                 <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 10px;">
-                    <div class="avatar" id="edit-avatar-preview" style="width: 70px; height: 70px; font-size: 24px;">?</div>
+                    <div class="avatar" id="edit-avatar-preview" style="width: 70px; height: 70px; font-size: 24px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center; background:#111;">?</div>
                     <div style="flex: 1;">
                         <input type="text" id="edit-avatar-url" placeholder="URL аватарки (ссылка на картинку)" style="margin:0;">
                     </div>
@@ -411,22 +394,39 @@
         </div>
     </div>
 
-    <!-- View User Profile Modal -->
+    <!-- View User Profile Modal (Updated Button) -->
     <div class="modal" id="modal-view-profile">
         <div class="modal-content glass-panel" style="text-align: center;">
-            <div class="avatar" id="view-avatar" style="width: 90px; height: 90px; font-size: 32px; margin: 0 auto 15px;">?</div>
+            <div class="avatar" id="view-avatar" style="width: 90px; height: 90px; font-size: 32px; margin: 0 auto 15px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center; background:#111;">?</div>
             <h2 id="view-name" style="margin-bottom: 5px;">Пользователь</h2>
             <div id="view-username" style="color: var(--accent); font-size: 14px; margin-bottom: 15px; font-weight: 600;">@user</div>
             <p id="view-bio" style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px; line-height: 1.5;"></p>
             
             <div id="view-profile-actions" style="display: flex; flex-direction: column; gap: 10px;">
-                <button class="primary-btn" id="btn-add-friend-modal">Добавить в друзья</button>
+                <button class="primary-btn" id="btn-dm-modal">Написать сообщение</button>
                 <button class="secondary-btn btn-close-modal">Закрыть</button>
             </div>
         </div>
     </div>
 
-    <!-- Create/Edit Room Modal -->
+    <!-- Direct Messages Modal -->
+    <div class="modal" id="modal-dm-chat">
+        <div class="modal-content glass-panel dm-modal-content">
+            <div class="dm-modal-header">
+                <div>
+                    <h2 id="dm-chat-title" style="margin-bottom: 5px;">Личный чат</h2>
+                    <p style="font-size: 12px; color: var(--text-muted);">Приватные сообщения</p>
+                </div>
+                <button class="secondary-btn btn-close-modal" style="width: auto; padding: 8px 12px;">✕</button>
+            </div>
+            <div id="dm-messages" class="dm-messages"></div>
+            <div class="dm-compose">
+                <input type="text" id="dm-input" placeholder="Написать другу..." autocomplete="off">
+                <button id="btn-dm-send" class="primary-btn" style="width: 50px;">↑</button>
+            </div>
+        </div>
+    </div>
+
     <div class="modal" id="modal-room">
         <div class="modal-content glass-panel">
             <h2 id="room-modal-title">Создать комнату</h2>
@@ -449,7 +449,6 @@
         </div>
     </div>
 
-    <!-- Password Prompt Modal -->
     <div class="modal" id="modal-password">
         <div class="modal-content glass-panel">
             <h2>Вход в приватную комнату</h2>
@@ -462,85 +461,8 @@
         </div>
     </div>
 
-    <!-- ========================================================================= -->
-    <!-- SCRIPTS -->
-    <!-- ========================================================================= -->
-    
-    <!-- Optimized Neural Network Background -->
+    <!-- Mobile Sidebar Logic -->
     <script>
-        const canvas = document.getElementById('particle-canvas');
-        if (canvas) {
-            const ctx = canvas.getContext('2d');
-            let dots = [];
-            let animationId;
-            let isTabVisible = true;
-            
-            function resize() {
-                canvas.width = window.innerWidth;
-                canvas.height = window.innerHeight;
-            }
-            window.addEventListener('resize', resize);
-            resize();
-            
-            class Dot {
-                constructor() {
-                    this.x = Math.random() * canvas.width;
-                    this.y = Math.random() * canvas.height;
-                    this.vx = (Math.random() - 0.5) * 0.1; // Очень медленно
-                    this.vy = (Math.random() - 0.5) * 0.1;
-                }
-                update() {
-                    this.x += this.vx;
-                    this.y += this.vy;
-                    if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
-                    if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
-                }
-                draw() {
-                    ctx.fillStyle = "rgba(255,255,255,0.4)";
-                    ctx.beginPath();
-                    ctx.arc(this.x, this.y, 1.5, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-            }
-            
-            for (let i = 0; i < 60; i++) dots.push(new Dot()); // Уменьшено количество точек для производительности
-            
-            function animate() {
-                if (!isTabVisible) return; // Экономия батареи
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                for (let i = 0; i < dots.length; i++) {
-                    dots[i].update();
-                    dots[i].draw();
-                    for (let j = i + 1; j < dots.length; j++) {
-                        let dx = dots[i].x - dots[j].x;
-                        let dy = dots[i].y - dots[j].y;
-                        let dist = dx * dx + dy * dy; // Избегаем дорогого Math.sqrt
-                        if (dist < 20000) { // Эквівалент dist < ~140
-                            ctx.strokeStyle = `rgba(255,255,255,${0.15 - Math.sqrt(dist) / 1000})`;
-                            ctx.lineWidth = 0.5;
-                            ctx.beginPath();
-                            ctx.moveTo(dots[i].x, dots[i].y);
-                            ctx.lineTo(dots[j].x, dots[j].y);
-                            ctx.stroke();
-                        }
-                    }
-                }
-                animationId = requestAnimationFrame(animate);
-            }
-            animate();
-
-            // Остановка анимации, если вкладка не активна (экономия батареи)
-            document.addEventListener("visibilitychange", () => {
-                isTabVisible = !document.hidden;
-                if (isTabVisible) {
-                    animate();
-                } else {
-                    cancelAnimationFrame(animationId);
-                }
-            });
-        }
-
-        // Mobile Sidebar Logic
         const btnToggle = document.getElementById('toggle-sidebar');
         const sidebar = document.getElementById('main-sidebar');
         if (btnToggle && sidebar) {
@@ -556,7 +478,6 @@
         }
     </script>
     
-    <!-- Core Application Logic -->
     <script type="module" src="app.js"></script>
 </body>
 </html>

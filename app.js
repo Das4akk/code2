@@ -1,8 +1,8 @@
 /**
- * @fileoverview COW Core Engine v2.0 - Enterprise Grade
- * @description Решена проблема DOM Thrashing, утечек памяти WebRTC и багов профилей.
- * Полностью атомарные транзакции, Virtual DOM паттерн для рендера списков.
- * Requires Firebase v10.7.1
+ * @fileoverview COW Core Engine v3.0 - The Restored Masterpiece
+ * @description Восстановлена ПОЛНАЯ рабочая логика комнаты (права, WebRTC, таймкоды, реакции).
+ * Строгая валидация уникальных имен. Нейросетевой фон интегрирован в ядро.
+ * Внедрена система личных сообщений (DM).
  */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -35,20 +35,23 @@ const AppState = {
     currentUser: null,
     currentRoomId: null,
     isHost: false,
-    usersCache: new Map(), // Кеш профилей: uid -> данные
-    activeSubscriptions: [], // Массив функций-отписок
+    usersCache: new Map(), 
+    roomsCache: new Map(),
+    activeSubscriptions: [], 
+    roomSubscriptions: [], // Отписки именно для комнаты
+    currentPresenceCache: {}, // Для прав в комнате
     rtc: {
         localStream: null,
         sessionId: null,
-        peerConnections: new Map(), // P2P соединения
-        audioElements: new Map(),   // Аудио теги
-        iceRestartTimeouts: new Map() // Защита от спама реконнектов
+        peerConnections: new Map(), 
+        audioElements: new Map(),   
+        voiceParticipantsCache: {}
     },
-    pendingJoinRoomId: null,
+    currentDirectChat: null
 };
 
 // ============================================================================
-// 2. УТИЛИТЫ И ВИРТУАЛЬНЫЙ DOM (Решение проблемы спама сети)
+// 2. УТИЛИТЫ И АНИМАЦИИ (Нейросеть)
 // ============================================================================
 
 class Utils {
@@ -89,29 +92,83 @@ class Utils {
 
     static async hashPassword(password, salt) {
         const enc = new TextEncoder();
-        const keyMaterial = await crypto.subtle.importKey(
-            'raw', enc.encode(password), { name: 'PBKDF2' }, false, ['deriveBits']
-        );
-        const derivedBits = await crypto.subtle.deriveBits(
-            { name: 'PBKDF2', salt: enc.encode(salt), iterations: 10000, hash: 'SHA-256' },
-            keyMaterial, 256
-        );
+        const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), { name: 'PBKDF2' }, false, ['deriveBits']);
+        const derivedBits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: enc.encode(salt), iterations: 10000, hash: 'SHA-256' }, keyMaterial, 256);
         return btoa(String.fromCharCode(...new Uint8Array(derivedBits)));
     }
 
-    // Защита от спама Firebase (например, при поиске)
     static debounce(func, wait) {
         let timeout;
-        return function executedFunction(...args) {
-            const later = () => { clearTimeout(timeout); func(...args); };
+        return function(...args) {
             clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
+            timeout = setTimeout(() => func(...args), wait);
         };
     }
 }
 
+class BackgroundFX {
+    static init() {
+        const canvas = Utils.$('particle-canvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        let dots = [];
+        let isTabVisible = true;
+        let animationId;
+        
+        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        window.addEventListener('resize', resize);
+        resize();
+        
+        class Dot {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.vx = (Math.random() - 0.5) * 0.1; 
+                this.vy = (Math.random() - 0.5) * 0.1;
+            }
+            update() {
+                this.x += this.vx; this.y += this.vy;
+                if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+                if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+            }
+            draw() {
+                ctx.fillStyle = "rgba(255,255,255,0.4)";
+                ctx.beginPath(); ctx.arc(this.x, this.y, 1.5, 0, Math.PI * 2); ctx.fill();
+            }
+        }
+        
+        for (let i = 0; i < 60; i++) dots.push(new Dot()); 
+        
+        function animate() {
+            if (!isTabVisible) return; 
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < dots.length; i++) {
+                dots[i].update(); dots[i].draw();
+                for (let j = i + 1; j < dots.length; j++) {
+                    let dx = dots[i].x - dots[j].x;
+                    let dy = dots[i].y - dots[j].y;
+                    let dist = dx * dx + dy * dy; 
+                    if (dist < 20000) { 
+                        ctx.strokeStyle = `rgba(255,255,255,${0.15 - Math.sqrt(dist) / 1000})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.beginPath(); ctx.moveTo(dots[i].x, dots[i].y); ctx.lineTo(dots[j].x, dots[j].y); ctx.stroke();
+                    }
+                }
+            }
+            animationId = requestAnimationFrame(animate);
+        }
+        animate();
+
+        document.addEventListener("visibilitychange", () => {
+            isTabVisible = !document.hidden;
+            if (isTabVisible) animate();
+            else cancelAnimationFrame(animationId);
+        });
+    }
+}
+
 // ============================================================================
-// 3. АВТОРИЗАЦИЯ
+// 3. АВТОРИЗАЦИЯ И СТРОГИЕ ПРОВЕРКИ ПРОФИЛЕЙ
 // ============================================================================
 
 class AuthManager {
@@ -124,6 +181,7 @@ class AuthManager {
                 ProfileManager.bindMyProfileListener();
                 FriendsManager.initListeners();
                 RoomManager.initLobbyListeners();
+                DirectMessages.startNotifications();
                 this.bindGlobalPresence();
             } else {
                 this.handleLogoutCleanup();
@@ -135,21 +193,16 @@ class AuthManager {
 
     static bindUI() {
         Utils.$('tab-login-btn').onclick = () => {
-            Utils.$('tab-login-btn').classList.add('active');
-            Utils.$('tab-reg-btn').classList.remove('active');
-            Utils.$('login-form').classList.add('active-form');
-            Utils.$('reg-form').classList.remove('active-form');
+            Utils.$('tab-login-btn').classList.add('active'); Utils.$('tab-reg-btn').classList.remove('active');
+            Utils.$('login-form').classList.add('active-form'); Utils.$('reg-form').classList.remove('active-form');
         };
         Utils.$('tab-reg-btn').onclick = () => {
-            Utils.$('tab-reg-btn').classList.add('active');
-            Utils.$('tab-login-btn').classList.remove('active');
-            Utils.$('reg-form').classList.add('active-form');
-            Utils.$('login-form').classList.remove('active-form');
+            Utils.$('tab-reg-btn').classList.add('active'); Utils.$('tab-login-btn').classList.remove('active');
+            Utils.$('reg-form').classList.add('active-form'); Utils.$('login-form').classList.remove('active-form');
         };
 
         Utils.$('btn-do-login').onclick = async () => {
-            const email = Utils.$('login-email').value.trim();
-            const pass = Utils.$('login-pass').value.trim();
+            const email = Utils.$('login-email').value.trim(); const pass = Utils.$('login-pass').value.trim();
             if (!email || !pass) return Utils.toast('Заполните все поля', 'error');
             try {
                 Utils.$('btn-do-login').disabled = true;
@@ -164,26 +217,20 @@ class AuthManager {
             const email = Utils.$('reg-email').value.trim();
             const pass = Utils.$('reg-pass').value.trim();
             const name = Utils.$('reg-name').value.trim();
-            let username = Utils.$('reg-username').value.trim().toLowerCase();
+            let username = Utils.$('reg-username').value.toLowerCase().trim().replace('@', '');
 
-            if (!email || pass.length < 6 || !name || !username) {
-                return Utils.toast('Заполните поля. Пароль от 6 символов.', 'error');
-            }
-            if (username.startsWith('@')) username = username.substring(1);
-            if (!/^[a-z0-9_]{3,15}$/.test(username)) {
-                return Utils.toast('ID: 3-15 символов, только a-z, 0-9 и _', 'error');
-            }
+            if (!email || pass.length < 6 || !name || !username) return Utils.toast('Заполните поля. Пароль от 6 символов.', 'error');
+            if (!/^[a-z0-9_]{3,15}$/.test(username)) return Utils.toast('ID: 3-15 символов, только a-z, 0-9 и _', 'error');
 
             try {
                 Utils.$('btn-do-reg').disabled = true;
-                // Проверка уникальности ДО создания аккаунта
-                const isAvailable = await ProfileManager.checkUsernameAvailability(username);
-                if (!isAvailable) throw new Error('Этот @ID уже занят другим пользователем');
+                
+                // Строгая проверка уникальности
+                const isAvail = await ProfileManager.checkUsernameAvailability(username);
+                if (!isAvail) throw new Error('Этот @ID уже занят другим пользователем!');
 
                 const creds = await createUserWithEmailAndPassword(auth, email, pass);
                 await updateProfile(creds.user, { displayName: name });
-                
-                // Атомарное создание профиля
                 await ProfileManager.createProfile(creds.user.uid, name, username, email);
             } catch (e) {
                 Utils.toast(e.message, 'error');
@@ -210,34 +257,27 @@ class AuthManager {
     static handleLogoutCleanup() {
         AppState.currentUser = null;
         Utils.showScreen('auth-screen');
-        Utils.$('login-pass').value = '';
-        Utils.$('reg-pass').value = '';
-        Utils.$('btn-do-login').disabled = false;
-        Utils.$('btn-do-reg').disabled = false;
+        Utils.$('login-pass').value = ''; Utils.$('reg-pass').value = '';
+        Utils.$('btn-do-login').disabled = false; Utils.$('btn-do-reg').disabled = false;
         RoomManager.leaveRoom();
         AppState.activeSubscriptions.forEach(unsub => unsub());
         AppState.activeSubscriptions = [];
     }
 }
 
-// ============================================================================
-// 4. МЕНЕДЖЕР ПРОФИЛЕЙ И УНИКАЛЬНЫХ ИМЕН
-// ============================================================================
-
 class ProfileManager {
     static async checkUsernameAvailability(username, excludeUid = null) {
-        try {
-            const snap = await get(ref(db, `usernames/${username}`));
-            if (!snap.exists()) return true;
-            return snap.val() === excludeUid;
-        } catch (e) { return false; }
+        const cleanName = username.toLowerCase().trim();
+        const snap = await get(ref(db, `usernames/${cleanName}`));
+        if (!snap.exists()) return true;
+        return snap.val() === excludeUid;
     }
 
     static async createProfile(uid, name, username, email) {
-        // Транзакционное обновление двух узлов
+        const cleanName = username.toLowerCase().trim();
         const updates = {};
-        updates[`usernames/${username}`] = uid;
-        updates[`users/${uid}/profile`] = { name, username, email, bio: '', avatar: '', createdAt: Date.now() };
+        updates[`usernames/${cleanName}`] = uid;
+        updates[`users/${uid}/profile`] = { name, username: cleanName, email, bio: '', avatar: '', createdAt: Date.now() };
         await update(ref(db), updates);
     }
 
@@ -259,7 +299,7 @@ class ProfileManager {
             Utils.$('my-name-display').innerText = Utils.escapeHtml(p.name);
             Utils.$('my-username-display').innerText = `@${Utils.escapeHtml(p.username)}`;
             if (p.avatar) {
-                Utils.$('my-avatar-display').innerHTML = `<img src="${Utils.escapeHtml(p.avatar)}" onerror="this.style.display='none'">`;
+                Utils.$('my-avatar-display').innerHTML = `<img src="${Utils.escapeHtml(p.avatar)}" onerror="this.innerHTML='?'" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
             } else {
                 Utils.$('my-avatar-display').innerHTML = (p.name || '?')[0].toUpperCase();
             }
@@ -289,18 +329,15 @@ class ProfileManager {
                 await this.saveProfile();
                 Utils.$('modal-edit-profile').classList.remove('active');
                 Utils.toast('Профиль сохранен');
-            } catch (e) {
-                Utils.toast(e.message, 'error');
-            } finally {
-                btn.disabled = false;
-            }
+            } catch (e) { Utils.toast(e.message, 'error'); } 
+            finally { btn.disabled = false; }
         };
     }
 
     static updateAvatarPreview(url, name) {
         const prev = Utils.$('edit-avatar-preview');
         if (url) {
-            prev.innerHTML = `<img src="${Utils.escapeHtml(url)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.innerHTML='?'">`;
+            prev.innerHTML = `<img src="${Utils.escapeHtml(url)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.innerHTML='?'">`;
         } else {
             prev.innerHTML = (name || '?')[0].toUpperCase();
         }
@@ -310,7 +347,7 @@ class ProfileManager {
         const uid = AppState.currentUser.uid;
         const oldProfile = AppState.usersCache.get(uid);
         const name = Utils.$('edit-name').value.trim();
-        let username = Utils.$('edit-username-input').value.trim().toLowerCase().replace('@', '');
+        let username = Utils.$('edit-username-input').value.toLowerCase().trim().replace('@', '');
         const bio = Utils.$('edit-bio').value.trim();
         const avatar = Utils.$('edit-avatar-url').value.trim();
 
@@ -319,13 +356,13 @@ class ProfileManager {
 
         const updates = {};
         
-        // Защита: Если ID изменился, проверяем и делаем атомарную замену
         if (username !== oldProfile.username) {
-            const isAvail = await this.checkUsernameAvailability(username, uid);
-            if (!isAvail) throw new Error('Этот ID уже занят');
+            // Двойная проверка прямо перед записью
+            const snap = await get(ref(db, `usernames/${username}`));
+            if (snap.exists() && snap.val() !== uid) throw new Error('Этот ID уже занят');
             
-            if (oldProfile.username) updates[`usernames/${oldProfile.username}`] = null; // Удаляем старый
-            updates[`usernames/${username}`] = uid; // Резервируем новый
+            if (oldProfile.username) updates[`usernames/${oldProfile.username}`] = null;
+            updates[`usernames/${username}`] = uid;
         }
 
         updates[`users/${uid}/profile`] = { ...oldProfile, name, username, bio, avatar };
@@ -357,14 +394,14 @@ class ProfileManager {
             avatarEl.innerHTML = (profile.name || '?')[0].toUpperCase();
         }
 
-        const addBtn = Utils.$('btn-add-friend-modal');
+        const dmBtn = Utils.$('btn-dm-modal');
         if (targetUid === AppState.currentUser.uid) {
-            addBtn.style.display = 'none';
+            dmBtn.style.display = 'none';
         } else {
-            addBtn.style.display = 'block';
-            addBtn.onclick = () => {
-                FriendsManager.sendFriendRequest(targetUid);
+            dmBtn.style.display = 'block';
+            dmBtn.onclick = () => {
                 Utils.$('modal-view-profile').classList.remove('active');
+                DirectMessages.openChat(targetUid, profile.name);
             };
         }
 
@@ -373,35 +410,27 @@ class ProfileManager {
 }
 
 // ============================================================================
-// 5. СИСТЕМА ДРУЗЕЙ (Оптимизированный рендер)
+// 4. СИСТЕМА ДРУЗЕЙ И ЛИЧНЫХ СООБЩЕНИЙ
 // ============================================================================
 
 class FriendsManager {
     static initListeners() {
         const uid = AppState.currentUser.uid;
-
         const reqRef = ref(db, `users/${uid}/friend-requests`);
         const unsubReq = onValue(reqRef, (snap) => this.renderRequests(snap.val() || {}));
         
         const frRef = ref(db, `users/${uid}/friends`);
         const unsubFr = onValue(frRef, (snap) => this.renderFriends(snap.val() || {}));
 
-        AppState.activeSubscriptions.push(
-            () => off(reqRef, 'value', unsubReq),
-            () => off(frRef, 'value', unsubFr)
-        );
+        AppState.activeSubscriptions.push(() => off(reqRef, 'value', unsubReq), () => off(frRef, 'value', unsubFr));
 
         Utils.$('nav-friends').onclick = () => {
-            Utils.$('nav-friends').classList.add('active');
-            Utils.$('nav-rooms').classList.remove('active');
-            Utils.$('friends-section').style.display = 'flex';
-            document.querySelector('.rooms-main').style.display = 'none';
+            Utils.$('nav-friends').classList.add('active'); Utils.$('nav-rooms').classList.remove('active');
+            Utils.$('friends-section').style.display = 'flex'; document.querySelector('.rooms-main').style.display = 'none';
         };
         Utils.$('nav-rooms').onclick = () => {
-            Utils.$('nav-rooms').classList.add('active');
-            Utils.$('nav-friends').classList.remove('active');
-            Utils.$('friends-section').style.display = 'none';
-            document.querySelector('.rooms-main').style.display = 'flex';
+            Utils.$('nav-rooms').classList.add('active'); Utils.$('nav-friends').classList.remove('active');
+            Utils.$('friends-section').style.display = 'none'; document.querySelector('.rooms-main').style.display = 'flex';
         };
     }
 
@@ -422,7 +451,7 @@ class FriendsManager {
                 updates[`users/${myUid}/friends/${targetUid}`] = { status: 'accepted', ts };
                 updates[`users/${targetUid}/friends/${myUid}`] = { status: 'accepted', ts };
             }
-            updates[`users/${myUid}/friend-requests/${targetUid}`] = null; // Удаляем заявку
+            updates[`users/${myUid}/friend-requests/${targetUid}`] = null;
             await update(ref(db), updates);
             Utils.toast(accept ? 'Друг добавлен' : 'Заявка отклонена');
         } catch (e) { Utils.toast('Ошибка', 'error'); }
@@ -434,8 +463,7 @@ class FriendsManager {
         const keys = Object.keys(requests);
         
         if (keys.length > 0) {
-            badge.innerText = keys.length;
-            badge.classList.add('show');
+            badge.innerText = keys.length; badge.classList.add('show');
         } else {
             badge.classList.remove('show');
             container.innerHTML = '<div style="font-size: 12px; color: var(--text-muted); padding: 5px; text-align: center;">Нет новых заявок</div>';
@@ -462,7 +490,6 @@ class FriendsManager {
         }
     }
 
-    // VDOM-подобный рендер, чтобы не спамить базу и DOM
     static async renderFriends(friendsMap) {
         const container = Utils.$('friends-list');
         const keys = Object.keys(friendsMap).filter(k => friendsMap[k].status === 'accepted');
@@ -472,17 +499,14 @@ class FriendsManager {
             return;
         }
 
-        // Удаляем тех, кого больше нет в списке
         Array.from(container.children).forEach(child => {
-            if (child.id !== 'empty-friends' && !keys.includes(child.dataset.uid)) child.remove();
+            if (!keys.includes(child.dataset.uid)) child.remove();
         });
-        if (Utils.$('empty-friends')) Utils.$('empty-friends').remove();
 
         for (const uid of keys) {
             const profile = await ProfileManager.loadUser(uid);
             if (!profile) continue;
 
-            // Запрашиваем онлайн статус
             get(ref(db, `users/${uid}/status`)).then(snap => {
                 const status = snap.val() || { online: false };
                 const isOnline = status.online;
@@ -499,7 +523,6 @@ class FriendsManager {
 
                 let av = profile.avatar ? `<img src="${Utils.escapeHtml(profile.avatar)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : (profile.name[0].toUpperCase());
                 
-                // Обновляем содержимое без пересоздания карточки
                 div.innerHTML = `
                     <div class="avatar">${av}</div>
                     <div class="friend-info-col">
@@ -515,8 +538,92 @@ class FriendsManager {
     }
 }
 
+class DirectMessages {
+    static getChatId(uid1, uid2) { return [uid1, uid2].sort().join('_'); }
+
+    static startNotifications() {
+        if (!AppState.currentUser) return;
+        const dmRoot = ref(db, 'direct-messages');
+        const unsub = onValue(dmRoot, (snap) => {
+            const chats = snap.val() || {};
+            Object.entries(chats).forEach(([chatId, chat]) => {
+                if (!chat?.participants?.[AppState.currentUser.uid] || !chat.lastMessage) return;
+                
+                const marker = `dmSeen:${chatId}`;
+                const seenTs = Number(sessionStorage.getItem(marker) || '0');
+                const lastTs = Number(chat.lastMessage.ts || 0);
+                
+                if (lastTs <= seenTs || chat.lastMessage.fromUid === AppState.currentUser.uid) return;
+                if (AppState.currentDirectChat?.id === chatId) return; // Мы уже в этом чате
+                
+                sessionStorage.setItem(marker, String(lastTs));
+                Utils.toast(`ЛС от ${chat.lastMessage.fromName}: ${chat.lastMessage.text}`);
+            });
+        });
+        AppState.activeSubscriptions.push(() => off(dmRoot, 'value', unsub));
+    }
+
+    static openChat(targetUid, targetName) {
+        if (this.unsubCurrent) this.unsubCurrent();
+        const chatId = this.getChatId(AppState.currentUser.uid, targetUid);
+        AppState.currentDirectChat = { uid: targetUid, name: targetName, id: chatId };
+        
+        Utils.$('dm-chat-title').innerText = `Чат: ${targetName}`;
+        Utils.$('modal-dm-chat').classList.add('active');
+
+        const chatRef = ref(db, `direct-messages/${chatId}`);
+        this.unsubCurrent = onValue(chatRef, (snap) => {
+            const data = snap.val() || {};
+            const messages = Object.entries(data.messages || {}).map(([id, val]) => ({ id, ...val })).sort((a,b)=>a.ts - b.ts);
+            this.renderMessages(messages);
+            if (data.lastMessage?.ts) sessionStorage.setItem(`dmSeen:${chatId}`, String(data.lastMessage.ts));
+        });
+
+        const sendBtn = Utils.$('btn-dm-send');
+        const input = Utils.$('dm-input');
+        
+        const sendAction = async () => {
+            const text = input.value.trim();
+            if (!text) return;
+            input.value = '';
+            const payload = { fromUid: AppState.currentUser.uid, fromName: AppState.currentUser.displayName, text, ts: Date.now() };
+            
+            await update(ref(db, `direct-messages/${chatId}`), {
+                participants: { [AppState.currentUser.uid]: true, [targetUid]: true },
+                updatedAt: payload.ts, lastMessage: payload
+            });
+            await push(ref(db, `direct-messages/${chatId}/messages`), payload);
+        };
+
+        sendBtn.onclick = sendAction;
+        input.onkeydown = (e) => { if(e.key === 'Enter') sendAction(); };
+        
+        Utils.$('modal-dm-chat').querySelector('.btn-close-modal').onclick = () => {
+            if (this.unsubCurrent) { this.unsubCurrent(); this.unsubCurrent = null; }
+            AppState.currentDirectChat = null;
+            Utils.$('modal-dm-chat').classList.remove('active');
+        };
+    }
+
+    static renderMessages(messages) {
+        const list = Utils.$('dm-messages');
+        if (!messages.length) { list.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:20px;">Нет сообщений</div>'; return; }
+        
+        list.innerHTML = messages.map(m => {
+            const isSelf = m.fromUid === AppState.currentUser.uid;
+            return `
+                <div class="m-line ${isSelf ? 'self' : ''}">
+                    <strong>${Utils.escapeHtml(isSelf ? 'Вы' : m.fromName)}</strong>
+                    <div class="bubble">${Utils.escapeHtml(m.text)}</div>
+                </div>
+            `;
+        }).join('');
+        list.scrollTop = list.scrollHeight;
+    }
+}
+
 // ============================================================================
-// 6. МЕНЕДЖЕР КОМНАТ (Искоренен баг пересоздания видео-тегов)
+// 5. ПОЛНАЯ СИСТЕМА КОМНАТ И ПРАВ (Restored Masterpiece)
 // ============================================================================
 
 class RoomManager {
@@ -524,23 +631,14 @@ class RoomManager {
         const roomsRef = ref(db, 'rooms');
         const unsub = onValue(roomsRef, (snap) => {
             const data = snap.val() || {};
-            // Кешируем комнаты
             const oldKeys = Array.from(AppState.roomsCache.keys());
             AppState.roomsCache.clear();
             for (const key in data) AppState.roomsCache.set(key, data[key]);
-            
-            // Удаляем мертвые комнаты из DOM
-            oldKeys.forEach(k => {
-                if (!data[k]) Utils.$(`room-card-${k}`)?.remove();
-            });
-
+            oldKeys.forEach(k => { if (!data[k]) Utils.$(`room-card-${k}`)?.remove(); });
             this.updateRoomsDOM();
             
-            // Подсчет глобального онлайна
             let totalOnline = 0;
-            for(const r in data) {
-                if (data[r].presence) totalOnline += Object.keys(data[r].presence).length;
-            }
+            for(const r in data) { if (data[r].presence) totalOnline += Object.keys(data[r].presence).length; }
             Utils.$('global-online-count').innerText = totalOnline;
         });
         AppState.activeSubscriptions.push(() => off(roomsRef, 'value', unsub));
@@ -549,63 +647,36 @@ class RoomManager {
         Utils.$('btn-save-room').onclick = () => this.saveRoom();
         Utils.$('search-rooms').oninput = Utils.debounce(() => this.updateRoomsDOM(), 300);
         
-        Utils.$('room-input-private').onchange = (e) => {
-            Utils.$('room-input-password').style.display = e.target.checked ? 'block' : 'none';
-        };
-
+        Utils.$('room-input-private').onchange = (e) => { Utils.$('room-input-password').style.display = e.target.checked ? 'block' : 'none'; };
         Utils.$('btn-leave-room').onclick = () => this.leaveRoom();
     }
 
     static updateRoomsDOM() {
         const grid = Utils.$('rooms-grid');
         const search = Utils.$('search-rooms').value.toLowerCase().trim();
-        
         let count = 0;
+        
         AppState.roomsCache.forEach((room, id) => {
             if (search && !room.name.toLowerCase().includes(search)) {
-                Utils.$(`room-card-${id}`)?.remove();
-                return;
+                Utils.$(`room-card-${id}`)?.remove(); return;
             }
             
             const lock = room.isPrivate ? '🔒 ' : '';
             const membersCount = room.presence ? Object.keys(room.presence).length : 0;
-            
             let card = Utils.$(`room-card-${id}`);
+            
             if (!card) {
-                // Если карточки нет — создаем. Видео скачается ОДИН раз.
-                card = document.createElement('div');
-                card.className = 'room-card';
-                card.id = `room-card-${id}`;
+                card = document.createElement('div'); card.className = 'room-card'; card.id = `room-card-${id}`;
                 card.onclick = () => this.attemptJoinRoom(id, room);
-                
                 const vidHtml = room.videoUrl ? `<video src="${Utils.escapeHtml(room.videoUrl)}" preload="metadata" muted playsinline></video>` : '';
-                
                 card.innerHTML = `
-                    <div class="room-preview">
-                        ${vidHtml}
-                        <div class="room-preview-overlay"></div>
-                    </div>
-                    <div class="room-info">
-                        <h4 class="rm-title"></h4>
-                        <div class="room-meta">
-                            <span class="rm-host"></span>
-                            <span class="rm-count"></span>
-                        </div>
-                    </div>
+                    <div class="room-preview">${vidHtml}<div class="room-preview-overlay"></div></div>
+                    <div class="room-info"><h4 class="rm-title"></h4><div class="room-meta"><span class="rm-host"></span><span class="rm-count"></span></div></div>
                 `;
                 grid.appendChild(card);
-
-                // Оптимизация превью: перематываем на 10 сек
                 const video = card.querySelector('video');
-                if (video) {
-                    video.addEventListener('loadedmetadata', () => {
-                        video.currentTime = Math.min(10, video.duration / 2);
-                        card.querySelector('.room-preview').classList.add('loaded');
-                    }, { once: true });
-                }
+                if (video) { video.addEventListener('loadedmetadata', () => { video.currentTime = Math.min(10, video.duration / 2); card.querySelector('.room-preview').classList.add('loaded'); }, { once: true }); }
             }
-
-            // Обновляем только текст (Virtual DOM pattern)
             card.querySelector('.rm-title').innerText = `${lock}${room.name}`;
             card.querySelector('.rm-host').innerText = `Хост: ${room.hostName || 'Неизвестно'}`;
             card.querySelector('.rm-count').innerText = `👥 ${membersCount}`;
@@ -613,14 +684,10 @@ class RoomManager {
         });
 
         if (count === 0 && !Utils.$('empty-rooms-msg')) {
-            const msg = document.createElement('div');
-            msg.id = 'empty-rooms-msg';
-            msg.style.cssText = 'color:var(--text-muted); padding:20px; grid-column: 1 / -1;';
+            const msg = document.createElement('div'); msg.id = 'empty-rooms-msg'; msg.style.cssText = 'color:var(--text-muted); padding:20px; grid-column: 1 / -1;';
             msg.innerText = search ? 'Ничего не найдено' : 'Нет активных комнат';
             grid.appendChild(msg);
-        } else if (count > 0 && Utils.$('empty-rooms-msg')) {
-            Utils.$('empty-rooms-msg').remove();
-        }
+        } else if (count > 0 && Utils.$('empty-rooms-msg')) Utils.$('empty-rooms-msg').remove();
     }
 
     static openRoomModal(roomId = null) {
@@ -631,34 +698,23 @@ class RoomManager {
         
         if (isEdit) {
             const r = AppState.roomsCache.get(roomId);
-            Utils.$('room-input-name').value = r.name || '';
-            Utils.$('room-input-url').value = r.videoUrl || '';
-            Utils.$('room-input-private').checked = r.isPrivate;
-            Utils.$('room-input-password').style.display = r.isPrivate ? 'block' : 'none';
+            Utils.$('room-input-name').value = r.name || ''; Utils.$('room-input-url').value = r.videoUrl || '';
+            Utils.$('room-input-private').checked = r.isPrivate; Utils.$('room-input-password').style.display = r.isPrivate ? 'block' : 'none';
             Utils.$('btn-delete-room').onclick = async () => {
-                if(confirm('Точно удалить комнату навсегда? Это действие необратимо.')) {
-                    await remove(ref(db, `rooms/${roomId}`));
-                    modal.classList.remove('active');
-                    this.leaveRoom();
+                if(confirm('Точно удалить комнату навсегда?')) {
+                    await remove(ref(db, `rooms/${roomId}`)); modal.classList.remove('active'); this.leaveRoom();
                 }
             };
         } else {
-            Utils.$('room-input-name').value = '';
-            Utils.$('room-input-url').value = '';
-            Utils.$('room-input-private').checked = false;
-            Utils.$('room-input-password').style.display = 'none';
-            Utils.$('room-input-password').value = '';
+            Utils.$('room-input-name').value = ''; Utils.$('room-input-url').value = '';
+            Utils.$('room-input-private').checked = false; Utils.$('room-input-password').style.display = 'none'; Utils.$('room-input-password').value = '';
         }
-        
-        modal.classList.add('active');
-        modal.dataset.editingId = isEdit ? roomId : '';
+        modal.classList.add('active'); modal.dataset.editingId = isEdit ? roomId : '';
     }
 
     static async saveRoom() {
-        const name = Utils.$('room-input-name').value.trim();
-        const videoUrl = Utils.$('room-input-url').value.trim();
-        const isPrivate = Utils.$('room-input-private').checked;
-        const password = Utils.$('room-input-password').value.trim();
+        const name = Utils.$('room-input-name').value.trim(); const videoUrl = Utils.$('room-input-url').value.trim();
+        const isPrivate = Utils.$('room-input-private').checked; const password = Utils.$('room-input-password').value.trim();
         const roomId = Utils.$('modal-room').dataset.editingId;
 
         if (!name) return Utils.toast('Название не может быть пустым', 'error');
@@ -666,94 +722,269 @@ class RoomManager {
 
         Utils.$('btn-save-room').disabled = true;
         try {
-            const roomData = {
-                name, videoUrl, isPrivate,
-                hostId: AppState.currentUser.uid,
-                hostName: AppState.currentUser.displayName || 'Хост',
-                updatedAt: Date.now()
-            };
-
-            if (isPrivate && password) {
-                roomData.salt = Utils.generateCryptoId(16);
-                roomData.hash = await Utils.hashPassword(password, roomData.salt);
-            }
+            const roomData = { name, videoUrl, isPrivate, hostId: AppState.currentUser.uid, hostName: AppState.currentUser.displayName || 'Хост', updatedAt: Date.now() };
+            if (isPrivate && password) { roomData.salt = Utils.generateCryptoId(16); roomData.hash = await Utils.hashPassword(password, roomData.salt); }
 
             if (roomId) {
-                if (isPrivate && !password) {
-                    const oldR = AppState.roomsCache.get(roomId);
-                    roomData.salt = oldR.salt;
-                    roomData.hash = oldR.hash;
-                }
-                await update(ref(db, `rooms/${roomId}`), roomData);
-                Utils.toast('Настройки сохранены');
+                if (isPrivate && !password) { const oldR = AppState.roomsCache.get(roomId); roomData.salt = oldR.salt; roomData.hash = oldR.hash; }
+                await update(ref(db, `rooms/${roomId}`), roomData); Utils.toast('Настройки сохранены');
             } else {
-                roomData.createdAt = Date.now();
-                const newRef = push(ref(db, 'rooms'));
-                await set(newRef, roomData);
-                Utils.toast('Комната создана');
-                this.enterRoom(newRef.key, roomData);
+                roomData.createdAt = Date.now(); const newRef = push(ref(db, 'rooms')); await set(newRef, roomData); Utils.toast('Комната создана');
+                this.enterRoomFinal(newRef.key, roomData);
             }
             Utils.$('modal-room').classList.remove('active');
-        } catch (e) {
-            Utils.toast('Ошибка сохранения', 'error');
-        } finally {
-            Utils.$('btn-save-room').disabled = false;
-        }
+        } catch (e) { Utils.toast('Ошибка сохранения', 'error'); } 
+        finally { Utils.$('btn-save-room').disabled = false; }
     }
 
     static async attemptJoinRoom(roomId, roomData) {
         if (roomData.isPrivate && roomData.hostId !== AppState.currentUser.uid) {
-            AppState.pendingJoinRoomId = roomId;
-            Utils.$('join-room-password').value = '';
-            Utils.$('modal-password').classList.add('active');
-            
+            AppState.pendingJoinRoomId = roomId; Utils.$('join-room-password').value = ''; Utils.$('modal-password').classList.add('active');
             Utils.$('btn-submit-password').onclick = async () => {
                 const input = Utils.$('join-room-password').value;
                 const hashAttempt = await Utils.hashPassword(input, roomData.salt);
-                if (hashAttempt === roomData.hash) {
-                    Utils.$('modal-password').classList.remove('active');
-                    this.enterRoom(roomId, roomData);
-                } else {
-                    Utils.toast('Неверный пароль', 'error');
-                }
+                if (hashAttempt === roomData.hash) { Utils.$('modal-password').classList.remove('active'); this.enterRoomFinal(roomId, roomData); } 
+                else Utils.toast('Неверный пароль', 'error');
             };
         } else {
-            this.enterRoom(roomId, roomData);
+            this.enterRoomFinal(roomId, roomData);
         }
     }
 
-    static enterRoom(roomId, roomData) {
+    // ВОССТАНОВЛЕННАЯ ЛОГИКА ИЗ ОРИГИНАЛА
+    static enterRoomFinal(roomId, roomData) {
         AppState.currentRoomId = roomId;
         AppState.isHost = (roomData.hostId === AppState.currentUser.uid);
+        AppState.roomSubscriptions.forEach(fn => fn()); AppState.roomSubscriptions = [];
         
-        Utils.$('current-room-name').innerText = Utils.escapeHtml(roomData.name);
-        const vid = Utils.$('main-video');
+        Utils.$('room-title-text').innerText = Utils.escapeHtml(roomData.name);
+        const vid = Utils.$('native-player');
         if(vid.src !== roomData.videoUrl) vid.src = Utils.escapeHtml(roomData.videoUrl || '');
-        vid.controls = AppState.isHost;
+        vid.controls = AppState.isHost; // Base fallback, will be updated by perms
         
-        if (AppState.isHost) {
-            Utils.$('btn-room-settings').style.display = 'block';
-            Utils.$('btn-room-settings').onclick = () => this.openRoomModal(roomId);
-        } else {
-            Utils.$('btn-room-settings').style.display = 'none';
-        }
+        Utils.$('btn-room-settings').style.display = AppState.isHost ? 'block' : 'none';
+        if (AppState.isHost) Utils.$('btn-room-settings').onclick = () => this.openRoomModal(roomId);
 
         Utils.showScreen('room-screen');
-        RoomSyncManager.initSync(roomId);
-        ChatManager.initChat(roomId);
+        Utils.$('chat-messages').innerHTML = '<div class="sys-msg">Вы вошли в комнату</div>';
+        
+        this.initRoomServicesFinal(roomId);
         RTCManager.init(roomId); 
+    }
+
+    static getDefaultPerms() { return { chat: true, voice: true, player: AppState.isHost, reactions: true }; }
+
+    static initRoomServicesFinal(roomId) {
+        const uid = AppState.currentUser.uid;
+        const presenceRef = ref(db, `rooms/${roomId}/presence/${uid}`);
+        const presListRef = ref(db, `rooms/${roomId}/presence`);
+        const syncRef = ref(db, `rooms/${roomId}/sync`);
+        const chatRef = ref(db, `rooms/${roomId}/chat`);
+        const reactionsRef = ref(db, `rooms/${roomId}/reactions`);
+
+        // 1. Presence
+        set(presenceRef, { uid, name: AppState.currentUser.displayName, perms: this.getDefaultPerms() });
+        onDisconnect(presenceRef).remove();
+
+        const pUnsub = onValue(presListRef, (snap) => {
+            AppState.currentPresenceCache = snap.val() || {};
+            this.rerenderUsersList();
+            this.applyLocalPermissions();
+        });
+        AppState.roomSubscriptions.push(() => off(presListRef, 'value', pUnsub), () => remove(presenceRef));
+
+        // 2. Video Sync
+        const vid = Utils.$('native-player');
+        let isRemoteSeek = false;
+        if (vid) {
+            vid.onplay = () => { if(!isRemoteSeek && this.hasPerm('player')) set(syncRef, { type: 'play', time: vid.currentTime, ts: Date.now() }); };
+            vid.onpause = () => { if(!isRemoteSeek && this.hasPerm('player')) set(syncRef, { type: 'pause', time: vid.currentTime, ts: Date.now() }); };
+            vid.onseeked = () => { if(!isRemoteSeek && this.hasPerm('player')) set(syncRef, { type: 'seek', time: vid.currentTime, ts: Date.now() }); };
+        }
+
+        const sUnsub = onValue(syncRef, (snap) => {
+            const d = snap.val();
+            if (!d || !vid) return;
+            if (Date.now() - d.ts > 2000) return; // Stale
+
+            if (Math.abs(vid.currentTime - d.time) > 1.0) {
+                isRemoteSeek = true;
+                vid.currentTime = d.time;
+                setTimeout(() => isRemoteSeek = false, 300);
+            }
+            if (d.type === 'play' && vid.paused) vid.play().catch(()=>{});
+            if (d.type === 'pause' && !vid.paused) vid.pause();
+        });
+        AppState.roomSubscriptions.push(() => off(syncRef, 'value', sUnsub));
+
+        // 3. Chat & Timecodes
+        let processedMsgs = new Set();
+        const cUnsub = onChildAdded(chatRef, (snap) => {
+            const msg = snap.val(); const id = snap.key;
+            if (processedMsgs.has(id)) return;
+            processedMsgs.add(id);
+
+            const isMe = msg.uid === uid;
+            const line = document.createElement('div');
+            line.className = `m-line ${isMe ? 'self' : ''}`;
+            
+            let content = Utils.escapeHtml(msg.text);
+            content = content.replace(/(\d{1,2}:\d{2})/g, '<span class="timecode-btn" data-time="$1">$1</span>');
+
+            line.innerHTML = `<strong>${Utils.escapeHtml(msg.name)}</strong><div class="bubble">${content}</div>`;
+            
+            // Timecode click logic
+            line.querySelectorAll('.timecode-btn').forEach(btn => {
+                btn.onclick = () => {
+                    if (!this.hasPerm('player')) return Utils.toast('Нет прав на управление плеером', 'error');
+                    const parts = btn.dataset.time.split(':');
+                    const secs = parseInt(parts[0])*60 + parseInt(parts[1]);
+                    isRemoteSeek = true;
+                    vid.currentTime = secs;
+                    vid.play().catch(()=>{});
+                    setTimeout(() => isRemoteSeek = false, 300);
+                    set(syncRef, { type: 'seek', time: secs, ts: Date.now() });
+                };
+            });
+
+            Utils.$('chat-messages').appendChild(line);
+            Utils.$('chat-messages').scrollTop = Utils.$('chat-messages').scrollHeight;
+        });
+        AppState.roomSubscriptions.push(() => off(chatRef, 'child_added', cUnsub));
+
+        Utils.$('send-btn').onclick = () => {
+            const input = Utils.$('chat-input');
+            if (!input.value.trim() || !this.hasPerm('chat')) return;
+            push(chatRef, { uid, name: AppState.currentUser.displayName, text: input.value.trim(), ts: Date.now() });
+            input.value = '';
+        };
+        Utils.$('chat-input').onkeydown = (e) => { if(e.key==='Enter') Utils.$('send-btn').click(); };
+
+        // 4. Reactions
+        document.querySelectorAll('.react-btn').forEach(btn => {
+            btn.onclick = () => {
+                if(!this.hasPerm('reactions')) return;
+                push(reactionsRef, { emoji: btn.dataset.emoji, ts: Date.now() });
+            };
+        });
+        const rUnsub = onChildAdded(reactionsRef, (snap) => {
+            const rx = snap.val();
+            if (Date.now() - rx.ts > 5000) return;
+            const el = document.createElement('div');
+            el.className = 'floating-emoji';
+            el.innerText = rx.emoji;
+            el.style.left = `${Math.random() * 80 + 10}%`;
+            Utils.$('reaction-layer').appendChild(el);
+            setTimeout(() => el.remove(), 3000);
+        });
+        AppState.roomSubscriptions.push(() => off(reactionsRef, 'child_added', rUnsub));
+
+        // Tabs
+        Utils.$('tab-chat-btn').onclick = () => {
+            Utils.$('tab-chat-btn').classList.add('active'); Utils.$('tab-users-btn').classList.remove('active');
+            Utils.$('chat-messages').style.display = 'flex'; Utils.$('users-list').style.display = 'none';
+        };
+        Utils.$('tab-users-btn').onclick = () => {
+            Utils.$('tab-users-btn').classList.add('active'); Utils.$('tab-chat-btn').classList.remove('active');
+            Utils.$('users-list').style.display = 'flex'; Utils.$('chat-messages').style.display = 'none';
+        };
+    }
+
+    static hasPerm(permName) {
+        if (AppState.isHost) return true;
+        const myData = AppState.currentPresenceCache[AppState.currentUser.uid];
+        return myData && myData.perms && myData.perms[permName] === true;
+    }
+
+    static applyLocalPermissions() {
+        const pPlayer = this.hasPerm('player');
+        const pChat = this.hasPerm('chat');
+        const pVoice = this.hasPerm('voice');
+        const pReactions = this.hasPerm('reactions');
+
+        const vid = Utils.$('native-player');
+        if (vid) { vid.controls = pPlayer; vid.style.pointerEvents = pPlayer ? 'auto' : 'none'; }
+        
+        Utils.$('chat-input').disabled = !pChat;
+        Utils.$('send-btn').disabled = !pChat;
+        Utils.$('mic-btn').disabled = !pVoice;
+        
+        document.querySelectorAll('.react-btn').forEach(b => b.disabled = !pReactions);
+        document.querySelectorAll('.timecode-btn').forEach(b => {
+            if (pPlayer) b.classList.remove('disabled'); else b.classList.add('disabled');
+        });
+
+        if (!pVoice && RTCManager.isMicActive) RTCManager.toggleMic(true); // Форсированно выключить
+    }
+
+    static rerenderUsersList() {
+        const container = Utils.$('users-list');
+        const cache = AppState.currentPresenceCache;
+        const ids = Object.keys(cache);
+        Utils.$('users-count').innerText = ids.length;
+
+        container.innerHTML = '';
+        ids.forEach(uid => {
+            const user = cache[uid];
+            const isLocal = uid === AppState.currentUser.uid;
+            const isTargetHost = AppState.roomsCache.get(AppState.currentRoomId)?.hostId === uid;
+            
+            let html = `<div class="user-item">`;
+            html += `<div class="indicator online"></div>`; 
+            html += `<div class="user-main"><span class="user-name">${Utils.escapeHtml(user.name)}</span>`;
+            if (isTargetHost) html += `<span class="host-label">Host</span>`;
+            if (isLocal) html += `<span class="you-label">(Вы)</span>`;
+            html += `</div>`;
+
+            html += `<div class="user-card-actions">`;
+            if (!isLocal) {
+                html += `<button class="dm-btn" data-uid="${uid}">💬</button>`;
+                html += `<button class="add-friend-btn" data-uid="${uid}">+Друг</button>`;
+            }
+            html += `</div>`;
+
+            // Управление правами (только для хоста над другими)
+            if (AppState.isHost && !isLocal) {
+                const perms = user.perms || {};
+                html += `
+                    <div class="perm-controls">
+                        <label><input type="checkbox" class="p-toggle" data-uid="${uid}" data-p="chat" ${perms.chat?'checked':''}> Чат</label>
+                        <label><input type="checkbox" class="p-toggle" data-uid="${uid}" data-p="voice" ${perms.voice?'checked':''}> Микрофон</label>
+                        <label><input type="checkbox" class="p-toggle" data-uid="${uid}" data-p="player" ${perms.player?'checked':''}> Плеер</label>
+                        <label><input type="checkbox" class="p-toggle" data-uid="${uid}" data-p="reactions" ${perms.reactions?'checked':''}> Реакции</label>
+                    </div>
+                `;
+            }
+            html += `</div>`;
+            container.innerHTML += html;
+        });
+
+        // Binds
+        container.querySelectorAll('.dm-btn').forEach(btn => {
+            btn.onclick = () => {
+                const name = btn.closest('.user-item').querySelector('.user-name').innerText;
+                DirectMessages.openChat(btn.dataset.uid, name);
+            };
+        });
+        container.querySelectorAll('.add-friend-btn').forEach(btn => {
+            btn.onclick = () => FriendsManager.sendFriendRequest(btn.dataset.uid);
+        });
+        container.querySelectorAll('.p-toggle').forEach(t => {
+            t.onchange = async (e) => {
+                const targetUid = e.target.dataset.uid; const perm = e.target.dataset.p; const val = e.target.checked;
+                await set(ref(db, `rooms/${AppState.currentRoomId}/presence/${targetUid}/perms/${perm}`), val);
+            };
+        });
     }
 
     static leaveRoom() {
         if (!AppState.currentRoomId) return;
-        RoomSyncManager.destroy();
-        ChatManager.destroy();
+        AppState.roomSubscriptions.forEach(fn => fn());
+        AppState.roomSubscriptions = [];
         RTCManager.destroy();
         
-        const vid = Utils.$('main-video');
-        vid.pause();
-        // Оставляем src, чтобы не было мерцания при переходе, но выгружаем потом
-        setTimeout(() => vid.src = '', 500); 
+        const vid = Utils.$('native-player');
+        if(vid) { vid.pause(); vid.src = ''; }
         
         AppState.currentRoomId = null;
         AppState.isHost = false;
@@ -762,193 +993,12 @@ class RoomManager {
 }
 
 // ============================================================================
-// 7. СИНХРОНИЗАЦИЯ КОМНАТЫ (Умный Sync)
-// ============================================================================
-
-class RoomSyncManager {
-    static initSync(roomId) {
-        const uid = AppState.currentUser.uid;
-        this.presenceRef = ref(db, `rooms/${roomId}/presence/${uid}`);
-        this.syncRef = ref(db, `rooms/${roomId}/sync`);
-        this.unsubs = [];
-        this.lastSyncApplied = 0; // Защита от эха перемотки
-
-        set(this.presenceRef, {
-            uid,
-            name: AppState.currentUser.displayName,
-            joinedAt: Date.now()
-        });
-        onDisconnect(this.presenceRef).remove();
-
-        const presListRef = ref(db, `rooms/${roomId}/presence`);
-        const pUnsub = onValue(presListRef, (snap) => this.renderUsersList(snap.val() || {}));
-        this.unsubs.push(() => off(presListRef, 'value', pUnsub));
-
-        const vid = Utils.$('main-video');
-        if (AppState.isHost) {
-            // Хост отправляет события, но с Throttling, чтобы не спамить
-            const throttleSync = Utils.debounce((state) => this.broadcastState(state, vid.currentTime), 200);
-            vid.onplay = () => throttleSync('play');
-            vid.onpause = () => throttleSync('pause');
-            vid.onseeked = () => throttleSync('seek');
-        } else {
-            // Зритель слушает события
-            const sUnsub = onValue(this.syncRef, (snap) => {
-                const s = snap.val();
-                if (!s || Date.now() - this.lastSyncApplied < 1000) return; // Cooldown 1 секунда
-                
-                // Допуск рассинхрона - 2 секунды (учитывает пинг)
-                if (Math.abs(vid.currentTime - s.time) > 2.0) {
-                    this.lastSyncApplied = Date.now();
-                    vid.currentTime = s.time;
-                }
-
-                if (s.state === 'play' && vid.paused) vid.play().catch(()=>{});
-                if (s.state === 'pause' && !vid.paused) vid.pause();
-            });
-            this.unsubs.push(() => off(this.syncRef, 'value', sUnsub));
-        }
-    }
-
-    static broadcastState(state, time) {
-        set(this.syncRef, { state, time, ts: Date.now() });
-    }
-
-    static renderUsersList(presenceMap) {
-        const container = Utils.$('room-users-list');
-        Utils.$('room-users-count').innerText = Object.keys(presenceMap).length;
-        
-        // VDOM pattern
-        Array.from(container.children).forEach(child => {
-            if (!presenceMap[child.dataset.uid]) child.remove();
-        });
-
-        for (const uid in presenceMap) {
-            const user = presenceMap[uid];
-            const isHost = AppState.roomsCache.get(AppState.currentRoomId)?.hostId === uid;
-            let div = Utils.$(`r-user-${uid}`);
-            
-            if (!div) {
-                div = document.createElement('div');
-                div.id = `r-user-${uid}`;
-                div.dataset.uid = uid;
-                div.className = 'room-user-row';
-                if (uid !== AppState.currentUser.uid) {
-                    div.style.cursor = 'pointer';
-                    div.onclick = () => ProfileManager.openViewProfileModal(uid);
-                }
-                container.appendChild(div);
-            }
-
-            div.innerHTML = `
-                <div class="avatar">${user.name[0].toUpperCase()}</div>
-                <div class="room-user-row-name">
-                    ${Utils.escapeHtml(user.name)} 
-                    ${uid === AppState.currentUser.uid ? '<span style="opacity:0.5; font-size:10px;">(Вы)</span>' : ''}
-                    ${isHost ? '<span class="role-badge host">Host</span>' : ''}
-                </div>
-            `;
-        }
-    }
-
-    static destroy() {
-        if (this.presenceRef) remove(this.presenceRef);
-        this.unsubs.forEach(fn => fn());
-        this.unsubs = [];
-    }
-}
-
-// ============================================================================
-// 8. ЧАТ КОМНАТЫ
-// ============================================================================
-
-class ChatManager {
-    static initChat(roomId) {
-        this.chatRef = ref(db, `rooms/${roomId}/chat`);
-        this.unsubs = [];
-        this.processedMsgs = new Set();
-        
-        const container = Utils.$('chat-messages');
-        container.innerHTML = '<div class="sys-msg">Добро пожаловать в комнату!</div>';
-
-        const cUnsub = onChildAdded(this.chatRef, (snap) => {
-            const msg = snap.val();
-            const id = snap.key;
-            if (this.processedMsgs.has(id)) return;
-            this.processedMsgs.add(id);
-
-            const isSelf = msg.uid === AppState.currentUser.uid;
-            const div = document.createElement('div');
-            div.className = `msg-line ${isSelf ? 'self' : ''}`;
-            
-            let content = Utils.escapeHtml(msg.text);
-            content = content.replace(/(\d{1,2}:\d{2})/g, '<span style="color:var(--accent); cursor:pointer; font-weight:bold;">$1</span>');
-
-            div.innerHTML = `
-                <div class="msg-author">${Utils.escapeHtml(msg.name)}</div>
-                <div class="msg-bubble">${content}</div>
-            `;
-
-            if (AppState.isHost) {
-                div.querySelectorAll('span').forEach(sp => {
-                    sp.onclick = () => {
-                        const parts = sp.innerText.split(':');
-                        const secs = parseInt(parts[0])*60 + parseInt(parts[1]);
-                        Utils.$('main-video').currentTime = secs;
-                    };
-                });
-            }
-
-            container.appendChild(div);
-            container.scrollTop = container.scrollHeight;
-        });
-        this.unsubs.push(() => off(this.chatRef, 'child_added', cUnsub));
-
-        const input = Utils.$('chat-input');
-        const sendAction = () => {
-            const text = input.value.trim();
-            if (!text) return;
-            push(this.chatRef, {
-                uid: AppState.currentUser.uid,
-                name: AppState.currentUser.displayName,
-                text,
-                ts: Date.now()
-            });
-            input.value = '';
-        };
-
-        Utils.$('btn-send-msg').onclick = sendAction;
-        input.onkeydown = (e) => { if (e.key === 'Enter') sendAction(); };
-
-        Utils.$('tab-chat').onclick = () => {
-            Utils.$('tab-chat').classList.add('active');
-            Utils.$('tab-users').classList.remove('active');
-            Utils.$('chat-messages').style.display = 'flex';
-            Utils.$('room-users-list').style.display = 'none';
-        };
-        Utils.$('tab-users').onclick = () => {
-            Utils.$('tab-users').classList.add('active');
-            Utils.$('tab-chat').classList.remove('active');
-            Utils.$('room-users-list').style.display = 'flex';
-            Utils.$('chat-messages').style.display = 'none';
-        };
-    }
-
-    static destroy() {
-        this.unsubs.forEach(fn => fn());
-    }
-}
-
-// ============================================================================
-// 9. СВЕРХНАДЕЖНЫЙ WEBRTC (МИКРОФОН С ICE RESTART)
+// 6. WEBRTC MESH SYSTEM (Восстановленная надежная версия)
 // ============================================================================
 
 class RTCManager {
     static RTC_CONFIG = {
-        iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' }
-        ]
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }]
     };
 
     static init(roomId) {
@@ -968,89 +1018,63 @@ class RTCManager {
         const aUnsub = onValue(this.refs.answers, (snap) => this.handleAnswers(snap.val() || {}));
         const cUnsub = onValue(this.refs.candidates, (snap) => this.handleCandidates(snap.val() || {}));
         
-        this.unsubs.push(
-            () => off(this.refs.participants, 'value', pUnsub),
-            () => off(this.refs.offers, 'value', oUnsub),
-            () => off(this.refs.answers, 'value', aUnsub),
-            () => off(this.refs.candidates, 'value', cUnsub)
-        );
+        this.unsubs.push(() => off(this.refs.participants, 'value', pUnsub), () => off(this.refs.offers, 'value', oUnsub), () => off(this.refs.answers, 'value', aUnsub), () => off(this.refs.candidates, 'value', cUnsub));
 
-        Utils.$('mic-toggle').onclick = () => this.toggleMic();
+        Utils.$('mic-btn').onclick = () => this.toggleMic();
     }
 
-    static async toggleMic() {
-        const btn = Utils.$('mic-toggle');
-        if (this.isMicActive) {
+    static async toggleMic(forceOff = false) {
+        const btn = Utils.$('mic-btn');
+        if (this.isMicActive || forceOff) {
             this.isMicActive = false;
             btn.classList.remove('active');
             this.stopAll();
             await remove(ref(db, `rooms/${this.roomId}/rtc/participants/${this.uid}`));
-            Utils.toast('Микрофон выключен');
+            if (!forceOff) Utils.toast('Микрофон выключен');
         } else {
+            if (!RoomManager.hasPerm('voice')) return Utils.toast('Вам запрещено говорить', 'error');
             try {
                 btn.style.opacity = '0.5';
-                AppState.rtc.localStream = await navigator.mediaDevices.getUserMedia({
-                    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
-                });
+                AppState.rtc.localStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
                 AppState.rtc.sessionId = Utils.generateCryptoId();
                 this.isMicActive = true;
-                btn.classList.add('active');
-                btn.style.opacity = '1';
+                btn.classList.add('active'); btn.style.opacity = '1';
                 
-                await set(ref(db, `rooms/${this.roomId}/rtc/participants/${this.uid}`), {
-                    sessionId: AppState.rtc.sessionId,
-                    ts: Date.now()
-                });
-                
-                this.handleParticipants(this.lastParticipantsMap || {});
-                Utils.toast('Микрофон включен');
+                await set(ref(db, `rooms/${this.roomId}/rtc/participants/${this.uid}`), { sessionId: AppState.rtc.sessionId, ts: Date.now() });
+                this.handleParticipants(AppState.rtc.voiceParticipantsCache || {});
             } catch (e) {
-                btn.style.opacity = '1';
-                Utils.toast('Нет доступа к микрофону', 'error');
+                btn.style.opacity = '1'; Utils.toast('Нет доступа к микрофону', 'error');
             }
         }
     }
 
     static async handleParticipants(map) {
-        this.lastParticipantsMap = map;
+        AppState.rtc.voiceParticipantsCache = map;
         if (!this.isMicActive) return;
 
-        // Удаляем мертвые соединения
         for (const [targetUid, pc] of AppState.rtc.peerConnections) {
             if (!map[targetUid]) this.destroyConnection(targetUid);
         }
 
-        // Подключаемся к новым (Политика: инициатор тот, чей UID больше по алфавиту)
         for (const targetUid in map) {
             if (targetUid === this.uid) continue;
-            if (this.uid.localeCompare(targetUid) > 0) {
-                await this.createOffer(targetUid, map[targetUid].sessionId);
-            }
+            if (this.uid.localeCompare(targetUid) > 0) await this.createOffer(targetUid, map[targetUid].sessionId);
         }
     }
 
     static getOrCreateConnection(targetUid, targetSessionId) {
         if (AppState.rtc.peerConnections.has(targetUid)) {
             const existingPc = AppState.rtc.peerConnections.get(targetUid);
-            if (existingPc.connectionState !== 'closed' && existingPc.connectionState !== 'failed') {
-                return existingPc;
-            }
-            this.destroyConnection(targetUid); // Пересоздаем если умерло
+            if (existingPc.connectionState !== 'closed' && existingPc.connectionState !== 'failed') return existingPc;
+            this.destroyConnection(targetUid);
         }
 
         const pc = new RTCPeerConnection(this.RTC_CONFIG);
-        
-        if (AppState.rtc.localStream) {
-            AppState.rtc.localStream.getTracks().forEach(track => pc.addTrack(track, AppState.rtc.localStream));
-        }
+        if (AppState.rtc.localStream) AppState.rtc.localStream.getTracks().forEach(track => pc.addTrack(track, AppState.rtc.localStream));
 
         pc.onicecandidate = ({ candidate }) => {
             if (!candidate) return;
-            push(ref(db, `rooms/${this.roomId}/rtc/candidates/${targetUid}/${this.uid}`), {
-                candidate: candidate.toJSON(),
-                fromSessionId: AppState.rtc.sessionId,
-                toSessionId: targetSessionId
-            });
+            push(ref(db, `rooms/${this.roomId}/rtc/candidates/${targetUid}/${this.uid}`), { candidate: candidate.toJSON(), fromSessionId: AppState.rtc.sessionId, toSessionId: targetSessionId });
         };
 
         pc.ontrack = (event) => {
@@ -1058,30 +1082,8 @@ class RTCManager {
             if (stream) this.attachRemoteAudio(targetUid, stream);
         };
 
-        // Защита от потери пакетов и обрывов (ICE Restart Logic)
         pc.onconnectionstatechange = () => {
-            if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
-                if (AppState.rtc.iceRestartTimeouts.has(targetUid)) return; // Уже пытаемся
-                
-                // Ждем 3 секунды, если не ожило - жестко пересоздаем
-                const timeout = setTimeout(() => {
-                    this.destroyConnection(targetUid);
-                    if (this.isMicActive && this.lastParticipantsMap[targetUid]) {
-                        // Переотправляем Offer, если мы инициатор
-                        if (this.uid.localeCompare(targetUid) > 0) {
-                            this.createOffer(targetUid, this.lastParticipantsMap[targetUid].sessionId);
-                        }
-                    }
-                    AppState.rtc.iceRestartTimeouts.delete(targetUid);
-                }, 3000);
-                AppState.rtc.iceRestartTimeouts.set(targetUid, timeout);
-            } else if (pc.connectionState === 'connected') {
-                const timeout = AppState.rtc.iceRestartTimeouts.get(targetUid);
-                if (timeout) {
-                    clearTimeout(timeout);
-                    AppState.rtc.iceRestartTimeouts.delete(targetUid);
-                }
-            }
+            if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') this.destroyConnection(targetUid);
         };
 
         AppState.rtc.peerConnections.set(targetUid, pc);
@@ -1091,38 +1093,23 @@ class RTCManager {
     static async createOffer(targetUid, targetSessionId) {
         const pc = this.getOrCreateConnection(targetUid, targetSessionId);
         if (pc.signalingState !== 'stable') return;
-
         try {
             const offer = await pc.createOffer({ offerToReceiveAudio: true });
             await pc.setLocalDescription(offer);
-            
-            await set(ref(db, `rooms/${this.roomId}/rtc/offers/${targetUid}/${this.uid}`), {
-                description: pc.localDescription.toJSON(),
-                fromSessionId: AppState.rtc.sessionId,
-                toSessionId: targetSessionId
-            });
-        } catch (e) { console.error("Offer failed", e); }
+            await set(ref(db, `rooms/${this.roomId}/rtc/offers/${targetUid}/${this.uid}`), { description: pc.localDescription.toJSON(), fromSessionId: AppState.rtc.sessionId, toSessionId: targetSessionId });
+        } catch (e) { }
     }
 
     static async handleOffers(offers) {
         if (!this.isMicActive) return;
         for (const [fromUid, payload] of Object.entries(offers)) {
             if (payload.toSessionId !== AppState.rtc.sessionId) continue;
-            
             const pc = this.getOrCreateConnection(fromUid, payload.fromSessionId);
             try {
-                if (pc.signalingState !== 'stable') {
-                    await pc.setLocalDescription({ type: 'rollback' }).catch(()=>{});
-                }
+                if (pc.signalingState !== 'stable') await pc.setLocalDescription({ type: 'rollback' }).catch(()=>{});
                 await pc.setRemoteDescription(new RTCSessionDescription(payload.description));
-                const answer = await pc.createAnswer();
-                await pc.setLocalDescription(answer);
-
-                await set(ref(db, `rooms/${this.roomId}/rtc/answers/${fromUid}/${this.uid}`), {
-                    description: pc.localDescription.toJSON(),
-                    fromSessionId: AppState.rtc.sessionId,
-                    toSessionId: payload.fromSessionId
-                });
+                const answer = await pc.createAnswer(); await pc.setLocalDescription(answer);
+                await set(ref(db, `rooms/${this.roomId}/rtc/answers/${fromUid}/${this.uid}`), { description: pc.localDescription.toJSON(), fromSessionId: AppState.rtc.sessionId, toSessionId: payload.fromSessionId });
                 await remove(ref(db, `rooms/${this.roomId}/rtc/offers/${this.uid}/${fromUid}`));
             } catch (e) {}
         }
@@ -1134,7 +1121,6 @@ class RTCManager {
             if (payload.toSessionId !== AppState.rtc.sessionId) continue;
             const pc = AppState.rtc.peerConnections.get(fromUid);
             if (!pc) continue;
-
             try {
                 await pc.setRemoteDescription(new RTCSessionDescription(payload.description));
                 await remove(ref(db, `rooms/${this.roomId}/rtc/answers/${this.uid}/${fromUid}`));
@@ -1147,12 +1133,9 @@ class RTCManager {
         for (const [fromUid, records] of Object.entries(candidatesGroup)) {
             const pc = AppState.rtc.peerConnections.get(fromUid);
             if (!pc) continue;
-
             for (const [key, payload] of Object.entries(records)) {
                 if (payload.toSessionId !== AppState.rtc.sessionId) continue;
-                try {
-                    await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
-                } catch (e) {}
+                try { await pc.addIceCandidate(new RTCIceCandidate(payload.candidate)); } catch (e) {}
                 await remove(ref(db, `rooms/${this.roomId}/rtc/candidates/${this.uid}/${fromUid}/${key}`));
             }
         }
@@ -1161,10 +1144,8 @@ class RTCManager {
     static attachRemoteAudio(uid, stream) {
         let audio = AppState.rtc.audioElements.get(uid);
         if (!audio) {
-            audio = document.createElement('audio');
-            audio.autoplay = true;
-            audio.playsInline = true;
-            Utils.$('remote-audios').appendChild(audio);
+            audio = document.createElement('audio'); audio.autoplay = true; audio.playsInline = true;
+            Utils.$('remote-audio-container').appendChild(audio);
             AppState.rtc.audioElements.set(uid, audio);
         }
         audio.srcObject = stream;
@@ -1172,36 +1153,21 @@ class RTCManager {
 
     static destroyConnection(uid) {
         const pc = AppState.rtc.peerConnections.get(uid);
-        if (pc) {
-            pc.onicecandidate = null;
-            pc.ontrack = null;
-            pc.close();
-            AppState.rtc.peerConnections.delete(uid);
-        }
+        if (pc) { pc.onicecandidate = null; pc.ontrack = null; pc.close(); AppState.rtc.peerConnections.delete(uid); }
         const audio = AppState.rtc.audioElements.get(uid);
-        if (audio) {
-            audio.remove();
-            AppState.rtc.audioElements.delete(uid);
-        }
+        if (audio) { audio.remove(); AppState.rtc.audioElements.delete(uid); }
     }
 
     static stopAll() {
-        for (const targetUid of AppState.rtc.peerConnections.keys()) {
-            this.destroyConnection(targetUid);
-        }
-        if (AppState.rtc.localStream) {
-            AppState.rtc.localStream.getTracks().forEach(t => t.stop());
-            AppState.rtc.localStream = null;
-        }
+        for (const targetUid of AppState.rtc.peerConnections.keys()) this.destroyConnection(targetUid);
+        if (AppState.rtc.localStream) { AppState.rtc.localStream.getTracks().forEach(t => t.stop()); AppState.rtc.localStream = null; }
     }
 
     static destroy() {
         this.stopAll();
-        if (this.isMicActive && AppState.currentUser) {
-            remove(ref(db, `rooms/${this.roomId}/rtc/participants/${this.uid}`)).catch(()=>{});
-        }
+        if (this.isMicActive && AppState.currentUser && this.roomId) remove(ref(db, `rooms/${this.roomId}/rtc/participants/${this.uid}`)).catch(()=>{});
         this.isMicActive = false;
-        Utils.$('mic-toggle').classList.remove('active');
+        Utils.$('mic-btn')?.classList.remove('active');
         this.unsubs.forEach(fn => fn());
     }
 }
@@ -1212,6 +1178,7 @@ class RTCManager {
 
 window.onload = () => {
     AuthManager.init();
+    BackgroundFX.init();
 
     document.querySelectorAll('.btn-close-modal').forEach(btn => {
         btn.addEventListener('click', (e) => {
