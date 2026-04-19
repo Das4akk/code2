@@ -1,14 +1,15 @@
 /**
- * @fileoverview COW Core Engine v3.0 - The Restored Masterpiece
- * @description Восстановлена ПОЛНАЯ рабочая логика комнаты (права, WebRTC, таймкоды, реакции).
- * Строгая валидация уникальных имен. Нейросетевой фон интегрирован в ядро.
- * Внедрена система личных сообщений (DM).
+ * @fileoverview COW Core Engine v4.0 - The Ultimate Edition
+ * @description Интегрированы все фиксы: MPA-подобная стабильность, обход пароля по инвайтам,
+ * улучшенный интерактивный нейрофон, левитация элементов, фикс мобильного скролла,
+ * статистика профилей и строгая защита уникальных юзернеймов.
  */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { 
     getAuth, onAuthStateChanged, signInWithEmailAndPassword, 
-    createUserWithEmailAndPassword, signOut, updateProfile 
+    createUserWithEmailAndPassword, signOut, updateProfile,
+    signInWithPopup, GoogleAuthProvider
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { 
     getDatabase, ref, set, get, push, onValue, onDisconnect, 
@@ -35,11 +36,12 @@ const AppState = {
     currentUser: null,
     currentRoomId: null,
     isHost: false,
+    isRegistering: false, // Защита от сброса профиля при реге
     usersCache: new Map(), 
     roomsCache: new Map(),
     activeSubscriptions: [], 
-    roomSubscriptions: [], // Отписки именно для комнаты
-    currentPresenceCache: {}, // Для прав в комнате
+    roomSubscriptions: [],
+    currentPresenceCache: {},
     rtc: {
         localStream: null,
         sessionId: null,
@@ -51,7 +53,7 @@ const AppState = {
 };
 
 // ============================================================================
-// 2. УТИЛИТЫ И АНИМАЦИИ (Нейросеть)
+// 2. УТИЛИТЫ И GUI ФИКСЫ (Инъекция стилей, Анимации, Нейрофон)
 // ============================================================================
 
 class Utils {
@@ -104,6 +106,99 @@ class Utils {
             timeout = setTimeout(() => func(...args), wait);
         };
     }
+
+    static injectFixes() {
+        const style = document.createElement('style');
+        style.innerHTML = `
+            /* Анимация левитации */
+            @keyframes levitate {
+                0%, 100% { transform: translateY(0); }
+                50% { transform: translateY(-4px); }
+            }
+            .glass-panel, .room-card, .user-card, .msg-bubble, .friend-item, .toast {
+                animation: levitate 6s ease-in-out infinite;
+                will-change: transform;
+            }
+            .room-card { animation-delay: 1s; }
+            .user-card { animation-delay: 2s; }
+            
+            /* Фикс размеров плеера */
+            #native-player {
+                width: 100% !important;
+                height: 100% !important;
+                object-fit: contain !important;
+                border-radius: 16px;
+                background: #000;
+            }
+            .video-container {
+                min-height: 35vh; /* Мобильный минимум */
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            /* Фикс мобильного скролла и UI */
+            @media (max-width: 1024px) {
+                .rooms-grid {
+                    overflow-y: auto !important;
+                    -webkit-overflow-scrolling: touch;
+                    max-height: 70vh;
+                    padding-bottom: 120px;
+                }
+                .lobby-layout { display: flex !important; flex-direction: column; overflow-y: auto; }
+                .sidebar { position: relative !important; left: 0 !important; width: 100% !important; height: auto !important; padding-top: 10px !important; box-shadow: none !important; border-right: none !important; border-bottom: 1px solid var(--border); }
+                .burger-btn { display: none !important; } /* Убираем ползунок */
+                .logo { font-size: 32px !important; font-weight: 900; letter-spacing: 2px; background: linear-gradient(90deg, #fff, #888); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0 auto; text-align: center; width: 100%; display: block;}
+                .mobile-header { justify-content: center !important; }
+            }
+            
+            /* Бело-серый бейдж онлайна в лобби */
+            #custom-online-badge {
+                background: transparent;
+                color: #aaa;
+                font-size: 14px;
+                font-weight: 600;
+                padding: 10px 0;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            #custom-online-badge::before {
+                content: ''; display: block; width: 8px; height: 8px; border-radius: 50%; background: #aaa; box-shadow: 0 0 8px rgba(255,255,255,0.5);
+            }
+            .original-badge { display: none !important; }
+        `;
+        document.head.appendChild(style);
+
+        // Перемещаем бейдж онлайна
+        const originalBadge = document.querySelector('.online-counter-badge');
+        if (originalBadge) originalBadge.classList.add('original-badge');
+
+        const roomsMain = document.querySelector('.rooms-main');
+        if (roomsMain) {
+            const customBadge = document.createElement('div');
+            customBadge.id = 'custom-online-badge';
+            customBadge.innerHTML = `Сейчас в комнатах - <span id="global-online-count">0</span>`;
+            roomsMain.insertBefore(customBadge, roomsMain.firstChild);
+        }
+
+        // Инжект кнопок Google Auth
+        if (!Utils.$('btn-google-login')) {
+            const btnLogin = document.createElement('button');
+            btnLogin.id = 'btn-google-login';
+            btnLogin.className = 'secondary-btn';
+            btnLogin.innerHTML = '🌐 Войти через Google';
+            btnLogin.style.marginTop = '10px';
+            Utils.$('login-form').appendChild(btnLogin);
+
+            const btnReg = document.createElement('button');
+            btnReg.id = 'btn-google-reg';
+            btnReg.className = 'secondary-btn';
+            btnReg.innerHTML = '🌐 Регистрация через Google';
+            btnReg.style.marginTop = '10px';
+            Utils.$('reg-form').appendChild(btnReg);
+        }
+    }
 }
 
 class BackgroundFX {
@@ -113,56 +208,80 @@ class BackgroundFX {
         const ctx = canvas.getContext('2d');
         let dots = [];
         let isTabVisible = true;
-        let animationId;
+        let mouse = { x: null, y: null, radius: 150 };
         
         function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
         window.addEventListener('resize', resize);
         resize();
+
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.x;
+            mouse.y = e.y;
+        });
+        window.addEventListener('mouseout', () => {
+            mouse.x = undefined; mouse.y = undefined;
+        });
         
         class Dot {
             constructor() {
                 this.x = Math.random() * canvas.width;
                 this.y = Math.random() * canvas.height;
-                this.vx = (Math.random() - 0.5) * 0.1; 
-                this.vy = (Math.random() - 0.5) * 0.1;
+                this.vx = (Math.random() - 0.5) * 0.4; 
+                this.vy = (Math.random() - 0.5) * 0.4;
+                this.size = Math.random() * 2 + 1;
             }
             update() {
                 this.x += this.vx; this.y += this.vy;
                 if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
                 if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+
+                // Интерактивность мыши (отталкивание/притяжение)
+                if (mouse.x != null) {
+                    let dx = mouse.x - this.x;
+                    let dy = mouse.y - this.y;
+                    let distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance < mouse.radius) {
+                        const forceDirectionX = dx / distance;
+                        const forceDirectionY = dy / distance;
+                        const force = (mouse.radius - distance) / mouse.radius;
+                        this.x -= forceDirectionX * force * 2;
+                        this.y -= forceDirectionY * force * 2;
+                    }
+                }
             }
             draw() {
-                ctx.fillStyle = "rgba(255,255,255,0.4)";
-                ctx.beginPath(); ctx.arc(this.x, this.y, 1.5, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = "rgba(255,255,255,0.6)";
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
             }
         }
         
-        for (let i = 0; i < 60; i++) dots.push(new Dot()); 
+        for (let i = 0; i < 90; i++) dots.push(new Dot()); 
         
         function animate() {
             if (!isTabVisible) return; 
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Эффект шлейфа
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
             for (let i = 0; i < dots.length; i++) {
                 dots[i].update(); dots[i].draw();
                 for (let j = i + 1; j < dots.length; j++) {
                     let dx = dots[i].x - dots[j].x;
                     let dy = dots[i].y - dots[j].y;
                     let dist = dx * dx + dy * dy; 
-                    if (dist < 20000) { 
-                        ctx.strokeStyle = `rgba(255,255,255,${0.15 - Math.sqrt(dist) / 1000})`;
-                        ctx.lineWidth = 0.5;
+                    if (dist < 25000) { 
+                        ctx.strokeStyle = `rgba(100, 200, 255, ${0.2 - Math.sqrt(dist) / 1000})`; // Голубоватое свечение
+                        ctx.lineWidth = 1;
                         ctx.beginPath(); ctx.moveTo(dots[i].x, dots[i].y); ctx.lineTo(dots[j].x, dots[j].y); ctx.stroke();
                     }
                 }
             }
-            animationId = requestAnimationFrame(animate);
+            requestAnimationFrame(animate);
         }
         animate();
 
         document.addEventListener("visibilitychange", () => {
             isTabVisible = !document.hidden;
-            if (isTabVisible) animate();
-            else cancelAnimationFrame(animationId);
         });
     }
 }
@@ -173,11 +292,24 @@ class BackgroundFX {
 
 class AuthManager {
     static init() {
+        Utils.injectFixes();
+        
+        // Скрываем форму до проверки авторизации, чтобы избежать мерцания
+        Utils.$('auth-screen').style.opacity = '0';
+        let isFirstLoad = true;
+
         onAuthStateChanged(auth, async (user) => {
+            if (isFirstLoad) {
+                Utils.$('auth-screen').style.opacity = '1';
+                isFirstLoad = false;
+            }
+
             if (user) {
                 AppState.currentUser = user;
                 Utils.showScreen('lobby-screen');
-                await ProfileManager.ensureProfileExists(user);
+                if (!AppState.isRegistering) {
+                    await ProfileManager.ensureProfileExists(user);
+                }
                 ProfileManager.bindMyProfileListener();
                 FriendsManager.initListeners();
                 RoomManager.initLobbyListeners();
@@ -229,14 +361,35 @@ class AuthManager {
                 const isAvail = await ProfileManager.checkUsernameAvailability(username);
                 if (!isAvail) throw new Error('Этот @ID уже занят другим пользователем!');
 
+                AppState.isRegistering = true; // Блокируем onAuthStateChanged от случайного перезаписывания
                 const creds = await createUserWithEmailAndPassword(auth, email, pass);
                 await updateProfile(creds.user, { displayName: name });
                 await ProfileManager.createProfile(creds.user.uid, name, username, email);
+                AppState.isRegistering = false;
             } catch (e) {
+                AppState.isRegistering = false;
                 Utils.toast(e.message, 'error');
                 Utils.$('btn-do-reg').disabled = false;
             }
         };
+
+        // Google Auth
+        const handleGoogleAuth = async () => {
+            try {
+                const result = await signInWithPopup(auth, new GoogleAuthProvider());
+                const snap = await get(ref(db, `users/${result.user.uid}/profile`));
+                if (!snap.exists()) {
+                    AppState.isRegistering = true;
+                    const baseName = result.user.displayName || 'GoogleUser';
+                    const rand = Utils.generateCryptoId(4);
+                    await ProfileManager.createProfile(result.user.uid, baseName, `user_${rand}`, result.user.email);
+                    AppState.isRegistering = false;
+                }
+            } catch (e) { Utils.toast('Ошибка входа через Google', 'error'); }
+        };
+
+        Utils.$('btn-google-login').onclick = handleGoogleAuth;
+        Utils.$('btn-google-reg').onclick = handleGoogleAuth;
 
         Utils.$('btn-logout').onclick = () => signOut(auth);
     }
@@ -357,7 +510,7 @@ class ProfileManager {
         const updates = {};
         
         if (username !== oldProfile.username) {
-            // Двойная проверка прямо перед записью
+            // Двойная проверка прямо перед записью (Защита от перезаписи)
             const snap = await get(ref(db, `usernames/${username}`));
             if (snap.exists() && snap.val() !== uid) throw new Error('Этот ID уже занят');
             
@@ -383,9 +536,19 @@ class ProfileManager {
         const profile = await this.loadUser(targetUid);
         if (!profile) return Utils.toast('Пользователь не найден', 'error');
 
+        // Подгружаем статистику (Кол-во друзей)
+        const friendsSnap = await get(ref(db, `users/${targetUid}/friends`));
+        const friendsCount = friendsSnap.exists() ? Object.values(friendsSnap.val()).filter(f => f.status === 'accepted').length : 0;
+        const joinDate = profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() : 'Неизвестно';
+
         Utils.$('view-name').innerText = Utils.escapeHtml(profile.name);
         Utils.$('view-username').innerText = `@${Utils.escapeHtml(profile.username)}`;
-        Utils.$('view-bio').innerText = Utils.escapeHtml(profile.bio || 'Пользователь не добавил описание.');
+        Utils.$('view-bio').innerHTML = `
+            ${Utils.escapeHtml(profile.bio || 'Пользователь не добавил описание.')}<br><br>
+            <strong style="color:var(--text-main);">Статистика:</strong><br>
+            Друзей: ${friendsCount}<br>
+            На платформе с: ${joinDate}
+        `;
         
         const avatarEl = Utils.$('view-avatar');
         if (profile.avatar) {
@@ -394,15 +557,29 @@ class ProfileManager {
             avatarEl.innerHTML = (profile.name || '?')[0].toUpperCase();
         }
 
-        const dmBtn = Utils.$('btn-dm-modal');
+        const actionBtn = Utils.$('btn-dm-modal');
         if (targetUid === AppState.currentUser.uid) {
-            dmBtn.style.display = 'none';
+            actionBtn.style.display = 'none';
         } else {
-            dmBtn.style.display = 'block';
-            dmBtn.onclick = () => {
-                Utils.$('modal-view-profile').classList.remove('active');
-                DirectMessages.openChat(targetUid, profile.name);
-            };
+            actionBtn.style.display = 'block';
+            
+            // Динамическая кнопка: Если друзья - Писать ЛС, иначе - Добавить
+            const myFriendsSnap = await get(ref(db, `users/${AppState.currentUser.uid}/friends/${targetUid}`));
+            const isFriend = myFriendsSnap.exists() && myFriendsSnap.val().status === 'accepted';
+            
+            if (isFriend) {
+                actionBtn.innerText = 'Написать сообщение';
+                actionBtn.onclick = () => {
+                    Utils.$('modal-view-profile').classList.remove('active');
+                    DirectMessages.openChat(targetUid, profile.name);
+                };
+            } else {
+                actionBtn.innerText = 'Добавить в друзья';
+                actionBtn.onclick = () => {
+                    FriendsManager.sendFriendRequest(targetUid);
+                    Utils.$('modal-view-profile').classList.remove('active');
+                };
+            }
         }
 
         Utils.$('modal-view-profile').classList.add('active');
@@ -410,7 +587,7 @@ class ProfileManager {
 }
 
 // ============================================================================
-// 4. СИСТЕМА ДРУЗЕЙ И ЛИЧНЫХ СООБЩЕНИЙ
+// 4. СИСТЕМА ДРУЗЕЙ И ЛИЧНЫХ СООБЩЕНИЙ (с Share Room)
 // ============================================================================
 
 class FriendsManager {
@@ -554,10 +731,14 @@ class DirectMessages {
                 const lastTs = Number(chat.lastMessage.ts || 0);
                 
                 if (lastTs <= seenTs || chat.lastMessage.fromUid === AppState.currentUser.uid) return;
-                if (AppState.currentDirectChat?.id === chatId) return; // Мы уже в этом чате
+                if (AppState.currentDirectChat?.id === chatId) return; 
                 
                 sessionStorage.setItem(marker, String(lastTs));
-                Utils.toast(`ЛС от ${chat.lastMessage.fromName}: ${chat.lastMessage.text}`);
+                if (chat.lastMessage.type === 'invite') {
+                    Utils.toast(`ЛС: ${chat.lastMessage.fromName} приглашает вас в комнату!`);
+                } else {
+                    Utils.toast(`ЛС от ${chat.lastMessage.fromName}: ${chat.lastMessage.text}`);
+                }
             });
         });
         AppState.activeSubscriptions.push(() => off(dmRoot, 'value', unsub));
@@ -586,7 +767,7 @@ class DirectMessages {
             const text = input.value.trim();
             if (!text) return;
             input.value = '';
-            const payload = { fromUid: AppState.currentUser.uid, fromName: AppState.currentUser.displayName, text, ts: Date.now() };
+            const payload = { type: 'text', fromUid: AppState.currentUser.uid, fromName: AppState.currentUser.displayName, text, ts: Date.now() };
             
             await update(ref(db, `direct-messages/${chatId}`), {
                 participants: { [AppState.currentUser.uid]: true, [targetUid]: true },
@@ -611,6 +792,28 @@ class DirectMessages {
         
         list.innerHTML = messages.map(m => {
             const isSelf = m.fromUid === AppState.currentUser.uid;
+            
+            // Рендер приглашений (Share Room)
+            if (m.type === 'invite') {
+                return `
+                    <div class="m-line ${isSelf ? 'self' : ''}">
+                        <strong>${Utils.escapeHtml(isSelf ? 'Вы' : m.fromName)}</strong>
+                        <div class="bubble" style="border: 1px solid var(--accent); background: rgba(46,213,115,0.1);">
+                            <div style="font-weight:bold; margin-bottom:5px;">Привет! Заходи к нам:</div>
+                            <div style="font-size: 16px;">📺 ${Utils.escapeHtml(m.roomName)}</div>
+                            <div style="font-size: 12px; opacity:0.8; margin-bottom:8px;">👥 Зрителей: ${m.membersCount || 1}</div>
+                            ${!isSelf ? `
+                                <div style="display:flex; gap:10px;">
+                                    <button class="primary-btn" style="padding:6px; font-size:12px; width:auto;" onclick="window.acceptRoomInvite('${m.roomId}')">Принять</button>
+                                    <button class="secondary-btn" style="padding:6px; font-size:12px; width:auto;" onclick="this.parentElement.innerHTML='Отклонено'">Отклонить</button>
+                                </div>
+                            ` : `<div style="font-size:11px; opacity:0.6; margin-top:5px;">Приглашение отправлено</div>`}
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Обычные сообщения
             return `
                 <div class="m-line ${isSelf ? 'self' : ''}">
                     <strong>${Utils.escapeHtml(isSelf ? 'Вы' : m.fromName)}</strong>
@@ -620,7 +823,42 @@ class DirectMessages {
         }).join('');
         list.scrollTop = list.scrollHeight;
     }
+
+    static async sendRoomInvite(targetUid) {
+        if (!AppState.currentRoomId) return;
+        const roomData = AppState.roomsCache.get(AppState.currentRoomId);
+        if (!roomData) return;
+
+        const chatId = this.getChatId(AppState.currentUser.uid, targetUid);
+        const membersCount = roomData.presence ? Object.keys(roomData.presence).length : 1;
+
+        const payload = { 
+            type: 'invite',
+            roomId: AppState.currentRoomId,
+            roomName: roomData.name,
+            membersCount: membersCount,
+            fromUid: AppState.currentUser.uid, 
+            fromName: AppState.currentUser.displayName, 
+            text: `Приглашение в комнату: ${roomData.name}`,
+            ts: Date.now() 
+        };
+        
+        await update(ref(db, `direct-messages/${chatId}`), {
+            participants: { [AppState.currentUser.uid]: true, [targetUid]: true },
+            updatedAt: payload.ts, lastMessage: payload
+        });
+        await push(ref(db, `direct-messages/${chatId}/messages`), payload);
+        Utils.toast('Приглашение отправлено!');
+    }
 }
+
+// Глобальная функция для кнопок в ЛС (Моментальный обход пароля)
+window.acceptRoomInvite = async (roomId) => {
+    const roomData = AppState.roomsCache.get(roomId);
+    if (!roomData) return Utils.toast('Комната больше не существует', 'error');
+    Utils.$('modal-dm-chat').classList.remove('active');
+    RoomManager.enterRoomFinal(roomId, roomData); // Обход пароля!
+};
 
 // ============================================================================
 // 5. ПОЛНАЯ СИСТЕМА КОМНАТ И ПРАВ (Restored Masterpiece)
@@ -639,7 +877,7 @@ class RoomManager {
             
             let totalOnline = 0;
             for(const r in data) { if (data[r].presence) totalOnline += Object.keys(data[r].presence).length; }
-            Utils.$('global-online-count').innerText = totalOnline;
+            if(Utils.$('global-online-count')) Utils.$('global-online-count').innerText = totalOnline;
         });
         AppState.activeSubscriptions.push(() => off(roomsRef, 'value', unsub));
 
@@ -760,8 +998,23 @@ class RoomManager {
         Utils.$('room-title-text').innerText = Utils.escapeHtml(roomData.name);
         const vid = Utils.$('native-player');
         if(vid.src !== roomData.videoUrl) vid.src = Utils.escapeHtml(roomData.videoUrl || '');
-        vid.controls = AppState.isHost; // Base fallback, will be updated by perms
+        vid.controls = AppState.isHost; 
         
+        // Инжект кнопки Поделиться
+        let shareBtn = Utils.$('btn-share-room');
+        if (!shareBtn) {
+            shareBtn = document.createElement('button');
+            shareBtn.id = 'btn-share-room';
+            shareBtn.className = 'primary-btn';
+            shareBtn.style.width = 'auto'; shareBtn.style.padding = '10px 16px';
+            shareBtn.innerText = 'Поделиться';
+            Utils.$('btn-room-settings').parentNode.appendChild(shareBtn);
+        }
+        shareBtn.onclick = () => {
+            Utils.$('tab-users-btn').click(); // Переключаем на вкладку людей
+            Utils.toast('Нажмите "Пригласить" рядом с другом в списке', 'info');
+        };
+
         Utils.$('btn-room-settings').style.display = AppState.isHost ? 'block' : 'none';
         if (AppState.isHost) Utils.$('btn-room-settings').onclick = () => this.openRoomModal(roomId);
 
@@ -924,57 +1177,84 @@ class RoomManager {
         Utils.$('users-count').innerText = ids.length;
 
         container.innerHTML = '';
-        ids.forEach(uid => {
-            const user = cache[uid];
-            const isLocal = uid === AppState.currentUser.uid;
-            const isTargetHost = AppState.roomsCache.get(AppState.currentRoomId)?.hostId === uid;
-            
-            let html = `<div class="user-item">`;
-            html += `<div class="indicator online"></div>`; 
-            html += `<div class="user-main"><span class="user-name">${Utils.escapeHtml(user.name)}</span>`;
-            if (isTargetHost) html += `<span class="host-label">Host</span>`;
-            if (isLocal) html += `<span class="you-label">(Вы)</span>`;
-            html += `</div>`;
+        
+        // Инъекция списка ДРУЗЕЙ для приглашения (Share)
+        if (AppState.currentUser) {
+            get(ref(db, `users/${AppState.currentUser.uid}/friends`)).then(snap => {
+                const fr = snap.val() || {};
+                const friendsIds = Object.keys(fr).filter(k => fr[k].status === 'accepted' && !ids.includes(k)); // Только те, кого нет в комнате
+                if (friendsIds.length > 0) {
+                    let inviteHtml = `<div style="font-size:11px; color:var(--text-muted); margin: 10px 0 5px; text-transform:uppercase;">Друзья вне комнаты</div>`;
+                    friendsIds.forEach(fid => {
+                        inviteHtml += `
+                            <div class="user-item" style="background: rgba(46,213,115,0.05); border: 1px solid rgba(46,213,115,0.2);">
+                                <div class="user-main"><span class="user-name" id="inv-name-${fid}">Загрузка...</span></div>
+                                <button class="primary-btn" style="width:auto; padding:4px 8px; font-size:11px;" onclick="DirectMessages.sendRoomInvite('${fid}')">Пригласить</button>
+                            </div>
+                        `;
+                        ProfileManager.loadUser(fid).then(p => { if(Utils.$(`inv-name-${fid}`)) Utils.$(`inv-name-${fid}`).innerText = p.name; });
+                    });
+                    container.innerHTML += inviteHtml + `<div style="font-size:11px; color:var(--text-muted); margin: 15px 0 5px; text-transform:uppercase;">В комнате</div>`;
+                }
+                renderRoomUsers();
+            });
+        } else {
+            renderRoomUsers();
+        }
 
-            html += `<div class="user-card-actions">`;
-            if (!isLocal) {
-                html += `<button class="dm-btn" data-uid="${uid}">💬</button>`;
-                html += `<button class="add-friend-btn" data-uid="${uid}">+Друг</button>`;
-            }
-            html += `</div>`;
+        function renderRoomUsers() {
+            ids.forEach(uid => {
+                const user = cache[uid];
+                const isLocal = uid === AppState.currentUser.uid;
+                const isTargetHost = AppState.roomsCache.get(AppState.currentRoomId)?.hostId === uid;
+                
+                let html = `<div class="user-item">`;
+                html += `<div class="indicator online"></div>`; 
+                html += `<div class="user-main"><span class="user-name">${Utils.escapeHtml(user.name)}</span>`;
+                if (isTargetHost) html += `<span class="host-label">Host</span>`;
+                if (isLocal) html += `<span class="you-label">(Вы)</span>`;
+                html += `</div>`;
 
-            // Управление правами (только для хоста над другими)
-            if (AppState.isHost && !isLocal) {
-                const perms = user.perms || {};
-                html += `
-                    <div class="perm-controls">
-                        <label><input type="checkbox" class="p-toggle" data-uid="${uid}" data-p="chat" ${perms.chat?'checked':''}> Чат</label>
-                        <label><input type="checkbox" class="p-toggle" data-uid="${uid}" data-p="voice" ${perms.voice?'checked':''}> Микрофон</label>
-                        <label><input type="checkbox" class="p-toggle" data-uid="${uid}" data-p="player" ${perms.player?'checked':''}> Плеер</label>
-                        <label><input type="checkbox" class="p-toggle" data-uid="${uid}" data-p="reactions" ${perms.reactions?'checked':''}> Реакции</label>
-                    </div>
-                `;
-            }
-            html += `</div>`;
-            container.innerHTML += html;
-        });
+                html += `<div class="user-card-actions">`;
+                if (!isLocal) {
+                    html += `<button class="dm-btn" data-uid="${uid}">💬</button>`;
+                    html += `<button class="add-friend-btn" data-uid="${uid}">+Друг</button>`;
+                }
+                html += `</div>`;
 
-        // Binds
-        container.querySelectorAll('.dm-btn').forEach(btn => {
-            btn.onclick = () => {
-                const name = btn.closest('.user-item').querySelector('.user-name').innerText;
-                DirectMessages.openChat(btn.dataset.uid, name);
-            };
-        });
-        container.querySelectorAll('.add-friend-btn').forEach(btn => {
-            btn.onclick = () => FriendsManager.sendFriendRequest(btn.dataset.uid);
-        });
-        container.querySelectorAll('.p-toggle').forEach(t => {
-            t.onchange = async (e) => {
-                const targetUid = e.target.dataset.uid; const perm = e.target.dataset.p; const val = e.target.checked;
-                await set(ref(db, `rooms/${AppState.currentRoomId}/presence/${targetUid}/perms/${perm}`), val);
-            };
-        });
+                // Управление правами (только для хоста над другими)
+                if (AppState.isHost && !isLocal) {
+                    const perms = user.perms || {};
+                    html += `
+                        <div class="perm-controls">
+                            <label><input type="checkbox" class="p-toggle" data-uid="${uid}" data-p="chat" ${perms.chat?'checked':''}> Чат</label>
+                            <label><input type="checkbox" class="p-toggle" data-uid="${uid}" data-p="voice" ${perms.voice?'checked':''}> Микрофон</label>
+                            <label><input type="checkbox" class="p-toggle" data-uid="${uid}" data-p="player" ${perms.player?'checked':''}> Плеер</label>
+                            <label><input type="checkbox" class="p-toggle" data-uid="${uid}" data-p="reactions" ${perms.reactions?'checked':''}> Реакции</label>
+                        </div>
+                    `;
+                }
+                html += `</div>`;
+                container.innerHTML += html;
+            });
+
+            // Binds
+            container.querySelectorAll('.dm-btn').forEach(btn => {
+                btn.onclick = () => {
+                    const name = btn.closest('.user-item').querySelector('.user-name').innerText;
+                    DirectMessages.openChat(btn.dataset.uid, name);
+                };
+            });
+            container.querySelectorAll('.add-friend-btn').forEach(btn => {
+                btn.onclick = () => FriendsManager.sendFriendRequest(btn.dataset.uid);
+            });
+            container.querySelectorAll('.p-toggle').forEach(t => {
+                t.onchange = async (e) => {
+                    const targetUid = e.target.dataset.uid; const perm = e.target.dataset.p; const val = e.target.checked;
+                    await set(ref(db, `rooms/${AppState.currentRoomId}/presence/${targetUid}/perms/${perm}`), val);
+                };
+            });
+        }
     }
 
     static leaveRoom() {
