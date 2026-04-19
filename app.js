@@ -51,7 +51,13 @@ const AppState = {
     },
     currentDirectChat: null,
     usersListRenderToken: 0,
-    inviteCooldowns: new Map()
+    inviteCooldowns: new Map(),
+    admin: {
+        settings: {
+            roomCreationBlocked: false
+        },
+        lastAnnouncementId: null
+    }
 };
 
 // ============================================================================
@@ -316,6 +322,7 @@ class AuthManager {
                 FriendsManager.initListeners();
                 RoomManager.initLobbyListeners();
                 DirectMessages.startNotifications();
+                AdminPanel.init();
                 this.bindGlobalPresence();
             } else {
                 this.handleLogoutCleanup();
@@ -414,7 +421,7 @@ class AuthManager {
         Utils.showScreen('auth-screen');
         Utils.$('login-pass').value = ''; Utils.$('reg-pass').value = '';
         Utils.$('btn-do-login').disabled = false; Utils.$('btn-do-reg').disabled = false;
-        Utils.$('btn-delete-all-rooms')?.remove();
+        AdminPanel.handleLogoutCleanup();
         RoomManager.leaveRoom();
         AppState.activeSubscriptions.forEach(unsub => unsub());
         AppState.activeSubscriptions = [];
@@ -901,43 +908,646 @@ window.acceptRoomInvite = async (roomId) => {
 };
 
 // ============================================================================
-// 5. ПОЛНАЯ СИСТЕМА КОМНАТ И ПРАВ (Restored Masterpiece)
+// 5. АДМИН-ПАНЕЛЬ И ГЛОБАЛЬНОЕ УПРАВЛЕНИЕ
 // ============================================================================
 
-class RoomManager {
-    static syncDeveloperControls(profile = {}) {
+class AdminPanel {
+    static isAdminProfile(profile = {}) {
+        return profile?.username === 'developer';
+    }
+
+    static isCurrentUserAdmin() {
+        const profile = AppState.usersCache.get(AppState.currentUser?.uid) || {};
+        return this.isAdminProfile(profile);
+    }
+
+    static requireAdmin() {
+        if (!AppState.currentUser || !this.isCurrentUserAdmin()) {
+            Utils.toast('Недостаточно прав для админ-действия', 'error');
+            return false;
+        }
+        return true;
+    }
+
+    static ensureUI() {
+        if (Utils.$('modal-admin-panel')) return;
+
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.id = 'modal-admin-panel';
+        modal.innerHTML = `
+            <div class="modal-content glass-panel" style="width:min(1180px,100%); padding:22px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:16px;">
+                    <div>
+                        <h2 style="margin:0;">Админ-панель</h2>
+                        <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">Скрытый доступ только для @developer</div>
+                    </div>
+                    <button class="secondary-btn" id="btn-close-admin-panel" style="width:auto; padding:8px 12px;">✕</button>
+                </div>
+
+                <div id="admin-stats-grid" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:16px;"></div>
+
+                <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin-bottom:16px;">
+                    <div style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
+                        <div style="font-weight:700; margin-bottom:10px;">Глобальное оповещение</div>
+                        <textarea id="admin-announcement-input" rows="4" placeholder="Сообщение для всех онлайн-пользователей..."></textarea>
+                        <div style="display:flex; gap:8px;">
+                            <button class="primary-btn" id="btn-admin-send-announcement">Разослать</button>
+                            <button class="secondary-btn" id="btn-admin-clear-announcement">Очистить</button>
+                        </div>
+                    </div>
+
+                    <div style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
+                        <div style="font-weight:700; margin-bottom:10px;">Быстрые действия</div>
+                        <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px;">
+                            <button class="danger-btn" id="btn-admin-delete-all-rooms">Удалить все комнаты</button>
+                            <button class="secondary-btn" id="btn-admin-purge-empty-rooms">Очистить пустые комнаты</button>
+                            <button class="secondary-btn" id="btn-admin-clear-dms">Удалить все ЛС</button>
+                            <button class="secondary-btn" id="btn-admin-toggle-room-lock">Блокировать создание комнат</button>
+                            <button class="secondary-btn" id="btn-admin-refresh">Обновить данные</button>
+                            <button class="secondary-btn" id="btn-admin-clear-user-editor">Сбросить выбранного юзера</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1.15fr 0.85fr; gap:16px;">
+                    <div style="display:flex; flex-direction:column; gap:16px; min-width:0;">
+                        <div style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
+                            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px;">
+                                <div style="font-weight:700;">Активные комнаты</div>
+                                <div style="font-size:12px; color:var(--text-muted);">Удаление любых комнат одним нажатием</div>
+                            </div>
+                            <div id="admin-rooms-list" style="display:flex; flex-direction:column; gap:8px; max-height:280px; overflow:auto;"></div>
+                        </div>
+
+                        <div style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
+                            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px;">
+                                <div style="font-weight:700;">Онлайн пользователи</div>
+                                <div style="font-size:12px; color:var(--text-muted);">Форс-выход / кик из комнаты</div>
+                            </div>
+                            <div id="admin-online-users" style="display:flex; flex-direction:column; gap:8px; max-height:320px; overflow:auto;"></div>
+                        </div>
+                    </div>
+
+                    <div style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02); min-width:0;">
+                        <div style="font-weight:700; margin-bottom:10px;">Управление пользователями</div>
+                        <div style="display:flex; gap:8px; margin-bottom:12px;">
+                            <input type="text" id="admin-user-search" placeholder="Поиск по @id или uid" style="margin:0;">
+                            <button class="primary-btn" id="btn-admin-find-user" style="width:auto; padding:0 16px;">Найти</button>
+                        </div>
+
+                        <div id="admin-user-editor" data-target-uid="" style="display:flex; flex-direction:column; gap:10px;">
+                            <div style="font-size:13px; color:var(--text-muted); padding:12px; border:1px dashed var(--border-light); border-radius:12px;">
+                                Выберите пользователя через поиск или клик по списку онлайна.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        Utils.$('btn-close-admin-panel').onclick = () => modal.classList.remove('active');
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('active'); });
+
+        Utils.$('btn-admin-send-announcement').onclick = () => this.sendAnnouncement();
+        Utils.$('btn-admin-clear-announcement').onclick = () => this.clearAnnouncement();
+        Utils.$('btn-admin-delete-all-rooms').onclick = () => this.deleteAllRooms();
+        Utils.$('btn-admin-purge-empty-rooms').onclick = () => this.purgeEmptyRooms();
+        Utils.$('btn-admin-clear-dms').onclick = () => this.clearDirectMessages();
+        Utils.$('btn-admin-toggle-room-lock').onclick = () => this.toggleRoomCreationLock();
+        Utils.$('btn-admin-refresh').onclick = () => this.renderPanel();
+        Utils.$('btn-admin-find-user').onclick = () => this.findUser();
+        Utils.$('btn-admin-clear-user-editor').onclick = () => this.renderEmptyUserEditor();
+        Utils.$('admin-user-search').onkeydown = (e) => { if (e.key === 'Enter') this.findUser(); };
+    }
+
+    static init() {
+        this.ensureUI();
+        if (!AppState.currentUser) return;
+        if (this.initializedForUid === AppState.currentUser.uid) return;
+        this.initializedForUid = AppState.currentUser.uid;
+
+        const settingsRef = ref(db, 'admin/settings');
+        const annRef = ref(db, 'admin/global-announcement');
+        const forceSignOutRef = ref(db, `admin/actions/forceSignOut/${AppState.currentUser.uid}`);
+        const forceLeaveRoomRef = ref(db, `admin/actions/forceLeaveRoom/${AppState.currentUser.uid}`);
+
+        const settingsUnsub = onValue(settingsRef, (snap) => {
+            AppState.admin.settings = { roomCreationBlocked: false, ...(snap.val() || {}) };
+            RoomManager.applyCreateRoomAvailability();
+            this.renderIfOpen();
+        });
+
+        const annUnsub = onValue(annRef, (snap) => {
+            const payload = snap.val();
+            if (!payload?.id || !payload?.text) return;
+
+            const marker = `globalAnnouncementSeen:${payload.id}`;
+            if (sessionStorage.getItem(marker)) return;
+            sessionStorage.setItem(marker, '1');
+            AppState.admin.lastAnnouncementId = payload.id;
+            Utils.toast(`Оповещение: ${payload.text}`);
+        });
+
+        const forceSignOutUnsub = onValue(forceSignOutRef, async (snap) => {
+            const payload = snap.val();
+            if (!payload?.ts) return;
+
+            const marker = `forceSignOutSeen:${payload.ts}`;
+            if (sessionStorage.getItem(marker)) return;
+            sessionStorage.setItem(marker, '1');
+
+            if (!this.isCurrentUserAdmin()) {
+                Utils.toast('Администратор завершил вашу сессию', 'error');
+                await signOut(auth);
+            }
+        });
+
+        const forceLeaveRoomUnsub = onValue(forceLeaveRoomRef, (snap) => {
+            const payload = snap.val();
+            if (!payload?.ts) return;
+
+            const marker = `forceLeaveRoomSeen:${payload.ts}`;
+            if (sessionStorage.getItem(marker)) return;
+            sessionStorage.setItem(marker, '1');
+
+            if (!this.isCurrentUserAdmin() && AppState.currentRoomId && (!payload.roomId || payload.roomId === AppState.currentRoomId)) {
+                Utils.toast('Администратор удалил вас из комнаты', 'error');
+                RoomManager.leaveRoom();
+            }
+        });
+
+        AppState.activeSubscriptions.push(
+            () => off(settingsRef, 'value', settingsUnsub),
+            () => off(annRef, 'value', annUnsub),
+            () => off(forceSignOutRef, 'value', forceSignOutUnsub),
+            () => off(forceLeaveRoomRef, 'value', forceLeaveRoomUnsub)
+        );
+
+        RoomManager.applyCreateRoomAvailability();
+    }
+
+    static handleLogoutCleanup() {
+        this.initializedForUid = null;
+        AppState.admin.settings = { roomCreationBlocked: false };
+        AppState.admin.lastAnnouncementId = null;
+        Utils.$('btn-admin-panel')?.remove();
+        Utils.$('modal-admin-panel')?.classList.remove('active');
+        this.renderEmptyUserEditor();
+    }
+
+    static syncSidebarButton(profile = {}) {
         const footer = Utils.$('btn-logout')?.parentNode;
         if (!footer) return;
 
-        let btn = Utils.$('btn-delete-all-rooms');
-        const isDeveloper = profile?.username === 'developer';
+        let btn = Utils.$('btn-admin-panel');
+        const isDeveloper = this.isAdminProfile(profile);
 
         if (!isDeveloper) {
             if (btn) btn.remove();
+            Utils.$('modal-admin-panel')?.classList.remove('active');
             return;
         }
 
         if (!btn) {
             btn = document.createElement('button');
-            btn.id = 'btn-delete-all-rooms';
-            btn.className = 'danger-btn';
-            btn.innerText = 'Удалить все комнаты';
+            btn.id = 'btn-admin-panel';
+            btn.className = 'secondary-btn';
+            btn.innerText = 'Админ-панель';
             footer.insertBefore(btn, Utils.$('btn-logout'));
         }
 
-        btn.onclick = async () => {
-            if (!confirm('Удалить вообще все комнаты? Это действие необратимо.')) return;
+        btn.onclick = () => this.openPanel();
+    }
 
-            try {
-                if (AppState.currentRoomId) this.leaveRoom();
-                await remove(ref(db, 'rooms'));
-                AppState.roomsCache.clear();
-                this.updateRoomsDOM();
-                Utils.toast('Все комнаты удалены');
-            } catch (e) {
-                Utils.toast('Ошибка удаления всех комнат', 'error');
-            }
+    static openPanel() {
+        if (!this.requireAdmin()) return;
+        this.ensureUI();
+        this.renderPanel();
+        Utils.$('modal-admin-panel').classList.add('active');
+    }
+
+    static renderIfOpen() {
+        if (Utils.$('modal-admin-panel')?.classList.contains('active')) this.renderPanel();
+    }
+
+    static getCurrentRoomForUid(targetUid) {
+        for (const [roomId, room] of AppState.roomsCache.entries()) {
+            if (room?.presence?.[targetUid]) return { roomId, room };
+        }
+        return null;
+    }
+
+    static async collectDashboardData() {
+        const [usersSnap, dmSnap] = await Promise.all([
+            get(ref(db, 'users')),
+            get(ref(db, 'direct-messages'))
+        ]);
+
+        const usersData = usersSnap.val() || {};
+        const dmData = dmSnap.val() || {};
+        const rooms = Array.from(AppState.roomsCache.entries());
+
+        return {
+            usersData,
+            dmData,
+            rooms,
+            onlineUsers: Object.entries(usersData).filter(([, userData]) => userData?.status?.online),
+            privateRooms: rooms.filter(([, room]) => room?.isPrivate),
+            emptyRooms: rooms.filter(([, room]) => !room?.presence || Object.keys(room.presence).length === 0)
         };
+    }
+
+    static renderStats(stats) {
+        const cards = [
+            { label: 'Всего пользователей', value: Object.keys(stats.usersData).length },
+            { label: 'Онлайн сейчас', value: stats.onlineUsers.length },
+            { label: 'Активных комнат', value: stats.rooms.length },
+            { label: 'Приватных комнат', value: stats.privateRooms.length },
+            { label: 'Пустых комнат', value: stats.emptyRooms.length },
+            { label: 'Личных чатов', value: Object.keys(stats.dmData).length }
+        ];
+
+        Utils.$('admin-stats-grid').innerHTML = cards.map(card => `
+            <div style="border:1px solid var(--border-light); border-radius:14px; padding:14px; background:rgba(255,255,255,0.03);">
+                <div style="font-size:12px; color:var(--text-muted); margin-bottom:6px;">${card.label}</div>
+                <div style="font-size:24px; font-weight:800;">${card.value}</div>
+            </div>
+        `).join('');
+
+        const lockBtn = Utils.$('btn-admin-toggle-room-lock');
+        if (lockBtn) lockBtn.innerText = AppState.admin.settings.roomCreationBlocked ? 'Разблокировать создание комнат' : 'Блокировать создание комнат';
+    }
+
+    static renderRoomsList(rooms) {
+        const list = Utils.$('admin-rooms-list');
+        if (!list) return;
+
+        if (!rooms.length) {
+            list.innerHTML = `<div style="font-size:13px; color:var(--text-muted); padding:8px;">Нет активных комнат</div>`;
+            return;
+        }
+
+        list.innerHTML = rooms.map(([roomId, room]) => {
+            const membersCount = room?.presence ? Object.keys(room.presence).length : 0;
+            return `
+                <div style="border:1px solid var(--border-light); border-radius:12px; padding:12px; display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap;">
+                    <div style="min-width:0; flex:1;">
+                        <div style="font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${room.isPrivate ? '🔒 ' : ''}${Utils.escapeHtml(room.name || 'Без названия')}</div>
+                        <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">ID: ${roomId} • 👥 ${membersCount} • Хост: ${Utils.escapeHtml(room.hostName || 'Неизвестно')}</div>
+                    </div>
+                    <div style="display:flex; gap:8px;">
+                        <button class="secondary-btn admin-enter-room-btn" data-room-id="${roomId}" style="width:auto; padding:8px 12px;">Войти</button>
+                        <button class="danger-btn admin-delete-room-btn" data-room-id="${roomId}" style="width:auto; padding:8px 12px;">Закрыть</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        list.querySelectorAll('.admin-enter-room-btn').forEach(btn => {
+            btn.onclick = () => {
+                if (!this.requireAdmin()) return;
+                const roomId = btn.dataset.roomId;
+                const roomData = AppState.roomsCache.get(roomId);
+                if (!roomData) return Utils.toast('Комната уже удалена', 'error');
+                Utils.$('modal-admin-panel').classList.remove('active');
+                RoomManager.enterRoomFinal(roomId, roomData);
+            };
+        });
+
+        list.querySelectorAll('.admin-delete-room-btn').forEach(btn => {
+            btn.onclick = () => this.deleteRoom(btn.dataset.roomId);
+        });
+    }
+
+    static renderOnlineUsers(usersData) {
+        const list = Utils.$('admin-online-users');
+        if (!list) return;
+
+        const onlineEntries = Object.entries(usersData).filter(([, userData]) => userData?.status?.online);
+        if (!onlineEntries.length) {
+            list.innerHTML = `<div style="font-size:13px; color:var(--text-muted); padding:8px;">Сейчас никто не онлайн</div>`;
+            return;
+        }
+
+        list.innerHTML = onlineEntries.map(([uid, userData]) => {
+            const profile = userData.profile || {};
+            const roomMeta = this.getCurrentRoomForUid(uid);
+            return `
+                <div style="border:1px solid var(--border-light); border-radius:12px; padding:12px; display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap;">
+                    <div style="min-width:0; flex:1;">
+                        <div style="font-weight:700;">${Utils.escapeHtml(profile.name || 'Без имени')} <span style="color:var(--accent); font-size:12px;">@${Utils.escapeHtml(profile.username || uid)}</span></div>
+                        <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">
+                            UID: ${uid}${roomMeta ? ` • В комнате: ${Utils.escapeHtml(roomMeta.room.name || roomMeta.roomId)}` : ' • Вне комнаты'}
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <button class="secondary-btn admin-load-user-btn" data-uid="${uid}" style="width:auto; padding:8px 12px;">Открыть</button>
+                        <button class="secondary-btn admin-force-leave-btn" data-uid="${uid}" style="width:auto; padding:8px 12px;" ${roomMeta ? '' : 'disabled'}>Кик из комнаты</button>
+                        <button class="danger-btn admin-force-logout-btn" data-uid="${uid}" style="width:auto; padding:8px 12px;">Выгнать</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        list.querySelectorAll('.admin-load-user-btn').forEach(btn => btn.onclick = () => this.loadUserEditor(btn.dataset.uid));
+        list.querySelectorAll('.admin-force-leave-btn').forEach(btn => btn.onclick = () => this.forceLeaveRoom(btn.dataset.uid));
+        list.querySelectorAll('.admin-force-logout-btn').forEach(btn => btn.onclick = () => this.forceSignOut(btn.dataset.uid));
+    }
+
+    static renderEmptyUserEditor() {
+        const editor = Utils.$('admin-user-editor');
+        if (!editor) return;
+        editor.dataset.targetUid = '';
+        editor.innerHTML = `
+            <div style="font-size:13px; color:var(--text-muted); padding:12px; border:1px dashed var(--border-light); border-radius:12px;">
+                Выберите пользователя через поиск или клик по списку онлайна.
+            </div>
+        `;
+    }
+
+    static async loadUserEditor(uid) {
+        if (!this.requireAdmin()) return;
+        if (!uid) return;
+
+        const snap = await get(ref(db, `users/${uid}`));
+        if (!snap.exists()) return Utils.toast('Пользователь не найден', 'error');
+
+        const userData = snap.val() || {};
+        const profile = userData.profile || {};
+        const roomMeta = this.getCurrentRoomForUid(uid);
+        const editor = Utils.$('admin-user-editor');
+
+        editor.dataset.targetUid = uid;
+        editor.innerHTML = `
+            <div style="font-size:12px; color:var(--text-muted);">UID: ${uid}</div>
+            <div style="font-size:12px; color:var(--text-muted); margin-top:-6px;">Комната: ${roomMeta ? Utils.escapeHtml(roomMeta.room.name || roomMeta.roomId) : 'не находится в комнате'}</div>
+            <input type="text" id="admin-edit-name" placeholder="Имя" value="${Utils.escapeHtml(profile.name || '')}">
+            <input type="text" id="admin-edit-username" placeholder="ID" value="${Utils.escapeHtml(profile.username || '')}">
+            <input type="text" id="admin-edit-avatar" placeholder="URL аватарки" value="${Utils.escapeHtml(profile.avatar || '')}">
+            <textarea id="admin-edit-bio" rows="4" placeholder="Описание">${Utils.escapeHtml(profile.bio || '')}</textarea>
+            <div style="font-size:12px; color:var(--text-muted);">Email: ${Utils.escapeHtml(profile.email || 'не указан')}</div>
+            <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px;">
+                <button class="primary-btn" id="btn-admin-save-user">Сохранить изменения</button>
+                <button class="secondary-btn" id="btn-admin-reset-user">Обнулить профиль</button>
+                <button class="secondary-btn" id="btn-admin-force-leave-current">Кикнуть из комнаты</button>
+                <button class="danger-btn" id="btn-admin-force-logout-current">Форс-выход</button>
+            </div>
+        `;
+
+        Utils.$('btn-admin-save-user').onclick = () => this.saveUserProfile();
+        Utils.$('btn-admin-reset-user').onclick = () => this.resetUserProfile();
+        Utils.$('btn-admin-force-leave-current').onclick = () => this.forceLeaveRoom(uid);
+        Utils.$('btn-admin-force-logout-current').onclick = () => this.forceSignOut(uid);
+    }
+
+    static async findUser() {
+        if (!this.requireAdmin()) return;
+
+        const rawValue = Utils.$('admin-user-search')?.value.trim() || '';
+        if (!rawValue) return Utils.toast('Введите @id или uid', 'error');
+
+        const directUidSnap = await get(ref(db, `users/${rawValue}/profile`));
+        if (directUidSnap.exists()) return this.loadUserEditor(rawValue);
+
+        const username = rawValue.toLowerCase().replace('@', '').trim();
+        const usernameSnap = await get(ref(db, `usernames/${username}`));
+        if (!usernameSnap.exists()) return Utils.toast('Пользователь не найден', 'error');
+
+        await this.loadUserEditor(usernameSnap.val());
+    }
+
+    static async buildResetUsername(uid) {
+        let base = `reset_${String(uid).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8)}`;
+        if (base.length < 3) base = `reset_${Utils.generateCryptoId(3)}`;
+
+        const snap = await get(ref(db, `usernames/${base}`));
+        if (!snap.exists() || snap.val() === uid) return base;
+
+        return `${base}_${Utils.generateCryptoId(2)}`;
+    }
+
+    static async saveUserProfile() {
+        if (!this.requireAdmin()) return;
+
+        const editor = Utils.$('admin-user-editor');
+        const uid = editor?.dataset.targetUid;
+        if (!uid) return Utils.toast('Сначала выберите пользователя', 'error');
+
+        const profileSnap = await get(ref(db, `users/${uid}/profile`));
+        if (!profileSnap.exists()) return Utils.toast('Профиль пользователя не найден', 'error');
+
+        const oldProfile = profileSnap.val() || {};
+        const name = Utils.$('admin-edit-name').value.trim();
+        const username = Utils.$('admin-edit-username').value.toLowerCase().trim().replace('@', '');
+        const avatar = Utils.$('admin-edit-avatar').value.trim();
+        const bio = Utils.$('admin-edit-bio').value.trim();
+
+        if (!name || !username) return Utils.toast('Имя и ID обязательны', 'error');
+        if (!/^[a-z0-9_]{3,15}$/.test(username)) return Utils.toast('ID: 3-15 символов, a-z, 0-9, _', 'error');
+
+        const updates = {};
+        if (username !== oldProfile.username) {
+            const usernameSnap = await get(ref(db, `usernames/${username}`));
+            if (usernameSnap.exists() && usernameSnap.val() !== uid) return Utils.toast('Этот ID уже занят', 'error');
+            if (oldProfile.username) updates[`usernames/${oldProfile.username}`] = null;
+            updates[`usernames/${username}`] = uid;
+        }
+
+        const nextProfile = { ...oldProfile, name, username, avatar, bio };
+        updates[`users/${uid}/profile`] = nextProfile;
+
+        await update(ref(db), updates);
+        AppState.usersCache.set(uid, nextProfile);
+        Utils.toast('Профиль пользователя обновлён');
+        await this.loadUserEditor(uid);
+        this.renderIfOpen();
+    }
+
+    static async resetUserProfile() {
+        if (!this.requireAdmin()) return;
+
+        const editor = Utils.$('admin-user-editor');
+        const uid = editor?.dataset.targetUid;
+        if (!uid) return Utils.toast('Сначала выберите пользователя', 'error');
+        if (!confirm('Обнулить профиль пользователя?')) return;
+
+        const profileSnap = await get(ref(db, `users/${uid}/profile`));
+        if (!profileSnap.exists()) return Utils.toast('Профиль пользователя не найден', 'error');
+
+        const oldProfile = profileSnap.val() || {};
+        const nextUsername = await this.buildResetUsername(uid);
+        const updates = {};
+
+        if (oldProfile.username && oldProfile.username !== nextUsername) updates[`usernames/${oldProfile.username}`] = null;
+        updates[`usernames/${nextUsername}`] = uid;
+
+        const nextProfile = {
+            ...oldProfile,
+            name: 'Профиль сброшен',
+            username: nextUsername,
+            bio: '',
+            avatar: ''
+        };
+
+        updates[`users/${uid}/profile`] = nextProfile;
+        await update(ref(db), updates);
+        AppState.usersCache.set(uid, nextProfile);
+        Utils.toast('Профиль пользователя обнулён');
+        await this.loadUserEditor(uid);
+        this.renderIfOpen();
+    }
+
+    static async sendAnnouncement() {
+        if (!this.requireAdmin()) return;
+
+        const text = Utils.$('admin-announcement-input')?.value.trim();
+        if (!text) return Utils.toast('Введите текст оповещения', 'error');
+
+        const profile = AppState.usersCache.get(AppState.currentUser.uid) || {};
+        await set(ref(db, 'admin/global-announcement'), {
+            id: Utils.generateCryptoId(10),
+            text,
+            ts: Date.now(),
+            fromUid: AppState.currentUser.uid,
+            fromUsername: profile.username || 'developer'
+        });
+
+        Utils.$('admin-announcement-input').value = '';
+        Utils.toast('Глобальное оповещение отправлено');
+    }
+
+    static async clearAnnouncement() {
+        if (!this.requireAdmin()) return;
+        await remove(ref(db, 'admin/global-announcement'));
+        Utils.toast('Глобальное оповещение очищено');
+    }
+
+    static async deleteRoom(roomId) {
+        if (!this.requireAdmin()) return;
+        const roomData = AppState.roomsCache.get(roomId);
+        if (!roomData) return Utils.toast('Комната уже удалена', 'error');
+        if (!confirm(`Закрыть комнату "${roomData.name || roomId}"?`)) return;
+
+        if (AppState.currentRoomId === roomId) RoomManager.leaveRoom();
+        await remove(ref(db, `rooms/${roomId}`));
+        AppState.roomsCache.delete(roomId);
+        RoomManager.updateRoomsDOM();
+        this.renderIfOpen();
+        Utils.toast('Комната удалена');
+    }
+
+    static async deleteAllRooms() {
+        if (!this.requireAdmin()) return;
+        if (!confirm('Удалить вообще все комнаты? Это действие необратимо.')) return;
+
+        if (AppState.currentRoomId) RoomManager.leaveRoom();
+        await remove(ref(db, 'rooms'));
+        AppState.roomsCache.clear();
+        RoomManager.updateRoomsDOM();
+        this.renderIfOpen();
+        Utils.toast('Все комнаты удалены');
+    }
+
+    static async purgeEmptyRooms() {
+        if (!this.requireAdmin()) return;
+
+        const emptyRoomIds = Array.from(AppState.roomsCache.entries())
+            .filter(([, room]) => !room?.presence || Object.keys(room.presence).length === 0)
+            .map(([roomId]) => roomId);
+
+        if (!emptyRoomIds.length) return Utils.toast('Пустых комнат нет');
+
+        await Promise.all(emptyRoomIds.map(roomId => remove(ref(db, `rooms/${roomId}`))));
+        emptyRoomIds.forEach(roomId => AppState.roomsCache.delete(roomId));
+        RoomManager.updateRoomsDOM();
+        this.renderIfOpen();
+        Utils.toast(`Удалено пустых комнат: ${emptyRoomIds.length}`);
+    }
+
+    static async clearDirectMessages() {
+        if (!this.requireAdmin()) return;
+        if (!confirm('Удалить вообще все личные сообщения?')) return;
+
+        await remove(ref(db, 'direct-messages'));
+        this.renderIfOpen();
+        Utils.toast('Все личные сообщения удалены');
+    }
+
+    static async toggleRoomCreationLock() {
+        if (!this.requireAdmin()) return;
+
+        const nextValue = !AppState.admin.settings.roomCreationBlocked;
+        await update(ref(db, 'admin/settings'), { roomCreationBlocked: nextValue });
+        AppState.admin.settings.roomCreationBlocked = nextValue;
+        RoomManager.applyCreateRoomAvailability();
+        this.renderIfOpen();
+        Utils.toast(nextValue ? 'Создание комнат заблокировано' : 'Создание комнат разблокировано');
+    }
+
+    static async forceSignOut(uid) {
+        if (!this.requireAdmin()) return;
+        if (!uid) return;
+        if (!confirm(`Принудительно завершить сессию пользователя ${uid}?`)) return;
+
+        await set(ref(db, `admin/actions/forceSignOut/${uid}`), {
+            ts: Date.now(),
+            by: AppState.currentUser.uid
+        });
+
+        Utils.toast('Команда на форс-выход отправлена');
+    }
+
+    static async forceLeaveRoom(uid) {
+        if (!this.requireAdmin()) return;
+        if (!uid) return;
+
+        const roomMeta = this.getCurrentRoomForUid(uid);
+        if (!roomMeta) return Utils.toast('Пользователь сейчас не находится в комнате', 'error');
+
+        if (!confirm(`Удалить пользователя ${uid} из комнаты "${roomMeta.room.name || roomMeta.roomId}"?`)) return;
+
+        await Promise.all([
+            remove(ref(db, `rooms/${roomMeta.roomId}/presence/${uid}`)),
+            remove(ref(db, `rooms/${roomMeta.roomId}/rtc/participants/${uid}`)),
+            set(ref(db, `admin/actions/forceLeaveRoom/${uid}`), {
+                roomId: roomMeta.roomId,
+                ts: Date.now(),
+                by: AppState.currentUser.uid
+            })
+        ]);
+
+        Utils.toast('Пользователь удалён из комнаты');
+        this.renderIfOpen();
+    }
+
+    static async renderPanel() {
+        if (!this.requireAdmin()) return;
+
+        const stats = await this.collectDashboardData();
+        this.renderStats(stats);
+        this.renderRoomsList(stats.rooms);
+        this.renderOnlineUsers(stats.usersData);
+    }
+}
+
+// ============================================================================
+// 6. ПОЛНАЯ СИСТЕМА КОМНАТ И ПРАВ (Restored Masterpiece)
+// ============================================================================
+
+class RoomManager {
+    static syncDeveloperControls(profile = {}) {
+        AdminPanel.syncSidebarButton(profile);
+    }
+
+    static applyCreateRoomAvailability() {
+        const btn = Utils.$('btn-open-create-room');
+        if (!btn) return;
+
+        const blockedForUser = AppState.admin.settings.roomCreationBlocked && !AdminPanel.isCurrentUserAdmin();
+        btn.disabled = blockedForUser;
+        btn.title = blockedForUser ? 'Создание комнат временно отключено администратором' : '';
     }
 
     static initLobbyListeners() {
@@ -953,6 +1563,7 @@ class RoomManager {
             let totalOnline = 0;
             for(const r in data) { if (data[r].presence) totalOnline += Object.keys(data[r].presence).length; }
             if(Utils.$('global-online-count')) Utils.$('global-online-count').innerText = totalOnline;
+            AdminPanel.renderIfOpen();
         });
         AppState.activeSubscriptions.push(() => off(roomsRef, 'value', unsub));
 
@@ -962,6 +1573,7 @@ class RoomManager {
         
         Utils.$('room-input-private').onchange = (e) => { Utils.$('room-input-password').style.display = e.target.checked ? 'block' : 'none'; };
         Utils.$('btn-leave-room').onclick = () => this.leaveRoom();
+        this.applyCreateRoomAvailability();
     }
 
     static updateRoomsDOM() {
@@ -1004,6 +1616,10 @@ class RoomManager {
     }
 
     static openRoomModal(roomId = null) {
+        if (!roomId && AppState.admin.settings.roomCreationBlocked && !AdminPanel.isCurrentUserAdmin()) {
+            return Utils.toast('Создание комнат временно отключено администратором', 'error');
+        }
+
         const modal = Utils.$('modal-room');
         const isEdit = !!roomId;
         Utils.$('room-modal-title').innerText = isEdit ? 'Настройки комнаты' : 'Создать комнату';
@@ -1029,6 +1645,10 @@ class RoomManager {
         const name = Utils.$('room-input-name').value.trim(); const videoUrl = Utils.$('room-input-url').value.trim();
         const isPrivate = Utils.$('room-input-private').checked; const password = Utils.$('room-input-password').value.trim();
         const roomId = Utils.$('modal-room').dataset.editingId;
+
+        if (!roomId && AppState.admin.settings.roomCreationBlocked && !AdminPanel.isCurrentUserAdmin()) {
+            return Utils.toast('Создание комнат временно отключено администратором', 'error');
+        }
 
         if (!name) return Utils.toast('Название не может быть пустым', 'error');
         if (isPrivate && password.length < 4 && !roomId) return Utils.toast('Пароль минимум 4 символа', 'error');
