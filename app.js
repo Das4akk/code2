@@ -50,7 +50,8 @@ const AppState = {
         voiceParticipantsCache: {}
     },
     currentDirectChat: null,
-    usersListRenderToken: 0
+    usersListRenderToken: 0,
+    inviteCooldowns: new Map()
 };
 
 // ============================================================================
@@ -413,6 +414,7 @@ class AuthManager {
         Utils.showScreen('auth-screen');
         Utils.$('login-pass').value = ''; Utils.$('reg-pass').value = '';
         Utils.$('btn-do-login').disabled = false; Utils.$('btn-do-reg').disabled = false;
+        Utils.$('btn-delete-all-rooms')?.remove();
         RoomManager.leaveRoom();
         AppState.activeSubscriptions.forEach(unsub => unsub());
         AppState.activeSubscriptions = [];
@@ -457,6 +459,8 @@ class ProfileManager {
             } else {
                 Utils.$('my-avatar-display').innerHTML = (p.name || '?')[0].toUpperCase();
             }
+
+            RoomManager.syncDeveloperControls(p);
         });
         AppState.activeSubscriptions.push(() => off(profileRef, 'value', unsub));
 
@@ -727,6 +731,9 @@ class DirectMessages {
         AppState.currentDirectChat = null;
         const modal = Utils.$('modal-dm-chat');
         if (modal) modal.classList.remove('active');
+        if (Utils.$('dm-input')) Utils.$('dm-input').value = '';
+        if (Utils.$('dm-messages')) Utils.$('dm-messages').innerHTML = '';
+        if (Utils.$('dm-chat-title')) Utils.$('dm-chat-title').innerText = 'Личный чат';
     }
 
     static startNotifications() {
@@ -833,29 +840,39 @@ class DirectMessages {
 
     static async sendRoomInvite(targetUid) {
         if (!AppState.currentRoomId || !targetUid || targetUid === AppState.currentUser.uid) return;
+        if (AppState.currentPresenceCache?.[targetUid]) return Utils.toast('Пользователь уже находится в комнате', 'error');
+
         const roomData = AppState.roomsCache.get(AppState.currentRoomId);
         if (!roomData) return Utils.toast('Комната больше не существует', 'error');
 
+        const cooldownKey = `${AppState.currentRoomId}:${targetUid}`;
+        const lastInviteTs = AppState.inviteCooldowns.get(cooldownKey) || 0;
+        if (Date.now() - lastInviteTs < 10000) return Utils.toast('Не спамьте инвайтами — подождите 10 секунд', 'error');
+
         const chatId = this.getChatId(AppState.currentUser.uid, targetUid);
         const membersCount = Object.keys(AppState.currentPresenceCache || {}).length || 1;
+        const senderProfile = AppState.usersCache.get(AppState.currentUser.uid) || {};
 
         const payload = { 
             type: 'invite',
+            inviteId: Utils.generateCryptoId(8),
             roomId: AppState.currentRoomId,
             roomName: roomData.name,
             membersCount: membersCount,
             fromUid: AppState.currentUser.uid, 
-            fromName: AppState.currentUser.displayName, 
+            fromName: senderProfile.name || AppState.currentUser.displayName || 'Пользователь', 
             text: `Приглашение в комнату: ${roomData.name}`,
             ts: Date.now() 
         };
+
+        AppState.inviteCooldowns.set(cooldownKey, payload.ts);
         
         await update(ref(db, `direct-messages/${chatId}`), {
             participants: { [AppState.currentUser.uid]: true, [targetUid]: true },
             updatedAt: payload.ts, lastMessage: payload
         });
         await push(ref(db, `direct-messages/${chatId}/messages`), payload);
-        Utils.toast('Приглашение отправлено!');
+        Utils.toast('Приглашение отправлено');
     }
 }
 
@@ -863,10 +880,24 @@ window.DirectMessages = DirectMessages;
 
 // Глобальная функция для кнопок в ЛС (Моментальный обход пароля)
 window.acceptRoomInvite = async (roomId) => {
-    const roomData = AppState.roomsCache.get(roomId);
-    if (!roomData) return Utils.toast('Комната больше не существует', 'error');
-    DirectMessages.closeChat();
-    RoomManager.enterRoomFinal(roomId, roomData); // Обход пароля!
+    if (!roomId) return;
+    try {
+        const snap = await get(ref(db, `rooms/${roomId}`));
+        if (!snap.exists()) return Utils.toast('Комната больше не существует', 'error');
+
+        const roomData = snap.val();
+        AppState.roomsCache.set(roomId, roomData);
+
+        if (AppState.currentRoomId === roomId) {
+            DirectMessages.closeChat();
+            return Utils.toast('Вы уже находитесь в этой комнате');
+        }
+
+        DirectMessages.closeChat();
+        RoomManager.enterRoomFinal(roomId, roomData); // Обход пароля!
+    } catch (e) {
+        Utils.toast('Не удалось открыть приглашение', 'error');
+    }
 };
 
 // ============================================================================
@@ -874,6 +905,41 @@ window.acceptRoomInvite = async (roomId) => {
 // ============================================================================
 
 class RoomManager {
+    static syncDeveloperControls(profile = {}) {
+        const footer = Utils.$('btn-logout')?.parentNode;
+        if (!footer) return;
+
+        let btn = Utils.$('btn-delete-all-rooms');
+        const isDeveloper = profile?.username === 'developer';
+
+        if (!isDeveloper) {
+            if (btn) btn.remove();
+            return;
+        }
+
+        if (!btn) {
+            btn = document.createElement('button');
+            btn.id = 'btn-delete-all-rooms';
+            btn.className = 'danger-btn';
+            btn.innerText = 'Удалить все комнаты';
+            footer.insertBefore(btn, Utils.$('btn-logout'));
+        }
+
+        btn.onclick = async () => {
+            if (!confirm('Удалить вообще все комнаты? Это действие необратимо.')) return;
+
+            try {
+                if (AppState.currentRoomId) this.leaveRoom();
+                await remove(ref(db, 'rooms'));
+                AppState.roomsCache.clear();
+                this.updateRoomsDOM();
+                Utils.toast('Все комнаты удалены');
+            } catch (e) {
+                Utils.toast('Ошибка удаления всех комнат', 'error');
+            }
+        };
+    }
+
     static initLobbyListeners() {
         const roomsRef = ref(db, 'rooms');
         const unsub = onValue(roomsRef, (snap) => {
@@ -1342,7 +1408,11 @@ class RTCManager {
     static init(roomId) {
         this.roomId = roomId;
         this.uid = AppState.currentUser.uid;
+        AppState.rtc.sessionId = Utils.generateCryptoId();
+        AppState.rtc.voiceParticipantsCache = {};
+        this.lastCandidatesGroup = {};
         this.refs = {
+            selfParticipant: ref(db, `rooms/${roomId}/rtc/participants/${this.uid}`),
             participants: ref(db, `rooms/${roomId}/rtc/participants`),
             offers: ref(db, `rooms/${roomId}/rtc/offers/${this.uid}`),
             answers: ref(db, `rooms/${roomId}/rtc/answers/${this.uid}`),
@@ -1350,6 +1420,9 @@ class RTCManager {
         };
         this.unsubs = [];
         this.isMicActive = false;
+
+        set(this.refs.selfParticipant, { sessionId: AppState.rtc.sessionId, ts: Date.now(), listening: true, speaking: false });
+        onDisconnect(this.refs.selfParticipant).remove();
 
         const pUnsub = onValue(this.refs.participants, (snap) => this.handleParticipants(snap.val() || {}));
         const oUnsub = onValue(this.refs.offers, (snap) => this.handleOffers(snap.val() || {}));
@@ -1361,41 +1434,73 @@ class RTCManager {
         Utils.$('mic-btn').onclick = () => this.toggleMic();
     }
 
+    static async writeParticipantState() {
+        if (!this.refs?.selfParticipant || !AppState.rtc.sessionId) return;
+        await set(this.refs.selfParticipant, {
+            sessionId: AppState.rtc.sessionId,
+            ts: Date.now(),
+            listening: true,
+            speaking: this.isMicActive === true
+        });
+    }
+
+    static syncLocalTracksToConnection(pc) {
+        if (!pc || !AppState.rtc.localStream) return;
+        const existingTrackIds = new Set(pc.getSenders().map(sender => sender.track?.id).filter(Boolean));
+        AppState.rtc.localStream.getTracks().forEach(track => {
+            if (!existingTrackIds.has(track.id)) {
+                pc.addTrack(track, AppState.rtc.localStream);
+            }
+        });
+    }
+
     static async toggleMic(forceOff = false) {
         const btn = Utils.$('mic-btn');
+        if (!btn) return;
+
         if (this.isMicActive || forceOff) {
             this.isMicActive = false;
             btn.classList.remove('active');
+            btn.style.opacity = '1';
             this.stopAll();
-            await remove(ref(db, `rooms/${this.roomId}/rtc/participants/${this.uid}`));
+            AppState.rtc.sessionId = Utils.generateCryptoId();
+            await this.writeParticipantState();
+            await this.handleParticipants(AppState.rtc.voiceParticipantsCache || {});
             if (!forceOff) Utils.toast('Микрофон выключен');
         } else {
             if (!RoomManager.hasPerm('voice')) return Utils.toast('Вам запрещено говорить', 'error');
             try {
                 btn.style.opacity = '0.5';
-                AppState.rtc.localStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+                this.stopAll();
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+                AppState.rtc.localStream = stream;
                 AppState.rtc.sessionId = Utils.generateCryptoId();
                 this.isMicActive = true;
-                btn.classList.add('active'); btn.style.opacity = '1';
-                
-                await set(ref(db, `rooms/${this.roomId}/rtc/participants/${this.uid}`), { sessionId: AppState.rtc.sessionId, ts: Date.now() });
-                this.handleParticipants(AppState.rtc.voiceParticipantsCache || {});
+                btn.classList.add('active');
+                btn.style.opacity = '1';
+
+                await this.writeParticipantState();
+                await this.handleParticipants(AppState.rtc.voiceParticipantsCache || {});
+                Utils.toast('Микрофон включен');
             } catch (e) {
-                btn.style.opacity = '1'; Utils.toast('Нет доступа к микрофону', 'error');
+                btn.style.opacity = '1';
+                this.isMicActive = false;
+                btn.classList.remove('active');
+                Utils.toast('Нет доступа к микрофону', 'error');
             }
         }
     }
 
     static async handleParticipants(map) {
         AppState.rtc.voiceParticipantsCache = map;
-        if (!this.isMicActive) return;
 
-        for (const [targetUid, pc] of AppState.rtc.peerConnections) {
-            if (!map[targetUid]) this.destroyConnection(targetUid);
+        for (const [targetUid] of AppState.rtc.peerConnections) {
+            if (!map[targetUid] || !map[targetUid].sessionId) this.destroyConnection(targetUid);
         }
 
         for (const targetUid in map) {
             if (targetUid === this.uid) continue;
+            if (!map[targetUid]?.sessionId) continue;
             if (this.uid.localeCompare(targetUid) > 0) await this.createOffer(targetUid, map[targetUid].sessionId);
         }
     }
@@ -1403,12 +1508,15 @@ class RTCManager {
     static getOrCreateConnection(targetUid, targetSessionId) {
         if (AppState.rtc.peerConnections.has(targetUid)) {
             const existingPc = AppState.rtc.peerConnections.get(targetUid);
-            if (existingPc.connectionState !== 'closed' && existingPc.connectionState !== 'failed') return existingPc;
+            if (existingPc.connectionState !== 'closed' && existingPc.connectionState !== 'failed') {
+                this.syncLocalTracksToConnection(existingPc);
+                return existingPc;
+            }
             this.destroyConnection(targetUid);
         }
 
         const pc = new RTCPeerConnection(this.RTC_CONFIG);
-        if (AppState.rtc.localStream) AppState.rtc.localStream.getTracks().forEach(track => pc.addTrack(track, AppState.rtc.localStream));
+        this.syncLocalTracksToConnection(pc);
 
         pc.onicecandidate = ({ candidate }) => {
             if (!candidate) return;
@@ -1439,7 +1547,7 @@ class RTCManager {
     }
 
     static async handleOffers(offers) {
-        if (!this.isMicActive) return;
+        if (!AppState.rtc.sessionId) return;
         for (const [fromUid, payload] of Object.entries(offers)) {
             if (payload.toSessionId !== AppState.rtc.sessionId) continue;
             const pc = this.getOrCreateConnection(fromUid, payload.fromSessionId);
@@ -1448,33 +1556,40 @@ class RTCManager {
                 await pc.setRemoteDescription(new RTCSessionDescription(payload.description));
                 const answer = await pc.createAnswer(); await pc.setLocalDescription(answer);
                 await set(ref(db, `rooms/${this.roomId}/rtc/answers/${fromUid}/${this.uid}`), { description: pc.localDescription.toJSON(), fromSessionId: AppState.rtc.sessionId, toSessionId: payload.fromSessionId });
+                await this.handleCandidates(this.lastCandidatesGroup || {});
                 await remove(ref(db, `rooms/${this.roomId}/rtc/offers/${this.uid}/${fromUid}`));
             } catch (e) {}
         }
     }
 
     static async handleAnswers(answers) {
-        if (!this.isMicActive) return;
+        if (!AppState.rtc.sessionId) return;
         for (const [fromUid, payload] of Object.entries(answers)) {
             if (payload.toSessionId !== AppState.rtc.sessionId) continue;
             const pc = AppState.rtc.peerConnections.get(fromUid);
             if (!pc) continue;
             try {
                 await pc.setRemoteDescription(new RTCSessionDescription(payload.description));
+                await this.handleCandidates(this.lastCandidatesGroup || {});
                 await remove(ref(db, `rooms/${this.roomId}/rtc/answers/${this.uid}/${fromUid}`));
             } catch (e) {}
         }
     }
 
     static async handleCandidates(candidatesGroup) {
-        if (!this.isMicActive) return;
+        this.lastCandidatesGroup = candidatesGroup;
+        if (!AppState.rtc.sessionId) return;
+
         for (const [fromUid, records] of Object.entries(candidatesGroup)) {
             const pc = AppState.rtc.peerConnections.get(fromUid);
-            if (!pc) continue;
+            if (!pc || !pc.remoteDescription) continue;
+
             for (const [key, payload] of Object.entries(records)) {
                 if (payload.toSessionId !== AppState.rtc.sessionId) continue;
-                try { await pc.addIceCandidate(new RTCIceCandidate(payload.candidate)); } catch (e) {}
-                await remove(ref(db, `rooms/${this.roomId}/rtc/candidates/${this.uid}/${fromUid}/${key}`));
+                try {
+                    await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
+                    await remove(ref(db, `rooms/${this.roomId}/rtc/candidates/${this.uid}/${fromUid}/${key}`));
+                } catch (e) {}
             }
         }
     }
@@ -1503,8 +1618,10 @@ class RTCManager {
 
     static destroy() {
         this.stopAll();
-        if (this.isMicActive && AppState.currentUser && this.roomId) remove(ref(db, `rooms/${this.roomId}/rtc/participants/${this.uid}`)).catch(()=>{});
+        if (AppState.currentUser && this.roomId) remove(ref(db, `rooms/${this.roomId}/rtc/participants/${this.uid}`)).catch(()=>{});
         this.isMicActive = false;
+        AppState.rtc.sessionId = null;
+        AppState.rtc.voiceParticipantsCache = {};
         Utils.$('mic-btn')?.classList.remove('active');
         (this.unsubs || []).forEach(fn => fn());
         this.unsubs = [];
@@ -1522,13 +1639,17 @@ window.onload = () => {
     document.querySelectorAll('.btn-close-modal').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const modal = e.target.closest('.modal');
-            if (modal) modal.classList.remove('active');
+            if (!modal) return;
+            if (modal.id === 'modal-dm-chat') DirectMessages.closeChat();
+            else modal.classList.remove('active');
         });
     });
 
     document.querySelectorAll('.modal').forEach(modal => {
         modal.addEventListener('click', (e) => {
-            if (e.target === modal) modal.classList.remove('active');
+            if (e.target !== modal) return;
+            if (modal.id === 'modal-dm-chat') DirectMessages.closeChat();
+            else modal.classList.remove('active');
         });
     });
 };
