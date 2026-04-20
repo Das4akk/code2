@@ -335,6 +335,7 @@ class AuthManager {
 
             if (user) {
                 AppState.currentUser = user;
+                await AdminPanel.getDeveloperUid();
                 Utils.showScreen('lobby-screen');
                 if (!AppState.isRegistering) {
                     await ProfileManager.ensureProfileExists(user);
@@ -448,15 +449,21 @@ class AuthManager {
 }
 
 class ProfileManager {
-    static getRoleBadgeHtml(profile) {
+    static getRoleBadgeHtml(profile, uid = null) {
         if (!profile) return '';
-        if (profile.username === 'developer') return `<span class="role-badge badge-creator">Создатель</span>`;
-        if (profile.role === 'moderator') return `<span class="role-badge badge-moderator">Модератор</span>`;
+        if (AdminPanel.isCreatorProfile(profile, uid)) return `<span class="role-badge badge-creator">Создатель</span>`;
+        if (AdminPanel.isModeratorProfile(profile, uid)) return `<span class="role-badge badge-moderator">Модератор</span>`;
         return '';
     }
 
     static async checkUsernameAvailability(username, excludeUid = null) {
         const cleanName = username.toLowerCase().trim();
+        const developerUid = await AdminPanel.getDeveloperUid();
+
+        if (cleanName === 'developer') {
+            return Boolean(excludeUid && developerUid && excludeUid === developerUid);
+        }
+
         const snap = await get(ref(db, `usernames/${cleanName}`));
         if (!snap.exists()) return true;
         return snap.val() === excludeUid;
@@ -464,6 +471,12 @@ class ProfileManager {
 
     static async createProfile(uid, name, username, email) {
         const cleanName = username.toLowerCase().trim();
+        const developerUid = await AdminPanel.getDeveloperUid();
+
+        if (cleanName === 'developer' && (!developerUid || developerUid !== uid)) {
+            throw new Error('ID developer зарезервирован');
+        }
+
         const updates = {};
         updates[`usernames/${cleanName}`] = uid;
         updates[`users/${uid}/profile`] = { name, username: cleanName, email, bio: '', avatar: '', createdAt: Date.now() };
@@ -484,8 +497,9 @@ class ProfileManager {
         const unsub = onValue(profileRef, (snap) => {
             const p = snap.val() || {};
             AppState.usersCache.set(uid, p);
+            AdminPanel.hydrateDeveloperUidFromProfile(uid, p);
             
-            const badgeHtml = this.getRoleBadgeHtml(p);
+            const badgeHtml = this.getRoleBadgeHtml(p, uid);
             Utils.$('my-name-display').innerHTML = `${Utils.escapeHtml(p.name)} ${badgeHtml}`;
             Utils.$('my-username-display').innerText = `@${Utils.escapeHtml(p.username)}`;
             if (p.avatar) {
@@ -546,6 +560,12 @@ class ProfileManager {
         if (!name || !username) throw new Error('Имя и ID обязательны');
         if (!/^[a-z0-9_]{3,15}$/.test(username)) throw new Error('ID: 3-15 символов, a-z, 0-9, _');
 
+        const developerUid = await AdminPanel.getDeveloperUid();
+        const isCreatorProfile = Boolean(developerUid && uid === developerUid);
+
+        if (username === 'developer' && !isCreatorProfile) throw new Error('ID developer зарезервирован');
+        if (isCreatorProfile && username !== oldProfile.username) throw new Error('ID Создателя нельзя изменить');
+
         const updates = {};
         
         if (username !== oldProfile.username) {
@@ -578,7 +598,7 @@ class ProfileManager {
         const friendsCount = friendsSnap.exists() ? Object.values(friendsSnap.val()).filter(f => f.status === 'accepted').length : 0;
         const joinDate = profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() : 'Неизвестно';
 
-        const badgeHtml = this.getRoleBadgeHtml(profile);
+        const badgeHtml = this.getRoleBadgeHtml(profile, targetUid);
 
         Utils.$('view-name').innerHTML = `${Utils.escapeHtml(profile.name)} ${badgeHtml}`;
         Utils.$('view-username').innerText = `@${Utils.escapeHtml(profile.username)}`;
@@ -944,26 +964,34 @@ class AdminPanel {
         return this.developerUidCache;
     }
 
-    static isCreatorProfile(profile = {}) {
-        return profile?.username === 'developer';
+    static hydrateDeveloperUidFromProfile(uid, profile = {}) {
+        void uid;
+        void profile;
     }
 
-    static isModeratorProfile(profile = {}) {
-        return profile?.role === 'moderator';
+    static isCreatorProfile(profile = {}, uid = null) {
+        void profile;
+        return Boolean(uid && this.developerUidCache && uid === this.developerUidCache);
     }
 
-    static isAdminProfile(profile = {}) {
-        return this.isCreatorProfile(profile) || this.isModeratorProfile(profile);
+    static isModeratorProfile(profile = {}, uid = null) {
+        return profile?.role === 'moderator' && !this.isCreatorProfile(profile, uid);
+    }
+
+    static isAdminProfile(profile = {}, uid = null) {
+        return this.isCreatorProfile(profile, uid) || this.isModeratorProfile(profile, uid);
     }
 
     static isCurrentUserCreator() {
-        const profile = AppState.usersCache.get(AppState.currentUser?.uid) || {};
-        return this.isCreatorProfile(profile);
+        const uid = AppState.currentUser?.uid || null;
+        const profile = AppState.usersCache.get(uid) || {};
+        return this.isCreatorProfile(profile, uid);
     }
 
     static isCurrentUserAdmin() {
-        const profile = AppState.usersCache.get(AppState.currentUser?.uid) || {};
-        return this.isAdminProfile(profile);
+        const uid = AppState.currentUser?.uid || null;
+        const profile = AppState.usersCache.get(uid) || {};
+        return this.isAdminProfile(profile, uid);
     }
 
     static requireAdmin() {
@@ -1113,8 +1141,9 @@ class AdminPanel {
         const snap = await get(ref(db, `usernames/${username}`));
         if (!snap.exists()) return Utils.toast('Пользователь не найден', 'error');
         const targetUid = snap.val();
+        const developerUid = await this.getDeveloperUid();
 
-        if (username === 'developer') return Utils.toast('Нельзя изменить роль Создателя', 'error');
+        if (targetUid === developerUid) return Utils.toast('Нельзя изменить роль Создателя', 'error');
 
         await update(ref(db, `users/${targetUid}/profile`), { role: grant ? 'moderator' : null });
         Utils.toast(grant ? 'Права модератора выданы' : 'Права модератора сняты');
@@ -1201,7 +1230,7 @@ class AdminPanel {
         if (!footer) return;
 
         let btn = Utils.$('btn-admin-panel');
-        const hasAdminAccess = this.isAdminProfile(profile);
+        const hasAdminAccess = this.isAdminProfile(profile, AppState.currentUser?.uid || null);
 
         if (!hasAdminAccess) {
             if (btn) btn.remove();
@@ -1448,6 +1477,12 @@ class AdminPanel {
         if (!name || !username) return Utils.toast('Имя и ID обязательны', 'error');
         if (!/^[a-z0-9_]{3,15}$/.test(username)) return Utils.toast('ID: 3-15 символов, a-z, 0-9, _', 'error');
 
+        const developerUid = await this.getDeveloperUid();
+        const isCreatorTarget = Boolean(developerUid && uid === developerUid);
+
+        if (username === 'developer' && !isCreatorTarget) return Utils.toast('ID developer зарезервирован', 'error');
+        if (isCreatorTarget && username !== oldProfile.username) return Utils.toast('ID Создателя нельзя изменить', 'error');
+
         const updates = {};
         if (username !== oldProfile.username) {
             const usernameSnap = await get(ref(db, `usernames/${username}`));
@@ -1480,6 +1515,9 @@ class AdminPanel {
         if (!profileSnap.exists()) return Utils.toast('Профиль пользователя не найден', 'error');
 
         const oldProfile = profileSnap.val() || {};
+        const developerUid = await this.getDeveloperUid();
+        if (developerUid && uid === developerUid) return Utils.toast('Профиль Создателя нельзя обнулить', 'error');
+
         const nextUsername = await this.buildResetUsername(uid);
         const updates = {};
 
@@ -2065,7 +2103,7 @@ class RoomManager {
                 
                 // Рендер бейджа ролей для списка комнаты
                 const profile = AppState.usersCache.get(uid) || {};
-                const roleBadgeHtml = ProfileManager.getRoleBadgeHtml(profile);
+                const roleBadgeHtml = ProfileManager.getRoleBadgeHtml(profile, uid);
                 
                 let html = `<div class="user-item">`;
                 html += `<div class="indicator online"></div>`; 
