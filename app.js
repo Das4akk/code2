@@ -461,7 +461,11 @@ class ProfileManager {
         const developerUid = await AdminPanel.getDeveloperUid();
 
         if (cleanName === 'developer') {
-            return Boolean(excludeUid && developerUid && excludeUid === developerUid);
+            if (developerUid) return Boolean(excludeUid && excludeUid === developerUid);
+
+            const developerSnap = await get(ref(db, 'usernames/developer'));
+            if (!developerSnap.exists()) return true;
+            return developerSnap.val() === excludeUid;
         }
 
         const snap = await get(ref(db, `usernames/${cleanName}`));
@@ -472,14 +476,19 @@ class ProfileManager {
     static async createProfile(uid, name, username, email) {
         const cleanName = username.toLowerCase().trim();
         const developerUid = await AdminPanel.getDeveloperUid();
+        const isDeveloperProfile = cleanName === 'developer';
 
-        if (cleanName === 'developer' && (!developerUid || developerUid !== uid)) {
+        if (isDeveloperProfile && developerUid && developerUid !== uid) {
             throw new Error('ID developer зарезервирован');
         }
 
+        const profileData = { name, username: cleanName, email, bio: '', avatar: '', createdAt: Date.now() };
+        if (isDeveloperProfile) profileData.role = 'creator';
+
         const updates = {};
         updates[`usernames/${cleanName}`] = uid;
-        updates[`users/${uid}/profile`] = { name, username: cleanName, email, bio: '', avatar: '', createdAt: Date.now() };
+        updates[`users/${uid}/profile`] = profileData;
+        if (isDeveloperProfile) updates['admin/creatorUid'] = uid;
         await update(ref(db), updates);
     }
 
@@ -561,7 +570,10 @@ class ProfileManager {
         if (!/^[a-z0-9_]{3,15}$/.test(username)) throw new Error('ID: 3-15 символов, a-z, 0-9, _');
 
         const developerUid = await AdminPanel.getDeveloperUid();
-        const isCreatorProfile = Boolean(developerUid && uid === developerUid);
+        const isCreatorProfile = Boolean(
+            (developerUid && uid === developerUid) ||
+            AdminPanel.isValidCreatorProfile(oldProfile)
+        );
 
         if (username === 'developer' && !isCreatorProfile) throw new Error('ID developer зарезервирован');
         if (isCreatorProfile && username !== oldProfile.username) throw new Error('ID Создателя нельзя изменить');
@@ -957,35 +969,89 @@ window.acceptRoomInvite = async (roomId) => {
 class AdminPanel {
     static developerUidCache = null;
 
-    static async getDeveloperUid() {
-        if (this.developerUidCache) return this.developerUidCache;
-        const snap = await get(ref(db, 'usernames/developer'));
-        if (snap.exists()) this.developerUidCache = snap.val();
+    static isExplicitCreatorProfile(profile = {}) {
+        return String(profile?.role || '').toLowerCase().trim() === 'creator';
+    }
+
+    static isLegacyCreatorProfile(profile = {}) {
+        const cleanUsername = String(profile?.username || '').toLowerCase().trim();
+        const cleanRole = String(profile?.role || '').toLowerCase().trim();
+        return cleanUsername === 'developer' && cleanRole !== 'moderator';
+    }
+
+    static isValidCreatorProfile(profile = {}, options = {}) {
+        const { allowLegacyUsername = true } = options;
+        return this.isExplicitCreatorProfile(profile) || (allowLegacyUsername && this.isLegacyCreatorProfile(profile));
+    }
+
+    static async persistCreatorIdentity(uid, profile = {}) {
+        if (!uid || !this.isValidCreatorProfile(profile)) return null;
+
+        this.developerUidCache = uid;
+
+        const cleanUsername = String(profile?.username || '').toLowerCase().trim();
+        const updates = {
+            'admin/creatorUid': uid
+        };
+
+        if (cleanUsername === 'developer') updates['usernames/developer'] = uid;
+        if (profile?.role !== 'creator') updates[`users/${uid}/profile/role`] = 'creator';
+
+        await update(ref(db), updates).catch(() => {});
+        return uid;
+    }
+
+    static async getDeveloperUid(forceRefresh = false) {
+        if (!forceRefresh && this.developerUidCache) return this.developerUidCache;
+
+        const [creatorSnap, usernameSnap, usersSnap] = await Promise.all([
+            get(ref(db, 'admin/creatorUid')),
+            get(ref(db, 'usernames/developer')),
+            get(ref(db, 'users'))
+        ]);
+
+        const usersData = usersSnap.val() || {};
+        const storedCreatorUid = creatorSnap.exists() ? creatorSnap.val() : null;
+        const reservedDeveloperUid = usernameSnap.exists() ? usernameSnap.val() : null;
+        const hasExplicitCreatorProfile = (uid) => Boolean(uid && usersData?.[uid]?.profile && this.isExplicitCreatorProfile(usersData[uid].profile));
+        const hasLegacyCreatorProfile = (uid) => Boolean(uid && usersData?.[uid]?.profile && this.isLegacyCreatorProfile(usersData[uid].profile));
+
+        let candidateUid = null;
+
+        if (hasExplicitCreatorProfile(storedCreatorUid) || hasLegacyCreatorProfile(storedCreatorUid)) {
+            candidateUid = storedCreatorUid;
+        } else if (hasLegacyCreatorProfile(reservedDeveloperUid)) {
+            candidateUid = reservedDeveloperUid;
+        } else {
+            candidateUid =
+                Object.entries(usersData).find(([, userData]) => {
+                    return this.isExplicitCreatorProfile(userData?.profile || {});
+                })?.[0] ||
+                Object.entries(usersData).find(([, userData]) => {
+                    return this.isLegacyCreatorProfile(userData?.profile || {});
+                })?.[0] ||
+                null;
+        }
+
+        if (!candidateUid) {
+            this.developerUidCache = null;
+            return null;
+        }
+
+        await this.persistCreatorIdentity(candidateUid, usersData[candidateUid]?.profile || {});
         return this.developerUidCache;
     }
 
     static hydrateDeveloperUidFromProfile(uid, profile = {}) {
-        const cleanUsername = String(profile?.username || '').toLowerCase().trim();
-        const isLegacyCreatorProfile = cleanUsername === 'developer' && profile?.role !== 'moderator';
-
-        if (!uid || !isLegacyCreatorProfile) return;
+        if (!uid || !this.isValidCreatorProfile(profile)) return;
         if (this.developerUidCache && this.developerUidCache !== uid) return;
 
-        this.developerUidCache = uid;
-
-        get(ref(db, 'usernames/developer'))
-            .then((snap) => {
-                if (!snap.exists()) {
-                    return set(ref(db, 'usernames/developer'), uid);
-                }
-                if (snap.val() === uid) return;
-            })
-            .catch(() => {});
+        void this.persistCreatorIdentity(uid, profile);
     }
 
     static isCreatorProfile(profile = {}, uid = null) {
-        void profile;
-        return Boolean(uid && this.developerUidCache && uid === this.developerUidCache);
+        if (!uid || !this.developerUidCache || uid !== this.developerUidCache) return false;
+        return this.isValidCreatorProfile(profile);
     }
 
     static isModeratorProfile(profile = {}, uid = null) {
@@ -1008,6 +1074,44 @@ class AdminPanel {
         return this.isAdminProfile(profile, uid);
     }
 
+    static async isProtectedCreatorTarget(targetUid) {
+        if (!targetUid) return false;
+
+        const [developerUid, profileSnap] = await Promise.all([
+            this.getDeveloperUid(),
+            get(ref(db, `users/${targetUid}/profile`))
+        ]);
+
+        const profile = profileSnap.exists() ? (profileSnap.val() || {}) : {};
+        const cleanUsername = String(profile?.username || '').toLowerCase().trim();
+
+        return Boolean(
+            (developerUid && targetUid === developerUid) ||
+            cleanUsername === 'developer' ||
+            this.isValidCreatorProfile(profile)
+        );
+    }
+
+    static async isProtectedCreatorRoom(roomId) {
+        const room = AppState.roomsCache.get(roomId);
+        if (!room) return false;
+
+        const developerUid = await this.getDeveloperUid();
+        if (developerUid && (room.hostId === developerUid || room.presence?.[developerUid])) return true;
+
+        if (room.hostId) {
+            const hostProfile = AppState.usersCache.get(room.hostId) || await ProfileManager.loadUser(room.hostId);
+            if (this.isValidCreatorProfile(hostProfile || {})) return true;
+        }
+
+        for (const uid of Object.keys(room.presence || {})) {
+            const profile = AppState.usersCache.get(uid) || await ProfileManager.loadUser(uid);
+            if (this.isValidCreatorProfile(profile || {})) return true;
+        }
+
+        return false;
+    }
+
     static requireAdmin() {
         if (!AppState.currentUser || !this.isCurrentUserAdmin()) {
             Utils.toast('Недостаточно прав для админ-действия', 'error');
@@ -1019,8 +1123,7 @@ class AdminPanel {
     // Защита: Модератор не может трогать Создателя
     static async checkModRestrictionsForTarget(targetUid) {
         if (this.isCurrentUserCreator()) return true;
-        const devUid = await this.getDeveloperUid();
-        if (targetUid === devUid) {
+        if (await this.isProtectedCreatorTarget(targetUid)) {
             Utils.toast('Модератор не может взаимодействовать с профилем Создателя', 'error');
             return false;
         }
@@ -1030,11 +1133,7 @@ class AdminPanel {
     // Защита: Модератор не может трогать комнату Создателя (или комнату, где он сидит)
     static async checkModRestrictionsForRoom(roomId) {
         if (this.isCurrentUserCreator()) return true;
-        const devUid = await this.getDeveloperUid();
-        const room = AppState.roomsCache.get(roomId);
-        if (!room) return true;
-
-        if (room.hostId === devUid || (room.presence && room.presence[devUid])) {
+        if (await this.isProtectedCreatorRoom(roomId)) {
             Utils.toast('У модератора нет прав на эту комнату (принадлежит или занята Создателем)', 'error');
             return false;
         }
@@ -1155,9 +1254,10 @@ class AdminPanel {
         const snap = await get(ref(db, `usernames/${username}`));
         if (!snap.exists()) return Utils.toast('Пользователь не найден', 'error');
         const targetUid = snap.val();
-        const developerUid = await this.getDeveloperUid();
 
-        if (targetUid === developerUid) return Utils.toast('Нельзя изменить роль Создателя', 'error');
+        if (await this.isProtectedCreatorTarget(targetUid)) {
+            return Utils.toast('Нельзя изменить роль Создателя', 'error');
+        }
 
         await update(ref(db, `users/${targetUid}/profile`), { role: grant ? 'moderator' : null });
         Utils.toast(grant ? 'Права модератора выданы' : 'Права модератора сняты');
