@@ -965,8 +965,22 @@ class AdminPanel {
     }
 
     static hydrateDeveloperUidFromProfile(uid, profile = {}) {
-        void uid;
-        void profile;
+        const cleanUsername = String(profile?.username || '').toLowerCase().trim();
+        const isLegacyCreatorProfile = cleanUsername === 'developer' && profile?.role !== 'moderator';
+
+        if (!uid || !isLegacyCreatorProfile) return;
+        if (this.developerUidCache && this.developerUidCache !== uid) return;
+
+        this.developerUidCache = uid;
+
+        get(ref(db, 'usernames/developer'))
+            .then((snap) => {
+                if (!snap.exists()) {
+                    return set(ref(db, 'usernames/developer'), uid);
+                }
+                if (snap.val() === uid) return;
+            })
+            .catch(() => {});
     }
 
     static isCreatorProfile(profile = {}, uid = null) {
