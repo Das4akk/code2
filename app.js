@@ -575,7 +575,6 @@ class ProfileManager {
             AdminPanel.isValidCreatorProfile(oldProfile)
         );
 
-        if (username === 'developer' && !isCreatorProfile) throw new Error('ID developer зарезервирован');
         if (isCreatorProfile && username !== oldProfile.username) throw new Error('ID Создателя нельзя изменить');
 
         const updates = {};
