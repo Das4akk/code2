@@ -458,6 +458,93 @@ class AuthManager {
     }
 }
 
+class HashtagManager {
+    static defaultTags = ['#music', '#movies', '#gaming', '#love', '#chill', '#anime', '#coding', '#friends'];
+
+    static initHashtags() {
+        this.bindHashtagInput('edit-hashtags', 'profile-hashtag-suggestions', false);
+        this.bindHashtagInput('room-input-hashtag', 'room-hashtag-suggestions', true);
+    }
+
+    static parseHashtags(rawValue = '', single = false) {
+        const tokens = String(rawValue || '')
+            .split(/\s+/)
+            .map(token => this.normalizeTag(token))
+            .filter(Boolean);
+        const unique = Array.from(new Set(tokens));
+        return single ? unique.slice(0, 1) : unique.slice(0, 10);
+    }
+
+    static normalizeTag(value = '') {
+        const clean = String(value || '')
+            .replace(/#/g, '')
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-zа-я0-9_]/gi, '');
+        return clean ? `#${clean}` : '';
+    }
+
+    static collectTags() {
+        const tags = new Set(this.defaultTags);
+        AppState.usersCache.forEach((profile) => {
+            if (!Array.isArray(profile?.hashtags)) return;
+            profile.hashtags.forEach(tag => {
+                const normalized = this.normalizeTag(tag);
+                if (normalized) tags.add(normalized);
+            });
+        });
+        AppState.roomsCache.forEach((room) => {
+            if (!Array.isArray(room?.hashtags)) return;
+            room.hashtags.forEach(tag => {
+                const normalized = this.normalizeTag(tag);
+                if (normalized) tags.add(normalized);
+            });
+        });
+        return Array.from(tags);
+    }
+
+    static bindHashtagInput(inputId, suggestionsId, single = false) {
+        const input = Utils.$(inputId);
+        const suggestions = Utils.$(suggestionsId);
+        if (!input || !suggestions) return;
+
+        const updateSuggestions = () => {
+            const current = input.value.trim().toLowerCase().replace('#', '');
+            const pool = this.collectTags();
+            const filtered = pool
+                .filter(tag => !current || tag.includes(current))
+                .slice(0, 6);
+
+            if (!filtered.length) {
+                suggestions.classList.remove('active');
+                suggestions.innerHTML = '';
+                return;
+            }
+
+            suggestions.innerHTML = filtered
+                .map(tag => `<button class="hashtag-suggestion-item" data-tag="${Utils.escapeHtml(tag)}">${Utils.escapeHtml(tag)}</button>`)
+                .join('');
+            suggestions.classList.add('active');
+
+            suggestions.querySelectorAll('.hashtag-suggestion-item').forEach(btn => {
+                btn.onclick = () => {
+                    const tag = btn.dataset.tag || '';
+                    if (single) input.value = tag;
+                    else {
+                        const existing = this.parseHashtags(input.value, false).filter(t => t !== tag);
+                        input.value = [...existing, tag].join(' ');
+                    }
+                    suggestions.classList.remove('active');
+                };
+            });
+        };
+
+        input.addEventListener('focus', updateSuggestions);
+        input.addEventListener('input', updateSuggestions);
+        input.addEventListener('blur', () => setTimeout(() => suggestions.classList.remove('active'), 120));
+    }
+}
+
 class ProfileManager {
     static getRoleBadgeHtml(profile, uid = null) {
         if (!profile) return '';
@@ -498,6 +585,7 @@ class ProfileManager {
             email,
             bio: '',
             avatar: '',
+            hashtags: [],
             createdAt: Date.now(),
             provider: security.provider || this.normalizeProvider(auth.currentUser),
             emailVerified: typeof security.emailVerified === 'boolean'
@@ -562,6 +650,7 @@ class ProfileManager {
         Utils.$('edit-name').value = p.name || '';
         Utils.$('edit-username-input').value = p.username || '';
         Utils.$('edit-bio').value = p.bio || '';
+        Utils.$('edit-hashtags').value = Array.isArray(p.hashtags) ? p.hashtags.join(' ') : '';
         Utils.$('edit-avatar-url').value = p.avatar || '';
         this.updateAvatarPreview(p.avatar, p.name);
         
@@ -726,6 +815,7 @@ class ProfileManager {
         const name = Utils.$('edit-name').value.trim();
         let username = Utils.$('edit-username-input').value.toLowerCase().trim().replace('@', '');
         const bio = Utils.$('edit-bio').value.trim();
+        const hashtags = HashtagManager.parseHashtags(Utils.$('edit-hashtags').value, false);
         const avatar = Utils.$('edit-avatar-url').value.trim();
 
         if (!name || !username) throw new Error('Имя и ID обязательны');
@@ -749,7 +839,7 @@ class ProfileManager {
             updates[`usernames/${username}`] = uid;
         }
 
-        updates[`users/${uid}/profile`] = { ...oldProfile, name, username, bio, avatar };
+        updates[`users/${uid}/profile`] = { ...oldProfile, name, username, bio, hashtags, avatar };
         await update(ref(db), updates);
     }
 
@@ -781,6 +871,9 @@ class ProfileManager {
             Друзей: ${friendsCount}<br>
             На платформе с: ${joinDate}
         `;
+        const hashtagsEl = Utils.$('view-hashtags');
+        const profileTags = Array.isArray(profile.hashtags) ? profile.hashtags : [];
+        hashtagsEl.innerHTML = profileTags.map(tag => `<span class="hashtag-chip">${Utils.escapeHtml(tag)}</span>`).join('');
         
         const avatarEl = Utils.$('view-avatar');
         if (profile.avatar) {
@@ -2160,6 +2253,9 @@ class RoomManager {
                 if (video) { video.addEventListener('loadedmetadata', () => { video.currentTime = Math.min(10, video.duration / 2); card.querySelector('.room-preview').classList.add('loaded'); }, { once: true }); }
             }
             card.querySelector('.rm-title').innerText = `${lock}${room.name}`;
+            if (Array.isArray(room.hashtags) && room.hashtags[0]) {
+                card.querySelector('.rm-title').innerText = `${lock}${room.name} ${room.hashtags[0]}`;
+            }
             card.querySelector('.rm-host').innerText = `Хост: ${room.hostName || 'Неизвестно'}`;
             card.querySelector('.rm-count').innerText = `👥 ${membersCount}`;
             count++;
@@ -2186,6 +2282,7 @@ class RoomManager {
             const r = AppState.roomsCache.get(roomId);
             Utils.$('room-input-name').value = r.name || ''; Utils.$('room-input-url').value = r.videoUrl || '';
             Utils.$('room-input-private').checked = r.isPrivate; Utils.$('room-input-password').style.display = r.isPrivate ? 'block' : 'none';
+            Utils.$('room-input-hashtag').value = Array.isArray(r.hashtags) ? (r.hashtags[0] || '') : '';
             const theme = this.themeOptions.includes(r.theme) ? r.theme : 'default';
             this.themeIndex = this.themeOptions.indexOf(theme);
             Utils.$('modal-room').dataset.selectedTheme = theme;
@@ -2202,6 +2299,7 @@ class RoomManager {
         } else {
             Utils.$('room-input-name').value = ''; Utils.$('room-input-url').value = '';
             Utils.$('room-input-private').checked = false; Utils.$('room-input-password').style.display = 'none'; Utils.$('room-input-password').value = '';
+            Utils.$('room-input-hashtag').value = '';
             this.themeIndex = 0;
             Utils.$('modal-room').dataset.selectedTheme = 'default';
             Utils.$('room-theme-track').style.transform = 'translateX(0%)';
@@ -2216,6 +2314,7 @@ class RoomManager {
     static async saveRoom() {
         const name = Utils.$('room-input-name').value.trim(); const videoUrl = Utils.$('room-input-url').value.trim();
         const isPrivate = Utils.$('room-input-private').checked; const password = Utils.$('room-input-password').value.trim();
+        const hashtags = HashtagManager.parseHashtags(Utils.$('room-input-hashtag').value, true);
         const roomId = Utils.$('modal-room').dataset.editingId;
         const selectedTheme = Utils.$('modal-room').dataset.selectedTheme || 'default';
 
@@ -2232,6 +2331,7 @@ class RoomManager {
                 name,
                 videoUrl,
                 isPrivate,
+                hashtags,
                 theme: this.themeOptions.includes(selectedTheme) ? selectedTheme : 'default',
                 hostId: AppState.currentUser.uid,
                 hostName: AppState.currentUser.displayName || 'Хост',
@@ -2276,7 +2376,8 @@ class RoomManager {
         AppState.usersListRenderToken++;
         AppState.roomSubscriptions.forEach(fn => fn()); AppState.roomSubscriptions = [];
         
-        Utils.$('room-title-text').innerText = Utils.escapeHtml(roomData.name);
+        const roomTag = Array.isArray(roomData.hashtags) && roomData.hashtags[0] ? ` ${roomData.hashtags[0]}` : '';
+        Utils.$('room-title-text').innerText = Utils.escapeHtml(`${roomData.name}${roomTag}`);
         const vid = Utils.$('native-player');
         const nextVideoUrl = String(roomData.videoUrl || '').trim();
 
@@ -2903,6 +3004,7 @@ class RTCManager {
 window.onload = () => {
     AuthManager.init();
     BackgroundFX.init();
+    HashtagManager.initHashtags();
 
     document.querySelectorAll('.btn-close-modal').forEach(btn => {
         btn.addEventListener('click', (e) => {

@@ -217,6 +217,13 @@
         .profile-menu-item:hover { background: rgba(255,255,255,0.06); border-color: var(--border-light); }
         .security-email-box { padding: 12px; border-radius: 12px; border: 1px solid var(--border-light); background: rgba(255,255,255,0.02); margin-bottom: 12px; }
         .security-note { color: var(--text-muted); font-size: 13px; margin-bottom: 12px; }
+        .hashtag-input-wrap { position: relative; }
+        .hashtag-suggestions { position: absolute; left: 0; right: 0; bottom: calc(100% + 6px); background: var(--panel); border: 1px solid var(--border-light); border-radius: 10px; padding: 6px; display: none; z-index: 35; max-height: 130px; overflow-y: auto; }
+        .hashtag-suggestions.active { display: flex; flex-direction: column; gap: 4px; }
+        .hashtag-suggestion-item { border: 1px solid transparent; background: transparent; color: var(--text-main); text-align: left; border-radius: 8px; padding: 8px 10px; font-size: 13px; }
+        .hashtag-suggestion-item:hover { background: rgba(255,255,255,0.06); border-color: var(--border-light); }
+        .hashtags-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+        .hashtag-chip { font-size: 12px; padding: 4px 8px; border-radius: 999px; border: 1px solid var(--border-light); background: rgba(255,255,255,0.04); color: var(--accent); font-weight: 600; }
 
         /* DM Modal specific */
         .dm-modal-content { width: min(600px, 100%); display: flex; flex-direction: column; gap: 16px; padding: 20px; }
@@ -487,6 +494,10 @@
                 <input type="text" id="edit-name" placeholder="Отображаемое имя (напр. Алексей)">
                 <input type="text" id="edit-username-input" placeholder="Уникальный ID (напр. @alexey99)">
                 <textarea id="edit-bio" placeholder="Расскажите немного о себе..." rows="3"></textarea>
+                <div class="hashtag-input-wrap">
+                    <div class="hashtag-suggestions" id="profile-hashtag-suggestions"></div>
+                    <input type="text" id="edit-hashtags" placeholder="#music #movies #gaming">
+                </div>
                 <div class="modal-actions">
                     <button class="secondary-btn btn-close-modal">Отмена</button>
                     <button class="primary-btn" id="btn-save-profile">Сохранить</button>
@@ -516,6 +527,7 @@
             <h2 id="view-name" style="margin-bottom: 5px;">Пользователь</h2>
             <div id="view-username" style="color: var(--accent); font-size: 14px; margin-bottom: 15px; font-weight: 600;">@user</div>
             <p id="view-bio" style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px; line-height: 1.5;"></p>
+            <div class="hashtags-list" id="view-hashtags"></div>
             
             <div id="view-profile-actions" style="display: flex; flex-direction: column; gap: 10px;">
                 <button class="primary-btn" id="btn-dm-modal">Написать сообщение</button>
@@ -561,6 +573,10 @@
                     Сделать приватной (по паролю)
                 </label>
                 <input type="password" id="room-input-password" placeholder="Придумайте пароль" style="display: none;">
+                <div class="hashtag-input-wrap">
+                    <div class="hashtag-suggestions" id="room-hashtag-suggestions"></div>
+                    <input type="text" id="room-input-hashtag" placeholder="#chill">
+                </div>
                 <button class="secondary-btn room-theme-toggle" id="btn-room-theme-toggle">Поменять тему</button>
                 <div class="room-theme-carousel" id="room-theme-carousel">
                     <div class="theme-carousel-top">
