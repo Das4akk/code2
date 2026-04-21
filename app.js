@@ -1985,7 +1985,8 @@ class AdminPanel {
 class RoomManager {
     static themeOptions = ['default', 'love'];
     static themeIndex = 0;
-    static heartsTimer = null;
+    static heartsChatTimer = null;
+    static heartsUsersTimer = null;
 
     static syncDeveloperControls(profile = {}) {
         AdminPanel.syncSidebarButton(profile);
@@ -2243,7 +2244,8 @@ class RoomManager {
         if (AppState.isHost) Utils.$('btn-room-settings').onclick = () => this.openRoomModal(roomId);
 
         Utils.showScreen('room-screen');
-        Utils.$('chat-messages').innerHTML = '<div class="sys-msg">Вы вошли в комнату</div>';
+        Utils.$('chat-messages').innerHTML = '<div class="panel-love-hearts" id="chat-love-hearts"></div><div class="sys-msg">Вы вошли в комнату</div>';
+        Utils.$('users-list').innerHTML = '<div class="panel-love-hearts" id="users-love-hearts"></div>';
         
         this.initRoomServicesFinal(roomId);
         RTCManager.init(roomId); 
@@ -2396,7 +2398,7 @@ class RoomManager {
         const renderRoomId = AppState.currentRoomId;
 
         Utils.$('users-count').innerText = ids.length;
-        container.innerHTML = '';
+        container.innerHTML = '<div class="panel-love-hearts" id="users-love-hearts"></div>';
         
         const ensureActualRender = () => {
             if (renderToken !== AppState.usersListRenderToken) return false;
@@ -2532,39 +2534,57 @@ class RoomManager {
     }
 
     static startLoveHearts() {
-        const layer = Utils.$('room-theme-effects');
-        if (!layer || this.heartsTimer) return;
-        this.heartsTimer = setInterval(() => {
+        if (this.heartsChatTimer || this.heartsUsersTimer) return;
+
+        const spawnHeart = (layer, mode = 'mid') => {
+            if (!layer) return;
             const heart = document.createElement('div');
-            heart.className = 'love-heart';
-            const distance = Math.random();
-            if (distance < 0.33) heart.classList.add('far');
-            else if (distance < 0.66) heart.classList.add('mid');
-            else heart.classList.add('near');
+            heart.className = `love-heart ${mode}`;
             const core = document.createElement('div');
             core.className = 'heart-core';
             heart.appendChild(core);
             heart.style.left = `${Math.random() * 100}%`;
-            const scale = 0.5 + Math.random() * 1.4;
-            const drift = -45 + Math.random() * 90;
-            const duration = 17 + Math.random() * 13;
-            const opacity = 0.2 + Math.random() * 0.38;
+            const scaleBase = mode === 'far' ? 0.45 : mode === 'near' ? 1.15 : 0.78;
+            const scale = scaleBase + Math.random() * (mode === 'near' ? 0.35 : 0.25);
+            const drift = -35 + Math.random() * 70;
+            const duration = mode === 'near' ? 26 + Math.random() * 8 : 22 + Math.random() * 9;
+            const opacity = mode === 'far' ? 0.16 + Math.random() * 0.12 : mode === 'near' ? 0.34 + Math.random() * 0.18 : 0.24 + Math.random() * 0.14;
             heart.style.setProperty('--heart-scale', String(scale));
             heart.style.setProperty('--heart-drift', `${drift}px`);
             heart.style.setProperty('--heart-opacity', String(opacity));
             heart.style.animationDuration = `${duration}s`;
             layer.appendChild(heart);
-            setTimeout(() => heart.remove(), 33000);
-        }, 1650);
+            setTimeout(() => heart.remove(), 36000);
+        };
+
+        this.heartsChatTimer = setInterval(() => {
+            const chatLayer = Utils.$('chat-love-hearts');
+            const roll = Math.random();
+            const mode = roll < 0.33 ? 'far' : roll > 0.74 ? 'near' : 'mid';
+            spawnHeart(chatLayer, mode);
+        }, 1700);
+
+        this.heartsUsersTimer = setInterval(() => {
+            const usersLayer = Utils.$('users-love-hearts');
+            const roll = Math.random();
+            const mode = roll < 0.45 ? 'far' : roll > 0.8 ? 'near' : 'mid';
+            spawnHeart(usersLayer, mode);
+        }, 1900);
     }
 
     static stopLoveHearts() {
-        if (this.heartsTimer) {
-            clearInterval(this.heartsTimer);
-            this.heartsTimer = null;
+        if (this.heartsChatTimer) {
+            clearInterval(this.heartsChatTimer);
+            this.heartsChatTimer = null;
         }
-        const layer = Utils.$('room-theme-effects');
-        if (layer) layer.innerHTML = '';
+        if (this.heartsUsersTimer) {
+            clearInterval(this.heartsUsersTimer);
+            this.heartsUsersTimer = null;
+        }
+        const chatLayer = Utils.$('chat-love-hearts');
+        if (chatLayer) chatLayer.innerHTML = '';
+        const usersLayer = Utils.$('users-love-hearts');
+        if (usersLayer) usersLayer.innerHTML = '';
     }
 }
 
