@@ -135,7 +135,7 @@
         /* ========================================================= */
         /* ROOM SCREEN */
         /* ========================================================= */
-        .room-layout { display: grid; grid-template-columns: 1fr 380px; gap: 20px; padding: 20px; height: 100vh; max-width: 1800px; margin: 0 auto; width: 100%; }
+        .room-layout { display: grid; grid-template-columns: 1fr 380px; gap: 20px; padding: 20px; height: 100vh; max-width: 1800px; margin: 0 auto; width: 100%; position: relative; z-index: 3; }
         
         .player-section { display: flex; flex-direction: column; gap: 15px; min-width: 0; position: relative; }
         .room-top-bar { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; }
@@ -248,7 +248,13 @@
         .theme-check { margin-top: 6px; font-size: 16px; line-height: 1; color: transparent; transition: color 0.2s ease, text-shadow 0.2s ease; }
         .theme-card.active .theme-name { color: var(--text-main); }
         .theme-card.active .theme-check { color: #fff; text-shadow: 0 0 12px rgba(255,255,255,0.45); }
-        #room-screen.theme-love { background: radial-gradient(circle at 18% 16%, #3a1328 0%, #170812 52%, #050205 100%); }
+        #room-screen.theme-love { background: radial-gradient(circle at 18% 14%, #5e0d5a 0%, #3f0451 20%, #1b0035 56%, #090016 100%); position: relative; overflow: hidden; }
+        #room-screen.theme-love::before { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 1; background:
+            radial-gradient(1200px 420px at 50% -12%, rgba(249, 84, 177, 0.36) 0%, rgba(249, 84, 177, 0.08) 48%, rgba(0,0,0,0) 72%),
+            radial-gradient(700px 260px at 50% 108%, rgba(92, 23, 108, 0.28) 0%, rgba(0,0,0,0) 75%);
+            mix-blend-mode: screen;
+        }
+        #room-screen.theme-love::after { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 1; background: linear-gradient(180deg, rgba(15,0,28,0.22) 0%, rgba(8,0,18,0.45) 100%); }
         body.theme-love-room .modal-content.glass-panel,
         #room-screen.theme-love .glass-panel { border-color: rgba(226, 120, 169, 0.22); box-shadow: 0 12px 35px rgba(66, 15, 42, 0.55); background: rgba(20, 6, 14, 0.9); }
         #room-screen.theme-love .chat-section,
@@ -265,12 +271,16 @@
         #room-screen.theme-love .room-top-bar,
         #room-screen.theme-love .video-container,
         #room-screen.theme-love .chat-section { border-color: rgba(214, 120, 166, 0.24); }
-        #room-theme-effects { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 3; }
-        #room-theme-effects-chat { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 1; }
-        #chat-messages, #users-list, .chat-input-area { position: relative; z-index: 2; }
-        .love-heart { position: absolute; bottom: -40px; color: #ff7eb8; opacity: 0.55; font-size: 18px; animation: loveFloatUp 15s linear forwards; text-shadow: 0 0 14px rgba(255, 126, 184, 0.35); }
-        .love-heart.layer-chat { opacity: 0.35; color: #e472a8; animation-duration: 18s; }
-        @keyframes loveFloatUp { from { transform: translateY(0) scale(0.85); opacity: 0; } 12% { opacity: 1; } to { transform: translateY(-135vh) scale(1.18); opacity: 0; } }
+        #room-theme-effects { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 2; }
+        .love-heart { position: absolute; bottom: -120px; width: 52px; height: 52px; opacity: 0; animation: loveFloatUp 20s linear forwards; filter: blur(0.15px); }
+        .love-heart::before, .love-heart::after { content: ''; position: absolute; width: 52px; height: 52px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, rgba(255,136,213,0.9) 0%, rgba(221,83,171,0.8) 45%, rgba(130,26,118,0.75) 100%); }
+        .love-heart::before { left: -26px; top: 0; }
+        .love-heart::after { top: -26px; left: 0; }
+        .love-heart .heart-core { position: absolute; width: 52px; height: 52px; background: radial-gradient(circle at 38% 28%, rgba(255,146,220,0.9) 0%, rgba(190,65,151,0.82) 48%, rgba(102,20,93,0.75) 100%); transform: rotate(45deg); left: 0; top: 0; border-radius: 7px; box-shadow: 0 0 26px rgba(205, 69, 156, 0.22), inset 0 -10px 18px rgba(67, 8, 66, 0.32); }
+        .love-heart.far { opacity: 0.2; filter: blur(2px); }
+        .love-heart.mid { opacity: 0.34; filter: blur(1px); }
+        .love-heart.near { opacity: 0.48; filter: blur(0); }
+        @keyframes loveFloatUp { from { transform: translate3d(0, 0, 0) scale(var(--heart-scale, 1)); opacity: 0; } 10% { opacity: var(--heart-opacity, 0.45); } to { transform: translate3d(var(--heart-drift, 20px), -125vh, 0) scale(calc(var(--heart-scale, 1) * 1.06)); opacity: 0; } }
 
         @media (max-width: 1024px) {
             .lobby-layout { grid-template-columns: 1fr; padding: 0; }
@@ -412,7 +422,6 @@
             </div>
             
             <div class="chat-section glass-panel">
-                <div id="room-theme-effects-chat"></div>
                 <div class="chat-tabs">
                     <button id="tab-chat-btn" class="active">💬 Чат</button>
                     <button id="tab-users-btn">👥 Люди (<span id="users-count">0</span>)</button>

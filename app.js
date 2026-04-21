@@ -1986,7 +1986,6 @@ class RoomManager {
     static themeOptions = ['default', 'love'];
     static themeIndex = 0;
     static heartsTimer = null;
-    static heartsChatTimer = null;
 
     static syncDeveloperControls(profile = {}) {
         AdminPanel.syncSidebarButton(profile);
@@ -2534,29 +2533,29 @@ class RoomManager {
 
     static startLoveHearts() {
         const layer = Utils.$('room-theme-effects');
-        const chatLayer = Utils.$('room-theme-effects-chat');
-        if (!layer || !chatLayer || this.heartsTimer || this.heartsChatTimer) return;
+        if (!layer || this.heartsTimer) return;
         this.heartsTimer = setInterval(() => {
             const heart = document.createElement('div');
             heart.className = 'love-heart';
-            heart.innerText = Math.random() > 0.5 ? '❤' : '💗';
+            const distance = Math.random();
+            if (distance < 0.33) heart.classList.add('far');
+            else if (distance < 0.66) heart.classList.add('mid');
+            else heart.classList.add('near');
+            const core = document.createElement('div');
+            core.className = 'heart-core';
+            heart.appendChild(core);
             heart.style.left = `${Math.random() * 100}%`;
-            heart.style.fontSize = `${12 + Math.random() * 12}px`;
-            heart.style.animationDuration = `${13 + Math.random() * 8}s`;
+            const scale = 0.5 + Math.random() * 1.4;
+            const drift = -45 + Math.random() * 90;
+            const duration = 17 + Math.random() * 13;
+            const opacity = 0.2 + Math.random() * 0.38;
+            heart.style.setProperty('--heart-scale', String(scale));
+            heart.style.setProperty('--heart-drift', `${drift}px`);
+            heart.style.setProperty('--heart-opacity', String(opacity));
+            heart.style.animationDuration = `${duration}s`;
             layer.appendChild(heart);
-            setTimeout(() => heart.remove(), 23000);
-        }, 1400);
-
-        this.heartsChatTimer = setInterval(() => {
-            const heart = document.createElement('div');
-            heart.className = 'love-heart layer-chat';
-            heart.innerText = Math.random() > 0.5 ? '❤' : '💗';
-            heart.style.left = `${Math.random() * 100}%`;
-            heart.style.fontSize = `${10 + Math.random() * 10}px`;
-            heart.style.animationDuration = `${16 + Math.random() * 8}s`;
-            chatLayer.appendChild(heart);
-            setTimeout(() => heart.remove(), 26000);
-        }, 1900);
+            setTimeout(() => heart.remove(), 33000);
+        }, 1650);
     }
 
     static stopLoveHearts() {
@@ -2564,14 +2563,8 @@ class RoomManager {
             clearInterval(this.heartsTimer);
             this.heartsTimer = null;
         }
-        if (this.heartsChatTimer) {
-            clearInterval(this.heartsChatTimer);
-            this.heartsChatTimer = null;
-        }
         const layer = Utils.$('room-theme-effects');
         if (layer) layer.innerHTML = '';
-        const chatLayer = Utils.$('room-theme-effects-chat');
-        if (chatLayer) chatLayer.innerHTML = '';
     }
 }
 
