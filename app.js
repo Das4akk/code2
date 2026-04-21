@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @fileoverview COW Core Engine v4.0 - The Ultimate Edition
  * @description Интегрированы все фиксы: MPA-подобная стабильность, обход пароля по инвайтам,
  * улучшенный интерактивный нейрофон, левитация элементов, фикс мобильного скролла,
@@ -10,7 +10,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 import { 
     getAuth, onAuthStateChanged, signInWithEmailAndPassword, 
     createUserWithEmailAndPassword, signOut, updateProfile,
-    signInWithPopup, GoogleAuthProvider
+    signInWithPopup, GoogleAuthProvider,
+    reauthenticateWithCredential, EmailAuthProvider,
+    verifyBeforeUpdateEmail
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { 
     getDatabase, ref, set, get, push, onValue, onDisconnect, 
@@ -381,8 +383,10 @@ class AuthManager {
             const pass = Utils.$('reg-pass').value.trim();
             const name = Utils.$('reg-name').value.trim();
             let username = Utils.$('reg-username').value.toLowerCase().trim().replace('@', '');
+            const agreementAccepted = Utils.$('reg-agreement')?.checked;
 
             if (!email || pass.length < 6 || !name || !username) return Utils.toast('Заполните поля. Пароль от 6 символов.', 'error');
+            if (!agreementAccepted) return Utils.toast('Примите пользовательское соглашение', 'error');
             if (!/^[a-z0-9_]{3,15}$/.test(username)) return Utils.toast('ID: 3-15 символов, только a-z, 0-9 и _', 'error');
 
             try {
@@ -394,7 +398,10 @@ class AuthManager {
                 AppState.isRegistering = true;
                 const creds = await createUserWithEmailAndPassword(auth, email, pass);
                 await updateProfile(creds.user, { displayName: name });
-                await ProfileManager.createProfile(creds.user.uid, name, username, email);
+                await ProfileManager.createProfile(creds.user.uid, name, username, email, {
+                    provider: 'email',
+                    emailVerified: false
+                });
                 AppState.isRegistering = false;
             } catch (e) {
                 AppState.isRegistering = false;
@@ -411,7 +418,10 @@ class AuthManager {
                     AppState.isRegistering = true;
                     const baseName = result.user.displayName || 'GoogleUser';
                     const rand = Utils.generateCryptoId(4);
-                    await ProfileManager.createProfile(result.user.uid, baseName, `user_${rand}`, result.user.email);
+                    await ProfileManager.createProfile(result.user.uid, baseName, `user_${rand}`, result.user.email, {
+                        provider: 'google',
+                        emailVerified: Boolean(result.user.emailVerified)
+                    });
                     AppState.isRegistering = false;
                 }
             } catch (e) { Utils.toast('Ошибка входа через Google', 'error'); }
@@ -448,6 +458,93 @@ class AuthManager {
     }
 }
 
+class HashtagManager {
+    static defaultTags = ['#music', '#movies', '#gaming', '#love', '#chill', '#anime', '#coding', '#friends'];
+
+    static initHashtags() {
+        this.bindHashtagInput('edit-hashtags', 'profile-hashtag-suggestions', false);
+        this.bindHashtagInput('room-input-hashtag', 'room-hashtag-suggestions', true);
+    }
+
+    static parseHashtags(rawValue = '', single = false) {
+        const tokens = String(rawValue || '')
+            .split(/\s+/)
+            .map(token => this.normalizeTag(token))
+            .filter(Boolean);
+        const unique = Array.from(new Set(tokens));
+        return single ? unique.slice(0, 1) : unique.slice(0, 10);
+    }
+
+    static normalizeTag(value = '') {
+        const clean = String(value || '')
+            .replace(/#/g, '')
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-zа-я0-9_]/gi, '');
+        return clean ? `#${clean}` : '';
+    }
+
+    static collectTags() {
+        const tags = new Set(this.defaultTags);
+        AppState.usersCache.forEach((profile) => {
+            if (!Array.isArray(profile?.hashtags)) return;
+            profile.hashtags.forEach(tag => {
+                const normalized = this.normalizeTag(tag);
+                if (normalized) tags.add(normalized);
+            });
+        });
+        AppState.roomsCache.forEach((room) => {
+            if (!Array.isArray(room?.hashtags)) return;
+            room.hashtags.forEach(tag => {
+                const normalized = this.normalizeTag(tag);
+                if (normalized) tags.add(normalized);
+            });
+        });
+        return Array.from(tags);
+    }
+
+    static bindHashtagInput(inputId, suggestionsId, single = false) {
+        const input = Utils.$(inputId);
+        const suggestions = Utils.$(suggestionsId);
+        if (!input || !suggestions) return;
+
+        const updateSuggestions = () => {
+            const current = input.value.trim().toLowerCase().replace('#', '');
+            const pool = this.collectTags();
+            const filtered = pool
+                .filter(tag => !current || tag.includes(current))
+                .slice(0, 6);
+
+            if (!filtered.length) {
+                suggestions.classList.remove('active');
+                suggestions.innerHTML = '';
+                return;
+            }
+
+            suggestions.innerHTML = filtered
+                .map(tag => `<button class="hashtag-suggestion-item" data-tag="${Utils.escapeHtml(tag)}">${Utils.escapeHtml(tag)}</button>`)
+                .join('');
+            suggestions.classList.add('active');
+
+            suggestions.querySelectorAll('.hashtag-suggestion-item').forEach(btn => {
+                btn.onclick = () => {
+                    const tag = btn.dataset.tag || '';
+                    if (single) input.value = tag;
+                    else {
+                        const existing = this.parseHashtags(input.value, false).filter(t => t !== tag);
+                        input.value = [...existing, tag].join(' ');
+                    }
+                    suggestions.classList.remove('active');
+                };
+            });
+        };
+
+        input.addEventListener('focus', updateSuggestions);
+        input.addEventListener('input', updateSuggestions);
+        input.addEventListener('blur', () => setTimeout(() => suggestions.classList.remove('active'), 120));
+    }
+}
+
 class ProfileManager {
     static getRoleBadgeHtml(profile, uid = null) {
         if (!profile) return '';
@@ -473,7 +570,7 @@ class ProfileManager {
         return snap.val() === excludeUid;
     }
 
-    static async createProfile(uid, name, username, email) {
+    static async createProfile(uid, name, username, email, security = {}) {
         const cleanName = username.toLowerCase().trim();
         const developerUid = await AdminPanel.getDeveloperUid();
         const isDeveloperProfile = cleanName === 'developer';
@@ -482,7 +579,19 @@ class ProfileManager {
             throw new Error('ID developer зарезервирован');
         }
 
-        const profileData = { name, username: cleanName, email, bio: '', avatar: '', createdAt: Date.now() };
+        const profileData = {
+            name,
+            username: cleanName,
+            email,
+            bio: '',
+            avatar: '',
+            hashtags: [],
+            createdAt: Date.now(),
+            provider: security.provider || this.normalizeProvider(auth.currentUser),
+            emailVerified: typeof security.emailVerified === 'boolean'
+                ? security.emailVerified
+                : Boolean(auth.currentUser?.emailVerified)
+        };
         if (isDeveloperProfile) profileData.role = 'creator';
 
         const updates = {};
@@ -496,7 +605,10 @@ class ProfileManager {
         const snap = await get(ref(db, `users/${user.uid}/profile`));
         if (!snap.exists()) {
             const fallbackUser = `user_${Utils.generateCryptoId(6)}`;
-            await this.createProfile(user.uid, user.displayName || 'Guest', fallbackUser, user.email);
+            await this.createProfile(user.uid, user.displayName || 'Guest', fallbackUser, user.email, {
+                provider: this.normalizeProvider(user),
+                emailVerified: Boolean(user.emailVerified)
+            });
         }
     }
 
@@ -506,6 +618,7 @@ class ProfileManager {
         const unsub = onValue(profileRef, (snap) => {
             const p = snap.val() || {};
             AppState.usersCache.set(uid, p);
+            this.syncProfileSecurityFields(uid, p);
             AdminPanel.hydrateDeveloperUidFromProfile(uid, p);
             
             const badgeHtml = this.getRoleBadgeHtml(p, uid);
@@ -522,6 +635,14 @@ class ProfileManager {
         AppState.activeSubscriptions.push(() => off(profileRef, 'value', unsub));
 
         Utils.$('btn-open-my-profile').onclick = () => this.openEditProfileModal();
+        Utils.$('btn-profile-menu').onclick = (e) => {
+            e.stopPropagation();
+            this.toggleProfileMenu();
+        };
+        Utils.$('btn-open-security').onclick = () => this.openSecurityModal();
+        document.addEventListener('click', () => {
+            Utils.$('profile-menu-dropdown')?.classList.remove('active');
+        });
     }
 
     static openEditProfileModal() {
@@ -529,6 +650,7 @@ class ProfileManager {
         Utils.$('edit-name').value = p.name || '';
         Utils.$('edit-username-input').value = p.username || '';
         Utils.$('edit-bio').value = p.bio || '';
+        Utils.$('edit-hashtags').value = Array.isArray(p.hashtags) ? p.hashtags.join(' ') : '';
         Utils.$('edit-avatar-url').value = p.avatar || '';
         this.updateAvatarPreview(p.avatar, p.name);
         
@@ -549,6 +671,135 @@ class ProfileManager {
         };
     }
 
+    static normalizeProvider(user = null) {
+        const authUser = user || auth.currentUser;
+        const providerId = authUser?.providerData?.[0]?.providerId || authUser?.providerId || '';
+        if (providerId === 'password') return 'email';
+        if (providerId === 'google.com') return 'google';
+        return providerId || 'email';
+    }
+
+    static getCurrentAuthSecurity() {
+        const user = auth.currentUser;
+        return {
+            email: user?.email || '',
+            provider: this.normalizeProvider(user),
+            emailVerified: Boolean(user?.emailVerified)
+        };
+    }
+
+    static syncProfileSecurityFields(uid, profile = {}) {
+        const authSecurity = this.getCurrentAuthSecurity();
+        const needsSync = (
+            typeof profile.provider === 'undefined' ||
+            typeof profile.emailVerified === 'undefined' ||
+            (!profile.email && authSecurity.email) ||
+            (profile.email && authSecurity.email && profile.email !== authSecurity.email) ||
+            (typeof profile.emailVerified === 'boolean' && profile.emailVerified !== authSecurity.emailVerified)
+        );
+        if (!needsSync) return;
+        update(ref(db, `users/${uid}/profile`), {
+            email: authSecurity.email || profile.email || '',
+            provider: profile.provider || authSecurity.provider,
+            emailVerified: authSecurity.emailVerified
+        }).catch(() => {});
+    }
+
+    static toggleProfileMenu() {
+        Utils.$('profile-menu-dropdown')?.classList.toggle('active');
+    }
+
+    static openSecurityModal() {
+        Utils.$('profile-menu-dropdown')?.classList.remove('active');
+        this.renderSecurityModal();
+        Utils.$('modal-security').classList.add('active');
+    }
+
+    static renderSecurityModal() {
+        const p = AppState.usersCache.get(AppState.currentUser.uid) || {};
+        const authSecurity = this.getCurrentAuthSecurity();
+        const provider = p.provider || authSecurity.provider;
+        const email = p.email || authSecurity.email;
+        const emailVerified = typeof p.emailVerified === 'boolean' ? p.emailVerified : authSecurity.emailVerified;
+
+        const emailBox = Utils.$('security-email-box');
+        const note = Utils.$('security-verified-note');
+        const actionBtn = Utils.$('btn-security-email-action');
+        const emailInput = Utils.$('security-email-input');
+        const passwordInput = Utils.$('security-password-input');
+
+        if (provider === 'google') {
+            emailBox.innerText = 'Вы не указали почту';
+            actionBtn.innerText = 'Указать email';
+            passwordInput.style.display = 'none';
+        } else {
+            emailBox.innerText = email || 'Email не указан';
+            actionBtn.innerText = 'Изменить почту';
+            passwordInput.style.display = 'block';
+        }
+
+        note.innerText = `Почта подтверждена: ${emailVerified ? 'Да' : 'Нет'}`;
+        emailInput.value = email || '';
+        passwordInput.value = '';
+
+        actionBtn.onclick = async () => {
+            const btn = Utils.$('btn-security-email-action');
+            btn.disabled = true;
+            try {
+                await this.saveSecurityEmail({
+                    provider,
+                    newEmail: emailInput.value.trim(),
+                    currentPassword: passwordInput.value.trim()
+                });
+                await auth.currentUser?.reload();
+                await update(ref(db, `users/${AppState.currentUser.uid}/profile`), {
+                    email: auth.currentUser?.email || emailInput.value.trim(),
+                    provider,
+                    emailVerified: Boolean(auth.currentUser?.emailVerified)
+                });
+                const refreshed = AppState.usersCache.get(AppState.currentUser.uid) || {};
+                AppState.usersCache.set(AppState.currentUser.uid, {
+                    ...refreshed,
+                    email: auth.currentUser?.email || emailInput.value.trim(),
+                    provider,
+                    emailVerified: Boolean(auth.currentUser?.emailVerified)
+                });
+                this.renderSecurityModal();
+                Utils.toast('Письмо для подтверждения отправлено на новый email');
+            } catch (e) {
+                Utils.toast(this.getSecurityEmailErrorText(e), 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        };
+    }
+
+    static getSecurityEmailErrorText(error) {
+        const code = String(error?.code || '');
+        if (code === 'auth/wrong-password') return 'Неверный текущий пароль';
+        if (code === 'auth/invalid-email') return 'Некорректный email';
+        if (code === 'auth/email-already-in-use') return 'Этот email уже используется';
+        if (code === 'auth/requires-recent-login') return 'Повторно войдите в аккаунт и попробуйте снова';
+        if (code === 'auth/operation-not-allowed') return 'Смена почты через прямое обновление отключена. Подтвердите новый email по письму';
+        return error?.message || 'Ошибка обновления почты';
+    }
+
+    static async saveSecurityEmail({ provider, newEmail, currentPassword }) {
+        const user = auth.currentUser;
+        if (!user) throw new Error('Пользователь не авторизован');
+        if (!newEmail) throw new Error('Введите email');
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) throw new Error('Некорректный email');
+        if ((user.email || '').toLowerCase() === newEmail.toLowerCase()) throw new Error('Это уже ваш текущий email');
+
+        if (provider === 'email') {
+            if (!currentPassword) throw new Error('Введите текущий пароль');
+            const credential = EmailAuthProvider.credential(user.email || '', currentPassword);
+            await reauthenticateWithCredential(user, credential);
+        }
+
+        await verifyBeforeUpdateEmail(user, newEmail);
+    }
+
     static updateAvatarPreview(url, name) {
         const prev = Utils.$('edit-avatar-preview');
         if (url) {
@@ -564,6 +815,7 @@ class ProfileManager {
         const name = Utils.$('edit-name').value.trim();
         let username = Utils.$('edit-username-input').value.toLowerCase().trim().replace('@', '');
         const bio = Utils.$('edit-bio').value.trim();
+        const hashtags = HashtagManager.parseHashtags(Utils.$('edit-hashtags').value, false);
         const avatar = Utils.$('edit-avatar-url').value.trim();
 
         if (!name || !username) throw new Error('Имя и ID обязательны');
@@ -587,7 +839,7 @@ class ProfileManager {
             updates[`usernames/${username}`] = uid;
         }
 
-        updates[`users/${uid}/profile`] = { ...oldProfile, name, username, bio, avatar };
+        updates[`users/${uid}/profile`] = { ...oldProfile, name, username, bio, hashtags, avatar };
         await update(ref(db), updates);
     }
 
@@ -619,6 +871,9 @@ class ProfileManager {
             Друзей: ${friendsCount}<br>
             На платформе с: ${joinDate}
         `;
+        const hashtagsEl = Utils.$('view-hashtags');
+        const profileTags = Array.isArray(profile.hashtags) ? profile.hashtags : [];
+        hashtagsEl.innerHTML = profileTags.map(tag => `<span class="hashtag-chip">${Utils.escapeHtml(tag)}</span>`).join('');
         
         const avatarEl = Utils.$('view-avatar');
         if (profile.avatar) {
@@ -785,6 +1040,9 @@ class FriendsManager {
 }
 
 class DirectMessages {
+    static heartsTimer = null;
+    static theme = 'default';
+
     static getChatId(uid1, uid2) { return [uid1, uid2].sort().join('_'); }
 
     static closeChat() {
@@ -795,9 +1053,11 @@ class DirectMessages {
         AppState.currentDirectChat = null;
         const modal = Utils.$('modal-dm-chat');
         if (modal) modal.classList.remove('active');
+        this.stopLoveHearts();
         if (Utils.$('dm-input')) Utils.$('dm-input').value = '';
         if (Utils.$('dm-messages')) Utils.$('dm-messages').innerHTML = '';
         if (Utils.$('dm-chat-title')) Utils.$('dm-chat-title').innerText = 'Личный чат';
+        Utils.$('dm-theme-controls')?.classList.remove('active');
     }
 
     static startNotifications() {
@@ -833,6 +1093,8 @@ class DirectMessages {
         
         Utils.$('dm-chat-title').innerText = `Чат: ${targetName}`;
         Utils.$('modal-dm-chat').classList.add('active');
+        this.bindThemeControls();
+        this.applyTheme(this.theme);
 
         const chatRef = ref(db, `direct-messages/${chatId}`);
         this.unsubCurrent = onValue(chatRef, (snap) => {
@@ -866,9 +1128,13 @@ class DirectMessages {
 
     static renderMessages(messages) {
         const list = Utils.$('dm-messages');
-        if (!messages.length) { list.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:20px;">Нет сообщений</div>'; return; }
+        const heartsLayer = '<div class="panel-love-hearts" id="dm-love-hearts"></div>';
+        if (!messages.length) {
+            list.innerHTML = `${heartsLayer}<div style="color:var(--text-muted); text-align:center; padding:20px;">Нет сообщений</div>`;
+            return;
+        }
         
-        list.innerHTML = messages.map(m => {
+        list.innerHTML = heartsLayer + messages.map(m => {
             const isSelf = m.fromUid === AppState.currentUser.uid;
             
             if (m.type === 'invite') {
@@ -898,6 +1164,70 @@ class DirectMessages {
             `;
         }).join('');
         list.scrollTop = list.scrollHeight;
+        if (this.theme === 'love') this.startLoveHearts();
+    }
+
+    static bindThemeControls() {
+        const toggle = Utils.$('btn-dm-theme-toggle');
+        const controls = Utils.$('dm-theme-controls');
+        if (!toggle || !controls) return;
+        toggle.onclick = () => controls.classList.toggle('active');
+        controls.querySelectorAll('.dm-theme-chip').forEach(btn => {
+            btn.onclick = () => this.applyTheme(btn.dataset.theme || 'default');
+        });
+    }
+
+    static applyTheme(theme = 'default') {
+        const modal = Utils.$('modal-dm-chat');
+        if (!modal) return;
+        this.theme = theme === 'love' ? 'love' : 'default';
+        modal.classList.toggle('theme-love', this.theme === 'love');
+        Utils.$('dm-theme-controls')?.querySelectorAll('.dm-theme-chip').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.theme === this.theme);
+        });
+        if (this.theme === 'love') this.startLoveHearts();
+        else this.stopLoveHearts();
+    }
+
+    static startLoveHearts() {
+        if (this.theme !== 'love') return;
+        if (this.heartsTimer) return;
+
+        const spawnHeart = () => {
+            const layer = Utils.$('dm-love-hearts');
+            if (!layer) return;
+            const heart = document.createElement('div');
+            const roll = Math.random();
+            const mode = roll < 0.33 ? 'far' : roll > 0.74 ? 'near' : 'mid';
+            heart.className = `love-heart ${mode}`;
+            heart.innerText = RoomManager.loveHeartEmojis[Math.floor(Math.random() * RoomManager.loveHeartEmojis.length)];
+            heart.style.left = `${10 + Math.random() * 80}%`;
+            const scaleBase = mode === 'far' ? 0.45 : mode === 'near' ? 1.15 : 0.78;
+            const scale = scaleBase + Math.random() * (mode === 'near' ? 0.35 : 0.25);
+            const drift = -12 + Math.random() * 24;
+            const duration = mode === 'near' ? 34 + Math.random() * 10 : 30 + Math.random() * 10;
+            const opacity = mode === 'far' ? 0.18 + Math.random() * 0.12 : mode === 'near' ? 0.34 + Math.random() * 0.18 : 0.25 + Math.random() * 0.14;
+            const travel = (layer.clientHeight || 620) + 120;
+            heart.style.setProperty('--heart-scale', String(scale));
+            heart.style.setProperty('--heart-drift', `${drift}px`);
+            heart.style.setProperty('--heart-opacity', String(opacity));
+            heart.style.setProperty('--heart-travel', `${travel}px`);
+            heart.style.animationDuration = `${duration}s`;
+            layer.appendChild(heart);
+            setTimeout(() => heart.remove(), 46000);
+        };
+
+        for (let i = 0; i < 8; i++) spawnHeart();
+        this.heartsTimer = setInterval(spawnHeart, 1700);
+    }
+
+    static stopLoveHearts() {
+        if (this.heartsTimer) {
+            clearInterval(this.heartsTimer);
+            this.heartsTimer = null;
+        }
+        const layer = Utils.$('dm-love-hearts');
+        if (layer) layer.innerHTML = '';
     }
 
     static async sendRoomInvite(targetUid) {
@@ -1821,6 +2151,11 @@ class AdminPanel {
 // ============================================================================
 
 class RoomManager {
+    static themeOptions = ['default', 'love'];
+    static themeIndex = 0;
+    static heartsTimer = null;
+    static loveHeartEmojis = ['💗', '💘', '💞', '💕'];
+
     static syncDeveloperControls(profile = {}) {
         AdminPanel.syncSidebarButton(profile);
     }
@@ -1857,7 +2192,38 @@ class RoomManager {
         
         Utils.$('room-input-private').onchange = (e) => { Utils.$('room-input-password').style.display = e.target.checked ? 'block' : 'none'; };
         Utils.$('btn-leave-room').onclick = () => this.leaveRoom();
+        this.initThemes();
         this.applyCreateRoomAvailability();
+    }
+
+    static initThemes() {
+        const toggleBtn = Utils.$('btn-room-theme-toggle');
+        const carousel = Utils.$('room-theme-carousel');
+        const prevBtn = Utils.$('room-theme-prev');
+        const nextBtn = Utils.$('room-theme-next');
+        const track = Utils.$('room-theme-track');
+        if (!toggleBtn || !carousel || !prevBtn || !nextBtn || !track) return;
+
+        const showTheme = (idx) => {
+            this.themeIndex = (idx + this.themeOptions.length) % this.themeOptions.length;
+            const value = this.themeOptions[this.themeIndex];
+            Utils.$('modal-room').dataset.selectedTheme = value;
+            track.style.transform = `translateX(-${this.themeIndex * 100}%)`;
+            track.querySelectorAll('.theme-card').forEach(card => {
+                card.classList.toggle('active', card.dataset.theme === value);
+            });
+        };
+
+        toggleBtn.onclick = () => carousel.classList.toggle('active');
+        prevBtn.onclick = () => showTheme(this.themeIndex - 1);
+        nextBtn.onclick = () => showTheme(this.themeIndex + 1);
+        track.querySelectorAll('.theme-card').forEach(card => {
+            card.onclick = () => {
+                const next = this.themeOptions.indexOf(card.dataset.theme);
+                if (next >= 0) showTheme(next);
+            };
+        });
+        showTheme(0);
     }
 
     static updateRoomsDOM() {
@@ -1887,6 +2253,9 @@ class RoomManager {
                 if (video) { video.addEventListener('loadedmetadata', () => { video.currentTime = Math.min(10, video.duration / 2); card.querySelector('.room-preview').classList.add('loaded'); }, { once: true }); }
             }
             card.querySelector('.rm-title').innerText = `${lock}${room.name}`;
+            if (Array.isArray(room.hashtags) && room.hashtags[0]) {
+                card.querySelector('.rm-title').innerText = `${lock}${room.name} ${room.hashtags[0]}`;
+            }
             card.querySelector('.rm-host').innerText = `Хост: ${room.hostName || 'Неизвестно'}`;
             card.querySelector('.rm-count').innerText = `👥 ${membersCount}`;
             count++;
@@ -1913,6 +2282,15 @@ class RoomManager {
             const r = AppState.roomsCache.get(roomId);
             Utils.$('room-input-name').value = r.name || ''; Utils.$('room-input-url').value = r.videoUrl || '';
             Utils.$('room-input-private').checked = r.isPrivate; Utils.$('room-input-password').style.display = r.isPrivate ? 'block' : 'none';
+            Utils.$('room-input-hashtag').value = Array.isArray(r.hashtags) ? (r.hashtags[0] || '') : '';
+            const theme = this.themeOptions.includes(r.theme) ? r.theme : 'default';
+            this.themeIndex = this.themeOptions.indexOf(theme);
+            Utils.$('modal-room').dataset.selectedTheme = theme;
+            Utils.$('room-theme-track').style.transform = `translateX(-${this.themeIndex * 100}%)`;
+            Utils.$('room-theme-track').querySelectorAll('.theme-card').forEach(card => {
+                card.classList.toggle('active', card.dataset.theme === theme);
+            });
+            Utils.$('room-theme-carousel').classList.remove('active');
             Utils.$('btn-delete-room').onclick = async () => {
                 if(confirm('Точно удалить комнату навсегда?')) {
                     await remove(ref(db, `rooms/${roomId}`)); modal.classList.remove('active'); this.leaveRoom();
@@ -1921,6 +2299,14 @@ class RoomManager {
         } else {
             Utils.$('room-input-name').value = ''; Utils.$('room-input-url').value = '';
             Utils.$('room-input-private').checked = false; Utils.$('room-input-password').style.display = 'none'; Utils.$('room-input-password').value = '';
+            Utils.$('room-input-hashtag').value = '';
+            this.themeIndex = 0;
+            Utils.$('modal-room').dataset.selectedTheme = 'default';
+            Utils.$('room-theme-track').style.transform = 'translateX(0%)';
+            Utils.$('room-theme-track').querySelectorAll('.theme-card').forEach(card => {
+                card.classList.toggle('active', card.dataset.theme === 'default');
+            });
+            Utils.$('room-theme-carousel').classList.remove('active');
         }
         modal.classList.add('active'); modal.dataset.editingId = isEdit ? roomId : '';
     }
@@ -1928,7 +2314,9 @@ class RoomManager {
     static async saveRoom() {
         const name = Utils.$('room-input-name').value.trim(); const videoUrl = Utils.$('room-input-url').value.trim();
         const isPrivate = Utils.$('room-input-private').checked; const password = Utils.$('room-input-password').value.trim();
+        const hashtags = HashtagManager.parseHashtags(Utils.$('room-input-hashtag').value, true);
         const roomId = Utils.$('modal-room').dataset.editingId;
+        const selectedTheme = Utils.$('modal-room').dataset.selectedTheme || 'default';
 
         if (!roomId && AppState.admin.settings.roomCreationBlocked && !AdminPanel.isCurrentUserAdmin()) {
             return Utils.toast('Создание комнат временно отключено администратором', 'error');
@@ -1939,12 +2327,24 @@ class RoomManager {
 
         Utils.$('btn-save-room').disabled = true;
         try {
-            const roomData = { name, videoUrl, isPrivate, hostId: AppState.currentUser.uid, hostName: AppState.currentUser.displayName || 'Хост', updatedAt: Date.now() };
+            const roomData = {
+                name,
+                videoUrl,
+                isPrivate,
+                hashtags,
+                theme: this.themeOptions.includes(selectedTheme) ? selectedTheme : 'default',
+                hostId: AppState.currentUser.uid,
+                hostName: AppState.currentUser.displayName || 'Хост',
+                updatedAt: Date.now()
+            };
             if (isPrivate && password) { roomData.salt = Utils.generateCryptoId(16); roomData.hash = await Utils.hashPassword(password, roomData.salt); }
 
             if (roomId) {
                 if (isPrivate && !password) { const oldR = AppState.roomsCache.get(roomId); roomData.salt = oldR.salt; roomData.hash = oldR.hash; }
                 await update(ref(db, `rooms/${roomId}`), roomData); Utils.toast('Настройки сохранены');
+                const mergedRoom = { ...(AppState.roomsCache.get(roomId) || {}), ...roomData };
+                AppState.roomsCache.set(roomId, mergedRoom);
+                if (AppState.currentRoomId === roomId) this.applyRoomTheme(mergedRoom.theme || 'default');
             } else {
                 roomData.createdAt = Date.now(); const newRef = push(ref(db, 'rooms')); await set(newRef, roomData); Utils.toast('Комната создана');
                 this.enterRoomFinal(newRef.key, roomData);
@@ -1976,7 +2376,8 @@ class RoomManager {
         AppState.usersListRenderToken++;
         AppState.roomSubscriptions.forEach(fn => fn()); AppState.roomSubscriptions = [];
         
-        Utils.$('room-title-text').innerText = Utils.escapeHtml(roomData.name);
+        const roomTag = Array.isArray(roomData.hashtags) && roomData.hashtags[0] ? ` ${roomData.hashtags[0]}` : '';
+        Utils.$('room-title-text').innerText = Utils.escapeHtml(`${roomData.name}${roomTag}`);
         const vid = Utils.$('native-player');
         const nextVideoUrl = String(roomData.videoUrl || '').trim();
 
@@ -2019,6 +2420,8 @@ class RoomManager {
 
         Utils.showScreen('room-screen');
         Utils.$('chat-messages').innerHTML = '<div class="sys-msg">Вы вошли в комнату</div>';
+        Utils.$('users-list').innerHTML = '';
+        this.applyRoomTheme(roomData.theme || 'default');
         
         this.initRoomServicesFinal(roomId);
         RTCManager.init(roomId); 
@@ -2286,10 +2689,79 @@ class RoomManager {
         AppState.currentPresenceCache = {};
         AppState.usersListRenderToken++;
         AppState.currentRoomId = null;
+        this.applyRoomTheme('default');
         AppState.isHost = false;
         if (Utils.$('users-list')) Utils.$('users-list').innerHTML = '';
         if (Utils.$('users-count')) Utils.$('users-count').innerText = '0';
         Utils.showScreen('lobby-screen');
+    }
+
+    static applyRoomTheme(theme = 'default') {
+        const roomScreen = Utils.$('room-screen');
+        if (!roomScreen) return;
+        roomScreen.classList.remove('theme-love');
+        document.body.classList.remove('theme-love-room');
+        this.stopLoveHearts();
+        if (theme === 'love') {
+            roomScreen.classList.add('theme-love');
+            document.body.classList.add('theme-love-room');
+            this.startLoveHearts();
+            // Fallback: containers may appear a tick later after rerender.
+            setTimeout(() => this.startLoveHearts(), 150);
+        }
+    }
+
+    static startLoveHearts() {
+        if (this.heartsTimer) return;
+
+        const spawnHeart = (layer, mode = 'mid') => {
+            if (!layer) return;
+            const heart = document.createElement('div');
+            heart.className = `love-heart ${mode}`;
+            heart.innerText = this.loveHeartEmojis[Math.floor(Math.random() * this.loveHeartEmojis.length)];
+            heart.style.left = `${10 + Math.random() * 80}%`;
+            const scaleBase = mode === 'far' ? 0.45 : mode === 'near' ? 1.15 : 0.78;
+            const scale = scaleBase + Math.random() * (mode === 'near' ? 0.35 : 0.25);
+            const drift = -12 + Math.random() * 24;
+            const duration = mode === 'near' ? 34 + Math.random() * 10 : 30 + Math.random() * 10;
+            const opacity = mode === 'far' ? 0.18 + Math.random() * 0.12 : mode === 'near' ? 0.34 + Math.random() * 0.18 : 0.25 + Math.random() * 0.14;
+            const travel = (layer.clientHeight || 620) + 120;
+            heart.style.setProperty('--heart-scale', String(scale));
+            heart.style.setProperty('--heart-drift', `${drift}px`);
+            heart.style.setProperty('--heart-opacity', String(opacity));
+            heart.style.setProperty('--heart-travel', `${travel}px`);
+            heart.style.animationDuration = `${duration}s`;
+            layer.appendChild(heart);
+            setTimeout(() => heart.remove(), 46000);
+        };
+
+        const primeLayer = (layer, amount = 14) => {
+            if (!layer) return;
+            for (let i = 0; i < amount; i++) {
+                const roll = Math.random();
+                const mode = roll < 0.33 ? 'far' : roll > 0.74 ? 'near' : 'mid';
+                spawnHeart(layer, mode);
+            }
+        };
+
+        const layer = Utils.$('room-love-hearts');
+        primeLayer(layer, 10);
+
+        this.heartsTimer = setInterval(() => {
+            const sharedLayer = Utils.$('room-love-hearts');
+            const roll = Math.random();
+            const mode = roll < 0.33 ? 'far' : roll > 0.74 ? 'near' : 'mid';
+            spawnHeart(sharedLayer, mode);
+        }, 1700);
+    }
+
+    static stopLoveHearts() {
+        if (this.heartsTimer) {
+            clearInterval(this.heartsTimer);
+            this.heartsTimer = null;
+        }
+        const layer = Utils.$('room-love-hearts');
+        if (layer) layer.innerHTML = '';
     }
 }
 
@@ -2532,6 +3004,7 @@ class RTCManager {
 window.onload = () => {
     AuthManager.init();
     BackgroundFX.init();
+    HashtagManager.initHashtags();
 
     document.querySelectorAll('.btn-close-modal').forEach(btn => {
         btn.addEventListener('click', (e) => {
