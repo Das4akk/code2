@@ -2537,7 +2537,7 @@ class RoomManager {
     static startLoveHearts() {
         if (this.heartsChatTimer || this.heartsUsersTimer) return;
 
-        const spawnHeart = (layer, mode = 'mid', warm = false) => {
+        const spawnHeart = (layer, mode = 'mid') => {
             if (!layer) return;
             const heart = document.createElement('div');
             heart.className = `love-heart ${mode}`;
@@ -2547,15 +2547,11 @@ class RoomManager {
             const scale = scaleBase + Math.random() * (mode === 'near' ? 0.35 : 0.25);
             const drift = -12 + Math.random() * 24;
             const duration = mode === 'near' ? 34 + Math.random() * 10 : 30 + Math.random() * 10;
-            const opacity = mode === 'far' ? 0.08 + Math.random() * 0.08 : mode === 'near' ? 0.16 + Math.random() * 0.12 : 0.11 + Math.random() * 0.09;
+            const opacity = mode === 'far' ? 0.18 + Math.random() * 0.12 : mode === 'near' ? 0.34 + Math.random() * 0.18 : 0.25 + Math.random() * 0.14;
             heart.style.setProperty('--heart-scale', String(scale));
             heart.style.setProperty('--heart-drift', `${drift}px`);
             heart.style.setProperty('--heart-opacity', String(opacity));
             heart.style.animationDuration = `${duration}s`;
-            if (warm) {
-                heart.style.bottom = `${Math.random() * 95}%`;
-                heart.style.animationDelay = `-${Math.random() * duration}s`;
-            }
             layer.appendChild(heart);
             setTimeout(() => heart.remove(), 46000);
         };
@@ -2565,26 +2561,26 @@ class RoomManager {
             for (let i = 0; i < amount; i++) {
                 const roll = Math.random();
                 const mode = roll < 0.33 ? 'far' : roll > 0.74 ? 'near' : 'mid';
-                spawnHeart(layer, mode, true);
+                spawnHeart(layer, mode);
             }
         };
 
-        primeLayer(Utils.$('chat-love-hearts'), 7);
-        primeLayer(Utils.$('users-love-hearts'), 5);
+        primeLayer(Utils.$('chat-love-hearts'), 10);
+        primeLayer(Utils.$('users-love-hearts'), 8);
 
         this.heartsChatTimer = setInterval(() => {
             const chatLayer = Utils.$('chat-love-hearts');
             const roll = Math.random();
             const mode = roll < 0.33 ? 'far' : roll > 0.74 ? 'near' : 'mid';
             spawnHeart(chatLayer, mode);
-        }, 3000);
+        }, 1700);
 
         this.heartsUsersTimer = setInterval(() => {
             const usersLayer = Utils.$('users-love-hearts');
             const roll = Math.random();
             const mode = roll < 0.45 ? 'far' : roll > 0.8 ? 'near' : 'mid';
             spawnHeart(usersLayer, mode);
-        }, 3600);
+        }, 2100);
     }
 
     static stopLoveHearts() {
