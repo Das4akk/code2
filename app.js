@@ -10,7 +10,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 import { 
     getAuth, onAuthStateChanged, signInWithEmailAndPassword, 
     createUserWithEmailAndPassword, signOut, updateProfile,
-    signInWithPopup, GoogleAuthProvider
+    signInWithPopup, GoogleAuthProvider, updateEmail,
+    sendEmailVerification, reauthenticateWithCredential, EmailAuthProvider
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { 
     getDatabase, ref, set, get, push, onValue, onDisconnect, 
@@ -600,15 +601,15 @@ class ProfileManager {
         const needsSync = (
             typeof profile.provider === 'undefined' ||
             typeof profile.emailVerified === 'undefined' ||
-            (!profile.email && authSecurity.email)
+            (!profile.email && authSecurity.email) ||
+            (profile.email && authSecurity.email && profile.email !== authSecurity.email) ||
+            (typeof profile.emailVerified === 'boolean' && profile.emailVerified !== authSecurity.emailVerified)
         );
         if (!needsSync) return;
         update(ref(db, `users/${uid}/profile`), {
-            email: profile.email || authSecurity.email || '',
+            email: authSecurity.email || profile.email || '',
             provider: profile.provider || authSecurity.provider,
-            emailVerified: typeof profile.emailVerified === 'boolean'
-                ? profile.emailVerified
-                : authSecurity.emailVerified
+            emailVerified: authSecurity.emailVerified
         }).catch(() => {});
     }
 
@@ -632,19 +633,70 @@ class ProfileManager {
         const emailBox = Utils.$('security-email-box');
         const note = Utils.$('security-verified-note');
         const actionBtn = Utils.$('btn-security-email-action');
+        const emailInput = Utils.$('security-email-input');
+        const passwordInput = Utils.$('security-password-input');
 
         if (provider === 'google') {
             emailBox.innerText = 'Вы не указали почту';
             actionBtn.innerText = 'Указать email';
+            passwordInput.style.display = 'none';
         } else {
             emailBox.innerText = email || 'Email не указан';
             actionBtn.innerText = 'Изменить почту';
+            passwordInput.style.display = 'block';
         }
 
-        note.innerText = `Email подтвержден: ${emailVerified ? 'Да' : 'Нет'}`;
-        actionBtn.onclick = () => {
-            Utils.toast('Функция редактирования почты скоро будет доступна');
+        note.innerText = `Почта подтверждена: ${emailVerified ? 'Да' : 'Нет'}`;
+        emailInput.value = email || '';
+        passwordInput.value = '';
+
+        actionBtn.onclick = async () => {
+            const btn = Utils.$('btn-security-email-action');
+            btn.disabled = true;
+            try {
+                await this.saveSecurityEmail({
+                    provider,
+                    newEmail: emailInput.value.trim(),
+                    currentPassword: passwordInput.value.trim()
+                });
+                await auth.currentUser?.reload();
+                await update(ref(db, `users/${AppState.currentUser.uid}/profile`), {
+                    email: auth.currentUser?.email || emailInput.value.trim(),
+                    provider,
+                    emailVerified: Boolean(auth.currentUser?.emailVerified)
+                });
+                const refreshed = AppState.usersCache.get(AppState.currentUser.uid) || {};
+                AppState.usersCache.set(AppState.currentUser.uid, {
+                    ...refreshed,
+                    email: auth.currentUser?.email || emailInput.value.trim(),
+                    provider,
+                    emailVerified: Boolean(auth.currentUser?.emailVerified)
+                });
+                this.renderSecurityModal();
+                Utils.toast('Почта обновлена. Подтвердите ее через письмо');
+            } catch (e) {
+                Utils.toast(e.message || 'Ошибка обновления почты', 'error');
+            } finally {
+                btn.disabled = false;
+            }
         };
+    }
+
+    static async saveSecurityEmail({ provider, newEmail, currentPassword }) {
+        const user = auth.currentUser;
+        if (!user) throw new Error('Пользователь не авторизован');
+        if (!newEmail) throw new Error('Введите email');
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) throw new Error('Некорректный email');
+        if ((user.email || '').toLowerCase() === newEmail.toLowerCase()) throw new Error('Это уже ваш текущий email');
+
+        if (provider === 'email') {
+            if (!currentPassword) throw new Error('Введите текущий пароль');
+            const credential = EmailAuthProvider.credential(user.email || '', currentPassword);
+            await reauthenticateWithCredential(user, credential);
+        }
+
+        await updateEmail(user, newEmail);
+        await sendEmailVerification(user);
     }
 
     static updateAvatarPreview(url, name) {
