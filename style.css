@@ -1,4 +1,4 @@
-:root { --bg: #050505; --accent: #f5f7fa; --accent-weak: rgba(255,255,255,0.12); --accent-strong: rgba(255,255,255,0.95); }
+﻿:root { --bg: #050505; --accent: #f5f7fa; --accent-weak: rgba(255,255,255,0.12); --accent-strong: rgba(255,255,255,0.95); }
 * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
 body { background: var(--bg); color: #fff; overflow: hidden; height: 100vh; }
 button {
