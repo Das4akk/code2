@@ -10,8 +10,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 import { 
     getAuth, onAuthStateChanged, signInWithEmailAndPassword, 
     createUserWithEmailAndPassword, signOut, updateProfile,
-    signInWithPopup, GoogleAuthProvider, updateEmail,
-    sendEmailVerification, reauthenticateWithCredential, EmailAuthProvider
+    signInWithPopup, GoogleAuthProvider,
+    reauthenticateWithCredential, EmailAuthProvider,
+    verifyBeforeUpdateEmail
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { 
     getDatabase, ref, set, get, push, onValue, onDisconnect, 
@@ -673,13 +674,23 @@ class ProfileManager {
                     emailVerified: Boolean(auth.currentUser?.emailVerified)
                 });
                 this.renderSecurityModal();
-                Utils.toast('Почта обновлена. Подтвердите ее через письмо');
+                Utils.toast('Письмо для подтверждения отправлено на новый email');
             } catch (e) {
-                Utils.toast(e.message || 'Ошибка обновления почты', 'error');
+                Utils.toast(this.getSecurityEmailErrorText(e), 'error');
             } finally {
                 btn.disabled = false;
             }
         };
+    }
+
+    static getSecurityEmailErrorText(error) {
+        const code = String(error?.code || '');
+        if (code === 'auth/wrong-password') return 'Неверный текущий пароль';
+        if (code === 'auth/invalid-email') return 'Некорректный email';
+        if (code === 'auth/email-already-in-use') return 'Этот email уже используется';
+        if (code === 'auth/requires-recent-login') return 'Повторно войдите в аккаунт и попробуйте снова';
+        if (code === 'auth/operation-not-allowed') return 'Смена почты через прямое обновление отключена. Подтвердите новый email по письму';
+        return error?.message || 'Ошибка обновления почты';
     }
 
     static async saveSecurityEmail({ provider, newEmail, currentPassword }) {
@@ -695,8 +706,7 @@ class ProfileManager {
             await reauthenticateWithCredential(user, credential);
         }
 
-        await updateEmail(user, newEmail);
-        await sendEmailVerification(user);
+        await verifyBeforeUpdateEmail(user, newEmail);
     }
 
     static updateAvatarPreview(url, name) {
