@@ -2536,7 +2536,7 @@ class RoomManager {
     static startLoveHearts() {
         if (this.heartsChatTimer || this.heartsUsersTimer) return;
 
-        const spawnHeart = (layer, mode = 'mid') => {
+        const spawnHeart = (layer, mode = 'mid', warm = false) => {
             if (!layer) return;
             const heart = document.createElement('div');
             heart.className = `love-heart ${mode}`;
@@ -2553,23 +2553,39 @@ class RoomManager {
             heart.style.setProperty('--heart-drift', `${drift}px`);
             heart.style.setProperty('--heart-opacity', String(opacity));
             heart.style.animationDuration = `${duration}s`;
+            if (warm) {
+                heart.style.bottom = `${Math.random() * 95}%`;
+                heart.style.animationDelay = `-${Math.random() * duration}s`;
+            }
             layer.appendChild(heart);
             setTimeout(() => heart.remove(), 36000);
         };
+
+        const primeLayer = (layer, amount = 14) => {
+            if (!layer) return;
+            for (let i = 0; i < amount; i++) {
+                const roll = Math.random();
+                const mode = roll < 0.33 ? 'far' : roll > 0.74 ? 'near' : 'mid';
+                spawnHeart(layer, mode, true);
+            }
+        };
+
+        primeLayer(Utils.$('chat-love-hearts'), 16);
+        primeLayer(Utils.$('users-love-hearts'), 12);
 
         this.heartsChatTimer = setInterval(() => {
             const chatLayer = Utils.$('chat-love-hearts');
             const roll = Math.random();
             const mode = roll < 0.33 ? 'far' : roll > 0.74 ? 'near' : 'mid';
             spawnHeart(chatLayer, mode);
-        }, 1700);
+        }, 1100);
 
         this.heartsUsersTimer = setInterval(() => {
             const usersLayer = Utils.$('users-love-hearts');
             const roll = Math.random();
             const mode = roll < 0.45 ? 'far' : roll > 0.8 ? 'near' : 'mid';
             spawnHeart(usersLayer, mode);
-        }, 1900);
+        }, 1300);
     }
 
     static stopLoveHearts() {
