@@ -202,6 +202,15 @@
         .modal.active .modal-content { transform: translateY(0) scale(1); }
         .modal h2 { margin-bottom: 20px; font-size: 22px; font-weight: 800; }
         .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+        .profile-modal-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+        .profile-menu-wrap { position: relative; }
+        .profile-menu-btn { width: auto; padding: 6px 10px; border-radius: 10px; background: rgba(255,255,255,0.05); color: var(--text-main); border: 1px solid var(--border-light); font-size: 18px; line-height: 1; }
+        .profile-menu-dropdown { position: absolute; right: 0; top: calc(100% + 8px); min-width: 160px; padding: 8px; border-radius: 12px; background: var(--panel); border: 1px solid var(--border-light); box-shadow: 0 10px 25px rgba(0,0,0,0.7); display: none; z-index: 20; }
+        .profile-menu-dropdown.active { display: block; }
+        .profile-menu-item { width: 100%; text-align: left; padding: 10px 12px; border-radius: 10px; background: transparent; color: var(--text-main); border: 1px solid transparent; font-size: 14px; }
+        .profile-menu-item:hover { background: rgba(255,255,255,0.06); border-color: var(--border-light); }
+        .security-email-box { padding: 12px; border-radius: 12px; border: 1px solid var(--border-light); background: rgba(255,255,255,0.02); margin-bottom: 12px; }
+        .security-note { color: var(--text-muted); font-size: 13px; margin-bottom: 12px; }
 
         /* DM Modal specific */
         .dm-modal-content { width: min(600px, 100%); display: flex; flex-direction: column; gap: 16px; padding: 20px; }
@@ -375,7 +384,15 @@
     
     <div class="modal" id="modal-edit-profile">
         <div class="modal-content glass-panel">
-            <h2>Настройки профиля</h2>
+            <div class="profile-modal-top">
+                <h2 style="margin-bottom:0;">Настройки профиля</h2>
+                <div class="profile-menu-wrap">
+                    <button class="profile-menu-btn" id="btn-profile-menu" aria-label="Меню профиля">⋮</button>
+                    <div class="profile-menu-dropdown" id="profile-menu-dropdown">
+                        <button class="profile-menu-item" id="btn-open-security">Безопасность</button>
+                    </div>
+                </div>
+            </div>
             <div style="display: flex; flex-direction: column; gap: 12px;">
                 <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 10px;">
                     <div class="avatar" id="edit-avatar-preview" style="width: 70px; height: 70px; font-size: 24px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center; background:#111;">?</div>
@@ -390,6 +407,18 @@
                     <button class="secondary-btn btn-close-modal">Отмена</button>
                     <button class="primary-btn" id="btn-save-profile">Сохранить</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="modal-security">
+        <div class="modal-content glass-panel">
+            <h2>Безопасность</h2>
+            <div class="security-email-box" id="security-email-box"></div>
+            <div class="security-note" id="security-verified-note"></div>
+            <button class="primary-btn" id="btn-security-email-action">Указать email</button>
+            <div class="modal-actions">
+                <button class="secondary-btn btn-close-modal">Закрыть</button>
             </div>
         </div>
     </div>

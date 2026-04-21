@@ -394,7 +394,10 @@ class AuthManager {
                 AppState.isRegistering = true;
                 const creds = await createUserWithEmailAndPassword(auth, email, pass);
                 await updateProfile(creds.user, { displayName: name });
-                await ProfileManager.createProfile(creds.user.uid, name, username, email);
+                await ProfileManager.createProfile(creds.user.uid, name, username, email, {
+                    provider: 'email',
+                    emailVerified: false
+                });
                 AppState.isRegistering = false;
             } catch (e) {
                 AppState.isRegistering = false;
@@ -411,7 +414,10 @@ class AuthManager {
                     AppState.isRegistering = true;
                     const baseName = result.user.displayName || 'GoogleUser';
                     const rand = Utils.generateCryptoId(4);
-                    await ProfileManager.createProfile(result.user.uid, baseName, `user_${rand}`, result.user.email);
+                    await ProfileManager.createProfile(result.user.uid, baseName, `user_${rand}`, result.user.email, {
+                        provider: 'google',
+                        emailVerified: Boolean(result.user.emailVerified)
+                    });
                     AppState.isRegistering = false;
                 }
             } catch (e) { Utils.toast('Ошибка входа через Google', 'error'); }
@@ -473,7 +479,7 @@ class ProfileManager {
         return snap.val() === excludeUid;
     }
 
-    static async createProfile(uid, name, username, email) {
+    static async createProfile(uid, name, username, email, security = {}) {
         const cleanName = username.toLowerCase().trim();
         const developerUid = await AdminPanel.getDeveloperUid();
         const isDeveloperProfile = cleanName === 'developer';
@@ -482,7 +488,18 @@ class ProfileManager {
             throw new Error('ID developer зарезервирован');
         }
 
-        const profileData = { name, username: cleanName, email, bio: '', avatar: '', createdAt: Date.now() };
+        const profileData = {
+            name,
+            username: cleanName,
+            email,
+            bio: '',
+            avatar: '',
+            createdAt: Date.now(),
+            provider: security.provider || this.normalizeProvider(auth.currentUser),
+            emailVerified: typeof security.emailVerified === 'boolean'
+                ? security.emailVerified
+                : Boolean(auth.currentUser?.emailVerified)
+        };
         if (isDeveloperProfile) profileData.role = 'creator';
 
         const updates = {};
@@ -496,7 +513,10 @@ class ProfileManager {
         const snap = await get(ref(db, `users/${user.uid}/profile`));
         if (!snap.exists()) {
             const fallbackUser = `user_${Utils.generateCryptoId(6)}`;
-            await this.createProfile(user.uid, user.displayName || 'Guest', fallbackUser, user.email);
+            await this.createProfile(user.uid, user.displayName || 'Guest', fallbackUser, user.email, {
+                provider: this.normalizeProvider(user),
+                emailVerified: Boolean(user.emailVerified)
+            });
         }
     }
 
@@ -506,6 +526,7 @@ class ProfileManager {
         const unsub = onValue(profileRef, (snap) => {
             const p = snap.val() || {};
             AppState.usersCache.set(uid, p);
+            this.syncProfileSecurityFields(uid, p);
             AdminPanel.hydrateDeveloperUidFromProfile(uid, p);
             
             const badgeHtml = this.getRoleBadgeHtml(p, uid);
@@ -522,6 +543,14 @@ class ProfileManager {
         AppState.activeSubscriptions.push(() => off(profileRef, 'value', unsub));
 
         Utils.$('btn-open-my-profile').onclick = () => this.openEditProfileModal();
+        Utils.$('btn-profile-menu').onclick = (e) => {
+            e.stopPropagation();
+            this.toggleProfileMenu();
+        };
+        Utils.$('btn-open-security').onclick = () => this.openSecurityModal();
+        document.addEventListener('click', () => {
+            Utils.$('profile-menu-dropdown')?.classList.remove('active');
+        });
     }
 
     static openEditProfileModal() {
@@ -546,6 +575,75 @@ class ProfileManager {
                 Utils.toast('Профиль сохранен');
             } catch (e) { Utils.toast(e.message, 'error'); } 
             finally { btn.disabled = false; }
+        };
+    }
+
+    static normalizeProvider(user = null) {
+        const authUser = user || auth.currentUser;
+        const providerId = authUser?.providerData?.[0]?.providerId || authUser?.providerId || '';
+        if (providerId === 'password') return 'email';
+        if (providerId === 'google.com') return 'google';
+        return providerId || 'email';
+    }
+
+    static getCurrentAuthSecurity() {
+        const user = auth.currentUser;
+        return {
+            email: user?.email || '',
+            provider: this.normalizeProvider(user),
+            emailVerified: Boolean(user?.emailVerified)
+        };
+    }
+
+    static syncProfileSecurityFields(uid, profile = {}) {
+        const authSecurity = this.getCurrentAuthSecurity();
+        const needsSync = (
+            typeof profile.provider === 'undefined' ||
+            typeof profile.emailVerified === 'undefined' ||
+            (!profile.email && authSecurity.email)
+        );
+        if (!needsSync) return;
+        update(ref(db, `users/${uid}/profile`), {
+            email: profile.email || authSecurity.email || '',
+            provider: profile.provider || authSecurity.provider,
+            emailVerified: typeof profile.emailVerified === 'boolean'
+                ? profile.emailVerified
+                : authSecurity.emailVerified
+        }).catch(() => {});
+    }
+
+    static toggleProfileMenu() {
+        Utils.$('profile-menu-dropdown')?.classList.toggle('active');
+    }
+
+    static openSecurityModal() {
+        Utils.$('profile-menu-dropdown')?.classList.remove('active');
+        this.renderSecurityModal();
+        Utils.$('modal-security').classList.add('active');
+    }
+
+    static renderSecurityModal() {
+        const p = AppState.usersCache.get(AppState.currentUser.uid) || {};
+        const authSecurity = this.getCurrentAuthSecurity();
+        const provider = p.provider || authSecurity.provider;
+        const email = p.email || authSecurity.email;
+        const emailVerified = typeof p.emailVerified === 'boolean' ? p.emailVerified : authSecurity.emailVerified;
+
+        const emailBox = Utils.$('security-email-box');
+        const note = Utils.$('security-verified-note');
+        const actionBtn = Utils.$('btn-security-email-action');
+
+        if (provider === 'google') {
+            emailBox.innerText = 'Вы не указали почту';
+            actionBtn.innerText = 'Указать email';
+        } else {
+            emailBox.innerText = email || 'Email не указан';
+            actionBtn.innerText = 'Изменить почту';
+        }
+
+        note.innerText = `Email подтвержден: ${emailVerified ? 'Да' : 'Нет'}`;
+        actionBtn.onclick = () => {
+            Utils.toast('Функция редактирования почты скоро будет доступна');
         };
     }
 
