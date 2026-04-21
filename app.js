@@ -383,8 +383,10 @@ class AuthManager {
             const pass = Utils.$('reg-pass').value.trim();
             const name = Utils.$('reg-name').value.trim();
             let username = Utils.$('reg-username').value.toLowerCase().trim().replace('@', '');
+            const agreementAccepted = Utils.$('reg-agreement')?.checked;
 
             if (!email || pass.length < 6 || !name || !username) return Utils.toast('Заполните поля. Пароль от 6 символов.', 'error');
+            if (!agreementAccepted) return Utils.toast('Примите пользовательское соглашение', 'error');
             if (!/^[a-z0-9_]{3,15}$/.test(username)) return Utils.toast('ID: 3-15 символов, только a-z, 0-9 и _', 'error');
 
             try {

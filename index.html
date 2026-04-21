@@ -63,6 +63,11 @@
         .auth-tabs button.active { background: var(--panel-hover); color: var(--text-main); box-shadow: 0 2px 8px rgba(0,0,0,0.5); border: 1px solid var(--border-light); }
         .auth-form { display: none; flex-direction: column; gap: 4px; }
         .auth-form.active-form { display: flex; animation: fadeIn 0.3s ease; }
+        .agreement-wrap { display: flex; align-items: flex-start; gap: 10px; margin: 6px 0 4px; text-align: left; }
+        .agreement-wrap input[type="checkbox"] { appearance: none; -webkit-appearance: none; width: 18px; height: 18px; margin: 0; border-radius: 4px; border: 1px solid var(--border-light); background: #000; flex-shrink: 0; transition: background-color 0.25s ease, border-color 0.25s ease, transform 0.2s ease; cursor: pointer; }
+        .agreement-wrap input[type="checkbox"]:checked { background: #fff; border-color: #fff; transform: scale(1.05); }
+        .agreement-wrap label { font-size: 13px; color: var(--text-muted); line-height: 1.4; cursor: pointer; }
+        .agreement-wrap a { color: var(--text-main); text-decoration: underline; }
 
         /* ========================================================= */
         /* LOBBY LAYOUT */
@@ -273,6 +278,13 @@
                 <input type="text" id="reg-username" placeholder="Уникальный ID (напр. @alexey99)">
                 <input type="email" id="reg-email" placeholder="Электронная почта">
                 <input type="password" id="reg-pass" placeholder="Пароль (минимум 6 символов)">
+                <div class="agreement-wrap">
+                    <input type="checkbox" id="reg-agreement">
+                    <label for="reg-agreement">
+                        Я принимаю пользовательское соглашение
+                        <a href="AGREEMENT_LINK_HERE" target="_blank" rel="noopener noreferrer">AGREEMENT_LINK_HERE</a>
+                    </label>
+                </div>
                 <button class="primary-btn" id="btn-do-reg" style="margin-top: 10px;">Создать аккаунт</button>
             </div>
         </div>
