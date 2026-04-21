@@ -1983,6 +1983,10 @@ class AdminPanel {
 // ============================================================================
 
 class RoomManager {
+    static themeOptions = ['default', 'love'];
+    static themeIndex = 0;
+    static heartsTimer = null;
+
     static syncDeveloperControls(profile = {}) {
         AdminPanel.syncSidebarButton(profile);
     }
@@ -2019,7 +2023,28 @@ class RoomManager {
         
         Utils.$('room-input-private').onchange = (e) => { Utils.$('room-input-password').style.display = e.target.checked ? 'block' : 'none'; };
         Utils.$('btn-leave-room').onclick = () => this.leaveRoom();
+        this.initThemes();
         this.applyCreateRoomAvailability();
+    }
+
+    static initThemes() {
+        const toggleBtn = Utils.$('btn-room-theme-toggle');
+        const carousel = Utils.$('room-theme-carousel');
+        const prevBtn = Utils.$('room-theme-prev');
+        const nextBtn = Utils.$('room-theme-next');
+        if (!toggleBtn || !carousel || !prevBtn || !nextBtn) return;
+
+        const showTheme = (idx) => {
+            this.themeIndex = (idx + this.themeOptions.length) % this.themeOptions.length;
+            const value = this.themeOptions[this.themeIndex];
+            Utils.$('room-theme-value').innerText = value;
+            Utils.$('modal-room').dataset.selectedTheme = value;
+        };
+
+        toggleBtn.onclick = () => carousel.classList.toggle('active');
+        prevBtn.onclick = () => showTheme(this.themeIndex - 1);
+        nextBtn.onclick = () => showTheme(this.themeIndex + 1);
+        showTheme(0);
     }
 
     static updateRoomsDOM() {
@@ -2075,6 +2100,11 @@ class RoomManager {
             const r = AppState.roomsCache.get(roomId);
             Utils.$('room-input-name').value = r.name || ''; Utils.$('room-input-url').value = r.videoUrl || '';
             Utils.$('room-input-private').checked = r.isPrivate; Utils.$('room-input-password').style.display = r.isPrivate ? 'block' : 'none';
+            const theme = this.themeOptions.includes(r.theme) ? r.theme : 'default';
+            this.themeIndex = this.themeOptions.indexOf(theme);
+            Utils.$('room-theme-value').innerText = theme;
+            Utils.$('modal-room').dataset.selectedTheme = theme;
+            Utils.$('room-theme-carousel').classList.remove('active');
             Utils.$('btn-delete-room').onclick = async () => {
                 if(confirm('Точно удалить комнату навсегда?')) {
                     await remove(ref(db, `rooms/${roomId}`)); modal.classList.remove('active'); this.leaveRoom();
@@ -2083,6 +2113,10 @@ class RoomManager {
         } else {
             Utils.$('room-input-name').value = ''; Utils.$('room-input-url').value = '';
             Utils.$('room-input-private').checked = false; Utils.$('room-input-password').style.display = 'none'; Utils.$('room-input-password').value = '';
+            this.themeIndex = 0;
+            Utils.$('room-theme-value').innerText = 'default';
+            Utils.$('modal-room').dataset.selectedTheme = 'default';
+            Utils.$('room-theme-carousel').classList.remove('active');
         }
         modal.classList.add('active'); modal.dataset.editingId = isEdit ? roomId : '';
     }
@@ -2091,6 +2125,7 @@ class RoomManager {
         const name = Utils.$('room-input-name').value.trim(); const videoUrl = Utils.$('room-input-url').value.trim();
         const isPrivate = Utils.$('room-input-private').checked; const password = Utils.$('room-input-password').value.trim();
         const roomId = Utils.$('modal-room').dataset.editingId;
+        const selectedTheme = Utils.$('modal-room').dataset.selectedTheme || 'default';
 
         if (!roomId && AppState.admin.settings.roomCreationBlocked && !AdminPanel.isCurrentUserAdmin()) {
             return Utils.toast('Создание комнат временно отключено администратором', 'error');
@@ -2101,7 +2136,15 @@ class RoomManager {
 
         Utils.$('btn-save-room').disabled = true;
         try {
-            const roomData = { name, videoUrl, isPrivate, hostId: AppState.currentUser.uid, hostName: AppState.currentUser.displayName || 'Хост', updatedAt: Date.now() };
+            const roomData = {
+                name,
+                videoUrl,
+                isPrivate,
+                theme: this.themeOptions.includes(selectedTheme) ? selectedTheme : 'default',
+                hostId: AppState.currentUser.uid,
+                hostName: AppState.currentUser.displayName || 'Хост',
+                updatedAt: Date.now()
+            };
             if (isPrivate && password) { roomData.salt = Utils.generateCryptoId(16); roomData.hash = await Utils.hashPassword(password, roomData.salt); }
 
             if (roomId) {
@@ -2139,6 +2182,7 @@ class RoomManager {
         AppState.roomSubscriptions.forEach(fn => fn()); AppState.roomSubscriptions = [];
         
         Utils.$('room-title-text').innerText = Utils.escapeHtml(roomData.name);
+        this.applyRoomTheme(roomData.theme || 'default');
         const vid = Utils.$('native-player');
         const nextVideoUrl = String(roomData.videoUrl || '').trim();
 
@@ -2448,10 +2492,46 @@ class RoomManager {
         AppState.currentPresenceCache = {};
         AppState.usersListRenderToken++;
         AppState.currentRoomId = null;
+        this.applyRoomTheme('default');
         AppState.isHost = false;
         if (Utils.$('users-list')) Utils.$('users-list').innerHTML = '';
         if (Utils.$('users-count')) Utils.$('users-count').innerText = '0';
         Utils.showScreen('lobby-screen');
+    }
+
+    static applyRoomTheme(theme = 'default') {
+        const roomScreen = Utils.$('room-screen');
+        if (!roomScreen) return;
+        roomScreen.classList.remove('theme-love');
+        this.stopLoveHearts();
+        if (theme === 'love') {
+            roomScreen.classList.add('theme-love');
+            this.startLoveHearts();
+        }
+    }
+
+    static startLoveHearts() {
+        const layer = Utils.$('room-theme-effects');
+        if (!layer || this.heartsTimer) return;
+        this.heartsTimer = setInterval(() => {
+            const heart = document.createElement('div');
+            heart.className = 'love-heart';
+            heart.innerText = Math.random() > 0.5 ? '❤' : '💗';
+            heart.style.left = `${Math.random() * 100}%`;
+            heart.style.fontSize = `${14 + Math.random() * 16}px`;
+            heart.style.animationDuration = `${3.2 + Math.random() * 2.5}s`;
+            layer.appendChild(heart);
+            setTimeout(() => heart.remove(), 6000);
+        }, 320);
+    }
+
+    static stopLoveHearts() {
+        if (this.heartsTimer) {
+            clearInterval(this.heartsTimer);
+            this.heartsTimer = null;
+        }
+        const layer = Utils.$('room-theme-effects');
+        if (layer) layer.innerHTML = '';
     }
 }
 

@@ -232,6 +232,19 @@
         .online-counter-badge { position: fixed; bottom: 20px; left: 20px; padding: 8px 16px; border-radius: 20px; background: rgba(0,0,0,0.8); border: 1px solid rgba(46,213,115,0.2); color: var(--accent); font-size: 12px; font-weight: 700; z-index: 100; backdrop-filter: blur(10px); display: flex; align-items: center; gap: 6px; }
         .online-counter-badge::before { content: ''; display: block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
         #remote-audio-container { display: none; }
+        .room-theme-toggle { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border-light); background: rgba(255,255,255,0.03); color: var(--text-main); }
+        .room-theme-carousel { display: none; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid var(--border-light); border-radius: 10px; padding: 8px; background: rgba(255,255,255,0.02); }
+        .room-theme-carousel.active { display: flex; }
+        .theme-arrow-btn { width: auto; min-width: 38px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-light); background: rgba(255,255,255,0.03); color: var(--text-main); }
+        .theme-value { flex: 1; text-align: center; font-size: 14px; font-weight: 700; text-transform: lowercase; }
+        #room-screen.theme-love { background: radial-gradient(circle at 20% 20%, #4d1b35 0%, #190913 55%, #070307 100%); }
+        #room-screen.theme-love .glass-panel { border-color: rgba(255, 146, 196, 0.28); box-shadow: 0 12px 35px rgba(125, 34, 80, 0.4); }
+        #room-screen.theme-love .chat-section,
+        #room-screen.theme-love .chat-input-area { background: rgba(45, 14, 31, 0.72); }
+        #room-screen.theme-love .bubble { background: rgba(255, 129, 182, 0.12); border-color: rgba(255, 146, 196, 0.35); }
+        #room-theme-effects { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 5; }
+        .love-heart { position: absolute; bottom: -30px; color: #ff7eb8; opacity: 0.9; font-size: 18px; animation: loveFloatUp 4.2s linear forwards; text-shadow: 0 0 12px rgba(255, 126, 184, 0.55); }
+        @keyframes loveFloatUp { from { transform: translateY(0) scale(0.8); opacity: 0; } 15% { opacity: 1; } to { transform: translateY(-120vh) scale(1.2); opacity: 0; } }
 
         @media (max-width: 1024px) {
             .lobby-layout { grid-template-columns: 1fr; padding: 0; }
@@ -349,6 +362,7 @@
     <!-- ========================================================================= -->
     <section id="room-screen" class="screen">
         <div class="room-layout">
+            <div id="room-theme-effects"></div>
             <div class="player-section">
                 <div class="room-top-bar glass-panel">
                     <button class="secondary-btn" id="btn-leave-room" style="width: auto; padding: 10px 16px;">← Выйти</button>
@@ -483,6 +497,12 @@
                     Сделать приватной (по паролю)
                 </label>
                 <input type="password" id="room-input-password" placeholder="Придумайте пароль" style="display: none;">
+                <button class="secondary-btn room-theme-toggle" id="btn-room-theme-toggle">Поменять тему</button>
+                <div class="room-theme-carousel" id="room-theme-carousel">
+                    <button class="theme-arrow-btn" id="room-theme-prev">‹</button>
+                    <div class="theme-value" id="room-theme-value">default</div>
+                    <button class="theme-arrow-btn" id="room-theme-next">›</button>
+                </div>
                 
                 <div class="modal-actions">
                     <button class="secondary-btn btn-close-modal">Отмена</button>
