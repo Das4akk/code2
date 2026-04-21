@@ -2032,18 +2032,28 @@ class RoomManager {
         const carousel = Utils.$('room-theme-carousel');
         const prevBtn = Utils.$('room-theme-prev');
         const nextBtn = Utils.$('room-theme-next');
-        if (!toggleBtn || !carousel || !prevBtn || !nextBtn) return;
+        const track = Utils.$('room-theme-track');
+        if (!toggleBtn || !carousel || !prevBtn || !nextBtn || !track) return;
 
         const showTheme = (idx) => {
             this.themeIndex = (idx + this.themeOptions.length) % this.themeOptions.length;
             const value = this.themeOptions[this.themeIndex];
-            Utils.$('room-theme-value').innerText = value;
             Utils.$('modal-room').dataset.selectedTheme = value;
+            track.style.transform = `translateX(-${this.themeIndex * 100}%)`;
+            track.querySelectorAll('.theme-card').forEach(card => {
+                card.classList.toggle('active', card.dataset.theme === value);
+            });
         };
 
         toggleBtn.onclick = () => carousel.classList.toggle('active');
         prevBtn.onclick = () => showTheme(this.themeIndex - 1);
         nextBtn.onclick = () => showTheme(this.themeIndex + 1);
+        track.querySelectorAll('.theme-card').forEach(card => {
+            card.onclick = () => {
+                const next = this.themeOptions.indexOf(card.dataset.theme);
+                if (next >= 0) showTheme(next);
+            };
+        });
         showTheme(0);
     }
 
@@ -2102,8 +2112,11 @@ class RoomManager {
             Utils.$('room-input-private').checked = r.isPrivate; Utils.$('room-input-password').style.display = r.isPrivate ? 'block' : 'none';
             const theme = this.themeOptions.includes(r.theme) ? r.theme : 'default';
             this.themeIndex = this.themeOptions.indexOf(theme);
-            Utils.$('room-theme-value').innerText = theme;
             Utils.$('modal-room').dataset.selectedTheme = theme;
+            Utils.$('room-theme-track').style.transform = `translateX(-${this.themeIndex * 100}%)`;
+            Utils.$('room-theme-track').querySelectorAll('.theme-card').forEach(card => {
+                card.classList.toggle('active', card.dataset.theme === theme);
+            });
             Utils.$('room-theme-carousel').classList.remove('active');
             Utils.$('btn-delete-room').onclick = async () => {
                 if(confirm('Точно удалить комнату навсегда?')) {
@@ -2114,8 +2127,11 @@ class RoomManager {
             Utils.$('room-input-name').value = ''; Utils.$('room-input-url').value = '';
             Utils.$('room-input-private').checked = false; Utils.$('room-input-password').style.display = 'none'; Utils.$('room-input-password').value = '';
             this.themeIndex = 0;
-            Utils.$('room-theme-value').innerText = 'default';
             Utils.$('modal-room').dataset.selectedTheme = 'default';
+            Utils.$('room-theme-track').style.transform = 'translateX(0%)';
+            Utils.$('room-theme-track').querySelectorAll('.theme-card').forEach(card => {
+                card.classList.toggle('active', card.dataset.theme === 'default');
+            });
             Utils.$('room-theme-carousel').classList.remove('active');
         }
         modal.classList.add('active'); modal.dataset.editingId = isEdit ? roomId : '';
