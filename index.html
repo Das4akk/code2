@@ -248,13 +248,13 @@
         .theme-check { margin-top: 6px; font-size: 16px; line-height: 1; color: transparent; transition: color 0.2s ease, text-shadow 0.2s ease; }
         .theme-card.active .theme-name { color: var(--text-main); }
         .theme-card.active .theme-check { color: #fff; text-shadow: 0 0 12px rgba(255,255,255,0.45); }
-        #room-screen.theme-love { background: radial-gradient(circle at 18% 14%, #5e0d5a 0%, #3f0451 20%, #1b0035 56%, #090016 100%); position: relative; overflow: hidden; }
+        #room-screen.theme-love { background: radial-gradient(circle at 18% 14%, #3f053f 0%, #22002a 24%, #12001f 58%, #060011 100%); position: relative; overflow: hidden; }
         #room-screen.theme-love::before { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 1; background:
-            radial-gradient(1200px 420px at 50% -12%, rgba(249, 84, 177, 0.36) 0%, rgba(249, 84, 177, 0.08) 48%, rgba(0,0,0,0) 72%),
-            radial-gradient(700px 260px at 50% 108%, rgba(92, 23, 108, 0.28) 0%, rgba(0,0,0,0) 75%);
+            radial-gradient(1200px 420px at 50% -12%, rgba(164, 58, 130, 0.24) 0%, rgba(164, 58, 130, 0.05) 48%, rgba(0,0,0,0) 72%),
+            radial-gradient(700px 260px at 50% 108%, rgba(54, 14, 72, 0.26) 0%, rgba(0,0,0,0) 75%);
             mix-blend-mode: screen;
         }
-        #room-screen.theme-love::after { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 1; background: linear-gradient(180deg, rgba(15,0,28,0.22) 0%, rgba(8,0,18,0.45) 100%); }
+        #room-screen.theme-love::after { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 1; background: linear-gradient(180deg, rgba(8,0,18,0.42) 0%, rgba(4,0,10,0.62) 100%); }
         body.theme-love-room .modal-content.glass-panel,
         #room-screen.theme-love .glass-panel { border-color: rgba(226, 120, 169, 0.22); box-shadow: 0 12px 35px rgba(66, 15, 42, 0.55); background: rgba(20, 6, 14, 0.9); }
         #room-screen.theme-love .chat-section,
@@ -274,16 +274,11 @@
         .chat-content-area { position: relative; overflow: hidden; }
         .panel-love-hearts { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 0; }
         .chat-content-area > :not(.panel-love-hearts) { position: relative; z-index: 1; }
-        .love-heart { position: absolute; bottom: -120px; width: 58px; height: 58px; transform: rotate(45deg); border-radius: 12px; opacity: 0; animation: loveFloatUp 24s linear forwards; }
-        .love-heart::before,
-        .love-heart::after { content: ''; position: absolute; width: 58px; height: 58px; border-radius: 50%; background: radial-gradient(circle at 34% 30%, rgba(255, 166, 227, 0.92) 0%, rgba(212, 88, 175, 0.74) 45%, rgba(112, 21, 106, 0.52) 100%); }
-        .love-heart::before { top: -29px; left: 0; }
-        .love-heart::after { top: 0; left: -29px; }
-        .love-heart .heart-core { position: absolute; inset: 0; border-radius: 12px; background: radial-gradient(circle at 40% 26%, rgba(255, 190, 236, 0.96) 0%, rgba(209, 76, 168, 0.76) 42%, rgba(93, 18, 94, 0.5) 100%); box-shadow: 0 0 30px rgba(214, 83, 170, 0.28), inset 0 -14px 20px rgba(41, 2, 45, 0.28); }
-        .love-heart.far { filter: blur(2.6px); }
-        .love-heart.mid { filter: blur(1.2px); }
-        .love-heart.near { filter: blur(0.15px); }
-        @keyframes loveFloatUp { from { transform: translate3d(0, 0, 0) rotate(45deg) scale(var(--heart-scale, 1)); opacity: 0; } 10% { opacity: var(--heart-opacity, 0.42); } to { transform: translate3d(var(--heart-drift, 12px), -130%, 0) rotate(45deg) scale(calc(var(--heart-scale, 1) * 1.08)); opacity: 0; } }
+        .love-heart { position: absolute; bottom: -90px; width: 52px; height: 52px; object-fit: contain; opacity: 0; animation: loveFloatUp 30s linear forwards; filter: brightness(0.62) saturate(0.7) contrast(0.9); }
+        .love-heart.far { filter: blur(2.8px) brightness(0.48) saturate(0.55); }
+        .love-heart.mid { filter: blur(1.3px) brightness(0.58) saturate(0.62); }
+        .love-heart.near { filter: blur(0.4px) brightness(0.68) saturate(0.72); }
+        @keyframes loveFloatUp { from { transform: translate3d(0, 0, 0) scale(var(--heart-scale, 1)); opacity: 0; } 12% { opacity: var(--heart-opacity, 0.28); } to { transform: translate3d(var(--heart-drift, 8px), -128%, 0) scale(calc(var(--heart-scale, 1) * 1.03)); opacity: 0; } }
 
         @media (max-width: 1024px) {
             .lobby-layout { grid-template-columns: 1fr; padding: 0; }
