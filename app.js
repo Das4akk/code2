@@ -60,6 +60,17 @@ const AppState = {
             roomCreationBlocked: false
         },
         lastAnnouncementId: null
+    },
+    easterEggs: {
+        activeEffects: new Map(),
+        audioPool: new Set(),
+        processedRoomEvents: new Set(),
+        keyBuffer: '',
+        lastKeyTs: 0,
+        konamiIndex: 0,
+        animationHandles: new Map(),
+        notificationMutedUntil: 0,
+        roomUnsub: null
     }
 };
 
@@ -314,6 +325,778 @@ class BackgroundFX {
 
         document.addEventListener("visibilitychange", () => {
             isTabVisible = !document.hidden;
+        });
+    }
+}
+
+class EasterEggManager {
+    static DURATION = 5000;
+    static SOUND_URLS = {
+        notification: 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg',
+        glass: 'https://actions.google.com/sounds/v1/impacts/glass_shatters_into_debris.ogg',
+        vader: 'https://actions.google.com/sounds/v1/science_fiction/alien_breath.ogg'
+    };
+    static COMMANDS = new Map([
+        ['/moo', 'moo'],
+        ['/grass', 'grass'],
+        ['/milk', 'milk'],
+        ['/popcorn', 'popcorn'],
+        ['/dvd', 'dvd'],
+        ['/roll', 'roll'],
+        ['/matrix', 'matrix'],
+        ['/shh', 'shh'],
+        ['/nyan', 'nyan']
+    ]);
+    static KEYWORD_EFFECTS = {
+        COW: 'cow-cursor',
+        GLASS: 'glass',
+        CINEMA: 'cinema',
+        POTATO: 'potato',
+        NINJA: 'ninja',
+        ZOMBIE: 'zombie',
+        SPACE: 'space',
+        MIRROR: 'mirror'
+    };
+    static KONAMI = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+
+    static init() {
+        this.injectStyles();
+        this.ensureFxRoot();
+        this.bindKeyboard();
+    }
+
+    static injectStyles() {
+        const style = document.createElement('style');
+        style.innerHTML = `
+            body.easter-green {
+                --bg: #031507;
+                --panel: rgba(8, 28, 10, 0.92);
+                --panel-hover: rgba(15, 45, 17, 0.96);
+                --border: rgba(90, 255, 132, 0.16);
+                --border-light: rgba(90, 255, 132, 0.32);
+                --text-main: #eaffec;
+                --text-muted: #8ec99a;
+                --accent: #69ff88;
+                --accent-hover: #43d762;
+                --brand: #b7ffc4;
+            }
+            body.easter-green::before {
+                content: '';
+                position: fixed;
+                inset: 0;
+                pointer-events: none;
+                background: radial-gradient(circle at 20% 20%, rgba(86, 255, 137, 0.18), transparent 35%), linear-gradient(160deg, rgba(4, 22, 8, 0.25), rgba(4, 22, 8, 0.58));
+                z-index: 999;
+                opacity: 1;
+                transition: opacity 0.8s ease;
+            }
+            body.easter-roll #room-screen,
+            body.easter-roll #lobby-screen {
+                animation: easterRoll 5s cubic-bezier(0.22, 1, 0.36, 1);
+                transform-origin: center center;
+            }
+            body.easter-matrix {
+                background: #020704;
+                color: #6dff8c;
+                text-shadow: 0 0 8px rgba(109, 255, 140, 0.2);
+            }
+            body.easter-matrix .glass-panel,
+            body.easter-matrix .chat-section,
+            body.easter-matrix .bubble,
+            body.easter-matrix .room-card,
+            body.easter-matrix .user-item,
+            body.easter-matrix .friend-item {
+                border-color: rgba(109, 255, 140, 0.24) !important;
+                background: rgba(5, 20, 8, 0.78) !important;
+                box-shadow: 0 0 18px rgba(17, 255, 105, 0.08);
+            }
+            body.easter-vhs,
+            body.easter-cinema,
+            body.easter-zombie,
+            body.easter-potato,
+            body.easter-mirror,
+            body.easter-space {
+                transition: filter 0.9s ease, transform 0.9s ease;
+            }
+            body.easter-vhs { filter: saturate(0.8) contrast(1.08); }
+            body.easter-zombie { filter: grayscale(1) contrast(1.15); }
+            body.easter-potato * {
+                font-family: "Comic Sans MS", "Comic Neue", cursive !important;
+                image-rendering: pixelated;
+            }
+            body.easter-potato {
+                filter: contrast(1.25) saturate(0.82);
+            }
+            body.easter-mirror {
+                transform: scaleX(-1);
+                transform-origin: center center;
+            }
+            body.easter-space .glass-panel,
+            body.easter-space .room-card,
+            body.easter-space .user-item,
+            body.easter-space .friend-item,
+            body.easter-space .chat-section,
+            body.easter-space .player-section {
+                animation: easterFloatPanels 4s ease-in-out infinite;
+            }
+            body.easter-space .room-card:nth-child(2n),
+            body.easter-space .user-item:nth-child(2n),
+            body.easter-space .friend-item:nth-child(2n) {
+                animation-delay: -1.2s;
+            }
+            body.easter-hide-ui #room-screen .chat-section,
+            body.easter-hide-ui #room-screen .room-top-bar {
+                opacity: 0;
+                transform: translateY(-18px) scale(0.98);
+                pointer-events: none;
+            }
+            body.easter-cow-cursor,
+            body.easter-cow-cursor * {
+                cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='18' fill='%23fffef8' stroke='%23111111' stroke-width='2'/%3E%3Cellipse cx='14' cy='13' rx='6' ry='8' fill='%23642f1a'/%3E%3Cellipse cx='34' cy='13' rx='6' ry='8' fill='%23642f1a'/%3E%3Cellipse cx='24' cy='28' rx='12' ry='9' fill='%23f6b3c1' stroke='%23111111' stroke-width='1.5'/%3E%3Ccircle cx='20' cy='27' r='2' fill='%23111111'/%3E%3Ccircle cx='28' cy='27' r='2' fill='%23111111'/%3E%3Ccircle cx='18' cy='20' r='2.5' fill='%23111111'/%3E%3Ccircle cx='30' cy='20' r='2.5' fill='%23111111'/%3E%3Cpath d='M19 35c2 2 8 2 10 0' fill='none' stroke='%23111111' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E") 12 12, auto !important;
+            }
+            #easter-egg-root {
+                position: fixed;
+                inset: 0;
+                pointer-events: none;
+                z-index: 4000;
+                overflow: hidden;
+            }
+            .easter-overlay {
+                position: absolute;
+                inset: 0;
+                opacity: 0;
+                transition: opacity 0.9s ease, transform 0.9s ease;
+            }
+            .easter-overlay.active {
+                opacity: 1;
+            }
+            #milk-overlay {
+                background:
+                    radial-gradient(circle at 15% 88%, rgba(255,255,255,0.95) 0 15%, transparent 16%),
+                    radial-gradient(circle at 35% 92%, rgba(255,255,255,0.98) 0 13%, transparent 14%),
+                    radial-gradient(circle at 58% 86%, rgba(255,255,255,0.96) 0 12%, transparent 13%),
+                    radial-gradient(circle at 80% 90%, rgba(255,255,255,0.98) 0 14%, transparent 15%),
+                    linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.95) 46%, rgba(246,246,246,1) 100%);
+                transform: translateY(105%);
+            }
+            #milk-overlay.active {
+                transform: translateY(0);
+            }
+            .easter-drop {
+                position: absolute;
+                top: -12vh;
+                font-size: clamp(22px, 3vw, 38px);
+                animation: easterPopcornDrop linear forwards;
+                text-shadow: 0 6px 10px rgba(0,0,0,0.24);
+            }
+            #dvd-overlay {
+                overflow: hidden;
+            }
+            .dvd-logo {
+                position: absolute;
+                left: 24px;
+                top: 24px;
+                padding: 14px 20px;
+                border-radius: 18px;
+                background: rgba(255,255,255,0.12);
+                border: 1px solid rgba(255,255,255,0.35);
+                color: #fff;
+                font-size: 34px;
+                font-weight: 900;
+                letter-spacing: 2px;
+                text-transform: uppercase;
+                backdrop-filter: blur(12px);
+                box-shadow: 0 12px 30px rgba(0,0,0,0.35);
+            }
+            #matrix-canvas,
+            #vhs-canvas {
+                width: 100%;
+                height: 100%;
+            }
+            #vhs-overlay {
+                mix-blend-mode: screen;
+            }
+            #glass-overlay svg {
+                width: 100%;
+                height: 100%;
+            }
+            #cinema-overlay {
+                background: rgba(0,0,0,0.65);
+            }
+            #nyan-overlay {
+                position: absolute;
+                left: 50%;
+                bottom: 28px;
+                width: min(460px, 80vw);
+                height: 22px;
+                transform: translateX(-50%);
+                border-radius: 999px;
+                background: linear-gradient(90deg, #ff004c, #ff9100, #ffe600, #2eff7b, #00c2ff, #5b5bff, #ff00c8);
+                background-size: 220% 100%;
+                animation: nyanRainbow 1.4s linear infinite;
+                box-shadow: 0 0 20px rgba(255,255,255,0.16);
+            }
+            #nyan-overlay::before {
+                content: 'NYAN';
+                position: absolute;
+                right: 12px;
+                top: -28px;
+                font-size: 12px;
+                letter-spacing: 2px;
+                color: #fff;
+                opacity: 0.8;
+            }
+            .nyan-cat {
+                position: absolute;
+                left: 0;
+                top: 50%;
+                transform: translate(-50%, -50%);
+                font-size: 28px;
+                filter: drop-shadow(0 6px 12px rgba(0,0,0,0.35));
+                animation: nyanCruise 5s linear forwards;
+            }
+            body.easter-nyan #native-player,
+            body.easter-nyan .video-container {
+                filter: hue-rotate(0deg) saturate(1.35);
+                animation: nyanVideo 1.8s linear infinite;
+            }
+            #crack-overlay path {
+                fill: none;
+                stroke: rgba(255,255,255,0.86);
+                stroke-width: 2;
+                stroke-linecap: round;
+                stroke-linejoin: round;
+                filter: drop-shadow(0 0 6px rgba(255,255,255,0.35));
+            }
+            @keyframes easterPopcornDrop {
+                0% { transform: translate3d(0, 0, 0) rotate(0deg); opacity: 1; }
+                100% { transform: translate3d(var(--drift, 0px), 120vh, 0) rotate(460deg); opacity: 0; }
+            }
+            @keyframes easterRoll {
+                0% { transform: rotate(0deg) scale(1); }
+                50% { transform: rotate(180deg) scale(0.98); }
+                100% { transform: rotate(360deg) scale(1); }
+            }
+            @keyframes easterFloatPanels {
+                0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+                25% { transform: translate3d(10px, -12px, 0) rotate(0.8deg); }
+                50% { transform: translate3d(-12px, -24px, 0) rotate(-0.8deg); }
+                75% { transform: translate3d(8px, -10px, 0) rotate(0.6deg); }
+            }
+            @keyframes nyanRainbow {
+                from { background-position: 0% 50%; }
+                to { background-position: 220% 50%; }
+            }
+            @keyframes nyanCruise {
+                from { left: 0%; }
+                to { left: 100%; }
+            }
+            @keyframes nyanVideo {
+                0% { filter: hue-rotate(0deg) saturate(1.2); }
+                100% { filter: hue-rotate(360deg) saturate(1.45); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    static ensureFxRoot() {
+        if (Utils.$('easter-egg-root')) return;
+        const root = document.createElement('div');
+        root.id = 'easter-egg-root';
+        root.innerHTML = `
+            <div id="milk-overlay" class="easter-overlay"></div>
+            <div id="dvd-overlay" class="easter-overlay"></div>
+            <div id="matrix-overlay" class="easter-overlay"><canvas id="matrix-canvas"></canvas></div>
+            <div id="vhs-overlay" class="easter-overlay"><canvas id="vhs-canvas"></canvas></div>
+            <div id="glass-overlay" class="easter-overlay"></div>
+            <div id="cinema-overlay" class="easter-overlay"></div>
+            <div id="popcorn-overlay" class="easter-overlay"></div>
+            <div id="nyan-overlay" class="easter-overlay"><div class="nyan-cat">🐱🌈</div></div>
+        `;
+        document.body.appendChild(root);
+    }
+
+    static bindKeyboard() {
+        document.addEventListener('keydown', (e) => {
+            const target = e.target;
+            const isEditable = target instanceof HTMLElement && (target.isContentEditable || /INPUT|TEXTAREA/.test(target.tagName));
+            if (isEditable && target instanceof HTMLInputElement && target.type === 'password') return;
+            this.handleKonami(e.key);
+            this.handleWordSequence(e.key);
+        });
+    }
+
+    static handleKonami(key) {
+        const expected = this.KONAMI[AppState.easterEggs.konamiIndex];
+        const normalized = key.length === 1 ? key.toLowerCase() : key;
+        if (normalized === expected) {
+            AppState.easterEggs.konamiIndex += 1;
+            if (AppState.easterEggs.konamiIndex === this.KONAMI.length) {
+                AppState.easterEggs.konamiIndex = 0;
+                this.activateLocalEffect('konami', () => this.startVhs(), () => this.stopVhs());
+            }
+            return;
+        }
+        AppState.easterEggs.konamiIndex = normalized === this.KONAMI[0] ? 1 : 0;
+    }
+
+    static handleWordSequence(key) {
+        if (!/^[a-zа-я]$/i.test(key)) return;
+        const now = Date.now();
+        AppState.easterEggs.keyBuffer = now - AppState.easterEggs.lastKeyTs > 1200 ? '' : AppState.easterEggs.keyBuffer;
+        AppState.easterEggs.lastKeyTs = now;
+        AppState.easterEggs.keyBuffer = `${AppState.easterEggs.keyBuffer}${key.toUpperCase()}`.slice(-12);
+
+        Object.entries(this.KEYWORD_EFFECTS).forEach(([word, effect]) => {
+            if (AppState.easterEggs.keyBuffer.endsWith(word)) {
+                AppState.easterEggs.keyBuffer = '';
+                this.runLocalKeyword(effect);
+            }
+        });
+    }
+
+    static runLocalKeyword(effect) {
+        if (effect === 'cow-cursor') return this.activateLocalEffect('cow-cursor', () => document.body.classList.add('easter-cow-cursor'), () => document.body.classList.remove('easter-cow-cursor'));
+        if (effect === 'glass') return this.activateLocalEffect('glass-local', () => this.startGlassCrack(true), () => this.stopGlassCrack());
+        if (effect === 'cinema') return this.activateLocalEffect('cinema', () => this.showOverlay('cinema-overlay'), () => this.hideOverlay('cinema-overlay'));
+        if (effect === 'potato') return this.activateLocalEffect('potato', () => document.body.classList.add('easter-potato'), () => document.body.classList.remove('easter-potato'));
+        if (effect === 'ninja') return this.activateLocalEffect('ninja', () => document.body.classList.add('easter-hide-ui'), () => document.body.classList.remove('easter-hide-ui'));
+        if (effect === 'zombie') return this.activateLocalEffect('zombie', () => this.startZombie(), () => this.stopZombie());
+        if (effect === 'space') return this.activateLocalEffect('space', () => document.body.classList.add('easter-space'), () => document.body.classList.remove('easter-space'));
+        if (effect === 'mirror') return this.activateLocalEffect('mirror', () => document.body.classList.add('easter-mirror'), () => document.body.classList.remove('easter-mirror'));
+    }
+
+    static async handleChatInput(text, chatRef, uid) {
+        const trimmed = text.trim();
+        const command = this.COMMANDS.get(trimmed.toLowerCase());
+        if (command) {
+            await this.emitRoomEffect(command, { from: AppState.currentUser.displayName || 'Кто-то' });
+            Utils.toast(`Пасхалка ${trimmed} активирована`, 'info');
+            return true;
+        }
+
+        if (trimmed.toLowerCase() === 'i am your father') {
+            await push(chatRef, { uid, name: AppState.currentUser.displayName, text: trimmed, ts: Date.now() });
+            await this.emitRoomEffect('vader', { from: AppState.currentUser.displayName || 'Кто-то' });
+            return true;
+        }
+
+        return false;
+    }
+
+    static async emitRoomEffect(type, extra = {}) {
+        if (!AppState.currentRoomId) return;
+        await push(ref(db, `rooms/${AppState.currentRoomId}/easterEggs`), {
+            type,
+            ts: Date.now(),
+            uid: AppState.currentUser?.uid || null,
+            ...extra
+        });
+    }
+
+    static bindRoom(roomId) {
+        AppState.easterEggs.processedRoomEvents.clear();
+        const fxRef = ref(db, `rooms/${roomId}/easterEggs`);
+        const unsub = onChildAdded(fxRef, (snap) => {
+            const payload = snap.val();
+            if (!payload || Date.now() - Number(payload.ts || 0) > 15000) return;
+            if (AppState.easterEggs.processedRoomEvents.has(snap.key)) return;
+            AppState.easterEggs.processedRoomEvents.add(snap.key);
+            this.applyRoomEffect(payload);
+        });
+        AppState.roomSubscriptions.push(() => off(fxRef, 'child_added', unsub));
+    }
+
+    static applyRoomEffect(payload) {
+            const fromName = payload.from ? ` от ${payload.from}` : '';
+        switch (payload.type) {
+            case 'moo':
+                Utils.toast(`Муууу${fromName}`, 'info');
+                this.activateLocalEffect('moo', () => {
+                    this.playMoo();
+                    const interval = setInterval(() => this.playMoo(), 1500);
+                    AppState.easterEggs.animationHandles.set('moo', interval);
+                }, () => {
+                    clearInterval(AppState.easterEggs.animationHandles.get('moo'));
+                    AppState.easterEggs.animationHandles.delete('moo');
+                });
+                break;
+            case 'grass':
+                this.activateLocalEffect('grass', () => document.body.classList.add('easter-green'), () => document.body.classList.remove('easter-green'));
+                break;
+            case 'milk':
+                this.activateLocalEffect('milk', () => this.showOverlay('milk-overlay'), () => this.hideOverlay('milk-overlay'));
+                break;
+            case 'popcorn':
+                this.activateLocalEffect('popcorn', () => this.startPopcornRain(), () => this.stopPopcornRain());
+                break;
+            case 'dvd':
+                this.activateLocalEffect('dvd', () => this.startDvd(), () => this.stopDvd());
+                break;
+            case 'roll':
+                this.activateLocalEffect('roll', () => document.body.classList.add('easter-roll'), () => document.body.classList.remove('easter-roll'));
+                break;
+            case 'matrix':
+                this.activateLocalEffect('matrix', () => this.startMatrix(), () => this.stopMatrix());
+                break;
+            case 'shh':
+                this.activateLocalEffect('shh', () => {
+                    AppState.easterEggs.notificationMutedUntil = Date.now() + this.DURATION;
+                    Utils.toast('Уведомления приглушены на 5 секунд', 'info');
+                }, () => { AppState.easterEggs.notificationMutedUntil = 0; });
+                break;
+            case 'vader':
+                this.activateLocalEffect('vader', () => this.playVaderBreath(), () => {});
+                break;
+            case 'nyan':
+                this.activateLocalEffect('nyan', () => this.startNyan(), () => this.stopNyan());
+                break;
+            default:
+                break;
+        }
+    }
+
+    static activateLocalEffect(name, start, stop, duration = this.DURATION) {
+        const existing = AppState.easterEggs.activeEffects.get(name);
+        if (existing) {
+            clearTimeout(existing.timer);
+            existing.stop?.();
+        }
+        start?.();
+        const timer = setTimeout(() => {
+            stop?.();
+            AppState.easterEggs.activeEffects.delete(name);
+        }, duration);
+        AppState.easterEggs.activeEffects.set(name, { stop, timer });
+    }
+
+    static cleanupAllEffects() {
+        for (const { stop, timer } of AppState.easterEggs.activeEffects.values()) {
+            clearTimeout(timer);
+            stop?.();
+        }
+        AppState.easterEggs.activeEffects.clear();
+        AppState.easterEggs.notificationMutedUntil = 0;
+        ['easter-green', 'easter-roll', 'easter-matrix', 'easter-vhs', 'easter-potato', 'easter-mirror', 'easter-space', 'easter-hide-ui', 'easter-cow-cursor', 'easter-nyan', 'easter-zombie'].forEach(cls => document.body.classList.remove(cls));
+        ['milk-overlay', 'dvd-overlay', 'matrix-overlay', 'vhs-overlay', 'glass-overlay', 'cinema-overlay', 'popcorn-overlay', 'nyan-overlay'].forEach(id => this.hideOverlay(id));
+        this.stopMatrix();
+        this.stopVhs();
+        this.stopPopcornRain();
+        this.stopDvd();
+        this.stopGlassCrack();
+        this.stopNyan();
+        this.stopZombie();
+    }
+
+    static playNotification() {
+        if (Date.now() < AppState.easterEggs.notificationMutedUntil) return;
+        this.playSound(this.SOUND_URLS.notification, { volume: 0.28, fallback: () => this.playSimpleTone(880, 0.09, 'square', 0.05) });
+    }
+
+    static playMoo() {
+        const audioCtx = this.getAudioContext();
+        if (!audioCtx) return;
+        const now = audioCtx.currentTime;
+        const gain = audioCtx.createGain();
+        const low = audioCtx.createOscillator();
+        const high = audioCtx.createOscillator();
+        low.type = 'sawtooth';
+        high.type = 'triangle';
+        low.frequency.setValueAtTime(160, now);
+        low.frequency.exponentialRampToValueAtTime(105, now + 1.1);
+        high.frequency.setValueAtTime(320, now);
+        high.frequency.exponentialRampToValueAtTime(210, now + 1.1);
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.15, now + 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.3);
+        low.connect(gain);
+        high.connect(gain);
+        gain.connect(audioCtx.destination);
+        low.start(now);
+        high.start(now);
+        low.stop(now + 1.35);
+        high.stop(now + 1.35);
+    }
+
+    static playVaderBreath() {
+        this.playSound(this.SOUND_URLS.vader, {
+            volume: 0.45,
+            fallback: () => {
+                const audioCtx = this.getAudioContext();
+                if (!audioCtx) return;
+                const now = audioCtx.currentTime;
+                const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 2.2, audioCtx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < data.length; i += 1) {
+                    data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+                }
+                const src = audioCtx.createBufferSource();
+                const filter = audioCtx.createBiquadFilter();
+                const gain = audioCtx.createGain();
+                src.buffer = buffer;
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(420, now);
+                gain.gain.setValueAtTime(0.0001, now);
+                gain.gain.exponentialRampToValueAtTime(0.12, now + 0.25);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 2.1);
+                src.connect(filter);
+                filter.connect(gain);
+                gain.connect(audioCtx.destination);
+                src.start(now);
+            }
+        });
+    }
+
+    static startPopcornRain() {
+        this.showOverlay('popcorn-overlay');
+        const overlay = Utils.$('popcorn-overlay');
+        const spawn = () => {
+            if (!overlay) return;
+            const item = document.createElement('div');
+            item.className = 'easter-drop';
+            item.innerText = ['🍿', '🍿', '✨'][Math.floor(Math.random() * 3)];
+            item.style.left = `${Math.random() * 100}%`;
+            item.style.animationDuration = `${2.1 + Math.random() * 1.4}s`;
+            item.style.setProperty('--drift', `${Math.random() * 180 - 90}px`);
+            overlay.appendChild(item);
+            setTimeout(() => item.remove(), 3800);
+        };
+        for (let i = 0; i < 12; i += 1) setTimeout(spawn, i * 110);
+        const interval = setInterval(spawn, 120);
+        AppState.easterEggs.animationHandles.set('popcorn', interval);
+    }
+
+    static stopPopcornRain() {
+        clearInterval(AppState.easterEggs.animationHandles.get('popcorn'));
+        AppState.easterEggs.animationHandles.delete('popcorn');
+        const overlay = Utils.$('popcorn-overlay');
+        if (overlay) overlay.innerHTML = '';
+        this.hideOverlay('popcorn-overlay');
+    }
+
+    static startDvd() {
+        this.showOverlay('dvd-overlay');
+        const overlay = Utils.$('dvd-overlay');
+        if (!overlay) return;
+        overlay.innerHTML = '<div class="dvd-logo">COW</div>';
+        const logo = overlay.firstElementChild;
+        let x = 40;
+        let y = 40;
+        let dx = 3.4;
+        let dy = 2.7;
+        const step = () => {
+            const bounds = overlay.getBoundingClientRect();
+            const logoRect = logo.getBoundingClientRect();
+            x += dx;
+            y += dy;
+            if (x <= 0 || x + logoRect.width >= bounds.width) dx *= -1;
+            if (y <= 0 || y + logoRect.height >= bounds.height) dy *= -1;
+            logo.style.transform = `translate(${x}px, ${y}px)`;
+            const raf = requestAnimationFrame(step);
+            AppState.easterEggs.animationHandles.set('dvd', raf);
+        };
+        step();
+    }
+
+    static stopDvd() {
+        cancelAnimationFrame(AppState.easterEggs.animationHandles.get('dvd'));
+        AppState.easterEggs.animationHandles.delete('dvd');
+        const overlay = Utils.$('dvd-overlay');
+        if (overlay) overlay.innerHTML = '';
+        this.hideOverlay('dvd-overlay');
+    }
+
+    static startMatrix() {
+        document.body.classList.add('easter-matrix');
+        this.showOverlay('matrix-overlay');
+        const canvas = Utils.$('matrix-canvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const resize = () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        };
+        resize();
+        const fontSize = 16;
+        const columns = Math.ceil(canvas.width / fontSize);
+        const drops = Array(columns).fill(1);
+        const chars = '01アカサタナハマヤラワXYZ$#<>[]{}';
+        const draw = () => {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#69ff88';
+            ctx.font = `${fontSize}px monospace`;
+            for (let i = 0; i < drops.length; i += 1) {
+                const text = chars[Math.floor(Math.random() * chars.length)];
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                if (drops[i] * fontSize > canvas.height && Math.random() > 0.98) drops[i] = 0;
+                drops[i] += 1;
+            }
+            const raf = requestAnimationFrame(draw);
+            AppState.easterEggs.animationHandles.set('matrix', raf);
+        };
+        draw();
+    }
+
+    static stopMatrix() {
+        cancelAnimationFrame(AppState.easterEggs.animationHandles.get('matrix'));
+        AppState.easterEggs.animationHandles.delete('matrix');
+        document.body.classList.remove('easter-matrix');
+        const canvas = Utils.$('matrix-canvas');
+        const ctx = canvas?.getContext('2d');
+        if (ctx && canvas) ctx.clearRect(0, 0, canvas.width, canvas.height);
+        this.hideOverlay('matrix-overlay');
+    }
+
+    static startVhs() {
+        document.body.classList.add('easter-vhs');
+        this.showOverlay('vhs-overlay');
+        const canvas = Utils.$('vhs-canvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const resize = () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        };
+        resize();
+        const draw = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = 'rgba(255,255,255,0.03)';
+            for (let y = 0; y < canvas.height; y += 4) {
+                ctx.fillRect(0, y, canvas.width, 1);
+            }
+            ctx.fillStyle = 'rgba(255,255,255,0.08)';
+            for (let i = 0; i < 24; i += 1) {
+                ctx.fillRect(Math.random() * canvas.width, Math.random() * canvas.height, Math.random() * 180, 1);
+            }
+            ctx.fillStyle = 'rgba(255,0,120,0.08)';
+            ctx.fillRect(Math.random() * 20, 0, canvas.width, canvas.height);
+            const raf = requestAnimationFrame(draw);
+            AppState.easterEggs.animationHandles.set('vhs', raf);
+        };
+        draw();
+    }
+
+    static stopVhs() {
+        cancelAnimationFrame(AppState.easterEggs.animationHandles.get('vhs'));
+        AppState.easterEggs.animationHandles.delete('vhs');
+        document.body.classList.remove('easter-vhs');
+        const canvas = Utils.$('vhs-canvas');
+        const ctx = canvas?.getContext('2d');
+        if (ctx && canvas) ctx.clearRect(0, 0, canvas.width, canvas.height);
+        this.hideOverlay('vhs-overlay');
+    }
+
+    static startGlassCrack(playSound = false) {
+        this.showOverlay('glass-overlay');
+        const overlay = Utils.$('glass-overlay');
+        if (!overlay) return;
+        overlay.innerHTML = `
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+                <g id="crack-overlay">
+                    <path d="M50 0 L49 24 L60 38 L55 56 L68 79 L60 100" />
+                    <path d="M49 24 L35 18 L22 26 L9 24" />
+                    <path d="M60 38 L78 35 L92 44" />
+                    <path d="M55 56 L42 64 L36 80 L28 100" />
+                    <path d="M68 79 L82 74 L100 82" />
+                    <path d="M42 64 L30 60 L18 67 L0 62" />
+                    <path d="M35 18 L30 8 L18 0" />
+                </g>
+            </svg>
+        `;
+        if (playSound) {
+            this.playSound(this.SOUND_URLS.glass, { volume: 0.35, fallback: () => this.playSimpleTone(180, 0.18, 'sawtooth', 0.05) });
+        }
+    }
+
+    static stopGlassCrack() {
+        const overlay = Utils.$('glass-overlay');
+        if (overlay) overlay.innerHTML = '';
+        this.hideOverlay('glass-overlay');
+    }
+
+    static startNyan() {
+        document.body.classList.add('easter-nyan');
+        const overlay = Utils.$('nyan-overlay');
+        if (overlay) overlay.innerHTML = '<div class="nyan-cat">🐱🌈</div>';
+        this.showOverlay('nyan-overlay');
+    }
+
+    static stopNyan() {
+        document.body.classList.remove('easter-nyan');
+        this.hideOverlay('nyan-overlay');
+    }
+
+    static startZombie() {
+        document.body.classList.add('easter-zombie');
+        const video = Utils.$('native-player');
+        if (video) {
+            video.dataset.originalPlaybackRate = String(video.playbackRate || 1);
+            video.playbackRate = 0.5;
+        }
+    }
+
+    static stopZombie() {
+        document.body.classList.remove('easter-zombie');
+        const video = Utils.$('native-player');
+        if (video) {
+            video.playbackRate = Number(video.dataset.originalPlaybackRate || 1);
+            delete video.dataset.originalPlaybackRate;
+        }
+    }
+
+    static showOverlay(id) {
+        const el = Utils.$(id);
+        if (el) el.classList.add('active');
+    }
+
+    static hideOverlay(id) {
+        const el = Utils.$(id);
+        if (el) el.classList.remove('active');
+    }
+
+    static getAudioContext() {
+        if (!this.audioContext) {
+            const Ctx = window.AudioContext || window.webkitAudioContext;
+            if (!Ctx) return null;
+            this.audioContext = new Ctx();
+        }
+        if (this.audioContext.state === 'suspended') this.audioContext.resume().catch(() => {});
+        return this.audioContext;
+    }
+
+    static playSimpleTone(frequency, duration, type = 'sine', gainValue = 0.04) {
+        const audioCtx = this.getAudioContext();
+        if (!audioCtx) return;
+        const now = audioCtx.currentTime;
+        const oscillator = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        oscillator.type = type;
+        oscillator.frequency.setValueAtTime(frequency, now);
+        gain.gain.setValueAtTime(gainValue, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+        oscillator.connect(gain);
+        gain.connect(audioCtx.destination);
+        oscillator.start(now);
+        oscillator.stop(now + duration);
+    }
+
+    static playSound(url, { volume = 0.35, fallback } = {}) {
+        const audio = new Audio(url);
+        audio.volume = volume;
+        audio.preload = 'auto';
+        AppState.easterEggs.audioPool.add(audio);
+        const cleanup = () => AppState.easterEggs.audioPool.delete(audio);
+        audio.onended = cleanup;
+        audio.onerror = () => {
+            cleanup();
+            fallback?.();
+        };
+        audio.play().then(() => {
+            setTimeout(() => cleanup(), 6000);
+        }).catch(() => {
+            cleanup();
+            fallback?.();
         });
     }
 }
@@ -1076,6 +1859,7 @@ class DirectMessages {
                 if (AppState.currentDirectChat?.id === chatId) return; 
                 
                 sessionStorage.setItem(marker, String(lastTs));
+                EasterEggManager.playNotification();
                 if (chat.lastMessage.type === 'invite') {
                     Utils.toast(`ЛС: ${chat.lastMessage.fromName} приглашает вас в комнату!`);
                 } else {
@@ -2503,10 +3287,14 @@ class RoomManager {
         });
         AppState.roomSubscriptions.push(() => off(chatRef, 'child_added', cUnsub));
 
-        Utils.$('send-btn').onclick = () => {
+        Utils.$('send-btn').onclick = async () => {
             const input = Utils.$('chat-input');
             if (!input.value.trim() || !this.hasPerm('chat')) return;
-            push(chatRef, { uid, name: AppState.currentUser.displayName, text: input.value.trim(), ts: Date.now() });
+            const text = input.value.trim();
+            const wasHandled = await EasterEggManager.handleChatInput(text, chatRef, uid);
+            if (!wasHandled) {
+                await push(chatRef, { uid, name: AppState.currentUser.displayName, text, ts: Date.now() });
+            }
             input.value = '';
         };
         Utils.$('chat-input').onkeydown = (e) => { if(e.key==='Enter') Utils.$('send-btn').click(); };
@@ -2528,6 +3316,7 @@ class RoomManager {
             setTimeout(() => el.remove(), 3000);
         });
         AppState.roomSubscriptions.push(() => off(reactionsRef, 'child_added', rUnsub));
+        EasterEggManager.bindRoom(roomId);
 
         Utils.$('tab-chat-btn').onclick = () => {
             Utils.$('tab-chat-btn').classList.add('active'); Utils.$('tab-users-btn').classList.remove('active');
@@ -2673,6 +3462,7 @@ class RoomManager {
         AppState.roomSubscriptions.forEach(fn => fn());
         AppState.roomSubscriptions = [];
         RTCManager.destroy();
+        EasterEggManager.cleanupAllEffects();
         
         const vid = Utils.$('native-player');
         if (vid) {
@@ -3004,6 +3794,7 @@ class RTCManager {
 window.onload = () => {
     AuthManager.init();
     BackgroundFX.init();
+    EasterEggManager.init();
     HashtagManager.initHashtags();
 
     document.querySelectorAll('.btn-close-modal').forEach(btn => {
