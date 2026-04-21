@@ -2203,7 +2203,6 @@ class RoomManager {
         AppState.roomSubscriptions.forEach(fn => fn()); AppState.roomSubscriptions = [];
         
         Utils.$('room-title-text').innerText = Utils.escapeHtml(roomData.name);
-        this.applyRoomTheme(roomData.theme || 'default');
         const vid = Utils.$('native-player');
         const nextVideoUrl = String(roomData.videoUrl || '').trim();
 
@@ -2247,6 +2246,7 @@ class RoomManager {
         Utils.showScreen('room-screen');
         Utils.$('chat-messages').innerHTML = '<div class="panel-love-hearts" id="chat-love-hearts"></div><div class="sys-msg">Вы вошли в комнату</div>';
         Utils.$('users-list').innerHTML = '<div class="panel-love-hearts" id="users-love-hearts"></div>';
+        this.applyRoomTheme(roomData.theme || 'default');
         
         this.initRoomServicesFinal(roomId);
         RTCManager.init(roomId); 
@@ -2531,6 +2531,8 @@ class RoomManager {
             roomScreen.classList.add('theme-love');
             document.body.classList.add('theme-love-room');
             this.startLoveHearts();
+            // Fallback: containers may appear a tick later after rerender.
+            setTimeout(() => this.startLoveHearts(), 150);
         }
     }
 
