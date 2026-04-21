@@ -274,7 +274,7 @@
         .chat-content-area { position: relative; overflow: hidden; }
         .panel-love-hearts { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 0; }
         .chat-content-area > :not(.panel-love-hearts) { position: relative; z-index: 1; }
-        .love-heart { position: absolute; bottom: -90px; width: 52px; height: 52px; object-fit: contain; opacity: 0; animation: loveFloatUp 30s linear forwards; filter: brightness(0.62) saturate(0.7) contrast(0.9); }
+        .love-heart { position: absolute; bottom: -90px; width: auto; height: auto; opacity: 0; animation: loveFloatUp 30s linear forwards; font-size: 36px; line-height: 1; filter: brightness(0.62) saturate(0.7) contrast(0.9); text-shadow: 0 0 14px rgba(255, 102, 194, 0.25); }
         .love-heart.far { filter: blur(2.8px) brightness(0.48) saturate(0.55); }
         .love-heart.mid { filter: blur(1.3px) brightness(0.58) saturate(0.62); }
         .love-heart.near { filter: blur(0.4px) brightness(0.68) saturate(0.72); }

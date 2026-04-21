@@ -1987,11 +1987,7 @@ class RoomManager {
     static themeIndex = 0;
     static heartsChatTimer = null;
     static heartsUsersTimer = null;
-    static loveHeartPngs = [
-        'file:///C:/Users/AMD%20Athlonllx4/.cursor/projects/c-Users-AMD-Athlonllx4-Desktop-123/assets/c__Users_AMD_Athlonllx4_AppData_Roaming_Cursor_User_workspaceStorage_cb07f3218eeb2835be58b301e8a695fb_images_image-df857085-9bfc-4d25-85ef-ea63f1565397.png',
-        'file:///C:/Users/AMD%20Athlonllx4/.cursor/projects/c-Users-AMD-Athlonllx4-Desktop-123/assets/c__Users_AMD_Athlonllx4_AppData_Roaming_Cursor_User_workspaceStorage_cb07f3218eeb2835be58b301e8a695fb_images_image-03bebf8e-38ed-43ca-b9ea-820eb390f3ac.png',
-        'file:///C:/Users/AMD%20Athlonllx4/.cursor/projects/c-Users-AMD-Athlonllx4-Desktop-123/assets/c__Users_AMD_Athlonllx4_AppData_Roaming_Cursor_User_workspaceStorage_cb07f3218eeb2835be58b301e8a695fb_images_image-cace3e79-9576-4215-9931-f25828db1759.png'
-    ];
+    static loveHeartEmojis = ['💗', '💘', '💞', '💕'];
 
     static syncDeveloperControls(profile = {}) {
         AdminPanel.syncSidebarButton(profile);
@@ -2543,10 +2539,9 @@ class RoomManager {
 
         const spawnHeart = (layer, mode = 'mid', warm = false) => {
             if (!layer) return;
-            const heart = document.createElement('img');
+            const heart = document.createElement('div');
             heart.className = `love-heart ${mode}`;
-            heart.src = this.loveHeartPngs[Math.floor(Math.random() * this.loveHeartPngs.length)];
-            heart.alt = '';
+            heart.innerText = this.loveHeartEmojis[Math.floor(Math.random() * this.loveHeartEmojis.length)];
             heart.style.left = `${Math.random() * 100}%`;
             const scaleBase = mode === 'far' ? 0.45 : mode === 'near' ? 1.15 : 0.78;
             const scale = scaleBase + Math.random() * (mode === 'near' ? 0.35 : 0.25);
