@@ -948,6 +948,7 @@ class FriendsManager {
 
 class DirectMessages {
     static heartsTimer = null;
+    static theme = 'default';
 
     static getChatId(uid1, uid2) { return [uid1, uid2].sort().join('_'); }
 
@@ -963,6 +964,7 @@ class DirectMessages {
         if (Utils.$('dm-input')) Utils.$('dm-input').value = '';
         if (Utils.$('dm-messages')) Utils.$('dm-messages').innerHTML = '';
         if (Utils.$('dm-chat-title')) Utils.$('dm-chat-title').innerText = 'Личный чат';
+        Utils.$('dm-theme-controls')?.classList.remove('active');
     }
 
     static startNotifications() {
@@ -998,7 +1000,8 @@ class DirectMessages {
         
         Utils.$('dm-chat-title').innerText = `Чат: ${targetName}`;
         Utils.$('modal-dm-chat').classList.add('active');
-        this.startLoveHearts();
+        this.bindThemeControls();
+        this.applyTheme(this.theme);
 
         const chatRef = ref(db, `direct-messages/${chatId}`);
         this.unsubCurrent = onValue(chatRef, (snap) => {
@@ -1068,10 +1071,33 @@ class DirectMessages {
             `;
         }).join('');
         list.scrollTop = list.scrollHeight;
+        if (this.theme === 'love') this.startLoveHearts();
+    }
+
+    static bindThemeControls() {
+        const toggle = Utils.$('btn-dm-theme-toggle');
+        const controls = Utils.$('dm-theme-controls');
+        if (!toggle || !controls) return;
+        toggle.onclick = () => controls.classList.toggle('active');
+        controls.querySelectorAll('.dm-theme-chip').forEach(btn => {
+            btn.onclick = () => this.applyTheme(btn.dataset.theme || 'default');
+        });
+    }
+
+    static applyTheme(theme = 'default') {
+        const modal = Utils.$('modal-dm-chat');
+        if (!modal) return;
+        this.theme = theme === 'love' ? 'love' : 'default';
+        modal.classList.toggle('theme-love', this.theme === 'love');
+        Utils.$('dm-theme-controls')?.querySelectorAll('.dm-theme-chip').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.theme === this.theme);
+        });
+        if (this.theme === 'love') this.startLoveHearts();
+        else this.stopLoveHearts();
     }
 
     static startLoveHearts() {
-        if (!document.body.classList.contains('theme-love-room')) return;
+        if (this.theme !== 'love') return;
         if (this.heartsTimer) return;
 
         const spawnHeart = () => {

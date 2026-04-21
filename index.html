@@ -221,10 +221,21 @@
         /* DM Modal specific */
         .dm-modal-content { width: min(600px, 100%); display: flex; flex-direction: column; gap: 16px; padding: 20px; }
         .dm-modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 15px; margin-bottom: 5px; }
+        .dm-header-actions { display: flex; align-items: center; gap: 8px; }
         .dm-messages { height: 350px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 5px; position: relative; overflow-x: hidden; }
         .dm-compose { display: flex; gap: 10px; margin-top: 10px; }
         .dm-compose input { margin: 0; flex: 1; }
         .dm-messages > :not(.panel-love-hearts) { position: relative; z-index: 2; }
+        .dm-theme-controls { display: none; align-items: center; gap: 8px; }
+        .dm-theme-controls.active { display: flex; }
+        .dm-theme-chip { width: auto; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border-light); background: rgba(255,255,255,0.04); color: var(--text-main); font-size: 12px; }
+        .dm-theme-chip.active { background: rgba(255,255,255,0.16); border-color: rgba(255,255,255,0.36); }
+        #modal-dm-chat .modal-content { transition: background-color 0.8s ease, border-color 0.8s ease, box-shadow 0.8s ease; }
+        #modal-dm-chat.theme-love .modal-content { background: rgba(20, 6, 14, 0.9); border-color: rgba(226, 120, 169, 0.22); box-shadow: 0 12px 35px rgba(66, 15, 42, 0.55); }
+        #modal-dm-chat.theme-love .dm-messages,
+        #modal-dm-chat.theme-love .dm-compose { background: rgba(23, 7, 16, 0.65); border-radius: 12px; padding: 8px; }
+        #modal-dm-chat.theme-love .dm-bubble,
+        #modal-dm-chat.theme-love .bubble { background: rgba(214, 92, 150, 0.12); border-color: rgba(214, 120, 166, 0.28); color: #fff; }
 
         #toast-container { position: fixed; top: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
         .toast { padding: 14px 20px; border-radius: 12px; background: var(--panel); border: 1px solid var(--border-light); color: var(--text-main); font-size: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); animation: slideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
@@ -521,7 +532,14 @@
                     <h2 id="dm-chat-title" style="margin-bottom: 5px;">Личный чат</h2>
                     <p style="font-size: 12px; color: var(--text-muted);">Приватные сообщения</p>
                 </div>
-                <button class="secondary-btn btn-close-modal" style="width: auto; padding: 8px 12px;">✕</button>
+                <div class="dm-header-actions">
+                    <button class="secondary-btn" id="btn-dm-theme-toggle" style="width: auto; padding: 8px 12px;">Поменять тему</button>
+                    <button class="secondary-btn btn-close-modal" style="width: auto; padding: 8px 12px;">✕</button>
+                </div>
+            </div>
+            <div class="dm-theme-controls" id="dm-theme-controls">
+                <button class="dm-theme-chip active" data-theme="default">default</button>
+                <button class="dm-theme-chip" data-theme="love">love</button>
             </div>
             <div id="dm-messages" class="dm-messages"></div>
             <div class="dm-compose">
