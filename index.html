@@ -221,9 +221,10 @@
         /* DM Modal specific */
         .dm-modal-content { width: min(600px, 100%); display: flex; flex-direction: column; gap: 16px; padding: 20px; }
         .dm-modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 15px; margin-bottom: 5px; }
-        .dm-messages { height: 350px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 5px; }
+        .dm-messages { height: 350px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 5px; position: relative; overflow-x: hidden; }
         .dm-compose { display: flex; gap: 10px; margin-top: 10px; }
         .dm-compose input { margin: 0; flex: 1; }
+        .dm-messages > :not(.panel-love-hearts) { position: relative; z-index: 2; }
 
         #toast-container { position: fixed; top: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
         .toast { padding: 14px 20px; border-radius: 12px; background: var(--panel); border: 1px solid var(--border-light); color: var(--text-main); font-size: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); animation: slideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
@@ -298,9 +299,10 @@
             .rooms-main { padding: 15px; }
             .room-layout { grid-template-columns: 1fr; padding: 10px; height: auto; display: flex; flex-direction: column; }
             .video-container { height: 35vh; flex: none; }
-            .chat-section { height: 55vh; flex: none; }
+            .chat-section { height: 55dvh; min-height: 320px; flex: none; }
             .room-top-bar { padding: 10px; }
             .reaction-bar { bottom: 10px; padding: 6px 12px; }
+            #chat-input-container { position: sticky; bottom: 0; z-index: 6; padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
         }
     </style>
 </head>

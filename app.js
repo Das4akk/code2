@@ -947,6 +947,8 @@ class FriendsManager {
 }
 
 class DirectMessages {
+    static heartsTimer = null;
+
     static getChatId(uid1, uid2) { return [uid1, uid2].sort().join('_'); }
 
     static closeChat() {
@@ -957,6 +959,7 @@ class DirectMessages {
         AppState.currentDirectChat = null;
         const modal = Utils.$('modal-dm-chat');
         if (modal) modal.classList.remove('active');
+        this.stopLoveHearts();
         if (Utils.$('dm-input')) Utils.$('dm-input').value = '';
         if (Utils.$('dm-messages')) Utils.$('dm-messages').innerHTML = '';
         if (Utils.$('dm-chat-title')) Utils.$('dm-chat-title').innerText = 'Личный чат';
@@ -995,6 +998,7 @@ class DirectMessages {
         
         Utils.$('dm-chat-title').innerText = `Чат: ${targetName}`;
         Utils.$('modal-dm-chat').classList.add('active');
+        this.startLoveHearts();
 
         const chatRef = ref(db, `direct-messages/${chatId}`);
         this.unsubCurrent = onValue(chatRef, (snap) => {
@@ -1028,9 +1032,13 @@ class DirectMessages {
 
     static renderMessages(messages) {
         const list = Utils.$('dm-messages');
-        if (!messages.length) { list.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:20px;">Нет сообщений</div>'; return; }
+        const heartsLayer = '<div class="panel-love-hearts" id="dm-love-hearts"></div>';
+        if (!messages.length) {
+            list.innerHTML = `${heartsLayer}<div style="color:var(--text-muted); text-align:center; padding:20px;">Нет сообщений</div>`;
+            return;
+        }
         
-        list.innerHTML = messages.map(m => {
+        list.innerHTML = heartsLayer + messages.map(m => {
             const isSelf = m.fromUid === AppState.currentUser.uid;
             
             if (m.type === 'invite') {
@@ -1060,6 +1068,47 @@ class DirectMessages {
             `;
         }).join('');
         list.scrollTop = list.scrollHeight;
+    }
+
+    static startLoveHearts() {
+        if (!document.body.classList.contains('theme-love-room')) return;
+        if (this.heartsTimer) return;
+
+        const spawnHeart = () => {
+            const layer = Utils.$('dm-love-hearts');
+            if (!layer) return;
+            const heart = document.createElement('div');
+            const roll = Math.random();
+            const mode = roll < 0.33 ? 'far' : roll > 0.74 ? 'near' : 'mid';
+            heart.className = `love-heart ${mode}`;
+            heart.innerText = RoomManager.loveHeartEmojis[Math.floor(Math.random() * RoomManager.loveHeartEmojis.length)];
+            heart.style.left = `${10 + Math.random() * 80}%`;
+            const scaleBase = mode === 'far' ? 0.45 : mode === 'near' ? 1.15 : 0.78;
+            const scale = scaleBase + Math.random() * (mode === 'near' ? 0.35 : 0.25);
+            const drift = -12 + Math.random() * 24;
+            const duration = mode === 'near' ? 34 + Math.random() * 10 : 30 + Math.random() * 10;
+            const opacity = mode === 'far' ? 0.18 + Math.random() * 0.12 : mode === 'near' ? 0.34 + Math.random() * 0.18 : 0.25 + Math.random() * 0.14;
+            const travel = (layer.clientHeight || 620) + 120;
+            heart.style.setProperty('--heart-scale', String(scale));
+            heart.style.setProperty('--heart-drift', `${drift}px`);
+            heart.style.setProperty('--heart-opacity', String(opacity));
+            heart.style.setProperty('--heart-travel', `${travel}px`);
+            heart.style.animationDuration = `${duration}s`;
+            layer.appendChild(heart);
+            setTimeout(() => heart.remove(), 46000);
+        };
+
+        for (let i = 0; i < 8; i++) spawnHeart();
+        this.heartsTimer = setInterval(spawnHeart, 1700);
+    }
+
+    static stopLoveHearts() {
+        if (this.heartsTimer) {
+            clearInterval(this.heartsTimer);
+            this.heartsTimer = null;
+        }
+        const layer = Utils.$('dm-love-hearts');
+        if (layer) layer.innerHTML = '';
     }
 
     static async sendRoomInvite(targetUid) {
