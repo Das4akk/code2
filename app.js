@@ -1986,6 +1986,7 @@ class RoomManager {
     static themeOptions = ['default', 'love'];
     static themeIndex = 0;
     static heartsTimer = null;
+    static heartsChatTimer = null;
 
     static syncDeveloperControls(profile = {}) {
         AdminPanel.syncSidebarButton(profile);
@@ -2166,6 +2167,9 @@ class RoomManager {
             if (roomId) {
                 if (isPrivate && !password) { const oldR = AppState.roomsCache.get(roomId); roomData.salt = oldR.salt; roomData.hash = oldR.hash; }
                 await update(ref(db, `rooms/${roomId}`), roomData); Utils.toast('Настройки сохранены');
+                const mergedRoom = { ...(AppState.roomsCache.get(roomId) || {}), ...roomData };
+                AppState.roomsCache.set(roomId, mergedRoom);
+                if (AppState.currentRoomId === roomId) this.applyRoomTheme(mergedRoom.theme || 'default');
             } else {
                 roomData.createdAt = Date.now(); const newRef = push(ref(db, 'rooms')); await set(newRef, roomData); Utils.toast('Комната создана');
                 this.enterRoomFinal(newRef.key, roomData);
@@ -2519,26 +2523,40 @@ class RoomManager {
         const roomScreen = Utils.$('room-screen');
         if (!roomScreen) return;
         roomScreen.classList.remove('theme-love');
+        document.body.classList.remove('theme-love-room');
         this.stopLoveHearts();
         if (theme === 'love') {
             roomScreen.classList.add('theme-love');
+            document.body.classList.add('theme-love-room');
             this.startLoveHearts();
         }
     }
 
     static startLoveHearts() {
         const layer = Utils.$('room-theme-effects');
-        if (!layer || this.heartsTimer) return;
+        const chatLayer = Utils.$('room-theme-effects-chat');
+        if (!layer || !chatLayer || this.heartsTimer || this.heartsChatTimer) return;
         this.heartsTimer = setInterval(() => {
             const heart = document.createElement('div');
             heart.className = 'love-heart';
             heart.innerText = Math.random() > 0.5 ? '❤' : '💗';
             heart.style.left = `${Math.random() * 100}%`;
-            heart.style.fontSize = `${14 + Math.random() * 16}px`;
-            heart.style.animationDuration = `${3.2 + Math.random() * 2.5}s`;
+            heart.style.fontSize = `${12 + Math.random() * 12}px`;
+            heart.style.animationDuration = `${13 + Math.random() * 8}s`;
             layer.appendChild(heart);
-            setTimeout(() => heart.remove(), 6000);
-        }, 320);
+            setTimeout(() => heart.remove(), 23000);
+        }, 1400);
+
+        this.heartsChatTimer = setInterval(() => {
+            const heart = document.createElement('div');
+            heart.className = 'love-heart layer-chat';
+            heart.innerText = Math.random() > 0.5 ? '❤' : '💗';
+            heart.style.left = `${Math.random() * 100}%`;
+            heart.style.fontSize = `${10 + Math.random() * 10}px`;
+            heart.style.animationDuration = `${16 + Math.random() * 8}s`;
+            chatLayer.appendChild(heart);
+            setTimeout(() => heart.remove(), 26000);
+        }, 1900);
     }
 
     static stopLoveHearts() {
@@ -2546,8 +2564,14 @@ class RoomManager {
             clearInterval(this.heartsTimer);
             this.heartsTimer = null;
         }
+        if (this.heartsChatTimer) {
+            clearInterval(this.heartsChatTimer);
+            this.heartsChatTimer = null;
+        }
         const layer = Utils.$('room-theme-effects');
         if (layer) layer.innerHTML = '';
+        const chatLayer = Utils.$('room-theme-effects-chat');
+        if (chatLayer) chatLayer.innerHTML = '';
     }
 }
 

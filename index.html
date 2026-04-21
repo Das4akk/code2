@@ -165,8 +165,8 @@
         
         .m-line { display: flex; flex-direction: column; animation: fadeIn 0.2s ease; margin-bottom: 4px; }
         .m-line.self { align-items: flex-end; }
-        .bubble { padding: 10px 14px; border-radius: 16px; background: rgba(255,255,255,0.04); font-size: 14px; max-width: 85%; line-height: 1.4; border: 1px solid var(--border-light); word-wrap: break-word; }
-        .self .bubble { background: var(--text-main); color: #000; border-color: var(--text-main); border-bottom-right-radius: 4px; }
+        .bubble { padding: 10px 14px; border-radius: 16px; background: rgba(255,255,255,0.04); font-size: 14px; max-width: 85%; line-height: 1.4; border: 1px solid var(--border-light); word-wrap: break-word; color: #fff; }
+        .self .bubble { background: #1a1a1d; color: #fff; border-color: #2a2a2f; border-bottom-right-radius: 4px; }
         .m-line strong { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; padding: 0 4px; font-weight: 600; display: block; }
         .self strong { display: none; }
         .sys-msg { text-align: center; font-size: 11px; color: var(--text-muted); margin: 10px 0; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -232,15 +232,15 @@
         .online-counter-badge { position: fixed; bottom: 20px; left: 20px; padding: 8px 16px; border-radius: 20px; background: rgba(0,0,0,0.8); border: 1px solid rgba(46,213,115,0.2); color: var(--accent); font-size: 12px; font-weight: 700; z-index: 100; backdrop-filter: blur(10px); display: flex; align-items: center; gap: 6px; }
         .online-counter-badge::before { content: ''; display: block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
         #remote-audio-container { display: none; }
-        .room-theme-toggle { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border-light); background: rgba(255,255,255,0.03); color: var(--text-main); }
-        .room-theme-carousel { display: none; border: 1px solid var(--border-light); border-radius: 12px; padding: 10px; background: rgba(255,255,255,0.02); }
+        .room-theme-toggle { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #232329; background: #0a0a0f; color: #f5f5f7; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03); }
+        .room-theme-carousel { display: none; border: 1px solid #232329; border-radius: 12px; padding: 10px; background: #09090d; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03); }
         .room-theme-carousel.active { display: block; animation: fadeIn 0.25s ease; }
         .theme-carousel-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-        .theme-arrow-btn { width: auto; min-width: 38px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-light); background: rgba(255,255,255,0.03); color: var(--text-main); }
+        .theme-arrow-btn { width: auto; min-width: 38px; padding: 8px 12px; border-radius: 8px; border: 1px solid #2a2a31; background: #111117; color: #fff; }
         .theme-preview-wrap { flex: 1; overflow: hidden; min-height: 186px; display: flex; align-items: center; justify-content: center; }
-        .theme-preview-track { display: flex; gap: 12px; transition: transform 0.35s ease; width: 100%; }
-        .theme-card { min-width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .theme-rect { width: 112px; height: 152px; border-radius: 18px; border: 1px solid var(--border-light); position: relative; overflow: hidden; background: #090909; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04); }
+        .theme-preview-track { display: flex; gap: 0; transition: transform 0.35s ease; width: 100%; }
+        .theme-card { min-width: 100%; flex: 0 0 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .theme-rect { width: 112px; height: 152px; border-radius: 18px; border: 1px solid #2a2a31; position: relative; overflow: hidden; background: #090909; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04); }
         .theme-rect.default::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, #0d0d10 0%, #040404 100%); }
         .theme-rect.love::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 20% 15%, #66304f 0%, #301226 50%, #10050d 100%); }
         .theme-rect.love::after { content: '❤  ❤  ❤'; position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); color: rgba(255,153,204,0.85); letter-spacing: 6px; font-size: 11px; }
@@ -248,24 +248,29 @@
         .theme-check { margin-top: 6px; font-size: 16px; line-height: 1; color: transparent; transition: color 0.2s ease, text-shadow 0.2s ease; }
         .theme-card.active .theme-name { color: var(--text-main); }
         .theme-card.active .theme-check { color: #fff; text-shadow: 0 0 12px rgba(255,255,255,0.45); }
-        #room-screen.theme-love { background: radial-gradient(circle at 20% 20%, #4d1b35 0%, #190913 55%, #070307 100%); }
-        #room-screen.theme-love .glass-panel { border-color: rgba(255, 146, 196, 0.28); box-shadow: 0 12px 35px rgba(125, 34, 80, 0.4); background: rgba(33, 10, 23, 0.84); }
+        #room-screen.theme-love { background: radial-gradient(circle at 18% 16%, #3a1328 0%, #170812 52%, #050205 100%); }
+        body.theme-love-room .modal-content.glass-panel,
+        #room-screen.theme-love .glass-panel { border-color: rgba(226, 120, 169, 0.22); box-shadow: 0 12px 35px rgba(66, 15, 42, 0.55); background: rgba(20, 6, 14, 0.9); }
         #room-screen.theme-love .chat-section,
-        #room-screen.theme-love .chat-input-area { background: rgba(45, 14, 31, 0.72); }
-        #room-screen.theme-love .bubble { background: rgba(255, 129, 182, 0.12); border-color: rgba(255, 146, 196, 0.35); }
+        #room-screen.theme-love .chat-input-area { background: rgba(23, 7, 16, 0.86); }
+        #room-screen.theme-love .bubble { background: rgba(214, 92, 150, 0.12); border-color: rgba(214, 120, 166, 0.28); color: #fff; }
+        #room-screen.theme-love .self .bubble { background: rgba(196, 85, 143, 0.18); border-color: rgba(214, 120, 166, 0.33); color: #fff; }
         #room-screen.theme-love .chat-tabs button.active { background: rgba(255, 129, 182, 0.2); color: #ffd7ea; }
-        #room-screen.theme-love .input-wrapper { border-color: rgba(255, 146, 196, 0.35); background: rgba(20, 6, 14, 0.82); }
+        #room-screen.theme-love .input-wrapper { border-color: rgba(214, 120, 166, 0.28); background: rgba(16, 5, 12, 0.9); }
         #room-screen.theme-love .send-btn,
         #room-screen.theme-love #btn-share-room,
         #room-screen.theme-love #btn-room-settings,
-        #room-screen.theme-love #btn-leave-room { border-color: rgba(255, 146, 196, 0.45); background: rgba(255, 182, 214, 0.14); color: #ffd7ea; }
-        #room-screen.theme-love .user-item { background: rgba(255, 123, 180, 0.08); border-color: rgba(255, 146, 196, 0.25); }
+        #room-screen.theme-love #btn-leave-room { border-color: rgba(214, 120, 166, 0.4); background: rgba(196, 85, 143, 0.14); color: #ffd7ea; }
+        #room-screen.theme-love .user-item { background: rgba(173, 68, 120, 0.11); border-color: rgba(214, 120, 166, 0.24); }
         #room-screen.theme-love .room-top-bar,
         #room-screen.theme-love .video-container,
-        #room-screen.theme-love .chat-section { border-color: rgba(255, 146, 196, 0.28); }
-        #room-theme-effects { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 5; }
-        .love-heart { position: absolute; bottom: -30px; color: #ff7eb8; opacity: 0.9; font-size: 18px; animation: loveFloatUp 4.2s linear forwards; text-shadow: 0 0 12px rgba(255, 126, 184, 0.55); }
-        @keyframes loveFloatUp { from { transform: translateY(0) scale(0.8); opacity: 0; } 15% { opacity: 1; } to { transform: translateY(-120vh) scale(1.2); opacity: 0; } }
+        #room-screen.theme-love .chat-section { border-color: rgba(214, 120, 166, 0.24); }
+        #room-theme-effects { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 3; }
+        #room-theme-effects-chat { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 1; }
+        #chat-messages, #users-list, .chat-input-area { position: relative; z-index: 2; }
+        .love-heart { position: absolute; bottom: -40px; color: #ff7eb8; opacity: 0.55; font-size: 18px; animation: loveFloatUp 15s linear forwards; text-shadow: 0 0 14px rgba(255, 126, 184, 0.35); }
+        .love-heart.layer-chat { opacity: 0.35; color: #e472a8; animation-duration: 18s; }
+        @keyframes loveFloatUp { from { transform: translateY(0) scale(0.85); opacity: 0; } 12% { opacity: 1; } to { transform: translateY(-135vh) scale(1.18); opacity: 0; } }
 
         @media (max-width: 1024px) {
             .lobby-layout { grid-template-columns: 1fr; padding: 0; }
@@ -407,6 +412,7 @@
             </div>
             
             <div class="chat-section glass-panel">
+                <div id="room-theme-effects-chat"></div>
                 <div class="chat-tabs">
                     <button id="tab-chat-btn" class="active">💬 Чат</button>
                     <button id="tab-users-btn">👥 Люди (<span id="users-count">0</span>)</button>
