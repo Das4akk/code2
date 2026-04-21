@@ -2550,9 +2550,11 @@ class RoomManager {
             const drift = -12 + Math.random() * 24;
             const duration = mode === 'near' ? 34 + Math.random() * 10 : 30 + Math.random() * 10;
             const opacity = mode === 'far' ? 0.18 + Math.random() * 0.12 : mode === 'near' ? 0.34 + Math.random() * 0.18 : 0.25 + Math.random() * 0.14;
+            const travel = (layer.clientHeight || 620) + 120;
             heart.style.setProperty('--heart-scale', String(scale));
             heart.style.setProperty('--heart-drift', `${drift}px`);
             heart.style.setProperty('--heart-opacity', String(opacity));
+            heart.style.setProperty('--heart-travel', `${travel}px`);
             heart.style.animationDuration = `${duration}s`;
             layer.appendChild(heart);
             setTimeout(() => heart.remove(), 46000);

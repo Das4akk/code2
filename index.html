@@ -274,11 +274,11 @@
         .chat-content-area { position: relative; overflow: hidden; }
         .panel-love-hearts { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 1; }
         .chat-content-area > :not(.panel-love-hearts) { position: relative; z-index: 2; }
-        .love-heart { position: absolute; bottom: -70px; width: auto; height: auto; opacity: 0; animation: loveFloatUp 28s linear forwards; font-size: 32px; line-height: 1; filter: brightness(0.78) saturate(0.78) contrast(0.95); text-shadow: 0 0 10px rgba(255, 102, 194, 0.18); }
-        .love-heart.far { filter: blur(1.8px) brightness(0.62) saturate(0.62); }
-        .love-heart.mid { filter: blur(0.9px) brightness(0.72) saturate(0.72); }
-        .love-heart.near { filter: blur(0.2px) brightness(0.84) saturate(0.82); }
-        @keyframes loveFloatUp { from { transform: translate3d(0, 0, 0) scale(var(--heart-scale, 1)); opacity: 0; } 8% { opacity: var(--heart-opacity, 0.4); } to { transform: translate3d(var(--heart-drift, 8px), -118%, 0) scale(calc(var(--heart-scale, 1) * 1.02)); opacity: 0; } }
+        .love-heart { position: absolute; bottom: -70px; width: auto; height: auto; opacity: 0; animation: loveFloatUp 28s linear forwards; font-size: 32px; line-height: 1; filter: brightness(0.88) saturate(0.88) contrast(0.98); text-shadow: 0 0 10px rgba(255, 102, 194, 0.2); }
+        .love-heart.far { filter: blur(1.2px) brightness(0.72) saturate(0.72); }
+        .love-heart.mid { filter: blur(0.6px) brightness(0.84) saturate(0.82); }
+        .love-heart.near { filter: blur(0.15px) brightness(0.96) saturate(0.92); }
+        @keyframes loveFloatUp { from { transform: translate3d(0, 0, 0) scale(var(--heart-scale, 1)); opacity: 0; } 8% { opacity: var(--heart-opacity, 0.52); } to { transform: translate3d(var(--heart-drift, 8px), calc(-1 * var(--heart-travel, 700px)), 0) scale(calc(var(--heart-scale, 1) * 1.02)); opacity: 0; } }
 
         @media (max-width: 1024px) {
             .lobby-layout { grid-template-columns: 1fr; padding: 0; }
