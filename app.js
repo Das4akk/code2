@@ -2938,7 +2938,6 @@ class RoomManager {
     static themeOptions = ['default', 'love'];
     static themeIndex = 0;
     static heartsTimer = null;
-    static loveHeartEmojis = ['💗', '💘', '💞', '💕'];
 
     static syncDeveloperControls(profile = {}) {
         AdminPanel.syncSidebarButton(profile);
