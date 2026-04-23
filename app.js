@@ -4069,7 +4069,7 @@ window.onload = () => {
         <a href="mailto:support@cow.com">Mail</a>
         <a href="https://t.me/your_channel" target="_blank">Telegram</a>
         <a href="#" target="_blank">Сайт</a>
-        <a href="#" onclick="event.preventDefault()">Позже добавлю</a>
+        <a href="#" onclick="event.preventDefault()">позже добавлю</a>
     `;
     document.body.appendChild(footerLinks);
 
