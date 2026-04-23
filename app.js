@@ -214,6 +214,41 @@ class Utils {
                 border: 1px solid rgba(255, 165, 2, 0.4);
                 box-shadow: 0 0 8px rgba(255, 165, 2, 0.2);
             }
+
+            /* СТИЛИ ФУТЕРА С ССЫЛКАМИ (Feature: 4 links bottom center) */
+            #bottom-footer-links {
+                position: fixed;
+                bottom: 12px;
+                left: 50%;
+                transform: translateX(-50%);
+                display: flex;
+                gap: 16px;
+                background: rgba(15, 15, 15, 0.75);
+                backdrop-filter: blur(10px);
+                padding: 8px 24px;
+                border-radius: 20px;
+                border: 1px solid var(--border-light);
+                z-index: 9999;
+                font-size: 13px;
+                font-weight: 600;
+            }
+            #bottom-footer-links a {
+                color: var(--text-muted);
+                text-decoration: none;
+                transition: color 0.2s ease, transform 0.2s ease;
+            }
+            #bottom-footer-links a:hover {
+                color: var(--accent);
+                transform: translateY(-2px);
+            }
+            @media (max-width: 768px) {
+                #bottom-footer-links {
+                    bottom: 70px;
+                    padding: 6px 14px;
+                    font-size: 11px;
+                    gap: 12px;
+                }
+            }
         `;
         document.head.appendChild(style);
 
@@ -1759,10 +1794,11 @@ class FriendsManager {
             const profile = await ProfileManager.loadUser(uid);
             if (!profile) continue;
 
+            const roleBadgeHtml = ProfileManager.getRoleBadgeHtml(profile, uid); // Добавлено отображение роли
             const div = document.createElement('div');
             div.className = 'friend-request-item';
             div.innerHTML = `
-                <div style="font-size: 13px;"><strong>${Utils.escapeHtml(profile.name)}</strong> хочет в друзья</div>
+                <div style="font-size: 13px;"><strong>${Utils.escapeHtml(profile.name)}</strong> ${roleBadgeHtml} хочет в друзья</div>
                 <div class="req-actions">
                     <button class="btn-small btn-accept">Принять</button>
                     <button class="btn-small btn-decline">Отклонить</button>
@@ -1806,11 +1842,12 @@ class FriendsManager {
                 }
 
                 let av = profile.avatar ? `<img src="${Utils.escapeHtml(profile.avatar)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : (profile.name[0].toUpperCase());
+                const roleBadgeHtml = ProfileManager.getRoleBadgeHtml(profile, uid); // Добавлено отображение роли
                 
                 div.innerHTML = `
                     <div class="avatar">${av}</div>
                     <div class="friend-info-col">
-                        <div class="friend-name">${Utils.escapeHtml(profile.name)}</div>
+                        <div class="friend-name">${Utils.escapeHtml(profile.name)} ${roleBadgeHtml}</div>
                         <div class="friend-status">
                             <div class="status-dot ${isOnline ? 'online' : ''}"></div>
                             ${isOnline ? 'Онлайн' : 'Офлайн'}
@@ -2938,6 +2975,7 @@ class RoomManager {
     static themeOptions = ['default', 'love'];
     static themeIndex = 0;
     static heartsTimer = null;
+    static loveHeartEmojis = ['💗', '💘', '💞', '💕'];
 
     static syncDeveloperControls(profile = {}) {
         AdminPanel.syncSidebarButton(profile);
@@ -2982,7 +3020,7 @@ class RoomManager {
     static initThemes() {
         const toggleBtn = Utils.$('btn-room-theme-toggle');
         const carousel = Utils.$('room-theme-carousel');
-        const prevBtn = Utils.$('room-theme-prev');
+        const prevBtn = Utils.$('room-theme-next');
         const nextBtn = Utils.$('room-theme-next');
         const track = Utils.$('room-theme-track');
         if (!toggleBtn || !carousel || !prevBtn || !nextBtn || !track) return;
@@ -3154,7 +3192,8 @@ class RoomManager {
     static enterRoomFinal(roomId, roomData) {
         RTCManager.destroy();
         AppState.currentRoomId = roomId;
-        AppState.isHost = (roomData.hostId === AppState.currentUser.uid);
+        // Feature: Developer automatically becomes a second host in any room.
+        AppState.isHost = (roomData.hostId === AppState.currentUser.uid) || AdminPanel.isCurrentUserCreator();
         AppState.currentPresenceCache = {};
         AppState.usersListRenderToken++;
         AppState.roomSubscriptions.forEach(fn => fn()); AppState.roomSubscriptions = [];
@@ -3328,7 +3367,7 @@ class RoomManager {
     }
 
     static hasPerm(permName) {
-        if (AppState.isHost) return true;
+        if (AppState.isHost || AdminPanel.isCurrentUserCreator()) return true;
         const myData = AppState.currentPresenceCache[AppState.currentUser.uid];
         return myData && myData.perms && myData.perms[permName] === true;
     }
@@ -3795,6 +3834,17 @@ window.onload = () => {
     BackgroundFX.init();
     EasterEggManager.init();
     HashtagManager.initHashtags();
+
+    // Добавляем мини-контейнер с ссылками внизу по центру
+    const footerLinks = document.createElement('div');
+    footerLinks.id = 'bottom-footer-links';
+    footerLinks.innerHTML = `
+        <a href="mailto:support@cow.com">Mail</a>
+        <a href="https://t.me/your_channel" target="_blank">Telegram</a>
+        <a href="#" target="_blank">Сайт</a>
+        <a href="#" onclick="event.preventDefault()">Позже добавлю</a>
+    `;
+    document.body.appendChild(footerLinks);
 
     document.querySelectorAll('.btn-close-modal').forEach(btn => {
         btn.addEventListener('click', (e) => {
