@@ -853,19 +853,18 @@ class EasterEggManager {
         this.stopAdvancedMilk();
     }
 
-    // ADVANCED MILK SIMULATION (ОПТИМИЗИРОВАНО С ФИКСАМИ БАГОВ И ПЛАВНЫМ ЗАТУХАНИЕМ)
+ // ADVANCED MILK SIMULATION (ОПТИМИЗИРОВАНО С ФИКСАМИ БАГОВ И ПЛАВНЫМ ЗАТУХАНИЕМ)
     static startAdvancedMilk() {
         if (this.milkActive) return;
         this.milkActive = true;
 
-        let container = Utils.$('advanced-milk-container');
+        let container = document.getElementById('advanced-milk-container');
         if (!container) {
             container = document.createElement('div');
             container.id = 'advanced-milk-container';
-            container.style.opacity = '0'; // Для эффекта Fade-in
-            container.style.transition = 'opacity 1s ease';
+            container.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;pointer-events:none;opacity:0;transition:opacity 1s ease;';
             container.innerHTML = `
-                <div id="milk-glass">🥛</div>
+                <div id="milk-glass" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:80px;z-index:100;">🥛</div>
                 <canvas id="fluid-canvas"></canvas>
             `;
             document.body.appendChild(container);
@@ -873,12 +872,13 @@ class EasterEggManager {
         
         // Запускаем Fade-in
         setTimeout(() => {
-            if (Utils.$('advanced-milk-container')) Utils.$('advanced-milk-container').style.opacity = '1';
+            const el = document.getElementById('advanced-milk-container');
+            if (el) el.style.opacity = '1';
         }, 50);
 
-        const canvas = Utils.$('fluid-canvas');
+        const canvas = document.getElementById('fluid-canvas');
         const ctx = canvas.getContext('2d', { alpha: true });
-        const glass = Utils.$('milk-glass');
+        const glass = document.getElementById('milk-glass');
 
         let width, height;
         let springs = [];
@@ -887,7 +887,7 @@ class EasterEggManager {
         let targetFillHeight;
 
         const CONFIG = {
-            springCount: 150, tension: 0.025, dampening: 0.06, spread: 0.2, // Увеличено число пружин для плавности
+            springCount: 150, tension: 0.025, dampening: 0.06, spread: 0.2,
             layers: [
                 { color: 'rgba(203, 213, 225, 0.9)', offset: -40, speed: 0.015 },
                 { color: 'rgba(241, 245, 249, 0.95)', offset: -15, speed: 0.02 },
@@ -930,7 +930,7 @@ class EasterEggManager {
         const updatePhysics = () => {
             const diff = targetFillHeight - currentFillHeight; 
             currentFillHeight += diff * 0.03;
-            if (isNaN(currentFillHeight)) currentFillHeight = height; // Предохранитель для мониторов
+            if (isNaN(currentFillHeight)) currentFillHeight = height; 
 
             for (let i = 0; i < springs.length; i++) {
                 const spring = springs[i]; const d = currentFillHeight - spring.h;
@@ -949,7 +949,7 @@ class EasterEggManager {
         };
 
         const loop = () => {
-            ctx.clearRect(0, 0, width, height); // Прозрачный оверлей для сайта
+            ctx.clearRect(0, 0, width, height); 
             updatePhysics();
             const spacing = width / (CONFIG.springCount - 1);
             CONFIG.layers.forEach((layer) => {
@@ -970,6 +970,7 @@ class EasterEggManager {
         };
         loop();
 
+        // Сценарий анимации
         setTimeout(() => {
             glass.classList.add('active');
             setTimeout(() => {
@@ -989,11 +990,11 @@ class EasterEggManager {
                     setTimeout(() => {
                         targetFillHeight = height + 200;
                         setTimeout(() => {
-                            // Fade out перед полным удалением
-                            if (Utils.$('advanced-milk-container')) Utils.$('advanced-milk-container').style.opacity = '0';
+                            const milkCont = document.getElementById('advanced-milk-container');
+                            if (milkCont) milkCont.style.opacity = '0';
                             setTimeout(() => {
                                 this.stopAdvancedMilk();
-                            }, 1000); // Даем 1 секунду на анимацию затухания
+                            }, 1000); 
                         }, 3500);
                     }, 5000);
                 }, 3500);
@@ -1004,27 +1005,23 @@ class EasterEggManager {
     static stopAdvancedMilk() {
         if (!this.milkActive) return;
         this.milkActive = false;
-        const container = Utils.$('advanced-milk-container');
+        const container = document.getElementById('advanced-milk-container');
         if (container) container.remove();
         if (this.milkAnimFrame) cancelAnimationFrame(this.milkAnimFrame);
         if (this.milkStreamInterval) clearInterval(this.milkStreamInterval);
         if (this.milkResizeHandler) window.removeEventListener('resize', this.milkResizeHandler);
     }
 
-    static playNotification() {
-        if (Date.now() < AppState.easterEggs.notificationMutedUntil) return;
-        this.playSound(this.SOUND_URLS.notification, { volume: 0.28, fallback: () => this.playSimpleTone(880, 0.09, 'square', 0.05) });
-    }
-
     static playMoo() {
-        const audioCtx = this.getAudioContext();
-        if (!audioCtx) return;
+        // Звуковая пасхалка (без изменений)
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        const audioCtx = new AudioContext();
         const now = audioCtx.currentTime;
         const gain = audioCtx.createGain();
         const low = audioCtx.createOscillator();
         const high = audioCtx.createOscillator();
-        low.type = 'sawtooth';
-        high.type = 'triangle';
+        low.type = 'sawtooth'; high.type = 'triangle';
         low.frequency.setValueAtTime(160, now);
         low.frequency.exponentialRampToValueAtTime(105, now + 1.1);
         high.frequency.setValueAtTime(320, now);
@@ -1032,13 +1029,10 @@ class EasterEggManager {
         gain.gain.setValueAtTime(0.0001, now);
         gain.gain.exponentialRampToValueAtTime(0.15, now + 0.08);
         gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.3);
-        low.connect(gain);
-        high.connect(gain);
+        low.connect(gain); high.connect(gain);
         gain.connect(audioCtx.destination);
-        low.start(now);
-        high.start(now);
-        low.stop(now + 1.35);
-        high.stop(now + 1.35);
+        low.start(now); high.start(now);
+        low.stop(now + 1.35); high.stop(now + 1.35);
     }
 
     static playVaderBreath() {
