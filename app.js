@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @fileoverview COW Core Engine v4.0 - The Ultimate Edition
  * @description Интегрированы все фиксы: MPA-подобная стабильность, обход пароля по инвайтам,
  * улучшенный интерактивный нейрофон, левитация элементов, фикс мобильного скролла,
@@ -257,6 +257,249 @@ class Utils {
                 #bottom-footer-links {
                     bottom: 70px;
                     padding: 6px 14px;
+                    font-size: 11px;
+                    gap: 12px;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+
+        const originalBadge = document.querySelector('.online-counter-badge');
+        if (originalBadge) originalBadge.classList.add('original-badge');
+
+        const roomsMain = document.querySelector('.rooms-main');
+        if (roomsMain) {
+            const customBadge = document.createElement('div');
+            customBadge.id = 'custom-online-badge';
+            customBadge.innerHTML = `Сейчас в комнатах - <span id="global-online-count">0</span>`;
+            roomsMain.insertBefore(customBadge, roomsMain.firstChild);
+        }
+
+        if (!Utils.$('btn-google-login')) {
+            const btnLogin = document.createElement('button');
+            btnLogin.id = 'btn-google-login';
+            btnLogin.className = 'secondary-btn';
+            btnLogin.innerHTML = '🌐 Войти через Google';
+            btnLogin.style.marginTop = '10px';
+            Utils.$('login-form').appendChild(btnLogin);
+
+            const btnReg = document.createElement('button');
+            btnReg.id = 'btn-google-reg';
+            btnReg.className = 'secondary-btn';
+            btnReg.innerHTML = '🌐 Регистрация через Google';
+            btnReg.style.marginTop = '10px';
+            Utils.$('reg-form').appendChild(btnReg);
+        }
+    }
+}
+
+class BackgroundFX {
+    static init() {
+        const canvas = Utils.$('particle-canvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        let dots = [];
+        let isTabVisible = true;
+        let mouse = { x: null, y: null, radius: 150 };
+        
+        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        window.addEventListener('resize', resize);
+        resize();
+
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.x;
+            mouse.y = e.y;
+        });
+        window.addEventListener('mouseout', () => {
+            mouse.x = undefined; mouse.y = undefined;
+        });
+        
+        class Dot {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.vx = (Math.random() - 0.5) * 0.4; 
+                this.vy = (Math.random() - 0.5) * 0.4;
+                this.size = Math.random() * 2 + 1;
+            }
+            update() {
+                this.x += this.vx; this.y += this.vy;
+                if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+                if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+
+                if (mouse.x != null) {
+                    let dx = mouse.x - this.x;
+                    let dy = mouse.y - this.y;
+                    let distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance < mouse.radius) {
+                        const forceDirectionX = dx / distance;
+                        const forceDirectionY = dy / distance;
+                        const force = (mouse.radius - distance) / mouse.radius;
+                        this.x -= forceDirectionX * force * 2;
+                        this.y -= forceDirectionY * force * 2;
+                    }
+                }
+            }
+            draw() {
+                ctx.fillStyle = "rgba(255,255,255,0.6)";
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
+            }
+        }
+        
+        for (let i = 0; i < 90; i++) dots.push(new Dot()); 
+        
+        function animate() {
+            if (!isTabVisible) return; 
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            for (let i = 0; i < dots.length; i++) {
+                dots[i].update(); dots[i].draw();
+                for (let j = i + 1; j < dots.length; j++) {
+                    let dx = dots[i].x - dots[j].x;
+                    let dy = dots[i].y - dots[j].y;
+                    let dist = dx * dx + dy * dy; 
+                    if (dist < 25000) { 
+                        ctx.strokeStyle = `rgba(100, 200, 255, ${0.2 - Math.sqrt(dist) / 1000})`; 
+                        ctx.lineWidth = 1;
+                        ctx.beginPath(); ctx.moveTo(dots[i].x, dots[i].y); ctx.lineTo(dots[j].x, dots[j].y); ctx.stroke();
+                    }
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+        animate();
+
+        document.addEventListener("visibilitychange", () => {
+            isTabVisible = !document.hidden;
+        });
+    }
+}
+
+class EasterEggManager {
+    static DURATION = 5000;
+    static SOUND_URLS = {
+        notification: 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg',
+        glass: 'https://actions.google.com/sounds/v1/impacts/glass_shatters_into_debris.ogg',
+        vader: 'https://actions.google.com/sounds/v1/science_fiction/alien_breath.ogg'
+    };
+    static COMMANDS = new Map([
+        ['/moo', 'moo'],
+        ['/grass', 'grass'],
+        ['/milk', 'milk'],
+        ['/popcorn', 'popcorn'],
+        ['/dvd', 'dvd'],
+        ['/roll', 'roll'],
+        ['/matrix', 'matrix'],
+        ['/shh', 'shh'],
+        ['/nyan', 'nyan']
+    ]);
+    static KEYWORD_EFFECTS = {
+        COW: 'cow-cursor',
+        GLASS: 'glass',
+        CINEMA: 'cinema',
+        POTATO: 'potato',
+        NINJA: 'ninja',
+        ZOMBIE: 'zombie',
+        SPACE: 'space',
+        MIRROR: 'mirror'
+    };
+    static KONAMI = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+
+    static init() {
+        this.injectStyles();
+        this.ensureFxRoot();
+        this.bindKeyboard();
+    }
+
+    static injectStyles() {
+        const style = document.createElement('style');
+        style.innerHTML = `
+            body.easter-green {
+                --bg: #031507;
+                --panel: rgba(8, 28, 10, 0.92);
+                --panel-hover: rgba(15, 45, 17, 0.96);
+                --border: rgba(90, 255, 132, 0.16);
+                --border-light: rgba(90, 255, 132, 0.32);
+                --text-main: #eaffec;
+                --text-muted: #8ec99a;
+                --accent: #69ff88;
+                --accent-hover: #43d762;
+                --brand: #b7ffc4;
+            }
+            body.easter-green::before {
+                content: '';
+                position: fixed;
+                inset: 0;
+                pointer-events: none;
+                background: radial-gradient(circle at 20% 20%, rgba(86, 255, 137, 0.18), transparent 35%), linear-gradient(160deg, rgba(4, 22, 8, 0.25), rgba(4, 22, 8, 0.58));
+                z-index: 999;
+                opacity: 1;
+                transition: opacity 0.8s ease;
+            }
+            body.easter-roll #room-screen,
+            body.easter-roll #lobby-screen {
+                animation: easterRoll 5s cubic-bezier(0.22, 1, 0.36, 1);
+                transform-origin: center center;
+            }
+            body.easter-matrix {
+                background: #020704;
+                color: #6dff8c;
+                text-shadow: 0 0 8px rgba(109, 255, 140, 0.2);
+            }
+            body.easter-matrix .glass-panel,
+            body.easter-matrix .chat-section,
+            body.easter-matrix .bubble,
+            body.easter-matrix .room-card,
+            body.easter-matrix .user-item,
+            body.easter-matrix .friend-item {
+                border-color: rgba(109, 255, 140, 0.24) !important;
+                background: rgba(5, 20, 8, 0.78) !important;
+                box-shadow: 0 0 18px rgba(17, 255, 105, 0.08);
+            }
+            body.easter-vhs,
+            body.easter-cinema,
+            body.easter-zombie,
+            body.easter-potato,
+            body.easter-mirror,
+            body.easter-space {
+                transition: filter 0.9s ease, transform 0.9s ease;
+            }
+            body.easter-vhs { filter: saturate(0.8) contrast(1.08); }
+            body.easter-zombie { filter: grayscale(1) contrast(1.15); }
+            body.easter-potato * {
+                font-family: "Comic Sans MS", "Comic Neue", cursive !important;
+                image-rendering: pixelated;
+            }
+            body.easter-potato {
+                filter: contrast(1.25) saturate(0.82);
+            }
+            body.easter-mirror {
+                transform: scaleX(-1);
+                transform-origin: center center;
+            }
+            body.easter-space .glass-panel,
+            body.easter-space .room-card,
+            body.easter-space .user-item,
+            body.easter-space .friend-item,
+            body.easter-space .chat-section,
+            body.easter-space .player-section {
+                animation: easterFloatPanels 4s ease-in-out infinite;
+            }
+            body.easter-space .room-card:nth-child(2n),
+            body.easter-space .user-item:nth-child(2n),
+            body.easter-space .friend-item:nth-child(2n) {
+                animation-delay: -1.2s;
+            }
+            body.easter-hide-ui #room-screen .chat-section,
+            body.easter-hide-ui #room-screen .room-top-bar {
+                opacity: 0;
+                transform: translateY(-18px) scale(0.98);
+                pointer-events: none;
+            }
+            body.easter-cow-cursor,
+            body.easter-cow-cursor * {
+                cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='18' fill='%23fffef8' stroke='%23111111' stroke-width='2'/%3E%3Cellipse cx='14' cy='13' rx='6' ry='8' fill='%23642f1a'/%3E%3Cellipse cx='34' cy='13' rx='6' ry='8' fill='%23642f1a'/%3E%3Cellipse cx='24' cy='28' rx='12' ry='9' fill='%23f6b3c1' stroke='%23111111' stroke-width='1.5'/%3E%3Ccircle cx='20' cy='27' r='2' fill='%23111111'/%3E%3Ccircle cx='28' cy='27' r='2' fill='%23111111'/%3E%3Ccircle cx='18' cy='20      padding: 6px 14px;
                     font-size: 11px;
                     gap: 12px;
                 }
