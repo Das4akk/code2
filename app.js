@@ -38,6 +38,7 @@ const db = getDatabase(app);
 const AppState = {
     currentUser: null,
     currentRoomId: null,
+    currentTheme: null, // Добавлено для синхронизации тем
     isHost: false,
     isRegistering: false, 
     usersCache: new Map(), 
@@ -106,6 +107,12 @@ class Utils {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         const screen = Utils.$(screenId);
         if (screen) screen.classList.add('active');
+
+        // Показываем футер с ссылками ТОЛЬКО в лобби
+        const footerLinks = Utils.$('bottom-footer-links');
+        if (footerLinks) {
+            footerLinks.style.display = (screenId === 'lobby-screen') ? 'flex' : 'none';
+        }
     }
 
     static generateCryptoId(length = 16) {
@@ -505,18 +512,6 @@ class EasterEggManager {
             .easter-overlay.active {
                 opacity: 1;
             }
-            #milk-overlay {
-                background:
-                    radial-gradient(circle at 15% 88%, rgba(255,255,255,0.95) 0 15%, transparent 16%),
-                    radial-gradient(circle at 35% 92%, rgba(255,255,255,0.98) 0 13%, transparent 14%),
-                    radial-gradient(circle at 58% 86%, rgba(255,255,255,0.96) 0 12%, transparent 13%),
-                    radial-gradient(circle at 80% 90%, rgba(255,255,255,0.98) 0 14%, transparent 15%),
-                    linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.95) 46%, rgba(246,246,246,1) 100%);
-                transform: translateY(105%);
-            }
-            #milk-overlay.active {
-                transform: translateY(0);
-            }
             .easter-drop {
                 position: absolute;
                 top: -12vh;
@@ -603,6 +598,29 @@ class EasterEggManager {
                 stroke-linejoin: round;
                 filter: drop-shadow(0 0 6px rgba(255,255,255,0.35));
             }
+            
+            /* ADVANCED MILK STYLES */
+            #advanced-milk-container {
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                z-index: 5000; pointer-events: none; overflow: hidden;
+            }
+            #fluid-canvas {
+                position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5001; pointer-events: none;
+            }
+            #milk-glass {
+                position: absolute; font-size: 80px; z-index: 5002; opacity: 0;
+                transform: scale(0) rotate(-20deg); transition: all 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+                pointer-events: none; filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.3));
+                top: 50%; left: 50%; margin-top: -40px; margin-left: -40px;
+            }
+            #milk-glass.active { opacity: 1; transform: scale(1.2) rotate(0deg); }
+            #milk-glass.pouring { animation: easterShake 0.2s infinite; }
+            @keyframes easterShake {
+                0% { transform: scale(1.2) rotate(-2deg) translateY(0); }
+                50% { transform: scale(1.2) rotate(2deg) translateY(-5px); }
+                100% { transform: scale(1.2) rotate(-2deg) translateY(0); }
+            }
+
             @keyframes easterPopcornDrop {
                 0% { transform: translate3d(0, 0, 0) rotate(0deg); opacity: 1; }
                 100% { transform: translate3d(var(--drift, 0px), 120vh, 0) rotate(460deg); opacity: 0; }
@@ -639,7 +657,6 @@ class EasterEggManager {
         const root = document.createElement('div');
         root.id = 'easter-egg-root';
         root.innerHTML = `
-            <div id="milk-overlay" class="easter-overlay"></div>
             <div id="dvd-overlay" class="easter-overlay"></div>
             <div id="matrix-overlay" class="easter-overlay"><canvas id="matrix-canvas"></canvas></div>
             <div id="vhs-overlay" class="easter-overlay"><canvas id="vhs-canvas"></canvas></div>
@@ -760,7 +777,7 @@ class EasterEggManager {
                 this.activateLocalEffect('grass', () => document.body.classList.add('easter-green'), () => document.body.classList.remove('easter-green'));
                 break;
             case 'milk':
-                this.activateLocalEffect('milk', () => this.showOverlay('milk-overlay'), () => this.hideOverlay('milk-overlay'));
+                this.startAdvancedMilk();
                 break;
             case 'popcorn':
                 this.activateLocalEffect('popcorn', () => this.startPopcornRain(), () => this.stopPopcornRain());
@@ -813,7 +830,7 @@ class EasterEggManager {
         AppState.easterEggs.activeEffects.clear();
         AppState.easterEggs.notificationMutedUntil = 0;
         ['easter-green', 'easter-roll', 'easter-matrix', 'easter-vhs', 'easter-potato', 'easter-mirror', 'easter-space', 'easter-hide-ui', 'easter-cow-cursor', 'easter-nyan', 'easter-zombie'].forEach(cls => document.body.classList.remove(cls));
-        ['milk-overlay', 'dvd-overlay', 'matrix-overlay', 'vhs-overlay', 'glass-overlay', 'cinema-overlay', 'popcorn-overlay', 'nyan-overlay'].forEach(id => this.hideOverlay(id));
+        ['dvd-overlay', 'matrix-overlay', 'vhs-overlay', 'glass-overlay', 'cinema-overlay', 'popcorn-overlay', 'nyan-overlay'].forEach(id => this.hideOverlay(id));
         this.stopMatrix();
         this.stopVhs();
         this.stopPopcornRain();
@@ -821,6 +838,146 @@ class EasterEggManager {
         this.stopGlassCrack();
         this.stopNyan();
         this.stopZombie();
+        this.stopAdvancedMilk();
+    }
+
+    // ADVANCED MILK SIMULATION
+    static startAdvancedMilk() {
+        if (this.milkActive) return;
+        this.milkActive = true;
+
+        let container = Utils.$('advanced-milk-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'advanced-milk-container';
+            container.innerHTML = `
+                <div id="milk-glass">🥛</div>
+                <canvas id="fluid-canvas"></canvas>
+            `;
+            document.body.appendChild(container);
+        }
+
+        const canvas = Utils.$('fluid-canvas');
+        const ctx = canvas.getContext('2d', { alpha: true });
+        const glass = Utils.$('milk-glass');
+
+        let width, height;
+        let springs = [];
+        let particles = [];
+        let currentFillHeight;
+        let targetFillHeight;
+
+        const CONFIG = {
+            springCount: 120, tension: 0.025, dampening: 0.06, spread: 0.2,
+            layers: [
+                { color: '#cbd5e1', offset: -30, speed: 0.015 },
+                { color: '#f1f5f9', offset: -10, speed: 0.02 },
+                { color: '#ffffff', offset: 0, speed: 0.03 }
+            ]
+        };
+
+        class Particle {
+            constructor(x, y, vx, vy, size, isStream = false) {
+                this.x = x; this.y = y; this.vx = vx; this.vy = vy;
+                this.size = size; this.life = 1.0; this.isStream = isStream;
+                this.decay = isStream ? 0.005 : Math.random() * 0.02 + 0.01;
+            }
+            update() {
+                this.vy += 0.35; this.x += this.vx; this.y += this.vy;
+                this.life -= this.decay; if (!this.isStream) this.size *= 0.97;
+            }
+            draw(ctx) {
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 255, 255, ${this.life})`; ctx.fill();
+            }
+        }
+
+        this.milkResizeHandler = () => {
+            width = window.innerWidth; height = window.innerHeight;
+            canvas.width = width * (window.devicePixelRatio || 1);
+            canvas.height = height * (window.devicePixelRatio || 1);
+            ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+        };
+        window.addEventListener('resize', this.milkResizeHandler);
+        this.milkResizeHandler();
+
+        currentFillHeight = height + 200; targetFillHeight = height + 200;
+        for (let i = 0; i < CONFIG.springCount; i++) springs.push({ h: height + 200, v: 0 });
+
+        const splash = (index, force) => {
+            if (index >= 0 && index < springs.length) springs[index].v += force;
+        };
+
+        const updatePhysics = () => {
+            const diff = targetFillHeight - currentFillHeight; currentFillHeight += diff * 0.03;
+            for (let i = 0; i < springs.length; i++) {
+                const spring = springs[i]; const d = currentFillHeight - spring.h;
+                spring.v += CONFIG.tension * d - spring.v * CONFIG.dampening; spring.h += spring.v;
+            }
+            let lefts = new Array(springs.length).fill(0); let rights = new Array(springs.length).fill(0);
+            for (let j = 0; j < 8; j++) {
+                for (let i = 0; i < springs.length; i++) {
+                    if (i > 0) { lefts[i] = CONFIG.spread * (springs[i].h - springs[i-1].h); springs[i-1].v += lefts[i]; }
+                    if (i < springs.length - 1) { rights[i] = CONFIG.spread * (springs[i].h - springs[i+1].h); springs[i+1].v += rights[i]; }
+                }
+            }
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].update(); if (particles[i].life <= 0) particles.splice(i, 1);
+            }
+        };
+
+        const loop = () => {
+            ctx.clearRect(0, 0, width, height); // Прозрачный оверлей для сайта
+            updatePhysics();
+            const spacing = width / (CONFIG.springCount - 1);
+            CONFIG.layers.forEach((layer) => {
+                ctx.fillStyle = layer.color; ctx.beginPath(); ctx.moveTo(0, height);
+                for (let i = 0; i < springs.length; i++) {
+                    const yOffset = layer.offset * (1 - (currentFillHeight/height));
+                    ctx.lineTo(i * spacing, springs[i].h + yOffset);
+                }
+                ctx.lineTo(width, height); ctx.fill();
+            });
+            particles.forEach(p => p.draw(ctx));
+            this.milkAnimFrame = requestAnimationFrame(loop);
+        };
+        loop();
+
+        setTimeout(() => {
+            glass.classList.add('active');
+            setTimeout(() => {
+                glass.classList.add('pouring');
+                targetFillHeight = -100;
+                this.milkStreamInterval = setInterval(() => {
+                    if (targetFillHeight > height) { clearInterval(this.milkStreamInterval); return; }
+                    for(let i=0; i<5; i++) {
+                        particles.push(new Particle(width/2, height/2, (Math.random()-0.5)*15, (Math.random()-1)*15, Math.random()*15 + 5, true));
+                    }
+                    splash(Math.floor(CONFIG.springCount/2), -20);
+                }, 50);
+
+                setTimeout(() => {
+                    clearInterval(this.milkStreamInterval);
+                    glass.classList.remove('pouring'); glass.classList.remove('active');
+                    setTimeout(() => {
+                        targetFillHeight = height + 200;
+                        setTimeout(() => {
+                            this.stopAdvancedMilk();
+                        }, 4000);
+                    }, 5000);
+                }, 3500);
+            }, 1000);
+        }, 500);
+    }
+
+    static stopAdvancedMilk() {
+        if (!this.milkActive) return;
+        this.milkActive = false;
+        const container = Utils.$('advanced-milk-container');
+        if (container) container.remove();
+        if (this.milkAnimFrame) cancelAnimationFrame(this.milkAnimFrame);
+        if (this.milkStreamInterval) clearInterval(this.milkStreamInterval);
+        if (this.milkResizeHandler) window.removeEventListener('resize', this.milkResizeHandler);
     }
 
     static playNotification() {
@@ -1794,7 +1951,7 @@ class FriendsManager {
             const profile = await ProfileManager.loadUser(uid);
             if (!profile) continue;
 
-            const roleBadgeHtml = ProfileManager.getRoleBadgeHtml(profile, uid); // Добавлено отображение роли
+            const roleBadgeHtml = ProfileManager.getRoleBadgeHtml(profile, uid);
             const div = document.createElement('div');
             div.className = 'friend-request-item';
             div.innerHTML = `
@@ -1842,7 +1999,7 @@ class FriendsManager {
                 }
 
                 let av = profile.avatar ? `<img src="${Utils.escapeHtml(profile.avatar)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : (profile.name[0].toUpperCase());
-                const roleBadgeHtml = ProfileManager.getRoleBadgeHtml(profile, uid); // Добавлено отображение роли
+                const roleBadgeHtml = ProfileManager.getRoleBadgeHtml(profile, uid);
                 
                 div.innerHTML = `
                     <div class="avatar">${av}</div>
@@ -2270,7 +2427,6 @@ class AdminPanel {
         return true;
     }
 
-    // Защита: Модератор не может трогать Создателя
     static async checkModRestrictionsForTarget(targetUid) {
         if (this.isCurrentUserCreator()) return true;
         if (await this.isProtectedCreatorTarget(targetUid)) {
@@ -2280,7 +2436,6 @@ class AdminPanel {
         return true;
     }
 
-    // Защита: Модератор не может трогать комнату Создателя (или комнату, где он сидит)
     static async checkModRestrictionsForRoom(roomId) {
         if (this.isCurrentUserCreator()) return true;
         if (await this.isProtectedCreatorRoom(roomId)) {
@@ -2319,8 +2474,8 @@ class AdminPanel {
 
                 <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin-bottom:16px;">
                     <div style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
-                        <div style="font-weight:700; margin-bottom:10px;">Глобальное оповещение</div>
-                        <textarea id="admin-announcement-input" rows="4" placeholder="Сообщение для всех онлайн-пользователей..."></textarea>
+                        <div style="font-weight:700; margin-bottom:10px;">Глобальное оповещение / Пасхалка</div>
+                        <textarea id="admin-announcement-input" rows="4" placeholder="Введите текст или команду пасхалки (напр. /matrix)"></textarea>
                         <div style="display:flex; gap:8px;">
                             <button class="primary-btn" id="btn-admin-send-announcement">Разослать</button>
                             <button class="secondary-btn" id="btn-admin-clear-announcement">Очистить</button>
@@ -2391,7 +2546,6 @@ class AdminPanel {
         Utils.$('btn-admin-clear-user-editor').onclick = () => this.renderEmptyUserEditor();
         Utils.$('admin-user-search').onkeydown = (e) => { if (e.key === 'Enter') this.findUser(); };
 
-        // Модераторские кнопки
         Utils.$('btn-admin-grant-mod').onclick = () => this.toggleModRole(true);
         Utils.$('btn-admin-revoke-mod').onclick = () => this.toggleModRole(false);
     }
@@ -2439,7 +2593,15 @@ class AdminPanel {
             if (sessionStorage.getItem(marker)) return;
             sessionStorage.setItem(marker, '1');
             AppState.admin.lastAnnouncementId = payload.id;
-            Utils.toast(`Оповещение: ${payload.text}`);
+
+            const commandStr = payload.text.trim().toLowerCase();
+            const command = EasterEggManager.COMMANDS.get(commandStr);
+            if (command) {
+                Utils.toast(`Глобальная пасхалка от ${payload.fromUsername}!`);
+                EasterEggManager.applyRoomEffect({ type: command, from: payload.fromUsername });
+            } else {
+                Utils.toast(`Оповещение: ${payload.text}`);
+            }
         });
 
         const forceSignOutUnsub = onValue(forceSignOutRef, async (snap) => {
@@ -2999,6 +3161,15 @@ class RoomManager {
             for (const key in data) AppState.roomsCache.set(key, data[key]);
             oldKeys.forEach(k => { if (!data[k]) Utils.$(`room-card-${k}`)?.remove(); });
             this.updateRoomsDOM();
+
+            // Автоматическая синхронизация тем
+            if (AppState.currentRoomId && data[AppState.currentRoomId]) {
+                const newTheme = data[AppState.currentRoomId].theme || 'default';
+                if (AppState.currentTheme !== newTheme) {
+                    AppState.currentTheme = newTheme;
+                    this.applyRoomTheme(newTheme);
+                }
+            }
             
             let totalOnline = 0;
             for(const r in data) { if (data[r].presence) totalOnline += Object.keys(data[r].presence).length; }
@@ -3165,7 +3336,6 @@ class RoomManager {
                 await update(ref(db, `rooms/${roomId}`), roomData); Utils.toast('Настройки сохранены');
                 const mergedRoom = { ...(AppState.roomsCache.get(roomId) || {}), ...roomData };
                 AppState.roomsCache.set(roomId, mergedRoom);
-                if (AppState.currentRoomId === roomId) this.applyRoomTheme(mergedRoom.theme || 'default');
             } else {
                 roomData.createdAt = Date.now(); const newRef = push(ref(db, 'rooms')); await set(newRef, roomData); Utils.toast('Комната создана');
                 this.enterRoomFinal(newRef.key, roomData);
@@ -3192,8 +3362,8 @@ class RoomManager {
     static enterRoomFinal(roomId, roomData) {
         RTCManager.destroy();
         AppState.currentRoomId = roomId;
-        // Feature: Developer automatically becomes a second host in any room.
-        AppState.isHost = (roomData.hostId === AppState.currentUser.uid) || AdminPanel.isCurrentUserCreator();
+        // Фикс изначального хоста (только владелец получает тру isHost глобально)
+        AppState.isHost = (roomData.hostId === AppState.currentUser.uid);
         AppState.currentPresenceCache = {};
         AppState.usersListRenderToken++;
         AppState.roomSubscriptions.forEach(fn => fn()); AppState.roomSubscriptions = [];
@@ -3217,7 +3387,8 @@ class RoomManager {
                 vid.dataset.roomUrl = nextVideoUrl;
             }
 
-            vid.controls = AppState.isHost;
+            // Доступ для создателя и хоста
+            vid.controls = AppState.isHost || AdminPanel.isCurrentUserCreator();
             vid.playsInline = true;
             vid.preload = 'auto';
             vid.onerror = () => Utils.toast('Плеер не смог загрузить видео. Нужна прямая ссылка на медиафайл.', 'error');
@@ -3237,19 +3408,22 @@ class RoomManager {
             Utils.toast('Нажмите "Пригласить" рядом с другом в списке', 'info');
         };
 
-        Utils.$('btn-room-settings').style.display = AppState.isHost ? 'block' : 'none';
-        if (AppState.isHost) Utils.$('btn-room-settings').onclick = () => this.openRoomModal(roomId);
+        // Кнопка настроек доступна оригинальному хосту и Разработчику
+        Utils.$('btn-room-settings').style.display = (AppState.isHost || AdminPanel.isCurrentUserCreator()) ? 'block' : 'none';
+        if (AppState.isHost || AdminPanel.isCurrentUserCreator()) Utils.$('btn-room-settings').onclick = () => this.openRoomModal(roomId);
 
         Utils.showScreen('room-screen');
         Utils.$('chat-messages').innerHTML = '<div class="sys-msg">Вы вошли в комнату</div>';
         Utils.$('users-list').innerHTML = '';
-        this.applyRoomTheme(roomData.theme || 'default');
+        
+        AppState.currentTheme = roomData.theme || 'default';
+        this.applyRoomTheme(AppState.currentTheme);
         
         this.initRoomServicesFinal(roomId);
         RTCManager.init(roomId); 
     }
 
-    static getDefaultPerms() { return { chat: true, voice: true, player: AppState.isHost, reactions: true }; }
+    static getDefaultPerms() { return { chat: true, voice: true, player: (AppState.isHost || AdminPanel.isCurrentUserCreator()), reactions: true }; }
 
     static initRoomServicesFinal(roomId) {
         const uid = AppState.currentUser.uid;
@@ -3442,10 +3616,10 @@ class RoomManager {
             ids.forEach(uid => {
                 const user = cache[uid];
                 const isLocal = uid === AppState.currentUser.uid;
-                const isTargetHost = AppState.roomsCache.get(AppState.currentRoomId)?.hostId === uid;
                 
-                // Рендер бейджа ролей для списка комнаты
+                // Проверяем, является ли юзер оригинальным хостом ИЛИ создателем (Developer)
                 const profile = AppState.usersCache.get(uid) || {};
+                const isTargetHost = (AppState.roomsCache.get(AppState.currentRoomId)?.hostId === uid) || AdminPanel.isCreatorProfile(profile, uid);
                 const roleBadgeHtml = ProfileManager.getRoleBadgeHtml(profile, uid);
                 
                 let html = `<div class="user-item">`;
@@ -3462,7 +3636,8 @@ class RoomManager {
                 }
                 html += `</div>`;
 
-                if (AppState.isHost && !isLocal) {
+                // Управление пермиссиями доступно хосту и разработчику
+                if ((AppState.isHost || AdminPanel.isCurrentUserCreator()) && !isLocal) {
                     const perms = user.perms || {};
                     html += `
                         <div class="perm-controls">
@@ -3517,6 +3692,7 @@ class RoomManager {
         AppState.currentPresenceCache = {};
         AppState.usersListRenderToken++;
         AppState.currentRoomId = null;
+        AppState.currentTheme = null;
         this.applyRoomTheme('default');
         AppState.isHost = false;
         if (Utils.$('users-list')) Utils.$('users-list').innerHTML = '';
@@ -3835,14 +4011,15 @@ window.onload = () => {
     EasterEggManager.init();
     HashtagManager.initHashtags();
 
-    // Добавляем мини-контейнер с ссылками внизу по центру
+    // Добавляем мини-контейнер с ссылками (изначально скрыт, покажется только в lobby-screen)
     const footerLinks = document.createElement('div');
     footerLinks.id = 'bottom-footer-links';
+    footerLinks.style.display = 'none'; // Будет переключаться в Utils.showScreen
     footerLinks.innerHTML = `
         <a href="mailto:support@cow.com">Mail</a>
-        <a href="https://t.me/vvhart" target="_blank">Telegram</a>
+        <a href="https://t.me/your_channel" target="_blank">Telegram</a>
         <a href="#" target="_blank">Сайт</a>
-        <a href="#" onclick="event.preventDefault()">позже добавлю</a>
+        <a href="#" onclick="event.preventDefault()">Позже добавлю</a>
     `;
     document.body.appendChild(footerLinks);
 
