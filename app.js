@@ -3840,7 +3840,7 @@ window.onload = () => {
     footerLinks.id = 'bottom-footer-links';
     footerLinks.innerHTML = `
         <a href="mailto:support@cow.com">Mail</a>
-        <a href="https://t.me/@vv_hart" target="_blank">Telegram</a>
+        <a href="https://t.me/vvhart" target="_blank">Telegram</a>
         <a href="#" target="_blank">Сайт</a>
         <a href="#" onclick="event.preventDefault()">позже добавлю</a>
     `;
