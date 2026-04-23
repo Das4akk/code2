@@ -38,7 +38,8 @@ const db = getDatabase(app);
 const AppState = {
     currentUser: null,
     currentRoomId: null,
-    currentTheme: null, // Добавлено для синхронизации тем
+    currentRoomJoinTs: 0, // Фикс синхронизации новых юзеров
+    currentTheme: null,
     isHost: false,
     isRegistering: false, 
     usersCache: new Map(), 
@@ -139,6 +140,10 @@ class Utils {
     static injectFixes() {
         const style = document.createElement('style');
         style.innerHTML = `
+            body {
+                transition: background 1s ease, background-color 1s ease, filter 1s ease, transform 1s ease;
+            }
+
             /* Анимация левитации */
             @keyframes levitate {
                 0%, 100% { transform: translateY(0); }
@@ -601,8 +606,8 @@ class EasterEggManager {
             
             /* ADVANCED MILK STYLES */
             #advanced-milk-container {
-                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-                z-index: 5000; pointer-events: none; overflow: hidden;
+                position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+                z-index: 5000; pointer-events: none; overflow: hidden; display: block;
             }
             #fluid-canvas {
                 position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5001; pointer-events: none;
@@ -748,10 +753,17 @@ class EasterEggManager {
 
     static bindRoom(roomId) {
         AppState.easterEggs.processedRoomEvents.clear();
+        AppState.currentRoomJoinTs = Date.now(); // ФИКС: Запоминаем время входа, чтобы не смотреть старые пасхалки
+
         const fxRef = ref(db, `rooms/${roomId}/easterEggs`);
         const unsub = onChildAdded(fxRef, (snap) => {
             const payload = snap.val();
-            if (!payload || Date.now() - Number(payload.ts || 0) > 15000) return;
+            if (!payload) return;
+            
+            // ФИКС СИНХРОНИЗАЦИИ: Игнорируем все, что было вызвано ДО захода в комнату, и старше 15 сек.
+            if (Date.now() - Number(payload.ts || 0) > 15000) return;
+            if (Number(payload.ts || 0) < AppState.currentRoomJoinTs) return;
+
             if (AppState.easterEggs.processedRoomEvents.has(snap.key)) return;
             AppState.easterEggs.processedRoomEvents.add(snap.key);
             this.applyRoomEffect(payload);
@@ -841,7 +853,7 @@ class EasterEggManager {
         this.stopAdvancedMilk();
     }
 
-    // ADVANCED MILK SIMULATION
+    // ADVANCED MILK SIMULATION (ОПТИМИЗИРОВАНО С ФИКСАМИ БАГОВ И ПЛАВНЫМ ЗАТУХАНИЕМ)
     static startAdvancedMilk() {
         if (this.milkActive) return;
         this.milkActive = true;
@@ -850,12 +862,19 @@ class EasterEggManager {
         if (!container) {
             container = document.createElement('div');
             container.id = 'advanced-milk-container';
+            container.style.opacity = '0'; // Для эффекта Fade-in
+            container.style.transition = 'opacity 1s ease';
             container.innerHTML = `
                 <div id="milk-glass">🥛</div>
                 <canvas id="fluid-canvas"></canvas>
             `;
             document.body.appendChild(container);
         }
+        
+        // Запускаем Fade-in
+        setTimeout(() => {
+            if (Utils.$('advanced-milk-container')) Utils.$('advanced-milk-container').style.opacity = '1';
+        }, 50);
 
         const canvas = Utils.$('fluid-canvas');
         const ctx = canvas.getContext('2d', { alpha: true });
@@ -868,10 +887,10 @@ class EasterEggManager {
         let targetFillHeight;
 
         const CONFIG = {
-            springCount: 120, tension: 0.025, dampening: 0.06, spread: 0.2,
+            springCount: 150, tension: 0.025, dampening: 0.06, spread: 0.2, // Увеличено число пружин для плавности
             layers: [
-                { color: '#cbd5e1', offset: -30, speed: 0.015 },
-                { color: '#f1f5f9', offset: -10, speed: 0.02 },
+                { color: 'rgba(203, 213, 225, 0.9)', offset: -40, speed: 0.015 },
+                { color: 'rgba(241, 245, 249, 0.95)', offset: -15, speed: 0.02 },
                 { color: '#ffffff', offset: 0, speed: 0.03 }
             ]
         };
@@ -909,7 +928,10 @@ class EasterEggManager {
         };
 
         const updatePhysics = () => {
-            const diff = targetFillHeight - currentFillHeight; currentFillHeight += diff * 0.03;
+            const diff = targetFillHeight - currentFillHeight; 
+            currentFillHeight += diff * 0.03;
+            if (isNaN(currentFillHeight)) currentFillHeight = height; // Предохранитель для мониторов
+
             for (let i = 0; i < springs.length; i++) {
                 const spring = springs[i]; const d = currentFillHeight - spring.h;
                 spring.v += CONFIG.tension * d - spring.v * CONFIG.dampening; spring.h += spring.v;
@@ -931,12 +953,17 @@ class EasterEggManager {
             updatePhysics();
             const spacing = width / (CONFIG.springCount - 1);
             CONFIG.layers.forEach((layer) => {
-                ctx.fillStyle = layer.color; ctx.beginPath(); ctx.moveTo(0, height);
+                ctx.fillStyle = layer.color; 
+                ctx.beginPath(); 
+                ctx.moveTo(0, height);
                 for (let i = 0; i < springs.length; i++) {
                     const yOffset = layer.offset * (1 - (currentFillHeight/height));
                     ctx.lineTo(i * spacing, springs[i].h + yOffset);
                 }
-                ctx.lineTo(width, height); ctx.fill();
+                ctx.lineTo(width, height); 
+                ctx.lineTo(0, height); // ФИКС БАГА С ЧЕРНЫМИ ПОЛОСАМИ: Явное закрытие пути внизу экрана
+                ctx.closePath();       // ФИКС БАГА С ЧЕРНЫМИ ПОЛОСАМИ
+                ctx.fill();
             });
             particles.forEach(p => p.draw(ctx));
             this.milkAnimFrame = requestAnimationFrame(loop);
@@ -962,8 +989,12 @@ class EasterEggManager {
                     setTimeout(() => {
                         targetFillHeight = height + 200;
                         setTimeout(() => {
-                            this.stopAdvancedMilk();
-                        }, 4000);
+                            // Fade out перед полным удалением
+                            if (Utils.$('advanced-milk-container')) Utils.$('advanced-milk-container').style.opacity = '0';
+                            setTimeout(() => {
+                                this.stopAdvancedMilk();
+                            }, 1000); // Даем 1 секунду на анимацию затухания
+                        }, 3500);
                     }, 5000);
                 }, 3500);
             }, 1000);
@@ -2588,6 +2619,9 @@ class AdminPanel {
         const annUnsub = onValue(annRef, (snap) => {
             const payload = snap.val();
             if (!payload?.id || !payload?.text) return;
+            
+            // ФИКС: Игнорируем старые глобальные объявления (старше 1 минуты)
+            if (Date.now() - Number(payload.ts || 0) > 60000) return;
 
             const marker = `globalAnnouncementSeen:${payload.id}`;
             if (sessionStorage.getItem(marker)) return;
@@ -2597,7 +2631,21 @@ class AdminPanel {
             const commandStr = payload.text.trim().toLowerCase();
             const command = EasterEggManager.COMMANDS.get(commandStr);
             if (command) {
-                Utils.toast(`Глобальная пасхалка от ${payload.fromUsername}!`);
+                // ДОБАВЛЕНО: Индивидуальные мемы для каждой пасхалки
+                const memeTexts = {
+                    'moo': 'Кто-то выпустил корову на пастбище... Му-у-у! 🐄',
+                    'grass': 'Пора потрогать траву, друзья! 🌱',
+                    'milk': 'Кто-нибудь желает молока? 🥛',
+                    'popcorn': 'Запасаемся попкорном, сейчас начнется кино! 🍿',
+                    'dvd': 'Ждем, когда логотип ударится в угол... 📀',
+                    'roll': 'Делаем бочку! Уууииии! 🔄',
+                    'matrix': 'Тук-тук, Нео. Матрица имеет тебя... 💻',
+                    'shh': 'Тссс... Режим тишины активирован 🤫',
+                    'vader': 'Люк, я твой отец... *тяжелое дыхание* ⚔️',
+                    'nyan': 'Нян-кэт пролетает над сервером! 🐱🌈'
+                };
+                const msg = memeTexts[command] || `Глобальная пасхалка от ${payload.fromUsername}!`;
+                Utils.toast(msg, 'info');
                 EasterEggManager.applyRoomEffect({ type: command, from: payload.fromUsername });
             } else {
                 Utils.toast(`Оповещение: ${payload.text}`);
@@ -3362,6 +3410,7 @@ class RoomManager {
     static enterRoomFinal(roomId, roomData) {
         RTCManager.destroy();
         AppState.currentRoomId = roomId;
+        AppState.currentRoomJoinTs = Date.now(); // ФИКС: Запоминаем время входа, чтобы не смотреть старые пасхалки
         // Фикс изначального хоста (только владелец получает тру isHost глобально)
         AppState.isHost = (roomData.hostId === AppState.currentUser.uid);
         AppState.currentPresenceCache = {};
@@ -3692,6 +3741,7 @@ class RoomManager {
         AppState.currentPresenceCache = {};
         AppState.usersListRenderToken++;
         AppState.currentRoomId = null;
+        AppState.currentRoomJoinTs = 0; // Сбрасываем время при выходе
         AppState.currentTheme = null;
         this.applyRoomTheme('default');
         AppState.isHost = false;
@@ -4040,4 +4090,3 @@ window.onload = () => {
         });
     });
 };
-
