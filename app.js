@@ -499,249 +499,6 @@ class EasterEggManager {
             }
             body.easter-cow-cursor,
             body.easter-cow-cursor * {
-                cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='18' fill='%23fffef8' stroke='%23111111' stroke-width='2'/%3E%3Cellipse cx='14' cy='13' rx='6' ry='8' fill='%23642f1a'/%3E%3Cellipse cx='34' cy='13' rx='6' ry='8' fill='%23642f1a'/%3E%3Cellipse cx='24' cy='28' rx='12' ry='9' fill='%23f6b3c1' stroke='%23111111' stroke-width='1.5'/%3E%3Ccircle cx='20' cy='27' r='2' fill='%23111111'/%3E%3Ccircle cx='28' cy='27' r='2' fill='%23111111'/%3E%3Ccircle cx='18' cy='20      padding: 6px 14px;
-                    font-size: 11px;
-                    gap: 12px;
-                }
-            }
-        `;
-        document.head.appendChild(style);
-
-        const originalBadge = document.querySelector('.online-counter-badge');
-        if (originalBadge) originalBadge.classList.add('original-badge');
-
-        const roomsMain = document.querySelector('.rooms-main');
-        if (roomsMain) {
-            const customBadge = document.createElement('div');
-            customBadge.id = 'custom-online-badge';
-            customBadge.innerHTML = `Сейчас в комнатах - <span id="global-online-count">0</span>`;
-            roomsMain.insertBefore(customBadge, roomsMain.firstChild);
-        }
-
-        if (!Utils.$('btn-google-login')) {
-            const btnLogin = document.createElement('button');
-            btnLogin.id = 'btn-google-login';
-            btnLogin.className = 'secondary-btn';
-            btnLogin.innerHTML = '🌐 Войти через Google';
-            btnLogin.style.marginTop = '10px';
-            Utils.$('login-form').appendChild(btnLogin);
-
-            const btnReg = document.createElement('button');
-            btnReg.id = 'btn-google-reg';
-            btnReg.className = 'secondary-btn';
-            btnReg.innerHTML = '🌐 Регистрация через Google';
-            btnReg.style.marginTop = '10px';
-            Utils.$('reg-form').appendChild(btnReg);
-        }
-    }
-}
-
-class BackgroundFX {
-    static init() {
-        const canvas = Utils.$('particle-canvas');
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        let dots = [];
-        let isTabVisible = true;
-        let mouse = { x: null, y: null, radius: 150 };
-        
-        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-        window.addEventListener('resize', resize);
-        resize();
-
-        window.addEventListener('mousemove', (e) => {
-            mouse.x = e.x;
-            mouse.y = e.y;
-        });
-        window.addEventListener('mouseout', () => {
-            mouse.x = undefined; mouse.y = undefined;
-        });
-        
-        class Dot {
-            constructor() {
-                this.x = Math.random() * canvas.width;
-                this.y = Math.random() * canvas.height;
-                this.vx = (Math.random() - 0.5) * 0.4; 
-                this.vy = (Math.random() - 0.5) * 0.4;
-                this.size = Math.random() * 2 + 1;
-            }
-            update() {
-                this.x += this.vx; this.y += this.vy;
-                if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
-                if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
-
-                if (mouse.x != null) {
-                    let dx = mouse.x - this.x;
-                    let dy = mouse.y - this.y;
-                    let distance = Math.sqrt(dx * dx + dy * dy);
-                    if (distance < mouse.radius) {
-                        const forceDirectionX = dx / distance;
-                        const forceDirectionY = dy / distance;
-                        const force = (mouse.radius - distance) / mouse.radius;
-                        this.x -= forceDirectionX * force * 2;
-                        this.y -= forceDirectionY * force * 2;
-                    }
-                }
-            }
-            draw() {
-                ctx.fillStyle = "rgba(255,255,255,0.6)";
-                ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
-            }
-        }
-        
-        for (let i = 0; i < 90; i++) dots.push(new Dot()); 
-        
-        function animate() {
-            if (!isTabVisible) return; 
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            for (let i = 0; i < dots.length; i++) {
-                dots[i].update(); dots[i].draw();
-                for (let j = i + 1; j < dots.length; j++) {
-                    let dx = dots[i].x - dots[j].x;
-                    let dy = dots[i].y - dots[j].y;
-                    let dist = dx * dx + dy * dy; 
-                    if (dist < 25000) { 
-                        ctx.strokeStyle = `rgba(100, 200, 255, ${0.2 - Math.sqrt(dist) / 1000})`; 
-                        ctx.lineWidth = 1;
-                        ctx.beginPath(); ctx.moveTo(dots[i].x, dots[i].y); ctx.lineTo(dots[j].x, dots[j].y); ctx.stroke();
-                    }
-                }
-            }
-            requestAnimationFrame(animate);
-        }
-        animate();
-
-        document.addEventListener("visibilitychange", () => {
-            isTabVisible = !document.hidden;
-        });
-    }
-}
-
-class EasterEggManager {
-    static DURATION = 5000;
-    static SOUND_URLS = {
-        notification: 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg',
-        glass: 'https://actions.google.com/sounds/v1/impacts/glass_shatters_into_debris.ogg',
-        vader: 'https://actions.google.com/sounds/v1/science_fiction/alien_breath.ogg'
-    };
-    static COMMANDS = new Map([
-        ['/moo', 'moo'],
-        ['/grass', 'grass'],
-        ['/milk', 'milk'],
-        ['/popcorn', 'popcorn'],
-        ['/dvd', 'dvd'],
-        ['/roll', 'roll'],
-        ['/matrix', 'matrix'],
-        ['/shh', 'shh'],
-        ['/nyan', 'nyan']
-    ]);
-    static KEYWORD_EFFECTS = {
-        COW: 'cow-cursor',
-        GLASS: 'glass',
-        CINEMA: 'cinema',
-        POTATO: 'potato',
-        NINJA: 'ninja',
-        ZOMBIE: 'zombie',
-        SPACE: 'space',
-        MIRROR: 'mirror'
-    };
-    static KONAMI = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
-
-    static init() {
-        this.injectStyles();
-        this.ensureFxRoot();
-        this.bindKeyboard();
-    }
-
-    static injectStyles() {
-        const style = document.createElement('style');
-        style.innerHTML = `
-            body.easter-green {
-                --bg: #031507;
-                --panel: rgba(8, 28, 10, 0.92);
-                --panel-hover: rgba(15, 45, 17, 0.96);
-                --border: rgba(90, 255, 132, 0.16);
-                --border-light: rgba(90, 255, 132, 0.32);
-                --text-main: #eaffec;
-                --text-muted: #8ec99a;
-                --accent: #69ff88;
-                --accent-hover: #43d762;
-                --brand: #b7ffc4;
-            }
-            body.easter-green::before {
-                content: '';
-                position: fixed;
-                inset: 0;
-                pointer-events: none;
-                background: radial-gradient(circle at 20% 20%, rgba(86, 255, 137, 0.18), transparent 35%), linear-gradient(160deg, rgba(4, 22, 8, 0.25), rgba(4, 22, 8, 0.58));
-                z-index: 999;
-                opacity: 1;
-                transition: opacity 0.8s ease;
-            }
-            body.easter-roll #room-screen,
-            body.easter-roll #lobby-screen {
-                animation: easterRoll 5s cubic-bezier(0.22, 1, 0.36, 1);
-                transform-origin: center center;
-            }
-            body.easter-matrix {
-                background: #020704;
-                color: #6dff8c;
-                text-shadow: 0 0 8px rgba(109, 255, 140, 0.2);
-            }
-            body.easter-matrix .glass-panel,
-            body.easter-matrix .chat-section,
-            body.easter-matrix .bubble,
-            body.easter-matrix .room-card,
-            body.easter-matrix .user-item,
-            body.easter-matrix .friend-item {
-                border-color: rgba(109, 255, 140, 0.24) !important;
-                background: rgba(5, 20, 8, 0.78) !important;
-                box-shadow: 0 0 18px rgba(17, 255, 105, 0.08);
-            }
-            body.easter-vhs,
-            body.easter-cinema,
-            body.easter-zombie,
-            body.easter-potato,
-            body.easter-mirror,
-            body.easter-space {
-                transition: filter 0.9s ease, transform 0.9s ease;
-            }
-            body.easter-vhs { filter: saturate(0.8) contrast(1.08); }
-            body.easter-zombie { filter: grayscale(1) contrast(1.15); }
-            body.easter-potato * {
-                font-family: "Comic Sans MS", "Comic Neue", cursive !important;
-                image-rendering: pixelated;
-            }
-            body.easter-potato {
-                filter: contrast(1.25) saturate(0.82);
-            }
-            body.easter-mirror {
-                transform: scaleX(-1);
-                transform-origin: center center;
-            }
-            body.easter-space .glass-panel,
-            body.easter-space .room-card,
-            body.easter-space .user-item,
-            body.easter-space .friend-item,
-            body.easter-space .chat-section,
-            body.easter-space .player-section {
-                animation: easterFloatPanels 4s ease-in-out infinite;
-            }
-            body.easter-space .room-card:nth-child(2n),
-            body.easter-space .user-item:nth-child(2n),
-            body.easter-space .friend-item:nth-child(2n) {
-                animation-delay: -1.2s;
-            }
-            body.easter-hide-ui #room-screen .chat-section,
-            body.easter-hide-ui #room-screen .room-top-bar {
-                opacity: 0;
-                transform: translateY(-18px) scale(0.98);
-                pointer-events: none;
-            }
-            body.easter-cow-cursor,
-            body.easter-cow-cursor * {
                 cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='18' fill='%23fffef8' stroke='%23111111' stroke-width='2'/%3E%3Cellipse cx='14' cy='13' rx='6' ry='8' fill='%23642f1a'/%3E%3Cellipse cx='34' cy='13' rx='6' ry='8' fill='%23642f1a'/%3E%3Cellipse cx='24' cy='28' rx='12' ry='9' fill='%23f6b3c1' stroke='%23111111' stroke-width='1.5'/%3E%3Ccircle cx='20' cy='27' r='2' fill='%23111111'/%3E%3Ccircle cx='28' cy='27' r='2' fill='%23111111'/%3E%3Ccircle cx='18' cy='20' r='2.5' fill='%23111111'/%3E%3Ccircle cx='30' cy='20' r='2.5' fill='%23111111'/%3E%3Cpath d='M19 35c2 2 8 2 10 0' fill='none' stroke='%23111111' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E") 12 12, auto !important;
             }
             #easter-egg-root {
@@ -1096,29 +853,19 @@ class EasterEggManager {
         this.stopAdvancedMilk();
     }
 
- // ADVANCED MILK SIMULATION (ОПТИМИЗИРОВАНО С ФИКСАМИ БАГОВ И ПЛАВНЫМ ЗАТУХАНИЕМ)
-    static milkActive = false;
-    static milkAnimFrame = null;
-    static milkStreamInterval = null;
-    static milkResizeHandler = null;
-
-    static init() {
-        // Инициализация секретной команды
-        console.log("EasterEggManager initialized. Hint: 'milk'");
-    }
-
-    // ADVANCED MILK SIMULATION (ОПТИМИЗИРОВАНО С ФИКСАМИ БАГОВ И ЧАСТИЦ)
+    // ADVANCED MILK SIMULATION (ОПТИМИЗИРОВАНО С ФИКСАМИ БАГОВ И ПЛАВНЫМ ЗАТУХАНИЕМ)
     static startAdvancedMilk() {
         if (this.milkActive) return;
         this.milkActive = true;
 
-        let container = document.getElementById('advanced-milk-container');
+        let container = Utils.$('advanced-milk-container');
         if (!container) {
             container = document.createElement('div');
             container.id = 'advanced-milk-container';
-            container.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;pointer-events:none;opacity:0;transition:opacity 1s ease;';
+            container.style.opacity = '0'; // Для эффекта Fade-in
+            container.style.transition = 'opacity 1s ease';
             container.innerHTML = `
-                <div id="milk-glass" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:80px;z-index:100;">實</div>
+                <div id="milk-glass">🥛</div>
                 <canvas id="fluid-canvas"></canvas>
             `;
             document.body.appendChild(container);
@@ -1126,13 +873,12 @@ class EasterEggManager {
         
         // Запускаем Fade-in
         setTimeout(() => {
-            const el = document.getElementById('advanced-milk-container');
-            if (el) el.style.opacity = '1';
+            if (Utils.$('advanced-milk-container')) Utils.$('advanced-milk-container').style.opacity = '1';
         }, 50);
 
-        const canvas = document.getElementById('fluid-canvas');
+        const canvas = Utils.$('fluid-canvas');
         const ctx = canvas.getContext('2d', { alpha: true });
-        const glass = document.getElementById('milk-glass');
+        const glass = Utils.$('milk-glass');
 
         let width, height;
         let springs = [];
@@ -1141,7 +887,7 @@ class EasterEggManager {
         let targetFillHeight;
 
         const CONFIG = {
-            springCount: 150, tension: 0.025, dampening: 0.06, spread: 0.2,
+            springCount: 150, tension: 0.025, dampening: 0.06, spread: 0.2, // Увеличено число пружин для плавности
             layers: [
                 { color: 'rgba(203, 213, 225, 0.9)', offset: -40, speed: 0.015 },
                 { color: 'rgba(241, 245, 249, 0.95)', offset: -15, speed: 0.02 },
@@ -1156,18 +902,12 @@ class EasterEggManager {
                 this.decay = isStream ? 0.005 : Math.random() * 0.02 + 0.01;
             }
             update() {
-                this.vy += 0.35; 
-                this.x += this.vx; 
-                this.y += this.vy;
-                this.life -= this.decay; 
-                if (!this.isStream) this.size *= 0.97;
+                this.vy += 0.35; this.x += this.vx; this.y += this.vy;
+                this.life -= this.decay; if (!this.isStream) this.size *= 0.97;
             }
             draw(ctx) {
-                if (this.life <= 0) return;
-                ctx.beginPath(); 
-                ctx.arc(this.x, this.y, Math.max(0, this.size), 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(255, 255, 255, ${Math.max(0, this.life)})`; 
-                ctx.fill();
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 255, 255, ${this.life})`; ctx.fill();
             }
         }
 
@@ -1190,38 +930,27 @@ class EasterEggManager {
         const updatePhysics = () => {
             const diff = targetFillHeight - currentFillHeight; 
             currentFillHeight += diff * 0.03;
-            if (isNaN(currentFillHeight)) currentFillHeight = height; 
+            if (isNaN(currentFillHeight)) currentFillHeight = height; // Предохранитель для мониторов
 
             for (let i = 0; i < springs.length; i++) {
-                const spring = springs[i]; 
-                const d = currentFillHeight - spring.h;
-                spring.v += CONFIG.tension * d - spring.v * CONFIG.dampening; 
-                spring.h += spring.v;
+                const spring = springs[i]; const d = currentFillHeight - spring.h;
+                spring.v += CONFIG.tension * d - spring.v * CONFIG.dampening; spring.h += spring.v;
             }
-            
-            let lefts = new Array(springs.length).fill(0); 
-            let rights = new Array(springs.length).fill(0);
+            let lefts = new Array(springs.length).fill(0); let rights = new Array(springs.length).fill(0);
             for (let j = 0; j < 8; j++) {
                 for (let i = 0; i < springs.length; i++) {
                     if (i > 0) { lefts[i] = CONFIG.spread * (springs[i].h - springs[i-1].h); springs[i-1].v += lefts[i]; }
                     if (i < springs.length - 1) { rights[i] = CONFIG.spread * (springs[i].h - springs[i+1].h); springs[i+1].v += rights[i]; }
                 }
             }
-            
-            // Фикс жизненного цикла частиц
             for (let i = particles.length - 1; i >= 0; i--) {
-                particles[i].update(); 
-                if (particles[i].life <= 0 || particles[i].y > height + 100) {
-                    particles.splice(i, 1);
-                }
+                particles[i].update(); if (particles[i].life <= 0) particles.splice(i, 1);
             }
         };
 
         const loop = () => {
-            if (!this.milkActive) return; // Предотвращаем отрисовку после стопа
-            ctx.clearRect(0, 0, width, height); 
+            ctx.clearRect(0, 0, width, height); // Прозрачный оверлей для сайта
             updatePhysics();
-            
             const spacing = width / (CONFIG.springCount - 1);
             CONFIG.layers.forEach((layer) => {
                 ctx.fillStyle = layer.color; 
@@ -1232,52 +961,39 @@ class EasterEggManager {
                     ctx.lineTo(i * spacing, springs[i].h + yOffset);
                 }
                 ctx.lineTo(width, height); 
-                ctx.lineTo(0, height); 
-                ctx.closePath();       
+                ctx.lineTo(0, height); // ФИКС БАГА С ЧЕРНЫМИ ПОЛОСАМИ: Явное закрытие пути внизу экрана
+                ctx.closePath();       // ФИКС БАГА С ЧЕРНЫМИ ПОЛОСАМИ
                 ctx.fill();
             });
-            
-            // Отрисовка частиц поверх слоев
             particles.forEach(p => p.draw(ctx));
             this.milkAnimFrame = requestAnimationFrame(loop);
         };
         loop();
 
-        // Сценарий анимации
         setTimeout(() => {
-            if (glass) glass.classList.add('active');
+            glass.classList.add('active');
             setTimeout(() => {
-                if (glass) glass.classList.add('pouring');
+                glass.classList.add('pouring');
                 targetFillHeight = -100;
                 this.milkStreamInterval = setInterval(() => {
                     if (targetFillHeight > height) { clearInterval(this.milkStreamInterval); return; }
                     for(let i=0; i<5; i++) {
-                        particles.push(new Particle(
-                            width / 2 + (Math.random() - 0.5) * 20, 
-                            height / 2, 
-                            (Math.random() - 0.5) * 15, 
-                            (Math.random() - 1) * 15, 
-                            Math.random() * 15 + 5, 
-                            true
-                        ));
+                        particles.push(new Particle(width/2, height/2, (Math.random()-0.5)*15, (Math.random()-1)*15, Math.random()*15 + 5, true));
                     }
                     splash(Math.floor(CONFIG.springCount/2), -20);
                 }, 50);
 
                 setTimeout(() => {
                     clearInterval(this.milkStreamInterval);
-                    if (glass) {
-                        glass.classList.remove('pouring'); 
-                        glass.classList.remove('active');
-                    }
+                    glass.classList.remove('pouring'); glass.classList.remove('active');
                     setTimeout(() => {
                         targetFillHeight = height + 200;
                         setTimeout(() => {
-                            const milkCont = document.getElementById('advanced-milk-container');
-                            if (milkCont) milkCont.style.opacity = '0';
+                            // Fade out перед полным удалением
+                            if (Utils.$('advanced-milk-container')) Utils.$('advanced-milk-container').style.opacity = '0';
                             setTimeout(() => {
                                 this.stopAdvancedMilk();
-                            }, 1000); 
+                            }, 1000); // Даем 1 секунду на анимацию затухания
                         }, 3500);
                     }, 5000);
                 }, 3500);
@@ -1288,27 +1004,27 @@ class EasterEggManager {
     static stopAdvancedMilk() {
         if (!this.milkActive) return;
         this.milkActive = false;
-        
-        const container = document.getElementById('advanced-milk-container');
+        const container = Utils.$('advanced-milk-container');
         if (container) container.remove();
-        
         if (this.milkAnimFrame) cancelAnimationFrame(this.milkAnimFrame);
         if (this.milkStreamInterval) clearInterval(this.milkStreamInterval);
         if (this.milkResizeHandler) window.removeEventListener('resize', this.milkResizeHandler);
-        
-        this.milkAnimFrame = null;
-        this.milkStreamInterval = null;
+    }
+
+    static playNotification() {
+        if (Date.now() < AppState.easterEggs.notificationMutedUntil) return;
+        this.playSound(this.SOUND_URLS.notification, { volume: 0.28, fallback: () => this.playSimpleTone(880, 0.09, 'square', 0.05) });
     }
 
     static playMoo() {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        if (!AudioContext) return;
-        const audioCtx = new AudioContext();
+        const audioCtx = this.getAudioContext();
+        if (!audioCtx) return;
         const now = audioCtx.currentTime;
         const gain = audioCtx.createGain();
         const low = audioCtx.createOscillator();
         const high = audioCtx.createOscillator();
-        low.type = 'sawtooth'; high.type = 'triangle';
+        low.type = 'sawtooth';
+        high.type = 'triangle';
         low.frequency.setValueAtTime(160, now);
         low.frequency.exponentialRampToValueAtTime(105, now + 1.1);
         high.frequency.setValueAtTime(320, now);
@@ -1316,33 +1032,13 @@ class EasterEggManager {
         gain.gain.setValueAtTime(0.0001, now);
         gain.gain.exponentialRampToValueAtTime(0.15, now + 0.08);
         gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.3);
-        low.connect(gain); high.connect(gain);
+        low.connect(gain);
+        high.connect(gain);
         gain.connect(audioCtx.destination);
-        low.start(now); high.start(now);
-        low.stop(now + 1.35); high.stop(now + 1.35);
-    }
-
-    static playMoo() {
-        // Звуковая пасхалка (без изменений)
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        if (!AudioContext) return;
-        const audioCtx = new AudioContext();
-        const now = audioCtx.currentTime;
-        const gain = audioCtx.createGain();
-        const low = audioCtx.createOscillator();
-        const high = audioCtx.createOscillator();
-        low.type = 'sawtooth'; high.type = 'triangle';
-        low.frequency.setValueAtTime(160, now);
-        low.frequency.exponentialRampToValueAtTime(105, now + 1.1);
-        high.frequency.setValueAtTime(320, now);
-        high.frequency.exponentialRampToValueAtTime(210, now + 1.1);
-        gain.gain.setValueAtTime(0.0001, now);
-        gain.gain.exponentialRampToValueAtTime(0.15, now + 0.08);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.3);
-        low.connect(gain); high.connect(gain);
-        gain.connect(audioCtx.destination);
-        low.start(now); high.start(now);
-        low.stop(now + 1.35); high.stop(now + 1.35);
+        low.start(now);
+        high.start(now);
+        low.stop(now + 1.35);
+        high.stop(now + 1.35);
     }
 
     static playVaderBreath() {
