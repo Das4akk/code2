@@ -854,6 +854,17 @@ class EasterEggManager {
     }
 
  // ADVANCED MILK SIMULATION (ОПТИМИЗИРОВАНО С ФИКСАМИ БАГОВ И ПЛАВНЫМ ЗАТУХАНИЕМ)
+    static milkActive = false;
+    static milkAnimFrame = null;
+    static milkStreamInterval = null;
+    static milkResizeHandler = null;
+
+    static init() {
+        // Инициализация секретной команды
+        console.log("EasterEggManager initialized. Hint: 'milk'");
+    }
+
+    // ADVANCED MILK SIMULATION (ОПТИМИЗИРОВАНО С ФИКСАМИ БАГОВ И ЧАСТИЦ)
     static startAdvancedMilk() {
         if (this.milkActive) return;
         this.milkActive = true;
@@ -864,7 +875,7 @@ class EasterEggManager {
             container.id = 'advanced-milk-container';
             container.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;pointer-events:none;opacity:0;transition:opacity 1s ease;';
             container.innerHTML = `
-                <div id="milk-glass" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:80px;z-index:100;">🥛</div>
+                <div id="milk-glass" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:80px;z-index:100;">實</div>
                 <canvas id="fluid-canvas"></canvas>
             `;
             document.body.appendChild(container);
@@ -902,12 +913,18 @@ class EasterEggManager {
                 this.decay = isStream ? 0.005 : Math.random() * 0.02 + 0.01;
             }
             update() {
-                this.vy += 0.35; this.x += this.vx; this.y += this.vy;
-                this.life -= this.decay; if (!this.isStream) this.size *= 0.97;
+                this.vy += 0.35; 
+                this.x += this.vx; 
+                this.y += this.vy;
+                this.life -= this.decay; 
+                if (!this.isStream) this.size *= 0.97;
             }
             draw(ctx) {
-                ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(255, 255, 255, ${this.life})`; ctx.fill();
+                if (this.life <= 0) return;
+                ctx.beginPath(); 
+                ctx.arc(this.x, this.y, Math.max(0, this.size), 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 255, 255, ${Math.max(0, this.life)})`; 
+                ctx.fill();
             }
         }
 
@@ -933,24 +950,35 @@ class EasterEggManager {
             if (isNaN(currentFillHeight)) currentFillHeight = height; 
 
             for (let i = 0; i < springs.length; i++) {
-                const spring = springs[i]; const d = currentFillHeight - spring.h;
-                spring.v += CONFIG.tension * d - spring.v * CONFIG.dampening; spring.h += spring.v;
+                const spring = springs[i]; 
+                const d = currentFillHeight - spring.h;
+                spring.v += CONFIG.tension * d - spring.v * CONFIG.dampening; 
+                spring.h += spring.v;
             }
-            let lefts = new Array(springs.length).fill(0); let rights = new Array(springs.length).fill(0);
+            
+            let lefts = new Array(springs.length).fill(0); 
+            let rights = new Array(springs.length).fill(0);
             for (let j = 0; j < 8; j++) {
                 for (let i = 0; i < springs.length; i++) {
                     if (i > 0) { lefts[i] = CONFIG.spread * (springs[i].h - springs[i-1].h); springs[i-1].v += lefts[i]; }
                     if (i < springs.length - 1) { rights[i] = CONFIG.spread * (springs[i].h - springs[i+1].h); springs[i+1].v += rights[i]; }
                 }
             }
+            
+            // Фикс жизненного цикла частиц
             for (let i = particles.length - 1; i >= 0; i--) {
-                particles[i].update(); if (particles[i].life <= 0) particles.splice(i, 1);
+                particles[i].update(); 
+                if (particles[i].life <= 0 || particles[i].y > height + 100) {
+                    particles.splice(i, 1);
+                }
             }
         };
 
         const loop = () => {
+            if (!this.milkActive) return; // Предотвращаем отрисовку после стопа
             ctx.clearRect(0, 0, width, height); 
             updatePhysics();
+            
             const spacing = width / (CONFIG.springCount - 1);
             CONFIG.layers.forEach((layer) => {
                 ctx.fillStyle = layer.color; 
@@ -961,10 +989,12 @@ class EasterEggManager {
                     ctx.lineTo(i * spacing, springs[i].h + yOffset);
                 }
                 ctx.lineTo(width, height); 
-                ctx.lineTo(0, height); // ФИКС БАГА С ЧЕРНЫМИ ПОЛОСАМИ: Явное закрытие пути внизу экрана
-                ctx.closePath();       // ФИКС БАГА С ЧЕРНЫМИ ПОЛОСАМИ
+                ctx.lineTo(0, height); 
+                ctx.closePath();       
                 ctx.fill();
             });
+            
+            // Отрисовка частиц поверх слоев
             particles.forEach(p => p.draw(ctx));
             this.milkAnimFrame = requestAnimationFrame(loop);
         };
@@ -972,21 +1002,31 @@ class EasterEggManager {
 
         // Сценарий анимации
         setTimeout(() => {
-            glass.classList.add('active');
+            if (glass) glass.classList.add('active');
             setTimeout(() => {
-                glass.classList.add('pouring');
+                if (glass) glass.classList.add('pouring');
                 targetFillHeight = -100;
                 this.milkStreamInterval = setInterval(() => {
                     if (targetFillHeight > height) { clearInterval(this.milkStreamInterval); return; }
                     for(let i=0; i<5; i++) {
-                        particles.push(new Particle(width/2, height/2, (Math.random()-0.5)*15, (Math.random()-1)*15, Math.random()*15 + 5, true));
+                        particles.push(new Particle(
+                            width / 2 + (Math.random() - 0.5) * 20, 
+                            height / 2, 
+                            (Math.random() - 0.5) * 15, 
+                            (Math.random() - 1) * 15, 
+                            Math.random() * 15 + 5, 
+                            true
+                        ));
                     }
                     splash(Math.floor(CONFIG.springCount/2), -20);
                 }, 50);
 
                 setTimeout(() => {
                     clearInterval(this.milkStreamInterval);
-                    glass.classList.remove('pouring'); glass.classList.remove('active');
+                    if (glass) {
+                        glass.classList.remove('pouring'); 
+                        glass.classList.remove('active');
+                    }
                     setTimeout(() => {
                         targetFillHeight = height + 200;
                         setTimeout(() => {
@@ -1005,11 +1045,38 @@ class EasterEggManager {
     static stopAdvancedMilk() {
         if (!this.milkActive) return;
         this.milkActive = false;
+        
         const container = document.getElementById('advanced-milk-container');
         if (container) container.remove();
+        
         if (this.milkAnimFrame) cancelAnimationFrame(this.milkAnimFrame);
         if (this.milkStreamInterval) clearInterval(this.milkStreamInterval);
         if (this.milkResizeHandler) window.removeEventListener('resize', this.milkResizeHandler);
+        
+        this.milkAnimFrame = null;
+        this.milkStreamInterval = null;
+    }
+
+    static playMoo() {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        const audioCtx = new AudioContext();
+        const now = audioCtx.currentTime;
+        const gain = audioCtx.createGain();
+        const low = audioCtx.createOscillator();
+        const high = audioCtx.createOscillator();
+        low.type = 'sawtooth'; high.type = 'triangle';
+        low.frequency.setValueAtTime(160, now);
+        low.frequency.exponentialRampToValueAtTime(105, now + 1.1);
+        high.frequency.setValueAtTime(320, now);
+        high.frequency.exponentialRampToValueAtTime(210, now + 1.1);
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.15, now + 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.3);
+        low.connect(gain); high.connect(gain);
+        gain.connect(audioCtx.destination);
+        low.start(now); high.start(now);
+        low.stop(now + 1.35); high.stop(now + 1.35);
     }
 
     static playMoo() {
