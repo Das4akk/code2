@@ -1,10 +1,11 @@
-/**
+﻿/**
  * @fileoverview COWIO Core Engine v4.0 - The Ultimate Edition
  * @description Интегрированы все фиксы: MPA-подобная стабильность, обход пароля по инвайтам,
  * улучшенный интерактивный нейрофон, левитация элементов, фикс мобильного скролла,
  * статистика профилей и строгая защита уникальных юзернеймов.
  * + ПАТЧ: Система ролей (Создатель / Модератор) с защитой приоритетов.
  * + ПАТЧ: Адаптивный Ambilight плеера, фикс /milk, COWIO ребрендинг, Z-index фикс.
+ * + ПАТЧ: Плавные исчезновения пасхалок (Fade-out) и увеличенное время (15s).
  */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -146,7 +147,7 @@ class Utils {
         const style = document.createElement('style');
         style.innerHTML = `
             body {
-                transition: background 1s ease, background-color 1s ease, filter 1s ease, transform 1s ease;
+                transition: background 1s ease, background-color 1s ease, filter 1s ease, transform 1s ease, color 1s ease, text-shadow 1s ease;
             }
 
             /* Анимация левитации */
@@ -482,7 +483,7 @@ class BackgroundFX {
 }
 
 class EasterEggManager {
-    static DURATION = 5000;
+    static DURATION = 15000; // ПАТЧ: Увеличено время работы всех пасхалок до 15 секунд
     static SOUND_URLS = {
         notification: 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg',
         glass: 'https://actions.google.com/sounds/v1/impacts/glass_shatters_into_debris.ogg',
@@ -532,19 +533,9 @@ class EasterEggManager {
                 --accent-hover: #43d762;
                 --brand: #b7ffc4;
             }
-            body.easter-green::before {
-                content: '';
-                position: fixed;
-                inset: 0;
-                pointer-events: none;
-                background: radial-gradient(circle at 20% 20%, rgba(86, 255, 137, 0.18), transparent 35%), linear-gradient(160deg, rgba(4, 22, 8, 0.25), rgba(4, 22, 8, 0.58));
-                z-index: 999;
-                opacity: 1;
-                transition: opacity 0.8s ease;
-            }
             body.easter-roll #room-screen,
             body.easter-roll #lobby-screen {
-                animation: easterRoll 5s cubic-bezier(0.22, 1, 0.36, 1);
+                animation: easterRoll 15s cubic-bezier(0.22, 1, 0.36, 1);
                 transform-origin: center center;
             }
             body.easter-matrix {
@@ -617,7 +608,7 @@ class EasterEggManager {
                 position: absolute;
                 inset: 0;
                 opacity: 0;
-                transition: opacity 0.9s ease, transform 0.9s ease;
+                transition: opacity 1s ease, transform 1s ease;
             }
             .easter-overlay.active {
                 opacity: 1;
@@ -694,7 +685,7 @@ class EasterEggManager {
                 transform: translate(-50%, -50%);
                 font-size: 48px;
                 filter: drop-shadow(0 6px 12px rgba(0,0,0,0.5));
-                animation: nyanCruise 5s ease-in-out forwards;
+                animation: nyanCruise 15s ease-in-out forwards;
             }
             body.easter-nyan #native-player,
             body.easter-nyan .video-container {
@@ -776,6 +767,7 @@ class EasterEggManager {
         const root = document.createElement('div');
         root.id = 'easter-egg-root';
         root.innerHTML = `
+            <div id="green-overlay" class="easter-overlay" style="background: radial-gradient(circle at 20% 20%, rgba(86, 255, 137, 0.18), transparent 35%), linear-gradient(160deg, rgba(4, 22, 8, 0.25), rgba(4, 22, 8, 0.58));"></div>
             <div id="dvd-overlay" class="easter-overlay"></div>
             <div id="matrix-overlay" class="easter-overlay"><canvas id="matrix-canvas"></canvas></div>
             <div id="vhs-overlay" class="easter-overlay"><canvas id="vhs-canvas"></canvas></div>
@@ -900,7 +892,13 @@ class EasterEggManager {
                 });
                 break;
             case 'grass':
-                this.activateLocalEffect('grass', () => document.body.classList.add('easter-green'), () => document.body.classList.remove('easter-green'));
+                this.activateLocalEffect('grass', () => {
+                    document.body.classList.add('easter-green');
+                    this.showOverlay('green-overlay');
+                }, () => {
+                    document.body.classList.remove('easter-green');
+                    this.hideOverlay('green-overlay');
+                });
                 break;
             case 'milk':
                 this.startAdvancedMilk();
@@ -920,7 +918,7 @@ class EasterEggManager {
             case 'shh':
                 this.activateLocalEffect('shh', () => {
                     AppState.easterEggs.notificationMutedUntil = Date.now() + this.DURATION;
-                    Utils.toast('Уведомления приглушены на 5 секунд', 'info');
+                    Utils.toast('Уведомления приглушены на 15 секунд', 'info');
                 }, () => { AppState.easterEggs.notificationMutedUntil = 0; });
                 break;
             case 'vader':
@@ -956,7 +954,7 @@ class EasterEggManager {
         AppState.easterEggs.activeEffects.clear();
         AppState.easterEggs.notificationMutedUntil = 0;
         ['easter-green', 'easter-roll', 'easter-matrix', 'easter-vhs', 'easter-potato', 'easter-mirror', 'easter-space', 'easter-hide-ui', 'easter-cow-cursor', 'easter-nyan', 'easter-zombie'].forEach(cls => document.body.classList.remove(cls));
-        ['dvd-overlay', 'matrix-overlay', 'vhs-overlay', 'glass-overlay', 'cinema-overlay', 'popcorn-overlay', 'nyan-overlay'].forEach(id => this.hideOverlay(id));
+        ['green-overlay', 'dvd-overlay', 'matrix-overlay', 'vhs-overlay', 'glass-overlay', 'cinema-overlay', 'popcorn-overlay', 'nyan-overlay'].forEach(id => this.hideOverlay(id));
         this.stopMatrix();
         this.stopVhs();
         this.stopPopcornRain();
@@ -967,7 +965,7 @@ class EasterEggManager {
         this.stopAdvancedMilk();
     }
 
-    // ADVANCED MILK SIMULATION (ФИКСИРОВАННАЯ И ОПТИМИЗИРОВАННАЯ ВЕРСИЯ - ТОЛЬКО ФОНТАН ЧАСТИЦ)
+    // ADVANCED MILK SIMULATION (ФИКСИРОВАННАЯ И ОПТИМИЗИРОВАННАЯ ВЕРСИЯ - 15 Секунд)
     static startAdvancedMilk() {
         if (this.milkActive) return;
         this.milkActive = true;
@@ -977,7 +975,7 @@ class EasterEggManager {
             container = document.createElement('div');
             container.id = 'advanced-milk-container';
             container.style.opacity = '0'; // Для эффекта Fade-in
-            container.style.transition = 'opacity 0.6s ease';
+            container.style.transition = 'opacity 1s ease';
             container.innerHTML = `
                 <div id="milk-glass">🥛</div>
                 <canvas id="fluid-canvas"></canvas>
@@ -1066,9 +1064,9 @@ class EasterEggManager {
                         if (Utils.$('advanced-milk-container')) Utils.$('advanced-milk-container').style.opacity = '0';
                         setTimeout(() => {
                             this.stopAdvancedMilk();
-                        }, 600); // Даем 0.6 секунды на анимацию затухания
+                        }, 1000); // Даем 1 секунду на анимацию затухания
                     }, 2000); // Даем частицам упасть
-                }, 2500); // Длительность фонтана
+                }, 12500); // Длительность фонтана ~12.5s (итого ~15s с затуханием)
             }, 800); // Ждем пока стакан увеличится
         }, 100);
     }
@@ -1162,11 +1160,15 @@ class EasterEggManager {
     }
 
     static stopPopcornRain() {
-        clearInterval(AppState.easterEggs.animationHandles.get('popcorn'));
-        AppState.easterEggs.animationHandles.delete('popcorn');
-        const overlay = Utils.$('popcorn-overlay');
-        if (overlay) overlay.innerHTML = '';
         this.hideOverlay('popcorn-overlay');
+        setTimeout(() => {
+            const overlay = Utils.$('popcorn-overlay');
+            if (overlay && !overlay.classList.contains('active')) {
+                clearInterval(AppState.easterEggs.animationHandles.get('popcorn'));
+                AppState.easterEggs.animationHandles.delete('popcorn');
+                overlay.innerHTML = '';
+            }
+        }, 1000);
     }
 
     static startDvd() {
@@ -1194,11 +1196,15 @@ class EasterEggManager {
     }
 
     static stopDvd() {
-        cancelAnimationFrame(AppState.easterEggs.animationHandles.get('dvd'));
-        AppState.easterEggs.animationHandles.delete('dvd');
-        const overlay = Utils.$('dvd-overlay');
-        if (overlay) overlay.innerHTML = '';
         this.hideOverlay('dvd-overlay');
+        setTimeout(() => {
+            const overlay = Utils.$('dvd-overlay');
+            if (overlay && !overlay.classList.contains('active')) {
+                cancelAnimationFrame(AppState.easterEggs.animationHandles.get('dvd'));
+                AppState.easterEggs.animationHandles.delete('dvd');
+                overlay.innerHTML = '';
+            }
+        }, 1000);
     }
 
     static startMatrix() {
@@ -1237,13 +1243,18 @@ class EasterEggManager {
     }
 
     static stopMatrix() {
-        cancelAnimationFrame(AppState.easterEggs.animationHandles.get('matrix'));
-        AppState.easterEggs.animationHandles.delete('matrix');
         document.body.classList.remove('easter-matrix');
-        const canvas = Utils.$('matrix-canvas');
-        const ctx = canvas?.getContext('2d');
-        if (ctx && canvas) ctx.clearRect(0, 0, canvas.width, canvas.height);
         this.hideOverlay('matrix-overlay');
+        setTimeout(() => {
+            const overlay = Utils.$('matrix-overlay');
+            if (overlay && !overlay.classList.contains('active')) {
+                cancelAnimationFrame(AppState.easterEggs.animationHandles.get('matrix'));
+                AppState.easterEggs.animationHandles.delete('matrix');
+                const canvas = Utils.$('matrix-canvas');
+                const ctx = canvas?.getContext('2d');
+                if (ctx && canvas) ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+        }, 1000);
     }
 
     static startVhs() {
@@ -1276,13 +1287,18 @@ class EasterEggManager {
     }
 
     static stopVhs() {
-        cancelAnimationFrame(AppState.easterEggs.animationHandles.get('vhs'));
-        AppState.easterEggs.animationHandles.delete('vhs');
         document.body.classList.remove('easter-vhs');
-        const canvas = Utils.$('vhs-canvas');
-        const ctx = canvas?.getContext('2d');
-        if (ctx && canvas) ctx.clearRect(0, 0, canvas.width, canvas.height);
         this.hideOverlay('vhs-overlay');
+        setTimeout(() => {
+            const overlay = Utils.$('vhs-overlay');
+            if (overlay && !overlay.classList.contains('active')) {
+                cancelAnimationFrame(AppState.easterEggs.animationHandles.get('vhs'));
+                AppState.easterEggs.animationHandles.delete('vhs');
+                const canvas = Utils.$('vhs-canvas');
+                const ctx = canvas?.getContext('2d');
+                if (ctx && canvas) ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+        }, 1000);
     }
 
     static startGlassCrack(playSound = false) {
@@ -1308,9 +1324,11 @@ class EasterEggManager {
     }
 
     static stopGlassCrack() {
-        const overlay = Utils.$('glass-overlay');
-        if (overlay) overlay.innerHTML = '';
         this.hideOverlay('glass-overlay');
+        setTimeout(() => {
+            const overlay = Utils.$('glass-overlay');
+            if (overlay && !overlay.classList.contains('active')) overlay.innerHTML = '';
+        }, 1000);
     }
 
     static startNyan() {
@@ -1323,6 +1341,10 @@ class EasterEggManager {
     static stopNyan() {
         document.body.classList.remove('easter-nyan');
         this.hideOverlay('nyan-overlay');
+        setTimeout(() => {
+            const overlay = Utils.$('nyan-overlay');
+            if (overlay && !overlay.classList.contains('active')) overlay.innerHTML = '';
+        }, 1000);
     }
 
     static startZombie() {
@@ -1336,11 +1358,13 @@ class EasterEggManager {
 
     static stopZombie() {
         document.body.classList.remove('easter-zombie');
-        const video = Utils.$('native-player');
-        if (video) {
-            video.playbackRate = Number(video.dataset.originalPlaybackRate || 1);
-            delete video.dataset.originalPlaybackRate;
-        }
+        setTimeout(() => {
+            const video = Utils.$('native-player');
+            if (video && video.dataset.originalPlaybackRate) {
+                video.playbackRate = Number(video.dataset.originalPlaybackRate || 1);
+                delete video.dataset.originalPlaybackRate;
+            }
+        }, 1000);
     }
 
     static showOverlay(id) {
