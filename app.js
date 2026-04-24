@@ -1,9 +1,10 @@
 /**
- * @fileoverview COW Core Engine v4.0 - The Ultimate Edition
+ * @fileoverview COWIO Core Engine v4.0 - The Ultimate Edition
  * @description Интегрированы все фиксы: MPA-подобная стабильность, обход пароля по инвайтам,
  * улучшенный интерактивный нейрофон, левитация элементов, фикс мобильного скролла,
  * статистика профилей и строгая защита уникальных юзернеймов.
  * + ПАТЧ: Система ролей (Создатель / Модератор) с защитой приоритетов.
+ * + ПАТЧ: Адаптивный Ambilight плеера, фикс /milk, COWIO ребрендинг, Z-index фикс.
  */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -84,8 +85,12 @@ class Utils {
     static $(id) { return document.getElementById(id); }
 
     static toast(msg, type = 'info') {
-        const container = Utils.$('toast-container');
-        if (!container) return;
+        let container = Utils.$('toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'toast-container';
+            document.body.appendChild(container);
+        }
         const div = document.createElement('div');
         div.className = 'toast';
         div.style.borderLeft = `4px solid ${type === 'error' ? 'var(--danger)' : 'var(--accent)'}`;
@@ -149,26 +154,58 @@ class Utils {
                 0%, 100% { transform: translateY(0); }
                 50% { transform: translateY(-4px); }
             }
-            .glass-panel, .room-card, .user-card, .msg-bubble, .friend-item, .toast {
+            .glass-panel, .room-card, .user-card, .msg-bubble, .friend-item {
                 animation: levitate 6s ease-in-out infinite;
                 will-change: transform;
             }
             .room-card { animation-delay: 1s; }
             .user-card { animation-delay: 2s; }
             
-            /* Фикс размеров плеера */
+            /* Фикс размеров плеера и Ambilight стили */
+            .video-container {
+                position: relative;
+                min-height: 35vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 1;
+            }
             #native-player {
                 width: 100% !important;
                 height: 100% !important;
                 object-fit: contain !important;
                 border-radius: 16px;
                 background: #000;
+                position: relative;
+                z-index: 2;
+                transition: box-shadow 0.3s ease;
             }
-            .video-container {
-                min-height: 35vh; /* Мобильный минимум */
+
+            /* Тосты - МАКСИМАЛЬНЫЙ Z-INDEX */
+            #toast-container {
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 999999 !important;
                 display: flex;
-                align-items: center;
-                justify-content: center;
+                flex-direction: column;
+                gap: 10px;
+                pointer-events: none;
+            }
+            .toast {
+                background: rgba(15,15,15,0.95);
+                color: #fff;
+                padding: 12px 20px;
+                border-radius: 12px;
+                font-size: 14px;
+                font-weight: 500;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+                backdrop-filter: blur(10px);
+                transition: opacity 0.3s ease;
+                pointer-events: all;
+                border: 1px solid var(--border-light);
+                z-index: 999999 !important;
+                animation: levitate 6s ease-in-out infinite;
             }
 
             /* Фикс мобильного скролла и UI */
@@ -227,7 +264,7 @@ class Utils {
                 box-shadow: 0 0 8px rgba(255, 165, 2, 0.2);
             }
 
-            /* СТИЛИ ФУТЕРА С ССЫЛКАМИ (Feature: 4 links bottom center) */
+            /* СТИЛИ ФУТЕРА С ССЫЛКАМИ */
             #bottom-footer-links {
                 position: fixed;
                 bottom: 12px;
@@ -240,7 +277,7 @@ class Utils {
                 padding: 8px 24px;
                 border-radius: 20px;
                 border: 1px solid var(--border-light);
-                z-index: 9999;
+                z-index: 9998;
                 font-size: 13px;
                 font-weight: 600;
             }
@@ -290,6 +327,74 @@ class Utils {
             btnReg.style.marginTop = '10px';
             Utils.$('reg-form').appendChild(btnReg);
         }
+    }
+}
+
+// Адаптивный Ambilight для плеера
+class Ambilight {
+    static loopId = null;
+    static canvas = document.createElement('canvas');
+    static ctx = this.canvas.getContext('2d', { willReadFrequently: true });
+    
+    static start(videoEl) {
+        this.stop();
+        if (!videoEl) return;
+        
+        let glowEl = Utils.$('ambilight-glow');
+        if (!glowEl) {
+            glowEl = document.createElement('div');
+            glowEl.id = 'ambilight-glow';
+            glowEl.style.cssText = 'position:absolute; top:5%; left:5%; width:90%; height:90%; z-index:0; filter:blur(40px); opacity:0.85; transition: background 0.5s ease, box-shadow 0.5s ease; border-radius: 20px; pointer-events:none; transform: translateZ(0);';
+            videoEl.parentNode.insertBefore(glowEl, videoEl);
+        }
+
+        this.canvas.width = 64; 
+        this.canvas.height = 64;
+
+        const draw = () => {
+            if (!AppState.currentRoomId) return this.stop();
+            
+            if (AppState.currentTheme === 'love') {
+                glowEl.style.background = 'rgba(255, 105, 180, 0.9)';
+                glowEl.style.boxShadow = '0 0 100px rgba(255, 105, 180, 0.8)';
+            } else {
+                // Adaptive color reading from video
+                if (!videoEl.paused && !videoEl.ended && videoEl.readyState > 2) {
+                    try {
+                        this.ctx.drawImage(videoEl, 0, 0, 64, 64);
+                        const data = this.ctx.getImageData(0, 0, 64, 64).data;
+                        let r = 0, g = 0, b = 0, count = 0;
+                        for (let i = 0; i < data.length; i += 16) {
+                            r += data[i]; g += data[i+1]; b += data[i+2]; count++;
+                        }
+                        r = Math.floor(r / count); g = Math.floor(g / count); b = Math.floor(b / count);
+                        const color = `rgb(${r}, ${g}, ${b})`;
+                        glowEl.style.background = color;
+                        glowEl.style.boxShadow = `0 0 80px ${color}, 0 0 120px ${color}`;
+                    } catch(e) { 
+                        // Fallback on CORS errors
+                        glowEl.style.background = 'rgba(255, 255, 255, 0.05)';
+                        glowEl.style.boxShadow = 'none';
+                    }
+                }
+            }
+            this.loopId = requestAnimationFrame(draw);
+        };
+        draw();
+    }
+
+    static updateTheme(theme) {
+        const glowEl = Utils.$('ambilight-glow');
+        if (glowEl && theme === 'love') {
+            glowEl.style.background = 'rgba(255, 105, 180, 0.9)';
+            glowEl.style.boxShadow = '0 0 100px rgba(255, 105, 180, 0.8)';
+        }
+    }
+
+    static stop() {
+        if (this.loopId) cancelAnimationFrame(this.loopId);
+        const glowEl = Utils.$('ambilight-glow');
+        if (glowEl) { glowEl.style.background = 'transparent'; glowEl.style.boxShadow = 'none'; }
     }
 }
 
@@ -395,7 +500,7 @@ class EasterEggManager {
         ['/nyan', 'nyan']
     ]);
     static KEYWORD_EFFECTS = {
-        COW: 'cow-cursor',
+        COWIO: 'cow-cursor',
         GLASS: 'glass',
         CINEMA: 'cinema',
         POTATO: 'potato',
@@ -520,9 +625,9 @@ class EasterEggManager {
             .easter-drop {
                 position: absolute;
                 top: -12vh;
-                font-size: clamp(22px, 3vw, 38px);
+                font-size: clamp(30px, 4vw, 50px);
                 animation: easterPopcornDrop linear forwards;
-                text-shadow: 0 6px 10px rgba(0,0,0,0.24);
+                text-shadow: 0 6px 15px rgba(0,0,0,0.5);
             }
             #dvd-overlay {
                 overflow: hidden;
@@ -554,6 +659,7 @@ class EasterEggManager {
             #glass-overlay svg {
                 width: 100%;
                 height: 100%;
+                animation: shatterPulse 0.2s ease-out;
             }
             #cinema-overlay {
                 background: rgba(0,0,0,0.65);
@@ -586,9 +692,9 @@ class EasterEggManager {
                 left: 0;
                 top: 50%;
                 transform: translate(-50%, -50%);
-                font-size: 28px;
-                filter: drop-shadow(0 6px 12px rgba(0,0,0,0.35));
-                animation: nyanCruise 5s linear forwards;
+                font-size: 48px;
+                filter: drop-shadow(0 6px 12px rgba(0,0,0,0.5));
+                animation: nyanCruise 5s ease-in-out forwards;
             }
             body.easter-nyan #native-player,
             body.easter-nyan .video-container {
@@ -604,7 +710,7 @@ class EasterEggManager {
                 filter: drop-shadow(0 0 6px rgba(255,255,255,0.35));
             }
             
-            /* ADVANCED MILK STYLES */
+            /* ADVANCED MILK STYLES - FIXED & OPTIMIZED */
             #advanced-milk-container {
                 position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
                 z-index: 5000; pointer-events: none; overflow: hidden; display: block;
@@ -613,22 +719,29 @@ class EasterEggManager {
                 position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5001; pointer-events: none;
             }
             #milk-glass {
-                position: absolute; font-size: 80px; z-index: 5002; opacity: 0;
-                transform: scale(0) rotate(-20deg); transition: all 1s cubic-bezier(0.34, 1.56, 0.64, 1);
-                pointer-events: none; filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.3));
-                top: 50%; left: 50%; margin-top: -40px; margin-left: -40px;
+                position: absolute; font-size: 120px; z-index: 5002; opacity: 0;
+                transform: scale(0) rotate(-20deg); transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+                pointer-events: none; filter: drop-shadow(0 0 30px rgba(255, 255, 255, 0.5));
+                top: 50%; left: 50%; margin-top: -60px; margin-left: -60px;
             }
-            #milk-glass.active { opacity: 1; transform: scale(1.2) rotate(0deg); }
-            #milk-glass.pouring { animation: easterShake 0.2s infinite; }
+            #milk-glass.active { opacity: 1; transform: scale(1.4) rotate(0deg); }
+            #milk-glass.pouring { animation: easterShake 0.15s infinite; }
             @keyframes easterShake {
-                0% { transform: scale(1.2) rotate(-2deg) translateY(0); }
-                50% { transform: scale(1.2) rotate(2deg) translateY(-5px); }
-                100% { transform: scale(1.2) rotate(-2deg) translateY(0); }
+                0% { transform: scale(1.4) rotate(-3deg) translateY(0); }
+                50% { transform: scale(1.4) rotate(3deg) translateY(-8px); }
+                100% { transform: scale(1.4) rotate(-3deg) translateY(0); }
+            }
+            @keyframes shatterPulse {
+                0% { transform: scale(1); }
+                50% { transform: scale(1.02); }
+                100% { transform: scale(1); }
             }
 
             @keyframes easterPopcornDrop {
-                0% { transform: translate3d(0, 0, 0) rotate(0deg); opacity: 1; }
-                100% { transform: translate3d(var(--drift, 0px), 120vh, 0) rotate(460deg); opacity: 0; }
+                0% { transform: translate3d(0, -10vh, 0) rotate(0deg) scale(1); opacity: 0; }
+                10% { opacity: 1; }
+                80% { transform: translate3d(var(--drift, 0px), 80vh, 0) rotate(360deg) scale(1.2); opacity: 1; }
+                100% { transform: translate3d(var(--drift, 0px), 120vh, 0) rotate(460deg) scale(0.8); opacity: 0; }
             }
             @keyframes easterRoll {
                 0% { transform: rotate(0deg) scale(1); }
@@ -646,8 +759,9 @@ class EasterEggManager {
                 to { background-position: 220% 50%; }
             }
             @keyframes nyanCruise {
-                from { left: 0%; }
-                to { left: 100%; }
+                0% { left: -10%; transform: translate(-50%, -50%) rotate(-5deg); }
+                50% { transform: translate(-50%, -60%) rotate(5deg); }
+                100% { left: 110%; transform: translate(-50%, -50%) rotate(-5deg); }
             }
             @keyframes nyanVideo {
                 0% { filter: hue-rotate(0deg) saturate(1.2); }
@@ -853,7 +967,7 @@ class EasterEggManager {
         this.stopAdvancedMilk();
     }
 
-    // ADVANCED MILK SIMULATION (ОПТИМИЗИРОВАНО С ФИКСАМИ БАГОВ И ПЛАВНЫМ ЗАТУХАНИЕМ)
+    // ADVANCED MILK SIMULATION (ФИКСИРОВАННАЯ И ОПТИМИЗИРОВАННАЯ ВЕРСИЯ - ТОЛЬКО ФОНТАН ЧАСТИЦ)
     static startAdvancedMilk() {
         if (this.milkActive) return;
         this.milkActive = true;
@@ -863,7 +977,7 @@ class EasterEggManager {
             container = document.createElement('div');
             container.id = 'advanced-milk-container';
             container.style.opacity = '0'; // Для эффекта Fade-in
-            container.style.transition = 'opacity 1s ease';
+            container.style.transition = 'opacity 0.6s ease';
             container.innerHTML = `
                 <div id="milk-glass">🥛</div>
                 <canvas id="fluid-canvas"></canvas>
@@ -881,33 +995,32 @@ class EasterEggManager {
         const glass = Utils.$('milk-glass');
 
         let width, height;
-        let springs = [];
         let particles = [];
-        let currentFillHeight;
-        let targetFillHeight;
-
-        const CONFIG = {
-            springCount: 150, tension: 0.025, dampening: 0.06, spread: 0.2, // Увеличено число пружин для плавности
-            layers: [
-                { color: 'rgba(203, 213, 225, 0.9)', offset: -40, speed: 0.015 },
-                { color: 'rgba(241, 245, 249, 0.95)', offset: -15, speed: 0.02 },
-                { color: '#ffffff', offset: 0, speed: 0.03 }
-            ]
-        };
 
         class Particle {
-            constructor(x, y, vx, vy, size, isStream = false) {
-                this.x = x; this.y = y; this.vx = vx; this.vy = vy;
-                this.size = size; this.life = 1.0; this.isStream = isStream;
-                this.decay = isStream ? 0.005 : Math.random() * 0.02 + 0.01;
+            constructor(x, y) {
+                this.x = x; this.y = y; 
+                const angle = (Math.random() - 0.5) * Math.PI; // Explode upwards
+                const speed = Math.random() * 25 + 10;
+                this.vx = Math.sin(angle) * speed; 
+                this.vy = -Math.cos(angle) * speed - 15; // Shoot up stronger
+                this.size = Math.random() * 12 + 4; 
+                this.life = 1.0; 
+                this.decay = Math.random() * 0.015 + 0.01;
+                this.color = `rgba(255, 255, 255, `;
             }
             update() {
-                this.vy += 0.35; this.x += this.vx; this.y += this.vy;
-                this.life -= this.decay; if (!this.isStream) this.size *= 0.97;
+                this.vy += 0.8; // Gravity
+                this.x += this.vx; this.y += this.vy;
+                this.life -= this.decay; 
             }
             draw(ctx) {
                 ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(255, 255, 255, ${this.life})`; ctx.fill();
+                ctx.fillStyle = this.color + this.life + ')'; 
+                ctx.shadowColor = 'rgba(255,255,255,0.8)';
+                ctx.shadowBlur = 10;
+                ctx.fill();
+                ctx.shadowBlur = 0; // reset
             }
         }
 
@@ -920,52 +1033,13 @@ class EasterEggManager {
         window.addEventListener('resize', this.milkResizeHandler);
         this.milkResizeHandler();
 
-        currentFillHeight = height + 200; targetFillHeight = height + 200;
-        for (let i = 0; i < CONFIG.springCount; i++) springs.push({ h: height + 200, v: 0 });
-
-        const splash = (index, force) => {
-            if (index >= 0 && index < springs.length) springs[index].v += force;
-        };
-
-        const updatePhysics = () => {
-            const diff = targetFillHeight - currentFillHeight; 
-            currentFillHeight += diff * 0.03;
-            if (isNaN(currentFillHeight)) currentFillHeight = height; // Предохранитель для мониторов
-
-            for (let i = 0; i < springs.length; i++) {
-                const spring = springs[i]; const d = currentFillHeight - spring.h;
-                spring.v += CONFIG.tension * d - spring.v * CONFIG.dampening; spring.h += spring.v;
-            }
-            let lefts = new Array(springs.length).fill(0); let rights = new Array(springs.length).fill(0);
-            for (let j = 0; j < 8; j++) {
-                for (let i = 0; i < springs.length; i++) {
-                    if (i > 0) { lefts[i] = CONFIG.spread * (springs[i].h - springs[i-1].h); springs[i-1].v += lefts[i]; }
-                    if (i < springs.length - 1) { rights[i] = CONFIG.spread * (springs[i].h - springs[i+1].h); springs[i+1].v += rights[i]; }
-                }
-            }
-            for (let i = particles.length - 1; i >= 0; i--) {
-                particles[i].update(); if (particles[i].life <= 0) particles.splice(i, 1);
-            }
-        };
-
         const loop = () => {
-            ctx.clearRect(0, 0, width, height); // Прозрачный оверлей для сайта
-            updatePhysics();
-            const spacing = width / (CONFIG.springCount - 1);
-            CONFIG.layers.forEach((layer) => {
-                ctx.fillStyle = layer.color; 
-                ctx.beginPath(); 
-                ctx.moveTo(0, height);
-                for (let i = 0; i < springs.length; i++) {
-                    const yOffset = layer.offset * (1 - (currentFillHeight/height));
-                    ctx.lineTo(i * spacing, springs[i].h + yOffset);
-                }
-                ctx.lineTo(width, height); 
-                ctx.lineTo(0, height); // ФИКС БАГА С ЧЕРНЫМИ ПОЛОСАМИ: Явное закрытие пути внизу экрана
-                ctx.closePath();       // ФИКС БАГА С ЧЕРНЫМИ ПОЛОСАМИ
-                ctx.fill();
-            });
-            particles.forEach(p => p.draw(ctx));
+            ctx.clearRect(0, 0, width, height); // Прозрачный фон
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].update(); 
+                if (particles[i].life <= 0) particles.splice(i, 1);
+                else particles[i].draw(ctx);
+            }
             this.milkAnimFrame = requestAnimationFrame(loop);
         };
         loop();
@@ -974,31 +1048,29 @@ class EasterEggManager {
             glass.classList.add('active');
             setTimeout(() => {
                 glass.classList.add('pouring');
-                targetFillHeight = -100;
+                
+                // Burst particles like a fountain from the glass
                 this.milkStreamInterval = setInterval(() => {
-                    if (targetFillHeight > height) { clearInterval(this.milkStreamInterval); return; }
-                    for(let i=0; i<5; i++) {
-                        particles.push(new Particle(width/2, height/2, (Math.random()-0.5)*15, (Math.random()-1)*15, Math.random()*15 + 5, true));
+                    const rect = glass.getBoundingClientRect();
+                    const cx = rect.left + rect.width / 2;
+                    const cy = rect.top + rect.height / 2 - 20;
+                    for(let i=0; i<8; i++) {
+                        particles.push(new Particle(cx, cy));
                     }
-                    splash(Math.floor(CONFIG.springCount/2), -20);
-                }, 50);
+                }, 30);
 
                 setTimeout(() => {
                     clearInterval(this.milkStreamInterval);
                     glass.classList.remove('pouring'); glass.classList.remove('active');
                     setTimeout(() => {
-                        targetFillHeight = height + 200;
+                        if (Utils.$('advanced-milk-container')) Utils.$('advanced-milk-container').style.opacity = '0';
                         setTimeout(() => {
-                            // Fade out перед полным удалением
-                            if (Utils.$('advanced-milk-container')) Utils.$('advanced-milk-container').style.opacity = '0';
-                            setTimeout(() => {
-                                this.stopAdvancedMilk();
-                            }, 1000); // Даем 1 секунду на анимацию затухания
-                        }, 3500);
-                    }, 5000);
-                }, 3500);
-            }, 1000);
-        }, 500);
+                            this.stopAdvancedMilk();
+                        }, 600); // Даем 0.6 секунды на анимацию затухания
+                    }, 2000); // Даем частицам упасть
+                }, 2500); // Длительность фонтана
+            }, 800); // Ждем пока стакан увеличится
+        }, 100);
     }
 
     static stopAdvancedMilk() {
@@ -1101,7 +1173,7 @@ class EasterEggManager {
         this.showOverlay('dvd-overlay');
         const overlay = Utils.$('dvd-overlay');
         if (!overlay) return;
-        overlay.innerHTML = '<div class="dvd-logo">COW</div>';
+        overlay.innerHTML = '<div class="dvd-logo">COWIO</div>';
         const logo = overlay.firstElementChild;
         let x = 40;
         let y = 40;
@@ -1140,13 +1212,15 @@ class EasterEggManager {
             canvas.height = window.innerHeight;
         };
         resize();
-        const fontSize = 16;
+        const fontSize = 18;
         const columns = Math.ceil(canvas.width / fontSize);
         const drops = Array(columns).fill(1);
         const chars = '01アカサタナハマヤラワXYZ$#<>[]{}';
         const draw = () => {
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#69ff88';
             ctx.fillStyle = '#69ff88';
             ctx.font = `${fontSize}px monospace`;
             for (let i = 0; i < drops.length; i += 1) {
@@ -1155,6 +1229,7 @@ class EasterEggManager {
                 if (drops[i] * fontSize > canvas.height && Math.random() > 0.98) drops[i] = 0;
                 drops[i] += 1;
             }
+            ctx.shadowBlur = 0; // reset
             const raf = requestAnimationFrame(draw);
             AppState.easterEggs.animationHandles.set('matrix', raf);
         };
@@ -3441,6 +3516,9 @@ class RoomManager {
             vid.playsInline = true;
             vid.preload = 'auto';
             vid.onerror = () => Utils.toast('Плеер не смог загрузить видео. Нужна прямая ссылка на медиафайл.', 'error');
+            
+            // Включаем Ambilight
+            Ambilight.start(vid);
         }
         
         let shareBtn = Utils.$('btn-share-room');
@@ -3738,6 +3816,8 @@ class RoomManager {
             vid.onerror = null;
         }
         
+        Ambilight.stop();
+
         AppState.currentPresenceCache = {};
         AppState.usersListRenderToken++;
         AppState.currentRoomId = null;
@@ -3756,6 +3836,9 @@ class RoomManager {
         roomScreen.classList.remove('theme-love');
         document.body.classList.remove('theme-love-room');
         this.stopLoveHearts();
+        
+        Ambilight.updateTheme(theme);
+
         if (theme === 'love') {
             roomScreen.classList.add('theme-love');
             document.body.classList.add('theme-love-room');
@@ -4066,7 +4149,7 @@ window.onload = () => {
     footerLinks.id = 'bottom-footer-links';
     footerLinks.style.display = 'none'; // Будет переключаться в Utils.showScreen
     footerLinks.innerHTML = `
-        <a href="mailto:support@cow.com">Mail</a>
+        <a href="mailto:support@cowio.com">Mail</a>
         <a href="https://t.me/your_channel" target="_blank">Telegram</a>
         <a href="#" target="_blank">Сайт</a>
         <a href="#" onclick="event.preventDefault()">позже добавлю</a>
