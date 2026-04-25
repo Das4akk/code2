@@ -3,39 +3,639 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>COWIO - Лобби</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body class="auth-loading">
-    <canvas id="particle-canvas"></canvas>
+    <title>COWIO - Online Cinema Together</title>
+    <style>
+        /* ========================================================= */
+        /* AMOLED THEME VARIABLES & RESET */
+        /* ========================================================= */
+        :root { 
+            --bg: #000000; 
+            --panel: #08080a; 
+            --panel-hover: #111114;
+            --border: #1a1a1a; 
+            --border-light: #2a2a2a;
+            --text-main: #ffffff; 
+            --text-muted: #888888;
+            --accent: #2ed573; 
+            --accent-hover: #26b360;
+            --danger: #ff4757;
+            --danger-hover: #e03e4d;
+            --brand: #ffffff;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background: var(--bg); color: var(--text-main); overflow: hidden; height: 100vh; width: 100vw; }
+        
+        /* ========================================================= */
+        /* BACKGROUNDS & GLOBAL COMPONENTS */
+        /* ========================================================= */
+        #particle-canvas { position: fixed; top: 0; left: 0; z-index: -1; width: 100%; height: 100%; opacity: 0.15; pointer-events: none; }
+        
+        .glass-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.9); }
+        
+        button { cursor: pointer; transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94); font-weight: 600; outline: none; border: none; }
+        button:hover:not(:disabled) { transform: translateY(-2px); }
+        button:active:not(:disabled) { transform: translateY(0) scale(0.98); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
 
-    <div class="lobby-layout screen">
-        <!-- Твой Sidebar и Список комнат -->
-        <aside id="main-sidebar" class="sidebar glass-panel">
-            <div class="user-card" id="btn-my-profile">
-                <div class="avatar" id="my-avatar">?</div>
-                <div class="user-card-info">
-                    <div id="my-name">Загрузка...</div>
+        input, textarea { width: 100%; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--border-light); background: #040404; color: var(--text-main); outline: none; transition: 0.2s; font-size: 14px; margin-bottom: 12px; }
+        input::placeholder, textarea::placeholder { color: var(--text-muted); }
+        input:focus, textarea:focus { border-color: var(--accent); background: #0a0a0a; box-shadow: 0 0 0 2px rgba(46, 213, 115, 0.15); }
+        
+        .primary-btn { width: 100%; padding: 14px; border-radius: 12px; background: var(--brand); color: #000; box-shadow: 0 4px 15px rgba(255,255,255,0.1); }
+        .primary-btn:hover:not(:disabled) { background: #e0e0e0; box-shadow: 0 6px 20px rgba(255,255,255,0.2); }
+        .secondary-btn { width: 100%; padding: 14px; border-radius: 12px; border: 1px solid var(--border-light); background: transparent; color: var(--text-main); }
+        .secondary-btn:hover:not(:disabled) { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.2); }
+        .danger-btn { width: 100%; padding: 14px; border-radius: 12px; border: 1px solid rgba(255, 71, 87, 0.3); background: rgba(255, 71, 87, 0.05); color: var(--danger); }
+        .danger-btn:hover:not(:disabled) { background: rgba(255, 71, 87, 0.1); border-color: var(--danger); }
+
+        /* ========================================================= */
+        /* SCREENS & AUTH */
+        /* ========================================================= */
+        .screen { display: none; height: 100vh; width: 100vw; flex-direction: column; overflow: hidden; }
+        .screen.active { display: flex; animation: fadeIn 0.4s ease; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        #auth-screen { align-items: center; justify-content: center; }
+        .auth-wrapper { width: 420px; padding: 40px; text-align: center; max-width: 90%; }
+        .logo { font-size: 52px; font-weight: 900; margin-bottom: 25px; letter-spacing: -2px; }
+        .auth-tabs { display: flex; gap: 8px; margin-bottom: 20px; background: #040404; padding: 6px; border-radius: 12px; border: 1px solid var(--border); }
+        .auth-tabs button { flex: 1; padding: 10px; background: transparent; color: var(--text-muted); border-radius: 8px; transition: 0.3s; }
+        .auth-tabs button.active { background: var(--panel-hover); color: var(--text-main); box-shadow: 0 2px 8px rgba(0,0,0,0.5); border: 1px solid var(--border-light); }
+        .auth-form { display: none; flex-direction: column; gap: 4px; }
+        .auth-form.active-form { display: flex; animation: fadeIn 0.3s ease; }
+        .agreement-wrap { display: flex; align-items: flex-start; gap: 10px; margin: 6px 0 4px; text-align: left; }
+        .agreement-wrap input[type="checkbox"] { appearance: none; -webkit-appearance: none; width: 14px; height: 14px; margin: 1px 0 0; border-radius: 3px; border: 1px solid rgba(255,255,255,0.38); background: #000; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.4); flex-shrink: 0; transition: background-color 0.22s ease, border-color 0.22s ease, transform 0.18s ease, box-shadow 0.22s ease; cursor: pointer; }
+        .agreement-wrap input[type="checkbox"]:hover { border-color: rgba(255,255,255,0.62); box-shadow: 0 0 0 2px rgba(255,255,255,0.08); }
+        .agreement-wrap input[type="checkbox"]:checked { background: #fff; border-color: #fff; box-shadow: 0 0 0 2px rgba(255,255,255,0.12); transform: scale(1.04); }
+        .agreement-wrap label { font-size: 13px; color: var(--text-muted); line-height: 1.4; cursor: pointer; }
+        .agreement-wrap a { color: var(--text-main); text-decoration: underline; }
+
+        /* ========================================================= */
+        /* LOBBY LAYOUT */
+        /* ========================================================= */
+        .lobby-layout { display: grid; grid-template-columns: 320px 1fr; gap: 20px; padding: 20px; height: 100vh; max-width: 1600px; margin: 0 auto; width: 100%; }
+        
+        .sidebar { display: flex; flex-direction: column; padding: 20px; overflow-y: hidden; }
+        .user-card { display: flex; align-items: center; gap: 14px; padding: 16px; border-radius: 16px; background: rgba(255,255,255,0.02); cursor: pointer; border: 1px solid transparent; transition: 0.2s; margin-bottom: 24px; }
+        .user-card:hover { background: rgba(255,255,255,0.05); border-color: var(--border-light); }
+        .avatar { width: 48px; height: 48px; border-radius: 50%; background: #111; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 20px; overflow: hidden; border: 1px solid var(--border-light); flex-shrink: 0; }
+        .avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .user-card-info { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+        .user-card-name { font-weight: 700; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .user-card-username { font-size: 12px; color: var(--accent); margin-top: 2px; font-weight: 500; }
+        
+        .nav-menu { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+        .nav-item { padding: 14px 16px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; color: var(--text-muted); font-weight: 600; border: 1px solid transparent; transition: 0.2s; }
+        .nav-item:hover { background: rgba(255,255,255,0.02); color: var(--text-main); }
+        .nav-item.active { background: rgba(255,255,255,0.05); color: var(--text-main); border-color: var(--border-light); }
+        .nav-badge { background: var(--accent); color: #000; font-size: 10px; padding: 2px 6px; border-radius: 10px; display: none; }
+        .nav-badge.show { display: block; }
+        
+        .friends-container { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; padding-right: 5px; }
+        .friends-container::-webkit-scrollbar { width: 4px; }
+        .friends-container::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 4px; }
+        .section-title { font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; padding-left: 4px; }
+        
+        .friend-item { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 12px; background: transparent; transition: 0.2s; cursor: pointer; }
+        .friend-item:hover { background: rgba(255,255,255,0.03); }
+        .friend-item .avatar { width: 36px; height: 36px; font-size: 14px; }
+        .friend-info-col { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+        .friend-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .friend-status { font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 5px; margin-top: 3px; }
+        .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); transition: 0.3s; }
+        .status-dot.online { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+        
+        .friend-request-item { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-light); animation: fadeIn 0.3s; }
+        .req-actions { display: flex; gap: 6px; }
+        .btn-small { flex: 1; padding: 8px 0; border-radius: 8px; font-size: 11px; font-weight: 700; }
+        .btn-accept { background: rgba(46, 213, 115, 0.1); color: var(--accent); border: 1px solid rgba(46, 213, 115, 0.25); }
+        .btn-accept:hover { background: var(--accent); color: #000; }
+        .btn-decline { background: rgba(255, 71, 87, 0.1); color: var(--danger); border: 1px solid rgba(255, 71, 87, 0.25); }
+        .btn-decline:hover { background: var(--danger); color: #fff; }
+        
+        .rooms-main { display: flex; flex-direction: column; gap: 20px; overflow: hidden; }
+        .lobby-header { display: flex; justify-content: space-between; align-items: center; gap: 20px; background: var(--panel); padding: 16px 24px; border-radius: 20px; border: 1px solid var(--border); }
+        .lobby-header input { margin: 0; max-width: 300px; border: none; background: #040404; }
+        .lobby-header button { width: auto; padding: 14px 24px; }
+        
+        .rooms-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; overflow-y: auto; padding-right: 10px; padding-bottom: 20px; }
+        .rooms-grid::-webkit-scrollbar { width: 6px; }
+        .rooms-grid::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 6px; }
+        
+        .room-card { padding: 0; overflow: hidden; position: relative; cursor: pointer; display: flex; flex-direction: column; border: 1px solid var(--border); transition: 0.3s; background: var(--panel); border-radius: 18px; }
+        .room-card:hover { transform: translateY(-4px); border-color: var(--border-light); box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+        .room-preview { width: 100%; height: 160px; background: #020202; position: relative; overflow: hidden; }
+        .room-preview video { width: 100%; height: 100%; object-fit: cover; opacity: 0.5; transition: opacity 0.5s; }
+        .room-preview.loaded video { opacity: 0.8; }
+        .room-preview-overlay { position: absolute; inset: 0; background: linear-gradient(to top, var(--panel), transparent); pointer-events: none; }
+        .room-info { padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+        .room-info h4 { font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .room-meta { font-size: 12px; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; }
+        
+        /* ========================================================= */
+        /* ROOM SCREEN */
+        /* ========================================================= */
+        .room-layout { display: grid; grid-template-columns: 1fr 380px; gap: 20px; padding: 20px; height: 100vh; max-width: 1800px; margin: 0 auto; width: 100%; position: relative; z-index: 3; }
+        
+        .player-section { display: flex; flex-direction: column; gap: 15px; min-width: 0; position: relative; }
+        .room-top-bar { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; }
+        .room-title-wrapper { flex: 1; overflow: hidden; margin: 0 15px; }
+        .room-title-wrapper h2 { font-size: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; }
+        
+        .video-container { flex: 1; background: #000; border-radius: 20px; position: relative; overflow: hidden; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; }
+        video#main-video { width: 100%; height: 100%; max-height: 100%; outline: none; }
+        
+        /* Reactions Layer */
+        .reaction-bar { display: flex; gap: 15px; align-items: center; justify-content: center; padding: 10px; background: rgba(0,0,0,0.5); border-radius: 16px; border: 1px solid var(--border-light); position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 10; backdrop-filter: blur(10px); }
+        .react-btn { background: none; border: none; font-size: 24px; cursor: pointer; transition: all 0.25s ease; }
+        .react-btn:hover { transform: scale(1.4); filter: drop-shadow(0 0 12px rgba(255,255,255,0.3)); }
+        .react-btn:disabled { opacity: 0.4; cursor: default; }
+        #reaction-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; overflow: hidden; z-index: 50; }
+        .floating-emoji { position: absolute; bottom: -30px; font-size: 32px; animation: floatUp 3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
+        @keyframes floatUp { 0% { transform: translateY(0) scale(0.6); opacity: 1; } 50% { transform: translateY(-150px) translateX(20px) scale(1.6); opacity: 1; } 100% { transform: translateY(-350px) translateX(-20px) scale(0.8); opacity: 0; } }
+
+        .chat-section { display: flex; flex-direction: column; height: 100%; overflow: hidden; border: 1px solid var(--border); }
+        .chat-tabs { display: flex; padding: 10px; border-bottom: 1px solid var(--border); gap: 5px; }
+        .chat-tabs button { flex: 1; padding: 10px; background: transparent; color: var(--text-muted); border-radius: 10px; font-size: 13px; font-weight: 600; }
+        .chat-tabs button.active { background: rgba(255,255,255,0.05); color: var(--text-main); }
+        
+        .chat-content-area { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+        .chat-content-area::-webkit-scrollbar { width: 4px; }
+        .chat-content-area::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 4px; }
+        
+        .m-line { display: flex; flex-direction: column; animation: fadeIn 0.2s ease; margin-bottom: 4px; }
+        .m-line.self { align-items: flex-end; }
+        .bubble { padding: 10px 14px; border-radius: 16px; background: rgba(255,255,255,0.04); font-size: 14px; max-width: 85%; line-height: 1.4; border: 1px solid var(--border-light); word-wrap: break-word; color: #fff; }
+        .self .bubble { background: #1a1a1d; color: #fff; border-color: #2a2a2f; border-bottom-right-radius: 4px; }
+        .m-line strong { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; padding: 0 4px; font-weight: 600; display: block; }
+        .self strong { display: none; }
+        .sys-msg { text-align: center; font-size: 11px; color: var(--text-muted); margin: 10px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+        .timecode-btn { background: rgba(46, 213, 115, 0.15); border: 1px solid rgba(46, 213, 115, 0.3); color: var(--accent); padding: 2px 6px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 12px; transition: 0.2s; }
+        .timecode-btn:hover { background: var(--accent); color: #000; }
+        .timecode-btn.disabled { opacity: 0.5; cursor: default; }
+
+        .chat-input-area { padding: 12px; border-top: 1px solid var(--border); background: var(--panel); }
+        .input-wrapper { display: flex; gap: 8px; background: #040404; border: 1px solid var(--border-light); border-radius: 16px; padding: 6px; align-items: center; }
+        .input-wrapper input { border: none; background: transparent; margin: 0; padding: 8px 10px; flex: 1; }
+        
+        .mic-icon-btn { width: 38px; height: 38px; border-radius: 12px; background: rgba(255,255,255,0.05); color: var(--text-main); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; transition: 0.3s; }
+        .mic-icon-btn.active { background: rgba(46, 213, 115, 0.15); color: var(--accent); border: 1px solid var(--accent); box-shadow: 0 0 15px rgba(46, 213, 115, 0.2); animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(46, 213, 115, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(46, 213, 115, 0); } 100% { box-shadow: 0 0 0 0 rgba(46, 213, 115, 0); } }
+        
+        .send-btn { width: 38px; height: 38px; border-radius: 12px; background: var(--text-main); color: #000; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; }
+        .send-btn:hover { background: #e0e0e0; }
+
+        /* Room Users List with Permissions */
+        .user-item { padding: 12px; display: flex; align-items: flex-start; gap: 12px; background: rgba(255,255,255,0.02); border-radius: 12px; flex-wrap: wrap; border: 1px solid var(--border-light); }
+        .user-item .indicator { width: 8px; height: 8px; background: rgba(255,255,255,0.2); border-radius: 50%; flex-shrink: 0; margin-top: 5px; transition: 0.3s; }
+        .user-item .indicator.online { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+        .user-main { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; flex: 1; }
+        .user-name { font-size: 14px; font-weight: 600; }
+        .host-label { font-size: 10px; background: rgba(255, 193, 7, 0.15); color: #ffc107; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; font-weight: 700; }
+        .you-label { font-size: 11px; opacity: 0.5; }
+        .user-card-actions { display: flex; gap: 6px; margin-left: auto; }
+        .dm-btn, .add-friend-btn { background: rgba(255,255,255,0.05); border: 1px solid var(--border-light); color: #fff; padding: 6px 10px; border-radius: 8px; font-size: 11px; transition: 0.2s; }
+        .dm-btn:hover, .add-friend-btn:hover { background: rgba(255,255,255,0.1); }
+        .perm-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; width: 100%; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+        .perm-controls label { font-size: 11px; color: var(--text-muted); display: flex; gap: 4px; align-items: center; cursor: pointer; }
+
+        /* ========================================================= */
+        /* MODALS & TOASTS */
+        /* ========================================================= */
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px; opacity: 0; transition: opacity 0.25s ease; }
+        .modal.active { display: flex; opacity: 1; }
+        .modal-content { width: 440px; max-width: 100%; padding: 30px; transform: translateY(20px) scale(0.95); transition: 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); max-height: 90vh; overflow-y: auto; background: var(--panel); border: 1px solid var(--border-light); border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.9); }
+        .modal.active .modal-content { transform: translateY(0) scale(1); }
+        .modal h2 { margin-bottom: 20px; font-size: 22px; font-weight: 800; }
+        .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+        .profile-modal-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+        .profile-menu-wrap { position: relative; }
+        .profile-menu-btn { width: auto; padding: 6px 10px; border-radius: 10px; background: rgba(255,255,255,0.05); color: var(--text-main); border: 1px solid var(--border-light); font-size: 18px; line-height: 1; }
+        .profile-menu-dropdown { position: absolute; right: 0; top: calc(100% + 8px); min-width: 160px; padding: 8px; border-radius: 12px; background: var(--panel); border: 1px solid var(--border-light); box-shadow: 0 10px 25px rgba(0,0,0,0.7); display: none; z-index: 20; }
+        .profile-menu-dropdown.active { display: block; }
+        .profile-menu-item { width: 100%; text-align: left; padding: 10px 12px; border-radius: 10px; background: transparent; color: var(--text-main); border: 1px solid transparent; font-size: 14px; }
+        .profile-menu-item:hover { background: rgba(255,255,255,0.06); border-color: var(--border-light); }
+        .security-email-box { padding: 12px; border-radius: 12px; border: 1px solid var(--border-light); background: rgba(255,255,255,0.02); margin-bottom: 12px; }
+        .security-note { color: var(--text-muted); font-size: 13px; margin-bottom: 12px; }
+        .hashtag-input-wrap { position: relative; }
+        .hashtag-suggestions { position: absolute; left: 0; right: 0; bottom: calc(100% + 6px); background: var(--panel); border: 1px solid var(--border-light); border-radius: 10px; padding: 6px; display: none; z-index: 35; max-height: 130px; overflow-y: auto; }
+        .hashtag-suggestions.active { display: flex; flex-direction: column; gap: 4px; }
+        .hashtag-suggestion-item { border: 1px solid transparent; background: transparent; color: var(--text-main); text-align: left; border-radius: 8px; padding: 8px 10px; font-size: 13px; }
+        .hashtag-suggestion-item:hover { background: rgba(255,255,255,0.06); border-color: var(--border-light); }
+        .hashtags-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+        .hashtag-chip { font-size: 12px; padding: 4px 8px; border-radius: 999px; border: 1px solid var(--border-light); background: rgba(255,255,255,0.04); color: var(--accent); font-weight: 600; }
+
+        /* DM Modal specific */
+        .dm-modal-content { width: min(600px, 100%); display: flex; flex-direction: column; gap: 16px; padding: 20px; }
+        .dm-modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 15px; margin-bottom: 5px; }
+        .dm-header-actions { display: flex; align-items: center; gap: 8px; }
+        .dm-messages { height: 350px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 5px; position: relative; overflow-x: hidden; }
+        .dm-compose { display: flex; gap: 10px; margin-top: 10px; }
+        .dm-compose input { margin: 0; flex: 1; }
+        .dm-messages > :not(.panel-love-hearts) { position: relative; z-index: 2; }
+        .dm-theme-controls { display: none; align-items: center; gap: 8px; }
+        .dm-theme-controls.active { display: flex; }
+        .dm-theme-chip { width: auto; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border-light); background: rgba(255,255,255,0.04); color: var(--text-main); font-size: 12px; }
+        .dm-theme-chip.active { background: rgba(255,255,255,0.16); border-color: rgba(255,255,255,0.36); }
+        #modal-dm-chat .modal-content { transition: background-color 0.8s ease, border-color 0.8s ease, box-shadow 0.8s ease; }
+        #modal-dm-chat.theme-love .modal-content { background: rgba(20, 6, 14, 0.9); border-color: rgba(226, 120, 169, 0.22); box-shadow: 0 12px 35px rgba(66, 15, 42, 0.55); }
+        #modal-dm-chat.theme-love .dm-messages,
+        #modal-dm-chat.theme-love .dm-compose { background: rgba(23, 7, 16, 0.65); border-radius: 12px; padding: 8px; }
+        #modal-dm-chat.theme-love .dm-bubble,
+        #modal-dm-chat.theme-love .bubble { background: rgba(214, 92, 150, 0.12); border-color: rgba(214, 120, 166, 0.28); color: #fff; }
+
+        #toast-container { position: fixed; top: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+        .toast { padding: 14px 20px; border-radius: 12px; background: var(--panel); border: 1px solid var(--border-light); color: var(--text-main); font-size: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); animation: slideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        @keyframes slideIn { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        .online-counter-badge { position: fixed; bottom: 20px; left: 20px; padding: 8px 16px; border-radius: 20px; background: rgba(0,0,0,0.8); border: 1px solid rgba(46,213,115,0.2); color: var(--accent); font-size: 12px; font-weight: 700; z-index: 100; backdrop-filter: blur(10px); display: flex; align-items: center; gap: 6px; }
+        .online-counter-badge::before { content: ''; display: block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+        #remote-audio-container { display: none; }
+        .room-theme-toggle { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #232329; background: #0a0a0f; color: #f5f5f7; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03); }
+        .room-theme-carousel { display: none; border: 1px solid #232329; border-radius: 12px; padding: 10px; background: #09090d; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03); }
+        .room-theme-carousel.active { display: block; animation: fadeIn 0.25s ease; }
+        .theme-carousel-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .theme-arrow-btn { width: auto; min-width: 38px; padding: 8px 12px; border-radius: 8px; border: 1px solid #2a2a31; background: #111117; color: #fff; }
+        .theme-preview-wrap { flex: 1; overflow: hidden; min-height: 186px; display: flex; align-items: center; justify-content: center; }
+        .theme-preview-track { display: flex; gap: 0; transition: transform 0.35s ease; width: 100%; }
+        .theme-card { min-width: 100%; flex: 0 0 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .theme-rect { width: 112px; height: 152px; border-radius: 18px; border: 1px solid #2a2a31; position: relative; overflow: hidden; background: #090909; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04); }
+        .theme-rect.default::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, #0d0d10 0%, #040404 100%); }
+        .theme-rect.love::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 20% 15%, #66304f 0%, #301226 50%, #10050d 100%); }
+        .theme-rect.love::after { content: '❤  ❤  ❤'; position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); color: rgba(255,153,204,0.85); letter-spacing: 6px; font-size: 11px; }
+        .theme-name { margin-top: 10px; font-size: 13px; color: var(--text-muted); text-transform: lowercase; font-weight: 600; }
+        .theme-check { margin-top: 6px; font-size: 16px; line-height: 1; color: transparent; transition: color 0.2s ease, text-shadow 0.2s ease; }
+        .theme-card.active .theme-name { color: var(--text-main); }
+        .theme-card.active .theme-check { color: #fff; text-shadow: 0 0 12px rgba(255,255,255,0.45); }
+        #room-screen { transition: background 0.9s ease, filter 0.9s ease; }
+        #room-screen .glass-panel,
+        #room-screen .chat-section,
+        #room-screen .chat-input-area,
+        #room-screen .input-wrapper,
+        #room-screen .bubble,
+        #room-screen .user-item,
+        #room-screen .send-btn,
+        #room-screen #btn-share-room,
+        #room-screen #btn-room-settings,
+        #room-screen #btn-leave-room { transition: background-color 0.9s ease, border-color 0.9s ease, color 0.9s ease, box-shadow 0.9s ease; }
+        #room-screen.theme-love { background: radial-gradient(circle at 18% 14%, #3f053f 0%, #22002a 24%, #12001f 58%, #060011 100%); position: relative; overflow: hidden; }
+        #room-screen.theme-love::before { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 1; background:
+            radial-gradient(1200px 420px at 50% -12%, rgba(164, 58, 130, 0.24) 0%, rgba(164, 58, 130, 0.05) 48%, rgba(0,0,0,0) 72%),
+            radial-gradient(700px 260px at 50% 108%, rgba(54, 14, 72, 0.26) 0%, rgba(0,0,0,0) 75%);
+            mix-blend-mode: screen;
+        }
+        #room-screen.theme-love::after { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 1; background: linear-gradient(180deg, rgba(8,0,18,0.42) 0%, rgba(4,0,10,0.62) 100%); }
+        body.theme-love-room .modal-content.glass-panel,
+        #room-screen.theme-love .glass-panel { border-color: rgba(226, 120, 169, 0.22); box-shadow: 0 12px 35px rgba(66, 15, 42, 0.55); background: rgba(20, 6, 14, 0.9); }
+        #room-screen.theme-love .chat-section,
+        #room-screen.theme-love .chat-input-area { background: rgba(23, 7, 16, 0.86); }
+        #room-screen.theme-love .bubble { background: rgba(214, 92, 150, 0.12); border-color: rgba(214, 120, 166, 0.28); color: #fff; }
+        #room-screen.theme-love .self .bubble { background: rgba(196, 85, 143, 0.18); border-color: rgba(214, 120, 166, 0.33); color: #fff; }
+        #room-screen.theme-love .chat-tabs button.active { background: rgba(255, 129, 182, 0.2); color: #ffd7ea; }
+        #room-screen.theme-love .input-wrapper { border-color: rgba(214, 120, 166, 0.28); background: rgba(16, 5, 12, 0.9); }
+        #room-screen.theme-love .send-btn,
+        #room-screen.theme-love #btn-share-room,
+        #room-screen.theme-love #btn-room-settings,
+        #room-screen.theme-love #btn-leave-room { border-color: rgba(214, 120, 166, 0.4); background: rgba(196, 85, 143, 0.14); color: #ffd7ea; }
+        #room-screen.theme-love .user-item { background: rgba(173, 68, 120, 0.11); border-color: rgba(214, 120, 166, 0.24); }
+        #room-screen.theme-love .room-top-bar,
+        #room-screen.theme-love .video-container,
+        #room-screen.theme-love .chat-section { border-color: rgba(214, 120, 166, 0.24); }
+        .chat-content-area { position: relative; overflow: hidden; z-index: 2; }
+        .panel-love-hearts { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 1; }
+        .love-heart { position: absolute; bottom: -70px; width: auto; height: auto; opacity: 0; animation: loveFloatUp 28s linear forwards; font-size: 32px; line-height: 1; filter: brightness(0.88) saturate(0.88) contrast(0.98); text-shadow: 0 0 10px rgba(255, 102, 194, 0.2); }
+        .love-heart.far { filter: blur(1.2px) brightness(0.72) saturate(0.72); }
+        .love-heart.mid { filter: blur(0.6px) brightness(0.84) saturate(0.82); }
+        .love-heart.near { filter: blur(0.15px) brightness(0.96) saturate(0.92); }
+        @keyframes loveFloatUp { from { transform: translate3d(0, 0, 0) scale(var(--heart-scale, 1)); opacity: 0; } 8% { opacity: var(--heart-opacity, 0.52); } to { transform: translate3d(var(--heart-drift, 8px), calc(-1 * var(--heart-travel, 700px)), 0) scale(calc(var(--heart-scale, 1) * 1.02)); opacity: 0; } }
+
+        @media (max-width: 1024px) {
+            .lobby-layout { grid-template-columns: 1fr; padding: 0; }
+            .sidebar { position: fixed; left: -100%; top: 0; height: 100%; width: 300px; z-index: 500; background: #050505; border-right: 1px solid var(--border); transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); padding-top: 80px; box-shadow: 20px 0 50px rgba(0,0,0,0.8); }
+            .sidebar.open { left: 0; }
+            .mobile-header { display: flex; position: sticky; top: 0; z-index: 400; }
+            .rooms-main { padding: 15px; }
+            .room-layout { grid-template-columns: 1fr; padding: 10px; height: auto; display: flex; flex-direction: column; }
+            .video-container { height: 35vh; flex: none; }
+            .chat-section { height: 55dvh; min-height: 320px; flex: none; }
+            .room-top-bar { padding: 10px; }
+            .reaction-bar { bottom: 10px; padding: 6px 12px; }
+            #chat-input-container { position: sticky; bottom: 0; z-index: 6; padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Neural Network Background -->
+    <canvas id="particle-canvas"></canvas>
+    
+    <!-- Global Elements -->
+    <div id="toast-container"></div>
+    <div class="online-counter-badge">Всего в сети: <span id="global-online-count">0</span></div>
+    <div id="remote-audio-container"></div>
+
+    <!-- ========================================================================= -->
+    <!-- AUTH SCREEN -->
+    <!-- ========================================================================= -->
+    <section id="auth-screen" class="screen active">
+        <div class="auth-wrapper glass-panel">
+            <div class="logo">COWIO</div>
+            <div class="auth-tabs">
+                <button id="tab-login-btn" class="active">Вход</button>
+                <button id="tab-reg-btn">Регистрация</button>
+            </div>
+            
+            <div id="login-form" class="auth-form active-form">
+                <input type="email" id="login-email" placeholder="Электронная почта">
+                <input type="password" id="login-pass" placeholder="Пароль">
+                <button class="primary-btn" id="btn-do-login" style="margin-top: 10px;">Войти</button>
+            </div>
+            
+            <div id="reg-form" class="auth-form">
+                <input type="text" id="reg-name" placeholder="Отображаемое имя (напр. Алексей)">
+                <input type="text" id="reg-username" placeholder="Уникальный ID (напр. @alexey99)">
+                <input type="email" id="reg-email" placeholder="Электронная почта">
+                <input type="password" id="reg-pass" placeholder="Пароль (минимум 6 символов)">
+                <div class="agreement-wrap">
+                    <input type="checkbox" id="reg-agreement">
+                    <label for="reg-agreement">
+                        Я принимаю пользовательское соглашение
+                        <a href="AGREEMENT_LINK_HERE" target="_blank" rel="noopener noreferrer">AGREEMENT_LINK_HERE</a>
+                    </label>
+                </div>
+                <button class="primary-btn" id="btn-do-reg" style="margin-top: 10px;">Создать аккаунт</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- LOBBY SCREEN -->
+    <!-- ========================================================================= -->
+    <section id="lobby-screen" class="screen">
+        <div class="mobile-header">
+            <div class="logo" style="font-size: 24px; margin: 0; letter-spacing: -1px;">COWIO</div>
+        </div>
+        
+        <div class="lobby-layout">
+            <aside class="sidebar glass-panel" id="main-sidebar">
+                <div class="user-card" id="btn-open-my-profile">
+                    <div class="avatar" id="my-avatar-display">?</div>
+                    <div class="user-card-info">
+                        <div class="user-card-name" id="my-name-display">Загрузка...</div>
+                        <div class="user-card-username" id="my-username-display">@loading</div>
+                    </div>
+                </div>
+                
+                <nav class="nav-menu">
+                    <div class="nav-item active" id="nav-rooms"><span>📺 Комнаты</span></div>
+                    <div class="nav-item" id="nav-friends">
+                        <span>👥 Друзья</span>
+                        <div class="nav-badge" id="friend-req-badge">0</div>
+                    </div>
+                </nav>
+
+                <div id="friends-section" class="friends-container" style="display: none;">
+                    <div class="section-title">Заявки в друзья</div>
+                    <div id="friend-requests-list">
+                        <div style="font-size: 12px; color: var(--text-muted); padding: 5px; text-align: center;">Нет новых заявок</div>
+                    </div>
+                    
+                    <div class="section-title" style="margin-top: 15px;">Мои друзья</div>
+                    <div id="friends-list"></div>
+                </div>
+
+                <div style="margin-top: auto; display: flex; flex-direction: column; gap: 10px; padding-top: 20px;">
+                    <button class="secondary-btn" id="btn-logout" style="border-color: rgba(255,255,255,0.1); color: var(--text-muted);">Выйти из аккаунта</button>
+                </div>
+            </aside>
+            
+            <main class="rooms-main">
+                <header class="lobby-header glass-panel">
+                    <input type="text" id="search-rooms" placeholder="Поиск комнат по названию...">
+                    <button class="primary-btn" id="btn-open-create-room">+ Создать комнату</button>
+                </header>
+                
+                <div class="rooms-grid" id="rooms-grid"></div>
+            </main>
+        </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- ROOM SCREEN -->
+    <!-- ========================================================================= -->
+    <section id="room-screen" class="screen">
+        <div class="room-layout">
+            <div class="player-section">
+                <div class="room-top-bar glass-panel">
+                    <button class="secondary-btn" id="btn-leave-room" style="width: auto; padding: 10px 16px;">← Выйти</button>
+                    <div class="room-title-wrapper">
+                        <h2 id="room-title-text">Загрузка комнаты...</h2>
+                    </div>
+                    <button class="secondary-btn" id="btn-room-settings" style="width: auto; padding: 10px 16px; display: none;">⚙️ Настройки</button>
+                </div>
+                
+                <div class="video-container glass-panel">
+                    <video id="native-player" playsinline></video>
+                    <div id="reaction-layer"></div>
+                    <div class="reaction-bar">
+                        <button class="react-btn" data-emoji="🔥">🔥</button>
+                        <button class="react-btn" data-emoji="😂">😂</button>
+                        <button class="react-btn" data-emoji="😱">😱</button>
+                        <button class="react-btn" data-emoji="❤️">❤️</button>
+                        <button class="react-btn" data-emoji="👏">👏</button>
+                    </div>
                 </div>
             </div>
-            <!-- Навигация и друзья -->
-        </aside>
+            
+            <div class="chat-section glass-panel">
+                <div class="panel-love-hearts" id="room-love-hearts"></div>
+                <div class="chat-tabs">
+                    <button id="tab-chat-btn" class="active">💬 Чат</button>
+                    <button id="tab-users-btn">👥 Люди (<span id="users-count">0</span>)</button>
+                </div>
+                
+                <div class="chat-content-area" id="chat-messages"></div>
+                <div class="chat-content-area" id="users-list" style="display: none;"></div>
+                
+                <div class="chat-input-area" id="chat-input-container">
+                    <div class="input-wrapper">
+                        <button class="mic-icon-btn" id="mic-btn" title="Микрофон">🎤</button>
+                        <input type="text" id="chat-input" placeholder="Написать или :00 таймкод..." autocomplete="off">
+                        <button class="send-btn" id="send-btn">↑</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
 
-        <main class="rooms-main">
-            <header class="lobby-header glass-panel">
-                <input type="text" id="search-rooms" placeholder="Поиск...">
-                <button class="primary-btn" id="btn-open-create-room">Создать комнату</button>
-            </header>
-            <div class="rooms-grid" id="rooms-render-container"></div>
-        </main>
+    <!-- ========================================================================= -->
+    <!-- MODALS -->
+    <!-- ========================================================================= -->
+    
+    <div class="modal" id="modal-edit-profile">
+        <div class="modal-content glass-panel">
+            <div class="profile-modal-top">
+                <h2 style="margin-bottom:0;">Настройки профиля</h2>
+                <div class="profile-menu-wrap">
+                    <button class="profile-menu-btn" id="btn-profile-menu" aria-label="Меню профиля">⋮</button>
+                    <div class="profile-menu-dropdown" id="profile-menu-dropdown">
+                        <button class="profile-menu-item" id="btn-open-security">Безопасность</button>
+                    </div>
+                </div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 10px;">
+                    <div class="avatar" id="edit-avatar-preview" style="width: 70px; height: 70px; font-size: 24px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center; background:#111;">?</div>
+                    <div style="flex: 1;">
+                        <input type="text" id="edit-avatar-url" placeholder="URL аватарки (ссылка на картинку)" style="margin:0;">
+                    </div>
+                </div>
+                <input type="text" id="edit-name" placeholder="Отображаемое имя (напр. Алексей)">
+                <input type="text" id="edit-username-input" placeholder="Уникальный ID (напр. @alexey99)">
+                <textarea id="edit-bio" placeholder="Расскажите немного о себе..." rows="3"></textarea>
+                <div class="hashtag-input-wrap">
+                    <div class="hashtag-suggestions" id="profile-hashtag-suggestions"></div>
+                    <input type="text" id="edit-hashtags" placeholder="#music #movies #gaming">
+                </div>
+                <div class="modal-actions">
+                    <button class="secondary-btn btn-close-modal">Отмена</button>
+                    <button class="primary-btn" id="btn-save-profile">Сохранить</button>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <!-- Модалки (Профиль, Создание комнаты, Настройки профиля) -->
-    <div class="modal" id="modal-create-room">...</div>
-    <div class="modal" id="modal-profile">...</div>
+    <div class="modal" id="modal-security">
+        <div class="modal-content glass-panel">
+            <h2>Безопасность</h2>
+            <div class="security-email-box" id="security-email-box"></div>
+            <div class="security-note" id="security-verified-note"></div>
+            <input type="email" id="security-email-input" placeholder="Введите новый email">
+            <input type="password" id="security-password-input" placeholder="Введите текущий пароль" style="display:none;">
+            <button class="primary-btn" id="btn-security-email-action">Указать email</button>
+            <div class="modal-actions">
+                <button class="secondary-btn btn-close-modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
 
-    <div id="toast-container"></div>
-    <div class="online-counter" id="global-online-count">В сети: 0</div>
+    <!-- View User Profile Modal (Updated Button) -->
+    <div class="modal" id="modal-view-profile">
+        <div class="modal-content glass-panel" style="text-align: center;">
+            <div class="avatar" id="view-avatar" style="width: 90px; height: 90px; font-size: 32px; margin: 0 auto 15px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center; background:#111;">?</div>
+            <h2 id="view-name" style="margin-bottom: 5px;">Пользователь</h2>
+            <div id="view-username" style="color: var(--accent); font-size: 14px; margin-bottom: 15px; font-weight: 600;">@user</div>
+            <p id="view-bio" style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px; line-height: 1.5;"></p>
+            <div class="hashtags-list" id="view-hashtags"></div>
+            
+            <div id="view-profile-actions" style="display: flex; flex-direction: column; gap: 10px;">
+                <button class="primary-btn" id="btn-dm-modal">Написать сообщение</button>
+                <button class="secondary-btn btn-close-modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Direct Messages Modal -->
+    <div class="modal" id="modal-dm-chat">
+        <div class="modal-content glass-panel dm-modal-content">
+            <div class="dm-modal-header">
+                <div>
+                    <h2 id="dm-chat-title" style="margin-bottom: 5px;">Личный чат</h2>
+                    <p style="font-size: 12px; color: var(--text-muted);">Приватные сообщения</p>
+                </div>
+                <div class="dm-header-actions">
+                    <button class="secondary-btn" id="btn-dm-theme-toggle" style="width: auto; padding: 8px 12px;">Поменять тему</button>
+                    <button class="secondary-btn btn-close-modal" style="width: auto; padding: 8px 12px;">✕</button>
+                </div>
+            </div>
+            <div class="dm-theme-controls" id="dm-theme-controls">
+                <button class="dm-theme-chip active" data-theme="default">default</button>
+                <button class="dm-theme-chip" data-theme="love">love</button>
+            </div>
+            <div id="dm-messages" class="dm-messages"></div>
+            <div class="dm-compose">
+                <input type="text" id="dm-input" placeholder="Написать другу..." autocomplete="off">
+                <button id="btn-dm-send" class="primary-btn" style="width: 50px;">↑</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="modal-room">
+        <div class="modal-content glass-panel">
+            <h2 id="room-modal-title">Создать комнату</h2>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <input type="text" id="room-input-name" placeholder="Название комнаты">
+                <input type="url" id="room-input-url" placeholder="Прямая ссылка на видео (mp4, webm)">
+                
+                <label style="display: flex; align-items: center; gap: 10px; font-size: 14px; cursor: pointer; margin-top: 5px; color: var(--text-muted);">
+                    <input type="checkbox" id="room-input-private" style="width: auto; margin: 0;">
+                    Сделать приватной (по паролю)
+                </label>
+                <input type="password" id="room-input-password" placeholder="Придумайте пароль" style="display: none;">
+                <div class="hashtag-input-wrap">
+                    <div class="hashtag-suggestions" id="room-hashtag-suggestions"></div>
+                    <input type="text" id="room-input-hashtag" placeholder="#chill">
+                </div>
+                <button class="secondary-btn room-theme-toggle" id="btn-room-theme-toggle">Поменять тему</button>
+                <div class="room-theme-carousel" id="room-theme-carousel">
+                    <div class="theme-carousel-top">
+                        <button class="theme-arrow-btn" id="room-theme-prev">‹</button>
+                        <div class="theme-preview-wrap">
+                            <div class="theme-preview-track" id="room-theme-track">
+                                <div class="theme-card active" data-theme="default">
+                                    <div class="theme-rect default"></div>
+                                    <div class="theme-name">default</div>
+                                    <div class="theme-check">✓</div>
+                                </div>
+                                <div class="theme-card" data-theme="love">
+                                    <div class="theme-rect love"></div>
+                                    <div class="theme-name">love</div>
+                                    <div class="theme-check">✓</div>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="theme-arrow-btn" id="room-theme-next">›</button>
+                    </div>
+                </div>
+                
+                <div class="modal-actions">
+                    <button class="secondary-btn btn-close-modal">Отмена</button>
+                    <button class="primary-btn" id="btn-save-room">Готово</button>
+                </div>
+                <button class="danger-btn" id="btn-delete-room" style="display: none; margin-top: 10px;">Удалить комнату навсегда</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="modal-password">
+        <div class="modal-content glass-panel">
+            <h2>Вход в приватную комнату</h2>
+            <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 15px;">Эта комната защищена паролем. Пожалуйста, введите его для доступа.</p>
+            <input type="password" id="join-room-password" placeholder="Введите пароль">
+            <div class="modal-actions">
+                <button class="secondary-btn btn-close-modal">Отмена</button>
+                <button class="primary-btn" id="btn-submit-password">Войти</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Sidebar Logic -->
+    <script>
+        const btnToggle = document.getElementById('toggle-sidebar');
+        const sidebar = document.getElementById('main-sidebar');
+        if (btnToggle && sidebar) {
+            btnToggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                sidebar.classList.toggle('open');
+            });
+            document.addEventListener('click', (e) => {
+                if (window.innerWidth <= 1024 && sidebar.classList.contains('open')) {
+                    if (!sidebar.contains(e.target)) sidebar.classList.remove('open');
+                }
+            });
+        }
+    </script>
+    
     <script type="module" src="app.js"></script>
 </body>
 </html>

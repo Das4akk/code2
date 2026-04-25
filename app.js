@@ -21,121 +21,6 @@ import {
     remove, update, onChildAdded, off
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-// === ОБЪЕКТ РОУТИНГА (Хирургическое решение) ===
-const Router = {
-    get currentPage() {
-        const path = window.location.pathname;
-        if (path.includes('lobby.html')) return 'lobby';
-        if (path.includes('room.html')) return 'room';
-        return 'auth';
-    },
-
-    navigate(page, params = '') {
-        // Переход на новую физическую страницу
-        window.location.href = `${page}.html${params}`;
-    }
-};
-
-// === МОДИФИЦИРОВАННЫЙ ONLOAD ===
-window.onload = () => {
-    // 1. Блокируем отображение интерфейса сразу
-    document.body.classList.add('auth-loading');
-
-    // 2. Инициализация базовых систем
-    AuthManager.init();
-    BackgroundFX.init();
-    EasterEggManager.init();
-    HashtagManager.initHashtags();
-
-    // 3. Создание футера (только для лобби)
-    if (Router.currentPage === 'lobby') {
-        const footerLinks = document.createElement('div');
-        footerLinks.id = 'bottom-footer-links';
-        footerLinks.style.display = 'flex';
-        footerLinks.innerHTML = `
-            <a href="mailto:support@cowio.com">Mail</a>
-            <a href="https://t.me/your_channel" target="_blank">Telegram</a>
-            <a href="#">Сайт</a>
-        `;
-        document.body.appendChild(footerLinks);
-    }
-
-    // 4. Слушатель состояния авторизации (Хирургический автологин)
-    onAuthStateChanged(auth, async (user) => {
-        const page = Router.currentPage;
-
-        if (user) {
-            AppState.currentUser = user;
-            
-            if (page === 'auth') {
-                // Если юзер уже в системе, а зашел на страницу входа — шлем в лобби
-                Router.navigate('lobby');
-                return;
-            }
-
-            // Загружаем профиль перед показом страницы
-            await AuthManager.loadUserProfile(user.uid);
-
-            // Инициализация логики конкретной страницы
-            if (page === 'lobby') {
-                RoomManager.listenRooms();
-                DirectMessages.init();
-                FriendsManager.init();
-                OnlineCounter.initGlobal();
-            } else if (page === 'room') {
-                const params = new URLSearchParams(window.location.search);
-                const roomId = params.get('id');
-                if (roomId) {
-                    RoomManager.joinRoom(roomId);
-                } else {
-                    Router.navigate('lobby');
-                    return;
-                }
-            }
-
-            // Рендерим UI и СНИМАЕМ БЛОКИРОВКУ
-            document.body.classList.remove('auth-loading');
-        } else {
-            // Если юзер не авторизован и он не на странице входа
-            if (page !== 'auth') {
-                Router.navigate('index');
-            } else {
-                document.body.classList.remove('auth-loading');
-            }
-        }
-    });
-
-    // Глобальные обработчики (модалки и т.д.)
-    document.querySelectorAll('.btn-close-modal').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const modal = e.target.closest('.modal');
-            if (modal) modal.classList.remove('active');
-        });
-    });
-};
-
-
-function initPageLogic(page, user) {
-    if (page === 'lobby') {
-        RoomManager.listenRooms();
-        DirectMessages.init();
-        FriendsManager.init();
-        OnlineCounter.initGlobal();
-        // Показываем футер (как в твоем коде)
-        const footer = document.getElementById('bottom-footer-links');
-        if (footer) footer.style.display = 'flex';
-    } 
-    else if (page === 'room') {
-        const params = new URLSearchParams(window.location.search);
-        const roomId = params.get('id');
-        if (roomId) {
-            RoomManager.joinRoom(roomId);
-        } else {
-            Router.navigate('lobby');
-        }
-    }
-}
-
 // ============================================================================
 // 1. КОНФИГУРАЦИЯ И ГЛОБАЛЬНЫЙ STATE
 // ============================================================================
@@ -233,7 +118,7 @@ class Utils {
         // Показываем футер с ссылками ТОЛЬКО в лобби
         const footerLinks = Utils.$('bottom-footer-links');
         if (footerLinks) {
-            footerLinks.style.display = (Router.navigate('lobby')) ? 'flex' : 'none';
+            footerLinks.style.display = (screenId === 'lobby-screen') ? 'flex' : 'none';
         }
     }
 
@@ -1558,7 +1443,7 @@ class AuthManager {
             if (user) {
                 AppState.currentUser = user;
                 await AdminPanel.getDeveloperUid();
-                Router.navigate('lobby');
+                Utils.showScreen('lobby-screen');
                 if (!AppState.isRegistering) {
                     await ProfileManager.ensureProfileExists(user);
                 }
@@ -1668,7 +1553,7 @@ class AuthManager {
 
     static handleLogoutCleanup() {
         AppState.currentUser = null;
-        Router.navigate('index');
+        Utils.showScreen('auth-screen');
         Utils.$('login-pass').value = ''; Utils.$('reg-pass').value = '';
         Utils.$('btn-do-login').disabled = false; Utils.$('btn-do-reg').disabled = false;
         AdminPanel.handleLogoutCleanup();
@@ -3678,7 +3563,7 @@ class RoomManager {
         Utils.$('btn-room-settings').style.display = (AppState.isHost || AdminPanel.isCurrentUserCreator()) ? 'block' : 'none';
         if (AppState.isHost || AdminPanel.isCurrentUserCreator()) Utils.$('btn-room-settings').onclick = () => this.openRoomModal(roomId);
 
-        Router.redirect('room', '?id=' + currentRoomId)
+        Utils.showScreen('room-screen');
         Utils.$('chat-messages').innerHTML = '<div class="sys-msg">Вы вошли в комнату</div>';
         Utils.$('users-list').innerHTML = '';
         
@@ -3966,7 +3851,7 @@ class RoomManager {
         AppState.isHost = false;
         if (Utils.$('users-list')) Utils.$('users-list').innerHTML = '';
         if (Utils.$('users-count')) Utils.$('users-count').innerText = '0';
-        Router.navigate('lobby');
+        Utils.showScreen('lobby-screen');
     }
 
     static applyRoomTheme(theme = 'default') {
