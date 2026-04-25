@@ -1435,9 +1435,11 @@ class AuthManager {
         let isFirstLoad = true;
 
         onAuthStateChanged(auth, async (user) => {
+            // 1. Скрываем лоадер только один раз при первом ответе от Firebase
             if (isFirstLoad) {
-                Utils.$('auth-screen').style.opacity = '1';
-                isFirstLoad = false;
+            const loader = document.getElementById('global-loader');
+              if (loader) loader.style.display = 'none';
+              isFirstLoad = false;
             }
 
             if (user) {
@@ -1453,9 +1455,16 @@ class AuthManager {
                 DirectMessages.startNotifications();
                 AdminPanel.init();
                 this.bindGlobalPresence();
-            } else {
-                this.handleLogoutCleanup();
-            }
+            // Пользователь АВТОРИЗОВАН
+                document.getElementById('auth-screen').style.display = 'none';
+                document.getElementById('lobby-screen').style.display = 'block'; // или твой метод Utils.showScreen('lobby-screen')
+        
+            // Здесь можно загружать профиль и т.д.
+                } else {
+                // Пользователь НЕ АВТОРИЗОВАН
+                document.getElementById('lobby-screen').style.display = 'none';
+                document.getElementById('auth-screen').style.display = 'block'; // Показываем авторизацию только сейчас
+    }
         });
 
         this.bindUI();
