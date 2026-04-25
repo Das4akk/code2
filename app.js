@@ -21,6 +21,87 @@ import {
     remove, update, onChildAdded, off
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
+// === ОБЪЕКТ РОУТИНГА (Хирургическое решение) ===
+const Router = {
+    get currentPage() {
+        const path = window.location.pathname;
+        if (path.includes('lobby.html')) return 'lobby';
+        if (path.includes('room.html')) return 'room';
+        return 'auth';
+    },
+
+    navigate(page, params = '') {
+        window.location.href = `${page}.html${params}`;
+    }
+};
+
+// === МОДИФИЦИРОВАННЫЙ ONLOAD ===
+window.onload = () => {
+    // 1. Устанавливаем блокировку видимости (предотвращаем мерцание)
+    document.body.classList.add('auth-loading');
+
+    // 2. Инициализация глобальных систем
+    AuthManager.init();
+    BackgroundFX.init();
+    EasterEggManager.init();
+    HashtagManager.initHashtags();
+
+    // 3. Слушатель авторизации (Единственная точка входа)
+    onAuthStateChanged(auth, async (user) => {
+        const page = Router.currentPage;
+
+        if (user) {
+            AppState.currentUser = user;
+            
+            // Если мы на странице авторизации, но юзер уже залогинен — редирект в лобби
+            if (page === 'auth') {
+                Router.navigate('lobby');
+                return;
+            }
+
+            // Загружаем профиль
+            await AuthManager.loadUserProfile(user.uid);
+            
+            // Инициализируем специфичные для страницы модули
+            initPageLogic(page, user);
+
+            // Снимаем блокировку видимости
+            document.body.classList.remove('auth-loading');
+        } else {
+            // Если не залогинен и не на странице авторизации — на выход
+            if (page !== 'auth') {
+                Router.navigate('index');
+            } else {
+                document.body.classList.remove('auth-loading');
+            }
+        }
+    });
+
+    // Навешиваем обработчики на кнопки, которые есть на любой странице (модалки)
+    setupGlobalEvents();
+};
+
+function initPageLogic(page, user) {
+    if (page === 'lobby') {
+        RoomManager.listenRooms();
+        DirectMessages.init();
+        FriendsManager.init();
+        OnlineCounter.initGlobal();
+        // Показываем футер (как в твоем коде)
+        const footer = document.getElementById('bottom-footer-links');
+        if (footer) footer.style.display = 'flex';
+    } 
+    else if (page === 'room') {
+        const params = new URLSearchParams(window.location.search);
+        const roomId = params.get('id');
+        if (roomId) {
+            RoomManager.joinRoom(roomId);
+        } else {
+            Router.navigate('lobby');
+        }
+    }
+}
+
 // ============================================================================
 // 1. КОНФИГУРАЦИЯ И ГЛОБАЛЬНЫЙ STATE
 // ============================================================================
