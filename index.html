@@ -4,132 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>COWIO - Online Cinema Together</title>
-
-    <!-- ======================================================================= -->
-    <!-- ХИРУРГИЧЕСКАЯ ПРАВКА: Идеальный запуск без морганий и заломов            -->
-    <!-- ======================================================================= -->
-    <style>
-        /* Блокируем отображение всего содержимого при старте */
-        body > *:not(#cowio-bootloader) {
-            display: none !important;
-        }
-
-        #cowio-bootloader {
-            position: fixed;
-            inset: 0;
-            background: #000000 !important;
-            z-index: 9999999;
-            display: flex !important;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            transition: opacity 0.5s ease;
-        }
-        
-        .bootloader-text {
-            color: #ffffff;
-            font-family: 'Inter', sans-serif;
-            font-size: 28px;
-            font-weight: 600;
-            letter-spacing: 5px;
-            animation: pulse 1.5s infinite;
-        }
-        
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
-
-        /* Вспомогательный класс для разблокировки интерфейса */
-        body.app-ready > *:not(#cowio-bootloader) {
-            display: block !important;
-        }
-        /* Уточняем, что неактивные экраны все равно должны быть скрыты */
-        body.app-ready .screen:not(.active) {
-            display: none !important;
-        }
-    </style>
-
-    <script type="module">
-        import { getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-
-        // Интервал ожидания инициализации Firebase из app.js
-        const bootInterval = setInterval(() => {
-            if (getApps().length > 0) {
-                clearInterval(bootInterval);
-                const auth = getAuth();
-                
-                onAuthStateChanged(auth, (user) => {
-                    const loader = document.getElementById('cowio-bootloader');
-                    const authScreen = document.getElementById('auth-screen');
-                    const lobbyScreen = document.getElementById('lobby-screen');
-
-                    // 1. Подготавливаем видимость нужного экрана заранее
-                    if (user) {
-                        if (authScreen) authScreen.classList.remove('active');
-                        if (lobbyScreen) {
-                            lobbyScreen.classList.add('active');
-                            lobbyScreen.style.display = 'block';
-                        }
-                    } else {
-                        if (lobbyScreen) lobbyScreen.classList.remove('active');
-                        if (authScreen) {
-                            authScreen.classList.add('active');
-                            authScreen.style.setProperty('display', 'flex', 'important');
-                        }
-                    }
-
-                    // 2. Разрешаем body рисовать контент
-                    document.body.classList.add('app-ready');
-
-                    // 3. Плавно убираем лоадер
-                    if (loader) {
-                        loader.style.opacity = '0';
-                        setTimeout(() => loader.remove(), 500);
-                    }
-                }, (error) => {
-                    console.error("Auth Error:", error);
-                    document.body.classList.add('app-ready');
-                    if (loader) loader.remove();
-                });
-            }
-        }, 50);
-    </script>
-
-    <script type="module">
-        import { getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-
-        // Умный поллинг: ждем, пока твой app.js инициализирует базу данных
-        const checkFirebase = setInterval(() => {
-            if (getApps().length > 0) {
-                clearInterval(checkFirebase);
-                const auth = getAuth();
-                let isFirstLoad = true;
-                
-                onAuthStateChanged(auth, (user) => {
-                    if (isFirstLoad) {
-                        // Firebase ответил! Плавно убираем черный экран
-                        const loader = document.getElementById('cowio-bootloader');
-                        if (loader) {
-                            loader.style.opacity = '0';
-                            setTimeout(() => loader.remove(), 400); // Удаляем элемент после анимации
-                        }
-                        
-                        // Если пользователь НЕ авторизован - принудительно возвращаем окно логина
-                        if (!user) {
-                            const authScreen = document.getElementById('auth-screen');
-                            if (authScreen) {
-                                authScreen.style.setProperty('display', 'flex', 'important');
-                                authScreen.classList.add('active');
-                            }
-                        }
-                        isFirstLoad = false;
-                    }
-                });
-            }
-        }, 50);
-    </script>
-
-
     <style>
         /* ========================================================= */
         /* AMOLED THEME VARIABLES & RESET */
@@ -452,19 +326,12 @@
 </head>
 <body>
 
-    <!-- ======================================================================= -->
-    <!-- ХИРУРГИЧЕСКАЯ ПРАВКА №2: HTML лоадера (ВСТАВЬ СРАЗУ ПОСЛЕ ТЕГА BODY)    -->
-    <!-- ======================================================================= -->
-    <div id="cowio-bootloader">
-        <div class="bootloader-text">...</div>
-    </div>
-
     <!-- Neural Network Background -->
     <canvas id="particle-canvas"></canvas>
     
     <!-- Global Elements -->
     <div id="toast-container"></div>
-
+    <div class="online-counter-badge">Всего в сети: <span id="global-online-count">0</span></div>
     <div id="remote-audio-container"></div>
 
     <!-- ========================================================================= -->
