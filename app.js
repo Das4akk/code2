@@ -1427,58 +1427,39 @@ class EasterEggManager {
 // 3. АВТОРИЗАЦИЯ И СТРОГИЕ ПРОВЕРКИ ПРОФИЛЕЙ
 // ============================================================================
 
-const AuthManager = {
-    init() {
+class AuthManager {
+    static init() {
+        Utils.injectFixes();
+        
+        Utils.$('auth-screen').style.opacity = '0';
+        let isFirstLoad = true;
+
         onAuthStateChanged(auth, async (user) => {
-            // Удаляем или комментируем старую логику переключения экранов здесь,
-            // так как теперь этим управляет централизованный скрипт в index.html
-            // чтобы избежать конфликтов и "морганий".
+            if (isFirstLoad) {
+                Utils.$('auth-screen').style.opacity = '1';
+                isFirstLoad = false;
+            }
 
             if (user) {
-                console.log("AuthManager: User logged in", user.uid);
-                this.handleUserIn(user);
-            } else {
-                console.log("AuthManager: No user");
-                this.handleUserOut();
-            }
-        });
-
-        this.setupEventListeners();
-    },
-
-    handleUserIn(user) {
-        // Вместо мгновенного переключения экрана просто готовим данные
-        RoomManager.listenToGlobalRooms();
-        UserManager.fetchProfile(user.uid).then(profile => {
-            if (profile) {
-                UserManager.currentUserProfile = profile;
-                this.updateUIForUser(profile);
-                
-                // Проверяем, если мы все еще на экране авторизации, переключаем на лобби
-                if (document.getElementById('auth-screen').classList.contains('active')) {
-                    Utils.showScreen('lobby-screen');
+                AppState.currentUser = user;
+                await AdminPanel.getDeveloperUid();
+                Utils.showScreen('lobby-screen');
+                if (!AppState.isRegistering) {
+                    await ProfileManager.ensureProfileExists(user);
                 }
+                ProfileManager.bindMyProfileListener();
+                FriendsManager.initListeners();
+                RoomManager.initLobbyListeners();
+                DirectMessages.startNotifications();
+                AdminPanel.init();
+                this.bindGlobalPresence();
+            } else {
+                this.handleLogoutCleanup();
             }
         });
-        PresenceManager.setOnline(user.uid);
-    },
-
-    handleUserOut() {
-        console.log("User is signed out");
-        // Если мы не на экране авторизации — уходим туда
-        if (!document.getElementById('auth-screen').classList.contains('active')) {
-            Utils.showScreen('auth-screen');
-        }
-        
-        // Очистка данных
-        const roomList = document.getElementById('rooms-container');
-        if (roomList) roomList.innerHTML = '';
-        
-        const footerLinks = document.getElementById('bottom-footer-links');
-        if (footerLinks) footerLinks.style.display = 'none'; 
 
         this.bindUI();
-    },
+    }
 
     static bindUI() {
         Utils.$('tab-login-btn').onclick = () => {
@@ -1555,7 +1536,7 @@ const AuthManager = {
         Utils.$('btn-google-reg').onclick = handleGoogleAuth;
 
         Utils.$('btn-logout').onclick = () => signOut(auth);
-    },
+    }
 
     static bindGlobalPresence() {
         const uid = AppState.currentUser.uid;
@@ -1568,7 +1549,7 @@ const AuthManager = {
                     .then(() => set(userStatusRef, { online: true, lastSeen: Date.now() }));
             }
         });
-    },
+    }
 
     static handleLogoutCleanup() {
         AppState.currentUser = null;
