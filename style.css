@@ -12,6 +12,11 @@ button:active:not(:disabled) {
     transform: translateY(0) scale(0.98);
 }
 
+body.auth-loading {
+visibility: hidden !important;
+background: #000 !important;
+}
+
 #particle-canvas { position: fixed; top: 0; left: 0; z-index: -1; width: 100%; height: 100%; opacity: 0.4; animation: slowFloat 120s ease-in-out infinite; }
 @keyframes slowFloat { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(20px); } }
 
