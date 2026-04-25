@@ -12,45 +12,22 @@
     <div class="room-layout screen" id="room-screen">
         <div class="player-section">
             <div class="room-top-bar glass-panel">
-                <button class="secondary-btn" id="btn-leave-room">Назад</button>
-                <div class="room-title-wrapper">
-                    <h2 id="room-display-name">Загрузка...</h2>
-                </div>
-                <button class="secondary-btn" id="btn-room-settings">Настройки</button>
+                <button class="secondary-btn" onclick="window.location.href='lobby.html'">Назад</button>
+                <h2 id="room-display-name">Загрузка...</h2>
             </div>
-
             <div class="video-container glass-panel" id="player-wrapper">
-                <video id="main-video" playsinline></video>
-                <div id="reaction-layer"></div>
-            </div>
-
-            <div class="reaction-bar glass-panel">
-                <button class="react-btn" data-emoji="🔥">🔥</button>
-                <button class="react-btn" data-emoji="😂">😂</button>
-                <button class="react-btn" data-emoji="❤️">❤️</button>
-                <button class="react-btn" data-emoji="😮">😮</button>
-                <button class="react-btn" data-emoji="👍">👍</button>
+                <video id="main-video"></video>
             </div>
         </div>
-
         <aside class="chat-section glass-panel">
-            <div class="chat-tabs">
-                <button class="active" data-tab="messages">Чат</button>
-                <button data-tab="users">Участники (<span id="room-user-count">0</span>)</button>
-            </div>
-            <div class="chat-content-area" id="chat-messages"></div>
-            <div class="chat-input-area">
-                <div class="input-wrapper">
-                    <input type="text" id="chat-input" placeholder="Написать в чат...">
-                    <button id="btn-toggle-mic" class="mic-icon-btn">🎤</button>
-                    <button id="btn-send-msg" class="send-btn">-></button>
-                </div>
-            </div>
+            <!-- Чат и список пользователей -->
         </aside>
     </div>
 
+    <!-- Модалки комнаты (Настройки комнаты, Пароль) -->
+    <div class="modal" id="modal-password">...</div>
+
     <div id="toast-container"></div>
-    <div id="remote-audio-container"></div>
     <script type="module" src="app.js"></script>
 </body>
 </html>

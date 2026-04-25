@@ -3,41 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>COWIO - Авторизация</title>
+    <title>COWIO - Лобби</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="auth-loading">
     <canvas id="particle-canvas"></canvas>
-    
-    <section id="auth-screen" class="screen">
-        <div class="auth-wrapper glass-panel">
-            <div class="logo">COWIO</div>
-            <div class="auth-tabs">
-                <button id="tab-login-btn" class="active">Вход</button>
-                <button id="tab-reg-btn">Регистрация</button>
-            </div>
-            
-            <div id="login-form" class="auth-form active-form">
-                <input type="email" id="login-email" placeholder="Электронная почта">
-                <input type="password" id="login-pass" placeholder="Пароль">
-                <button class="primary-btn" id="btn-do-login" style="margin-top: 10px;">Войти</button>
-            </div>
-            
-            <div id="reg-form" class="auth-form">
-                <input type="text" id="reg-name" placeholder="Отображаемое имя">
-                <input type="text" id="reg-username" placeholder="Уникальный @username">
-                <input type="email" id="reg-email" placeholder="Электронная почта">
-                <input type="password" id="reg-pass" placeholder="Пароль">
-                <div class="agreement-wrap">
-                    <input type="checkbox" id="reg-agreement">
-                    <label for="reg-agreement">Я принимаю условия соглашения</label>
+
+    <div class="lobby-layout screen">
+        <!-- Твой Sidebar и Список комнат -->
+        <aside id="main-sidebar" class="sidebar glass-panel">
+            <div class="user-card" id="btn-my-profile">
+                <div class="avatar" id="my-avatar">?</div>
+                <div class="user-card-info">
+                    <div id="my-name">Загрузка...</div>
                 </div>
-                <button class="primary-btn" id="btn-do-reg" style="margin-top: 10px;">Создать аккаунт</button>
             </div>
-        </div>
-    </section>
+            <!-- Навигация и друзья -->
+        </aside>
+
+        <main class="rooms-main">
+            <header class="lobby-header glass-panel">
+                <input type="text" id="search-rooms" placeholder="Поиск...">
+                <button class="primary-btn" id="btn-open-create-room">Создать комнату</button>
+            </header>
+            <div class="rooms-grid" id="rooms-render-container"></div>
+        </main>
+    </div>
+
+    <!-- Модалки (Профиль, Создание комнаты, Настройки профиля) -->
+    <div class="modal" id="modal-create-room">...</div>
+    <div class="modal" id="modal-profile">...</div>
 
     <div id="toast-container"></div>
+    <div class="online-counter" id="global-online-count">В сети: 0</div>
     <script type="module" src="app.js"></script>
 </body>
 </html>

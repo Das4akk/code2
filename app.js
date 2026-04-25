@@ -31,47 +31,58 @@ const Router = {
     },
 
     navigate(page, params = '') {
+        // Переход на новую физическую страницу
         window.location.href = `${page}.html${params}`;
     }
 };
 
 // === МОДИФИЦИРОВАННЫЙ ONLOAD ===
 window.onload = () => {
-    // ШАГ 1: Блокируем видимость страницы сразу
+    // 1. Блокируем отображение интерфейса сразу
     document.body.classList.add('auth-loading');
 
-    // ШАГ 2: Стандартная инициализация твоих систем
+    // 2. Инициализация базовых систем
     AuthManager.init();
     BackgroundFX.init();
     EasterEggManager.init();
     HashtagManager.initHashtags();
 
-    // ШАГ 3: Проверка авторизации Firebase
+    // 3. Создание футера (только для лобби)
+    if (Router.currentPage === 'lobby') {
+        const footerLinks = document.createElement('div');
+        footerLinks.id = 'bottom-footer-links';
+        footerLinks.style.display = 'flex';
+        footerLinks.innerHTML = `
+            <a href="mailto:support@cowio.com">Mail</a>
+            <a href="https://t.me/your_channel" target="_blank">Telegram</a>
+            <a href="#">Сайт</a>
+        `;
+        document.body.appendChild(footerLinks);
+    }
+
+    // 4. Слушатель состояния авторизации (Хирургический автологин)
     onAuthStateChanged(auth, async (user) => {
         const page = Router.currentPage;
 
         if (user) {
             AppState.currentUser = user;
             
-            // Если залогинен и на странице входа — летим в лобби
             if (page === 'auth') {
+                // Если юзер уже в системе, а зашел на страницу входа — шлем в лобби
                 Router.navigate('lobby');
                 return;
             }
 
-            // Загружаем профиль
+            // Загружаем профиль перед показом страницы
             await AuthManager.loadUserProfile(user.uid);
-            
-            // Запускаем логику конкретной страницы
+
+            // Инициализация логики конкретной страницы
             if (page === 'lobby') {
                 RoomManager.listenRooms();
                 DirectMessages.init();
                 FriendsManager.init();
                 OnlineCounter.initGlobal();
-                const footer = document.getElementById('bottom-footer-links');
-                if (footer) footer.style.display = 'flex';
-            } 
-            else if (page === 'room') {
+            } else if (page === 'room') {
                 const params = new URLSearchParams(window.location.search);
                 const roomId = params.get('id');
                 if (roomId) {
@@ -82,10 +93,10 @@ window.onload = () => {
                 }
             }
 
-            // ШАГ 4: Только теперь убираем скрывающий слой
+            // Рендерим UI и СНИМАЕМ БЛОКИРОВКУ
             document.body.classList.remove('auth-loading');
         } else {
-            // Если НЕ залогинен и пытается зайти в лобби или комнату — на вход
+            // Если юзер не авторизован и он не на странице входа
             if (page !== 'auth') {
                 Router.navigate('index');
             } else {
@@ -94,7 +105,7 @@ window.onload = () => {
         }
     });
 
-    // Твой старый код для закрытия модалок и т.д.
+    // Глобальные обработчики (модалки и т.д.)
     document.querySelectorAll('.btn-close-modal').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const modal = e.target.closest('.modal');
@@ -102,6 +113,7 @@ window.onload = () => {
         });
     });
 };
+
 
 function initPageLogic(page, user) {
     if (page === 'lobby') {
