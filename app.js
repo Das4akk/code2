@@ -1427,48 +1427,58 @@ class EasterEggManager {
 // 3. АВТОРИЗАЦИЯ И СТРОГИЕ ПРОВЕРКИ ПРОФИЛЕЙ
 // ============================================================================
 
-class AuthManager {
-    static init() {
-        Utils.injectFixes();
-        
-        Utils.$('auth-screen').style.opacity = '0';
-        let isFirstLoad = true;
-
+const AuthManager = {
+    init() {
         onAuthStateChanged(auth, async (user) => {
-            // 1. Скрываем лоадер только один раз при первом ответе от Firebase
-            if (isFirstLoad) {
-            const loader = document.getElementById('global-loader');
-              if (loader) loader.style.display = 'none';
-              isFirstLoad = false;
-            }
+            // Удаляем или комментируем старую логику переключения экранов здесь,
+            // так как теперь этим управляет централизованный скрипт в index.html
+            // чтобы избежать конфликтов и "морганий".
 
             if (user) {
-                AppState.currentUser = user;
-                await AdminPanel.getDeveloperUid();
-                Utils.showScreen('lobby-screen');
-                if (!AppState.isRegistering) {
-                    await ProfileManager.ensureProfileExists(user);
-                }
-                ProfileManager.bindMyProfileListener();
-                FriendsManager.initListeners();
-                RoomManager.initLobbyListeners();
-                DirectMessages.startNotifications();
-                AdminPanel.init();
-                this.bindGlobalPresence();
-            // Пользователь АВТОРИЗОВАН
-                document.getElementById('auth-screen').style.display = 'none';
-                document.getElementById('lobby-screen').style.display = 'block'; // или твой метод Utils.showScreen('lobby-screen')
-        
-            // Здесь можно загружать профиль и т.д.
-                } else {
-                // Пользователь НЕ АВТОРИЗОВАН
-                document.getElementById('lobby-screen').style.display = 'none';
-                document.getElementById('auth-screen').style.display = 'block'; // Показываем авторизацию только сейчас
-    }
+                console.log("AuthManager: User logged in", user.uid);
+                this.handleUserIn(user);
+            } else {
+                console.log("AuthManager: No user");
+                this.handleUserOut();
+            }
         });
 
+        this.setupEventListeners();
+    },
+
+    handleUserIn(user) {
+        // Вместо мгновенного переключения экрана просто готовим данные
+        RoomManager.listenToGlobalRooms();
+        UserManager.fetchProfile(user.uid).then(profile => {
+            if (profile) {
+                UserManager.currentUserProfile = profile;
+                this.updateUIForUser(profile);
+                
+                // Проверяем, если мы все еще на экране авторизации, переключаем на лобби
+                if (document.getElementById('auth-screen').classList.contains('active')) {
+                    Utils.showScreen('lobby-screen');
+                }
+            }
+        });
+        PresenceManager.setOnline(user.uid);
+    },
+
+    handleUserOut() {
+        console.log("User is signed out");
+        // Если мы не на экране авторизации — уходим туда
+        if (!document.getElementById('auth-screen').classList.contains('active')) {
+            Utils.showScreen('auth-screen');
+        }
+        
+        // Очистка данных
+        const roomList = document.getElementById('rooms-container');
+        if (roomList) roomList.innerHTML = '';
+        
+        const footerLinks = document.getElementById('bottom-footer-links');
+        if (footerLinks) footerLinks.style.display = 'none'; 
+
         this.bindUI();
-    }
+    },
 
     static bindUI() {
         Utils.$('tab-login-btn').onclick = () => {
@@ -1545,7 +1555,7 @@ class AuthManager {
         Utils.$('btn-google-reg').onclick = handleGoogleAuth;
 
         Utils.$('btn-logout').onclick = () => signOut(auth);
-    }
+    },
 
     static bindGlobalPresence() {
         const uid = AppState.currentUser.uid;
@@ -1558,7 +1568,7 @@ class AuthManager {
                     .then(() => set(userStatusRef, { online: true, lastSeen: Date.now() }));
             }
         });
-    }
+    },
 
     static handleLogoutCleanup() {
         AppState.currentUser = null;
