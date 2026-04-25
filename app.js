@@ -37,23 +37,23 @@ const Router = {
 
 // === МОДИФИЦИРОВАННЫЙ ONLOAD ===
 window.onload = () => {
-    // 1. Устанавливаем блокировку видимости (предотвращаем мерцание)
+    // ШАГ 1: Блокируем видимость страницы сразу
     document.body.classList.add('auth-loading');
 
-    // 2. Инициализация глобальных систем
+    // ШАГ 2: Стандартная инициализация твоих систем
     AuthManager.init();
     BackgroundFX.init();
     EasterEggManager.init();
     HashtagManager.initHashtags();
 
-    // 3. Слушатель авторизации (Единственная точка входа)
+    // ШАГ 3: Проверка авторизации Firebase
     onAuthStateChanged(auth, async (user) => {
         const page = Router.currentPage;
 
         if (user) {
             AppState.currentUser = user;
             
-            // Если мы на странице авторизации, но юзер уже залогинен — редирект в лобби
+            // Если залогинен и на странице входа — летим в лобби
             if (page === 'auth') {
                 Router.navigate('lobby');
                 return;
@@ -62,13 +62,30 @@ window.onload = () => {
             // Загружаем профиль
             await AuthManager.loadUserProfile(user.uid);
             
-            // Инициализируем специфичные для страницы модули
-            initPageLogic(page, user);
+            // Запускаем логику конкретной страницы
+            if (page === 'lobby') {
+                RoomManager.listenRooms();
+                DirectMessages.init();
+                FriendsManager.init();
+                OnlineCounter.initGlobal();
+                const footer = document.getElementById('bottom-footer-links');
+                if (footer) footer.style.display = 'flex';
+            } 
+            else if (page === 'room') {
+                const params = new URLSearchParams(window.location.search);
+                const roomId = params.get('id');
+                if (roomId) {
+                    RoomManager.joinRoom(roomId);
+                } else {
+                    Router.navigate('lobby');
+                    return;
+                }
+            }
 
-            // Снимаем блокировку видимости
+            // ШАГ 4: Только теперь убираем скрывающий слой
             document.body.classList.remove('auth-loading');
         } else {
-            // Если не залогинен и не на странице авторизации — на выход
+            // Если НЕ залогинен и пытается зайти в лобби или комнату — на вход
             if (page !== 'auth') {
                 Router.navigate('index');
             } else {
@@ -77,8 +94,13 @@ window.onload = () => {
         }
     });
 
-    // Навешиваем обработчики на кнопки, которые есть на любой странице (модалки)
-    setupGlobalEvents();
+    // Твой старый код для закрытия модалок и т.д.
+    document.querySelectorAll('.btn-close-modal').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const modal = e.target.closest('.modal');
+            if (modal) modal.classList.remove('active');
+        });
+    });
 };
 
 function initPageLogic(page, user) {
@@ -199,7 +221,7 @@ class Utils {
         // Показываем футер с ссылками ТОЛЬКО в лобби
         const footerLinks = Utils.$('bottom-footer-links');
         if (footerLinks) {
-            footerLinks.style.display = (screenId === 'lobby-screen') ? 'flex' : 'none';
+            footerLinks.style.display = (Router.navigate('lobby')) ? 'flex' : 'none';
         }
     }
 
@@ -1524,7 +1546,7 @@ class AuthManager {
             if (user) {
                 AppState.currentUser = user;
                 await AdminPanel.getDeveloperUid();
-                Utils.showScreen('lobby-screen');
+                Router.navigate('lobby');
                 if (!AppState.isRegistering) {
                     await ProfileManager.ensureProfileExists(user);
                 }
@@ -1634,7 +1656,7 @@ class AuthManager {
 
     static handleLogoutCleanup() {
         AppState.currentUser = null;
-        Utils.showScreen('auth-screen');
+        Router.navigate('index');
         Utils.$('login-pass').value = ''; Utils.$('reg-pass').value = '';
         Utils.$('btn-do-login').disabled = false; Utils.$('btn-do-reg').disabled = false;
         AdminPanel.handleLogoutCleanup();
@@ -3644,7 +3666,7 @@ class RoomManager {
         Utils.$('btn-room-settings').style.display = (AppState.isHost || AdminPanel.isCurrentUserCreator()) ? 'block' : 'none';
         if (AppState.isHost || AdminPanel.isCurrentUserCreator()) Utils.$('btn-room-settings').onclick = () => this.openRoomModal(roomId);
 
-        Utils.showScreen('room-screen');
+        Router.redirect('room', '?id=' + currentRoomId)
         Utils.$('chat-messages').innerHTML = '<div class="sys-msg">Вы вошли в комнату</div>';
         Utils.$('users-list').innerHTML = '';
         
@@ -3932,7 +3954,7 @@ class RoomManager {
         AppState.isHost = false;
         if (Utils.$('users-list')) Utils.$('users-list').innerHTML = '';
         if (Utils.$('users-count')) Utils.$('users-count').innerText = '0';
-        Utils.showScreen('lobby-screen');
+        Router.navigate('lobby');
     }
 
     static applyRoomTheme(theme = 'default') {
