@@ -6,36 +6,93 @@
     <title>COWIO - Online Cinema Together</title>
 
     <!-- ======================================================================= -->
-    <!-- ХИРУРГИЧЕСКАЯ ПРАВКА №1: Глобальный анти-флеш лоадер (ВСТАВЬ ЭТО СЮДА)  -->
+    <!-- ХИРУРГИЧЕСКАЯ ПРАВКА: Идеальный запуск без морганий и заломов            -->
     <!-- ======================================================================= -->
     <style>
-        /* Жестко скрываем ВСЕ окна авторизации до ответа от сервера */
-        #auth-screen, .old-login-container, .login-container {
+        /* Блокируем отображение всего содержимого при старте */
+        body > *:not(#cowio-bootloader) {
             display: none !important;
         }
 
-        /* Защитный лоадер, который перекрывает весь экран */
         #cowio-bootloader {
             position: fixed;
             inset: 0;
-            background: #000000; /* Фон под AMOLED тему */
+            background: #000000 !important;
             z-index: 9999999;
-            display: flex;
+            display: flex !important;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            transition: opacity 0.4s ease;
+            transition: opacity 0.5s ease;
         }
+        
         .bootloader-text {
             color: #ffffff;
-            font-family: 'Inter', -apple-system, sans-serif;
-            font-size: 16px;
+            font-family: 'Inter', sans-serif;
+            font-size: 28px;
             font-weight: 600;
-            letter-spacing: 2px;
+            letter-spacing: 5px;
             animation: pulse 1.5s infinite;
         }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+
+        /* Вспомогательный класс для разблокировки интерфейса */
+        body.app-ready > *:not(#cowio-bootloader) {
+            display: block !important;
+        }
+        /* Уточняем, что неактивные экраны все равно должны быть скрыты */
+        body.app-ready .screen:not(.active) {
+            display: none !important;
+        }
     </style>
+
+    <script type="module">
+        import { getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+        // Интервал ожидания инициализации Firebase из app.js
+        const bootInterval = setInterval(() => {
+            if (getApps().length > 0) {
+                clearInterval(bootInterval);
+                const auth = getAuth();
+                
+                onAuthStateChanged(auth, (user) => {
+                    const loader = document.getElementById('cowio-bootloader');
+                    const authScreen = document.getElementById('auth-screen');
+                    const lobbyScreen = document.getElementById('lobby-screen');
+
+                    // 1. Подготавливаем видимость нужного экрана заранее
+                    if (user) {
+                        if (authScreen) authScreen.classList.remove('active');
+                        if (lobbyScreen) {
+                            lobbyScreen.classList.add('active');
+                            lobbyScreen.style.display = 'block';
+                        }
+                    } else {
+                        if (lobbyScreen) lobbyScreen.classList.remove('active');
+                        if (authScreen) {
+                            authScreen.classList.add('active');
+                            authScreen.style.setProperty('display', 'flex', 'important');
+                        }
+                    }
+
+                    // 2. Разрешаем body рисовать контент
+                    document.body.classList.add('app-ready');
+
+                    // 3. Плавно убираем лоадер
+                    if (loader) {
+                        loader.style.opacity = '0';
+                        setTimeout(() => loader.remove(), 500);
+                    }
+                }, (error) => {
+                    console.error("Auth Error:", error);
+                    document.body.classList.add('app-ready');
+                    if (loader) loader.remove();
+                });
+            }
+        }, 50);
+    </script>
 
     <script type="module">
         import { getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -399,7 +456,7 @@
     <!-- ХИРУРГИЧЕСКАЯ ПРАВКА №2: HTML лоадера (ВСТАВЬ СРАЗУ ПОСЛЕ ТЕГА BODY)    -->
     <!-- ======================================================================= -->
     <div id="cowio-bootloader">
-        <div class="bootloader-text"></div>
+        <div class="bootloader-text">...</div>
     </div>
 
     <!-- Neural Network Background -->
