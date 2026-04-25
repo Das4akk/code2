@@ -1,5 +1,9 @@
 ﻿:root { --bg: #050505; --accent: #f5f7fa; --accent-weak: rgba(255,255,255,0.12); --accent-strong: rgba(255,255,255,0.95); }
 * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+body.auth-loading {
+visibility: hidden !important;
+background: #000 !important;
+}
 body { background: var(--bg); color: #fff; overflow: hidden; height: 100vh; }
 button {
     transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
@@ -10,11 +14,6 @@ button:hover:not(:disabled) {
 }
 button:active:not(:disabled) {
     transform: translateY(0) scale(0.98);
-}
-
-body.auth-loading {
-visibility: hidden !important;
-background: #000 !important;
 }
 
 #particle-canvas { position: fixed; top: 0; left: 0; z-index: -1; width: 100%; height: 100%; opacity: 0.4; animation: slowFloat 120s ease-in-out infinite; }
