@@ -1715,11 +1715,15 @@ class HashtagManager {
 }
 
 class ProfileManager {
+    static backgroundPresets = ['#1f2937', '#f8fafc', '#ff6fae', '#7c3aed', '#2563eb', '#0891b2', '#16a34a', '#f59e0b', '#ef4444', '#111111', '#8b5cf6', '#14b8a6']; // [NEW]
+
     static getRoleBadgeHtml(profile, uid = null) {
         if (!profile) return '';
-        if (AdminPanel.isCreatorProfile(profile, uid)) return `<span class="role-badge badge-creator">Создатель</span>`;
-        if (AdminPanel.isModeratorProfile(profile, uid)) return `<span class="role-badge badge-moderator">Модератор</span>`;
-        return '';
+        const badges = []; // [UPDATE]
+        if (AdminPanel.isCreatorProfile(profile, uid)) badges.push(`<span class="role-badge badge-creator">Создатель</span>`); // [UPDATE]
+        if (AdminPanel.isModeratorProfile(profile, uid)) badges.push(`<span class="role-badge badge-moderator">Модератор</span>`); // [UPDATE]
+        if (profile?.partner) badges.push(`<span class="partner-badge">💖 Пара</span>`); // [UPDATE]
+        return badges.join(' '); // [UPDATE]
     }
 
     static async checkUsernameAvailability(username, excludeUid = null) {
@@ -1754,7 +1758,7 @@ class ProfileManager {
             email,
             bio: '',
             avatar: '',
-            background: '', // [NEW]
+            background: { color: '#1f2937', index: 1, url: '' }, // [UPDATE]
             hashtags: [],
             createdAt: Date.now(),
             provider: security.provider || this.normalizeProvider(auth.currentUser),
@@ -1822,7 +1826,7 @@ class ProfileManager {
         Utils.$('edit-bio').value = p.bio || '';
         Utils.$('edit-hashtags').value = Array.isArray(p.hashtags) ? p.hashtags.join(' ') : '';
         Utils.$('edit-avatar-url').value = p.avatar || '';
-        if (Utils.$('edit-background-input')) Utils.$('edit-background-input').value = p.background || ''; // [NEW]
+        this.hydrateProfileBackgroundControls(p.background); // [UPDATE]
         this.updateAvatarPreview(p.avatar, p.name);
         this.applyProfileBackground(Utils.$('modal-edit-profile')?.querySelector('.modal-content'), p.background); // [NEW]
         this.renderMyPartnerBox(); // [NEW]
@@ -1832,6 +1836,7 @@ class ProfileManager {
         
         Utils.$('edit-avatar-url').oninput = Utils.debounce((e) => this.updateAvatarPreview(e.target.value, Utils.$('edit-name').value), 300);
         Utils.$('edit-name').oninput = Utils.debounce((e) => this.updateAvatarPreview(Utils.$('edit-avatar-url').value, e.target.value), 300);
+        this.bindProfileBackgroundControls(); // [NEW]
 
         Utils.$('btn-save-profile').onclick = async () => {
             const btn = Utils.$('btn-save-profile');
@@ -1974,47 +1979,165 @@ class ProfileManager {
         await verifyBeforeUpdateEmail(user, newEmail);
     }
 
-    static isProfileBackgroundAllowed(value = '') { // [NEW]
-        const raw = String(value || '').trim(); // [NEW]
-        if (!raw) return true; // [NEW]
-        if (raw.length > 320 || /[;]/.test(raw)) return false; // [NEW]
-        if (/^https?:\/\//i.test(raw)) { // [NEW]
-            try { new URL(raw); return true; } catch (e) { return false; } // [NEW]
+    static normalizeHexColor(value = '#1f2937') { // [UPDATE]
+        const raw = String(value || '').trim(); // [UPDATE]
+        if (/^#[0-9a-f]{6}$/i.test(raw)) return raw.toLowerCase(); // [NEW]
+        if (/^#[0-9a-f]{3}$/i.test(raw)) return `#${raw[1]}${raw[1]}${raw[2]}${raw[2]}${raw[3]}${raw[3]}`.toLowerCase(); // [NEW]
+        return '#1f2937'; // [UPDATE]
+    } // [UPDATE]
+
+    static hexToRgb(hex = '#1f2937') { // [NEW]
+        const safeHex = this.normalizeHexColor(hex).slice(1); // [NEW]
+        return { // [NEW]
+            r: parseInt(safeHex.slice(0, 2), 16), // [NEW]
+            g: parseInt(safeHex.slice(2, 4), 16), // [NEW]
+            b: parseInt(safeHex.slice(4, 6), 16) // [NEW]
+        }; // [NEW]
+    } // [NEW]
+
+    static rgbToHex(r = 31, g = 41, b = 55) { // [NEW]
+        return `#${[r, g, b].map(v => Math.max(0, Math.min(255, Number(v) || 0)).toString(16).padStart(2, '0')).join('')}`; // [NEW]
+    } // [NEW]
+
+    static getReadableProfileColors(hex = '#1f2937') { // [NEW]
+        const { r, g, b } = this.hexToRgb(hex); // [NEW]
+        const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255; // [NEW]
+        const isLight = luminance > 0.58; // [NEW]
+        return { // [NEW]
+            text: isLight ? '#111827' : '#ffffff', // [NEW]
+            muted: isLight ? '#4b5563' : 'rgba(255,255,255,0.76)', // [NEW]
+            border: isLight ? 'rgba(17,24,39,0.18)' : 'rgba(255,255,255,0.22)', // [NEW]
+            overlay: isLight ? 'rgba(255,255,255,0.76)' : 'rgba(0,0,0,0.42)' // [NEW]
+        }; // [NEW]
+    } // [NEW]
+
+    static normalizeProfileBackground(value = '') { // [UPDATE]
+        if (value && typeof value === 'object') { // [NEW]
+            const color = this.normalizeHexColor(value.color); // [NEW]
+            const index = Math.max(0, Math.min(12, Number(value.index) || 0)); // [NEW]
+            const url = this.normalizeProfileBackgroundUrl(value.url || ''); // [NEW]
+            return { color, index, url }; // [NEW]
         } // [NEW]
-        if (/^(linear-gradient|radial-gradient)\(/i.test(raw) && !/url\(/i.test(raw)) return true; // [NEW]
-        return Boolean(window.CSS?.supports?.('color', raw)); // [NEW]
-    } // [NEW]
+        const raw = String(value || '').trim(); // [UPDATE]
+        if (!raw) return { color: '#1f2937', index: 1, url: '' }; // [UPDATE]
+        if (/^https?:\/\//i.test(raw)) return { color: '#1f2937', index: 1, url: this.normalizeProfileBackgroundUrl(raw) }; // [NEW]
+        return { color: this.normalizeHexColor(raw), index: 0, url: '' }; // [UPDATE]
+    } // [UPDATE]
 
-    static normalizeProfileBackground(value = '') { // [NEW]
+    static normalizeProfileBackgroundUrl(value = '') { // [NEW]
         const raw = String(value || '').trim(); // [NEW]
-        if (!this.isProfileBackgroundAllowed(raw)) return ''; // [NEW]
-        return raw; // [NEW]
+        if (!raw) return ''; // [NEW]
+        if (raw.length > 420 || /["\\]/.test(raw)) return ''; // [NEW]
+        if (!/^https?:\/\//i.test(raw)) return ''; // [NEW]
+        try { new URL(raw); return raw; } catch (e) { return ''; } // [NEW]
     } // [NEW]
 
-    static readProfileBackgroundInput() { // [NEW]
-        const raw = Utils.$('edit-background-input')?.value.trim() || ''; // [NEW]
-        const background = this.normalizeProfileBackground(raw); // [NEW]
-        if (raw && !background) throw new Error('Фон профиля: используйте цвет, gradient или URL картинки'); // [NEW]
-        return background; // [NEW]
+    static readProfileBackgroundInput() { // [UPDATE]
+        const r = Number(Utils.$('profile-bg-r')?.value || 31); // [NEW]
+        const g = Number(Utils.$('profile-bg-g')?.value || 41); // [NEW]
+        const b = Number(Utils.$('profile-bg-b')?.value || 55); // [NEW]
+        const urlRaw = Utils.$('profile-bg-url')?.value.trim() || ''; // [NEW]
+        const url = this.normalizeProfileBackgroundUrl(urlRaw); // [NEW]
+        if (urlRaw && !url) throw new Error('Фон профиля: URL должен начинаться с http(s)'); // [UPDATE]
+        return { // [UPDATE]
+            color: this.rgbToHex(r, g, b), // [NEW]
+            index: Number(Utils.$('profile-bg-panel')?.dataset.selectedIndex || 0), // [NEW]
+            url // [NEW]
+        }; // [NEW]
+    } // [UPDATE]
+
+    static hydrateProfileBackgroundControls(background = '') { // [NEW]
+        const data = this.normalizeProfileBackground(background); // [NEW]
+        const rgb = this.hexToRgb(data.color); // [NEW]
+        this.renderProfileBackgroundPresets(data.index); // [NEW]
+        this.setProfileBackgroundRgb(rgb.r, rgb.g, rgb.b, data.index); // [NEW]
+        if (Utils.$('profile-bg-url')) Utils.$('profile-bg-url').value = data.url || ''; // [NEW]
+        this.updateProfileBackgroundPreview(); // [NEW]
     } // [NEW]
 
-    static applyProfileBackground(panel, background = '') { // [NEW]
-        if (!panel) return; // [NEW]
-        const safeBackground = this.normalizeProfileBackground(background); // [NEW]
-        panel.style.background = ''; // [NEW]
-        panel.style.backgroundImage = ''; // [NEW]
-        panel.style.backgroundSize = ''; // [NEW]
-        panel.style.backgroundPosition = ''; // [NEW]
-        if (!safeBackground) return; // [NEW]
-        if (/^https?:\/\//i.test(safeBackground)) { // [NEW]
-            const safeUrl = safeBackground.replace(/["\\]/g, ''); // [NEW]
-            panel.style.backgroundImage = `linear-gradient(rgba(8,8,10,0.78), rgba(8,8,10,0.9)), url("${safeUrl}")`; // [NEW]
-            panel.style.backgroundSize = 'cover'; // [NEW]
-            panel.style.backgroundPosition = 'center'; // [NEW]
-            return; // [NEW]
-        } // [NEW]
-        panel.style.background = safeBackground; // [NEW]
+    static renderProfileBackgroundPresets(activeIndex = 1) { // [NEW]
+        const container = Utils.$('profile-bg-presets'); // [NEW]
+        if (!container) return; // [NEW]
+        container.innerHTML = this.backgroundPresets.map((color, idx) => { // [NEW]
+            const index = idx + 1; // [NEW]
+            return `<button type="button" class="profile-bg-preset ${Number(activeIndex) === index ? 'active' : ''}" data-index="${index}" data-color="${color}" style="background:${color};">${index}</button>`; // [NEW]
+        }).join(''); // [NEW]
+        container.querySelectorAll('.profile-bg-preset').forEach(btn => { // [NEW]
+            btn.onclick = () => { // [NEW]
+                const rgb = this.hexToRgb(btn.dataset.color); // [NEW]
+                this.setProfileBackgroundRgb(rgb.r, rgb.g, rgb.b, btn.dataset.index); // [NEW]
+                this.renderProfileBackgroundPresets(btn.dataset.index); // [NEW]
+                this.updateProfileBackgroundPreview(); // [NEW]
+            }; // [NEW]
+        }); // [NEW]
     } // [NEW]
+
+    static setProfileBackgroundRgb(r, g, b, index = 0) { // [NEW]
+        [['r', r], ['g', g], ['b', b]].forEach(([key, value]) => { // [NEW]
+            const safe = Math.max(0, Math.min(255, Number(value) || 0)); // [NEW]
+            if (Utils.$(`profile-bg-${key}`)) Utils.$(`profile-bg-${key}`).value = safe; // [NEW]
+            if (Utils.$(`profile-bg-${key}-num`)) Utils.$(`profile-bg-${key}-num`).value = safe; // [NEW]
+        }); // [NEW]
+        if (Utils.$('profile-bg-panel')) Utils.$('profile-bg-panel').dataset.selectedIndex = String(index || 0); // [NEW]
+    } // [NEW]
+
+    static bindProfileBackgroundControls() { // [NEW]
+        const panel = Utils.$('profile-bg-panel'); // [NEW]
+        const btn = Utils.$('btn-toggle-profile-bg'); // [NEW]
+        if (!panel || !btn) return; // [NEW]
+        btn.onclick = () => panel.classList.toggle('active'); // [NEW]
+        ['r', 'g', 'b'].forEach(key => { // [NEW]
+            const range = Utils.$(`profile-bg-${key}`); // [NEW]
+            const number = Utils.$(`profile-bg-${key}-num`); // [NEW]
+            const sync = (source, target) => { // [NEW]
+                const safe = Math.max(0, Math.min(255, Number(source.value) || 0)); // [NEW]
+                source.value = safe; // [NEW]
+                if (target) target.value = safe; // [NEW]
+                if (panel) panel.dataset.selectedIndex = '0'; // [NEW]
+                this.renderProfileBackgroundPresets(0); // [NEW]
+                this.updateProfileBackgroundPreview(); // [NEW]
+            }; // [NEW]
+            if (range) range.oninput = () => sync(range, number); // [NEW]
+            if (number) number.oninput = () => sync(number, range); // [NEW]
+        }); // [NEW]
+        if (Utils.$('profile-bg-url')) Utils.$('profile-bg-url').oninput = Utils.debounce(() => this.updateProfileBackgroundPreview(), 250); // [NEW]
+    } // [NEW]
+
+    static updateProfileBackgroundPreview() { // [NEW]
+        const preview = Utils.$('profile-bg-preview'); // [NEW]
+        if (!preview) return; // [NEW]
+        const data = { // [UPDATE]
+            color: this.rgbToHex(Utils.$('profile-bg-r')?.value || 31, Utils.$('profile-bg-g')?.value || 41, Utils.$('profile-bg-b')?.value || 55), // [NEW]
+            index: Number(Utils.$('profile-bg-panel')?.dataset.selectedIndex || 0), // [NEW]
+            url: this.normalizeProfileBackgroundUrl(Utils.$('profile-bg-url')?.value || '') // [NEW]
+        }; // [NEW]
+        const colors = this.getReadableProfileColors(data.color); // [NEW]
+        preview.style.background = data.color; // [NEW]
+        preview.style.color = colors.text; // [NEW]
+        preview.style.borderColor = colors.border; // [NEW]
+        preview.innerText = `Цвет ${data.index || 'RGB'} · ${data.color.toUpperCase()}`; // [NEW]
+    } // [NEW]
+
+    static applyProfileBackground(panel, background = '') { // [UPDATE]
+        if (!panel) return; // [UPDATE]
+        const data = this.normalizeProfileBackground(background); // [UPDATE]
+        const colors = this.getReadableProfileColors(data.color); // [NEW]
+        panel.style.setProperty('--profile-bg', data.color); // [NEW]
+        panel.style.setProperty('--profile-text', colors.text); // [NEW]
+        panel.style.setProperty('--profile-muted', colors.muted); // [NEW]
+        panel.style.setProperty('--profile-border', colors.border); // [NEW]
+        panel.style.background = data.color; // [UPDATE]
+        panel.style.color = colors.text; // [NEW]
+        panel.style.borderColor = colors.border; // [NEW]
+        panel.style.backgroundImage = ''; // [UPDATE]
+        panel.style.backgroundSize = ''; // [UPDATE]
+        panel.style.backgroundPosition = ''; // [UPDATE]
+        if (data.url) { // [UPDATE]
+            panel.style.backgroundImage = `linear-gradient(${colors.overlay}, ${colors.overlay}), url("${data.url}")`; // [UPDATE]
+            panel.style.backgroundSize = 'cover'; // [UPDATE]
+            panel.style.backgroundPosition = 'center'; // [UPDATE]
+        } // [UPDATE]
+    } // [UPDATE]
 
     static async getPartnerUid(uid) { // [NEW]
         if (!uid) return null; // [NEW]
@@ -2027,7 +2150,7 @@ class ProfileManager {
         return Utils.escapeHtml((profile.name || '?')[0].toUpperCase()); // [NEW]
     } // [NEW]
 
-    static async renderPartnerContainer(containerId, partnerUid, canRemove = false) { // [NEW]
+    static async renderPartnerContainer(containerId, partnerUid, canRemove = false, ownerUid = null) { // [UPDATE]
         const container = Utils.$(containerId); // [NEW]
         if (!container) return; // [NEW]
         container.classList.remove('active'); // [NEW]
@@ -2035,12 +2158,17 @@ class ProfileManager {
         if (!partnerUid) return; // [NEW]
         const partnerProfile = await this.loadUser(partnerUid); // [NEW]
         if (!partnerProfile) return; // [NEW]
+        const sinceSnap = ownerUid ? await get(ref(db, `users/${ownerUid}/partnerSince`)) : null; // [NEW]
+        const sinceTs = sinceSnap?.exists() ? Number(sinceSnap.val()) : 0; // [NEW]
+        const sinceText = sinceTs ? new Date(sinceTs).toLocaleDateString() : 'дата не указана'; // [NEW]
+        const daysText = sinceTs ? Math.max(1, Math.ceil((Date.now() - sinceTs) / 86400000)) : 0; // [NEW]
         // [NEW]
         container.innerHTML = `
             <div class="partner-avatar">${this.getAvatarHtml(partnerProfile)}</div>
             <div class="partner-info">
                 <div class="partner-label">Вторая половинка 💖</div>
                 <div class="partner-name">${Utils.escapeHtml(partnerProfile.name || 'Пользователь')}</div>
+                <div class="partner-meta">${sinceTs ? `Вместе ${daysText} дн. · с ${sinceText}` : 'Пара подтверждена'}</div>
             </div>
             ${canRemove ? '<button class="danger-btn btn-remove-current-partner" style="width:auto; padding:8px 10px;">Убрать</button>' : ''}
         `; // [NEW]
@@ -2051,7 +2179,7 @@ class ProfileManager {
 
     static async renderMyPartnerBox() { // [NEW]
         const partnerUid = await this.getPartnerUid(AppState.currentUser?.uid); // [NEW]
-        await this.renderPartnerContainer('edit-partner-container', partnerUid, true); // [NEW]
+        await this.renderPartnerContainer('edit-partner-container', partnerUid, true, AppState.currentUser?.uid); // [UPDATE]
     } // [NEW]
 
     static async renderLoveRequests() { // [NEW]
@@ -2119,8 +2247,11 @@ class ProfileManager {
                 await this.renderLoveRequests(); // [NEW]
                 return Utils.toast('У кого-то уже есть вторая половинка', 'error'); // [NEW]
             } // [NEW]
+            const partnerSince = Date.now(); // [NEW]
             updates[`users/${myUid}/partner`] = partnerUid; // [NEW]
             updates[`users/${partnerUid}/partner`] = myUid; // [NEW]
+            updates[`users/${myUid}/partnerSince`] = partnerSince; // [NEW]
+            updates[`users/${partnerUid}/partnerSince`] = partnerSince; // [NEW]
         } // [NEW]
         updates[`users/${myUid}/loveRequests/${partnerUid}`] = null; // [NEW]
         await update(ref(db), updates); // [NEW]
@@ -2137,10 +2268,12 @@ class ProfileManager {
         const updates = {}; // [NEW]
         updates[`users/${myUid}/partner`] = null; // [NEW]
         updates[`users/${currentPartnerUid}/partner`] = null; // [NEW]
+        updates[`users/${myUid}/partnerSince`] = null; // [NEW]
+        updates[`users/${currentPartnerUid}/partnerSince`] = null; // [NEW]
         await update(ref(db), updates); // [NEW]
         Utils.toast('Вторая половинка удалена'); // [NEW]
         await this.renderMyPartnerBox(); // [NEW]
-        await this.renderPartnerContainer('view-partner-container', null, false); // [NEW]
+        await this.renderPartnerContainer('view-partner-container', null, false, myUid); // [UPDATE]
         const removeBtn = Utils.$('btn-remove-partner'); // [NEW]
         if (removeBtn) removeBtn.style.display = 'none'; // [NEW]
     } // [NEW]
@@ -2256,7 +2389,7 @@ class ProfileManager {
         hashtagsEl.innerHTML = profileTags.map(tag => `<span class="hashtag-chip">${Utils.escapeHtml(tag)}</span>`).join('');
         this.applyProfileBackground(Utils.$('modal-view-profile')?.querySelector('.modal-content'), profile.background); // [NEW]
         const targetPartnerUid = await this.getPartnerUid(targetUid); // [NEW]
-        await this.renderPartnerContainer('view-partner-container', targetPartnerUid, targetUid === AppState.currentUser.uid); // [NEW]
+        await this.renderPartnerContainer('view-partner-container', targetPartnerUid, targetUid === AppState.currentUser.uid, targetUid); // [UPDATE]
         
         const avatarEl = Utils.$('view-avatar');
         if (profile.avatar) {
@@ -3566,7 +3699,7 @@ class AdminPanel {
 // ============================================================================
 
 class RoomManager {
-    static themeOptions = ['default', 'love', 'inverted']; // [UPDATE]
+    static themeOptions = ['default', 'love']; // [UPDATE]
     static themeIndex = 0;
     static heartsTimer = null;
     static loveHeartEmojis = ['💗', '💘', '💞', '💕'];
@@ -3596,7 +3729,7 @@ class RoomManager {
 
             // Автоматическая синхронизация тем
             if (AppState.currentRoomId && data[AppState.currentRoomId]) {
-                const newTheme = data[AppState.currentRoomId].theme || 'default';
+                const newTheme = this.normalizeRoomTheme(data[AppState.currentRoomId].theme || 'default'); // [UPDATE]
                 if (AppState.currentTheme !== newTheme) {
                     AppState.currentTheme = newTheme;
                     this.applyRoomTheme(newTheme);
@@ -3649,6 +3782,10 @@ class RoomManager {
         });
         showTheme(0);
     }
+
+    static normalizeRoomTheme(theme = 'default') { // [NEW]
+        return this.themeOptions.includes(theme) ? theme : 'default'; // [NEW]
+    } // [NEW]
 
     static updateRoomsDOM() {
         const grid = Utils.$('rooms-grid');
@@ -3707,7 +3844,7 @@ class RoomManager {
             Utils.$('room-input-name').value = r.name || ''; Utils.$('room-input-url').value = r.videoUrl || '';
             Utils.$('room-input-private').checked = r.isPrivate; Utils.$('room-input-password').style.display = r.isPrivate ? 'block' : 'none';
             Utils.$('room-input-hashtag').value = Array.isArray(r.hashtags) ? (r.hashtags[0] || '') : '';
-            const theme = this.themeOptions.includes(r.theme) ? r.theme : 'default';
+            const theme = this.normalizeRoomTheme(r.theme || 'default'); // [UPDATE]
             this.themeIndex = this.themeOptions.indexOf(theme);
             Utils.$('modal-room').dataset.selectedTheme = theme;
             Utils.$('room-theme-track').style.transform = `translateX(-${this.themeIndex * 100}%)`;
@@ -3756,7 +3893,7 @@ class RoomManager {
                 videoUrl,
                 isPrivate,
                 hashtags,
-                theme: this.themeOptions.includes(selectedTheme) ? selectedTheme : 'default',
+                theme: this.normalizeRoomTheme(selectedTheme), // [UPDATE]
                 hostId: AppState.currentUser.uid,
                 hostName: AppState.currentUser.displayName || 'Хост',
                 updatedAt: Date.now()
@@ -3852,7 +3989,7 @@ class RoomManager {
         Utils.$('chat-messages').innerHTML = '<div class="sys-msg">Вы вошли в комнату</div>';
         Utils.$('users-list').innerHTML = '';
         
-        AppState.currentTheme = roomData.theme || 'default';
+        AppState.currentTheme = this.normalizeRoomTheme(roomData.theme || 'default'); // [UPDATE]
         this.applyRoomTheme(AppState.currentTheme);
         
         this.initRoomServicesFinal(roomId);
@@ -4146,17 +4283,15 @@ class RoomManager {
         document.body.classList.remove('theme-love-room', 'theme-inverted-room'); // [UPDATE]
         this.stopLoveHearts();
         
-        Ambilight.updateTheme(theme);
+        const safeTheme = this.normalizeRoomTheme(theme); // [NEW]
+        Ambilight.updateTheme(safeTheme); // [UPDATE]
 
-        if (theme === 'love') {
+        if (safeTheme === 'love') { // [UPDATE]
             roomScreen.classList.add('theme-love');
             document.body.classList.add('theme-love-room');
             this.startLoveHearts();
             // Fallback: containers may appear a tick later after rerender.
             setTimeout(() => this.startLoveHearts(), 150);
-        } else if (theme === 'inverted') { // [NEW]
-            roomScreen.classList.add('theme-inverted'); // [NEW]
-            document.body.classList.add('theme-inverted-room'); // [NEW]
         }
     }
 
