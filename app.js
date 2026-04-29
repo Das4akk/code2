@@ -567,7 +567,7 @@ class BackgroundFX {
 }
 
 class EasterEggManager {
-    static DURATION = 15000; // ПАТЧ: Увеличено время работы всех пасхалок до 15 секунд
+    static DURATION = 5000; // ПАТЧ: Увеличено время работы всех пасхалок до 15 секунд
     static SOUND_URLS = {
         notification: 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg',
         glass: 'https://actions.google.com/sounds/v1/impacts/glass_shatters_into_debris.ogg',
