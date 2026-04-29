@@ -144,6 +144,27 @@ class Utils {
         };
     }
 
+    // [ADD] File to Base64 (Compressed for performance/DB)
+    static fileToBase64(file, maxWidth = 800) {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let w = img.width, h = img.height;
+                    if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
+                    canvas.width = w; canvas.height = h;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, w, h);
+                    resolve(canvas.toDataURL('image/jpeg', 0.8));
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
     static heartDistributionState = new WeakMap(); // [NEW]
 
     static getGreatestCommonDivisor(a, b) { // [NEW]
@@ -520,8 +541,7 @@ class BackgroundFX {
         
         function animate() {
             if (!isTabVisible) return; 
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // [FIX] Made clearRect so premium background shines through beautifully
 
             for (let i = 0; i < dots.length; i++) {
                 dots[i].update(); dots[i].draw();
@@ -1758,7 +1778,7 @@ class ProfileManager {
             email,
             bio: '',
             avatar: '',
-            background: { color: '#1f2937', index: 1, url: '' }, // [UPDATE]
+            background: { color: '#1f2937', index: 10, url: '', dim: 0.5 }, // [UPDATE - Default to 10 and added dim]
             hashtags: [],
             createdAt: Date.now(),
             provider: security.provider || this.normalizeProvider(auth.currentUser),
@@ -1834,6 +1854,28 @@ class ProfileManager {
         
         Utils.$('modal-edit-profile').classList.add('active');
         
+        // [ADD] Файловые инпуты в Base64 с превью
+        if (Utils.$('edit-avatar-file')) {
+            Utils.$('edit-avatar-file').onchange = async (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const b64 = await Utils.fileToBase64(file, 400); // Ресайз до 400px
+                    Utils.$('edit-avatar-url').value = b64;
+                    this.updateAvatarPreview(b64, Utils.$('edit-name').value);
+                }
+            };
+        }
+        if (Utils.$('profile-bg-file')) {
+            Utils.$('profile-bg-file').onchange = async (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const b64 = await Utils.fileToBase64(file, 1000); // Ресайз до 1000px
+                    Utils.$('profile-bg-url').value = b64;
+                    this.updateProfileBackgroundPreview();
+                }
+            };
+        }
+
         Utils.$('edit-avatar-url').oninput = Utils.debounce((e) => this.updateAvatarPreview(e.target.value, Utils.$('edit-name').value), 300);
         Utils.$('edit-name').oninput = Utils.debounce((e) => this.updateAvatarPreview(Utils.$('edit-avatar-url').value, e.target.value), 300);
         this.bindProfileBackgroundControls(); // [NEW]
@@ -2014,19 +2056,23 @@ class ProfileManager {
     static normalizeProfileBackground(value = '') { // [UPDATE]
         if (value && typeof value === 'object') { // [NEW]
             const color = this.normalizeHexColor(value.color); // [NEW]
-            const index = Math.max(0, Math.min(12, Number(value.index) || 0)); // [NEW]
+            // [PATCH] Always force to 10 if invalid to keep the base style anchored
+            const rawIndex = Number(value.index);
+            const index = isNaN(rawIndex) || rawIndex <= 0 ? 10 : Math.max(1, Math.min(12, rawIndex)); 
             const url = this.normalizeProfileBackgroundUrl(value.url || ''); // [NEW]
-            return { color, index, url }; // [NEW]
+            const dim = typeof value.dim !== 'undefined' ? Number(value.dim) : 0.5; // [ADD] Dim logic
+            return { color, index, url, dim: Math.max(0, Math.min(1, dim)) }; // [NEW]
         } // [NEW]
         const raw = String(value || '').trim(); // [UPDATE]
-        if (!raw) return { color: '#1f2937', index: 1, url: '' }; // [UPDATE]
-        if (/^https?:\/\//i.test(raw)) return { color: '#1f2937', index: 1, url: this.normalizeProfileBackgroundUrl(raw) }; // [NEW]
-        return { color: this.normalizeHexColor(raw), index: 0, url: '' }; // [UPDATE]
+        if (!raw) return { color: '#1f2937', index: 10, url: '', dim: 0.5 }; // [UPDATE]
+        if (/data:image/i.test(raw) || /^https?:\/\//i.test(raw)) return { color: '#1f2937', index: 10, url: this.normalizeProfileBackgroundUrl(raw), dim: 0.5 }; // [NEW] Support base64 or http
+        return { color: this.normalizeHexColor(raw), index: 10, url: '', dim: 0.5 }; // [UPDATE]
     } // [UPDATE]
 
     static normalizeProfileBackgroundUrl(value = '') { // [NEW]
         const raw = String(value || '').trim(); // [NEW]
         if (!raw) return ''; // [NEW]
+        if (raw.startsWith('data:image')) return raw; // [ADD] Base64 allowance
         if (raw.length > 420 || /["\\]/.test(raw)) return ''; // [NEW]
         if (!/^https?:\/\//i.test(raw)) return ''; // [NEW]
         try { new URL(raw); return raw; } catch (e) { return ''; } // [NEW]
@@ -2037,12 +2083,14 @@ class ProfileManager {
         const g = Number(Utils.$('profile-bg-g')?.value || 41); // [NEW]
         const b = Number(Utils.$('profile-bg-b')?.value || 55); // [NEW]
         const urlRaw = Utils.$('profile-bg-url')?.value.trim() || ''; // [NEW]
+        const dim = Number(Utils.$('profile-bg-dim')?.value || 0.5); // [ADD]
         const url = this.normalizeProfileBackgroundUrl(urlRaw); // [NEW]
-        if (urlRaw && !url) throw new Error('Фон профиля: URL должен начинаться с http(s)'); // [UPDATE]
+        if (urlRaw && !url && !urlRaw.startsWith('data:image')) throw new Error('Фон профиля: некорректный URL/файл'); // [UPDATE]
         return { // [UPDATE]
             color: this.rgbToHex(r, g, b), // [NEW]
-            index: Number(Utils.$('profile-bg-panel')?.dataset.selectedIndex || 0), // [NEW]
-            url // [NEW]
+            index: Number(Utils.$('profile-bg-panel')?.dataset.selectedIndex) || 10, // [PATCH] Default to 10
+            url, // [NEW]
+            dim // [ADD]
         }; // [NEW]
     } // [UPDATE]
 
@@ -2052,10 +2100,12 @@ class ProfileManager {
         this.renderProfileBackgroundPresets(data.index); // [NEW]
         this.setProfileBackgroundRgb(rgb.r, rgb.g, rgb.b, data.index); // [NEW]
         if (Utils.$('profile-bg-url')) Utils.$('profile-bg-url').value = data.url || ''; // [NEW]
+        if (Utils.$('profile-bg-dim')) Utils.$('profile-bg-dim').value = data.dim; // [ADD]
+        if (Utils.$('profile-bg-dim-num')) Utils.$('profile-bg-dim-num').value = data.dim; // [ADD]
         this.updateProfileBackgroundPreview(); // [NEW]
     } // [NEW]
 
-    static renderProfileBackgroundPresets(activeIndex = 1) { // [NEW]
+    static renderProfileBackgroundPresets(activeIndex = 10) { // [NEW - Default 10]
         const container = Utils.$('profile-bg-presets'); // [NEW]
         if (!container) return; // [NEW]
         container.innerHTML = this.backgroundPresets.map((color, idx) => { // [NEW]
@@ -2072,13 +2122,13 @@ class ProfileManager {
         }); // [NEW]
     } // [NEW]
 
-    static setProfileBackgroundRgb(r, g, b, index = 0) { // [NEW]
+    static setProfileBackgroundRgb(r, g, b, index = 10) { // [NEW - Default 10]
         [['r', r], ['g', g], ['b', b]].forEach(([key, value]) => { // [NEW]
             const safe = Math.max(0, Math.min(255, Number(value) || 0)); // [NEW]
             if (Utils.$(`profile-bg-${key}`)) Utils.$(`profile-bg-${key}`).value = safe; // [NEW]
             if (Utils.$(`profile-bg-${key}-num`)) Utils.$(`profile-bg-${key}-num`).value = safe; // [NEW]
         }); // [NEW]
-        if (Utils.$('profile-bg-panel')) Utils.$('profile-bg-panel').dataset.selectedIndex = String(index || 0); // [NEW]
+        if (Utils.$('profile-bg-panel')) Utils.$('profile-bg-panel').dataset.selectedIndex = String(index || 10); // [PATCH]
     } // [NEW]
 
     static bindProfileBackgroundControls() { // [NEW]
@@ -2093,13 +2143,24 @@ class ProfileManager {
                 const safe = Math.max(0, Math.min(255, Number(source.value) || 0)); // [NEW]
                 source.value = safe; // [NEW]
                 if (target) target.value = safe; // [NEW]
-                if (panel) panel.dataset.selectedIndex = '0'; // [NEW]
-                this.renderProfileBackgroundPresets(0); // [NEW]
+                if (panel) panel.dataset.selectedIndex = '10'; // [PATCH] Anchor to 10
+                this.renderProfileBackgroundPresets(10); // [PATCH]
                 this.updateProfileBackgroundPreview(); // [NEW]
             }; // [NEW]
             if (range) range.oninput = () => sync(range, number); // [NEW]
             if (number) number.oninput = () => sync(number, range); // [NEW]
         }); // [NEW]
+        // [ADD] Bind dim sync
+        const dimRange = Utils.$('profile-bg-dim');
+        const dimNum = Utils.$('profile-bg-dim-num');
+        const syncDim = (s, t) => {
+            const val = Math.max(0, Math.min(1, Number(s.value) || 0));
+            s.value = val; if(t) t.value = val;
+            this.updateProfileBackgroundPreview();
+        };
+        if (dimRange) dimRange.oninput = () => syncDim(dimRange, dimNum);
+        if (dimNum) dimNum.oninput = () => syncDim(dimNum, dimRange);
+
         if (Utils.$('profile-bg-url')) Utils.$('profile-bg-url').oninput = Utils.debounce(() => this.updateProfileBackgroundPreview(), 250); // [NEW]
     } // [NEW]
 
@@ -2108,8 +2169,9 @@ class ProfileManager {
         if (!preview) return; // [NEW]
         const data = { // [UPDATE]
             color: this.rgbToHex(Utils.$('profile-bg-r')?.value || 31, Utils.$('profile-bg-g')?.value || 41, Utils.$('profile-bg-b')?.value || 55), // [NEW]
-            index: Number(Utils.$('profile-bg-panel')?.dataset.selectedIndex || 0), // [NEW]
-            url: this.normalizeProfileBackgroundUrl(Utils.$('profile-bg-url')?.value || '') // [NEW]
+            index: Number(Utils.$('profile-bg-panel')?.dataset.selectedIndex) || 10, // [PATCH]
+            url: this.normalizeProfileBackgroundUrl(Utils.$('profile-bg-url')?.value || ''), // [NEW]
+            dim: Number(Utils.$('profile-bg-dim')?.value || 0.5) // [ADD]
         }; // [NEW]
         const colors = this.getReadableProfileColors(data.color); // [NEW]
         preview.style.background = data.color; // [NEW]
@@ -2133,7 +2195,9 @@ class ProfileManager {
         panel.style.backgroundSize = ''; // [UPDATE]
         panel.style.backgroundPosition = ''; // [UPDATE]
         if (data.url) { // [UPDATE]
-            panel.style.backgroundImage = `linear-gradient(${colors.overlay}, ${colors.overlay}), url("${data.url}")`; // [UPDATE]
+            const dimValue = data.dim !== undefined ? data.dim : 0.5; // [ADD] Apply custom dim
+            const overlay = `rgba(0,0,0,${dimValue})`;
+            panel.style.backgroundImage = `linear-gradient(${overlay}, ${overlay}), url("${data.url}")`; // [UPDATE]
             panel.style.backgroundSize = 'cover'; // [UPDATE]
             panel.style.backgroundPosition = 'center'; // [UPDATE]
         } // [UPDATE]
@@ -2155,7 +2219,11 @@ class ProfileManager {
         if (!container) return; // [NEW]
         container.classList.remove('active'); // [NEW]
         container.innerHTML = ''; // [NEW]
-        if (!partnerUid) return; // [NEW]
+        if (!partnerUid) {
+            container.onclick = null; // [PATCH]
+            container.style.cursor = 'default';
+            return; 
+        } // [NEW]
         const partnerProfile = await this.loadUser(partnerUid); // [NEW]
         if (!partnerProfile) return; // [NEW]
         const sinceSnap = ownerUid ? await get(ref(db, `users/${ownerUid}/partnerSince`)) : null; // [NEW]
@@ -2170,12 +2238,39 @@ class ProfileManager {
                 <div class="partner-name">${Utils.escapeHtml(partnerProfile.name || 'Пользователь')}</div>
                 <div class="partner-meta">${sinceTs ? `Вместе ${daysText} дн. · с ${sinceText}` : 'Пара подтверждена'}</div>
             </div>
-            ${canRemove ? '<button class="danger-btn btn-remove-current-partner" style="width:auto; padding:8px 10px;">Убрать</button>' : ''}
+            ${canRemove ? '<button class="danger-btn btn-remove-current-partner" style="width:auto; padding:8px 10px; z-index:10; position:relative;">Убрать</button>' : ''}
         `; // [NEW]
         container.classList.add('active'); // [NEW]
+        
+        // [ADD] Click to open sweet modal
+        container.style.cursor = 'pointer';
+        container.onclick = (e) => {
+            if (!e.target.closest('button')) {
+                this.openPartnerModal(ownerUid || AppState.currentUser.uid, partnerUid);
+            }
+        };
+
         const removeBtn = container.querySelector('.btn-remove-current-partner'); // [NEW]
-        if (removeBtn) removeBtn.onclick = () => this.removePartner(partnerUid); // [NEW]
+        if (removeBtn) removeBtn.onclick = (e) => { e.stopPropagation(); this.removePartner(partnerUid); }; // [NEW]
     } // [NEW]
+
+    // [ADD] New sweet romantic modal for partners
+    static async openPartnerModal(ownerUid, partnerUid) {
+        const myProf = await this.loadUser(ownerUid);
+        const theirProf = await this.loadUser(partnerUid);
+        if (!myProf || !theirProf) return;
+
+        const sinceSnap = await get(ref(db, `users/${ownerUid}/partnerSince`));
+        const sinceTs = sinceSnap?.exists() ? Number(sinceSnap.val()) : 0;
+        const daysText = sinceTs ? Math.max(1, Math.ceil((Date.now() - sinceTs) / 86400000)) : 1;
+
+        Utils.$('partner-modal-my-avatar').innerHTML = this.getAvatarHtml(myProf);
+        Utils.$('partner-modal-their-avatar').innerHTML = this.getAvatarHtml(theirProf);
+        Utils.$('partner-modal-names').innerText = `${myProf.name} & ${theirProf.name}`;
+        Utils.$('partner-modal-stats').innerText = sinceTs ? `Мы вместе уже ${daysText} счастливых дней 💖` : 'Созданы друг для друга ✨';
+
+        Utils.$('modal-partner-view').classList.add('active');
+    }
 
     static async renderMyPartnerBox() { // [NEW]
         const partnerUid = await this.getPartnerUid(AppState.currentUser?.uid); // [NEW]
@@ -4582,6 +4677,88 @@ class RTCManager {
 }
 
 // ============================================================================
+// 7. МОБИЛЬНЫЕ СВАЙПЫ (Bottom Sheets, Chat swipe)
+// ============================================================================
+
+class MobileSwipeManager {
+    static init() {
+        if (window.innerWidth > 1024) return; // Only mobile
+
+        // Setup modal swipe to close
+        document.querySelectorAll('.modal').forEach(modal => {
+            let startY = 0;
+            let currentY = 0;
+            const content = modal.querySelector('.modal-content');
+            if (!content) return;
+
+            content.addEventListener('touchstart', (e) => {
+                if (content.scrollTop > 0) return; // Only if at top
+                startY = e.touches[0].clientY;
+            }, { passive: true });
+
+            content.addEventListener('touchmove', (e) => {
+                if (startY === 0) return;
+                currentY = e.touches[0].clientY;
+                const dy = currentY - startY;
+                if (dy > 0) {
+                    content.style.transform = `translateY(${dy}px)`;
+                }
+            }, { passive: true });
+
+            content.addEventListener('touchend', (e) => {
+                if (startY === 0) return;
+                const dy = currentY - startY;
+                if (dy > 120) {
+                    // swipe down close
+                    if (modal.id === 'modal-dm-chat') DirectMessages.closeChat();
+                    else modal.classList.remove('active');
+                }
+                content.style.transform = '';
+                startY = 0;
+                currentY = 0;
+            });
+        });
+
+        // Chat vs Users swipe inside Room
+        const chatSection = Utils.$('chat-messages')?.parentElement;
+        if (chatSection) {
+            let startX = 0;
+            chatSection.addEventListener('touchstart', (e) => {
+                startX = e.touches[0].clientX;
+            }, { passive: true });
+            chatSection.addEventListener('touchend', (e) => {
+                const endX = e.changedTouches[0].clientX;
+                const dx = endX - startX;
+                if (Math.abs(dx) > 80) {
+                    if (dx < 0 && Utils.$('chat-messages').style.display !== 'none') {
+                        // Swipe left -> open users
+                        Utils.$('tab-users-btn')?.click();
+                    } else if (dx > 0 && Utils.$('users-list').style.display !== 'none') {
+                        // Swipe right -> open chat
+                        Utils.$('tab-chat-btn')?.click();
+                    }
+                }
+            });
+        }
+
+        // Sidebar swipe to close
+        const sidebar = Utils.$('main-sidebar');
+        if (sidebar) {
+            let startX = 0;
+            sidebar.addEventListener('touchstart', (e) => {
+                startX = e.touches[0].clientX;
+            }, { passive: true });
+            sidebar.addEventListener('touchend', (e) => {
+                const endX = e.changedTouches[0].clientX;
+                if (startX - endX > 60) { // swipe left
+                    sidebar.classList.remove('open');
+                }
+            });
+        }
+    }
+}
+
+// ============================================================================
 // 10. ЗАПУСК ПРИЛОЖЕНИЯ
 // ============================================================================
 
@@ -4591,6 +4768,7 @@ window.onload = () => {
     BackgroundFX.init();
     EasterEggManager.init();
     HashtagManager.initHashtags();
+    MobileSwipeManager.init(); // [NEW] Mobile Swipes initialization
 
     // Добавляем мини-контейнер с ссылками (изначально скрыт, покажется только в lobby-screen)
     const footerLinks = document.createElement('div');

@@ -16,6 +16,21 @@ button:active:not(:disabled) {
     transform: translateY(0) scale(0.98);
 }
 
+/* // [NEW] Premium Black Background */
+#premium-black-bg {
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    background: linear-gradient(135deg, #020202 0%, #0a0a0a 50%, #030305 100%);
+    background-size: 400% 400%;
+    animation: premiumGradient 15s ease infinite;
+}
+@keyframes premiumGradient {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
 #particle-canvas { position: fixed; top: 0; left: 0; z-index: -1; width: 100%; height: 100%; opacity: 0.4; animation: slowFloat 120s ease-in-out infinite; }
 @keyframes slowFloat { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(20px); } }
 
@@ -217,6 +232,8 @@ video { width: 100%; height: 100%; object-fit: contain; outline: none; }
 .modal-content h2 { margin-bottom: 22px; font-size: 24px; }
 .modal-buttons { display: flex; gap: 10px; margin-top: 22px; }
 .modal-buttons button { flex: 1; }
+
+.modal-drag-handle { display: none; } /* Default hidden for desktop */
 
 input[type="checkbox"] {
     -webkit-appearance: none;
@@ -456,6 +473,16 @@ input[type="range"]::-moz-range-thumb:hover { transform: scale(1.15); }
 
 @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
+/* // [NEW] Heartbeat animations for Partner Modal */
+@keyframes pulseHeart {
+    0% { transform: scale(1); }
+    14% { transform: scale(1.3); }
+    28% { transform: scale(1); }
+    42% { transform: scale(1.3); }
+    70% { transform: scale(1); }
+}
+.heartbeat { animation: pulseHeart 3s infinite; }
+
 .online-counter {
     position: fixed;
     bottom: 20px;
@@ -489,9 +516,41 @@ input[type="range"]::-moz-range-thumb:hover { transform: scale(1.15); }
 
 .logout-btn { width: 100%; }
 
+/* Mobile Bottom Sheets & Swipe Handlers */
+@media (max-width: 1024px) {
+    .modal-content {
+        position: relative;
+        padding-top: 36px;
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
+        margin-top: auto;
+        max-height: 90vh;
+        transform: translateY(100%);
+        transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .modal.active .modal-content {
+        transform: translateY(0);
+    }
+    .modal-drag-handle {
+        display: block;
+        position: absolute;
+        top: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 48px;
+        height: 6px;
+        border-radius: 6px;
+        background: rgba(255,255,255,0.2);
+    }
+    .modal {
+        align-items: flex-end;
+        padding: 0;
+    }
+}
+
 @media (max-width: 480px) {
     .auth-wrapper { width: 95%; padding: 25px; }
-    .modal-content { width: 95%; padding: 25px; }
+    .modal-content { width: 100%; padding: 25px; padding-top: 36px; }
     .friends-list-panel { width: calc(100vw - 20px); right: 10px; top: auto; bottom: 80px; max-height: 50vh; }
     .lobby-main { height: calc(100vh - 100px); }
     .rooms-grid { height: calc(100vh - 180px); }
@@ -511,7 +570,14 @@ html.theme-light-global {
     --brand: #111827; /* // [UPDATE] */
 }
 html.theme-light-global body { background: var(--bg); color: var(--text-main); } /* // [UPDATE] */
+
+html.theme-light-global #premium-black-bg {
+    /* [PATCH] Premium black gradient should STILL look premium and not completely disappear in light mode. 
+       Let's keep it visible but let the bright cards pop over it. */
+    opacity: 0.9;
+}
 html.theme-light-global #particle-canvas { filter: brightness(0); opacity: 0.22; } /* // [UPDATE] */
+
 html.theme-light-global .glass-panel { background: rgba(255,255,255,0.86); border-color: var(--border); box-shadow: 0 12px 28px rgba(17,24,39,0.08); } /* // [NEW] */
 html.theme-light-global .sidebar { background: rgba(255,255,255,0.94); box-shadow: 0 12px 28px rgba(17,24,39,0.08); } /* // [NEW] */
 html.theme-light-global .user-card,
