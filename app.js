@@ -550,7 +550,7 @@ class BackgroundFX {
                     let dy = dots[i].y - dots[j].y;
                     let dist = dx * dx + dy * dy; 
                     if (dist < 25000) { 
-                        ctx.strokeStyle = `rgba(100, 200, 255, ${0.52 - Math.sqrt(dist) / 1000})`; 
+                        ctx.strokeStyle = `rgba(100, 200, 255, ${0.82 - Math.sqrt(dist) / 1000})`; 
                         ctx.lineWidth = 1;
                         ctx.beginPath(); ctx.moveTo(dots[i].x, dots[i].y); ctx.lineTo(dots[j].x, dots[j].y); ctx.stroke();
                     }
