@@ -576,7 +576,7 @@ html.theme-light-global #premium-black-bg {
        Let's keep it visible but let the bright cards pop over it. */
     opacity: 0.9;
 }
-html.theme-light-global #particle-canvas { filter: brightness(0); opacity: 0.22; } /* // [UPDATE] */
+html.theme-light-global #particle-canvas { filter: brightness(0); opacity: 0.52; } /* // [UPDATE] */
 
 html.theme-light-global .glass-panel { background: rgba(255,255,255,0.86); border-color: var(--border); box-shadow: 0 12px 28px rgba(17,24,39,0.08); } /* // [NEW] */
 html.theme-light-global .sidebar { background: rgba(255,255,255,0.94); box-shadow: 0 12px 28px rgba(17,24,39,0.08); } /* // [NEW] */
@@ -644,7 +644,7 @@ button { transition: background-color 0.35s ease, background 0.35s ease, color 0
 .theme-card[data-theme="inverted"] { display: none; } /* // [UPDATE] */
 .theme-rect.inverted::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, #f8f8f8 0%, #d9dce2 100%); } /* // [UPDATE] */
 .theme-rect.inverted::after { content: ''; position: absolute; width: 52px; height: 52px; border-radius: 50%; left: 30px; top: 46px; background: #050505; box-shadow: 0 0 22px rgba(0,0,0,0.28); } /* // [UPDATE] */
-body.theme-inverted-room #particle-canvas { filter: brightness(0); opacity: 0.22; }
+body.theme-inverted-room #particle-canvas { filter: brightness(0); opacity: 0.52; }
 #room-screen.theme-inverted { --bg: #f7f8fa; --panel: rgba(255,255,255,0.94); --panel-hover: #eceff3; --border: #d9dde4; --border-light: #bfc5ce; --text-main: #050505; --text-muted: #555e68; --accent: #050505; --accent-hover: #222222; --brand: #050505; background: var(--bg); color: var(--text-main); position: relative; overflow: hidden; }
 #room-screen.theme-inverted .glass-panel,
 #room-screen.theme-inverted .chat-section,
