@@ -42,6 +42,7 @@ const AppState = {
     currentRoomId: null,
     currentRoomJoinTs: 0, // Фикс синхронизации новых юзеров
     currentTheme: null,
+    globalTheme: 'dark', // [NEW]
     isHost: false,
     isRegistering: false, 
     usersCache: new Map(), 
@@ -142,6 +143,39 @@ class Utils {
             timeout = setTimeout(() => func(...args), wait);
         };
     }
+
+    static heartDistributionState = new WeakMap(); // [NEW]
+
+    static getGreatestCommonDivisor(a, b) { // [NEW]
+        while (b) { // [NEW]
+            const next = a % b; // [NEW]
+            a = b; // [NEW]
+            b = next; // [NEW]
+        } // [NEW]
+        return Math.abs(a || 1); // [NEW]
+    } // [NEW]
+
+    static getDistributedHeartLeft(layer, key = 'default') { // [NEW]
+        const width = Math.max(1, layer?.clientWidth || window.innerWidth || 1); // [NEW]
+        const columns = Math.max(6, Math.min(16, Math.floor(width / 92))); // [NEW]
+        let layerState = this.heartDistributionState.get(layer); // [NEW]
+        if (!layerState) { // [NEW]
+            layerState = {}; // [NEW]
+            if (layer) this.heartDistributionState.set(layer, layerState); // [NEW]
+        } // [NEW]
+        let state = layerState[key]; // [NEW]
+        if (!state || state.columns !== columns) { // [NEW]
+            let step = Math.max(2, Math.floor(columns / 2)); // [NEW]
+            while (this.getGreatestCommonDivisor(step, columns) !== 1) step += 1; // [NEW]
+            state = { columns, cursor: Math.floor(Math.random() * columns), step }; // [NEW]
+            layerState[key] = state; // [NEW]
+        } // [NEW]
+        const slot = state.cursor; // [NEW]
+        state.cursor = (state.cursor + state.step) % columns; // [NEW]
+        const spread = 84 / columns; // [NEW]
+        const jitter = (Math.random() - 0.5) * Math.min(spread * 0.45, 6); // [NEW]
+        return Math.max(6, Math.min(94, 8 + (slot * spread) + (spread / 2) + jitter)); // [NEW]
+    } // [NEW]
 
     static injectFixes() {
         const style = document.createElement('style');
@@ -330,6 +364,36 @@ class Utils {
         }
     }
 }
+
+class GlobalThemeManager { // [NEW]
+    static storageKey = 'cowio:globalTheme'; // [NEW]
+
+    static normalizeTheme(theme = 'dark') { // [NEW]
+        return theme === 'light' ? 'light' : 'dark'; // [NEW]
+    } // [NEW]
+
+    static getStoredTheme() { // [NEW]
+        return this.normalizeTheme(localStorage.getItem(this.storageKey) || document.documentElement.dataset.globalTheme || 'dark'); // [NEW]
+    } // [NEW]
+
+    static applyTheme(theme = 'dark', persist = true) { // [NEW]
+        const normalized = this.normalizeTheme(theme); // [NEW]
+        AppState.globalTheme = normalized; // [NEW]
+        document.documentElement.dataset.globalTheme = normalized; // [NEW]
+        document.documentElement.classList.toggle('theme-light-global', normalized === 'light'); // [NEW]
+        document.body?.classList.toggle('theme-light-global', normalized === 'light'); // [NEW]
+        const toggle = Utils.$('global-theme-toggle'); // [NEW]
+        if (toggle) toggle.checked = normalized === 'light'; // [NEW]
+        if (persist) localStorage.setItem(this.storageKey, normalized); // [NEW]
+    } // [NEW]
+
+    static init() { // [NEW]
+        this.applyTheme(this.getStoredTheme(), false); // [NEW]
+        const toggle = Utils.$('global-theme-toggle'); // [NEW]
+        if (!toggle) return; // [NEW]
+        toggle.onchange = () => this.applyTheme(toggle.checked ? 'light' : 'dark', true); // [NEW]
+    } // [NEW]
+} // [NEW]
 
 // Адаптивный Ambilight для плеера
 class Ambilight {
@@ -1690,6 +1754,7 @@ class ProfileManager {
             email,
             bio: '',
             avatar: '',
+            background: '', // [NEW]
             hashtags: [],
             createdAt: Date.now(),
             provider: security.provider || this.normalizeProvider(auth.currentUser),
@@ -1757,7 +1822,11 @@ class ProfileManager {
         Utils.$('edit-bio').value = p.bio || '';
         Utils.$('edit-hashtags').value = Array.isArray(p.hashtags) ? p.hashtags.join(' ') : '';
         Utils.$('edit-avatar-url').value = p.avatar || '';
+        if (Utils.$('edit-background-input')) Utils.$('edit-background-input').value = p.background || ''; // [NEW]
         this.updateAvatarPreview(p.avatar, p.name);
+        this.applyProfileBackground(Utils.$('modal-edit-profile')?.querySelector('.modal-content'), p.background); // [NEW]
+        this.renderMyPartnerBox(); // [NEW]
+        this.renderLoveRequests(); // [NEW]
         
         Utils.$('modal-edit-profile').classList.add('active');
         
@@ -1905,6 +1974,211 @@ class ProfileManager {
         await verifyBeforeUpdateEmail(user, newEmail);
     }
 
+    static isProfileBackgroundAllowed(value = '') { // [NEW]
+        const raw = String(value || '').trim(); // [NEW]
+        if (!raw) return true; // [NEW]
+        if (raw.length > 320 || /[;]/.test(raw)) return false; // [NEW]
+        if (/^https?:\/\//i.test(raw)) { // [NEW]
+            try { new URL(raw); return true; } catch (e) { return false; } // [NEW]
+        } // [NEW]
+        if (/^(linear-gradient|radial-gradient)\(/i.test(raw) && !/url\(/i.test(raw)) return true; // [NEW]
+        return Boolean(window.CSS?.supports?.('color', raw)); // [NEW]
+    } // [NEW]
+
+    static normalizeProfileBackground(value = '') { // [NEW]
+        const raw = String(value || '').trim(); // [NEW]
+        if (!this.isProfileBackgroundAllowed(raw)) return ''; // [NEW]
+        return raw; // [NEW]
+    } // [NEW]
+
+    static readProfileBackgroundInput() { // [NEW]
+        const raw = Utils.$('edit-background-input')?.value.trim() || ''; // [NEW]
+        const background = this.normalizeProfileBackground(raw); // [NEW]
+        if (raw && !background) throw new Error('Фон профиля: используйте цвет, gradient или URL картинки'); // [NEW]
+        return background; // [NEW]
+    } // [NEW]
+
+    static applyProfileBackground(panel, background = '') { // [NEW]
+        if (!panel) return; // [NEW]
+        const safeBackground = this.normalizeProfileBackground(background); // [NEW]
+        panel.style.background = ''; // [NEW]
+        panel.style.backgroundImage = ''; // [NEW]
+        panel.style.backgroundSize = ''; // [NEW]
+        panel.style.backgroundPosition = ''; // [NEW]
+        if (!safeBackground) return; // [NEW]
+        if (/^https?:\/\//i.test(safeBackground)) { // [NEW]
+            const safeUrl = safeBackground.replace(/["\\]/g, ''); // [NEW]
+            panel.style.backgroundImage = `linear-gradient(rgba(8,8,10,0.78), rgba(8,8,10,0.9)), url("${safeUrl}")`; // [NEW]
+            panel.style.backgroundSize = 'cover'; // [NEW]
+            panel.style.backgroundPosition = 'center'; // [NEW]
+            return; // [NEW]
+        } // [NEW]
+        panel.style.background = safeBackground; // [NEW]
+    } // [NEW]
+
+    static async getPartnerUid(uid) { // [NEW]
+        if (!uid) return null; // [NEW]
+        const snap = await get(ref(db, `users/${uid}/partner`)); // [NEW]
+        return snap.exists() ? snap.val() : null; // [NEW]
+    } // [NEW]
+
+    static getAvatarHtml(profile = {}) { // [NEW]
+        if (profile.avatar) return `<img src="${Utils.escapeHtml(profile.avatar)}" onerror="this.parentElement.innerHTML='?';">`; // [NEW]
+        return Utils.escapeHtml((profile.name || '?')[0].toUpperCase()); // [NEW]
+    } // [NEW]
+
+    static async renderPartnerContainer(containerId, partnerUid, canRemove = false) { // [NEW]
+        const container = Utils.$(containerId); // [NEW]
+        if (!container) return; // [NEW]
+        container.classList.remove('active'); // [NEW]
+        container.innerHTML = ''; // [NEW]
+        if (!partnerUid) return; // [NEW]
+        const partnerProfile = await this.loadUser(partnerUid); // [NEW]
+        if (!partnerProfile) return; // [NEW]
+        // [NEW]
+        container.innerHTML = `
+            <div class="partner-avatar">${this.getAvatarHtml(partnerProfile)}</div>
+            <div class="partner-info">
+                <div class="partner-label">Вторая половинка 💖</div>
+                <div class="partner-name">${Utils.escapeHtml(partnerProfile.name || 'Пользователь')}</div>
+            </div>
+            ${canRemove ? '<button class="danger-btn btn-remove-current-partner" style="width:auto; padding:8px 10px;">Убрать</button>' : ''}
+        `; // [NEW]
+        container.classList.add('active'); // [NEW]
+        const removeBtn = container.querySelector('.btn-remove-current-partner'); // [NEW]
+        if (removeBtn) removeBtn.onclick = () => this.removePartner(partnerUid); // [NEW]
+    } // [NEW]
+
+    static async renderMyPartnerBox() { // [NEW]
+        const partnerUid = await this.getPartnerUid(AppState.currentUser?.uid); // [NEW]
+        await this.renderPartnerContainer('edit-partner-container', partnerUid, true); // [NEW]
+    } // [NEW]
+
+    static async renderLoveRequests() { // [NEW]
+        const container = Utils.$('my-love-requests'); // [NEW]
+        if (!container || !AppState.currentUser) return; // [NEW]
+        const snap = await get(ref(db, `users/${AppState.currentUser.uid}/loveRequests`)); // [NEW]
+        const requests = snap.val() || {}; // [NEW]
+        const requestUids = Object.keys(requests); // [NEW]
+        container.classList.remove('active'); // [NEW]
+        container.innerHTML = ''; // [NEW]
+        if (!requestUids.length) return; // [NEW]
+        const html = []; // [NEW]
+        for (const uid of requestUids) { // [NEW]
+            const profile = await this.loadUser(uid); // [NEW]
+            if (!profile) continue; // [NEW]
+            // [NEW]
+            html.push(`
+                <div class="love-request-item" data-uid="${Utils.escapeHtml(uid)}">
+                    <span>${Utils.escapeHtml(profile.name || 'Пользователь')} предлагает стать второй половинкой</span>
+                    <div class="love-request-actions">
+                        <button class="btn-small btn-accept-love">Принять</button>
+                        <button class="btn-small btn-decline-love">Отклонить</button>
+                    </div>
+                </div>
+            `); // [NEW]
+        } // [NEW]
+        if (!html.length) return; // [NEW]
+        container.innerHTML = html.join(''); // [NEW]
+        container.classList.add('active'); // [NEW]
+        container.querySelectorAll('.btn-accept-love').forEach(btn => { // [NEW]
+            btn.onclick = () => this.handleLoveRequest(btn.closest('.love-request-item')?.dataset.uid, true); // [NEW]
+        }); // [NEW]
+        container.querySelectorAll('.btn-decline-love').forEach(btn => { // [NEW]
+            btn.onclick = () => this.handleLoveRequest(btn.closest('.love-request-item')?.dataset.uid, false); // [NEW]
+        }); // [NEW]
+    } // [NEW]
+
+    static async sendLoveRequest(targetUid) { // [NEW]
+        const myUid = AppState.currentUser?.uid; // [NEW]
+        if (!myUid || !targetUid || targetUid === myUid) return; // [NEW]
+        const friendSnap = await get(ref(db, `users/${myUid}/friends/${targetUid}`)); // [NEW]
+        if (!friendSnap.exists() || friendSnap.val().status !== 'accepted') return Utils.toast('Предложение доступно только друзьям', 'error'); // [NEW]
+        const [myPartnerSnap, targetPartnerSnap] = await Promise.all([ // [NEW]
+            get(ref(db, `users/${myUid}/partner`)), // [NEW]
+            get(ref(db, `users/${targetUid}/partner`)) // [NEW]
+        ]); // [NEW]
+        if (myPartnerSnap.exists() || targetPartnerSnap.exists()) return Utils.toast('У кого-то уже есть вторая половинка', 'error'); // [NEW]
+        await set(ref(db, `users/${targetUid}/loveRequests/${myUid}`), { ts: Date.now() }); // [NEW]
+        Utils.toast('Предложение отправлено'); // [NEW]
+    } // [NEW]
+
+    static async handleLoveRequest(partnerUid, accept) { // [NEW]
+        const myUid = AppState.currentUser?.uid; // [NEW]
+        if (!myUid || !partnerUid) return; // [NEW]
+        const updates = {}; // [NEW]
+        if (accept) { // [NEW]
+            const friendSnap = await get(ref(db, `users/${myUid}/friends/${partnerUid}`)); // [NEW]
+            if (!friendSnap.exists() || friendSnap.val().status !== 'accepted') return Utils.toast('Вторая половинка доступна только друзьям', 'error'); // [NEW]
+            const [myPartnerSnap, targetPartnerSnap] = await Promise.all([ // [NEW]
+                get(ref(db, `users/${myUid}/partner`)), // [NEW]
+                get(ref(db, `users/${partnerUid}/partner`)) // [NEW]
+            ]); // [NEW]
+            if (myPartnerSnap.exists() || targetPartnerSnap.exists()) { // [NEW]
+                await remove(ref(db, `users/${myUid}/loveRequests/${partnerUid}`)); // [NEW]
+                await this.renderLoveRequests(); // [NEW]
+                return Utils.toast('У кого-то уже есть вторая половинка', 'error'); // [NEW]
+            } // [NEW]
+            updates[`users/${myUid}/partner`] = partnerUid; // [NEW]
+            updates[`users/${partnerUid}/partner`] = myUid; // [NEW]
+        } // [NEW]
+        updates[`users/${myUid}/loveRequests/${partnerUid}`] = null; // [NEW]
+        await update(ref(db), updates); // [NEW]
+        Utils.toast(accept ? 'Вторая половинка добавлена' : 'Предложение отклонено'); // [NEW]
+        await this.renderMyPartnerBox(); // [NEW]
+        await this.renderLoveRequests(); // [NEW]
+    } // [NEW]
+
+    static async removePartner(partnerUid = null) { // [NEW]
+        const myUid = AppState.currentUser?.uid; // [NEW]
+        if (!myUid) return; // [NEW]
+        const currentPartnerUid = partnerUid || await this.getPartnerUid(myUid); // [NEW]
+        if (!currentPartnerUid) return; // [NEW]
+        const updates = {}; // [NEW]
+        updates[`users/${myUid}/partner`] = null; // [NEW]
+        updates[`users/${currentPartnerUid}/partner`] = null; // [NEW]
+        await update(ref(db), updates); // [NEW]
+        Utils.toast('Вторая половинка удалена'); // [NEW]
+        await this.renderMyPartnerBox(); // [NEW]
+        await this.renderPartnerContainer('view-partner-container', null, false); // [NEW]
+        const removeBtn = Utils.$('btn-remove-partner'); // [NEW]
+        if (removeBtn) removeBtn.style.display = 'none'; // [NEW]
+    } // [NEW]
+
+    static async updateLoveProfileActions(targetUid, isFriend = false) { // [NEW]
+        const loveBtn = Utils.$('btn-love-proposal'); // [NEW]
+        const removeBtn = Utils.$('btn-remove-partner'); // [NEW]
+        const myUid = AppState.currentUser?.uid; // [NEW]
+        if (!loveBtn || !removeBtn || !myUid) return; // [NEW]
+        loveBtn.style.display = 'none'; // [NEW]
+        removeBtn.style.display = 'none'; // [NEW]
+        loveBtn.disabled = false; // [NEW]
+        if (!targetUid || targetUid === myUid) return; // [NEW]
+        const [myPartnerSnap, targetPartnerSnap, outgoingSnap, incomingSnap] = await Promise.all([ // [NEW]
+            get(ref(db, `users/${myUid}/partner`)), // [NEW]
+            get(ref(db, `users/${targetUid}/partner`)), // [NEW]
+            get(ref(db, `users/${targetUid}/loveRequests/${myUid}`)), // [NEW]
+            get(ref(db, `users/${myUid}/loveRequests/${targetUid}`)) // [NEW]
+        ]); // [NEW]
+        const myPartnerUid = myPartnerSnap.exists() ? myPartnerSnap.val() : null; // [NEW]
+        const targetPartnerUid = targetPartnerSnap.exists() ? targetPartnerSnap.val() : null; // [NEW]
+        if (myPartnerUid === targetUid) { // [NEW]
+            removeBtn.style.display = 'block'; // [NEW]
+            removeBtn.onclick = () => this.removePartner(targetUid); // [NEW]
+            return; // [NEW]
+        } // [NEW]
+        if (!isFriend || myPartnerUid || targetPartnerUid) return; // [NEW]
+        loveBtn.style.display = 'block'; // [NEW]
+        if (incomingSnap.exists()) { // [NEW]
+            loveBtn.innerText = 'Принять предложение'; // [NEW]
+            loveBtn.onclick = async () => { await this.handleLoveRequest(targetUid, true); await this.updateLoveProfileActions(targetUid, isFriend); }; // [UPDATE]
+            return; // [NEW]
+        } // [NEW]
+        loveBtn.innerText = outgoingSnap.exists() ? 'Предложение отправлено' : 'Предложить стать второй половинкой'; // [NEW]
+        loveBtn.disabled = outgoingSnap.exists(); // [NEW]
+        loveBtn.onclick = async () => { await this.sendLoveRequest(targetUid); await this.updateLoveProfileActions(targetUid, isFriend); }; // [NEW]
+    } // [NEW]
+
     static updateAvatarPreview(url, name) {
         const prev = Utils.$('edit-avatar-preview');
         if (url) {
@@ -1922,6 +2196,7 @@ class ProfileManager {
         const bio = Utils.$('edit-bio').value.trim();
         const hashtags = HashtagManager.parseHashtags(Utils.$('edit-hashtags').value, false);
         const avatar = Utils.$('edit-avatar-url').value.trim();
+        const background = this.readProfileBackgroundInput(); // [NEW]
 
         if (!name || !username) throw new Error('Имя и ID обязательны');
         if (!/^[a-z0-9_]{3,15}$/.test(username)) throw new Error('ID: 3-15 символов, a-z, 0-9, _');
@@ -1944,7 +2219,7 @@ class ProfileManager {
             updates[`usernames/${username}`] = uid;
         }
 
-        updates[`users/${uid}/profile`] = { ...oldProfile, name, username, bio, hashtags, avatar };
+        updates[`users/${uid}/profile`] = { ...oldProfile, name, username, bio, hashtags, avatar, background }; // [UPDATE]
         await update(ref(db), updates);
     }
 
@@ -1979,6 +2254,9 @@ class ProfileManager {
         const hashtagsEl = Utils.$('view-hashtags');
         const profileTags = Array.isArray(profile.hashtags) ? profile.hashtags : [];
         hashtagsEl.innerHTML = profileTags.map(tag => `<span class="hashtag-chip">${Utils.escapeHtml(tag)}</span>`).join('');
+        this.applyProfileBackground(Utils.$('modal-view-profile')?.querySelector('.modal-content'), profile.background); // [NEW]
+        const targetPartnerUid = await this.getPartnerUid(targetUid); // [NEW]
+        await this.renderPartnerContainer('view-partner-container', targetPartnerUid, targetUid === AppState.currentUser.uid); // [NEW]
         
         const avatarEl = Utils.$('view-avatar');
         if (profile.avatar) {
@@ -1988,6 +2266,11 @@ class ProfileManager {
         }
 
         const actionBtn = Utils.$('btn-dm-modal');
+        const loveBtn = Utils.$('btn-love-proposal'); // [NEW]
+        const removePartnerBtn = Utils.$('btn-remove-partner'); // [NEW]
+        if (loveBtn) loveBtn.style.display = 'none'; // [NEW]
+        if (removePartnerBtn) removePartnerBtn.style.display = 'none'; // [NEW]
+        let isFriendForLove = false; // [NEW]
         if (targetUid === AppState.currentUser.uid) {
             actionBtn.style.display = 'none';
         } else {
@@ -1995,6 +2278,7 @@ class ProfileManager {
             
             const myFriendsSnap = await get(ref(db, `users/${AppState.currentUser.uid}/friends/${targetUid}`));
             const isFriend = myFriendsSnap.exists() && myFriendsSnap.val().status === 'accepted';
+            isFriendForLove = isFriend; // [NEW]
             
             if (isFriend) {
                 actionBtn.innerText = 'Написать сообщение';
@@ -2010,6 +2294,7 @@ class ProfileManager {
                 };
             }
         }
+        await this.updateLoveProfileActions(targetUid, isFriendForLove); // [NEW]
 
         Utils.$('modal-view-profile').classList.add('active');
     }
@@ -2263,7 +2548,7 @@ class DirectMessages {
                     </div>
                 `;
             }
-
+            
             return `
                 <div class="m-line ${isSelf ? 'self' : ''}">
                     <strong>${Utils.escapeHtml(isSelf ? 'Вы' : m.fromName)}</strong>
@@ -2309,7 +2594,7 @@ class DirectMessages {
             const mode = roll < 0.33 ? 'far' : roll > 0.74 ? 'near' : 'mid';
             heart.className = `love-heart ${mode}`;
             heart.innerText = RoomManager.loveHeartEmojis[Math.floor(Math.random() * RoomManager.loveHeartEmojis.length)];
-            heart.style.left = `${10 + Math.random() * 80}%`;
+            heart.style.left = `${Utils.getDistributedHeartLeft(layer, 'dm-love')}%`; // [UPDATE]
             const scaleBase = mode === 'far' ? 0.45 : mode === 'near' ? 1.15 : 0.78;
             const scale = scaleBase + Math.random() * (mode === 'near' ? 0.35 : 0.25);
             const drift = -12 + Math.random() * 24;
@@ -2734,7 +3019,7 @@ class AdminPanel {
                 const memeTexts = {
                     'moo': 'Кто-то выпустил корову на пастбище... Му-у-у! 🐄',
                     'grass': 'Пора потрогать траву, друзья! 🌱',
-                    'milk': 'Кто-нибудь желает молока? 🥛',
+                    'milk': 'кто-нибудь желает молока? 🥛',
                     'popcorn': 'Запасаемся попкорном, сейчас начнется кино! 🍿',
                     'dvd': 'Ждем, когда логотип ударится в угол... 📀',
                     'roll': 'Делаем бочку! Уууииии! 🔄',
@@ -3281,7 +3566,7 @@ class AdminPanel {
 // ============================================================================
 
 class RoomManager {
-    static themeOptions = ['default', 'love'];
+    static themeOptions = ['default', 'love', 'inverted']; // [UPDATE]
     static themeIndex = 0;
     static heartsTimer = null;
     static loveHeartEmojis = ['💗', '💘', '💞', '💕'];
@@ -3338,7 +3623,7 @@ class RoomManager {
     static initThemes() {
         const toggleBtn = Utils.$('btn-room-theme-toggle');
         const carousel = Utils.$('room-theme-carousel');
-        const prevBtn = Utils.$('room-theme-next');
+        const prevBtn = Utils.$('room-theme-prev'); // [UPDATE]
         const nextBtn = Utils.$('room-theme-next');
         const track = Utils.$('room-theme-track');
         if (!toggleBtn || !carousel || !prevBtn || !nextBtn || !track) return;
@@ -3857,8 +4142,8 @@ class RoomManager {
     static applyRoomTheme(theme = 'default') {
         const roomScreen = Utils.$('room-screen');
         if (!roomScreen) return;
-        roomScreen.classList.remove('theme-love');
-        document.body.classList.remove('theme-love-room');
+        roomScreen.classList.remove('theme-love', 'theme-inverted'); // [UPDATE]
+        document.body.classList.remove('theme-love-room', 'theme-inverted-room'); // [UPDATE]
         this.stopLoveHearts();
         
         Ambilight.updateTheme(theme);
@@ -3869,6 +4154,9 @@ class RoomManager {
             this.startLoveHearts();
             // Fallback: containers may appear a tick later after rerender.
             setTimeout(() => this.startLoveHearts(), 150);
+        } else if (theme === 'inverted') { // [NEW]
+            roomScreen.classList.add('theme-inverted'); // [NEW]
+            document.body.classList.add('theme-inverted-room'); // [NEW]
         }
     }
 
@@ -3880,7 +4168,7 @@ class RoomManager {
             const heart = document.createElement('div');
             heart.className = `love-heart ${mode}`;
             heart.innerText = this.loveHeartEmojis[Math.floor(Math.random() * this.loveHeartEmojis.length)];
-            heart.style.left = `${10 + Math.random() * 80}%`;
+            heart.style.left = `${Utils.getDistributedHeartLeft(layer, 'room-love')}%`; // [UPDATE]
             const scaleBase = mode === 'far' ? 0.45 : mode === 'near' ? 1.15 : 0.78;
             const scale = scaleBase + Math.random() * (mode === 'near' ? 0.35 : 0.25);
             const drift = -12 + Math.random() * 24;
@@ -4163,6 +4451,7 @@ class RTCManager {
 // ============================================================================
 
 window.onload = () => {
+    GlobalThemeManager.init(); // [NEW]
     AuthManager.init();
     BackgroundFX.init();
     EasterEggManager.init();

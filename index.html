@@ -4,6 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>COWIO - Online Cinema Together</title>
+    <!-- // [NEW] THEME PERSISTENCE BOOTSTRAP -->
+    <script>
+        // [NEW] Applies saved lobby theme before the first UI paint.
+        (() => { // [NEW]
+            const savedTheme = localStorage.getItem('cowio:globalTheme') || 'dark'; // [NEW]
+            const normalizedTheme = savedTheme === 'light' ? 'light' : 'dark'; // [NEW]
+            document.documentElement.dataset.globalTheme = normalizedTheme; // [NEW]
+            document.documentElement.classList.toggle('theme-light-global', normalizedTheme === 'light'); // [NEW]
+        })(); // [NEW]
+    </script>
     <style>
         /* ========================================================= */
         /* AMOLED THEME VARIABLES & RESET */
@@ -24,6 +34,32 @@
         }
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
         body { background: var(--bg); color: var(--text-main); overflow: hidden; height: 100vh; width: 100vw; }
+        /* // [NEW] GLOBAL THEME TOGGLE + PERSISTED LIGHT OVERRIDES */
+        html.theme-light-global {
+            --bg: #f5f6f8;
+            --panel: #ffffff;
+            --panel-hover: #eceef2;
+            --border: #dfe2e7;
+            --border-light: #c7ccd4;
+            --text-main: #050505;
+            --text-muted: #5f6670;
+            --accent: #111111;
+            --accent-hover: #2a2a2a;
+            --brand: #050505;
+        }
+        html.theme-light-global body { background: var(--bg); color: var(--text-main); }
+        html.theme-light-global #particle-canvas { filter: brightness(0); opacity: 0.16; }
+        html.theme-light-global input,
+        html.theme-light-global textarea { background: #ffffff; color: var(--text-main); }
+        html.theme-light-global .primary-btn { background: var(--brand); color: #ffffff; }
+        html.theme-light-global .secondary-btn { background: rgba(0,0,0,0.02); color: var(--text-main); }
+        body,
+        .glass-panel,
+        .modal-content,
+        .lobby-header,
+        input,
+        textarea,
+        button { transition: background-color 0.35s ease, background 0.35s ease, color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease, filter 0.35s ease; }
         
         /* ========================================================= */
         /* BACKGROUNDS & GLOBAL COMPONENTS */
@@ -117,6 +153,13 @@
         .lobby-header { display: flex; justify-content: space-between; align-items: center; gap: 20px; background: var(--panel); padding: 16px 24px; border-radius: 20px; border: 1px solid var(--border); }
         .lobby-header input { margin: 0; max-width: 300px; border: none; background: #040404; }
         .lobby-header button { width: auto; padding: 14px 24px; }
+        /* // [NEW] LOBBY GLOBAL THEME SLIDER */
+        .global-theme-toggle { display: flex; align-items: center; gap: 8px; flex-shrink: 0; color: var(--text-muted); font-size: 13px; font-weight: 700; }
+        .global-theme-toggle input { display: none; }
+        .global-theme-slider { width: 46px; height: 24px; border-radius: 999px; border: 1px solid var(--border-light); background: rgba(255,255,255,0.08); position: relative; transition: background 0.35s ease, border-color 0.35s ease; }
+        .global-theme-slider::before { content: ''; position: absolute; width: 18px; height: 18px; left: 3px; top: 2px; border-radius: 50%; background: var(--text-main); transition: transform 0.35s ease, background 0.35s ease; }
+        #global-theme-toggle:checked + .global-theme-slider { background: rgba(0,0,0,0.08); }
+        #global-theme-toggle:checked + .global-theme-slider::before { transform: translateX(21px); }
         
         .rooms-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; overflow-y: auto; padding-right: 10px; padding-bottom: 20px; }
         .rooms-grid::-webkit-scrollbar { width: 6px; }
@@ -215,6 +258,20 @@
         .profile-menu-dropdown.active { display: block; }
         .profile-menu-item { width: 100%; text-align: left; padding: 10px 12px; border-radius: 10px; background: transparent; color: var(--text-main); border: 1px solid transparent; font-size: 14px; }
         .profile-menu-item:hover { background: rgba(255,255,255,0.06); border-color: var(--border-light); }
+        /* // [NEW] PROFILE BACKGROUND + SECOND HALF UI */
+        .profile-background-hint { color: var(--text-muted); font-size: 12px; line-height: 1.4; margin-top: -6px; }
+        .partner-container { display: none; align-items: center; gap: 10px; padding: 12px; border-radius: 14px; border: 1px solid rgba(255,129,182,0.28); background: rgba(255,129,182,0.08); margin-bottom: 14px; text-align: left; }
+        .partner-container.active { display: flex; }
+        .partner-avatar { width: 42px; height: 42px; border-radius: 50%; overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: #111; border: 1px solid var(--border-light); font-weight: 800; }
+        .partner-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .partner-info { flex: 1; min-width: 0; }
+        .partner-label { font-size: 11px; color: #ff9cca; font-weight: 800; margin-bottom: 2px; }
+        .partner-name { font-size: 14px; color: var(--text-main); font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .love-requests-box { display: none; padding: 12px; border-radius: 14px; border: 1px solid rgba(255,129,182,0.28); background: rgba(255,129,182,0.07); }
+        .love-requests-box.active { display: block; }
+        .love-request-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--text-main); }
+        .love-request-actions { display: flex; gap: 6px; flex-shrink: 0; }
+        .love-request-actions button { width: auto; padding: 7px 9px; border-radius: 8px; font-size: 11px; }
         .security-email-box { padding: 12px; border-radius: 12px; border: 1px solid var(--border-light); background: rgba(255,255,255,0.02); margin-bottom: 12px; }
         .security-note { color: var(--text-muted); font-size: 13px; margin-bottom: 12px; }
         .hashtag-input-wrap { position: relative; }
@@ -263,6 +320,8 @@
         .theme-rect.default::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, #0d0d10 0%, #040404 100%); }
         .theme-rect.love::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 20% 15%, #66304f 0%, #301226 50%, #10050d 100%); }
         .theme-rect.love::after { content: '❤  ❤  ❤'; position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); color: rgba(255,153,204,0.85); letter-spacing: 6px; font-size: 11px; }
+        .theme-rect.inverted::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, #f8f8f8 0%, #d9dce2 100%); }
+        .theme-rect.inverted::after { content: ''; position: absolute; width: 52px; height: 52px; border-radius: 50%; left: 30px; top: 46px; background: #050505; box-shadow: 0 0 22px rgba(0,0,0,0.28); }
         .theme-name { margin-top: 10px; font-size: 13px; color: var(--text-muted); text-transform: lowercase; font-weight: 600; }
         .theme-check { margin-top: 6px; font-size: 16px; line-height: 1; color: transparent; transition: color 0.2s ease, text-shadow 0.2s ease; }
         .theme-card.active .theme-name { color: var(--text-main); }
@@ -301,6 +360,21 @@
         #room-screen.theme-love .room-top-bar,
         #room-screen.theme-love .video-container,
         #room-screen.theme-love .chat-section { border-color: rgba(214, 120, 166, 0.24); }
+        /* // [NEW] INVERTED ROOM THEME */
+        body.theme-inverted-room #particle-canvas { filter: brightness(0); opacity: 0.22; }
+        #room-screen.theme-inverted { --bg: #f7f8fa; --panel: rgba(255,255,255,0.94); --panel-hover: #eceff3; --border: #d9dde4; --border-light: #bfc5ce; --text-main: #050505; --text-muted: #555e68; --accent: #050505; --accent-hover: #222222; --brand: #050505; background: var(--bg); color: var(--text-main); position: relative; overflow: hidden; }
+        #room-screen.theme-inverted .glass-panel,
+        #room-screen.theme-inverted .chat-section,
+        #room-screen.theme-inverted .chat-input-area,
+        #room-screen.theme-inverted .input-wrapper,
+        #room-screen.theme-inverted .bubble,
+        #room-screen.theme-inverted .user-item { background: var(--panel); border-color: var(--border-light); color: var(--text-main); box-shadow: 0 12px 35px rgba(0,0,0,0.12); }
+        #room-screen.theme-inverted .self .bubble { background: #050505; color: #ffffff; border-color: #050505; }
+        #room-screen.theme-inverted input { background: #ffffff; color: var(--text-main); }
+        #room-screen.theme-inverted .send-btn,
+        #room-screen.theme-inverted #btn-share-room,
+        #room-screen.theme-inverted #btn-room-settings,
+        #room-screen.theme-inverted #btn-leave-room { background: #050505; color: #ffffff; border-color: #050505; }
         .chat-content-area { position: relative; overflow: hidden; z-index: 2; }
         .panel-love-hearts { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 1; }
         .love-heart { position: absolute; bottom: -70px; width: auto; height: auto; opacity: 0; animation: loveFloatUp 28s linear forwards; font-size: 32px; line-height: 1; filter: brightness(0.88) saturate(0.88) contrast(0.98); text-shadow: 0 0 10px rgba(255, 102, 194, 0.2); }
@@ -412,6 +486,13 @@
             <main class="rooms-main">
                 <header class="lobby-header glass-panel">
                     <input type="text" id="search-rooms" placeholder="Поиск комнат по названию...">
+                    <!-- // [NEW] GLOBAL THEME TOGGLE -->
+                    <label class="global-theme-toggle" title="Светлая тема">
+                        <span>🌙</span>
+                        <input type="checkbox" id="global-theme-toggle">
+                        <span class="global-theme-slider"></span>
+                        <span>☀️</span>
+                    </label>
                     <button class="primary-btn" id="btn-open-create-room">+ Создать комнату</button>
                 </header>
                 
@@ -493,6 +574,12 @@
                 <input type="text" id="edit-name" placeholder="Отображаемое имя (напр. Алексей)">
                 <input type="text" id="edit-username-input" placeholder="Уникальный ID (напр. @alexey99)">
                 <textarea id="edit-bio" placeholder="Расскажите немного о себе..." rows="3"></textarea>
+                <!-- // [NEW] PROFILE BACKGROUND SETTING -->
+                <input type="text" id="edit-background-input" placeholder="Фон профиля: #111 / linear-gradient(...) / URL картинки">
+                <div class="profile-background-hint">Цвет, CSS-gradient или ссылка на изображение.</div>
+                <!-- // [NEW] SECOND HALF SELF PROFILE UI -->
+                <div class="partner-container" id="edit-partner-container"></div>
+                <div class="love-requests-box" id="my-love-requests"></div>
                 <div class="hashtag-input-wrap">
                     <div class="hashtag-suggestions" id="profile-hashtag-suggestions"></div>
                     <input type="text" id="edit-hashtags" placeholder="#music #movies #gaming">
@@ -526,10 +613,15 @@
             <h2 id="view-name" style="margin-bottom: 5px;">Пользователь</h2>
             <div id="view-username" style="color: var(--accent); font-size: 14px; margin-bottom: 15px; font-weight: 600;">@user</div>
             <p id="view-bio" style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px; line-height: 1.5;"></p>
+            <!-- // [NEW] SECOND HALF PROFILE CONTAINER -->
+            <div class="partner-container" id="view-partner-container"></div>
             <div class="hashtags-list" id="view-hashtags"></div>
             
             <div id="view-profile-actions" style="display: flex; flex-direction: column; gap: 10px;">
                 <button class="primary-btn" id="btn-dm-modal">Написать сообщение</button>
+                <!-- // [NEW] SECOND HALF PROFILE ACTIONS -->
+                <button class="secondary-btn" id="btn-love-proposal" style="display:none;">Предложить стать второй половинкой</button>
+                <button class="danger-btn" id="btn-remove-partner" style="display:none;">Убрать вторую половинку</button>
                 <button class="secondary-btn btn-close-modal">Закрыть</button>
             </div>
         </div>
@@ -590,6 +682,12 @@
                                 <div class="theme-card" data-theme="love">
                                     <div class="theme-rect love"></div>
                                     <div class="theme-name">love</div>
+                                    <div class="theme-check">✓</div>
+                                </div>
+                                <!-- // [NEW] INVERTED ROOM THEME CARD -->
+                                <div class="theme-card" data-theme="inverted">
+                                    <div class="theme-rect inverted"></div>
+                                    <div class="theme-name">inverted</div>
                                     <div class="theme-check">✓</div>
                                 </div>
                             </div>
