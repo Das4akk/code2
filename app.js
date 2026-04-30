@@ -62,7 +62,12 @@ const AppState = {
     inviteCooldowns: new Map(),
     admin: {
         settings: {
-            roomCreationBlocked: false
+            roomCreationBlocked: false,
+            globalChatLocked: false,
+            globalReactionsBlocked: false,
+            globalInvitesBlocked: false,
+            globalRegistrationsBlocked: false,
+            maintenanceMode: false
         },
         lastAnnouncementId: null,
         activeSection: 'dashboard',
@@ -423,13 +428,22 @@ class Utils {
             body.theme-light-global #lobby-screen,
             body.theme-light-global #room-screen,
             body.theme-light-global .screen {
-                background: linear-gradient(135deg, #f7f2e8 0%, #f1eadf 48%, #ece3d5 100%) !important;
+                background: transparent !important;
+                background-color: transparent !important;
             }
             .theme-light-global #particle-canvas,
             body.theme-light-global #particle-canvas {
                 opacity: 1 !important;
                 filter: contrast(1.25) !important;
+                display: block !important;
             }
+            #particle-canvas {
+                position: fixed !important;
+                inset: 0 !important;
+                z-index: 0 !important;
+                pointer-events: none !important;
+            }
+            #auth-screen, #lobby-screen, #room-screen { position: relative; z-index: 2; }
             .theme-light-global .glass-panel,
             .theme-light-global .room-card,
             .theme-light-global .user-item,
@@ -1786,6 +1800,7 @@ class AuthManager {
         };
 
         Utils.$('btn-do-reg').onclick = async () => {
+            if (AppState.admin.settings.globalRegistrationsBlocked) return Utils.toast('Регистрация временно отключена', 'error');
             const email = Utils.$('reg-email').value.trim();
             const pass = Utils.$('reg-pass').value.trim();
             const name = Utils.$('reg-name').value.trim();
@@ -3071,6 +3086,7 @@ class DirectMessages {
 
     static async sendRoomInvite(targetUid) {
         if (!AppState.currentRoomId || !targetUid || targetUid === AppState.currentUser.uid) return;
+        if (AppState.admin.settings.globalInvitesBlocked && !AdminPanel.isCurrentUserAdmin()) return Utils.toast('Инвайты временно отключены администратором', 'error');
         if (AppState.currentPresenceCache?.[targetUid]) return Utils.toast('Пользователь уже находится в комнате', 'error');
 
         const roomData = AppState.roomsCache.get(AppState.currentRoomId);
@@ -3366,6 +3382,16 @@ class AdminPanel {
                         </div>
                     </div>
                 </div>
+                <div class="godmode-section active" data-section="dashboard" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02); margin-bottom:16px;">
+                    <div style="font-weight:700; margin-bottom:10px;">Глобальные функции</div>
+                    <div style="display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px;">
+                        <button class="secondary-btn" id="btn-admin-global-chat-lock">Глобальный lock чата</button>
+                        <button class="secondary-btn" id="btn-admin-global-reactions-lock">Блок реакций</button>
+                        <button class="secondary-btn" id="btn-admin-global-invites-lock">Блок инвайтов</button>
+                        <button class="secondary-btn" id="btn-admin-global-reg-lock">Блок регистраций</button>
+                        <button class="secondary-btn" id="btn-admin-global-maintenance">Maintenance mode</button>
+                    </div>
+                </div>
 
                 <div class="godmode-section" data-section="rooms" style="display:grid; grid-template-columns:1fr; gap:16px;">
                     <div style="display:flex; flex-direction:column; gap:16px; min-width:0;">
@@ -3430,6 +3456,11 @@ class AdminPanel {
         Utils.$('btn-admin-clear-user-editor').onclick = () => this.renderEmptyUserEditor();
         Utils.$('btn-admin-export-snapshot').onclick = () => this.exportAdminSnapshot();
         Utils.$('btn-admin-unmute-unban-all').onclick = () => this.unmuteAndUnbanAllUsers();
+        Utils.$('btn-admin-global-chat-lock').onclick = () => this.toggleGlobalSetting('globalChatLocked', 'Глобальный lock чата');
+        Utils.$('btn-admin-global-reactions-lock').onclick = () => this.toggleGlobalSetting('globalReactionsBlocked', 'Блок реакций');
+        Utils.$('btn-admin-global-invites-lock').onclick = () => this.toggleGlobalSetting('globalInvitesBlocked', 'Блок инвайтов');
+        Utils.$('btn-admin-global-reg-lock').onclick = () => this.toggleGlobalSetting('globalRegistrationsBlocked', 'Блок регистраций');
+        Utils.$('btn-admin-global-maintenance').onclick = () => this.toggleGlobalSetting('maintenanceMode', 'Maintenance mode');
         Utils.$('btn-admin-clear-audit').onclick = () => this.clearAuditLog();
         Utils.$('admin-user-search').onkeydown = (e) => { if (e.key === 'Enter') this.findUser(); };
 
@@ -3450,6 +3481,17 @@ class AdminPanel {
             const nodeSection = node.dataset.section || 'dashboard';
             node.classList.toggle('active', section === nodeSection);
         });
+    }
+
+    static async toggleGlobalSetting(settingKey, label) {
+        if (!this.requireAdmin()) return;
+        if (!this.isCurrentUserCreator()) return Utils.toast('Только Создатель может менять глобальные настройки', 'error');
+        const current = Boolean(AppState.admin.settings?.[settingKey]);
+        const next = !current;
+        await update(ref(db, 'admin/settings'), { [settingKey]: next });
+        await this.pushAuditLog('admin.setting.toggle', { settingKey, enabled: next });
+        Utils.toast(`${label}: ${next ? 'ON' : 'OFF'}`);
+        this.renderIfOpen();
     }
 
     static async pushAuditLog(action = '', payload = {}) {
@@ -3544,7 +3586,15 @@ class AdminPanel {
         const forceLeaveRoomRef = ref(db, `admin/actions/forceLeaveRoom/${AppState.currentUser.uid}`);
 
         const settingsUnsub = onValue(settingsRef, (snap) => {
-            AppState.admin.settings = { roomCreationBlocked: false, ...(snap.val() || {}) };
+            AppState.admin.settings = {
+                roomCreationBlocked: false,
+                globalChatLocked: false,
+                globalReactionsBlocked: false,
+                globalInvitesBlocked: false,
+                globalRegistrationsBlocked: false,
+                maintenanceMode: false,
+                ...(snap.val() || {})
+            };
             RoomManager.applyCreateRoomAvailability();
             this.renderIfOpen();
         });
@@ -3723,6 +3773,15 @@ class AdminPanel {
 
         const lockBtn = Utils.$('btn-admin-toggle-room-lock');
         if (lockBtn) lockBtn.innerText = AppState.admin.settings.roomCreationBlocked ? 'Разблокировать создание комнат' : 'Блокировать создание комнат';
+        const setBtn = (id, key, label) => {
+            const btn = Utils.$(id);
+            if (btn) btn.innerText = `${label}: ${AppState.admin.settings[key] ? 'ON' : 'OFF'}`;
+        };
+        setBtn('btn-admin-global-chat-lock', 'globalChatLocked', 'Глобальный lock чата');
+        setBtn('btn-admin-global-reactions-lock', 'globalReactionsBlocked', 'Блок реакций');
+        setBtn('btn-admin-global-invites-lock', 'globalInvitesBlocked', 'Блок инвайтов');
+        setBtn('btn-admin-global-reg-lock', 'globalRegistrationsBlocked', 'Блок регистраций');
+        setBtn('btn-admin-global-maintenance', 'maintenanceMode', 'Maintenance mode');
     }
 
     static renderAuditLog() {
@@ -4259,7 +4318,7 @@ class RoomManager {
         const btn = Utils.$('btn-open-create-room');
         if (!btn) return;
 
-        const blockedForUser = AppState.admin.settings.roomCreationBlocked && !AdminPanel.isCurrentUserAdmin();
+        const blockedForUser = (AppState.admin.settings.roomCreationBlocked || AppState.admin.settings.maintenanceMode) && !AdminPanel.isCurrentUserAdmin();
         btn.disabled = blockedForUser;
         btn.title = blockedForUser ? 'Создание комнат временно отключено администратором' : '';
     }
@@ -4473,6 +4532,9 @@ class RoomManager {
     }
 
     static async attemptJoinRoom(roomId, roomData) {
+        if (AppState.admin.settings.maintenanceMode && !AdminPanel.isCurrentUserAdmin()) {
+            return Utils.toast('Сервис в режиме обслуживания, доступ временно ограничен', 'error');
+        }
         if (roomData.isPrivate && roomData.hostId !== AppState.currentUser.uid) {
             AppState.pendingJoinRoomId = roomId; Utils.$('join-room-password').value = ''; Utils.$('modal-password').classList.add('active');
             Utils.$('btn-submit-password').onclick = async () => {
@@ -4636,6 +4698,7 @@ class RoomManager {
         Utils.$('send-btn').onclick = async () => {
             const input = Utils.$('chat-input');
             if (!input.value.trim() || !this.hasPerm('chat')) return;
+            if (AppState.admin.settings.globalChatLocked && !AdminPanel.isCurrentUserAdmin()) return Utils.toast('Глобальный чат временно заблокирован', 'error');
             const text = input.value.trim();
             const meModerationSnap = await get(ref(db, `users/${uid}/moderation`));
             const meModeration = meModerationSnap.val() || {};
@@ -4657,6 +4720,7 @@ class RoomManager {
         document.querySelectorAll('.react-btn').forEach(btn => {
             btn.onclick = () => {
                 if(!this.hasPerm('reactions')) return;
+                if (AppState.admin.settings.globalReactionsBlocked && !AdminPanel.isCurrentUserAdmin()) return Utils.toast('Глобальные реакции временно отключены', 'error');
                 push(reactionsRef, { emoji: btn.dataset.emoji, ts: Date.now() });
             };
         });
