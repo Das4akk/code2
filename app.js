@@ -411,15 +411,18 @@ class Utils {
             }
             .theme-light-global body,
             body.theme-light-global {
-                background: linear-gradient(135deg, #edf1f6 0%, #e7ecf2 48%, #dde4ed 100%) !important;
+                background:
+                    radial-gradient(1100px 520px at 8% -10%, rgba(139, 170, 255, 0.18) 0%, rgba(139, 170, 255, 0) 62%),
+                    radial-gradient(900px 460px at 102% 8%, rgba(124, 236, 255, 0.16) 0%, rgba(124, 236, 255, 0) 58%),
+                    linear-gradient(135deg, #edf3fb 0%, #e8eff8 48%, #dfe9f5 100%) !important;
                 color: #2e271d !important;
             }
             .theme-light-global,
             html.theme-light-global,
             html[data-global-theme="light"] {
                 --bg: #e8edf4 !important;
-                --panel: rgba(244, 248, 253, 0.9) !important;
-                --panel-hover: rgba(237, 243, 250, 0.96) !important;
+                --panel: rgba(246, 251, 255, 0.88) !important;
+                --panel-hover: rgba(238, 246, 255, 0.96) !important;
                 --border: rgba(0, 0, 0, 0.25) !important;
                 --border-light: rgba(0, 0, 0, 0.42) !important;
                 --text-main: #1f1a13 !important;
@@ -440,8 +443,8 @@ class Utils {
             }
             .theme-light-global #particle-canvas,
             body.theme-light-global #particle-canvas {
-                opacity: 0.72 !important;
-                filter: contrast(1.08) brightness(1) !important;
+                opacity: 0.76 !important;
+                filter: contrast(1.12) saturate(1.08) brightness(1.03) !important;
                 display: block !important;
             }
             #particle-canvas {
@@ -459,15 +462,15 @@ class Utils {
             .theme-light-global .player-section,
             .theme-light-global .modal-content {
                 border: 2px solid rgba(0, 0, 0, 0.56) !important;
-                background: rgba(240, 246, 252, 0.88) !important;
-                box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12) inset, 0 8px 20px rgba(0, 0, 0, 0.08);
+                background: linear-gradient(180deg, rgba(248,253,255,0.9) 0%, rgba(241,248,255,0.86) 100%) !important;
+                box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1) inset, 0 12px 28px rgba(32, 66, 112, 0.12);
             }
             .theme-light-global .bubble,
             .theme-light-global .friend-request-item,
             .theme-light-global .room-info,
             .theme-light-global .perm-controls {
                 border: 2px solid rgba(0, 0, 0, 0.48) !important;
-                background: rgba(248, 252, 255, 0.86) !important;
+                background: rgba(251, 254, 255, 0.9) !important;
             }
             .theme-light-global button,
             .theme-light-global .primary-btn,
@@ -770,7 +773,16 @@ class BackgroundFX {
             }
             draw() {
                 const isLight = document.body.classList.contains('theme-light-global');
-                ctx.fillStyle = isLight ? "rgba(0,0,0,0.24)" : "rgba(255,255,255,0.39)";
+                if (isLight) {
+                    const glow = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size * 2.8);
+                    glow.addColorStop(0, 'rgba(90, 140, 220, 0.28)');
+                    glow.addColorStop(1, 'rgba(90, 140, 220, 0)');
+                    ctx.fillStyle = glow;
+                    ctx.beginPath(); ctx.arc(this.x, this.y, this.size * 2.8, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = "rgba(25,45,82,0.24)";
+                } else {
+                    ctx.fillStyle = "rgba(255,255,255,0.39)";
+                }
                 ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
             }
         }
@@ -780,6 +792,7 @@ class BackgroundFX {
         function animate() {
             if (!isTabVisible) return; 
             ctx.clearRect(0, 0, canvas.width, canvas.height); // [FIX] Made clearRect so premium background shines through beautifully
+            const t = performance.now() * 0.0016;
 
             for (let i = 0; i < dots.length; i++) {
                 dots[i].update(); dots[i].draw();
@@ -801,8 +814,17 @@ class BackgroundFX {
                         const distance = Math.sqrt(dist);
                         const proximity = Math.max(0, 1 - distance / 158);
                         const baseAlpha = Math.max(0.08, 0.39 - distance / 2000);
-                        const alpha = Math.min(0.55, (baseAlpha + proximity * 0.22) * nextStrength);
-                        ctx.strokeStyle = isLight ? `rgba(0, 0, 0, ${Math.min(0.45, alpha)})` : `rgba(255, 255, 255, ${alpha})`;
+                        const pulse = 0.92 + Math.sin(t + i * 0.21 + j * 0.13) * 0.08;
+                        const alpha = Math.min(0.55, (baseAlpha + proximity * 0.22) * nextStrength * pulse);
+                        if (isLight) {
+                            const gradient = ctx.createLinearGradient(dots[i].x, dots[i].y, dots[j].x, dots[j].y);
+                            gradient.addColorStop(0, `rgba(46, 76, 122, ${Math.min(0.36, alpha)})`);
+                            gradient.addColorStop(0.5, `rgba(78, 127, 205, ${Math.min(0.45, alpha + 0.04)})`);
+                            gradient.addColorStop(1, `rgba(41, 69, 112, ${Math.min(0.34, alpha)})`);
+                            ctx.strokeStyle = gradient;
+                        } else {
+                            ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+                        }
                         ctx.lineWidth = (isLight ? 1.6 : 1.4) * (0.75 + nextStrength * 0.25);
                         ctx.beginPath(); ctx.moveTo(dots[i].x, dots[i].y); ctx.lineTo(dots[j].x, dots[j].y); ctx.stroke();
                     }
