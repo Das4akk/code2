@@ -330,6 +330,12 @@ class Utils {
                 border: 1px solid rgba(255, 165, 2, 0.4);
                 box-shadow: 0 0 8px rgba(255, 165, 2, 0.2);
             }
+            .badge-hybrid {
+                background: rgba(93, 63, 211, 0.15);
+                color: #8d63ff;
+                border: 1px solid rgba(141, 99, 255, 0.45);
+                box-shadow: 0 0 8px rgba(141, 99, 255, 0.25);
+            }
 
             /* СТИЛИ ФУТЕРА С ССЫЛКАМИ */
             #bottom-footer-links {
@@ -405,15 +411,15 @@ class Utils {
             }
             .theme-light-global body,
             body.theme-light-global {
-                background: linear-gradient(135deg, #e6dfd2 0%, #ddd4c6 48%, #d2c8b9 100%) !important;
+                background: linear-gradient(135deg, #edf1f6 0%, #e7ecf2 48%, #dde4ed 100%) !important;
                 color: #2e271d !important;
             }
             .theme-light-global,
             html.theme-light-global,
             html[data-global-theme="light"] {
-                --bg: #e0d7c8 !important;
-                --panel: rgba(236, 228, 214, 0.9) !important;
-                --panel-hover: rgba(231, 221, 206, 0.96) !important;
+                --bg: #e8edf4 !important;
+                --panel: rgba(244, 248, 253, 0.9) !important;
+                --panel-hover: rgba(237, 243, 250, 0.96) !important;
                 --border: rgba(0, 0, 0, 0.25) !important;
                 --border-light: rgba(0, 0, 0, 0.42) !important;
                 --text-main: #1f1a13 !important;
@@ -434,8 +440,8 @@ class Utils {
             }
             .theme-light-global #particle-canvas,
             body.theme-light-global #particle-canvas {
-                opacity: 0.58 !important;
-                filter: contrast(0.92) brightness(0.9) !important;
+                opacity: 0.72 !important;
+                filter: contrast(1.08) brightness(1) !important;
                 display: block !important;
             }
             #particle-canvas {
@@ -453,7 +459,7 @@ class Utils {
             .theme-light-global .player-section,
             .theme-light-global .modal-content {
                 border: 2px solid rgba(0, 0, 0, 0.56) !important;
-                background: rgba(232, 222, 206, 0.86) !important;
+                background: rgba(240, 246, 252, 0.88) !important;
                 box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12) inset, 0 8px 20px rgba(0, 0, 0, 0.08);
             }
             .theme-light-global .bubble,
@@ -461,7 +467,7 @@ class Utils {
             .theme-light-global .room-info,
             .theme-light-global .perm-controls {
                 border: 2px solid rgba(0, 0, 0, 0.48) !important;
-                background: rgba(238, 230, 216, 0.84) !important;
+                background: rgba(248, 252, 255, 0.86) !important;
             }
             .theme-light-global button,
             .theme-light-global .primary-btn,
@@ -763,7 +769,7 @@ class BackgroundFX {
             }
             draw() {
                 const isLight = document.body.classList.contains('theme-light-global');
-                ctx.fillStyle = isLight ? "rgba(22,26,32,0.28)" : "rgba(255,255,255,0.39)";
+                ctx.fillStyle = isLight ? "rgba(0,0,0,0.24)" : "rgba(255,255,255,0.39)";
                 ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
             }
         }
@@ -786,7 +792,7 @@ class BackgroundFX {
                         const proximity = Math.max(0, 1 - distance / 158);
                         const baseAlpha = Math.max(0.08, 0.39 - distance / 2000);
                         const alpha = Math.min(0.55, baseAlpha + proximity * 0.22);
-                        ctx.strokeStyle = isLight ? `rgba(28, 34, 44, ${Math.min(0.52, alpha)})` : `rgba(255, 255, 255, ${alpha})`; 
+                        ctx.strokeStyle = isLight ? `rgba(0, 0, 0, ${Math.min(0.45, alpha)})` : `rgba(255, 255, 255, ${alpha})`; 
                         ctx.lineWidth = isLight ? 1.6 : 1.4;
                         ctx.beginPath(); ctx.moveTo(dots[i].x, dots[i].y); ctx.lineTo(dots[j].x, dots[j].y); ctx.stroke();
                     }
@@ -1979,6 +1985,10 @@ class ProfileManager {
         const badges = []; // [UPDATE]
         if (AdminPanel.isCreatorProfile(profile, uid)) badges.push(`<span class="role-badge badge-creator">Создатель</span>`); // [UPDATE]
         if (AdminPanel.isModeratorProfile(profile, uid)) badges.push(`<span class="role-badge badge-moderator">Модератор</span>`); // [UPDATE]
+        const adminBadge = String(profile?.adminBadge || '').toLowerCase().trim();
+        if (adminBadge === 'creator') badges.push(`<span class="role-badge badge-creator">Плашка: Создатель</span>`);
+        if (adminBadge === 'moderator') badges.push(`<span class="role-badge badge-moderator">Плашка: Модератор</span>`);
+        if (adminBadge === 'creator_moderator') badges.push(`<span class="role-badge badge-hybrid">Создатель/Модератор</span>`);
         if (profile?.partner) badges.push(`<span class="partner-badge">💖 Пара</span>`); // [UPDATE]
         return badges.join(' '); // [UPDATE]
     }
@@ -3366,6 +3376,12 @@ class AdminPanel {
                         <button class="primary-btn" id="btn-admin-grant-mod" style="width:auto; padding:0 16px;">Назначить Модератора</button>
                         <button class="danger-btn" id="btn-admin-revoke-mod" style="width:auto; padding:0 16px;">Снять Модератора</button>
                     </div>
+                    <div style="display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin-top:10px;">
+                        <button class="secondary-btn" id="btn-admin-badge-creator">Плашка Создатель</button>
+                        <button class="secondary-btn" id="btn-admin-badge-moderator">Плашка Модератор</button>
+                        <button class="secondary-btn" id="btn-admin-badge-hybrid">Плашка Создатель/Модератор</button>
+                        <button class="danger-btn" id="btn-admin-badge-remove">Снять плашку</button>
+                    </div>
                 </div>
 
                 <div class="godmode-section active" data-section="dashboard" style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin-bottom:16px;">
@@ -3482,6 +3498,10 @@ class AdminPanel {
 
         Utils.$('btn-admin-grant-mod').onclick = () => this.toggleModRole(true);
         Utils.$('btn-admin-revoke-mod').onclick = () => this.toggleModRole(false);
+        Utils.$('btn-admin-badge-creator').onclick = () => this.setAdminBadgeForUser('creator');
+        Utils.$('btn-admin-badge-moderator').onclick = () => this.setAdminBadgeForUser('moderator');
+        Utils.$('btn-admin-badge-hybrid').onclick = () => this.setAdminBadgeForUser('creator_moderator');
+        Utils.$('btn-admin-badge-remove').onclick = () => this.setAdminBadgeForUser(null);
         modal.querySelectorAll('.godmode-nav-btn').forEach(btn => {
             btn.onclick = () => this.switchGodModeSection(btn.dataset.section || 'dashboard');
         });
@@ -3523,6 +3543,7 @@ class AdminPanel {
 
     static async clearAuditLog() {
         if (!this.requireAdmin()) return;
+        if (!this.isCurrentUserCreator()) return Utils.toast('Только Создатель может очищать лог', 'error');
         await remove(ref(db, 'admin/auditLog'));
         Utils.toast('Audit log очищен');
     }
@@ -3587,6 +3608,24 @@ class AdminPanel {
         await this.pushAuditLog('moderator.toggle', { targetUid, grant });
         Utils.toast(grant ? 'Права модератора выданы' : 'Права модератора сняты');
         Utils.$('admin-mod-username').value = '';
+    }
+
+    static async setAdminBadgeForUser(mode = null) {
+        if (!this.isCurrentUserCreator()) return Utils.toast('Только Создатель может управлять плашками', 'error');
+        const username = Utils.$('admin-mod-username').value.trim().toLowerCase().replace('@', '');
+        if (!username) return Utils.toast('Введите ID пользователя', 'error');
+
+        const snap = await get(ref(db, `usernames/${username}`));
+        if (!snap.exists()) return Utils.toast('Пользователь не найден', 'error');
+        const targetUid = snap.val();
+
+        const allowed = [null, 'creator', 'moderator', 'creator_moderator'];
+        if (!allowed.includes(mode)) return Utils.toast('Неверный тип плашки', 'error');
+
+        await update(ref(db, `users/${targetUid}/profile`), { adminBadge: mode || null });
+        await this.pushAuditLog('admin.badge.update', { targetUid, adminBadge: mode || null });
+        const msg = mode ? `Плашка обновлена: ${mode}` : 'Плашка снята';
+        Utils.toast(msg);
     }
 
     static init() {
