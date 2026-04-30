@@ -391,11 +391,11 @@ class Utils {
             .theme-light-global select {
                 color: #111 !important;
                 background: rgba(250, 246, 238, 0.96) !important;
-                border: 2px solid rgba(80, 72, 58, 0.42) !important;
+                border: 2px solid rgba(0, 0, 0, 0.62) !important;
             }
             .theme-light-global input::placeholder,
             .theme-light-global textarea::placeholder {
-                color: rgba(56, 48, 36, 0.62) !important;
+                color: rgba(0, 0, 0, 0.46) !important;
             }
             .theme-light-global body,
             body.theme-light-global {
@@ -409,15 +409,15 @@ class Utils {
             .theme-light-global .chat-section,
             .theme-light-global .player-section,
             .theme-light-global .modal-content {
-                border: 2px solid rgba(70, 62, 49, 0.36) !important;
+                border: 2px solid rgba(0, 0, 0, 0.56) !important;
                 background: rgba(252, 247, 237, 0.88) !important;
-                box-shadow: 0 0 0 1px rgba(70, 62, 49, 0.14) inset, 0 8px 20px rgba(70, 62, 49, 0.08);
+                box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12) inset, 0 8px 20px rgba(0, 0, 0, 0.08);
             }
             .theme-light-global .bubble,
             .theme-light-global .friend-request-item,
             .theme-light-global .room-info,
             .theme-light-global .perm-controls {
-                border: 2px solid rgba(70, 62, 49, 0.28) !important;
+                border: 2px solid rgba(0, 0, 0, 0.48) !important;
                 background: rgba(255, 251, 243, 0.88) !important;
             }
             .theme-light-global button,
@@ -427,9 +427,9 @@ class Utils {
             .theme-light-global .dm-btn,
             .theme-light-global .add-friend-btn,
             .theme-light-global .btn-small {
-                border: 2px solid rgba(68, 60, 48, 0.55) !important;
+                border: 2px solid rgba(0, 0, 0, 0.68) !important;
                 outline: none !important;
-                box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.72) inset;
+                box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.82) inset;
             }
 
             .room-card {
@@ -720,7 +720,7 @@ class BackgroundFX {
             }
             draw() {
                 const isLight = document.body.classList.contains('theme-light-global');
-                ctx.fillStyle = isLight ? "rgba(40,34,24,0.42)" : "rgba(255,255,255,0.78)";
+                ctx.fillStyle = isLight ? "rgba(0,0,0,0.62)" : "rgba(255,255,255,0.78)";
                 ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
             }
         }
@@ -740,7 +740,7 @@ class BackgroundFX {
                     if (dist < 25000) { 
                         const isLight = document.body.classList.contains('theme-light-global');
                         const alpha = Math.max(0.08, 0.72 - Math.sqrt(dist) / 1000);
-                        ctx.strokeStyle = isLight ? `rgba(44, 38, 28, ${alpha * 0.75})` : `rgba(255, 255, 255, ${alpha})`; 
+                        ctx.strokeStyle = isLight ? `rgba(0, 0, 0, ${Math.min(0.85, alpha)})` : `rgba(255, 255, 255, ${alpha})`; 
                         ctx.lineWidth = isLight ? 1.2 : 1.4;
                         ctx.beginPath(); ctx.moveTo(dots[i].x, dots[i].y); ctx.lineTo(dots[j].x, dots[j].y); ctx.stroke();
                     }
