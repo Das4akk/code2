@@ -405,15 +405,15 @@ class Utils {
             }
             .theme-light-global body,
             body.theme-light-global {
-                background: linear-gradient(135deg, #f7f2e8 0%, #f1eadf 48%, #ece3d5 100%) !important;
+                background: linear-gradient(135deg, #e6dfd2 0%, #ddd4c6 48%, #d2c8b9 100%) !important;
                 color: #2e271d !important;
             }
             .theme-light-global,
             html.theme-light-global,
             html[data-global-theme="light"] {
-                --bg: #f4eee2 !important;
-                --panel: rgba(252, 247, 237, 0.92) !important;
-                --panel-hover: rgba(250, 244, 233, 0.98) !important;
+                --bg: #e0d7c8 !important;
+                --panel: rgba(236, 228, 214, 0.9) !important;
+                --panel-hover: rgba(231, 221, 206, 0.96) !important;
                 --border: rgba(0, 0, 0, 0.25) !important;
                 --border-light: rgba(0, 0, 0, 0.42) !important;
                 --text-main: #1f1a13 !important;
@@ -434,8 +434,8 @@ class Utils {
             }
             .theme-light-global #particle-canvas,
             body.theme-light-global #particle-canvas {
-                opacity: 1 !important;
-                filter: contrast(1.25) !important;
+                opacity: 0.58 !important;
+                filter: contrast(0.92) brightness(0.9) !important;
                 display: block !important;
             }
             #particle-canvas {
@@ -453,7 +453,7 @@ class Utils {
             .theme-light-global .player-section,
             .theme-light-global .modal-content {
                 border: 2px solid rgba(0, 0, 0, 0.56) !important;
-                background: rgba(252, 247, 237, 0.88) !important;
+                background: rgba(232, 222, 206, 0.86) !important;
                 box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12) inset, 0 8px 20px rgba(0, 0, 0, 0.08);
             }
             .theme-light-global .bubble,
@@ -461,7 +461,7 @@ class Utils {
             .theme-light-global .room-info,
             .theme-light-global .perm-controls {
                 border: 2px solid rgba(0, 0, 0, 0.48) !important;
-                background: rgba(255, 251, 243, 0.88) !important;
+                background: rgba(238, 230, 216, 0.84) !important;
             }
             .theme-light-global button,
             .theme-light-global .primary-btn,
@@ -763,7 +763,7 @@ class BackgroundFX {
             }
             draw() {
                 const isLight = document.body.classList.contains('theme-light-global');
-                ctx.fillStyle = isLight ? "rgba(0,0,0,0.44)" : "rgba(255,255,255,0.39)";
+                ctx.fillStyle = isLight ? "rgba(22,26,32,0.28)" : "rgba(255,255,255,0.39)";
                 ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
             }
         }
@@ -786,7 +786,7 @@ class BackgroundFX {
                         const proximity = Math.max(0, 1 - distance / 158);
                         const baseAlpha = Math.max(0.08, 0.39 - distance / 2000);
                         const alpha = Math.min(0.55, baseAlpha + proximity * 0.22);
-                        ctx.strokeStyle = isLight ? `rgba(0, 0, 0, ${Math.min(0.75, alpha)})` : `rgba(255, 255, 255, ${alpha})`; 
+                        ctx.strokeStyle = isLight ? `rgba(28, 34, 44, ${Math.min(0.52, alpha)})` : `rgba(255, 255, 255, ${alpha})`; 
                         ctx.lineWidth = isLight ? 1.6 : 1.4;
                         ctx.beginPath(); ctx.moveTo(dots[i].x, dots[i].y); ctx.lineTo(dots[j].x, dots[j].y); ctx.stroke();
                     }
