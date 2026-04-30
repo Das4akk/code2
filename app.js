@@ -3011,6 +3011,7 @@ class FriendsManager {
 class DirectMessages {
     static heartsTimer = null;
     static theme = 'default';
+    static themeOptions = ['default', 'love', 'light', 'aurora', 'sunset', 'ocean'];
 
     static getChatId(uid1, uid2) { return [uid1, uid2].sort().join('_'); }
 
@@ -3064,11 +3065,13 @@ class DirectMessages {
         Utils.$('dm-chat-title').innerText = `Чат: ${targetName}`;
         Utils.$('modal-dm-chat').classList.add('active');
         this.bindThemeControls();
-        this.applyTheme(this.theme);
+        this.applyTheme(this.theme, false);
 
         const chatRef = ref(db, `direct-messages/${chatId}`);
         this.unsubCurrent = onValue(chatRef, (snap) => {
             const data = snap.val() || {};
+            const dbTheme = this.normalizeTheme(data.theme || 'default');
+            if (dbTheme !== this.theme) this.applyTheme(dbTheme, false);
             const messages = Object.entries(data.messages || {}).map(([id, val]) => ({ id, ...val })).sort((a,b)=>a.ts - b.ts);
             this.renderMessages(messages);
             if (data.lastMessage?.ts) sessionStorage.setItem(`dmSeen:${chatId}`, String(data.lastMessage.ts));
@@ -3107,6 +3110,9 @@ class DirectMessages {
         
         list.innerHTML = heartsLayer + messages.map(m => {
             const isSelf = m.fromUid === AppState.currentUser.uid;
+            if (m.type === 'system') {
+                return `<div class="sys-msg" style="margin:6px 0;">-------${Utils.escapeHtml(m.fromName || 'Пользователь')} ${Utils.escapeHtml(m.text || '')}-------</div>`;
+            }
             
             if (m.type === 'invite') {
                 return `
@@ -3144,20 +3150,41 @@ class DirectMessages {
         if (!toggle || !controls) return;
         toggle.onclick = () => controls.classList.toggle('active');
         controls.querySelectorAll('.dm-theme-chip').forEach(btn => {
-            btn.onclick = () => this.applyTheme(btn.dataset.theme || 'default');
+            btn.onclick = () => this.applyTheme(btn.dataset.theme || 'default', true);
         });
     }
 
-    static applyTheme(theme = 'default') {
+    static normalizeTheme(theme = 'default') {
+        if (theme === 'inverted') return 'light';
+        return this.themeOptions.includes(theme) ? theme : 'default';
+    }
+
+    static applyTheme(theme = 'default', persist = false) {
         const modal = Utils.$('modal-dm-chat');
         if (!modal) return;
-        this.theme = theme === 'love' ? 'love' : 'default';
-        modal.classList.toggle('theme-love', this.theme === 'love');
+        this.theme = this.normalizeTheme(theme);
+        modal.classList.remove('theme-love', 'theme-light', 'theme-aurora', 'theme-sunset', 'theme-ocean');
+        if (this.theme !== 'default') modal.classList.add(`theme-${this.theme}`);
         Utils.$('dm-theme-controls')?.querySelectorAll('.dm-theme-chip').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.theme === this.theme);
         });
         if (this.theme === 'love') this.startLoveHearts();
         else this.stopLoveHearts();
+
+        if (persist && AppState.currentDirectChat?.id) {
+            const profile = AppState.usersCache.get(AppState.currentUser.uid) || {};
+            update(ref(db, `direct-messages/${AppState.currentDirectChat.id}`), {
+                theme: this.theme,
+                updatedAt: Date.now()
+            }).catch(() => {});
+            push(ref(db, `direct-messages/${AppState.currentDirectChat.id}/messages`), {
+                type: 'system',
+                fromUid: AppState.currentUser.uid,
+                fromName: profile.name || AppState.currentUser.displayName || 'Пользователь',
+                text: `сменил тему чата на "${this.theme}"`,
+                ts: Date.now()
+            }).catch(() => {});
+        }
     }
 
     static startLoveHearts() {
@@ -4656,6 +4683,17 @@ class AdminPanel {
                 by: AppState.currentUser.uid
             })
         ]);
+        const actorProfile = AppState.usersCache.get(AppState.currentUser.uid) || {};
+        const actorName = actorProfile.name || AppState.currentUser.displayName || 'ADMIN';
+        const actorUsername = actorProfile.username || AppState.currentUser.uid || 'admin';
+        const targetName = roomMeta.room?.presence?.[uid]?.name || uid;
+        await push(ref(db, `rooms/${roomMeta.roomId}/chat`), {
+            type: 'system',
+            uid: AppState.currentUser.uid,
+            name: 'SYSTEM',
+            text: `-------ХОСТ ${actorName}(@${actorUsername}) кикнул ${targetName}-------`,
+            ts: Date.now()
+        }).catch(() => {});
         await this.pushAuditLog('user.forceLeaveRoom', { uid, roomId: roomMeta.roomId });
 
         Utils.toast('Пользователь удалён из комнаты');
@@ -4677,7 +4715,7 @@ class AdminPanel {
 // ============================================================================
 
 class RoomManager {
-    static themeOptions = ['default', 'love']; // [UPDATE]
+    static themeOptions = ['default', 'love', 'light', 'aurora', 'sunset', 'ocean']; // [UPDATE]
     static themeIndex = 0;
     static heartsTimer = null;
     static loveHeartEmojis = ['💗', '💘', '💞', '💕'];
@@ -4762,8 +4800,49 @@ class RoomManager {
     }
 
     static normalizeRoomTheme(theme = 'default') { // [NEW]
+        if (theme === 'inverted') return 'light';
         return this.themeOptions.includes(theme) ? theme : 'default'; // [NEW]
     } // [NEW]
+
+    static getActorLabel() {
+        const uid = AppState.currentUser?.uid || '';
+        const profile = AppState.usersCache.get(uid) || {};
+        const name = profile.name || AppState.currentUser?.displayName || 'Unknown';
+        const username = profile.username || uid || 'unknown';
+        const isHostLike = AppState.isHost || AdminPanel.isCurrentUserCreator();
+        return `${isHostLike ? 'ХОСТ' : 'ADMIN'} ${name}(@${username})`;
+    }
+
+    static async pushRoomSystemMessage(roomId, text, extra = {}) {
+        if (!roomId || !text) return;
+        await push(ref(db, `rooms/${roomId}/chat`), {
+            type: 'system',
+            uid: AppState.currentUser?.uid || 'system',
+            name: 'SYSTEM',
+            text: `-------${text}-------`,
+            ts: Date.now(),
+            ...extra
+        }).catch(() => {});
+    }
+
+    static async kickUserFromCurrentRoom(targetUid) {
+        if (!targetUid || !AppState.currentRoomId) return;
+        if (!(AppState.isHost || AdminPanel.isCurrentUserCreator())) return Utils.toast('Недостаточно прав', 'error');
+        const targetPresence = AppState.currentPresenceCache?.[targetUid];
+        if (!targetPresence) return Utils.toast('Пользователь уже вышел', 'error');
+        const roomId = AppState.currentRoomId;
+        await Promise.all([
+            remove(ref(db, `rooms/${roomId}/presence/${targetUid}`)),
+            remove(ref(db, `rooms/${roomId}/rtc/participants/${targetUid}`)),
+            set(ref(db, `admin/actions/forceLeaveRoom/${targetUid}`), {
+                ts: Date.now(),
+                byUid: AppState.currentUser.uid,
+                roomId,
+                reason: 'kicked-by-host'
+            })
+        ]);
+        await this.pushRoomSystemMessage(roomId, `${this.getActorLabel()} кикнул ${targetPresence.name || targetUid}`);
+    }
 
     static getRoomAvatarsStack(room = {}) {
         const ids = Object.keys(room?.presence || {}).slice(0, 4);
@@ -4883,6 +4962,7 @@ class RoomManager {
 
         Utils.$('btn-save-room').disabled = true;
         try {
+            const previousRoom = roomId ? (AppState.roomsCache.get(roomId) || {}) : null;
             const roomData = {
                 name,
                 videoUrl,
@@ -4900,6 +4980,13 @@ class RoomManager {
                 await update(ref(db, `rooms/${roomId}`), roomData); Utils.toast('Настройки сохранены');
                 const mergedRoom = { ...(AppState.roomsCache.get(roomId) || {}), ...roomData };
                 AppState.roomsCache.set(roomId, mergedRoom);
+                const actor = this.getActorLabel();
+                if (previousRoom && this.normalizeRoomTheme(previousRoom.theme || 'default') !== roomData.theme) {
+                    await this.pushRoomSystemMessage(roomId, `${actor} поменял тему комнаты`);
+                }
+                if (previousRoom && Boolean(previousRoom.isPrivate) !== Boolean(roomData.isPrivate)) {
+                    await this.pushRoomSystemMessage(roomId, `${actor} ${roomData.isPrivate ? 'сделал комнату приватной' : 'сделал комнату публичной'}`);
+                }
             } else {
                 roomData.createdAt = Date.now(); const newRef = push(ref(db, 'rooms')); await set(newRef, roomData); Utils.toast('Комната создана');
                 this.enterRoomFinal(newRef.key, roomData);
@@ -5003,14 +5090,36 @@ class RoomManager {
         const syncRef = ref(db, `rooms/${roomId}/sync`);
         const chatRef = ref(db, `rooms/${roomId}/chat`);
         const reactionsRef = ref(db, `rooms/${roomId}/reactions`);
+        let presenceBootstrapped = false;
 
         set(presenceRef, { uid, name: AppState.currentUser.displayName, perms: this.getDefaultPerms() });
         onDisconnect(presenceRef).remove();
 
         const pUnsub = onValue(presListRef, (snap) => {
+            const prevCache = AppState.currentPresenceCache || {};
             AppState.currentPresenceCache = snap.val() || {};
             this.rerenderUsersList();
             this.applyLocalPermissions();
+            if (!presenceBootstrapped) {
+                presenceBootstrapped = true;
+                return;
+            }
+            if (AppState.isHost || AdminPanel.isCurrentUserCreator()) {
+                const prevIds = new Set(Object.keys(prevCache));
+                const nextIds = new Set(Object.keys(AppState.currentPresenceCache));
+                nextIds.forEach((joinedUid) => {
+                    if (!prevIds.has(joinedUid)) {
+                        const joinedName = AppState.currentPresenceCache[joinedUid]?.name || joinedUid;
+                        this.pushRoomSystemMessage(roomId, `${joinedName} зашел в комнату`);
+                    }
+                });
+                prevIds.forEach((leftUid) => {
+                    if (!nextIds.has(leftUid)) {
+                        const leftName = prevCache[leftUid]?.name || leftUid;
+                        this.pushRoomSystemMessage(roomId, `${leftName} вышел из комнаты`);
+                    }
+                });
+            }
         });
         AppState.roomSubscriptions.push(() => off(presListRef, 'value', pUnsub), () => remove(presenceRef));
 
@@ -5043,6 +5152,14 @@ class RoomManager {
             if (processedMsgs.has(id)) return;
             processedMsgs.add(id);
             if (msg?.shadowbanned && msg.uid !== uid && !AdminPanel.isCurrentUserAdmin()) return;
+            if (msg?.type === 'system') {
+                const systemLine = document.createElement('div');
+                systemLine.className = 'sys-msg';
+                systemLine.innerText = msg.text || '';
+                Utils.$('chat-messages').appendChild(systemLine);
+                Utils.$('chat-messages').scrollTop = Utils.$('chat-messages').scrollHeight;
+                return;
+            }
 
             const isMe = msg.uid === uid;
             const line = document.createElement('div');
@@ -5224,17 +5341,23 @@ class RoomManager {
                     html += `<button class="dm-btn" data-uid="${uid}">💬</button>`;
                     html += `<button class="add-friend-btn" data-uid="${uid}">+Друг</button>`;
                 }
+                if ((AppState.isHost || AdminPanel.isCurrentUserCreator()) && !isLocal) {
+                    html += `<button class="viewer-settings-btn" data-uid="${uid}" title="Настройки зрителя">⚙️</button>`;
+                }
                 html += `</div>`;
 
                 // Управление пермиссиями доступно хосту и разработчику
                 if ((AppState.isHost || AdminPanel.isCurrentUserCreator()) && !isLocal) {
                     const perms = user.perms || {};
                     html += `
-                        <div class="perm-controls">
-                            <label><input type="checkbox" class="p-toggle" data-uid="${uid}" data-p="chat" ${perms.chat?'checked':''}> Чат</label>
-                            <label><input type="checkbox" class="p-toggle" data-uid="${uid}" data-p="voice" ${perms.voice?'checked':''}> Микрофон</label>
-                            <label><input type="checkbox" class="p-toggle" data-uid="${uid}" data-p="player" ${perms.player?'checked':''}> Плеер</label>
-                            <label><input type="checkbox" class="p-toggle" data-uid="${uid}" data-p="reactions" ${perms.reactions?'checked':''}> Реакции</label>
+                        <div class="viewer-settings-panel" id="viewer-settings-${uid}">
+                            <div class="perm-controls" style="margin-top:0; padding-top:0; border-top:none;">
+                                <label><input type="checkbox" class="p-toggle" data-uid="${uid}" data-p="chat" ${perms.chat?'checked':''}> Чат</label>
+                                <label><input type="checkbox" class="p-toggle" data-uid="${uid}" data-p="voice" ${perms.voice?'checked':''}> Микрофон</label>
+                                <label><input type="checkbox" class="p-toggle" data-uid="${uid}" data-p="player" ${perms.player?'checked':''}> Плеер</label>
+                                <label><input type="checkbox" class="p-toggle" data-uid="${uid}" data-p="reactions" ${perms.reactions?'checked':''}> Реакции</label>
+                            </div>
+                            <button class="danger-btn room-kick-btn" data-uid="${uid}" style="margin-top:8px;">Кикнуть из комнаты</button>
                         </div>
                     `;
                 }
@@ -5257,10 +5380,26 @@ class RoomManager {
             container.querySelectorAll('.add-friend-btn').forEach(btn => {
                 btn.onclick = () => FriendsManager.sendFriendRequest(btn.dataset.uid);
             });
+            container.querySelectorAll('.viewer-settings-btn').forEach(btn => {
+                btn.onclick = () => {
+                    const panel = Utils.$(`viewer-settings-${btn.dataset.uid}`);
+                    if (panel) panel.classList.toggle('open');
+                };
+            });
             container.querySelectorAll('.p-toggle').forEach(t => {
                 t.onchange = async (e) => {
                     const targetUid = e.target.dataset.uid; const perm = e.target.dataset.p; const val = e.target.checked;
                     await set(ref(db, `rooms/${AppState.currentRoomId}/presence/${targetUid}/perms/${perm}`), val);
+                    const targetName = (AppState.currentPresenceCache?.[targetUid]?.name || targetUid);
+                    await this.pushRoomSystemMessage(AppState.currentRoomId, `${this.getActorLabel()} ${val ? 'разрешил' : 'запретил'} "${perm}" для ${targetName}`);
+                };
+            });
+            container.querySelectorAll('.room-kick-btn').forEach(btn => {
+                btn.onclick = async () => {
+                    const targetUid = btn.dataset.uid;
+                    const targetName = (AppState.currentPresenceCache?.[targetUid]?.name || targetUid);
+                    if (!confirm(`Кикнуть ${targetName} из комнаты?`)) return;
+                    await this.kickUserFromCurrentRoom(targetUid);
                 };
             });
         }
@@ -5328,7 +5467,7 @@ class RoomManager {
     static applyRoomTheme(theme = 'default') {
         const roomScreen = Utils.$('room-screen');
         if (!roomScreen) return;
-        roomScreen.classList.remove('theme-love', 'theme-inverted'); // [UPDATE]
+        roomScreen.classList.remove('theme-love', 'theme-inverted', 'theme-light', 'theme-aurora', 'theme-sunset', 'theme-ocean'); // [UPDATE]
         document.body.classList.remove('theme-love-room', 'theme-inverted-room'); // [UPDATE]
         this.stopLoveHearts();
         
@@ -5341,7 +5480,9 @@ class RoomManager {
             this.startLoveHearts();
             // Fallback: containers may appear a tick later after rerender.
             setTimeout(() => this.startLoveHearts(), 150);
+            return;
         }
+        if (safeTheme !== 'default') roomScreen.classList.add(`theme-${safeTheme}`);
     }
 
     static startLoveHearts() {
