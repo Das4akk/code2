@@ -390,12 +390,17 @@ class Utils {
             .theme-light-global textarea,
             .theme-light-global select {
                 color: #111 !important;
-                background: rgba(255, 255, 255, 0.94) !important;
-                border: 1px solid rgba(17, 24, 39, 0.28) !important;
+                background: rgba(250, 246, 238, 0.96) !important;
+                border: 2px solid rgba(80, 72, 58, 0.42) !important;
             }
             .theme-light-global input::placeholder,
             .theme-light-global textarea::placeholder {
-                color: rgba(17, 24, 39, 0.55) !important;
+                color: rgba(56, 48, 36, 0.62) !important;
+            }
+            .theme-light-global body,
+            body.theme-light-global {
+                background: linear-gradient(135deg, #f7f2e8 0%, #f1eadf 48%, #ece3d5 100%) !important;
+                color: #2e271d !important;
             }
             .theme-light-global .glass-panel,
             .theme-light-global .room-card,
@@ -404,8 +409,27 @@ class Utils {
             .theme-light-global .chat-section,
             .theme-light-global .player-section,
             .theme-light-global .modal-content {
-                border: 1px solid rgba(17, 24, 39, 0.24) !important;
-                box-shadow: 0 0 0 1px rgba(17, 24, 39, 0.05) inset;
+                border: 2px solid rgba(70, 62, 49, 0.36) !important;
+                background: rgba(252, 247, 237, 0.88) !important;
+                box-shadow: 0 0 0 1px rgba(70, 62, 49, 0.14) inset, 0 8px 20px rgba(70, 62, 49, 0.08);
+            }
+            .theme-light-global .bubble,
+            .theme-light-global .friend-request-item,
+            .theme-light-global .room-info,
+            .theme-light-global .perm-controls {
+                border: 2px solid rgba(70, 62, 49, 0.28) !important;
+                background: rgba(255, 251, 243, 0.88) !important;
+            }
+            .theme-light-global button,
+            .theme-light-global .primary-btn,
+            .theme-light-global .secondary-btn,
+            .theme-light-global .danger-btn,
+            .theme-light-global .dm-btn,
+            .theme-light-global .add-friend-btn,
+            .theme-light-global .btn-small {
+                border: 2px solid rgba(68, 60, 48, 0.55) !important;
+                outline: none !important;
+                box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.72) inset;
             }
 
             .room-card {
@@ -695,7 +719,8 @@ class BackgroundFX {
                 }
             }
             draw() {
-                ctx.fillStyle = "rgba(255,255,255,0.6)";
+                const isLight = document.body.classList.contains('theme-light-global');
+                ctx.fillStyle = isLight ? "rgba(40,34,24,0.42)" : "rgba(255,255,255,0.78)";
                 ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
             }
         }
@@ -713,8 +738,10 @@ class BackgroundFX {
                     let dy = dots[i].y - dots[j].y;
                     let dist = dx * dx + dy * dy; 
                     if (dist < 25000) { 
-                        ctx.strokeStyle = `rgba(253, 253, 250, ${0.55 - Math.sqrt(dist) / 1000})`; 
-                        ctx.lineWidth = 1;
+                        const isLight = document.body.classList.contains('theme-light-global');
+                        const alpha = Math.max(0.08, 0.72 - Math.sqrt(dist) / 1000);
+                        ctx.strokeStyle = isLight ? `rgba(44, 38, 28, ${alpha * 0.75})` : `rgba(255, 255, 255, ${alpha})`; 
+                        ctx.lineWidth = isLight ? 1.2 : 1.4;
                         ctx.beginPath(); ctx.moveTo(dots[i].x, dots[i].y); ctx.lineTo(dots[j].x, dots[j].y); ctx.stroke();
                     }
                 }
@@ -3306,6 +3333,8 @@ class AdminPanel {
                             <button class="secondary-btn" id="btn-admin-toggle-room-lock">Блокировать создание комнат</button>
                             <button class="secondary-btn" id="btn-admin-refresh">Обновить данные</button>
                             <button class="secondary-btn" id="btn-admin-clear-user-editor">Сбросить выбранного юзера</button>
+                            <button class="secondary-btn" id="btn-admin-export-snapshot">Экспорт Snapshot</button>
+                            <button class="secondary-btn" id="btn-admin-unmute-unban-all">Снять mute/shadowban всем</button>
                         </div>
                     </div>
                 </div>
@@ -3371,6 +3400,8 @@ class AdminPanel {
         Utils.$('btn-admin-refresh').onclick = () => this.renderPanel();
         Utils.$('btn-admin-find-user').onclick = () => this.findUser();
         Utils.$('btn-admin-clear-user-editor').onclick = () => this.renderEmptyUserEditor();
+        Utils.$('btn-admin-export-snapshot').onclick = () => this.exportAdminSnapshot();
+        Utils.$('btn-admin-unmute-unban-all').onclick = () => this.unmuteAndUnbanAllUsers();
         Utils.$('btn-admin-clear-audit').onclick = () => this.clearAuditLog();
         Utils.$('admin-user-search').onkeydown = (e) => { if (e.key === 'Enter') this.findUser(); };
 
@@ -3408,6 +3439,48 @@ class AdminPanel {
         if (!this.requireAdmin()) return;
         await remove(ref(db, 'admin/auditLog'));
         Utils.toast('Audit log очищен');
+    }
+
+    static async exportAdminSnapshot() {
+        if (!this.requireAdmin()) return;
+        const [usersSnap, roomsSnap, settingsSnap] = await Promise.all([
+            get(ref(db, 'users')),
+            get(ref(db, 'rooms')),
+            get(ref(db, 'admin/settings'))
+        ]);
+        const payload = {
+            exportedAt: Date.now(),
+            by: AppState.currentUser.uid,
+            users: usersSnap.val() || {},
+            rooms: roomsSnap.val() || {},
+            settings: settingsSnap.val() || {}
+        };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `cowio-admin-snapshot-${Date.now()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        await this.pushAuditLog('admin.snapshot.export');
+        Utils.toast('Snapshot экспортирован');
+    }
+
+    static async unmuteAndUnbanAllUsers() {
+        if (!this.requireAdmin()) return;
+        if (!confirm('Снять mute и shadowban у всех пользователей?')) return;
+        const usersSnap = await get(ref(db, 'users'));
+        const users = usersSnap.val() || {};
+        const updates = {};
+        Object.keys(users).forEach(uid => {
+            updates[`users/${uid}/moderation/muted`] = null;
+            updates[`users/${uid}/moderation/shadowban`] = null;
+        });
+        await update(ref(db), updates);
+        await this.pushAuditLog('admin.users.unmuteUnbanAll', { users: Object.keys(users).length });
+        Utils.toast('Mute и shadowban сняты у всех');
     }
 
 
