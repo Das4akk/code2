@@ -67,7 +67,8 @@ const AppState = {
             globalReactionsBlocked: false,
             globalInvitesBlocked: false,
             globalRegistrationsBlocked: false,
-            maintenanceMode: false
+            maintenanceMode: false,
+            systemReadOnlyMode: false
         },
         lastAnnouncementId: null,
         activeSection: 'dashboard',
@@ -1746,35 +1747,35 @@ class EasterEggManager {
 class AuthManager {
     static init() {
         Utils.injectFixes();
-        
-        Utils.$('auth-screen').style.opacity = '0';
-        let isFirstLoad = true;
 
         onAuthStateChanged(auth, async (user) => {
-            if (isFirstLoad) {
-                Utils.$('auth-screen').style.opacity = '1';
-                isFirstLoad = false;
-            }
-
-            if (user) {
-                AppState.currentUser = user;
-                await AdminPanel.getDeveloperUid();
-                Utils.showScreen('lobby-screen');
-                if (!AppState.isRegistering) {
-                    await ProfileManager.ensureProfileExists(user);
+            try {
+                if (user) {
+                    AppState.currentUser = user;
+                    await AdminPanel.getDeveloperUid();
+                    Utils.showScreen('lobby-screen');
+                    if (!AppState.isRegistering) {
+                        await ProfileManager.ensureProfileExists(user);
+                    }
+                    ProfileManager.bindMyProfileListener();
+                    FriendsManager.initListeners();
+                    RoomManager.initLobbyListeners();
+                    DirectMessages.startNotifications();
+                    AdminPanel.init();
+                    this.bindGlobalPresence();
+                } else {
+                    this.handleLogoutCleanup();
                 }
-                ProfileManager.bindMyProfileListener();
-                FriendsManager.initListeners();
-                RoomManager.initLobbyListeners();
-                DirectMessages.startNotifications();
-                AdminPanel.init();
-                this.bindGlobalPresence();
-            } else {
-                this.handleLogoutCleanup();
+            } finally {
+                this.finishAuthBootstrap();
             }
         });
 
         this.bindUI();
+    }
+
+    static finishAuthBootstrap() {
+        document.body.classList.remove('auth-loading');
     }
 
     static bindUI() {
@@ -2964,6 +2965,7 @@ class DirectMessages {
         const sendAction = async () => {
             const text = input.value.trim();
             if (!text) return;
+            if (AdminPanel.isSystemReadOnlyForUser()) return Utils.toast('Система в режиме ReadOnly', 'error');
             input.value = '';
             const payload = { type: 'text', fromUid: AppState.currentUser.uid, fromName: AppState.currentUser.displayName, text, ts: Date.now() };
             
@@ -3086,6 +3088,7 @@ class DirectMessages {
 
     static async sendRoomInvite(targetUid) {
         if (!AppState.currentRoomId || !targetUid || targetUid === AppState.currentUser.uid) return;
+        if (AdminPanel.isSystemReadOnlyForUser()) return Utils.toast('Система в режиме ReadOnly', 'error');
         if (AppState.admin.settings.globalInvitesBlocked && !AdminPanel.isCurrentUserAdmin()) return Utils.toast('Инвайты временно отключены администратором', 'error');
         if (AppState.currentPresenceCache?.[targetUid]) return Utils.toast('Пользователь уже находится в комнате', 'error');
 
@@ -3258,6 +3261,10 @@ class AdminPanel {
         return this.isAdminProfile(profile, uid);
     }
 
+    static isSystemReadOnlyForUser() {
+        return Boolean(AppState.admin.settings.systemReadOnlyMode) && !this.isCurrentUserAdmin();
+    }
+
     static async isProtectedCreatorTarget(targetUid) {
         if (!targetUid) return false;
 
@@ -3385,6 +3392,9 @@ class AdminPanel {
                 <div class="godmode-section active" data-section="dashboard" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02); margin-bottom:16px;">
                     <div style="font-weight:700; margin-bottom:10px;">Глобальные функции</div>
                     <div style="display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px;">
+                        <button class="danger-btn" id="btn-admin-system-readonly">Системный ReadOnly</button>
+                        <button class="secondary-btn" id="btn-admin-global-session-refresh">Обновить все сессии</button>
+                        <button class="secondary-btn" id="btn-admin-run-diagnostics">Системная диагностика</button>
                         <button class="secondary-btn" id="btn-admin-global-chat-lock">Глобальный lock чата</button>
                         <button class="secondary-btn" id="btn-admin-global-reactions-lock">Блок реакций</button>
                         <button class="secondary-btn" id="btn-admin-global-invites-lock">Блок инвайтов</button>
@@ -3456,6 +3466,9 @@ class AdminPanel {
         Utils.$('btn-admin-clear-user-editor').onclick = () => this.renderEmptyUserEditor();
         Utils.$('btn-admin-export-snapshot').onclick = () => this.exportAdminSnapshot();
         Utils.$('btn-admin-unmute-unban-all').onclick = () => this.unmuteAndUnbanAllUsers();
+        Utils.$('btn-admin-system-readonly').onclick = () => this.toggleGlobalSetting('systemReadOnlyMode', 'Системный ReadOnly');
+        Utils.$('btn-admin-global-session-refresh').onclick = () => this.forceGlobalSessionRefresh();
+        Utils.$('btn-admin-run-diagnostics').onclick = () => this.runSystemDiagnostics();
         Utils.$('btn-admin-global-chat-lock').onclick = () => this.toggleGlobalSetting('globalChatLocked', 'Глобальный lock чата');
         Utils.$('btn-admin-global-reactions-lock').onclick = () => this.toggleGlobalSetting('globalReactionsBlocked', 'Блок реакций');
         Utils.$('btn-admin-global-invites-lock').onclick = () => this.toggleGlobalSetting('globalInvitesBlocked', 'Блок инвайтов');
@@ -3593,6 +3606,7 @@ class AdminPanel {
                 globalInvitesBlocked: false,
                 globalRegistrationsBlocked: false,
                 maintenanceMode: false,
+                systemReadOnlyMode: false,
                 ...(snap.val() || {})
             };
             RoomManager.applyCreateRoomAvailability();
@@ -3672,12 +3686,27 @@ class AdminPanel {
             }
         });
 
+        const globalSessionRefreshRef = ref(db, 'admin/actions/globalSessionRefresh');
+        const globalSessionRefreshUnsub = onValue(globalSessionRefreshRef, async (snap) => {
+            const payload = snap.val();
+            if (!payload?.ts) return;
+            const marker = `globalSessionRefreshSeen:${payload.ts}`;
+            if (sessionStorage.getItem(marker)) return;
+            sessionStorage.setItem(marker, '1');
+            if (payload.byUid === AppState.currentUser?.uid) return;
+            if (!this.isCurrentUserAdmin()) {
+                Utils.toast('Администратор обновил все сессии', 'error');
+                await signOut(auth);
+            }
+        });
+
         AppState.activeSubscriptions.push(
             () => off(settingsRef, 'value', settingsUnsub),
             () => off(annRef, 'value', annUnsub),
             () => off(auditRef, 'value', auditUnsub),
             () => off(forceSignOutRef, 'value', forceSignOutUnsub),
-            () => off(forceLeaveRoomRef, 'value', forceLeaveRoomUnsub)
+            () => off(forceLeaveRoomRef, 'value', forceLeaveRoomUnsub),
+            () => off(globalSessionRefreshRef, 'value', globalSessionRefreshUnsub)
         );
 
         RoomManager.applyCreateRoomAvailability();
@@ -3685,7 +3714,15 @@ class AdminPanel {
 
     static handleLogoutCleanup() {
         this.initializedForUid = null;
-        AppState.admin.settings = { roomCreationBlocked: false };
+        AppState.admin.settings = {
+            roomCreationBlocked: false,
+            globalChatLocked: false,
+            globalReactionsBlocked: false,
+            globalInvitesBlocked: false,
+            globalRegistrationsBlocked: false,
+            maintenanceMode: false,
+            systemReadOnlyMode: false
+        };
         AppState.admin.lastAnnouncementId = null;
         Utils.$('btn-admin-panel')?.remove();
         Utils.$('modal-admin-panel')?.classList.remove('active');
@@ -3782,6 +3819,44 @@ class AdminPanel {
         setBtn('btn-admin-global-invites-lock', 'globalInvitesBlocked', 'Блок инвайтов');
         setBtn('btn-admin-global-reg-lock', 'globalRegistrationsBlocked', 'Блок регистраций');
         setBtn('btn-admin-global-maintenance', 'maintenanceMode', 'Maintenance mode');
+        setBtn('btn-admin-system-readonly', 'systemReadOnlyMode', 'Системный ReadOnly');
+    }
+
+    static async forceGlobalSessionRefresh() {
+        if (!this.requireAdmin()) return;
+        if (!this.isCurrentUserCreator()) return Utils.toast('Только Создатель может обновлять все сессии', 'error');
+        const payload = { ts: Date.now(), byUid: AppState.currentUser.uid };
+        await set(ref(db, 'admin/actions/globalSessionRefresh'), payload);
+        await this.pushAuditLog('admin.sessions.refreshAll', payload);
+        Utils.toast('Запрошено обновление всех пользовательских сессий');
+    }
+
+    static async runSystemDiagnostics() {
+        if (!this.requireAdmin()) return;
+        const [usersSnap, roomsSnap] = await Promise.all([
+            get(ref(db, 'users')),
+            get(ref(db, 'rooms'))
+        ]);
+        const users = usersSnap.val() || {};
+        const rooms = roomsSnap.val() || {};
+        const now = Date.now();
+        const staleOnline = Object.values(users).filter(u => u?.status?.online && now - Number(u?.status?.lastSeen || 0) > 10 * 60 * 1000).length;
+        let orphanPresence = 0;
+        Object.values(rooms).forEach(room => {
+            Object.keys(room?.presence || {}).forEach(uid => {
+                if (!users[uid]) orphanPresence++;
+            });
+        });
+        const diagnostics = {
+            users: Object.keys(users).length,
+            online: Object.values(users).filter(u => u?.status?.online).length,
+            rooms: Object.keys(rooms).length,
+            staleOnline,
+            orphanPresence,
+            lockedFlags: Object.entries(AppState.admin.settings || {}).filter(([, value]) => Boolean(value)).map(([key]) => key)
+        };
+        await this.pushAuditLog('admin.system.diagnostics', diagnostics);
+        Utils.toast(`Диагностика: online=${diagnostics.online}, stale=${diagnostics.staleOnline}, orphan=${diagnostics.orphanPresence}`);
     }
 
     static renderAuditLog() {
@@ -4447,6 +4522,9 @@ class RoomManager {
     }
 
     static openRoomModal(roomId = null) {
+        if (!roomId && AdminPanel.isSystemReadOnlyForUser()) {
+            return Utils.toast('Система в режиме ReadOnly', 'error');
+        }
         if (!roomId && AppState.admin.settings.roomCreationBlocked && !AdminPanel.isCurrentUserAdmin()) {
             return Utils.toast('Создание комнат временно отключено администратором', 'error');
         }
@@ -4496,6 +4574,9 @@ class RoomManager {
         const roomId = Utils.$('modal-room').dataset.editingId;
         const selectedTheme = Utils.$('modal-room').dataset.selectedTheme || 'default';
 
+        if (!roomId && AdminPanel.isSystemReadOnlyForUser()) {
+            return Utils.toast('Система в режиме ReadOnly', 'error');
+        }
         if (!roomId && AppState.admin.settings.roomCreationBlocked && !AdminPanel.isCurrentUserAdmin()) {
             return Utils.toast('Создание комнат временно отключено администратором', 'error');
         }
@@ -4698,6 +4779,7 @@ class RoomManager {
         Utils.$('send-btn').onclick = async () => {
             const input = Utils.$('chat-input');
             if (!input.value.trim() || !this.hasPerm('chat')) return;
+            if (AdminPanel.isSystemReadOnlyForUser()) return Utils.toast('Система в режиме ReadOnly', 'error');
             if (AppState.admin.settings.globalChatLocked && !AdminPanel.isCurrentUserAdmin()) return Utils.toast('Глобальный чат временно заблокирован', 'error');
             const text = input.value.trim();
             const meModerationSnap = await get(ref(db, `users/${uid}/moderation`));
@@ -4720,6 +4802,7 @@ class RoomManager {
         document.querySelectorAll('.react-btn').forEach(btn => {
             btn.onclick = () => {
                 if(!this.hasPerm('reactions')) return;
+                if (AdminPanel.isSystemReadOnlyForUser()) return Utils.toast('Система в режиме ReadOnly', 'error');
                 if (AppState.admin.settings.globalReactionsBlocked && !AdminPanel.isCurrentUserAdmin()) return Utils.toast('Глобальные реакции временно отключены', 'error');
                 push(reactionsRef, { emoji: btn.dataset.emoji, ts: Date.now() });
             };
@@ -4778,6 +4861,7 @@ class RoomManager {
         const container = Utils.$('users-list');
         const cache = AppState.currentPresenceCache || {};
         const ids = Object.keys(cache);
+        let outsideFriendsHtml = '';
         const renderToken = ++AppState.usersListRenderToken;
         const renderRoomId = AppState.currentRoomId;
 
@@ -4797,7 +4881,7 @@ class RoomManager {
                 const fr = snap.val() || {};
                 const friendsIds = Object.keys(fr).filter(k => fr[k].status === 'accepted' && !ids.includes(k)); 
                 if (friendsIds.length > 0) {
-                    let inviteHtml = `<div style="font-size:11px; color:var(--text-muted); margin: 10px 0 5px; text-transform:uppercase;">Друзья вне комнаты</div>`;
+                    let inviteHtml = `<div style="font-size:11px; color:var(--text-muted); margin: 15px 0 5px; text-transform:uppercase;">Друзья вне комнаты</div>`;
                     friendsIds.forEach(fid => {
                         inviteHtml += `
                             <div class="user-item" style="background: rgba(46,213,115,0.05); border: 1px solid rgba(46,213,115,0.2);">
@@ -4810,7 +4894,7 @@ class RoomManager {
                             if (Utils.$(`inv-name-${fid}`)) Utils.$(`inv-name-${fid}`).innerText = p.name;
                         });
                     });
-                    container.innerHTML += inviteHtml + `<div style="font-size:11px; color:var(--text-muted); margin: 15px 0 5px; text-transform:uppercase;">В комнате</div>`;
+                    outsideFriendsHtml = inviteHtml;
                 }
                 renderRoomUsers();
             });
@@ -4820,6 +4904,7 @@ class RoomManager {
 
         function renderRoomUsers() {
             if (!ensureActualRender()) return;
+            container.innerHTML += `<div style="font-size:11px; color:var(--text-muted); margin: 10px 0 5px; text-transform:uppercase;">В комнате</div>`;
             ids.forEach(uid => {
                 const user = cache[uid];
                 const isLocal = uid === AppState.currentUser.uid;
@@ -4859,6 +4944,9 @@ class RoomManager {
                 html += `</div>`;
                 container.innerHTML += html;
             });
+            if (outsideFriendsHtml) {
+                container.innerHTML += outsideFriendsHtml;
+            }
 
             container.querySelectorAll('.dm-btn').forEach(btn => {
                 btn.onclick = () => {
