@@ -1838,6 +1838,7 @@ class AuthManager {
                     if (!AppState.isRegistering) {
                         await ProfileManager.ensureProfileExists(user);
                     }
+                    await ProfileManager.migrateLegacyDefaultBackground(user.uid);
                     ProfileManager.bindMyProfileListener();
                     FriendsManager.initListeners();
                     RoomManager.initLobbyListeners();
@@ -2131,6 +2132,27 @@ class ProfileManager {
                 emailVerified: Boolean(user.emailVerified)
             });
         }
+    }
+
+    static async migrateLegacyDefaultBackground(uid) {
+        if (!uid) return;
+        const profileRef = ref(db, `users/${uid}/profile`);
+        const snap = await get(profileRef);
+        if (!snap.exists()) return;
+        const profile = snap.val() || {};
+        const normalized = this.normalizeProfileBackground(profile.background);
+        const rawBackground = profile.background;
+        const isEmptyLegacy = rawBackground === undefined || rawBackground === null || String(rawBackground).trim() === '';
+        const isOldDefault = normalized.color === '#1f2937';
+        if (!isEmptyLegacy && !isOldDefault) return;
+        await update(profileRef, {
+            background: {
+                color: '#111111',
+                index: 1,
+                url: normalized.url || '',
+                dim: typeof normalized.dim === 'number' ? Math.max(0, Math.min(1, normalized.dim)) : 0.5
+            }
+        });
     }
 
     static bindMyProfileListener() {
