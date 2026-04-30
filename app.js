@@ -726,6 +726,7 @@ class BackgroundFX {
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         let dots = [];
+        const connectionStrength = new Map();
         let isTabVisible = true;
         let mouse = { x: null, y: null, radius: 150 };
         
@@ -785,15 +786,24 @@ class BackgroundFX {
                 for (let j = i + 1; j < dots.length; j++) {
                     let dx = dots[i].x - dots[j].x;
                     let dy = dots[i].y - dots[j].y;
-                    let dist = dx * dx + dy * dy; 
-                    if (dist < 25000) { 
+                    let dist = dx * dx + dy * dy;
+                    const key = `${i}:${j}`;
+                    const prevStrength = connectionStrength.get(key) || 0;
+                    const targetStrength = dist < 25000 ? 1 : 0;
+                    const nextStrength = prevStrength + (targetStrength - prevStrength) * 0.12;
+                    if (nextStrength <= 0.01) {
+                        connectionStrength.delete(key);
+                        continue;
+                    }
+                    connectionStrength.set(key, nextStrength);
+                    if (nextStrength > 0.02) {
                         const isLight = document.body.classList.contains('theme-light-global');
                         const distance = Math.sqrt(dist);
                         const proximity = Math.max(0, 1 - distance / 158);
                         const baseAlpha = Math.max(0.08, 0.39 - distance / 2000);
-                        const alpha = Math.min(0.55, baseAlpha + proximity * 0.22);
-                        ctx.strokeStyle = isLight ? `rgba(0, 0, 0, ${Math.min(0.45, alpha)})` : `rgba(255, 255, 255, ${alpha})`; 
-                        ctx.lineWidth = isLight ? 1.6 : 1.4;
+                        const alpha = Math.min(0.55, (baseAlpha + proximity * 0.22) * nextStrength);
+                        ctx.strokeStyle = isLight ? `rgba(0, 0, 0, ${Math.min(0.45, alpha)})` : `rgba(255, 255, 255, ${alpha})`;
+                        ctx.lineWidth = (isLight ? 1.6 : 1.4) * (0.75 + nextStrength * 0.25);
                         ctx.beginPath(); ctx.moveTo(dots[i].x, dots[i].y); ctx.lineTo(dots[j].x, dots[j].y); ctx.stroke();
                     }
                 }
@@ -1986,9 +1996,17 @@ class ProfileManager {
         if (AdminPanel.isCreatorProfile(profile, uid)) badges.push(`<span class="role-badge badge-creator">Создатель</span>`); // [UPDATE]
         if (AdminPanel.isModeratorProfile(profile, uid)) badges.push(`<span class="role-badge badge-moderator">Модератор</span>`); // [UPDATE]
         const adminBadge = String(profile?.adminBadge || '').toLowerCase().trim();
-        if (adminBadge === 'creator') badges.push(`<span class="role-badge badge-creator">Плашка: Создатель</span>`);
-        if (adminBadge === 'moderator') badges.push(`<span class="role-badge badge-moderator">Плашка: Модератор</span>`);
+        if (adminBadge === 'creator') badges.push(`<span class="role-badge badge-creator">Создатель</span>`);
+        if (adminBadge === 'moderator') badges.push(`<span class="role-badge badge-moderator">Модератор</span>`);
         if (adminBadge === 'creator_moderator') badges.push(`<span class="role-badge badge-hybrid">Создатель/Модератор</span>`);
+        if (profile?.adminBadgeCustom?.text) {
+            const custom = profile.adminBadgeCustom;
+            const text = Utils.escapeHtml(custom.text);
+            const color = Utils.escapeHtml(custom.color || '#ffffff');
+            const bg = Utils.escapeHtml(custom.bg || 'rgba(120,120,120,0.2)');
+            const border = Utils.escapeHtml(custom.border || 'rgba(255,255,255,0.35)');
+            badges.push(`<span class="role-badge" style="color:${color}; background:${bg}; border:1px solid ${border}; box-shadow:none;">${text}</span>`);
+        }
         if (profile?.partner) badges.push(`<span class="partner-badge">💖 Пара</span>`); // [UPDATE]
         return badges.join(' '); // [UPDATE]
     }
@@ -3382,6 +3400,13 @@ class AdminPanel {
                         <button class="secondary-btn" id="btn-admin-badge-hybrid">Плашка Создатель/Модератор</button>
                         <button class="danger-btn" id="btn-admin-badge-remove">Снять плашку</button>
                     </div>
+                    <div style="display:grid; grid-template-columns:2fr 1fr 1fr 1fr auto; gap:8px; margin-top:10px; align-items:center;">
+                        <input type="text" id="admin-badge-text" placeholder="Текст плашки" style="margin:0;">
+                        <input type="color" id="admin-badge-color" value="#ffffff" style="margin:0; height:38px;">
+                        <input type="color" id="admin-badge-bg" value="#5d3fd3" style="margin:0; height:38px;">
+                        <input type="color" id="admin-badge-border" value="#8d63ff" style="margin:0; height:38px;">
+                        <button class="primary-btn" id="btn-admin-badge-custom" style="width:auto; padding:0 16px;">Применить кастом</button>
+                    </div>
                 </div>
 
                 <div class="godmode-section active" data-section="dashboard" style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin-bottom:16px;">
@@ -3502,6 +3527,7 @@ class AdminPanel {
         Utils.$('btn-admin-badge-moderator').onclick = () => this.setAdminBadgeForUser('moderator');
         Utils.$('btn-admin-badge-hybrid').onclick = () => this.setAdminBadgeForUser('creator_moderator');
         Utils.$('btn-admin-badge-remove').onclick = () => this.setAdminBadgeForUser(null);
+        Utils.$('btn-admin-badge-custom').onclick = () => this.setAdminBadgeForUser('custom');
         modal.querySelectorAll('.godmode-nav-btn').forEach(btn => {
             btn.onclick = () => this.switchGodModeSection(btn.dataset.section || 'dashboard');
         });
@@ -3619,11 +3645,25 @@ class AdminPanel {
         if (!snap.exists()) return Utils.toast('Пользователь не найден', 'error');
         const targetUid = snap.val();
 
-        const allowed = [null, 'creator', 'moderator', 'creator_moderator'];
+        const allowed = [null, 'creator', 'moderator', 'creator_moderator', 'custom'];
         if (!allowed.includes(mode)) return Utils.toast('Неверный тип плашки', 'error');
 
-        await update(ref(db, `users/${targetUid}/profile`), { adminBadge: mode || null });
-        await this.pushAuditLog('admin.badge.update', { targetUid, adminBadge: mode || null });
+        const updates = { adminBadge: null, adminBadgeCustom: null };
+        if (mode === 'creator' || mode === 'moderator' || mode === 'creator_moderator') {
+            updates.adminBadge = mode;
+        } else if (mode === 'custom') {
+            const text = Utils.$('admin-badge-text')?.value?.trim();
+            if (!text) return Utils.toast('Введите текст для кастомной плашки', 'error');
+            updates.adminBadgeCustom = {
+                text: text.slice(0, 28),
+                color: Utils.$('admin-badge-color')?.value || '#ffffff',
+                bg: Utils.$('admin-badge-bg')?.value || '#5d3fd3',
+                border: Utils.$('admin-badge-border')?.value || '#8d63ff'
+            };
+        }
+
+        await update(ref(db, `users/${targetUid}/profile`), updates);
+        await this.pushAuditLog('admin.badge.update', { targetUid, mode, updates });
         const msg = mode ? `Плашка обновлена: ${mode}` : 'Плашка снята';
         Utils.toast(msg);
     }
