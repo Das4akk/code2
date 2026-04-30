@@ -402,6 +402,34 @@ class Utils {
                 background: linear-gradient(135deg, #f7f2e8 0%, #f1eadf 48%, #ece3d5 100%) !important;
                 color: #2e271d !important;
             }
+            .theme-light-global,
+            html.theme-light-global,
+            html[data-global-theme="light"] {
+                --bg: #f4eee2 !important;
+                --panel: rgba(252, 247, 237, 0.92) !important;
+                --panel-hover: rgba(250, 244, 233, 0.98) !important;
+                --border: rgba(0, 0, 0, 0.25) !important;
+                --border-light: rgba(0, 0, 0, 0.42) !important;
+                --text-main: #1f1a13 !important;
+                --text-muted: #4b4135 !important;
+                --accent: #1f1a13 !important;
+                --accent-hover: #000000 !important;
+            }
+            .theme-light-global #auth-screen,
+            .theme-light-global #lobby-screen,
+            .theme-light-global #room-screen,
+            .theme-light-global .screen,
+            body.theme-light-global #auth-screen,
+            body.theme-light-global #lobby-screen,
+            body.theme-light-global #room-screen,
+            body.theme-light-global .screen {
+                background: linear-gradient(135deg, #f7f2e8 0%, #f1eadf 48%, #ece3d5 100%) !important;
+            }
+            .theme-light-global #particle-canvas,
+            body.theme-light-global #particle-canvas {
+                opacity: 1 !important;
+                filter: contrast(1.25) !important;
+            }
             .theme-light-global .glass-panel,
             .theme-light-global .room-card,
             .theme-light-global .user-item,
@@ -720,7 +748,7 @@ class BackgroundFX {
             }
             draw() {
                 const isLight = document.body.classList.contains('theme-light-global');
-                ctx.fillStyle = isLight ? "rgba(0,0,0,0.62)" : "rgba(255,255,255,0.78)";
+                ctx.fillStyle = isLight ? "rgba(0,0,0,0.88)" : "rgba(255,255,255,0.78)";
                 ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
             }
         }
@@ -739,9 +767,9 @@ class BackgroundFX {
                     let dist = dx * dx + dy * dy; 
                     if (dist < 25000) { 
                         const isLight = document.body.classList.contains('theme-light-global');
-                        const alpha = Math.max(0.08, 0.72 - Math.sqrt(dist) / 1000);
-                        ctx.strokeStyle = isLight ? `rgba(0, 0, 0, ${Math.min(0.85, alpha)})` : `rgba(255, 255, 255, ${alpha})`; 
-                        ctx.lineWidth = isLight ? 1.2 : 1.4;
+                        const alpha = Math.max(0.16, 0.78 - Math.sqrt(dist) / 1000);
+                        ctx.strokeStyle = isLight ? `rgba(0, 0, 0, ${Math.min(0.95, alpha)})` : `rgba(255, 255, 255, ${alpha})`; 
+                        ctx.lineWidth = isLight ? 1.6 : 1.4;
                         ctx.beginPath(); ctx.moveTo(dots[i].x, dots[i].y); ctx.lineTo(dots[j].x, dots[j].y); ctx.stroke();
                     }
                 }
