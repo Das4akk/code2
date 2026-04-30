@@ -37,10 +37,10 @@
         body.auth-loading { visibility: hidden; background: #000; }
         /* // [NEW] GLOBAL THEME TOGGLE + PERSISTED LIGHT OVERRIDES */
         html.theme-light-global {
-            --bg: #f6f7f9; /* // [UPDATE] */
+            --bg: #fdfdfd; /* // [UPDATE] */
             --panel: #ffffff; /* // [UPDATE] */
-            --panel-hover: #f0f2f5; /* // [UPDATE] */
-            --border: #e3e6eb; /* // [UPDATE] */
+            --panel-hover: #f7f7f8; /* // [UPDATE] */
+            --border: #e8e8eb; /* // [UPDATE] */
             --border-light: #cfd5de; /* // [UPDATE] */
             --text-main: #101216; /* // [UPDATE] */
             --text-muted: #6a7280; /* // [UPDATE] */
@@ -49,7 +49,7 @@
             --brand: #111827; /* // [UPDATE] */
         }
         html.theme-light-global body { background: var(--bg); color: var(--text-main); } /* // [UPDATE] */
-        html.theme-light-global #premium-black-bg { opacity: 0.26; animation: premiumDriftLight 24s ease-in-out infinite; } /* // [UPDATE] */
+        html.theme-light-global #premium-black-bg { opacity: 0.12; animation: premiumDriftLight 24s ease-in-out infinite; } /* // [UPDATE] */
         html.theme-light-global #particle-canvas { filter: brightness(0); opacity: 0.28; animation: particleBreathLight 18s ease-in-out infinite; } /* // [UPDATE] */
         html.theme-light-global .glass-panel { background: rgba(255,255,255,0.92); border-color: var(--border); box-shadow: 0 12px 28px rgba(17,24,39,0.08); } /* // [NEW] */
         html.theme-light-global .sidebar { background: rgba(255,255,255,0.9); } /* // [NEW] */
@@ -435,11 +435,19 @@
         html.theme-light-global .lobby-header input { background: #ffffff; color: var(--text-main); box-shadow: none; } /* // [NEW] */
         html.theme-light-global .global-theme-toggle { background: #ffffff; box-shadow: 0 8px 18px rgba(17,24,39,0.06); } /* // [NEW] */
         #modal-edit-profile .modal-content,
-        #modal-view-profile .modal-content { color: var(--profile-text, var(--text-main)); } /* // [NEW] */
+        #modal-view-profile .modal-content {
+            background: var(--profile-bg, #111111) !important;
+            color: var(--profile-text, #ffffff) !important;
+            border-color: var(--profile-border, rgba(255,255,255,0.22)) !important;
+        } /* // [UPDATE] */
         #modal-edit-profile .modal-content input,
         #modal-edit-profile .modal-content textarea,
         #modal-view-profile .modal-content input,
-        #modal-view-profile .modal-content textarea { color: var(--profile-text, var(--text-main)); border-color: var(--profile-border, var(--border-light)); } /* // [NEW] */
+        #modal-view-profile .modal-content textarea {
+            background: rgba(0,0,0,0.22) !important;
+            color: var(--profile-text, #ffffff) !important;
+            border-color: var(--profile-border, rgba(255,255,255,0.22)) !important;
+        } /* // [UPDATE] */
         #modal-view-profile #view-bio,
         #modal-view-profile #view-username,
         #modal-view-profile .hashtag-chip { color: var(--profile-muted, var(--text-muted)) !important; border-color: var(--profile-border, var(--border-light)); } /* // [NEW] */
@@ -630,23 +638,23 @@
                 <textarea id="edit-bio" placeholder="Расскажите немного о себе..." rows="3"></textarea>
                 <!-- // [UPDATE] PROFILE BACKGROUND SETTING -->
                 <button class="secondary-btn" id="btn-toggle-profile-bg" type="button">Настроить фон профиля</button>
-                <div class="profile-bg-panel" id="profile-bg-panel" data-selected-index="10">
+                <div class="profile-bg-panel" id="profile-bg-panel" data-selected-index="1">
                     <div class="profile-bg-preview" id="profile-bg-preview">Предпросмотр профиля</div>
                     <div class="profile-bg-presets" id="profile-bg-presets"></div>
                     <div class="profile-bg-row">
                         <span>R</span>
-                        <input type="range" id="profile-bg-r" min="0" max="255" value="30">
-                        <input type="number" id="profile-bg-r-num" min="0" max="255" value="30">
+                        <input type="range" id="profile-bg-r" min="0" max="255" value="17">
+                        <input type="number" id="profile-bg-r-num" min="0" max="255" value="17">
                     </div>
                     <div class="profile-bg-row">
                         <span>G</span>
-                        <input type="range" id="profile-bg-g" min="0" max="255" value="30">
-                        <input type="number" id="profile-bg-g-num" min="0" max="255" value="30">
+                        <input type="range" id="profile-bg-g" min="0" max="255" value="17">
+                        <input type="number" id="profile-bg-g-num" min="0" max="255" value="17">
                     </div>
                     <div class="profile-bg-row">
                         <span>B</span>
-                        <input type="range" id="profile-bg-b" min="0" max="255" value="30">
-                        <input type="number" id="profile-bg-b-num" min="0" max="255" value="30">
+                        <input type="range" id="profile-bg-b" min="0" max="255" value="17">
+                        <input type="number" id="profile-bg-b-num" min="0" max="255" value="17">
                     </div>
                     <div class="profile-bg-row" style="margin-top: 5px;">
                         <span style="font-size:10px;">Дим</span>

@@ -819,11 +819,11 @@ class BackgroundFX {
                 const isLight = document.body.classList.contains('theme-light-global');
                 if (isLight) {
                     const glow = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size * 2.8);
-                    glow.addColorStop(0, 'rgba(90, 140, 220, 0.28)');
-                    glow.addColorStop(1, 'rgba(90, 140, 220, 0)');
+                    glow.addColorStop(0, 'rgba(0, 0, 0, 0.16)');
+                    glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
                     ctx.fillStyle = glow;
                     ctx.beginPath(); ctx.arc(this.x, this.y, this.size * 2.8, 0, Math.PI * 2); ctx.fill();
-                    ctx.fillStyle = "rgba(25,45,82,0.24)";
+                    ctx.fillStyle = "rgba(0, 0, 0, 0.22)";
                 } else {
                     ctx.fillStyle = "rgba(255,255,255,0.39)";
                 }
@@ -861,11 +861,7 @@ class BackgroundFX {
                         const pulse = 0.92 + Math.sin(t + i * 0.21 + j * 0.13) * 0.08;
                         const alpha = Math.min(0.55, (baseAlpha + proximity * 0.22) * nextStrength * pulse);
                         if (isLight) {
-                            const gradient = ctx.createLinearGradient(dots[i].x, dots[i].y, dots[j].x, dots[j].y);
-                            gradient.addColorStop(0, `rgba(46, 76, 122, ${Math.min(0.36, alpha)})`);
-                            gradient.addColorStop(0.5, `rgba(78, 127, 205, ${Math.min(0.45, alpha + 0.04)})`);
-                            gradient.addColorStop(1, `rgba(41, 69, 112, ${Math.min(0.34, alpha)})`);
-                            ctx.strokeStyle = gradient;
+                            ctx.strokeStyle = `rgba(0, 0, 0, ${Math.min(0.38, alpha)})`;
                         } else {
                             ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
                         }
@@ -2054,7 +2050,7 @@ class HashtagManager {
 }
 
 class ProfileManager {
-    static backgroundPresets = ['#1f2937', '#f8fafc', '#ff6fae', '#7c3aed', '#2563eb', '#0891b2', '#16a34a', '#f59e0b', '#ef4444', '#111111', '#8b5cf6', '#14b8a6']; // [NEW]
+    static backgroundPresets = ['#111111', '#f8fafc', '#ff6fae', '#7c3aed', '#2563eb', '#0891b2', '#16a34a', '#f59e0b', '#ef4444', '#1f2937', '#8b5cf6', '#14b8a6']; // [NEW]
 
     static getRoleBadgeHtml(profile, uid = null) {
         if (!profile) return '';
@@ -2109,7 +2105,7 @@ class ProfileManager {
             email,
             bio: '',
             avatar: '',
-            background: { color: '#1f2937', index: 10, url: '', dim: 0.5 }, // [UPDATE - Default to 10 and added dim]
+            background: { color: '#111111', index: 1, url: '', dim: 0.5 }, // [UPDATE]
             hashtags: [],
             createdAt: Date.now(),
             provider: security.provider || this.normalizeProvider(auth.currentUser),
@@ -2352,14 +2348,14 @@ class ProfileManager {
         await verifyBeforeUpdateEmail(user, newEmail);
     }
 
-    static normalizeHexColor(value = '#1f2937') { // [UPDATE]
+    static normalizeHexColor(value = '#111111') { // [UPDATE]
         const raw = String(value || '').trim(); // [UPDATE]
         if (/^#[0-9a-f]{6}$/i.test(raw)) return raw.toLowerCase(); // [NEW]
         if (/^#[0-9a-f]{3}$/i.test(raw)) return `#${raw[1]}${raw[1]}${raw[2]}${raw[2]}${raw[3]}${raw[3]}`.toLowerCase(); // [NEW]
-        return '#1f2937'; // [UPDATE]
+        return '#111111'; // [UPDATE]
     } // [UPDATE]
 
-    static hexToRgb(hex = '#1f2937') { // [NEW]
+    static hexToRgb(hex = '#111111') { // [NEW]
         const safeHex = this.normalizeHexColor(hex).slice(1); // [NEW]
         return { // [NEW]
             r: parseInt(safeHex.slice(0, 2), 16), // [NEW]
@@ -2368,11 +2364,11 @@ class ProfileManager {
         }; // [NEW]
     } // [NEW]
 
-    static rgbToHex(r = 31, g = 41, b = 55) { // [NEW]
+    static rgbToHex(r = 17, g = 17, b = 17) { // [NEW]
         return `#${[r, g, b].map(v => Math.max(0, Math.min(255, Number(v) || 0)).toString(16).padStart(2, '0')).join('')}`; // [NEW]
     } // [NEW]
 
-    static getReadableProfileColors(hex = '#1f2937') { // [NEW]
+    static getReadableProfileColors(hex = '#111111') { // [NEW]
         const { r, g, b } = this.hexToRgb(hex); // [NEW]
         const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255; // [NEW]
         const isLight = luminance > 0.58; // [NEW]
@@ -2389,15 +2385,15 @@ class ProfileManager {
             const color = this.normalizeHexColor(value.color); // [NEW]
             // [PATCH] Always force to 10 if invalid to keep the base style anchored
             const rawIndex = Number(value.index);
-            const index = isNaN(rawIndex) || rawIndex <= 0 ? 10 : Math.max(1, Math.min(12, rawIndex)); 
+            const index = isNaN(rawIndex) || rawIndex <= 0 ? 1 : Math.max(1, Math.min(12, rawIndex)); 
             const url = this.normalizeProfileBackgroundUrl(value.url || ''); // [NEW]
             const dim = typeof value.dim !== 'undefined' ? Number(value.dim) : 0.5; // [ADD] Dim logic
             return { color, index, url, dim: Math.max(0, Math.min(1, dim)) }; // [NEW]
         } // [NEW]
         const raw = String(value || '').trim(); // [UPDATE]
-        if (!raw) return { color: '#1f2937', index: 10, url: '', dim: 0.5 }; // [UPDATE]
-        if (/data:image/i.test(raw) || /^https?:\/\//i.test(raw)) return { color: '#1f2937', index: 10, url: this.normalizeProfileBackgroundUrl(raw), dim: 0.5 }; // [NEW] Support base64 or http
-        return { color: this.normalizeHexColor(raw), index: 10, url: '', dim: 0.5 }; // [UPDATE]
+        if (!raw) return { color: '#111111', index: 1, url: '', dim: 0.5 }; // [UPDATE]
+        if (/data:image/i.test(raw) || /^https?:\/\//i.test(raw)) return { color: '#111111', index: 1, url: this.normalizeProfileBackgroundUrl(raw), dim: 0.5 }; // [NEW] Support base64 or http
+        return { color: this.normalizeHexColor(raw), index: 1, url: '', dim: 0.5 }; // [UPDATE]
     } // [UPDATE]
 
     static normalizeProfileBackgroundUrl(value = '') { // [NEW]
@@ -2419,7 +2415,7 @@ class ProfileManager {
         if (urlRaw && !url && !urlRaw.startsWith('data:image')) throw new Error('Фон профиля: некорректный URL/файл'); // [UPDATE]
         return { // [UPDATE]
             color: this.rgbToHex(r, g, b), // [NEW]
-            index: Number(Utils.$('profile-bg-panel')?.dataset.selectedIndex) || 10, // [PATCH] Default to 10
+            index: Number(Utils.$('profile-bg-panel')?.dataset.selectedIndex) || 1, // [PATCH]
             url, // [NEW]
             dim // [ADD]
         }; // [NEW]
@@ -2436,7 +2432,7 @@ class ProfileManager {
         this.updateProfileBackgroundPreview(); // [NEW]
     } // [NEW]
 
-    static renderProfileBackgroundPresets(activeIndex = 10) { // [NEW - Default 10]
+    static renderProfileBackgroundPresets(activeIndex = 1) { // [NEW]
         const container = Utils.$('profile-bg-presets'); // [NEW]
         if (!container) return; // [NEW]
         container.innerHTML = this.backgroundPresets.map((color, idx) => { // [NEW]
@@ -2453,13 +2449,13 @@ class ProfileManager {
         }); // [NEW]
     } // [NEW]
 
-    static setProfileBackgroundRgb(r, g, b, index = 10) { // [NEW - Default 10]
+    static setProfileBackgroundRgb(r, g, b, index = 1) { // [NEW]
         [['r', r], ['g', g], ['b', b]].forEach(([key, value]) => { // [NEW]
             const safe = Math.max(0, Math.min(255, Number(value) || 0)); // [NEW]
             if (Utils.$(`profile-bg-${key}`)) Utils.$(`profile-bg-${key}`).value = safe; // [NEW]
             if (Utils.$(`profile-bg-${key}-num`)) Utils.$(`profile-bg-${key}-num`).value = safe; // [NEW]
         }); // [NEW]
-        if (Utils.$('profile-bg-panel')) Utils.$('profile-bg-panel').dataset.selectedIndex = String(index || 10); // [PATCH]
+        if (Utils.$('profile-bg-panel')) Utils.$('profile-bg-panel').dataset.selectedIndex = String(index || 1); // [PATCH]
     } // [NEW]
 
     static bindProfileBackgroundControls() { // [NEW]
@@ -2474,8 +2470,8 @@ class ProfileManager {
                 const safe = Math.max(0, Math.min(255, Number(source.value) || 0)); // [NEW]
                 source.value = safe; // [NEW]
                 if (target) target.value = safe; // [NEW]
-                if (panel) panel.dataset.selectedIndex = '10'; // [PATCH] Anchor to 10
-                this.renderProfileBackgroundPresets(10); // [PATCH]
+                if (panel) panel.dataset.selectedIndex = '1'; // [PATCH]
+                this.renderProfileBackgroundPresets(1); // [PATCH]
                 this.updateProfileBackgroundPreview(); // [NEW]
             }; // [NEW]
             if (range) range.oninput = () => sync(range, number); // [NEW]
@@ -2499,8 +2495,8 @@ class ProfileManager {
         const preview = Utils.$('profile-bg-preview'); // [NEW]
         if (!preview) return; // [NEW]
         const data = { // [UPDATE]
-            color: this.rgbToHex(Utils.$('profile-bg-r')?.value || 31, Utils.$('profile-bg-g')?.value || 41, Utils.$('profile-bg-b')?.value || 55), // [NEW]
-            index: Number(Utils.$('profile-bg-panel')?.dataset.selectedIndex) || 10, // [PATCH]
+            color: this.rgbToHex(Utils.$('profile-bg-r')?.value || 17, Utils.$('profile-bg-g')?.value || 17, Utils.$('profile-bg-b')?.value || 17), // [NEW]
+            index: Number(Utils.$('profile-bg-panel')?.dataset.selectedIndex) || 1, // [PATCH]
             url: this.normalizeProfileBackgroundUrl(Utils.$('profile-bg-url')?.value || ''), // [NEW]
             dim: Number(Utils.$('profile-bg-dim')?.value || 0.5) // [ADD]
         }; // [NEW]
@@ -4344,7 +4340,7 @@ class AdminPanel {
         const username = Utils.$('admin-edit-username').value.toLowerCase().trim().replace('@', '');
         const avatar = Utils.$('admin-edit-avatar').value.trim();
         const bio = Utils.$('admin-edit-bio').value.trim();
-        const bgColor = Utils.$('admin-edit-bg-color')?.value || '#1f2937';
+        const bgColor = Utils.$('admin-edit-bg-color')?.value || '#111111';
         const bgUrl = Utils.$('admin-edit-bg-url')?.value.trim() || '';
         const bgDim = Number(Utils.$('admin-edit-bg-dim')?.value || 0.5);
 
