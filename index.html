@@ -223,6 +223,27 @@
         .chat-tabs { display: flex; padding: 10px; border-bottom: 1px solid var(--border); gap: 5px; }
         .chat-tabs button { flex: 1; padding: 10px; background: transparent; color: var(--text-muted); border-radius: 10px; font-size: 13px; font-weight: 600; }
         .chat-tabs button.active { background: rgba(255,255,255,0.05); color: var(--text-main); }
+        .users-tab-inner { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; }
+        .users-tab-left { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .users-tab-avatars { display: inline-flex; align-items: center; margin-left: auto; }
+        .users-tab-avatar {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.42);
+            background: #111;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            margin-left: -6px;
+            font-size: 10px;
+            font-weight: 700;
+            color: #fff;
+            box-shadow: 0 0 0 1px rgba(0,0,0,0.35);
+        }
+        .users-tab-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .users-tab-avatar-fallback { background: #111; }
         
         .chat-content-area { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
         .chat-content-area::-webkit-scrollbar { width: 4px; }
