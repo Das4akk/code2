@@ -64,7 +64,12 @@ const AppState = {
         settings: {
             roomCreationBlocked: false
         },
-        lastAnnouncementId: null
+        lastAnnouncementId: null,
+        activeSection: 'dashboard',
+        logs: [],
+        shadowbans: {},
+        globalMute: false,
+        spectators: {}
     },
     easterEggs: {
         activeEffects: new Map(),
@@ -353,6 +358,208 @@ class Utils {
                     font-size: 11px;
                     gap: 12px;
                 }
+            }
+
+            /* UI polish layer: outlines, motion, light-input fix */
+            button,
+            .primary-btn,
+            .secondary-btn,
+            .danger-btn,
+            .dm-btn,
+            .add-friend-btn,
+            .btn-small {
+                outline: 1px solid rgba(255, 255, 255, 0.22);
+                box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+                transition: transform 0.18s ease, box-shadow 0.25s ease, filter 0.25s ease, background 0.25s ease;
+            }
+            button:hover,
+            .primary-btn:hover,
+            .secondary-btn:hover,
+            .danger-btn:hover,
+            .dm-btn:hover,
+            .add-friend-btn:hover,
+            .btn-small:hover {
+                transform: translateY(-1px) scale(1.02);
+                box-shadow: 0 0 16px rgba(130, 245, 255, 0.28), 0 0 0 1px rgba(130, 245, 255, 0.35) inset;
+            }
+            button:active {
+                transform: scale(0.98);
+                filter: brightness(0.95);
+            }
+            .theme-light-global input,
+            .theme-light-global textarea,
+            .theme-light-global select {
+                color: #111 !important;
+                background: rgba(255, 255, 255, 0.94) !important;
+                border: 1px solid rgba(17, 24, 39, 0.28) !important;
+            }
+            .theme-light-global input::placeholder,
+            .theme-light-global textarea::placeholder {
+                color: rgba(17, 24, 39, 0.55) !important;
+            }
+
+            .room-card {
+                transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+            }
+            .room-card:hover {
+                transform: translateY(-3px) scale(1.01);
+                box-shadow: 0 10px 28px rgba(34, 211, 238, 0.18);
+                border-color: rgba(34, 211, 238, 0.45);
+            }
+            .room-preview video {
+                transition: transform 0.4s ease, filter 0.35s ease;
+            }
+            .room-card:hover .room-preview video {
+                transform: scale(1.06);
+                filter: saturate(1.15);
+            }
+            .room-meta .avatars-stack {
+                display: inline-flex;
+                align-items: center;
+                margin-left: 6px;
+            }
+            .room-meta .stack-avatar {
+                width: 22px;
+                height: 22px;
+                border-radius: 50%;
+                border: 1px solid rgba(255,255,255,0.45);
+                margin-left: -7px;
+                overflow: hidden;
+                background: rgba(255,255,255,0.08);
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 11px;
+                font-weight: 700;
+            }
+
+            .profile-open-link {
+                cursor: pointer;
+                transition: color 0.2s ease, text-shadow 0.2s ease;
+            }
+            .profile-open-link:hover {
+                color: var(--accent);
+                text-shadow: 0 0 8px rgba(46, 213, 115, 0.45);
+            }
+
+            #room-tag-filters {
+                display: flex;
+                gap: 8px;
+                flex-wrap: wrap;
+                margin: 8px 0 12px;
+            }
+            .tag-pill {
+                border-radius: 999px;
+                padding: 6px 10px;
+                font-size: 12px;
+                cursor: pointer;
+                user-select: none;
+                background: rgba(255,255,255,0.04);
+                border: 1px solid var(--border-light);
+                transition: transform 0.2s ease, box-shadow 0.25s ease, background 0.25s ease;
+            }
+            .tag-pill.active {
+                background: rgba(46, 213, 115, 0.14);
+                box-shadow: 0 0 12px rgba(46, 213, 115, 0.32);
+                transform: translateY(-1px);
+            }
+            .room-card.filtered-out {
+                opacity: 0.28;
+                transform: scale(0.98);
+                pointer-events: none;
+            }
+
+            .theater-mode .sidebar,
+            .theater-mode .room-top-bar,
+            .theater-mode .reaction-controls {
+                opacity: 0;
+                pointer-events: none;
+                transform: translateY(-10px);
+            }
+            .theater-mode .video-container {
+                width: 100%;
+                min-height: 90vh;
+            }
+            .theater-mode #native-player {
+                height: 90vh !important;
+                width: 100% !important;
+            }
+            .theater-mode .chat-section {
+                position: absolute;
+                right: 12px;
+                bottom: 12px;
+                width: min(420px, 92vw);
+                max-height: 45vh;
+                z-index: 25;
+                backdrop-filter: blur(12px);
+                background: rgba(6, 8, 14, 0.54);
+                border: 1px solid rgba(128, 242, 255, 0.35);
+            }
+
+            .voice-wave {
+                display: inline-flex;
+                gap: 2px;
+                margin-left: 8px;
+                vertical-align: middle;
+            }
+            .voice-wave i {
+                width: 2px;
+                height: 8px;
+                border-radius: 8px;
+                background: #22d3ee;
+                opacity: 0.35;
+                animation: voiceWave 1s ease-in-out infinite;
+            }
+            .voice-wave i:nth-child(2) { animation-delay: 0.1s; }
+            .voice-wave i:nth-child(3) { animation-delay: 0.2s; }
+            .voice-wave i:nth-child(4) { animation-delay: 0.3s; }
+            .user-item.speaking .voice-wave i {
+                opacity: 1;
+            }
+            @keyframes voiceWave {
+                0%, 100% { transform: scaleY(0.5); }
+                50% { transform: scaleY(1.6); }
+            }
+
+            #modal-admin-panel.godmode-modal .modal-content {
+                width: 100vw !important;
+                height: 100vh !important;
+                max-width: none !important;
+                border-radius: 0 !important;
+                margin: 0 !important;
+                display: grid;
+                grid-template-columns: 260px minmax(0, 1fr);
+                gap: 0;
+                background: radial-gradient(circle at top, rgba(35, 72, 128, 0.25), rgba(9, 13, 22, 0.98));
+            }
+            .godmode-sidebar {
+                border-right: 1px solid rgba(34, 211, 238, 0.3);
+                background: rgba(3, 7, 13, 0.82);
+                padding: 14px;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+            .godmode-sidebar button {
+                width: 100%;
+                text-align: left;
+                padding: 10px 12px;
+                font-family: Consolas, Menlo, Monaco, monospace;
+            }
+            .godmode-main {
+                overflow: auto;
+                padding: 20px;
+            }
+            .godmode-section {
+                display: none;
+            }
+            .godmode-section.active {
+                display: block;
+                animation: fadeInUp 0.25s ease;
+            }
+            @keyframes fadeInUp {
+                from { opacity: 0; transform: translateY(10px); }
+                to { opacity: 1; transform: translateY(0); }
             }
         `;
         document.head.appendChild(style);
@@ -2246,7 +2453,7 @@ class ProfileManager {
         container.style.cursor = 'pointer';
         container.onclick = (e) => {
             if (!e.target.closest('button')) {
-                this.openPartnerModal(ownerUid || AppState.currentUser.uid, partnerUid);
+                this.openViewProfileModal(partnerUid);
             }
         };
 
@@ -3094,8 +3301,17 @@ class AdminPanel {
         const modal = document.createElement('div');
         modal.className = 'modal';
         modal.id = 'modal-admin-panel';
+        modal.classList.add('godmode-modal');
         modal.innerHTML = `
             <div class="modal-content glass-panel" style="width:min(1180px,100%); padding:22px;">
+                <div class="godmode-sidebar" id="godmode-sidebar">
+                    <button class="secondary-btn godmode-nav-btn active" data-section="dashboard">dashboard</button>
+                    <button class="secondary-btn godmode-nav-btn" data-section="people">people</button>
+                    <button class="secondary-btn godmode-nav-btn" data-section="rooms">rooms</button>
+                    <button class="secondary-btn godmode-nav-btn" data-section="logs">logs</button>
+                    <button class="secondary-btn godmode-nav-btn" data-section="settings">settings</button>
+                </div>
+                <div class="godmode-main" id="godmode-main">
                 <div style="display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:16px;">
                     <div>
                         <h2 style="margin:0;">Админ-панель</h2>
@@ -3106,16 +3322,20 @@ class AdminPanel {
 
                 <div id="admin-stats-grid" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:16px;"></div>
 
-                <div style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02); margin-bottom: 16px;">
+                <div class="godmode-section active" data-section="settings" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02); margin-bottom: 16px;">
                     <div style="font-weight:700; margin-bottom:10px;">Управление правами (Только для Создателя)</div>
                     <div style="display:flex; gap:8px;">
                         <input type="text" id="admin-mod-username" placeholder="ID пользователя (без @)" style="margin:0; flex:1;">
                         <button class="primary-btn" id="btn-admin-grant-mod" style="width:auto; padding:0 16px;">Назначить Модератора</button>
                         <button class="danger-btn" id="btn-admin-revoke-mod" style="width:auto; padding:0 16px;">Снять Модератора</button>
                     </div>
+                    <div style="display:flex; gap:8px; margin-top:10px;">
+                        <button class="secondary-btn" id="btn-admin-toggle-global-mute" style="width:auto; padding:0 16px;">Global Mute</button>
+                        <button class="secondary-btn" id="btn-admin-toggle-spectator-self" style="width:auto; padding:0 16px;">Spectator Mode</button>
+                    </div>
                 </div>
 
-                <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin-bottom:16px;">
+                <div class="godmode-section active" data-section="dashboard" style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin-bottom:16px;">
                     <div style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
                         <div style="font-weight:700; margin-bottom:10px;">Глобальное оповещение / Пасхалка</div>
                         <textarea id="admin-announcement-input" rows="4" placeholder="Введите текст или команду пасхалки (напр. /matrix)"></textarea>
@@ -3138,7 +3358,7 @@ class AdminPanel {
                     </div>
                 </div>
 
-                <div style="display:grid; grid-template-columns:1.15fr 0.85fr; gap:16px;">
+                <div class="godmode-section active" data-section="rooms" style="display:grid; grid-template-columns:1fr; gap:16px;">
                     <div style="display:flex; flex-direction:column; gap:16px; min-width:0;">
                         <div style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
                             <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px;">
@@ -3147,7 +3367,11 @@ class AdminPanel {
                             </div>
                             <div id="admin-rooms-list" style="display:flex; flex-direction:column; gap:8px; max-height:280px; overflow:auto;"></div>
                         </div>
+                    </div>
+                </div>
 
+                <div class="godmode-section active" data-section="people" style="display:grid; grid-template-columns:1.15fr 0.85fr; gap:16px;">
+                    <div style="display:flex; flex-direction:column; gap:16px; min-width:0;">
                         <div style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
                             <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px;">
                                 <div style="font-weight:700;">Онлайн пользователи</div>
@@ -3171,6 +3395,14 @@ class AdminPanel {
                         </div>
                     </div>
                 </div>
+                <div class="godmode-section" data-section="logs" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px;">
+                        <div style="font-weight:700;">Audit Log</div>
+                        <button class="secondary-btn" id="btn-admin-clear-audit" style="width:auto; padding:8px 12px;">Очистить лог</button>
+                    </div>
+                    <div id="admin-audit-list" style="display:flex; flex-direction:column; gap:8px; max-height:70vh; overflow:auto;"></div>
+                </div>
+                </div>
             </div>
         `;
         document.body.appendChild(modal);
@@ -3187,10 +3419,66 @@ class AdminPanel {
         Utils.$('btn-admin-refresh').onclick = () => this.renderPanel();
         Utils.$('btn-admin-find-user').onclick = () => this.findUser();
         Utils.$('btn-admin-clear-user-editor').onclick = () => this.renderEmptyUserEditor();
+        Utils.$('btn-admin-clear-audit').onclick = () => this.clearAuditLog();
+        Utils.$('btn-admin-toggle-global-mute').onclick = () => this.toggleGlobalMute();
+        Utils.$('btn-admin-toggle-spectator-self').onclick = () => this.toggleSelfSpectatorMode();
         Utils.$('admin-user-search').onkeydown = (e) => { if (e.key === 'Enter') this.findUser(); };
 
         Utils.$('btn-admin-grant-mod').onclick = () => this.toggleModRole(true);
         Utils.$('btn-admin-revoke-mod').onclick = () => this.toggleModRole(false);
+        modal.querySelectorAll('.godmode-nav-btn').forEach(btn => {
+            btn.onclick = () => this.switchGodModeSection(btn.dataset.section || 'dashboard');
+        });
+    }
+
+    static switchGodModeSection(section = 'dashboard') {
+        AppState.admin.activeSection = section;
+        Utils.$('modal-admin-panel')?.querySelectorAll('.godmode-nav-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.section === section);
+        });
+        Utils.$('modal-admin-panel')?.querySelectorAll('.godmode-section').forEach(node => {
+            const nodeSection = node.dataset.section || 'dashboard';
+            node.classList.toggle('active', section === nodeSection || section === 'dashboard' && nodeSection === 'dashboard');
+        });
+    }
+
+    static async pushAuditLog(action = '', payload = {}) {
+        if (!AppState.currentUser) return;
+        const item = {
+            ts: Date.now(),
+            byUid: AppState.currentUser.uid,
+            action,
+            payload
+        };
+        await push(ref(db, 'admin/auditLog'), item).catch(() => {});
+    }
+
+    static async clearAuditLog() {
+        if (!this.requireAdmin()) return;
+        await remove(ref(db, 'admin/auditLog'));
+        Utils.toast('Audit log очищен');
+    }
+
+    static async toggleGlobalMute() {
+        if (!this.requireAdmin()) return;
+        const next = !Boolean(AppState.admin.globalMute);
+        AppState.admin.globalMute = next;
+        await set(ref(db, 'admin/settings/globalMute'), next);
+        await this.pushAuditLog('globalMute.toggle', { enabled: next });
+        Utils.toast(next ? 'Global Mute включен' : 'Global Mute выключен');
+        this.renderIfOpen();
+    }
+
+    static async toggleSelfSpectatorMode() {
+        if (!this.requireAdmin()) return;
+        const uid = AppState.currentUser?.uid;
+        if (!uid || !AppState.currentRoomId) return Utils.toast('Зайдите в комнату для spectator mode', 'error');
+        const path = `rooms/${AppState.currentRoomId}/presence/${uid}/spectator`;
+        const snap = await get(ref(db, path));
+        const next = !Boolean(snap.val());
+        await set(ref(db, path), next);
+        await this.pushAuditLog('spectator.self', { roomId: AppState.currentRoomId, enabled: next });
+        Utils.toast(next ? 'Spectator mode включен' : 'Spectator mode выключен');
     }
 
     static async toggleModRole(grant) {
@@ -3207,6 +3495,7 @@ class AdminPanel {
         }
 
         await update(ref(db, `users/${targetUid}/profile`), { role: grant ? 'moderator' : null });
+        await this.pushAuditLog('moderator.toggle', { targetUid, grant });
         Utils.toast(grant ? 'Права модератора выданы' : 'Права модератора сняты');
         Utils.$('admin-mod-username').value = '';
     }
@@ -3218,7 +3507,9 @@ class AdminPanel {
         this.initializedForUid = AppState.currentUser.uid;
 
         const settingsRef = ref(db, 'admin/settings');
+        const globalMuteRef = ref(db, 'admin/settings/globalMute');
         const annRef = ref(db, 'admin/global-announcement');
+        const auditRef = ref(db, 'admin/auditLog');
         const forceSignOutRef = ref(db, `admin/actions/forceSignOut/${AppState.currentUser.uid}`);
         const forceLeaveRoomRef = ref(db, `admin/actions/forceLeaveRoom/${AppState.currentUser.uid}`);
 
@@ -3264,6 +3555,20 @@ class AdminPanel {
             }
         });
 
+        const globalMuteUnsub = onValue(globalMuteRef, (snap) => {
+            AppState.admin.globalMute = Boolean(snap.val());
+            this.renderIfOpen();
+        });
+
+        const auditUnsub = onValue(auditRef, (snap) => {
+            const data = snap.val() || {};
+            AppState.admin.logs = Object.entries(data)
+                .map(([id, value]) => ({ id, ...(value || {}) }))
+                .sort((a, b) => Number(b.ts || 0) - Number(a.ts || 0))
+                .slice(0, 300);
+            this.renderAuditLog();
+        });
+
         const forceSignOutUnsub = onValue(forceSignOutRef, async (snap) => {
             const payload = snap.val();
             if (!payload?.ts) return;
@@ -3294,7 +3599,9 @@ class AdminPanel {
 
         AppState.activeSubscriptions.push(
             () => off(settingsRef, 'value', settingsUnsub),
+            () => off(globalMuteRef, 'value', globalMuteUnsub),
             () => off(annRef, 'value', annUnsub),
+            () => off(auditRef, 'value', auditUnsub),
             () => off(forceSignOutRef, 'value', forceSignOutUnsub),
             () => off(forceLeaveRoomRef, 'value', forceLeaveRoomUnsub)
         );
@@ -3392,6 +3699,26 @@ class AdminPanel {
 
         const lockBtn = Utils.$('btn-admin-toggle-room-lock');
         if (lockBtn) lockBtn.innerText = AppState.admin.settings.roomCreationBlocked ? 'Разблокировать создание комнат' : 'Блокировать создание комнат';
+        const muteBtn = Utils.$('btn-admin-toggle-global-mute');
+        if (muteBtn) muteBtn.innerText = AppState.admin.globalMute ? 'Global Mute: ON' : 'Global Mute: OFF';
+    }
+
+    static renderAuditLog() {
+        const list = Utils.$('admin-audit-list');
+        if (!list) return;
+        if (!AppState.admin.logs.length) {
+            list.innerHTML = `<div style="font-size:13px; color:var(--text-muted);">Лог пуст</div>`;
+            return;
+        }
+        list.innerHTML = AppState.admin.logs.map(item => {
+            const time = new Date(Number(item.ts || 0)).toLocaleString();
+            return `<div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; font-family:Consolas,monospace; font-size:12px;">
+                <div style="color:var(--text-muted);">${time}</div>
+                <div style="margin-top:4px; color:#7ee7ff;">${Utils.escapeHtml(item.action || 'action')}</div>
+                <div style="margin-top:4px;">uid: ${Utils.escapeHtml(item.byUid || '-')}</div>
+                <div style="margin-top:4px; white-space:pre-wrap;">${Utils.escapeHtml(JSON.stringify(item.payload || {}))}</div>
+            </div>`;
+        }).join('');
     }
 
     static renderRoomsList(rooms) {
@@ -3491,6 +3818,7 @@ class AdminPanel {
 
         const userData = snap.val() || {};
         const profile = userData.profile || {};
+        const moderation = userData.moderation || {};
         const roomMeta = this.getCurrentRoomForUid(uid);
         const editor = Utils.$('admin-user-editor');
 
@@ -3503,11 +3831,20 @@ class AdminPanel {
             <input type="text" id="admin-edit-avatar" placeholder="URL аватарки" value="${Utils.escapeHtml(profile.avatar || '')}">
             <textarea id="admin-edit-bio" rows="4" placeholder="Описание">${Utils.escapeHtml(profile.bio || '')}</textarea>
             <div style="font-size:12px; color:var(--text-muted);">Email: ${Utils.escapeHtml(profile.email || 'не указан')}</div>
+            <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2);">
+                <div style="font-weight:700; margin-bottom:6px;">Live User Inspector</div>
+                <div style="font-size:12px; font-family:Consolas,monospace;">IP: ${Utils.escapeHtml(userData?.status?.ip || 'unavailable')}</div>
+                <div style="font-size:12px; font-family:Consolas,monospace;">Partner: ${Utils.escapeHtml(userData?.partner || profile?.partner || 'none')}</div>
+                <div style="font-size:12px; font-family:Consolas,monospace;">Registered: ${profile.createdAt ? new Date(profile.createdAt).toLocaleString() : 'unknown'}</div>
+                <div style="font-size:12px; font-family:Consolas,monospace;">Ban history: ${Array.isArray(moderation.banHistory) ? moderation.banHistory.length : 0}</div>
+            </div>
             <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px;">
                 <button class="primary-btn" id="btn-admin-save-user">Сохранить изменения</button>
                 <button class="secondary-btn" id="btn-admin-reset-user">Обнулить профиль</button>
                 <button class="secondary-btn" id="btn-admin-force-leave-current">Кикнуть из комнаты</button>
                 <button class="danger-btn" id="btn-admin-force-logout-current">Форс-выход</button>
+                <button class="secondary-btn" id="btn-admin-toggle-shadowban">${moderation.shadowban ? 'Снять Shadowban' : 'Shadowban'}</button>
+                <button class="secondary-btn" id="btn-admin-reset-password">Reset password</button>
             </div>
         `;
 
@@ -3515,6 +3852,34 @@ class AdminPanel {
         Utils.$('btn-admin-reset-user').onclick = () => this.resetUserProfile();
         Utils.$('btn-admin-force-leave-current').onclick = () => this.forceLeaveRoom(uid);
         Utils.$('btn-admin-force-logout-current').onclick = () => this.forceSignOut(uid);
+        Utils.$('btn-admin-toggle-shadowban').onclick = () => this.toggleShadowban(uid);
+        Utils.$('btn-admin-reset-password').onclick = () => this.issuePasswordReset(uid);
+    }
+
+    static async toggleShadowban(uid) {
+        if (!this.requireAdmin()) return;
+        if (!(await this.checkModRestrictionsForTarget(uid))) return;
+        const banRef = ref(db, `users/${uid}/moderation/shadowban`);
+        const snap = await get(banRef);
+        const next = !Boolean(snap.val());
+        await set(banRef, next);
+        if (next) {
+            await push(ref(db, `users/${uid}/moderation/banHistory`), {
+                ts: Date.now(),
+                by: AppState.currentUser.uid,
+                type: 'shadowban'
+            });
+        }
+        await this.pushAuditLog('user.shadowban', { uid, enabled: next });
+        Utils.toast(next ? 'Shadowban включен' : 'Shadowban снят');
+        this.loadUserEditor(uid);
+    }
+
+    static async issuePasswordReset(uid) {
+        if (!this.requireAdmin()) return;
+        await set(ref(db, `admin/actions/resetPassword/${uid}`), { ts: Date.now(), by: AppState.currentUser.uid });
+        await this.pushAuditLog('user.resetPassword.issue', { uid });
+        Utils.toast('Событие reset password отправлено');
     }
 
     static async findUser() {
@@ -3640,6 +4005,7 @@ class AdminPanel {
             fromUid: AppState.currentUser.uid,
             fromUsername: profile.username || 'admin'
         });
+        await this.pushAuditLog('announcement.send', { text });
 
         Utils.$('admin-announcement-input').value = '';
         Utils.toast('Глобальное оповещение отправлено');
@@ -3648,6 +4014,7 @@ class AdminPanel {
     static async clearAnnouncement() {
         if (!this.requireAdmin()) return;
         await remove(ref(db, 'admin/global-announcement'));
+        await this.pushAuditLog('announcement.clear');
         Utils.toast('Глобальное оповещение очищено');
     }
 
@@ -3661,6 +4028,7 @@ class AdminPanel {
 
         if (AppState.currentRoomId === roomId) RoomManager.leaveRoom();
         await remove(ref(db, `rooms/${roomId}`));
+        await this.pushAuditLog('room.delete', { roomId });
         AppState.roomsCache.delete(roomId);
         RoomManager.updateRoomsDOM();
         this.renderIfOpen();
@@ -3682,6 +4050,7 @@ class AdminPanel {
             }
             if (AppState.currentRoomId === roomId) RoomManager.leaveRoom();
             await remove(ref(db, `rooms/${roomId}`));
+            await this.pushAuditLog('room.delete.bulk', { roomId });
             AppState.roomsCache.delete(roomId);
             deletedCount++;
         }
@@ -3709,6 +4078,7 @@ class AdminPanel {
         if (!emptyRoomIds.length) return Utils.toast('Доступных для удаления пустых комнат нет');
 
         await Promise.all(emptyRoomIds.map(roomId => remove(ref(db, `rooms/${roomId}`))));
+        await this.pushAuditLog('room.purgeEmpty', { count: emptyRoomIds.length });
         emptyRoomIds.forEach(roomId => AppState.roomsCache.delete(roomId));
         RoomManager.updateRoomsDOM();
         this.renderIfOpen();
@@ -3749,6 +4119,7 @@ class AdminPanel {
             ts: Date.now(),
             by: AppState.currentUser.uid
         });
+        await this.pushAuditLog('user.forceSignOut', { uid });
 
         Utils.toast('Команда на форс-выход отправлена');
     }
@@ -3774,6 +4145,7 @@ class AdminPanel {
                 by: AppState.currentUser.uid
             })
         ]);
+        await this.pushAuditLog('user.forceLeaveRoom', { uid, roomId: roomMeta.roomId });
 
         Utils.toast('Пользователь удалён из комнаты');
         this.renderIfOpen();
@@ -3798,6 +4170,7 @@ class RoomManager {
     static themeIndex = 0;
     static heartsTimer = null;
     static loveHeartEmojis = ['💗', '💘', '💞', '💕'];
+    static activeRoomTagFilter = 'all';
 
     static syncDeveloperControls(profile = {}) {
         AdminPanel.syncSidebarButton(profile);
@@ -3841,6 +4214,7 @@ class RoomManager {
         Utils.$('btn-open-create-room').onclick = () => this.openRoomModal();
         Utils.$('btn-save-room').onclick = () => this.saveRoom();
         Utils.$('search-rooms').oninput = Utils.debounce(() => this.updateRoomsDOM(), 300);
+        this.ensureRoomTagFilters();
         
         Utils.$('room-input-private').onchange = (e) => { Utils.$('room-input-password').style.display = e.target.checked ? 'block' : 'none'; };
         Utils.$('btn-leave-room').onclick = () => this.leaveRoom();
@@ -3882,6 +4256,43 @@ class RoomManager {
         return this.themeOptions.includes(theme) ? theme : 'default'; // [NEW]
     } // [NEW]
 
+    static ensureRoomTagFilters() {
+        const roomsMain = document.querySelector('.rooms-main');
+        if (!roomsMain) return;
+        let bar = Utils.$('room-tag-filters');
+        if (!bar) {
+            bar = document.createElement('div');
+            bar.id = 'room-tag-filters';
+            bar.innerHTML = `
+                <button class="tag-pill active" data-tag="all">Все</button>
+                <button class="tag-pill" data-tag="🔥">🔥</button>
+                <button class="tag-pill" data-tag="🎬">🎬</button>
+                <button class="tag-pill" data-tag="🎵">🎵</button>
+                <button class="tag-pill" data-tag="💬">💬</button>
+            `;
+            const grid = Utils.$('rooms-grid');
+            if (grid) roomsMain.insertBefore(bar, grid);
+            bar.querySelectorAll('.tag-pill').forEach(btn => {
+                btn.onclick = () => {
+                    this.activeRoomTagFilter = btn.dataset.tag || 'all';
+                    bar.querySelectorAll('.tag-pill').forEach(node => node.classList.toggle('active', node === btn));
+                    this.updateRoomsDOM();
+                };
+            });
+        }
+    }
+
+    static getRoomAvatarsStack(room = {}) {
+        const ids = Object.keys(room?.presence || {}).slice(0, 4);
+        if (!ids.length) return `<span class="stack-avatar">0</span>`;
+        return ids.map(uid => {
+            const profile = AppState.usersCache.get(uid) || {};
+            if (profile.avatar) return `<span class="stack-avatar"><img src="${Utils.escapeHtml(profile.avatar)}" style="width:100%;height:100%;object-fit:cover;"></span>`;
+            const letter = Utils.escapeHtml((profile.name || '?')[0]?.toUpperCase() || '?');
+            return `<span class="stack-avatar">${letter}</span>`;
+        }).join('');
+    }
+
     static updateRoomsDOM() {
         const grid = Utils.$('rooms-grid');
         const search = Utils.$('search-rooms').value.toLowerCase().trim();
@@ -3894,6 +4305,9 @@ class RoomManager {
             
             const lock = room.isPrivate ? '🔒 ' : '';
             const membersCount = room.presence ? Object.keys(room.presence).length : 0;
+            const filterTag = this.activeRoomTagFilter || 'all';
+            const roomText = `${room.name || ''} ${(room.hashtags || []).join(' ')}`.toLowerCase();
+            const byPill = filterTag === 'all' ? true : roomText.includes(filterTag.toLowerCase());
             let card = Utils.$(`room-card-${id}`);
             
             if (!card) {
@@ -3913,7 +4327,8 @@ class RoomManager {
                 card.querySelector('.rm-title').innerText = `${lock}${room.name} ${room.hashtags[0]}`;
             }
             card.querySelector('.rm-host').innerText = `Хост: ${room.hostName || 'Неизвестно'}`;
-            card.querySelector('.rm-count').innerText = `👥 ${membersCount}`;
+            card.querySelector('.rm-count').innerHTML = `<span>👥 ${membersCount}</span><span class="avatars-stack">${this.getRoomAvatarsStack(room)}</span>`;
+            card.classList.toggle('filtered-out', !byPill);
             count++;
         });
 
@@ -4075,6 +4490,7 @@ class RoomManager {
             Utils.$('tab-users-btn').click();
             Utils.toast('Нажмите "Пригласить" рядом с другом в списке', 'info');
         };
+        this.ensureTheaterModeControl();
 
         // Кнопка настроек доступна оригинальному хосту и Разработчику
         Utils.$('btn-room-settings').style.display = (AppState.isHost || AdminPanel.isCurrentUserCreator()) ? 'block' : 'none';
@@ -4139,6 +4555,7 @@ class RoomManager {
             const msg = snap.val(); const id = snap.key;
             if (processedMsgs.has(id)) return;
             processedMsgs.add(id);
+            if (msg?.shadowbanned && msg.uid !== uid && !AdminPanel.isCurrentUserAdmin()) return;
 
             const isMe = msg.uid === uid;
             const line = document.createElement('div');
@@ -4147,7 +4564,7 @@ class RoomManager {
             let content = Utils.escapeHtml(msg.text);
             content = content.replace(/(\d{1,2}:\d{2})/g, '<span class="timecode-btn" data-time="$1">$1</span>');
 
-            line.innerHTML = `<strong>${Utils.escapeHtml(msg.name)}</strong><div class="bubble">${content}</div>`;
+            line.innerHTML = `<strong class="profile-open-link chat-profile-link" data-uid="${Utils.escapeHtml(msg.uid || '')}">${Utils.escapeHtml(msg.name)}</strong><div class="bubble">${content}</div>`;
             
             line.querySelectorAll('.timecode-btn').forEach(btn => {
                 btn.onclick = () => {
@@ -4161,6 +4578,8 @@ class RoomManager {
                     set(syncRef, { type: 'seek', time: secs, ts: Date.now() });
                 };
             });
+            const profileBtn = line.querySelector('.chat-profile-link');
+            if (profileBtn && msg.uid) profileBtn.onclick = () => ProfileManager.openViewProfileModal(msg.uid);
 
             Utils.$('chat-messages').appendChild(line);
             Utils.$('chat-messages').scrollTop = Utils.$('chat-messages').scrollHeight;
@@ -4170,10 +4589,19 @@ class RoomManager {
         Utils.$('send-btn').onclick = async () => {
             const input = Utils.$('chat-input');
             if (!input.value.trim() || !this.hasPerm('chat')) return;
+            if (AppState.admin.globalMute && !AdminPanel.isCurrentUserAdmin()) return Utils.toast('Global Mute активен', 'error');
             const text = input.value.trim();
+            const meModerationSnap = await get(ref(db, `users/${uid}/moderation`));
+            const meModeration = meModerationSnap.val() || {};
             const wasHandled = await EasterEggManager.handleChatInput(text, chatRef, uid);
             if (!wasHandled) {
-                await push(chatRef, { uid, name: AppState.currentUser.displayName, text, ts: Date.now() });
+                await push(chatRef, {
+                    uid,
+                    name: AppState.currentUser.displayName,
+                    text,
+                    ts: Date.now(),
+                    shadowbanned: Boolean(meModeration.shadowban)
+                });
             }
             input.value = '';
         };
@@ -4291,8 +4719,9 @@ class RoomManager {
                 const roleBadgeHtml = ProfileManager.getRoleBadgeHtml(profile, uid);
                 
                 let html = `<div class="user-item">`;
+                if (user.speaking) html = `<div class="user-item speaking">`;
                 html += `<div class="indicator online"></div>`; 
-                html += `<div class="user-main"><span class="user-name">${Utils.escapeHtml(user.name)}</span>${roleBadgeHtml}`;
+                html += `<div class="user-main"><span class="user-name profile-open-link room-user-profile-link" data-uid="${uid}">${Utils.escapeHtml(user.name)}</span>${roleBadgeHtml}<span class="voice-wave"><i></i><i></i><i></i><i></i></span>`;
                 if (isTargetHost) html += `<span class="host-label">Host</span>`;
                 if (isLocal) html += `<span class="you-label">(Вы)</span>`;
                 html += `</div>`;
@@ -4325,6 +4754,9 @@ class RoomManager {
                     const name = btn.closest('.user-item').querySelector('.user-name').innerText;
                     DirectMessages.openChat(btn.dataset.uid, name);
                 };
+            });
+            container.querySelectorAll('.room-user-profile-link').forEach(node => {
+                node.onclick = () => ProfileManager.openViewProfileModal(node.dataset.uid);
             });
             container.querySelectorAll('.add-friend-btn').forEach(btn => {
                 btn.onclick = () => FriendsManager.sendFriendRequest(btn.dataset.uid);
@@ -4441,6 +4873,24 @@ class RoomManager {
         }
         const layer = Utils.$('room-love-hearts');
         if (layer) layer.innerHTML = '';
+    }
+
+    static ensureTheaterModeControl() {
+        let btn = Utils.$('btn-theater-mode');
+        if (!btn) {
+            btn = document.createElement('button');
+            btn.id = 'btn-theater-mode';
+            btn.className = 'secondary-btn';
+            btn.style.width = 'auto';
+            btn.style.padding = '10px 16px';
+            btn.innerText = 'Theater';
+            Utils.$('btn-room-settings')?.parentNode?.appendChild(btn);
+        }
+        btn.onclick = () => {
+            document.body.classList.toggle('theater-mode');
+            btn.classList.toggle('active');
+            btn.innerText = document.body.classList.contains('theater-mode') ? 'Theater On' : 'Theater';
+        };
     }
 }
 
@@ -4799,4 +5249,3 @@ window.onload = () => {
         });
     });
 };
-
