@@ -216,7 +216,7 @@ class Utils {
                 50% { transform: translateY(-4px); }
             }
             .glass-panel, .room-card, .user-card, .msg-bubble, .friend-item {
-                animation: levitate 6s ease-in-out infinite;
+                animation: levitate 10s ease-in-out infinite;
                 will-change: transform;
             }
             .room-card { animation-delay: 1s; }
@@ -370,7 +370,7 @@ class Utils {
             .btn-small {
                 outline: 1px solid rgba(255, 255, 255, 0.22);
                 box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06) inset;
-                transition: transform 0.18s ease, box-shadow 0.25s ease, filter 0.25s ease, background 0.25s ease;
+                transition: transform 0.35s ease, box-shadow 0.45s ease, filter 0.45s ease, background 0.45s ease;
             }
             button:hover,
             .primary-btn:hover,
@@ -380,7 +380,7 @@ class Utils {
             .add-friend-btn:hover,
             .btn-small:hover {
                 transform: translateY(-1px) scale(1.02);
-                box-shadow: 0 0 16px rgba(130, 245, 255, 0.28), 0 0 0 1px rgba(130, 245, 255, 0.35) inset;
+                box-shadow: 0 0 16px rgba(255, 255, 255, 0.24), 0 0 0 1px rgba(255, 255, 255, 0.35) inset;
             }
             button:active {
                 transform: scale(0.98);
@@ -397,17 +397,27 @@ class Utils {
             .theme-light-global textarea::placeholder {
                 color: rgba(17, 24, 39, 0.55) !important;
             }
+            .theme-light-global .glass-panel,
+            .theme-light-global .room-card,
+            .theme-light-global .user-item,
+            .theme-light-global .friend-item,
+            .theme-light-global .chat-section,
+            .theme-light-global .player-section,
+            .theme-light-global .modal-content {
+                border: 1px solid rgba(17, 24, 39, 0.24) !important;
+                box-shadow: 0 0 0 1px rgba(17, 24, 39, 0.05) inset;
+            }
 
             .room-card {
                 transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
             }
             .room-card:hover {
                 transform: translateY(-3px) scale(1.01);
-                box-shadow: 0 10px 28px rgba(34, 211, 238, 0.18);
-                border-color: rgba(34, 211, 238, 0.45);
+                box-shadow: 0 10px 28px rgba(255, 255, 255, 0.16);
+                border-color: rgba(255, 255, 255, 0.45);
             }
             .room-preview video {
-                transition: transform 0.4s ease, filter 0.35s ease;
+                transition: transform 0.7s ease, filter 0.7s ease;
             }
             .room-card:hover .room-preview video {
                 transform: scale(1.06);
@@ -442,60 +452,6 @@ class Utils {
                 text-shadow: 0 0 8px rgba(46, 213, 115, 0.45);
             }
 
-            #room-tag-filters {
-                display: flex;
-                gap: 8px;
-                flex-wrap: wrap;
-                margin: 8px 0 12px;
-            }
-            .tag-pill {
-                border-radius: 999px;
-                padding: 6px 10px;
-                font-size: 12px;
-                cursor: pointer;
-                user-select: none;
-                background: rgba(255,255,255,0.04);
-                border: 1px solid var(--border-light);
-                transition: transform 0.2s ease, box-shadow 0.25s ease, background 0.25s ease;
-            }
-            .tag-pill.active {
-                background: rgba(46, 213, 115, 0.14);
-                box-shadow: 0 0 12px rgba(46, 213, 115, 0.32);
-                transform: translateY(-1px);
-            }
-            .room-card.filtered-out {
-                opacity: 0.28;
-                transform: scale(0.98);
-                pointer-events: none;
-            }
-
-            .theater-mode .sidebar,
-            .theater-mode .room-top-bar,
-            .theater-mode .reaction-controls {
-                opacity: 0;
-                pointer-events: none;
-                transform: translateY(-10px);
-            }
-            .theater-mode .video-container {
-                width: 100%;
-                min-height: 90vh;
-            }
-            .theater-mode #native-player {
-                height: 90vh !important;
-                width: 100% !important;
-            }
-            .theater-mode .chat-section {
-                position: absolute;
-                right: 12px;
-                bottom: 12px;
-                width: min(420px, 92vw);
-                max-height: 45vh;
-                z-index: 25;
-                backdrop-filter: blur(12px);
-                background: rgba(6, 8, 14, 0.54);
-                border: 1px solid rgba(128, 242, 255, 0.35);
-            }
-
             .voice-wave {
                 display: inline-flex;
                 gap: 2px;
@@ -506,9 +462,9 @@ class Utils {
                 width: 2px;
                 height: 8px;
                 border-radius: 8px;
-                background: #22d3ee;
+                background: #ffffff;
                 opacity: 0.35;
-                animation: voiceWave 1s ease-in-out infinite;
+                animation: voiceWave 1.8s ease-in-out infinite;
             }
             .voice-wave i:nth-child(2) { animation-delay: 0.1s; }
             .voice-wave i:nth-child(3) { animation-delay: 0.2s; }
@@ -530,11 +486,11 @@ class Utils {
                 display: grid;
                 grid-template-columns: 260px minmax(0, 1fr);
                 gap: 0;
-                background: radial-gradient(circle at top, rgba(35, 72, 128, 0.25), rgba(9, 13, 22, 0.98));
+                background: radial-gradient(circle at top, rgba(255, 255, 255, 0.09), rgba(9, 9, 9, 0.98));
             }
             .godmode-sidebar {
-                border-right: 1px solid rgba(34, 211, 238, 0.3);
-                background: rgba(3, 7, 13, 0.82);
+                border-right: 1px solid rgba(255, 255, 255, 0.25);
+                background: rgba(7, 7, 7, 0.92);
                 padding: 14px;
                 display: flex;
                 flex-direction: column;
@@ -555,7 +511,7 @@ class Utils {
             }
             .godmode-section.active {
                 display: block;
-                animation: fadeInUp 0.25s ease;
+                animation: fadeInUp 0.45s ease;
             }
             @keyframes fadeInUp {
                 from { opacity: 0; transform: translateY(10px); }
@@ -3322,16 +3278,12 @@ class AdminPanel {
 
                 <div id="admin-stats-grid" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:16px;"></div>
 
-                <div class="godmode-section active" data-section="settings" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02); margin-bottom: 16px;">
+                <div class="godmode-section" data-section="settings" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02); margin-bottom: 16px;">
                     <div style="font-weight:700; margin-bottom:10px;">Управление правами (Только для Создателя)</div>
                     <div style="display:flex; gap:8px;">
                         <input type="text" id="admin-mod-username" placeholder="ID пользователя (без @)" style="margin:0; flex:1;">
                         <button class="primary-btn" id="btn-admin-grant-mod" style="width:auto; padding:0 16px;">Назначить Модератора</button>
                         <button class="danger-btn" id="btn-admin-revoke-mod" style="width:auto; padding:0 16px;">Снять Модератора</button>
-                    </div>
-                    <div style="display:flex; gap:8px; margin-top:10px;">
-                        <button class="secondary-btn" id="btn-admin-toggle-global-mute" style="width:auto; padding:0 16px;">Global Mute</button>
-                        <button class="secondary-btn" id="btn-admin-toggle-spectator-self" style="width:auto; padding:0 16px;">Spectator Mode</button>
                     </div>
                 </div>
 
@@ -3358,7 +3310,7 @@ class AdminPanel {
                     </div>
                 </div>
 
-                <div class="godmode-section active" data-section="rooms" style="display:grid; grid-template-columns:1fr; gap:16px;">
+                <div class="godmode-section" data-section="rooms" style="display:grid; grid-template-columns:1fr; gap:16px;">
                     <div style="display:flex; flex-direction:column; gap:16px; min-width:0;">
                         <div style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
                             <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px;">
@@ -3370,7 +3322,7 @@ class AdminPanel {
                     </div>
                 </div>
 
-                <div class="godmode-section active" data-section="people" style="display:grid; grid-template-columns:1.15fr 0.85fr; gap:16px;">
+                <div class="godmode-section" data-section="people" style="display:grid; grid-template-columns:1.15fr 0.85fr; gap:16px;">
                     <div style="display:flex; flex-direction:column; gap:16px; min-width:0;">
                         <div style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
                             <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px;">
@@ -3420,8 +3372,6 @@ class AdminPanel {
         Utils.$('btn-admin-find-user').onclick = () => this.findUser();
         Utils.$('btn-admin-clear-user-editor').onclick = () => this.renderEmptyUserEditor();
         Utils.$('btn-admin-clear-audit').onclick = () => this.clearAuditLog();
-        Utils.$('btn-admin-toggle-global-mute').onclick = () => this.toggleGlobalMute();
-        Utils.$('btn-admin-toggle-spectator-self').onclick = () => this.toggleSelfSpectatorMode();
         Utils.$('admin-user-search').onkeydown = (e) => { if (e.key === 'Enter') this.findUser(); };
 
         Utils.$('btn-admin-grant-mod').onclick = () => this.toggleModRole(true);
@@ -3429,6 +3379,7 @@ class AdminPanel {
         modal.querySelectorAll('.godmode-nav-btn').forEach(btn => {
             btn.onclick = () => this.switchGodModeSection(btn.dataset.section || 'dashboard');
         });
+        this.switchGodModeSection('dashboard');
     }
 
     static switchGodModeSection(section = 'dashboard') {
@@ -3438,7 +3389,7 @@ class AdminPanel {
         });
         Utils.$('modal-admin-panel')?.querySelectorAll('.godmode-section').forEach(node => {
             const nodeSection = node.dataset.section || 'dashboard';
-            node.classList.toggle('active', section === nodeSection || section === 'dashboard' && nodeSection === 'dashboard');
+            node.classList.toggle('active', section === nodeSection);
         });
     }
 
@@ -3459,27 +3410,6 @@ class AdminPanel {
         Utils.toast('Audit log очищен');
     }
 
-    static async toggleGlobalMute() {
-        if (!this.requireAdmin()) return;
-        const next = !Boolean(AppState.admin.globalMute);
-        AppState.admin.globalMute = next;
-        await set(ref(db, 'admin/settings/globalMute'), next);
-        await this.pushAuditLog('globalMute.toggle', { enabled: next });
-        Utils.toast(next ? 'Global Mute включен' : 'Global Mute выключен');
-        this.renderIfOpen();
-    }
-
-    static async toggleSelfSpectatorMode() {
-        if (!this.requireAdmin()) return;
-        const uid = AppState.currentUser?.uid;
-        if (!uid || !AppState.currentRoomId) return Utils.toast('Зайдите в комнату для spectator mode', 'error');
-        const path = `rooms/${AppState.currentRoomId}/presence/${uid}/spectator`;
-        const snap = await get(ref(db, path));
-        const next = !Boolean(snap.val());
-        await set(ref(db, path), next);
-        await this.pushAuditLog('spectator.self', { roomId: AppState.currentRoomId, enabled: next });
-        Utils.toast(next ? 'Spectator mode включен' : 'Spectator mode выключен');
-    }
 
     static async toggleModRole(grant) {
         if (!this.isCurrentUserCreator()) return Utils.toast('Только Создатель может управлять модераторами', 'error');
@@ -3507,7 +3437,6 @@ class AdminPanel {
         this.initializedForUid = AppState.currentUser.uid;
 
         const settingsRef = ref(db, 'admin/settings');
-        const globalMuteRef = ref(db, 'admin/settings/globalMute');
         const annRef = ref(db, 'admin/global-announcement');
         const auditRef = ref(db, 'admin/auditLog');
         const forceSignOutRef = ref(db, `admin/actions/forceSignOut/${AppState.currentUser.uid}`);
@@ -3555,11 +3484,6 @@ class AdminPanel {
             }
         });
 
-        const globalMuteUnsub = onValue(globalMuteRef, (snap) => {
-            AppState.admin.globalMute = Boolean(snap.val());
-            this.renderIfOpen();
-        });
-
         const auditUnsub = onValue(auditRef, (snap) => {
             const data = snap.val() || {};
             AppState.admin.logs = Object.entries(data)
@@ -3599,7 +3523,6 @@ class AdminPanel {
 
         AppState.activeSubscriptions.push(
             () => off(settingsRef, 'value', settingsUnsub),
-            () => off(globalMuteRef, 'value', globalMuteUnsub),
             () => off(annRef, 'value', annUnsub),
             () => off(auditRef, 'value', auditUnsub),
             () => off(forceSignOutRef, 'value', forceSignOutUnsub),
@@ -3699,8 +3622,6 @@ class AdminPanel {
 
         const lockBtn = Utils.$('btn-admin-toggle-room-lock');
         if (lockBtn) lockBtn.innerText = AppState.admin.settings.roomCreationBlocked ? 'Разблокировать создание комнат' : 'Блокировать создание комнат';
-        const muteBtn = Utils.$('btn-admin-toggle-global-mute');
-        if (muteBtn) muteBtn.innerText = AppState.admin.globalMute ? 'Global Mute: ON' : 'Global Mute: OFF';
     }
 
     static renderAuditLog() {
@@ -3714,7 +3635,7 @@ class AdminPanel {
             const time = new Date(Number(item.ts || 0)).toLocaleString();
             return `<div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; font-family:Consolas,monospace; font-size:12px;">
                 <div style="color:var(--text-muted);">${time}</div>
-                <div style="margin-top:4px; color:#7ee7ff;">${Utils.escapeHtml(item.action || 'action')}</div>
+                <div style="margin-top:4px; color:#ffffff;">${Utils.escapeHtml(item.action || 'action')}</div>
                 <div style="margin-top:4px;">uid: ${Utils.escapeHtml(item.byUid || '-')}</div>
                 <div style="margin-top:4px; white-space:pre-wrap;">${Utils.escapeHtml(JSON.stringify(item.payload || {}))}</div>
             </div>`;
@@ -3829,6 +3750,9 @@ class AdminPanel {
             <input type="text" id="admin-edit-name" placeholder="Имя" value="${Utils.escapeHtml(profile.name || '')}">
             <input type="text" id="admin-edit-username" placeholder="ID" value="${Utils.escapeHtml(profile.username || '')}">
             <input type="text" id="admin-edit-avatar" placeholder="URL аватарки" value="${Utils.escapeHtml(profile.avatar || '')}">
+            <input type="color" id="admin-edit-bg-color" value="${Utils.escapeHtml(ProfileManager.normalizeProfileBackground(profile.background).color)}" title="Цвет фона профиля">
+            <input type="text" id="admin-edit-bg-url" placeholder="URL фона профиля" value="${Utils.escapeHtml(ProfileManager.normalizeProfileBackground(profile.background).url || '')}">
+            <input type="number" id="admin-edit-bg-dim" min="0" max="1" step="0.05" value="${Utils.escapeHtml(String(ProfileManager.normalizeProfileBackground(profile.background).dim ?? 0.5))}" placeholder="Затемнение 0..1">
             <textarea id="admin-edit-bio" rows="4" placeholder="Описание">${Utils.escapeHtml(profile.bio || '')}</textarea>
             <div style="font-size:12px; color:var(--text-muted);">Email: ${Utils.escapeHtml(profile.email || 'не указан')}</div>
             <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2);">
@@ -3841,8 +3765,10 @@ class AdminPanel {
             <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px;">
                 <button class="primary-btn" id="btn-admin-save-user">Сохранить изменения</button>
                 <button class="secondary-btn" id="btn-admin-reset-user">Обнулить профиль</button>
+                <button class="danger-btn" id="btn-admin-delete-user">Удалить пользователя</button>
                 <button class="secondary-btn" id="btn-admin-force-leave-current">Кикнуть из комнаты</button>
                 <button class="danger-btn" id="btn-admin-force-logout-current">Форс-выход</button>
+                <button class="secondary-btn" id="btn-admin-toggle-user-mute">${moderation.muted ? 'Unmute user' : 'Mute user'}</button>
                 <button class="secondary-btn" id="btn-admin-toggle-shadowban">${moderation.shadowban ? 'Снять Shadowban' : 'Shadowban'}</button>
                 <button class="secondary-btn" id="btn-admin-reset-password">Reset password</button>
             </div>
@@ -3850,10 +3776,48 @@ class AdminPanel {
 
         Utils.$('btn-admin-save-user').onclick = () => this.saveUserProfile();
         Utils.$('btn-admin-reset-user').onclick = () => this.resetUserProfile();
+        Utils.$('btn-admin-delete-user').onclick = () => this.deleteUserCompletely(uid);
         Utils.$('btn-admin-force-leave-current').onclick = () => this.forceLeaveRoom(uid);
         Utils.$('btn-admin-force-logout-current').onclick = () => this.forceSignOut(uid);
+        Utils.$('btn-admin-toggle-user-mute').onclick = () => this.toggleUserMute(uid);
         Utils.$('btn-admin-toggle-shadowban').onclick = () => this.toggleShadowban(uid);
         Utils.$('btn-admin-reset-password').onclick = () => this.issuePasswordReset(uid);
+    }
+
+    static async toggleUserMute(uid) {
+        if (!this.requireAdmin()) return;
+        if (!(await this.checkModRestrictionsForTarget(uid))) return;
+        const path = `users/${uid}/moderation/muted`;
+        const snap = await get(ref(db, path));
+        const next = !Boolean(snap.val());
+        await set(ref(db, path), next);
+        await this.pushAuditLog('user.mute', { uid, muted: next });
+        Utils.toast(next ? 'Пользователь заглушен' : 'Пользователь размьючен');
+        this.loadUserEditor(uid);
+    }
+
+    static async deleteUserCompletely(uid) {
+        if (!this.requireAdmin()) return;
+        if (!(await this.checkModRestrictionsForTarget(uid))) return;
+        if (!confirm('Полностью удалить пользователя и все его данные?')) return;
+        const userSnap = await get(ref(db, `users/${uid}`));
+        if (!userSnap.exists()) return Utils.toast('Пользователь уже удален');
+        const userData = userSnap.val() || {};
+        const username = userData?.profile?.username || '';
+        const updates = {};
+        updates[`users/${uid}`] = null;
+        updates[`admin/actions/forceSignOut/${uid}`] = { ts: Date.now(), by: AppState.currentUser.uid };
+        updates[`admin/actions/resetPassword/${uid}`] = null;
+        if (username) updates[`usernames/${username}`] = null;
+        AppState.roomsCache.forEach((room, roomId) => {
+            updates[`rooms/${roomId}/presence/${uid}`] = null;
+            updates[`rooms/${roomId}/rtc/participants/${uid}`] = null;
+        });
+        await update(ref(db), updates);
+        await this.pushAuditLog('user.delete', { uid, username });
+        Utils.toast('Пользователь удален из базы');
+        this.renderEmptyUserEditor();
+        this.renderIfOpen();
     }
 
     static async toggleShadowban(uid) {
@@ -3924,6 +3888,9 @@ class AdminPanel {
         const username = Utils.$('admin-edit-username').value.toLowerCase().trim().replace('@', '');
         const avatar = Utils.$('admin-edit-avatar').value.trim();
         const bio = Utils.$('admin-edit-bio').value.trim();
+        const bgColor = Utils.$('admin-edit-bg-color')?.value || '#1f2937';
+        const bgUrl = Utils.$('admin-edit-bg-url')?.value.trim() || '';
+        const bgDim = Number(Utils.$('admin-edit-bg-dim')?.value || 0.5);
 
         if (!name || !username) return Utils.toast('Имя и ID обязательны', 'error');
         if (!/^[a-z0-9_]{3,15}$/.test(username)) return Utils.toast('ID: 3-15 символов, a-z, 0-9, _', 'error');
@@ -3942,7 +3909,19 @@ class AdminPanel {
             updates[`usernames/${username}`] = uid;
         }
 
-        const nextProfile = { ...oldProfile, name, username, avatar, bio };
+        const nextProfile = {
+            ...oldProfile,
+            name,
+            username,
+            avatar,
+            bio,
+            background: ProfileManager.normalizeProfileBackground({
+                color: bgColor,
+                index: ProfileManager.normalizeProfileBackground(oldProfile.background).index || 10,
+                url: bgUrl,
+                dim: Math.max(0, Math.min(1, bgDim))
+            })
+        };
         updates[`users/${uid}/profile`] = nextProfile;
 
         await update(ref(db), updates);
@@ -4170,7 +4149,6 @@ class RoomManager {
     static themeIndex = 0;
     static heartsTimer = null;
     static loveHeartEmojis = ['💗', '💘', '💞', '💕'];
-    static activeRoomTagFilter = 'all';
 
     static syncDeveloperControls(profile = {}) {
         AdminPanel.syncSidebarButton(profile);
@@ -4214,7 +4192,6 @@ class RoomManager {
         Utils.$('btn-open-create-room').onclick = () => this.openRoomModal();
         Utils.$('btn-save-room').onclick = () => this.saveRoom();
         Utils.$('search-rooms').oninput = Utils.debounce(() => this.updateRoomsDOM(), 300);
-        this.ensureRoomTagFilters();
         
         Utils.$('room-input-private').onchange = (e) => { Utils.$('room-input-password').style.display = e.target.checked ? 'block' : 'none'; };
         Utils.$('btn-leave-room').onclick = () => this.leaveRoom();
@@ -4256,32 +4233,6 @@ class RoomManager {
         return this.themeOptions.includes(theme) ? theme : 'default'; // [NEW]
     } // [NEW]
 
-    static ensureRoomTagFilters() {
-        const roomsMain = document.querySelector('.rooms-main');
-        if (!roomsMain) return;
-        let bar = Utils.$('room-tag-filters');
-        if (!bar) {
-            bar = document.createElement('div');
-            bar.id = 'room-tag-filters';
-            bar.innerHTML = `
-                <button class="tag-pill active" data-tag="all">Все</button>
-                <button class="tag-pill" data-tag="🔥">🔥</button>
-                <button class="tag-pill" data-tag="🎬">🎬</button>
-                <button class="tag-pill" data-tag="🎵">🎵</button>
-                <button class="tag-pill" data-tag="💬">💬</button>
-            `;
-            const grid = Utils.$('rooms-grid');
-            if (grid) roomsMain.insertBefore(bar, grid);
-            bar.querySelectorAll('.tag-pill').forEach(btn => {
-                btn.onclick = () => {
-                    this.activeRoomTagFilter = btn.dataset.tag || 'all';
-                    bar.querySelectorAll('.tag-pill').forEach(node => node.classList.toggle('active', node === btn));
-                    this.updateRoomsDOM();
-                };
-            });
-        }
-    }
-
     static getRoomAvatarsStack(room = {}) {
         const ids = Object.keys(room?.presence || {}).slice(0, 4);
         if (!ids.length) return `<span class="stack-avatar">0</span>`;
@@ -4305,9 +4256,6 @@ class RoomManager {
             
             const lock = room.isPrivate ? '🔒 ' : '';
             const membersCount = room.presence ? Object.keys(room.presence).length : 0;
-            const filterTag = this.activeRoomTagFilter || 'all';
-            const roomText = `${room.name || ''} ${(room.hashtags || []).join(' ')}`.toLowerCase();
-            const byPill = filterTag === 'all' ? true : roomText.includes(filterTag.toLowerCase());
             let card = Utils.$(`room-card-${id}`);
             
             if (!card) {
@@ -4327,8 +4275,7 @@ class RoomManager {
                 card.querySelector('.rm-title').innerText = `${lock}${room.name} ${room.hashtags[0]}`;
             }
             card.querySelector('.rm-host').innerText = `Хост: ${room.hostName || 'Неизвестно'}`;
-            card.querySelector('.rm-count').innerHTML = `<span>👥 ${membersCount}</span><span class="avatars-stack">${this.getRoomAvatarsStack(room)}</span>`;
-            card.classList.toggle('filtered-out', !byPill);
+            card.querySelector('.rm-count').innerHTML = `<span class="avatars-stack">${this.getRoomAvatarsStack(room)}</span>`;
             count++;
         });
 
@@ -4490,7 +4437,6 @@ class RoomManager {
             Utils.$('tab-users-btn').click();
             Utils.toast('Нажмите "Пригласить" рядом с другом в списке', 'info');
         };
-        this.ensureTheaterModeControl();
 
         // Кнопка настроек доступна оригинальному хосту и Разработчику
         Utils.$('btn-room-settings').style.display = (AppState.isHost || AdminPanel.isCurrentUserCreator()) ? 'block' : 'none';
@@ -4589,10 +4535,10 @@ class RoomManager {
         Utils.$('send-btn').onclick = async () => {
             const input = Utils.$('chat-input');
             if (!input.value.trim() || !this.hasPerm('chat')) return;
-            if (AppState.admin.globalMute && !AdminPanel.isCurrentUserAdmin()) return Utils.toast('Global Mute активен', 'error');
             const text = input.value.trim();
             const meModerationSnap = await get(ref(db, `users/${uid}/moderation`));
             const meModeration = meModerationSnap.val() || {};
+            if (meModeration.muted && !AdminPanel.isCurrentUserAdmin()) return Utils.toast('Вы заглушены модератором', 'error');
             const wasHandled = await EasterEggManager.handleChatInput(text, chatRef, uid);
             if (!wasHandled) {
                 await push(chatRef, {
@@ -4875,23 +4821,6 @@ class RoomManager {
         if (layer) layer.innerHTML = '';
     }
 
-    static ensureTheaterModeControl() {
-        let btn = Utils.$('btn-theater-mode');
-        if (!btn) {
-            btn = document.createElement('button');
-            btn.id = 'btn-theater-mode';
-            btn.className = 'secondary-btn';
-            btn.style.width = 'auto';
-            btn.style.padding = '10px 16px';
-            btn.innerText = 'Theater';
-            Utils.$('btn-room-settings')?.parentNode?.appendChild(btn);
-        }
-        btn.onclick = () => {
-            document.body.classList.toggle('theater-mode');
-            btn.classList.toggle('active');
-            btn.innerText = document.body.classList.contains('theater-mode') ? 'Theater On' : 'Theater';
-        };
-    }
 }
 
 // ============================================================================
