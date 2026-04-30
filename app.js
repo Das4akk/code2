@@ -763,7 +763,7 @@ class BackgroundFX {
             }
             draw() {
                 const isLight = document.body.classList.contains('theme-light-global');
-                ctx.fillStyle = isLight ? "rgba(0,0,0,0.88)" : "rgba(255,255,255,0.78)";
+                ctx.fillStyle = isLight ? "rgba(0,0,0,0.44)" : "rgba(255,255,255,0.39)";
                 ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
             }
         }
@@ -782,8 +782,11 @@ class BackgroundFX {
                     let dist = dx * dx + dy * dy; 
                     if (dist < 25000) { 
                         const isLight = document.body.classList.contains('theme-light-global');
-                        const alpha = Math.max(0.16, 0.78 - Math.sqrt(dist) / 1000);
-                        ctx.strokeStyle = isLight ? `rgba(0, 0, 0, ${Math.min(0.95, alpha)})` : `rgba(255, 255, 255, ${alpha})`; 
+                        const distance = Math.sqrt(dist);
+                        const proximity = Math.max(0, 1 - distance / 158);
+                        const baseAlpha = Math.max(0.08, 0.39 - distance / 2000);
+                        const alpha = Math.min(0.55, baseAlpha + proximity * 0.22);
+                        ctx.strokeStyle = isLight ? `rgba(0, 0, 0, ${Math.min(0.75, alpha)})` : `rgba(255, 255, 255, ${alpha})`; 
                         ctx.lineWidth = isLight ? 1.6 : 1.4;
                         ctx.beginPath(); ctx.moveTo(dots[i].x, dots[i].y); ctx.lineTo(dots[j].x, dots[j].y); ctx.stroke();
                     }
