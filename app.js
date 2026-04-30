@@ -578,6 +578,50 @@ class Utils {
                 padding: 10px 12px;
                 font-family: Consolas, Menlo, Monaco, monospace;
             }
+            .admin-form-group {
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+            }
+            .admin-form-label {
+                font-size: 12px;
+                color: var(--text-muted);
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.04em;
+            }
+            .admin-color-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+                gap: 10px;
+                margin-top: 10px;
+            }
+            .admin-color-field {
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+                padding: 10px;
+                border: 1px solid var(--border-light);
+                border-radius: 12px;
+                background: rgba(255, 255, 255, 0.03);
+            }
+            .admin-color-field input[type="color"] {
+                width: 100%;
+                height: 38px;
+                margin: 0;
+                border-radius: 8px;
+                padding: 2px;
+                border: 1px solid var(--border-light);
+            }
+            .admin-editor-block {
+                border: 1px solid var(--border-light);
+                border-radius: 12px;
+                padding: 10px;
+                background: rgba(255, 255, 255, 0.02);
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
             .godmode-main {
                 overflow: auto;
                 padding: 20px;
@@ -3397,6 +3441,11 @@ class AdminPanel {
                     <button class="secondary-btn godmode-nav-btn" data-section="rooms">rooms</button>
                     <button class="secondary-btn godmode-nav-btn" data-section="logs">logs</button>
                     <button class="secondary-btn godmode-nav-btn" data-section="settings">settings</button>
+                    <button class="secondary-btn godmode-nav-btn" data-section="security">security</button>
+                    <button class="secondary-btn godmode-nav-btn" data-section="automation">automation</button>
+                    <button class="secondary-btn godmode-nav-btn" data-section="broadcast">broadcast</button>
+                    <button class="secondary-btn godmode-nav-btn" data-section="integrations">integrations</button>
+                    <button class="secondary-btn godmode-nav-btn" data-section="backups">backups</button>
                 </div>
                 <div class="godmode-main" id="godmode-main">
                 <div style="display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:16px;">
@@ -3422,12 +3471,24 @@ class AdminPanel {
                         <button class="secondary-btn" id="btn-admin-badge-hybrid">Плашка Создатель/Модератор</button>
                         <button class="danger-btn" id="btn-admin-badge-remove">Снять плашку</button>
                     </div>
-                    <div style="display:grid; grid-template-columns:2fr 1fr 1fr 1fr auto; gap:8px; margin-top:10px; align-items:center;">
+                    <div class="admin-form-group" style="margin-top:10px;">
+                        <label class="admin-form-label" for="admin-badge-text">Кастомная плашка</label>
                         <input type="text" id="admin-badge-text" placeholder="Текст плашки" style="margin:0;">
-                        <input type="color" id="admin-badge-color" value="#ffffff" style="margin:0; height:38px;">
-                        <input type="color" id="admin-badge-bg" value="#5d3fd3" style="margin:0; height:38px;">
-                        <input type="color" id="admin-badge-border" value="#8d63ff" style="margin:0; height:38px;">
-                        <button class="primary-btn" id="btn-admin-badge-custom" style="width:auto; padding:0 16px;">Применить кастом</button>
+                        <div class="admin-color-grid">
+                            <div class="admin-color-field">
+                                <label class="admin-form-label" for="admin-badge-color">Цвет текста</label>
+                                <input type="color" id="admin-badge-color" value="#ffffff">
+                            </div>
+                            <div class="admin-color-field">
+                                <label class="admin-form-label" for="admin-badge-bg">Цвет фона</label>
+                                <input type="color" id="admin-badge-bg" value="#5d3fd3">
+                            </div>
+                            <div class="admin-color-field">
+                                <label class="admin-form-label" for="admin-badge-border">Цвет рамки</label>
+                                <input type="color" id="admin-badge-border" value="#8d63ff">
+                            </div>
+                        </div>
+                        <button class="primary-btn" id="btn-admin-badge-custom">Применить кастом</button>
                     </div>
                 </div>
 
@@ -3512,6 +3573,51 @@ class AdminPanel {
                         <button class="secondary-btn" id="btn-admin-clear-audit" style="width:auto; padding:8px 12px;">Очистить лог</button>
                     </div>
                     <div id="admin-audit-list" style="display:flex; flex-direction:column; gap:8px; max-height:70vh; overflow:auto;"></div>
+                </div>
+                <div class="godmode-section" data-section="security" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
+                    <div style="font-weight:700; margin-bottom:10px;">Security Systems</div>
+                    <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px;">
+                        <button class="secondary-btn" disabled>Brute-force Shield (soon)</button>
+                        <button class="secondary-btn" disabled>2FA Monitor (soon)</button>
+                        <button class="secondary-btn" disabled>Geo Alerts (soon)</button>
+                        <button class="secondary-btn" disabled>Session Risk Scan (soon)</button>
+                    </div>
+                </div>
+                <div class="godmode-section" data-section="automation" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
+                    <div style="font-weight:700; margin-bottom:10px;">Automation Systems</div>
+                    <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px;">
+                        <button class="secondary-btn" disabled>Auto Cleanup Rules (soon)</button>
+                        <button class="secondary-btn" disabled>Auto Moderation (soon)</button>
+                        <button class="secondary-btn" disabled>Scheduled Jobs (soon)</button>
+                        <button class="secondary-btn" disabled>Incident Playbooks (soon)</button>
+                    </div>
+                </div>
+                <div class="godmode-section" data-section="broadcast" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
+                    <div style="font-weight:700; margin-bottom:10px;">Broadcast Systems</div>
+                    <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px;">
+                        <button class="secondary-btn" disabled>Segmented Notices (soon)</button>
+                        <button class="secondary-btn" disabled>Emergency Banner (soon)</button>
+                        <button class="secondary-btn" disabled>Push Queue (soon)</button>
+                        <button class="secondary-btn" disabled>Delivery Stats (soon)</button>
+                    </div>
+                </div>
+                <div class="godmode-section" data-section="integrations" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
+                    <div style="font-weight:700; margin-bottom:10px;">Integration Systems</div>
+                    <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px;">
+                        <button class="secondary-btn" disabled>Webhook Hub (soon)</button>
+                        <button class="secondary-btn" disabled>External Audit Sink (soon)</button>
+                        <button class="secondary-btn" disabled>Bot Gateway (soon)</button>
+                        <button class="secondary-btn" disabled>Status Bridge (soon)</button>
+                    </div>
+                </div>
+                <div class="godmode-section" data-section="backups" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
+                    <div style="font-weight:700; margin-bottom:10px;">Backup Systems</div>
+                    <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px;">
+                        <button class="secondary-btn" disabled>Snapshot Scheduler (soon)</button>
+                        <button class="secondary-btn" disabled>Restore Sandbox (soon)</button>
+                        <button class="secondary-btn" disabled>Retention Policy (soon)</button>
+                        <button class="secondary-btn" disabled>Backup Integrity Check (soon)</button>
+                    </div>
                 </div>
                 </div>
             </div>
@@ -4089,9 +4195,20 @@ class AdminPanel {
             <input type="text" id="admin-edit-name" placeholder="Имя" value="${Utils.escapeHtml(profile.name || '')}">
             <input type="text" id="admin-edit-username" placeholder="ID" value="${Utils.escapeHtml(profile.username || '')}">
             <input type="text" id="admin-edit-avatar" placeholder="URL аватарки" value="${Utils.escapeHtml(profile.avatar || '')}">
-            <input type="color" id="admin-edit-bg-color" value="${Utils.escapeHtml(ProfileManager.normalizeProfileBackground(profile.background).color)}" title="Цвет фона профиля">
-            <input type="text" id="admin-edit-bg-url" placeholder="URL фона профиля" value="${Utils.escapeHtml(ProfileManager.normalizeProfileBackground(profile.background).url || '')}">
-            <input type="number" id="admin-edit-bg-dim" min="0" max="1" step="0.05" value="${Utils.escapeHtml(String(ProfileManager.normalizeProfileBackground(profile.background).dim ?? 0.5))}" placeholder="Затемнение 0..1">
+            <div class="admin-editor-block">
+                <div class="admin-form-label">Фон профиля</div>
+                <div class="admin-color-grid" style="margin-top:0;">
+                    <div class="admin-color-field">
+                        <label class="admin-form-label" for="admin-edit-bg-color">Цвет фона</label>
+                        <input type="color" id="admin-edit-bg-color" value="${Utils.escapeHtml(ProfileManager.normalizeProfileBackground(profile.background).color)}" title="Цвет фона профиля">
+                    </div>
+                    <div class="admin-color-field">
+                        <label class="admin-form-label" for="admin-edit-bg-dim">Затемнение</label>
+                        <input type="number" id="admin-edit-bg-dim" min="0" max="1" step="0.05" value="${Utils.escapeHtml(String(ProfileManager.normalizeProfileBackground(profile.background).dim ?? 0.5))}" placeholder="0..1">
+                    </div>
+                </div>
+                <input type="text" id="admin-edit-bg-url" placeholder="URL фона профиля" value="${Utils.escapeHtml(ProfileManager.normalizeProfileBackground(profile.background).url || '')}">
+            </div>
             <textarea id="admin-edit-bio" rows="4" placeholder="Описание">${Utils.escapeHtml(profile.bio || '')}</textarea>
             <div style="font-size:12px; color:var(--text-muted);">Email: ${Utils.escapeHtml(profile.email || 'не указан')}</div>
             <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2);">
