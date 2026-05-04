@@ -255,14 +255,24 @@
         .self .bubble { background: #1a1a1d; color: #fff; border-color: #2a2a2f; border-bottom-right-radius: 4px; }
         .m-line strong { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; padding: 0 4px; font-weight: 600; display: block; }
         .self strong { display: none; }
-        .sys-msg { text-align: center; font-size: 11px; color: var(--text-muted); margin: 10px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+        .sys-msg {
+            text-align: center;
+            font-size: 11px;
+            color: rgba(180,180,180,0.9);
+            margin: 10px 0;
+            letter-spacing: 0.4px;
+            background: rgba(120,120,120,0.5);
+            border: 1px solid rgba(180,180,180,0.34);
+            border-radius: 10px;
+            padding: 6px 10px;
+        }
         .timecode-btn { background: rgba(46, 213, 115, 0.15); border: 1px solid rgba(46, 213, 115, 0.3); color: var(--accent); padding: 2px 6px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 12px; transition: 0.2s; }
         .timecode-btn:hover { background: var(--accent); color: #000; }
         .timecode-btn.disabled { opacity: 0.5; cursor: default; }
 
-        .chat-input-area { padding: 12px; border-top: 1px solid var(--border); background: var(--panel); }
-        .input-wrapper { display: flex; gap: 8px; background: #040404; border: 1px solid var(--border-light); border-radius: 16px; padding: 6px; align-items: center; }
-        .input-wrapper input { border: none; background: transparent; margin: 0; padding: 8px 10px; flex: 1; }
+        .chat-input-area { padding: 10px 12px; border-top: 1px solid var(--border); background: var(--panel); }
+        .input-wrapper { display: flex; gap: 8px; background: #040404; border: 1px solid var(--border-light); border-radius: 999px; padding: 6px 8px; align-items: center; min-height: 50px; }
+        .input-wrapper input { border: none; background: transparent; margin: 0; padding: 10px 12px; flex: 1; border-radius: 999px; }
         
         .mic-icon-btn { width: 38px; height: 38px; border-radius: 12px; background: rgba(255,255,255,0.05); color: var(--text-main); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; transition: 0.3s; }
         .mic-icon-btn.active { background: rgba(46, 213, 115, 0.15); color: var(--accent); border: 1px solid var(--accent); box-shadow: 0 0 15px rgba(46, 213, 115, 0.2); animation: pulse 2s infinite; }
@@ -282,8 +292,12 @@
         .user-card-actions { display: flex; gap: 6px; margin-left: auto; }
         .dm-btn, .add-friend-btn { background: rgba(255,255,255,0.05); border: 1px solid var(--border-light); color: #fff; padding: 6px 10px; border-radius: 8px; font-size: 11px; transition: 0.2s; }
         .dm-btn:hover, .add-friend-btn:hover { background: rgba(255,255,255,0.1); }
+        .viewer-settings-btn { background: rgba(255,255,255,0.05); border: 1px solid var(--border-light); color: #fff; padding: 6px 10px; border-radius: 8px; font-size: 12px; transition: 0.2s; }
+        .viewer-settings-btn:hover { background: rgba(255,255,255,0.1); }
         .perm-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; width: 100%; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
         .perm-controls label { font-size: 11px; color: var(--text-muted); display: flex; gap: 4px; align-items: center; cursor: pointer; }
+        .viewer-settings-panel { display: none; width: 100%; margin-top: 8px; padding: 10px; border: 1px solid var(--border); border-radius: 10px; background: rgba(255,255,255,0.03); }
+        .viewer-settings-panel.open { display: block; }
 
         /* ========================================================= */
         /* MODALS & TOASTS */
@@ -342,8 +356,8 @@
         .dm-modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 15px; margin-bottom: 5px; }
         .dm-header-actions { display: flex; align-items: center; gap: 8px; }
         .dm-messages { height: 350px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 5px; position: relative; overflow-x: hidden; }
-        .dm-compose { display: flex; gap: 10px; margin-top: 10px; }
-        .dm-compose input { margin: 0; flex: 1; }
+        .dm-compose { display: flex; gap: 8px; margin-top: 10px; align-items: center; background: rgba(0,0,0,0.28); border: 1px solid var(--border-light); border-radius: 999px; padding: 6px 8px; }
+        .dm-compose input { margin: 0; flex: 1; border-radius: 999px; border: none; background: transparent; padding: 10px 12px; }
         .dm-messages > :not(.panel-love-hearts) { position: relative; z-index: 2; }
         .dm-theme-controls { display: none; align-items: center; gap: 8px; }
         .dm-theme-controls.active { display: flex; }
@@ -355,6 +369,23 @@
         #modal-dm-chat.theme-love .dm-compose { background: rgba(23, 7, 16, 0.65); border-radius: 12px; padding: 8px; }
         #modal-dm-chat.theme-love .dm-bubble,
         #modal-dm-chat.theme-love .bubble { background: rgba(214, 92, 150, 0.12); border-color: rgba(214, 120, 166, 0.28); color: #fff; }
+        #modal-dm-chat.theme-light .modal-content { background: rgba(255,255,255,0.97); border-color: #d8dbe2; box-shadow: 0 12px 35px rgba(15, 23, 42, 0.14); color: #0b0d12; }
+        #modal-dm-chat.theme-light .dm-messages,
+        #modal-dm-chat.theme-light .dm-compose { background: rgba(249,250,252,0.95); border-radius: 12px; padding: 8px; }
+        #modal-dm-chat.theme-light .bubble { background: #ffffff; border-color: #d6dae2; color: #0b0d12; }
+        #modal-dm-chat.theme-light .self .bubble { background: #111111; border-color: #111111; color: #fff; }
+        #modal-dm-chat.theme-aurora .modal-content { background: radial-gradient(circle at 20% 15%, rgba(43,104,255,0.22), rgba(8,18,36,0.95) 54%, rgba(4,8,18,0.98) 100%); border-color: rgba(95,145,255,0.34); box-shadow: 0 16px 42px rgba(19, 53, 117, 0.45); }
+        #modal-dm-chat.theme-aurora .dm-messages,
+        #modal-dm-chat.theme-aurora .dm-compose { background: rgba(11, 20, 39, 0.78); border-radius: 12px; padding: 8px; }
+        #modal-dm-chat.theme-aurora .bubble { background: rgba(63, 110, 218, 0.22); border-color: rgba(108, 154, 255, 0.36); color: #e8f1ff; }
+        #modal-dm-chat.theme-sunset .modal-content { background: radial-gradient(circle at 18% 18%, rgba(255,120,76,0.26), rgba(38,10,18,0.92) 50%, rgba(17,5,11,0.98) 100%); border-color: rgba(255,133,94,0.34); box-shadow: 0 16px 42px rgba(97, 32, 26, 0.52); }
+        #modal-dm-chat.theme-sunset .dm-messages,
+        #modal-dm-chat.theme-sunset .dm-compose { background: rgba(30, 9, 15, 0.82); border-radius: 12px; padding: 8px; }
+        #modal-dm-chat.theme-sunset .bubble { background: rgba(255, 128, 92, 0.16); border-color: rgba(255, 162, 130, 0.36); color: #ffe8df; }
+        #modal-dm-chat.theme-ocean .modal-content { background: radial-gradient(circle at 72% 12%, rgba(65,170,198,0.24), rgba(8,24,30,0.95) 52%, rgba(4,12,16,0.99) 100%); border-color: rgba(93, 199, 224, 0.34); box-shadow: 0 16px 42px rgba(18, 66, 77, 0.5); }
+        #modal-dm-chat.theme-ocean .dm-messages,
+        #modal-dm-chat.theme-ocean .dm-compose { background: rgba(8, 24, 31, 0.82); border-radius: 12px; padding: 8px; }
+        #modal-dm-chat.theme-ocean .bubble { background: rgba(83, 199, 227, 0.14); border-color: rgba(126, 228, 252, 0.34); color: #e6fdff; }
 
         #toast-container { position: fixed; top: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
         .toast { padding: 14px 20px; border-radius: 12px; background: var(--panel); border: 1px solid var(--border-light); color: var(--text-main); font-size: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); animation: slideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
@@ -375,7 +406,14 @@
         .theme-rect.default::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, #0d0d10 0%, #040404 100%); }
         .theme-rect.love::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 20% 15%, #66304f 0%, #301226 50%, #10050d 100%); }
         .theme-rect.love::after { content: '❤  ❤  ❤'; position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); color: rgba(255,153,204,0.85); letter-spacing: 6px; font-size: 11px; }
-        .theme-card[data-theme="inverted"] { display: none; } /* // [UPDATE] */
+        .theme-rect.light::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, #ffffff 0%, #e8ebf1 100%); }
+        .theme-rect.light::after { content: ''; position: absolute; width: 54px; height: 54px; border-radius: 50%; left: 29px; top: 44px; background: #0e1115; box-shadow: 0 0 20px rgba(0,0,0,0.2); }
+        .theme-rect.aurora::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 28% 12%, #4776ff 0%, #1a2f68 42%, #0a1023 100%); }
+        .theme-rect.aurora::after { content: '✦ ✧ ✦'; position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); color: rgba(185,214,255,0.86); letter-spacing: 4px; font-size: 10px; }
+        .theme-rect.sunset::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 20% 14%, #ff9a76 0%, #7b2233 52%, #240b15 100%); }
+        .theme-rect.sunset::after { content: '☼'; position: absolute; top: 16px; right: 16px; color: rgba(255,228,190,0.88); font-size: 16px; }
+        .theme-rect.ocean::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 72% 18%, #6de0ff 0%, #13667a 48%, #082835 100%); }
+        .theme-rect.ocean::after { content: '≈ ≈ ≈'; position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); color: rgba(190,250,255,0.86); letter-spacing: 3px; font-size: 10px; }
         .theme-rect.inverted::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, #f8f8f8 0%, #d9dce2 100%); } /* // [UPDATE] */
         .theme-rect.inverted::after { content: ''; position: absolute; width: 52px; height: 52px; border-radius: 50%; left: 30px; top: 46px; background: #050505; box-shadow: 0 0 22px rgba(0,0,0,0.28); } /* // [UPDATE] */
         .theme-name { margin-top: 10px; font-size: 13px; color: var(--text-muted); text-transform: lowercase; font-weight: 600; }
@@ -431,6 +469,52 @@
         #room-screen.theme-inverted #btn-share-room,
         #room-screen.theme-inverted #btn-room-settings,
         #room-screen.theme-inverted #btn-leave-room { background: #050505; color: #ffffff; border-color: #050505; }
+        #room-screen.theme-light { --bg: #fdfdfd; --panel: #ffffff; --panel-hover: #f7f7f9; --border: #dfe3ea; --border-light: #cfd5de; --text-main: #0f1319; --text-muted: #616b78; --accent: #111111; --accent-hover: #000000; --brand: #111111; background: #fdfdfd; color: var(--text-main); }
+        #room-screen.theme-light .glass-panel,
+        #room-screen.theme-light .chat-section,
+        #room-screen.theme-light .chat-input-area,
+        #room-screen.theme-light .input-wrapper,
+        #room-screen.theme-light .bubble,
+        #room-screen.theme-light .user-item { background: #ffffff; border-color: #d7dde6; color: #0f1319; box-shadow: 0 12px 32px rgba(16,24,40,0.09); }
+        #room-screen.theme-light .self .bubble { background: #111111; color: #fff; border-color: #111111; }
+        #room-screen.theme-light input { background: #ffffff; color: #0f1319; }
+        #room-screen.theme-light .send-btn,
+        #room-screen.theme-light #btn-share-room,
+        #room-screen.theme-light #btn-room-settings,
+        #room-screen.theme-light #btn-leave-room { background: #111111; color: #ffffff; border-color: #111111; }
+        #room-screen.theme-aurora { background: radial-gradient(circle at 20% 12%, #325fcf 0%, #121f47 35%, #070d22 72%, #050812 100%); color: #edf4ff; }
+        #room-screen.theme-aurora .glass-panel,
+        #room-screen.theme-aurora .chat-section,
+        #room-screen.theme-aurora .chat-input-area { background: rgba(10, 18, 37, 0.9); border-color: rgba(104, 150, 255, 0.28); box-shadow: 0 16px 40px rgba(15, 40, 96, 0.45); }
+        #room-screen.theme-aurora .input-wrapper { background: rgba(8, 16, 34, 0.94); border-color: rgba(122, 166, 255, 0.32); }
+        #room-screen.theme-aurora .bubble { background: rgba(73, 118, 228, 0.18); border-color: rgba(125, 168, 255, 0.36); color: #e8f1ff; }
+        #room-screen.theme-aurora .self .bubble { background: rgba(108, 156, 255, 0.22); border-color: rgba(156, 190, 255, 0.4); color: #fff; }
+        #room-screen.theme-aurora .send-btn,
+        #room-screen.theme-aurora #btn-share-room,
+        #room-screen.theme-aurora #btn-room-settings,
+        #room-screen.theme-aurora #btn-leave-room { background: rgba(104, 146, 255, 0.28); color: #eaf2ff; border-color: rgba(138, 177, 255, 0.45); }
+        #room-screen.theme-sunset { background: radial-gradient(circle at 18% 10%, #ff9870 0%, #7c2433 34%, #33101d 68%, #17070f 100%); color: #ffece4; }
+        #room-screen.theme-sunset .glass-panel,
+        #room-screen.theme-sunset .chat-section,
+        #room-screen.theme-sunset .chat-input-area { background: rgba(31, 10, 16, 0.9); border-color: rgba(255, 145, 109, 0.28); box-shadow: 0 16px 40px rgba(108, 37, 30, 0.42); }
+        #room-screen.theme-sunset .input-wrapper { background: rgba(28, 9, 14, 0.94); border-color: rgba(255, 155, 123, 0.34); }
+        #room-screen.theme-sunset .bubble { background: rgba(255, 133, 94, 0.17); border-color: rgba(255, 173, 145, 0.36); color: #ffece4; }
+        #room-screen.theme-sunset .self .bubble { background: rgba(255, 156, 124, 0.24); border-color: rgba(255, 190, 170, 0.42); color: #fff5f0; }
+        #room-screen.theme-sunset .send-btn,
+        #room-screen.theme-sunset #btn-share-room,
+        #room-screen.theme-sunset #btn-room-settings,
+        #room-screen.theme-sunset #btn-leave-room { background: rgba(255, 140, 106, 0.26); color: #fff0e8; border-color: rgba(255, 176, 149, 0.44); }
+        #room-screen.theme-ocean { background: radial-gradient(circle at 80% 12%, #57d9f8 0%, #1a7289 34%, #0d3340 66%, #071b23 100%); color: #e6fcff; }
+        #room-screen.theme-ocean .glass-panel,
+        #room-screen.theme-ocean .chat-section,
+        #room-screen.theme-ocean .chat-input-area { background: rgba(9, 27, 34, 0.9); border-color: rgba(102, 215, 240, 0.28); box-shadow: 0 16px 40px rgba(19, 78, 93, 0.42); }
+        #room-screen.theme-ocean .input-wrapper { background: rgba(8, 24, 31, 0.94); border-color: rgba(132, 227, 248, 0.34); }
+        #room-screen.theme-ocean .bubble { background: rgba(83, 199, 227, 0.14); border-color: rgba(126, 228, 252, 0.34); color: #e6fdff; }
+        #room-screen.theme-ocean .self .bubble { background: rgba(112, 220, 245, 0.22); border-color: rgba(155, 236, 255, 0.4); color: #f2feff; }
+        #room-screen.theme-ocean .send-btn,
+        #room-screen.theme-ocean #btn-share-room,
+        #room-screen.theme-ocean #btn-room-settings,
+        #room-screen.theme-ocean #btn-leave-room { background: rgba(92, 209, 235, 0.24); color: #e9fdff; border-color: rgba(130, 227, 248, 0.4); }
         .chat-content-area { position: relative; overflow: hidden; z-index: 2; }
         .panel-love-hearts { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 1; }
         .love-heart { position: absolute; bottom: -70px; width: auto; height: auto; opacity: 0; animation: loveFloatUp 28s linear forwards; font-size: 32px; line-height: 1; filter: brightness(0.88) saturate(0.88) contrast(0.98); text-shadow: 0 0 10px rgba(255, 102, 194, 0.2); }
@@ -773,6 +857,10 @@
             <div class="dm-theme-controls" id="dm-theme-controls">
                 <button class="dm-theme-chip active" data-theme="default">default</button>
                 <button class="dm-theme-chip" data-theme="love">love</button>
+                <button class="dm-theme-chip" data-theme="light">light</button>
+                <button class="dm-theme-chip" data-theme="aurora">aurora</button>
+                <button class="dm-theme-chip" data-theme="sunset">sunset</button>
+                <button class="dm-theme-chip" data-theme="ocean">ocean</button>
             </div>
             <div id="dm-messages" class="dm-messages"></div>
             <div class="dm-compose">
@@ -815,10 +903,24 @@
                                     <div class="theme-name">love</div>
                                     <div class="theme-check">✓</div>
                                 </div>
-                                <!-- // [UPDATE] INVERTED ROOM THEME CARD HIDDEN BY CSS -->
-                                <div class="theme-card" data-theme="inverted">
-                                    <div class="theme-rect inverted"></div>
-                                    <div class="theme-name">inverted</div>
+                                <div class="theme-card" data-theme="light">
+                                    <div class="theme-rect light"></div>
+                                    <div class="theme-name">light</div>
+                                    <div class="theme-check">✓</div>
+                                </div>
+                                <div class="theme-card" data-theme="aurora">
+                                    <div class="theme-rect aurora"></div>
+                                    <div class="theme-name">aurora</div>
+                                    <div class="theme-check">✓</div>
+                                </div>
+                                <div class="theme-card" data-theme="sunset">
+                                    <div class="theme-rect sunset"></div>
+                                    <div class="theme-name">sunset</div>
+                                    <div class="theme-check">✓</div>
+                                </div>
+                                <div class="theme-card" data-theme="ocean">
+                                    <div class="theme-rect ocean"></div>
+                                    <div class="theme-name">ocean</div>
                                     <div class="theme-check">✓</div>
                                 </div>
                             </div>
