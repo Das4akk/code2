@@ -209,12 +209,6 @@
         
         .video-container { flex: 1; min-height: 0; background: #000; border-radius: 20px; position: relative; overflow: hidden; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; }
         #native-player { width: 100%; height: 100%; max-height: 100%; object-fit: contain; outline: none; position: relative; z-index: 2; }
-        .rutube-embed { display: none; position: absolute; inset: 0; width: 100%; height: 100%; border: 0; z-index: 3; background: #000; }
-        .rutube-embed.active { display: block; }
-        .rutube-host-bar { position: absolute; top: 10px; left: 10px; right: 10px; z-index: 12; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 12px; background: rgba(0,0,0,0.72); border: 1px solid var(--border-light); backdrop-filter: blur(8px); }
-        .rutube-host-bar .rutube-host-label { font-size: 12px; color: var(--text-muted); font-weight: 700; }
-        .rutube-host-bar #rutube-seek-input { width: 88px; margin: 0; padding: 8px; border-radius: 8px; }
-        .rutube-host-bar .secondary-btn { width: auto; padding: 8px 12px; font-size: 12px; }
         video#main-video { width: 100%; height: 100%; max-height: 100%; outline: none; }
         
         /* Reactions Layer */
@@ -529,42 +523,6 @@
         #room-screen.theme-ocean #btn-share-room,
         #room-screen.theme-ocean #btn-room-settings,
         #room-screen.theme-ocean #btn-leave-room { background: rgba(92, 209, 235, 0.24); color: #e9fdff; border-color: rgba(130, 227, 248, 0.4); }
-        .room-preview-rutube { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(145deg, #121212 0%, #2a1010 100%); color: #ff7a7a; font-weight: 800; font-size: 14px; letter-spacing: 0.06em; }
-        #room-screen.theme-racing_green { background: radial-gradient(circle at 12% 18%, #0d3d24 0%, #020806 55%, #000000 100%); color: #e8fff0; }
-        #room-screen.theme-racing_green .glass-panel, #room-screen.theme-racing_green .chat-section, #room-screen.theme-racing_green .chat-input-area { background: rgba(4, 18, 10, 0.92); border-color: rgba(0, 90, 50, 0.45); }
-        #room-screen.theme-racing_green .bubble { background: rgba(0, 60, 35, 0.35); border-color: rgba(46, 213, 115, 0.25); color: #e8fff0; }
-        #room-screen.theme-racing_green .self .bubble { background: #0a2418; color: #bfffd9; border-color: #145c38; }
-        #room-screen.theme-audi_racing { background: radial-gradient(circle at 20% 12%, #8a0a1a 0%, #1a0508 50%, #0a0a0c 100%); color: #f5f5f5; }
-        #room-screen.theme-audi_racing .glass-panel, #room-screen.theme-audi_racing .chat-section, #room-screen.theme-audi_racing .chat-input-area { background: rgba(26, 8, 12, 0.92); border-color: rgba(187, 10, 48, 0.35); }
-        #room-screen.theme-audi_racing .bubble { background: rgba(187, 10, 48, 0.12); border-color: rgba(200, 200, 210, 0.28); color: #f8f8f8; }
-        #room-screen.theme-audi_racing .self .bubble { background: rgba(192, 192, 200, 0.18); color: #1a0508; border-color: rgba(192, 192, 200, 0.45); }
-        #room-screen.theme-alpine_bwt { background: linear-gradient(165deg, #153a7a 0%, #0a1f3d 42%, #2a0a24 100%); color: #eaf4ff; }
-        #room-screen.theme-alpine_bwt .glass-panel, #room-screen.theme-alpine_bwt .chat-section, #room-screen.theme-alpine_bwt .chat-input-area { background: rgba(10, 28, 58, 0.9); border-color: rgba(255, 36, 156, 0.28); }
-        #room-screen.theme-alpine_bwt .bubble { background: rgba(33, 115, 198, 0.2); border-color: rgba(255, 105, 180, 0.35); color: #f0f7ff; }
-        #room-screen.theme-alpine_bwt .self .bubble { background: rgba(255, 36, 156, 0.22); color: #fff; border-color: rgba(255, 200, 230, 0.4); }
-        #room-screen.theme-solar_flare { background: radial-gradient(circle at 50% -10%, #ffd54a 0%, #ff6b1a 28%, #3a0a02 72%, #0a0200 100%); color: #fff8e8; }
-        #room-screen.theme-solar_flare .glass-panel, #room-screen.theme-solar_flare .chat-section, #room-screen.theme-solar_flare .chat-input-area { background: rgba(45, 12, 4, 0.88); border-color: rgba(255, 200, 80, 0.35); }
-        #room-screen.theme-solar_flare .bubble { background: rgba(255, 120, 40, 0.18); border-color: rgba(255, 210, 120, 0.35); }
-        #room-screen.theme-solar_flare .self .bubble { background: rgba(255, 230, 160, 0.22); color: #2a0a00; border-color: rgba(255, 200, 80, 0.5); }
-        #room-screen.theme-neon_tide { background: radial-gradient(circle at 15% 80%, #6d28d9 0%, #042f2e 45%, #020814 100%); color: #e0ffff; }
-        #room-screen.theme-neon_tide .glass-panel, #room-screen.theme-neon_tide .chat-section, #room-screen.theme-neon_tide .chat-input-area { background: rgba(6, 24, 28, 0.9); border-color: rgba(0, 220, 200, 0.35); }
-        #room-screen.theme-neon_tide .bubble { background: rgba(0, 180, 170, 0.15); border-color: rgba(160, 80, 255, 0.35); color: #dff; }
-        #room-screen.theme-neon_tide .self .bubble { background: rgba(120, 60, 220, 0.28); color: #fff; border-color: rgba(180, 140, 255, 0.45); }
-        #room-screen.theme-dusk { background: radial-gradient(circle at 70% 20%, #7c3aed 0%, #312e81 40%, #1e1b4b 100%); color: #ede9fe; }
-        #room-screen.theme-dusk .glass-panel, #room-screen.theme-dusk .chat-section, #room-screen.theme-dusk .chat-input-area { background: rgba(30, 27, 75, 0.9); border-color: rgba(196, 181, 253, 0.28); }
-        #room-screen.theme-dusk .bubble { background: rgba(124, 58, 237, 0.2); border-color: rgba(167, 139, 250, 0.35); }
-        #room-screen.theme-dusk .self .bubble { background: rgba(251, 191, 36, 0.2); color: #1e1b4b; border-color: rgba(251, 191, 36, 0.45); }
-        #room-screen.theme-arctic { background: radial-gradient(circle at 30% 15%, #e0f2fe 0%, #7dd3fc 18%, #0c4a6e 55%, #020617 100%); color: #f0f9ff; }
-        #room-screen.theme-arctic .glass-panel, #room-screen.theme-arctic .chat-section, #room-screen.theme-arctic .chat-input-area { background: rgba(8, 47, 73, 0.88); border-color: rgba(125, 211, 252, 0.35); }
-        #room-screen.theme-arctic .bubble { background: rgba(56, 189, 248, 0.12); border-color: rgba(186, 230, 253, 0.35); }
-        #room-screen.theme-arctic .self .bubble { background: rgba(240, 249, 255, 0.9); color: #0c4a6e; border-color: rgba(125, 211, 252, 0.5); }
-        .theme-rect.racing_green::before { content: ''; position: absolute; inset: 0; background: linear-gradient(160deg, #004225 0%, #000000 100%); }
-        .theme-rect.audi_racing::before { content: ''; position: absolute; inset: 0; background: linear-gradient(145deg, #bb0a30 40%, #c8c8d0 100%); }
-        .theme-rect.alpine_bwt::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, #2173c6 45%, #ff249c 100%); }
-        .theme-rect.solar_flare::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 50% 0%, #ffd54a, #ff6b1a 40%, #3a0a02); }
-        .theme-rect.neon_tide::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, #042f2e, #4c1d95); }
-        .theme-rect.dusk::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, #7c3aed, #1e1b4b); }
-        .theme-rect.arctic::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, #e0f2fe, #0369a1); }
         .chat-content-area { position: relative; z-index: 2; min-height: 0; overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch; }
         .panel-love-hearts { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 1; }
         .love-heart { position: absolute; bottom: -70px; width: auto; height: auto; opacity: 0; animation: loveFloatUp 28s linear forwards; font-size: 32px; line-height: 1; filter: brightness(0.88) saturate(0.88) contrast(0.98); text-shadow: 0 0 10px rgba(255, 102, 194, 0.2); }
@@ -739,12 +697,6 @@
                 
                 <div class="video-container glass-panel">
                     <video id="native-player" playsinline></video>
-                    <iframe id="rutube-player" class="rutube-embed" title="RuTube" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe>
-                    <div id="rutube-host-bar" class="rutube-host-bar" style="display:none;">
-                        <span class="rutube-host-label">RuTube · сек</span>
-                        <input type="number" id="rutube-seek-input" min="0" step="1" value="0" inputmode="numeric">
-                        <button type="button" class="secondary-btn" id="rutube-sync-push">Синхронизировать</button>
-                    </div>
                     <div id="reaction-layer"></div>
                     <div class="reaction-bar">
                         <button class="react-btn" data-emoji="🔥">🔥</button>
@@ -948,7 +900,7 @@
             <h2 id="room-modal-title">Создать комнату</h2>
             <div style="display: flex; flex-direction: column; gap: 12px;">
                 <input type="text" id="room-input-name" placeholder="Название комнаты">
-                <input type="url" id="room-input-url" placeholder="Прямая ссылка (mp4, webm) или страница RuTube">
+                <input type="url" id="room-input-url" placeholder="Прямая ссылка на видео (mp4, webm)">
                 
                 <label style="display: flex; align-items: center; gap: 10px; font-size: 14px; cursor: pointer; margin-top: 5px; color: var(--text-muted);">
                     <input type="checkbox" id="room-input-private" style="width: auto; margin: 0;">
@@ -998,41 +950,6 @@
                                 <div class="theme-card" data-theme="ocean">
                                     <div class="theme-rect ocean"></div>
                                     <div class="theme-name">ocean</div>
-                                    <div class="theme-check">✓</div>
-                                </div>
-                                <div class="theme-card" data-theme="racing_green">
-                                    <div class="theme-rect racing_green"></div>
-                                    <div class="theme-name">racing green</div>
-                                    <div class="theme-check">✓</div>
-                                </div>
-                                <div class="theme-card" data-theme="audi_racing">
-                                    <div class="theme-rect audi_racing"></div>
-                                    <div class="theme-name">audi red</div>
-                                    <div class="theme-check">✓</div>
-                                </div>
-                                <div class="theme-card" data-theme="alpine_bwt">
-                                    <div class="theme-rect alpine_bwt"></div>
-                                    <div class="theme-name">alpine bwt</div>
-                                    <div class="theme-check">✓</div>
-                                </div>
-                                <div class="theme-card" data-theme="solar_flare">
-                                    <div class="theme-rect solar_flare"></div>
-                                    <div class="theme-name">solar flare</div>
-                                    <div class="theme-check">✓</div>
-                                </div>
-                                <div class="theme-card" data-theme="neon_tide">
-                                    <div class="theme-rect neon_tide"></div>
-                                    <div class="theme-name">neon tide</div>
-                                    <div class="theme-check">✓</div>
-                                </div>
-                                <div class="theme-card" data-theme="dusk">
-                                    <div class="theme-rect dusk"></div>
-                                    <div class="theme-name">dusk</div>
-                                    <div class="theme-check">✓</div>
-                                </div>
-                                <div class="theme-card" data-theme="arctic">
-                                    <div class="theme-rect arctic"></div>
-                                    <div class="theme-name">arctic</div>
                                     <div class="theme-check">✓</div>
                                 </div>
                             </div>
