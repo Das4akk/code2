@@ -3577,6 +3577,14 @@ class AdminPanel {
                             <input type="text" id="admin-user-search" placeholder="Поиск по @id или uid" style="margin:0;">
                             <button class="primary-btn" id="btn-admin-find-user" style="width:auto; padding:0 16px;">Найти</button>
                         </div>
+                        <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; margin-bottom:12px; background:rgba(255,255,255,0.03);">
+                            <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">Локальное "глобальное" оповещение выбранному пользователю</div>
+                            <textarea id="admin-local-announcement-input" rows="3" placeholder="Текст или команда пасхалки (напр. /moo)" style="margin:0 0 8px 0;"></textarea>
+                            <div style="display:flex; gap:8px;">
+                                <button class="primary-btn" id="btn-admin-send-local-announcement">Отправить выбранному</button>
+                                <button class="secondary-btn" id="btn-admin-clear-local-announcement">Очистить поле</button>
+                            </div>
+                        </div>
 
                         <div id="admin-user-editor" data-target-uid="" style="display:flex; flex-direction:column; gap:10px;">
                             <div style="font-size:13px; color:var(--text-muted); padding:12px; border:1px dashed var(--border-light); border-radius:12px;">
@@ -3653,6 +3661,10 @@ class AdminPanel {
         Utils.$('btn-admin-toggle-room-lock').onclick = () => this.toggleRoomCreationLock();
         Utils.$('btn-admin-refresh').onclick = () => this.renderPanel();
         Utils.$('btn-admin-find-user').onclick = () => this.findUser();
+        Utils.$('btn-admin-send-local-announcement').onclick = () => this.sendLocalAnnouncementToSelectedUser();
+        Utils.$('btn-admin-clear-local-announcement').onclick = () => {
+            if (Utils.$('admin-local-announcement-input')) Utils.$('admin-local-announcement-input').value = '';
+        };
         Utils.$('btn-admin-clear-user-editor').onclick = () => this.renderEmptyUserEditor();
         Utils.$('btn-admin-export-snapshot').onclick = () => this.exportAdminSnapshot();
         Utils.$('btn-admin-unmute-unban-all').onclick = () => this.unmuteAndUnbanAllUsers();
@@ -3822,6 +3834,7 @@ class AdminPanel {
 
         const settingsRef = ref(db, 'admin/settings');
         const annRef = ref(db, 'admin/global-announcement');
+        const localAnnRef = ref(db, `admin/local-announcements/${AppState.currentUser.uid}`);
         const auditRef = ref(db, 'admin/auditLog');
         const forceSignOutRef = ref(db, `admin/actions/forceSignOut/${AppState.currentUser.uid}`);
         const forceLeaveRoomRef = ref(db, `admin/actions/forceLeaveRoom/${AppState.currentUser.uid}`);
@@ -3874,6 +3887,24 @@ class AdminPanel {
                 EasterEggManager.applyRoomEffect({ type: command, from: payload.fromUsername });
             } else {
                 Utils.toast(`Оповещение: ${payload.text}`);
+            }
+        });
+        const localAnnUnsub = onValue(localAnnRef, (snap) => {
+            const payload = snap.val();
+            if (!payload?.id || !payload?.text) return;
+            if (Date.now() - Number(payload.ts || 0) > 60000) return;
+
+            const marker = `localAnnouncementSeen:${payload.id}`;
+            if (sessionStorage.getItem(marker)) return;
+            sessionStorage.setItem(marker, '1');
+
+            const commandStr = payload.text.trim().toLowerCase();
+            const command = EasterEggManager.COMMANDS.get(commandStr);
+            if (command) {
+                Utils.toast(`Локальное оповещение от @${payload.fromUsername || 'admin'}`, 'info');
+                EasterEggManager.applyRoomEffect({ type: command, from: payload.fromUsername || 'admin' });
+            } else {
+                Utils.toast(`Личное оповещение: ${payload.text}`);
             }
         });
 
@@ -3931,6 +3962,7 @@ class AdminPanel {
         AppState.activeSubscriptions.push(
             () => off(settingsRef, 'value', settingsUnsub),
             () => off(annRef, 'value', annUnsub),
+            () => off(localAnnRef, 'value', localAnnUnsub),
             () => off(auditRef, 'value', auditUnsub),
             () => off(forceSignOutRef, 'value', forceSignOutUnsub),
             () => off(forceLeaveRoomRef, 'value', forceLeaveRoomUnsub),
@@ -4462,6 +4494,32 @@ class AdminPanel {
 
         Utils.$('admin-announcement-input').value = '';
         Utils.toast('Глобальное оповещение отправлено');
+    }
+
+    static async sendLocalAnnouncementToSelectedUser() {
+        if (!this.requireAdmin()) return;
+        const targetUid = Utils.$('admin-user-editor')?.dataset?.targetUid || '';
+        if (!targetUid) return Utils.toast('Сначала выберите пользователя в блоке управления', 'error');
+
+        const text = Utils.$('admin-local-announcement-input')?.value.trim();
+        if (!text) return Utils.toast('Введите текст локального оповещения', 'error');
+
+        const targetSnap = await get(ref(db, `users/${targetUid}/profile`));
+        if (!targetSnap.exists()) return Utils.toast('Выбранный пользователь не найден', 'error');
+
+        const profile = AppState.usersCache.get(AppState.currentUser.uid) || {};
+        const payload = {
+            id: Utils.generateCryptoId(10),
+            text,
+            ts: Date.now(),
+            fromUid: AppState.currentUser.uid,
+            fromUsername: profile.username || 'admin',
+            targetUid
+        };
+        await set(ref(db, `admin/local-announcements/${targetUid}`), payload);
+        await this.pushAuditLog('announcement.local.send', { targetUid, text });
+        Utils.$('admin-local-announcement-input').value = '';
+        Utils.toast('Локальное оповещение отправлено выбранному пользователю');
     }
 
     static async clearAnnouncement() {
@@ -5104,7 +5162,7 @@ class RoomManager {
         const renderToken = ++AppState.usersListRenderToken;
         const renderRoomId = AppState.currentRoomId;
 
-        Utils.$('users-count').innerText = ids.length;
+        this.updateUsersTabButton(ids, cache);
         container.innerHTML = '';
         
         const ensureActualRender = () => {
@@ -5208,6 +5266,32 @@ class RoomManager {
         }
     }
 
+    static updateUsersTabButton(ids = [], cache = {}) {
+        const btn = Utils.$('tab-users-btn');
+        if (!btn) return;
+
+        const list = Array.isArray(ids) ? ids : [];
+        const count = list.length;
+        const shuffled = [...list].sort(() => Math.random() - 0.5).slice(0, 3);
+        const avatarsHtml = shuffled.map((uid) => {
+            const profile = AppState.usersCache.get(uid) || {};
+            const displayName = profile.name || cache?.[uid]?.name || 'User';
+            const safeName = Utils.escapeHtml(displayName);
+            const initial = Utils.escapeHtml((displayName[0] || 'U').toUpperCase());
+            if (profile.avatar) {
+                return `<span class="users-tab-avatar" title="${safeName}"><img src="${Utils.escapeHtml(profile.avatar)}" alt="${safeName}"></span>`;
+            }
+            return `<span class="users-tab-avatar users-tab-avatar-fallback" title="${safeName}">${initial}</span>`;
+        }).join('');
+
+        btn.innerHTML = `
+            <span class="users-tab-inner">
+                <span class="users-tab-left">👥 Люди (<span id="users-count">${count}</span>)</span>
+                <span class="users-tab-avatars">${avatarsHtml}</span>
+            </span>
+        `;
+    }
+
     static leaveRoom() {
         if (!AppState.currentRoomId) return;
         AppState.roomSubscriptions.forEach(fn => fn());
@@ -5237,7 +5321,7 @@ class RoomManager {
         this.applyRoomTheme('default');
         AppState.isHost = false;
         if (Utils.$('users-list')) Utils.$('users-list').innerHTML = '';
-        if (Utils.$('users-count')) Utils.$('users-count').innerText = '0';
+        this.updateUsersTabButton([], {});
         Utils.showScreen('lobby-screen');
     }
 
