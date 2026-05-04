@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @fileoverview COWIO Core Engine v4.0 - The Ultimate Edition
  * @description Интегрированы все фиксы: MPA-подобная стабильность, обход пароля по инвайтам,
  * улучшенный интерактивный нейрофон, левитация элементов, фикс мобильного скролла,
@@ -12,9 +12,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 import { 
     getAuth, onAuthStateChanged, signInWithEmailAndPassword, 
     createUserWithEmailAndPassword, signOut, updateProfile,
-    signInWithPopup, GoogleAuthProvider,
+    signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider,
     reauthenticateWithCredential, EmailAuthProvider,
-    verifyBeforeUpdateEmail
+    verifyBeforeUpdateEmail, linkWithCredential
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { 
     getDatabase, ref, set, get, push, onValue, onDisconnect, 
@@ -58,6 +58,8 @@ const AppState = {
         voiceParticipantsCache: {}
     },
     currentDirectChat: null,
+    pendingRoomChatMedia: [],
+    pendingDmMedia: [],
     usersListRenderToken: 0,
     inviteCooldowns: new Map(),
     admin: {
@@ -105,14 +107,20 @@ class Utils {
             document.body.appendChild(container);
         }
         const div = document.createElement('div');
-        div.className = 'toast';
-        div.style.borderLeft = `4px solid ${type === 'error' ? 'var(--danger)' : 'var(--accent)'}`;
+        div.className = 'toast' + (type === 'host' ? ' toast-host' : type === 'room' ? ' toast-room' : '');
+        const border =
+            type === 'error' ? 'var(--danger)' :
+            type === 'host' ? '#f59e0b' :
+            type === 'room' ? '#38bdf8' :
+            'var(--accent)';
+        div.style.borderLeft = `4px solid ${border}`;
         div.innerText = msg;
         container.appendChild(div);
+        const ms = type === 'error' ? 5200 : type === 'host' || type === 'room' ? 6500 : 4000;
         setTimeout(() => {
             div.style.opacity = '0';
             setTimeout(() => div.remove(), 300);
-        }, 4000);
+        }, ms);
     }
 
     static escapeHtml(str) {
@@ -120,6 +128,26 @@ class Utils {
             const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
             return map[match];
         });
+    }
+
+    static isSafeInlineMediaUrl(u) {
+        const s = String(u || '');
+        if (s.length < 20 || s.length > 1_100_000) return false;
+        if (/^data:image\/(jpeg|png|gif|webp);base64,/i.test(s)) return true;
+        if (/^data:video\/[^;]+;base64,/i.test(s)) return true;
+        if (/^data:audio\/[^;]+;base64,/i.test(s)) return true;
+        if (/^data:application\/octet-stream;base64,/i.test(s)) return true;
+        return false;
+    }
+
+    static renderChatMediaInner(msg) {
+        if (!msg?.mediaType || !msg?.mediaUrl || !this.isSafeInlineMediaUrl(msg.mediaUrl)) return '';
+        const u = msg.mediaUrl;
+        if (msg.mediaType === 'image') return `<div class="bubble-media"><img src="${u}" alt="" loading="lazy"></div>`;
+        if (msg.mediaType === 'video') return `<div class="bubble-media"><video controls playsinline preload="metadata" src="${u}"></video></div>`;
+        if (msg.mediaType === 'audio') return `<div class="bubble-media"><audio controls preload="metadata" src="${u}"></audio></div>`;
+        if (msg.mediaType === 'file') return `<div class="bubble-media-file"><a download="${this.escapeHtml(msg.fileName || 'file')}" href="${u}">Скачать ${this.escapeHtml(msg.fileName || 'файл')}</a></div>`;
+        return '';
     }
 
     static showScreen(screenId) {
@@ -173,6 +201,88 @@ class Utils {
                 img.src = e.target.result;
             };
             reader.readAsDataURL(file);
+        });
+    }
+
+    static CHAT_MEDIA_MAX_CHARS = 950000;
+
+    static fileToBase64JpegQuality(file, maxWidth = 1600, quality = 0.82) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onerror = () => reject(new Error('Не удалось прочитать изображение'));
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let w = img.width, h = img.height;
+                    if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
+                    canvas.width = w; canvas.height = h;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, w, h);
+                    resolve(canvas.toDataURL('image/jpeg', quality));
+                };
+                img.src = e.target.result;
+            };
+            reader.onerror = () => reject(new Error('Ошибка чтения файла'));
+            reader.readAsDataURL(file);
+        });
+    }
+
+    static async compressImageForChat(file) {
+        let q = 0.82;
+        let w = 1600;
+        for (let i = 0; i < 10; i++) {
+            const data = await this.fileToBase64JpegQuality(file, w, q);
+            if (data.length <= this.CHAT_MEDIA_MAX_CHARS) return data;
+            q -= 0.07;
+            w = Math.round(w * 0.88);
+            if (w < 480) break;
+        }
+        throw new Error('Фото слишком большое даже после сжатия');
+    }
+
+    static looksLikeImageFile(file) {
+        if (!file) return false;
+        if (String(file.type || '').toLowerCase().startsWith('image/')) return true;
+        return /\.(jpe?g|png|gif|webp|bmp|heic|heif)$/i.test(file.name || '');
+    }
+
+    static async readFileAsDataURLForChat(file) {
+        if (!file?.size) return null;
+        if (file.size > 6 * 1024 * 1024) throw new Error('Файл больше 6 МБ');
+        if (this.looksLikeImageFile(file)) {
+            try {
+                return await this.compressImageForChat(file);
+            } catch (e) {
+                if (file.size > 1_200_000) throw e;
+                return new Promise((resolve, reject) => {
+                    const r = new FileReader();
+                    r.onload = () => {
+                        const s = String(r.result || '');
+                        if (s.length > this.CHAT_MEDIA_MAX_CHARS) reject(new Error('Фото слишком большое для чата'));
+                        else resolve(s);
+                    };
+                    r.onerror = () => reject(new Error('Ошибка чтения файла'));
+                    r.readAsDataURL(file);
+                });
+            }
+        }
+        if (file.type.startsWith('audio/')) {
+            if (file.size > 1_200_000) throw new Error('Аудио: максимум ~1.1 МБ для чата');
+        } else if (file.type.startsWith('video/')) {
+            if (file.size > 1_200_000) throw new Error('Видео: максимум ~1.1 МБ — иначе отправьте ссылкой');
+        } else {
+            if (file.size > 900_000) throw new Error('Файл: максимум ~900 КБ для чата');
+        }
+        return new Promise((resolve, reject) => {
+            const r = new FileReader();
+            r.onload = () => {
+                const s = String(r.result || '');
+                if (s.length > this.CHAT_MEDIA_MAX_CHARS) reject(new Error('Файл слишком большой для чата'));
+                else resolve(s);
+            };
+            r.onerror = () => reject(new Error('Ошибка чтения файла'));
+            r.readAsDataURL(file);
         });
     }
 
@@ -666,6 +776,19 @@ class Utils {
             btnReg.style.marginTop = '10px';
             Utils.$('reg-form').appendChild(btnReg);
         }
+        const hintHtml = '<p class="security-note" style="text-align:center;margin-top:8px;line-height:1.35;">После входа через Google можно привязать пароль: профиль → ⋮ → Безопасность.</p>';
+        if (Utils.$('login-form') && !Utils.$('login-form').querySelector('[data-google-hint]')) {
+            const h = document.createElement('div');
+            h.dataset.googleHint = '1';
+            h.innerHTML = hintHtml;
+            Utils.$('login-form').appendChild(h);
+        }
+        if (Utils.$('reg-form') && !Utils.$('reg-form').querySelector('[data-google-hint]')) {
+            const h2 = document.createElement('div');
+            h2.dataset.googleHint = '1';
+            h2.innerHTML = hintHtml;
+            Utils.$('reg-form').appendChild(h2);
+        }
     }
 }
 
@@ -754,9 +877,17 @@ class Ambilight {
 
     static updateTheme(theme) {
         const glowEl = Utils.$('ambilight-glow');
-        if (glowEl && theme === 'love') {
-            glowEl.style.background = 'rgba(255, 105, 180, 0.9)';
-            glowEl.style.boxShadow = '0 0 100px rgba(255, 105, 180, 0.8)';
+        if (!glowEl) return;
+        const presets = {
+            love: ['rgba(255, 105, 180, 0.9)', '0 0 100px rgba(255, 105, 180, 0.8)']
+        };
+        const pair = presets[theme];
+        if (pair) {
+            glowEl.style.background = pair[0];
+            glowEl.style.boxShadow = pair[1];
+        } else {
+            glowEl.style.background = 'transparent';
+            glowEl.style.boxShadow = 'none';
         }
     }
 
@@ -1829,6 +1960,8 @@ class AuthManager {
     static init() {
         Utils.injectFixes();
 
+        getRedirectResult(auth).catch(() => {});
+
         onAuthStateChanged(auth, async (user) => {
             try {
                 if (user) {
@@ -1917,7 +2050,19 @@ class AuthManager {
 
         const handleGoogleAuth = async () => {
             try {
-                const result = await signInWithPopup(auth, new GoogleAuthProvider());
+                const provider = new GoogleAuthProvider();
+                provider.setCustomParameters({ prompt: 'select_account' });
+                provider.addScope('profile');
+                provider.addScope('email');
+
+                const narrow = window.innerWidth <= 900 || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+                if (narrow) {
+                    Utils.toast('Открывается Google…', 'info');
+                    await signInWithRedirect(auth, provider);
+                    return;
+                }
+
+                const result = await signInWithPopup(auth, provider);
                 const snap = await get(ref(db, `users/${result.user.uid}/profile`));
                 if (!snap.exists()) {
                     AppState.isRegistering = true;
@@ -1929,7 +2074,11 @@ class AuthManager {
                     });
                     AppState.isRegistering = false;
                 }
-            } catch (e) { Utils.toast('Ошибка входа через Google', 'error'); }
+            } catch (e) {
+                const code = String(e?.code || '');
+                if (code.includes('popup-closed') || code.includes('cancelled')) return;
+                Utils.toast(e?.message || 'Ошибка входа через Google', 'error');
+            }
         };
 
         Utils.$('btn-google-login').onclick = handleGoogleAuth;
@@ -2285,11 +2434,17 @@ class ProfileManager {
         Utils.$('modal-security').classList.add('active');
     }
 
+    static hasPasswordProvider() {
+        return Boolean(auth.currentUser?.providerData?.some((x) => x?.providerId === 'password'));
+    }
+
     static renderSecurityModal() {
         const p = AppState.usersCache.get(AppState.currentUser.uid) || {};
         const authSecurity = this.getCurrentAuthSecurity();
-        const provider = p.provider || authSecurity.provider;
-        const email = p.email || authSecurity.email;
+        const user = auth.currentUser;
+        const hasPwd = this.hasPasswordProvider();
+        const profileProvider = p.provider || authSecurity.provider;
+        const email = user?.email || p.email || authSecurity.email;
         const emailVerified = typeof p.emailVerified === 'boolean' ? p.emailVerified : authSecurity.emailVerified;
 
         const emailBox = Utils.$('security-email-box');
@@ -2297,51 +2452,103 @@ class ProfileManager {
         const actionBtn = Utils.$('btn-security-email-action');
         const emailInput = Utils.$('security-email-input');
         const passwordInput = Utils.$('security-password-input');
+        const googleBlock = Utils.$('security-google-password-block');
+        const newPwdEl = Utils.$('security-new-password');
+        const confirmPwdEl = Utils.$('security-confirm-password');
 
-        if (provider === 'google') {
-            emailBox.innerText = 'Вы не указали почту';
-            actionBtn.innerText = 'Указать email';
-            passwordInput.style.display = 'none';
+        const isGoogleOnly = (profileProvider === 'google' || authSecurity.provider === 'google') && !hasPwd;
+
+        if (googleBlock) googleBlock.style.display = isGoogleOnly ? 'block' : 'none';
+        if (newPwdEl) { newPwdEl.style.display = isGoogleOnly ? 'block' : 'none'; newPwdEl.value = ''; }
+        if (confirmPwdEl) { confirmPwdEl.style.display = isGoogleOnly ? 'block' : 'none'; confirmPwdEl.value = ''; }
+
+        if (isGoogleOnly) {
+            emailBox.innerText = email ? `Аккаунт Google: ${email}` : 'Аккаунт Google (email не получен)';
+            note.innerText = `Почта подтверждена у Google: ${emailVerified ? 'Да' : 'Нет'}. Задайте пароль — сможете входить той же почтой и паролем без Google.`;
+            if (emailInput) {
+                emailInput.value = email || '';
+                emailInput.readOnly = Boolean(email);
+            }
+            if (passwordInput) passwordInput.style.display = 'none';
+            actionBtn.innerText = 'Привязать пароль к аккаунту';
         } else {
             emailBox.innerText = email || 'Email не указан';
+            note.innerText = `Почта подтверждена: ${emailVerified ? 'Да' : 'Нет'}`;
             actionBtn.innerText = 'Изменить почту';
-            passwordInput.style.display = 'block';
+            if (passwordInput) passwordInput.style.display = 'block';
+            if (emailInput) {
+                emailInput.readOnly = false;
+                emailInput.value = email || '';
+            }
+            if (passwordInput) passwordInput.value = '';
         }
-
-        note.innerText = `Почта подтверждена: ${emailVerified ? 'Да' : 'Нет'}`;
-        emailInput.value = email || '';
-        passwordInput.value = '';
 
         actionBtn.onclick = async () => {
             const btn = Utils.$('btn-security-email-action');
             btn.disabled = true;
             try {
+                if (isGoogleOnly) {
+                    const targetEmail = (emailInput?.value || user?.email || '').trim();
+                    const np = Utils.$('security-new-password')?.value || '';
+                    const cp = Utils.$('security-confirm-password')?.value || '';
+                    if (!targetEmail) throw new Error('Укажите email');
+                    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(targetEmail)) throw new Error('Некорректный email');
+                    if (np.length < 6) throw new Error('Пароль минимум 6 символов');
+                    if (np !== cp) throw new Error('Пароли не совпадают');
+                    await linkWithCredential(user, EmailAuthProvider.credential(targetEmail, np));
+                    await auth.currentUser?.reload();
+                    const prov = this.normalizeProvider(auth.currentUser);
+                    await update(ref(db, `users/${AppState.currentUser.uid}/profile`), {
+                        email: auth.currentUser?.email || targetEmail,
+                        provider: prov,
+                        emailVerified: Boolean(auth.currentUser?.emailVerified)
+                    });
+                    const refreshed = AppState.usersCache.get(AppState.currentUser.uid) || {};
+                    AppState.usersCache.set(AppState.currentUser.uid, {
+                        ...refreshed,
+                        email: auth.currentUser?.email || targetEmail,
+                        provider: prov,
+                        emailVerified: Boolean(auth.currentUser?.emailVerified)
+                    });
+                    Utils.toast('Пароль привязан. Теперь можно войти почтой и паролем.');
+                    this.renderSecurityModal();
+                    return;
+                }
+
                 await this.saveSecurityEmail({
-                    provider,
+                    provider: 'email',
                     newEmail: emailInput.value.trim(),
                     currentPassword: passwordInput.value.trim()
                 });
                 await auth.currentUser?.reload();
                 await update(ref(db, `users/${AppState.currentUser.uid}/profile`), {
                     email: auth.currentUser?.email || emailInput.value.trim(),
-                    provider,
+                    provider: this.normalizeProvider(auth.currentUser),
                     emailVerified: Boolean(auth.currentUser?.emailVerified)
                 });
                 const refreshed = AppState.usersCache.get(AppState.currentUser.uid) || {};
                 AppState.usersCache.set(AppState.currentUser.uid, {
                     ...refreshed,
                     email: auth.currentUser?.email || emailInput.value.trim(),
-                    provider,
+                    provider: this.normalizeProvider(auth.currentUser),
                     emailVerified: Boolean(auth.currentUser?.emailVerified)
                 });
                 this.renderSecurityModal();
                 Utils.toast('Письмо для подтверждения отправлено на новый email');
             } catch (e) {
-                Utils.toast(this.getSecurityEmailErrorText(e), 'error');
+                Utils.toast(this.getSecurityLinkErrorText(e), 'error');
             } finally {
                 btn.disabled = false;
             }
         };
+    }
+
+    static getSecurityLinkErrorText(error) {
+        const code = String(error?.code || '');
+        if (code === 'auth/email-already-in-use' || code === 'auth/credential-already-in-use') return 'Этот email уже используется в другом аккаунте';
+        if (code === 'auth/provider-already-linked') return 'Пароль уже привязан';
+        if (code === 'auth/weak-password') return 'Слишком слабый пароль';
+        return this.getSecurityEmailErrorText(error);
     }
 
     static getSecurityEmailErrorText(error) {
@@ -2421,10 +2628,13 @@ class ProfileManager {
     static normalizeProfileBackgroundUrl(value = '') { // [NEW]
         const raw = String(value || '').trim(); // [NEW]
         if (!raw) return ''; // [NEW]
-        if (raw.startsWith('data:image')) return raw; // [ADD] Base64 allowance
-        if (raw.length > 420 || /["\\]/.test(raw)) return ''; // [NEW]
-        if (!/^https?:\/\//i.test(raw)) return ''; // [NEW]
-        try { new URL(raw); return raw; } catch (e) { return ''; } // [NEW]
+        if (raw.startsWith('data:image')) {
+            if (raw.length > 2_800_000 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(raw)) return '';
+            return raw;
+        }
+        if (raw.length > 4096 || /["\\]/.test(raw)) return '';
+        if (!/^https?:\/\//i.test(raw)) return '';
+        try { new URL(raw); return raw; } catch (e) { return ''; }
     } // [NEW]
 
     static readProfileBackgroundInput() { // [UPDATE]
@@ -2434,7 +2644,10 @@ class ProfileManager {
         const urlRaw = Utils.$('profile-bg-url')?.value.trim() || ''; // [NEW]
         const dim = Number(Utils.$('profile-bg-dim')?.value || 0.5); // [ADD]
         const url = this.normalizeProfileBackgroundUrl(urlRaw); // [NEW]
-        if (urlRaw && !url && !urlRaw.startsWith('data:image')) throw new Error('Фон профиля: некорректный URL/файл'); // [UPDATE]
+        if (urlRaw && !url) {
+            if (/^data:image\//i.test(urlRaw)) throw new Error('Файл фона слишком большой — выберите файл меньшего размера');
+            throw new Error('Фон профиля: некорректный URL');
+        }
         return { // [UPDATE]
             color: this.rgbToHex(r, g, b), // [NEW]
             index: Number(Utils.$('profile-bg-panel')?.dataset.selectedIndex) || 1, // [PATCH]
@@ -2516,17 +2729,32 @@ class ProfileManager {
     static updateProfileBackgroundPreview() { // [NEW]
         const preview = Utils.$('profile-bg-preview'); // [NEW]
         if (!preview) return; // [NEW]
-        const data = { // [UPDATE]
-            color: this.rgbToHex(Utils.$('profile-bg-r')?.value || 17, Utils.$('profile-bg-g')?.value || 17, Utils.$('profile-bg-b')?.value || 17), // [NEW]
-            index: Number(Utils.$('profile-bg-panel')?.dataset.selectedIndex) || 1, // [PATCH]
-            url: this.normalizeProfileBackgroundUrl(Utils.$('profile-bg-url')?.value || ''), // [NEW]
-            dim: Number(Utils.$('profile-bg-dim')?.value || 0.5) // [ADD]
-        }; // [NEW]
-        const colors = this.getReadableProfileColors(data.color); // [NEW]
-        preview.style.background = data.color; // [NEW]
-        preview.style.color = colors.text; // [NEW]
-        preview.style.borderColor = colors.border; // [NEW]
-        preview.innerText = `Цвет ${data.index || 'RGB'} · ${data.color.toUpperCase()}`; // [NEW]
+        const rawUrl = Utils.$('profile-bg-url')?.value?.trim() || '';
+        const normalizedUrl = rawUrl.startsWith('data:image') ? rawUrl : this.normalizeProfileBackgroundUrl(rawUrl);
+        const data = {
+            color: this.rgbToHex(Utils.$('profile-bg-r')?.value || 17, Utils.$('profile-bg-g')?.value || 17, Utils.$('profile-bg-b')?.value || 17),
+            index: Number(Utils.$('profile-bg-panel')?.dataset.selectedIndex) || 1,
+            url: normalizedUrl,
+            dim: Number(Utils.$('profile-bg-dim')?.value || 0.5)
+        };
+        const colors = this.getReadableProfileColors(data.color);
+        const dim = Math.max(0, Math.min(1, data.dim));
+        preview.style.color = colors.text;
+        preview.style.borderColor = colors.border;
+        if (data.url) {
+            const overlay = `rgba(0,0,0,${dim})`;
+            preview.style.backgroundColor = data.color;
+            preview.style.backgroundImage = `linear-gradient(${overlay},${overlay}), url("${data.url.replace(/"/g, '\\"')}")`;
+            preview.style.backgroundSize = 'cover';
+            preview.style.backgroundPosition = 'center';
+            preview.innerText = `Фон · ${data.color.toUpperCase()}`;
+        } else {
+            preview.style.backgroundImage = '';
+            preview.style.backgroundSize = '';
+            preview.style.backgroundPosition = '';
+            preview.style.background = data.color;
+            preview.innerText = `Цвет ${data.index || 'RGB'} · ${data.color.toUpperCase()}`;
+        }
     } // [NEW]
 
     static applyProfileBackground(panel, background = '') { // [UPDATE]
@@ -3028,6 +3256,7 @@ class DirectMessages {
         if (Utils.$('dm-messages')) Utils.$('dm-messages').innerHTML = '';
         if (Utils.$('dm-chat-title')) Utils.$('dm-chat-title').innerText = 'Личный чат';
         Utils.$('dm-theme-controls')?.classList.remove('active');
+        AppState.pendingDmMedia = [];
     }
 
     static startNotifications() {
@@ -3049,6 +3278,8 @@ class DirectMessages {
                 EasterEggManager.playNotification();
                 if (chat.lastMessage.type === 'invite') {
                     Utils.toast(`ЛС: ${chat.lastMessage.fromName} приглашает вас в комнату!`);
+                } else if (chat.lastMessage.mediaType) {
+                    Utils.toast(`ЛС от ${chat.lastMessage.fromName}: вложение (${chat.lastMessage.mediaType})`, 'room');
                 } else {
                     Utils.toast(`ЛС от ${chat.lastMessage.fromName}: ${chat.lastMessage.text}`);
                 }
@@ -3082,22 +3313,73 @@ class DirectMessages {
         
         const sendAction = async () => {
             const text = input.value.trim();
-            if (!text) return;
+            const pending = [...(AppState.pendingDmMedia || [])];
+            if (!text && !pending.length) return;
             if (AdminPanel.isSystemReadOnlyForUser()) return Utils.toast('Система в режиме ReadOnly', 'error');
-            input.value = '';
-            const payload = { type: 'text', fromUid: AppState.currentUser.uid, fromName: AppState.currentUser.displayName, text, ts: Date.now() };
-            
-            await update(ref(db, `direct-messages/${chatId}`), {
-                participants: { [AppState.currentUser.uid]: true, [targetUid]: true },
-                updatedAt: payload.ts, lastMessage: payload
-            });
-            await push(ref(db, `direct-messages/${chatId}/messages`), payload);
+            AppState.pendingDmMedia = [];
+
+            const pushPayload = async (payload) => {
+                await update(ref(db, `direct-messages/${chatId}`), {
+                    participants: { [AppState.currentUser.uid]: true, [targetUid]: true },
+                    updatedAt: payload.ts, lastMessage: payload
+                });
+                await push(ref(db, `direct-messages/${chatId}/messages`), payload);
+            };
+
+            try {
+                if (text) {
+                    const payload = { type: 'text', fromUid: AppState.currentUser.uid, fromName: AppState.currentUser.displayName, text, ts: Date.now() };
+                    await pushPayload(payload);
+                }
+                for (const item of pending) {
+                    const payload = {
+                        type: 'text',
+                        fromUid: AppState.currentUser.uid,
+                        fromName: AppState.currentUser.displayName,
+                        text: '',
+                        mediaType: item.mediaType,
+                        mediaUrl: item.mediaUrl,
+                        fileName: item.fileName || '',
+                        ts: Date.now()
+                    };
+                    await pushPayload({ ...payload, text: item.fileName ? `📎 ${item.fileName}` : '📎 вложение' });
+                }
+                input.value = '';
+            } catch (err) {
+                AppState.pendingDmMedia = pending;
+                Utils.toast(err?.message || 'Не удалось отправить', 'error');
+            }
         };
 
         sendBtn.onclick = sendAction;
         input.onkeydown = (e) => { if(e.key === 'Enter') sendAction(); };
         
         Utils.$('modal-dm-chat').querySelector('.btn-close-modal').onclick = () => this.closeChat();
+
+        AppState.pendingDmMedia = [];
+        const dmAttach = Utils.$('dm-attach-btn');
+        const dmMediaIn = Utils.$('dm-media-input');
+        if (dmAttach && dmMediaIn) {
+            dmAttach.onclick = () => dmMediaIn.click();
+            dmMediaIn.onchange = async (ev) => {
+                const files = Array.from(ev.target.files || []);
+                dmMediaIn.value = '';
+                AppState.pendingDmMedia = AppState.pendingDmMedia || [];
+                for (const file of files.slice(0, 4)) {
+                    try {
+                        const dataUrl = await Utils.readFileAsDataURLForChat(file);
+                        let mediaType = 'file';
+                        if (Utils.looksLikeImageFile(file)) mediaType = 'image';
+                        else if (file.type.startsWith('video/')) mediaType = 'video';
+                        else if (file.type.startsWith('audio/')) mediaType = 'audio';
+                        AppState.pendingDmMedia.push({ mediaType, mediaUrl: dataUrl, fileName: file.name });
+                    } catch (err) {
+                        Utils.toast(err.message || 'Файл не прикреплён', 'error');
+                    }
+                }
+                if (AppState.pendingDmMedia.length) Utils.toast(`${AppState.pendingDmMedia.length} вложений — отправьте сообщением`, 'info');
+            };
+        }
     }
 
     static renderMessages(messages) {
@@ -3132,11 +3414,20 @@ class DirectMessages {
                     </div>
                 `;
             }
-            
+
+            const mediaH = Utils.renderChatMediaInner(m);
+            let bubbleBody;
+            if (mediaH) {
+                const cap = Utils.escapeHtml(m.text || '');
+                bubbleBody = `${mediaH}${cap ? `<div class="bubble-media-caption">${cap}</div>` : ''}`;
+            } else {
+                bubbleBody = Utils.escapeHtml(m.text || '');
+            }
+
             return `
                 <div class="m-line ${isSelf ? 'self' : ''}">
                     <strong>${Utils.escapeHtml(isSelf ? 'Вы' : m.fromName)}</strong>
-                    <div class="bubble">${Utils.escapeHtml(m.text)}</div>
+                    <div class="bubble">${bubbleBody}</div>
                 </div>
             `;
         }).join('');
@@ -4715,8 +5006,9 @@ class AdminPanel {
 // ============================================================================
 
 class RoomManager {
-    static themeOptions = ['default', 'love', 'light', 'aurora', 'sunset', 'ocean']; // [UPDATE]
+    static themeOptions = ['default', 'love', 'light', 'inverted', 'aurora', 'sunset', 'ocean'];
     static themeIndex = 0;
+    static _themeCarouselBound = false;
     static heartsTimer = null;
     static loveHeartEmojis = ['💗', '💘', '💞', '💕'];
 
@@ -4770,15 +5062,18 @@ class RoomManager {
     }
 
     static initThemes() {
+        if (this._themeCarouselBound) return;
         const toggleBtn = Utils.$('btn-room-theme-toggle');
         const carousel = Utils.$('room-theme-carousel');
-        const prevBtn = Utils.$('room-theme-prev'); // [UPDATE]
+        const prevBtn = Utils.$('room-theme-prev');
         const nextBtn = Utils.$('room-theme-next');
         const track = Utils.$('room-theme-track');
         if (!toggleBtn || !carousel || !prevBtn || !nextBtn || !track) return;
+        this._themeCarouselBound = true;
 
         const showTheme = (idx) => {
-            this.themeIndex = (idx + this.themeOptions.length) % this.themeOptions.length;
+            const n = this.themeOptions.length;
+            this.themeIndex = ((idx % n) + n) % n;
             const value = this.themeOptions[this.themeIndex];
             Utils.$('modal-room').dataset.selectedTheme = value;
             track.style.transform = `translateX(-${this.themeIndex * 100}%)`;
@@ -4796,13 +5091,11 @@ class RoomManager {
                 if (next >= 0) showTheme(next);
             };
         });
-        showTheme(0);
     }
 
-    static normalizeRoomTheme(theme = 'default') { // [NEW]
-        if (theme === 'inverted') return 'light';
-        return this.themeOptions.includes(theme) ? theme : 'default'; // [NEW]
-    } // [NEW]
+    static normalizeRoomTheme(theme = 'default') {
+        return this.themeOptions.includes(theme) ? theme : 'default';
+    }
 
     static getActorLabel() {
         const uid = AppState.currentUser?.uid || '';
@@ -4815,6 +5108,7 @@ class RoomManager {
 
     static async pushRoomSystemMessage(roomId, text, extra = {}) {
         if (!roomId || !text) return;
+        const clean = String(text).replace(/^\s*[-–—]+\s*/, '').replace(/\s*[-–—]+\s*$/, '');
         await push(ref(db, `rooms/${roomId}/chat`), {
             type: 'system',
             uid: AppState.currentUser?.uid || 'system',
@@ -4823,6 +5117,10 @@ class RoomManager {
             ts: Date.now(),
             ...extra
         }).catch(() => {});
+        if (AppState.currentRoomId === roomId) {
+            const important = /разрешил|запретил|поменял тему|приватн|кикнул|парол|настрой|права|плеер|модера/i.test(clean);
+            if (important) Utils.toast(clean, /ХОСТ|ADMIN/i.test(clean) ? 'host' : 'room');
+        }
     }
 
     static async kickUserFromCurrentRoom(targetUid) {
@@ -4916,7 +5214,9 @@ class RoomManager {
             Utils.$('room-input-private').checked = r.isPrivate; Utils.$('room-input-password').style.display = r.isPrivate ? 'block' : 'none';
             Utils.$('room-input-hashtag').value = Array.isArray(r.hashtags) ? (r.hashtags[0] || '') : '';
             const theme = this.normalizeRoomTheme(r.theme || 'default'); // [UPDATE]
-            this.themeIndex = this.themeOptions.indexOf(theme);
+            let idx = this.themeOptions.indexOf(theme);
+            if (idx < 0) idx = 0;
+            this.themeIndex = idx;
             Utils.$('modal-room').dataset.selectedTheme = theme;
             Utils.$('room-theme-track').style.transform = `translateX(-${this.themeIndex * 100}%)`;
             Utils.$('room-theme-track').querySelectorAll('.theme-card').forEach(card => {
@@ -5033,22 +5333,17 @@ class RoomManager {
                 vid.pause();
                 vid.removeAttribute('src');
                 vid.load();
-
                 if (nextVideoUrl) {
                     vid.src = nextVideoUrl;
                     vid.load();
                 }
-
                 vid.dataset.roomUrl = nextVideoUrl;
             }
-
-            // Доступ для создателя и хоста
+            vid.style.display = '';
             vid.controls = AppState.isHost || AdminPanel.isCurrentUserCreator();
             vid.playsInline = true;
             vid.preload = 'auto';
-            vid.onerror = () => Utils.toast('Плеер не смог загрузить видео. Нужна прямая ссылка на медиафайл.', 'error');
-            
-            // Включаем Ambilight
+            vid.onerror = () => Utils.toast('Плеер не смог загрузить видео. Нужна прямая ссылка на файл (mp4, webm).', 'error');
             Ambilight.start(vid);
         }
         
@@ -5084,6 +5379,7 @@ class RoomManager {
     static getDefaultPerms() { return { chat: true, voice: true, player: (AppState.isHost || AdminPanel.isCurrentUserCreator()), reactions: true }; }
 
     static initRoomServicesFinal(roomId) {
+        AppState.pendingRoomChatMedia = [];
         const uid = AppState.currentUser.uid;
         const presenceRef = ref(db, `rooms/${roomId}/presence/${uid}`);
         const presListRef = ref(db, `rooms/${roomId}/presence`);
@@ -5126,22 +5422,23 @@ class RoomManager {
         const vid = Utils.$('native-player');
         let isRemoteSeek = false;
         if (vid) {
-            vid.onplay = () => { if(!isRemoteSeek && this.hasPerm('player')) set(syncRef, { type: 'play', time: vid.currentTime, ts: Date.now() }); };
-            vid.onpause = () => { if(!isRemoteSeek && this.hasPerm('player')) set(syncRef, { type: 'pause', time: vid.currentTime, ts: Date.now() }); };
-            vid.onseeked = () => { if(!isRemoteSeek && this.hasPerm('player')) set(syncRef, { type: 'seek', time: vid.currentTime, ts: Date.now() }); };
+            vid.onplay = () => { if (!isRemoteSeek && this.hasPerm('player')) set(syncRef, { type: 'play', time: vid.currentTime, ts: Date.now() }); };
+            vid.onpause = () => { if (!isRemoteSeek && this.hasPerm('player')) set(syncRef, { type: 'pause', time: vid.currentTime, ts: Date.now() }); };
+            vid.onseeked = () => { if (!isRemoteSeek && this.hasPerm('player')) set(syncRef, { type: 'seek', time: vid.currentTime, ts: Date.now() }); };
         }
 
         const sUnsub = onValue(syncRef, (snap) => {
             const d = snap.val();
-            if (!d || !vid) return;
-            if (Date.now() - d.ts > 2000) return;
+            if (!d || Date.now() - d.ts > 2500) return;
+
+            if (!vid) return;
 
             if (Math.abs(vid.currentTime - d.time) > 1.0) {
                 isRemoteSeek = true;
                 vid.currentTime = d.time;
                 setTimeout(() => isRemoteSeek = false, 300);
             }
-            if (d.type === 'play' && vid.paused) vid.play().catch(()=>{});
+            if (d.type === 'play' && vid.paused) vid.play().catch(() => {});
             if (d.type === 'pause' && !vid.paused) vid.pause();
         });
         AppState.roomSubscriptions.push(() => off(syncRef, 'value', sUnsub));
@@ -5165,10 +5462,17 @@ class RoomManager {
             const line = document.createElement('div');
             line.className = `m-line ${isMe ? 'self' : ''}`;
             
-            let content = Utils.escapeHtml(msg.text);
+            let content = Utils.escapeHtml(msg.text || '');
             content = content.replace(/(\d{1,2}:\d{2})/g, '<span class="timecode-btn" data-time="$1">$1</span>');
+            const mediaHtml = Utils.renderChatMediaInner(msg);
+            let bubbleInner;
+            if (mediaHtml) {
+                bubbleInner = `${mediaHtml}${content ? `<div class="bubble-media-caption">${content}</div>` : ''}`;
+            } else {
+                bubbleInner = content || '<span class="bubble-media-caption">(пусто)</span>';
+            }
 
-            line.innerHTML = `<strong class="profile-open-link chat-profile-link" data-uid="${Utils.escapeHtml(msg.uid || '')}">${Utils.escapeHtml(msg.name)}</strong><div class="bubble">${content}</div>`;
+            line.innerHTML = `<strong class="profile-open-link chat-profile-link" data-uid="${Utils.escapeHtml(msg.uid || '')}">${Utils.escapeHtml(msg.name)}</strong><div class="bubble">${bubbleInner}</div>`;
             
             line.querySelectorAll('.timecode-btn').forEach(btn => {
                 btn.onclick = () => {
@@ -5190,28 +5494,81 @@ class RoomManager {
         });
         AppState.roomSubscriptions.push(() => off(chatRef, 'child_added', cUnsub));
 
-        Utils.$('send-btn').onclick = async () => {
+        const sendRoomChat = async () => {
             const input = Utils.$('chat-input');
-            if (!input.value.trim() || !this.hasPerm('chat')) return;
+            const text = (input?.value || '').trim();
+            if (!this.hasPerm('chat')) return;
+            if (!text && !AppState.pendingRoomChatMedia?.length) return;
             if (AdminPanel.isSystemReadOnlyForUser()) return Utils.toast('Система в режиме ReadOnly', 'error');
             if (AppState.admin.settings.globalChatLocked && !AdminPanel.isCurrentUserAdmin()) return Utils.toast('Глобальный чат временно заблокирован', 'error');
-            const text = input.value.trim();
             const meModerationSnap = await get(ref(db, `users/${uid}/moderation`));
             const meModeration = meModerationSnap.val() || {};
             if (meModeration.muted && !AdminPanel.isCurrentUserAdmin()) return Utils.toast('Вы заглушены модератором', 'error');
-            const wasHandled = await EasterEggManager.handleChatInput(text, chatRef, uid);
-            if (!wasHandled) {
-                await push(chatRef, {
-                    uid,
-                    name: AppState.currentUser.displayName,
-                    text,
-                    ts: Date.now(),
-                    shadowbanned: Boolean(meModeration.shadowban)
-                });
+            const pending = [...(AppState.pendingRoomChatMedia || [])];
+            AppState.pendingRoomChatMedia = [];
+            try {
+                if (text) {
+                    const wasHandled = await EasterEggManager.handleChatInput(text, chatRef, uid);
+                    if (!wasHandled) {
+                        await push(chatRef, {
+                            uid,
+                            name: AppState.currentUser.displayName,
+                            text,
+                            ts: Date.now(),
+                            shadowbanned: Boolean(meModeration.shadowban)
+                        });
+                    }
+                }
+                for (const item of pending) {
+                    await push(chatRef, {
+                        uid,
+                        name: AppState.currentUser.displayName,
+                        text: item.caption || '',
+                        mediaType: item.mediaType,
+                        mediaUrl: item.mediaUrl,
+                        fileName: item.fileName || '',
+                        ts: Date.now(),
+                        shadowbanned: Boolean(meModeration.shadowban)
+                    });
+                }
+                if (input) input.value = '';
+            } catch (err) {
+                AppState.pendingRoomChatMedia = pending;
+                Utils.toast(err?.message || 'Не удалось отправить сообщение', 'error');
             }
-            input.value = '';
         };
-        Utils.$('chat-input').onkeydown = (e) => { if(e.key==='Enter') Utils.$('send-btn').click(); };
+
+        Utils.$('send-btn').onclick = sendRoomChat;
+        Utils.$('chat-input').onkeydown = (e) => { if (e.key === 'Enter') sendRoomChat(); };
+        const chatMediaIn = Utils.$('chat-media-input');
+        const chatAttach = Utils.$('chat-attach-btn');
+        if (chatAttach && chatMediaIn) {
+            chatAttach.onclick = () => chatMediaIn.click();
+            chatMediaIn.onchange = async (ev) => {
+                const files = Array.from(ev.target.files || []);
+                chatMediaIn.value = '';
+                if (!files.length || !this.hasPerm('chat')) return;
+                AppState.pendingRoomChatMedia = AppState.pendingRoomChatMedia || [];
+                for (const file of files.slice(0, 4)) {
+                    try {
+                        const dataUrl = await Utils.readFileAsDataURLForChat(file);
+                        let mediaType = 'file';
+                        if (Utils.looksLikeImageFile(file)) mediaType = 'image';
+                        else if (file.type.startsWith('video/')) mediaType = 'video';
+                        else if (file.type.startsWith('audio/')) mediaType = 'audio';
+                        AppState.pendingRoomChatMedia.push({
+                            mediaType,
+                            mediaUrl: dataUrl,
+                            fileName: file.name,
+                            caption: ''
+                        });
+                    } catch (err) {
+                        Utils.toast(err.message || 'Не удалось прикрепить файл', 'error');
+                    }
+                }
+                Utils.toast(`В очереди ${AppState.pendingRoomChatMedia.length} вложений — нажмите отправить`, 'info');
+            };
+        }
 
         document.querySelectorAll('.react-btn').forEach(btn => {
             btn.onclick = () => {
@@ -5444,12 +5801,12 @@ class RoomManager {
             vid.removeAttribute('src');
             vid.load();
             delete vid.dataset.roomUrl;
+            vid.style.display = '';
             vid.onplay = null;
             vid.onpause = null;
             vid.onseeked = null;
             vid.onerror = null;
         }
-        
         Ambilight.stop();
 
         AppState.currentPresenceCache = {};
@@ -5467,21 +5824,22 @@ class RoomManager {
     static applyRoomTheme(theme = 'default') {
         const roomScreen = Utils.$('room-screen');
         if (!roomScreen) return;
-        roomScreen.classList.remove('theme-love', 'theme-inverted', 'theme-light', 'theme-aurora', 'theme-sunset', 'theme-ocean'); // [UPDATE]
-        document.body.classList.remove('theme-love-room', 'theme-inverted-room'); // [UPDATE]
+        const all = ['theme-love', 'theme-inverted', 'theme-light', 'theme-aurora', 'theme-sunset', 'theme-ocean'];
+        roomScreen.classList.remove(...all);
+        document.body.classList.remove('theme-love-room', 'theme-inverted-room');
         this.stopLoveHearts();
-        
-        const safeTheme = this.normalizeRoomTheme(theme); // [NEW]
-        Ambilight.updateTheme(safeTheme); // [UPDATE]
 
-        if (safeTheme === 'love') { // [UPDATE]
+        const safeTheme = this.normalizeRoomTheme(theme);
+        Ambilight.updateTheme(safeTheme);
+
+        if (safeTheme === 'love') {
             roomScreen.classList.add('theme-love');
             document.body.classList.add('theme-love-room');
             this.startLoveHearts();
-            // Fallback: containers may appear a tick later after rerender.
             setTimeout(() => this.startLoveHearts(), 150);
             return;
         }
+        if (safeTheme === 'inverted') document.body.classList.add('theme-inverted-room');
         if (safeTheme !== 'default') roomScreen.classList.add(`theme-${safeTheme}`);
     }
 
@@ -5849,6 +6207,15 @@ class MobileSwipeManager {
                 if (startX - endX > 60) { // swipe left
                     sidebar.classList.remove('open');
                 }
+            });
+        }
+
+        const mb = Utils.$('btn-mobile-sidebar');
+        const sb = Utils.$('main-sidebar');
+        if (mb && sb) {
+            mb.addEventListener('click', (e) => {
+                e.stopPropagation();
+                sb.classList.toggle('open');
             });
         }
     }
