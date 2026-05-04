@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -200,14 +200,21 @@
         /* ========================================================= */
         /* ROOM SCREEN */
         /* ========================================================= */
-        .room-layout { display: grid; grid-template-columns: 1fr 380px; gap: 20px; padding: 20px; height: 100vh; max-width: 1800px; margin: 0 auto; width: 100%; position: relative; z-index: 3; }
+        .room-layout { display: grid; grid-template-columns: 1fr 380px; gap: 20px; padding: 20px; height: 100vh; max-width: 1800px; margin: 0 auto; width: 100%; position: relative; z-index: 3; min-height: 0; }
         
         .player-section { display: flex; flex-direction: column; gap: 15px; min-width: 0; position: relative; }
         .room-top-bar { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; }
         .room-title-wrapper { flex: 1; overflow: hidden; margin: 0 15px; }
         .room-title-wrapper h2 { font-size: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; }
         
-        .video-container { flex: 1; background: #000; border-radius: 20px; position: relative; overflow: hidden; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; }
+        .video-container { flex: 1; min-height: 0; background: #000; border-radius: 20px; position: relative; overflow: hidden; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; }
+        #native-player { width: 100%; height: 100%; max-height: 100%; object-fit: contain; outline: none; position: relative; z-index: 2; }
+        .rutube-embed { display: none; position: absolute; inset: 0; width: 100%; height: 100%; border: 0; z-index: 3; background: #000; }
+        .rutube-embed.active { display: block; }
+        .rutube-host-bar { position: absolute; top: 10px; left: 10px; right: 10px; z-index: 12; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 12px; background: rgba(0,0,0,0.72); border: 1px solid var(--border-light); backdrop-filter: blur(8px); }
+        .rutube-host-bar .rutube-host-label { font-size: 12px; color: var(--text-muted); font-weight: 700; }
+        .rutube-host-bar #rutube-seek-input { width: 88px; margin: 0; padding: 8px; border-radius: 8px; }
+        .rutube-host-bar .secondary-btn { width: auto; padding: 8px 12px; font-size: 12px; }
         video#main-video { width: 100%; height: 100%; max-height: 100%; outline: none; }
         
         /* Reactions Layer */
@@ -219,7 +226,7 @@
         .floating-emoji { position: absolute; bottom: -30px; font-size: 32px; animation: floatUp 3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
         @keyframes floatUp { 0% { transform: translateY(0) scale(0.6); opacity: 1; } 50% { transform: translateY(-150px) translateX(20px) scale(1.6); opacity: 1; } 100% { transform: translateY(-350px) translateX(-20px) scale(0.8); opacity: 0; } }
 
-        .chat-section { display: flex; flex-direction: column; height: 100%; overflow: hidden; border: 1px solid var(--border); }
+        .chat-section { display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: hidden; border: 1px solid var(--border); }
         .chat-tabs { display: flex; padding: 10px; border-bottom: 1px solid var(--border); gap: 5px; }
         .chat-tabs button { flex: 1; padding: 10px; background: transparent; color: var(--text-muted); border-radius: 10px; font-size: 13px; font-weight: 600; }
         .chat-tabs button.active { background: rgba(255,255,255,0.05); color: var(--text-main); }
@@ -252,6 +259,11 @@
         .m-line { display: flex; flex-direction: column; animation: fadeIn 0.2s ease; margin-bottom: 4px; }
         .m-line.self { align-items: flex-end; }
         .bubble { padding: 10px 14px; border-radius: 16px; background: rgba(255,255,255,0.04); font-size: 14px; max-width: 85%; line-height: 1.4; border: 1px solid var(--border-light); word-wrap: break-word; color: #fff; }
+        .bubble-media-caption { font-size: 13px; margin-top: 8px; opacity: 0.92; white-space: pre-wrap; }
+        .bubble-media img, .bubble-media video { max-width: 100%; max-height: 280px; border-radius: 10px; display: block; margin-top: 6px; }
+        .bubble-media audio { width: 100%; margin-top: 8px; }
+        .bubble-media-file { margin-top: 8px; font-size: 13px; }
+        .bubble-media-file a { color: var(--accent); font-weight: 700; }
         .self .bubble { background: #1a1a1d; color: #fff; border-color: #2a2a2f; border-bottom-right-radius: 4px; }
         .m-line strong { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; padding: 0 4px; font-weight: 600; display: block; }
         .self strong { display: none; }
@@ -387,8 +399,10 @@
         #modal-dm-chat.theme-ocean .dm-compose { background: rgba(8, 24, 31, 0.82); border-radius: 12px; padding: 8px; }
         #modal-dm-chat.theme-ocean .bubble { background: rgba(83, 199, 227, 0.14); border-color: rgba(126, 228, 252, 0.34); color: #e6fdff; }
 
-        #toast-container { position: fixed; top: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
-        .toast { padding: 14px 20px; border-radius: 12px; background: var(--panel); border: 1px solid var(--border-light); color: var(--text-main); font-size: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); animation: slideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        #toast-container { position: fixed; top: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; pointer-events: none; max-width: min(420px, calc(100vw - 24px)); }
+        .toast { padding: 14px 20px; border-radius: 12px; background: var(--panel); border: 1px solid var(--border-light); color: var(--text-main); font-size: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); animation: slideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; word-wrap: break-word; }
+        .toast-host { font-weight: 700; background: rgba(30,22,8,0.95); border-color: rgba(245,158,11,0.45); }
+        .toast-room { font-weight: 600; background: rgba(8,20,35,0.95); border-color: rgba(56,189,248,0.45); }
         @keyframes slideIn { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 
         .online-counter-badge { position: fixed; bottom: 20px; left: 20px; padding: 8px 16px; border-radius: 20px; background: rgba(0,0,0,0.8); border: 1px solid rgba(46,213,115,0.2); color: var(--accent); font-size: 12px; font-weight: 700; z-index: 100; backdrop-filter: blur(10px); display: flex; align-items: center; gap: 6px; }
@@ -515,7 +529,43 @@
         #room-screen.theme-ocean #btn-share-room,
         #room-screen.theme-ocean #btn-room-settings,
         #room-screen.theme-ocean #btn-leave-room { background: rgba(92, 209, 235, 0.24); color: #e9fdff; border-color: rgba(130, 227, 248, 0.4); }
-        .chat-content-area { position: relative; overflow: hidden; z-index: 2; }
+        .room-preview-rutube { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(145deg, #121212 0%, #2a1010 100%); color: #ff7a7a; font-weight: 800; font-size: 14px; letter-spacing: 0.06em; }
+        #room-screen.theme-racing_green { background: radial-gradient(circle at 12% 18%, #0d3d24 0%, #020806 55%, #000000 100%); color: #e8fff0; }
+        #room-screen.theme-racing_green .glass-panel, #room-screen.theme-racing_green .chat-section, #room-screen.theme-racing_green .chat-input-area { background: rgba(4, 18, 10, 0.92); border-color: rgba(0, 90, 50, 0.45); }
+        #room-screen.theme-racing_green .bubble { background: rgba(0, 60, 35, 0.35); border-color: rgba(46, 213, 115, 0.25); color: #e8fff0; }
+        #room-screen.theme-racing_green .self .bubble { background: #0a2418; color: #bfffd9; border-color: #145c38; }
+        #room-screen.theme-audi_racing { background: radial-gradient(circle at 20% 12%, #8a0a1a 0%, #1a0508 50%, #0a0a0c 100%); color: #f5f5f5; }
+        #room-screen.theme-audi_racing .glass-panel, #room-screen.theme-audi_racing .chat-section, #room-screen.theme-audi_racing .chat-input-area { background: rgba(26, 8, 12, 0.92); border-color: rgba(187, 10, 48, 0.35); }
+        #room-screen.theme-audi_racing .bubble { background: rgba(187, 10, 48, 0.12); border-color: rgba(200, 200, 210, 0.28); color: #f8f8f8; }
+        #room-screen.theme-audi_racing .self .bubble { background: rgba(192, 192, 200, 0.18); color: #1a0508; border-color: rgba(192, 192, 200, 0.45); }
+        #room-screen.theme-alpine_bwt { background: linear-gradient(165deg, #153a7a 0%, #0a1f3d 42%, #2a0a24 100%); color: #eaf4ff; }
+        #room-screen.theme-alpine_bwt .glass-panel, #room-screen.theme-alpine_bwt .chat-section, #room-screen.theme-alpine_bwt .chat-input-area { background: rgba(10, 28, 58, 0.9); border-color: rgba(255, 36, 156, 0.28); }
+        #room-screen.theme-alpine_bwt .bubble { background: rgba(33, 115, 198, 0.2); border-color: rgba(255, 105, 180, 0.35); color: #f0f7ff; }
+        #room-screen.theme-alpine_bwt .self .bubble { background: rgba(255, 36, 156, 0.22); color: #fff; border-color: rgba(255, 200, 230, 0.4); }
+        #room-screen.theme-solar_flare { background: radial-gradient(circle at 50% -10%, #ffd54a 0%, #ff6b1a 28%, #3a0a02 72%, #0a0200 100%); color: #fff8e8; }
+        #room-screen.theme-solar_flare .glass-panel, #room-screen.theme-solar_flare .chat-section, #room-screen.theme-solar_flare .chat-input-area { background: rgba(45, 12, 4, 0.88); border-color: rgba(255, 200, 80, 0.35); }
+        #room-screen.theme-solar_flare .bubble { background: rgba(255, 120, 40, 0.18); border-color: rgba(255, 210, 120, 0.35); }
+        #room-screen.theme-solar_flare .self .bubble { background: rgba(255, 230, 160, 0.22); color: #2a0a00; border-color: rgba(255, 200, 80, 0.5); }
+        #room-screen.theme-neon_tide { background: radial-gradient(circle at 15% 80%, #6d28d9 0%, #042f2e 45%, #020814 100%); color: #e0ffff; }
+        #room-screen.theme-neon_tide .glass-panel, #room-screen.theme-neon_tide .chat-section, #room-screen.theme-neon_tide .chat-input-area { background: rgba(6, 24, 28, 0.9); border-color: rgba(0, 220, 200, 0.35); }
+        #room-screen.theme-neon_tide .bubble { background: rgba(0, 180, 170, 0.15); border-color: rgba(160, 80, 255, 0.35); color: #dff; }
+        #room-screen.theme-neon_tide .self .bubble { background: rgba(120, 60, 220, 0.28); color: #fff; border-color: rgba(180, 140, 255, 0.45); }
+        #room-screen.theme-dusk { background: radial-gradient(circle at 70% 20%, #7c3aed 0%, #312e81 40%, #1e1b4b 100%); color: #ede9fe; }
+        #room-screen.theme-dusk .glass-panel, #room-screen.theme-dusk .chat-section, #room-screen.theme-dusk .chat-input-area { background: rgba(30, 27, 75, 0.9); border-color: rgba(196, 181, 253, 0.28); }
+        #room-screen.theme-dusk .bubble { background: rgba(124, 58, 237, 0.2); border-color: rgba(167, 139, 250, 0.35); }
+        #room-screen.theme-dusk .self .bubble { background: rgba(251, 191, 36, 0.2); color: #1e1b4b; border-color: rgba(251, 191, 36, 0.45); }
+        #room-screen.theme-arctic { background: radial-gradient(circle at 30% 15%, #e0f2fe 0%, #7dd3fc 18%, #0c4a6e 55%, #020617 100%); color: #f0f9ff; }
+        #room-screen.theme-arctic .glass-panel, #room-screen.theme-arctic .chat-section, #room-screen.theme-arctic .chat-input-area { background: rgba(8, 47, 73, 0.88); border-color: rgba(125, 211, 252, 0.35); }
+        #room-screen.theme-arctic .bubble { background: rgba(56, 189, 248, 0.12); border-color: rgba(186, 230, 253, 0.35); }
+        #room-screen.theme-arctic .self .bubble { background: rgba(240, 249, 255, 0.9); color: #0c4a6e; border-color: rgba(125, 211, 252, 0.5); }
+        .theme-rect.racing_green::before { content: ''; position: absolute; inset: 0; background: linear-gradient(160deg, #004225 0%, #000000 100%); }
+        .theme-rect.audi_racing::before { content: ''; position: absolute; inset: 0; background: linear-gradient(145deg, #bb0a30 40%, #c8c8d0 100%); }
+        .theme-rect.alpine_bwt::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, #2173c6 45%, #ff249c 100%); }
+        .theme-rect.solar_flare::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 50% 0%, #ffd54a, #ff6b1a 40%, #3a0a02); }
+        .theme-rect.neon_tide::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, #042f2e, #4c1d95); }
+        .theme-rect.dusk::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, #7c3aed, #1e1b4b); }
+        .theme-rect.arctic::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, #e0f2fe, #0369a1); }
+        .chat-content-area { position: relative; z-index: 2; min-height: 0; overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch; }
         .panel-love-hearts { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 1; }
         .love-heart { position: absolute; bottom: -70px; width: auto; height: auto; opacity: 0; animation: loveFloatUp 28s linear forwards; font-size: 32px; line-height: 1; filter: brightness(0.88) saturate(0.88) contrast(0.98); text-shadow: 0 0 10px rgba(255, 102, 194, 0.2); }
         .love-heart.far { filter: blur(1.2px) brightness(0.72) saturate(0.72); }
@@ -523,18 +573,23 @@
         .love-heart.near { filter: blur(0.15px) brightness(0.96) saturate(0.92); }
         @keyframes loveFloatUp { from { transform: translate3d(0, 0, 0) scale(var(--heart-scale, 1)); opacity: 0; } 8% { opacity: var(--heart-opacity, 0.52); } to { transform: translate3d(var(--heart-drift, 8px), calc(-1 * var(--heart-travel, 700px)), 0) scale(calc(var(--heart-scale, 1) * 1.02)); opacity: 0; } }
 
+        .mobile-header { display: none; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px calc(12px + env(safe-area-inset-top)); padding-top: calc(12px + env(safe-area-inset-top)); background: rgba(5,5,8,0.92); border-bottom: 1px solid var(--border); backdrop-filter: blur(12px); }
+        .mobile-menu-btn { width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--border-light); background: rgba(255,255,255,0.06); color: var(--text-main); font-size: 20px; flex-shrink: 0; }
+        .mobile-header-spacer { width: 44px; height: 44px; flex-shrink: 0; }
         @media (max-width: 1024px) {
             .lobby-layout { grid-template-columns: 1fr; padding: 0; }
-            .sidebar { position: fixed; left: -100%; top: 0; height: 100%; width: 300px; z-index: 500; background: #050505; border-right: 1px solid var(--border); transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); padding-top: 80px; box-shadow: 20px 0 50px rgba(0,0,0,0.8); }
+            .sidebar { position: fixed; left: -100%; top: 0; height: 100%; width: min(320px, 88vw); z-index: 500; background: #050505; border-right: 1px solid var(--border); transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); padding-top: calc(72px + env(safe-area-inset-top)); box-shadow: 20px 0 50px rgba(0,0,0,0.8); }
             .sidebar.open { left: 0; }
             .mobile-header { display: flex; position: sticky; top: 0; z-index: 400; }
-            .rooms-main { padding: 15px; }
-            .room-layout { grid-template-columns: 1fr; padding: 10px; height: auto; display: flex; flex-direction: column; }
-            .video-container { height: 35vh; flex: none; }
-            .chat-section { height: 55dvh; min-height: 320px; flex: none; }
-            .room-top-bar { padding: 10px; }
+            .rooms-main { padding: 15px; padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
+            .room-layout { grid-template-columns: 1fr; padding: 10px; height: auto; min-height: 0; display: flex; flex-direction: column; flex: 1; }
+            .video-container { height: 38vh; min-height: 200px; flex: none; }
+            .chat-section { flex: 1; min-height: 0; height: auto; max-height: none; }
+            .room-top-bar { padding: 10px; flex-wrap: wrap; gap: 8px; }
             .reaction-bar { bottom: 10px; padding: 6px 12px; }
             #chat-input-container { position: sticky; bottom: 0; z-index: 6; padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
+            .input-wrapper { border-radius: 16px; }
+            .mic-icon-btn, .send-btn { min-width: 44px; min-height: 44px; }
         }
         html.theme-light-global .sidebar { background: rgba(255,255,255,0.94); box-shadow: 0 12px 28px rgba(17,24,39,0.08); } /* // [NEW] */
         html.theme-light-global .lobby-header input { background: #ffffff; color: var(--text-main); box-shadow: none; } /* // [NEW] */
@@ -609,7 +664,9 @@
     <!-- ========================================================================= -->
     <section id="lobby-screen" class="screen">
         <div class="mobile-header">
+            <button type="button" class="mobile-menu-btn" id="btn-mobile-sidebar" aria-label="Меню">☰</button>
             <div class="logo" style="font-size: 24px; margin: 0; letter-spacing: -1px;">COWIO</div>
+            <span class="mobile-header-spacer"></span>
         </div>
         
         <div class="lobby-layout">
@@ -682,6 +739,12 @@
                 
                 <div class="video-container glass-panel">
                     <video id="native-player" playsinline></video>
+                    <iframe id="rutube-player" class="rutube-embed" title="RuTube" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe>
+                    <div id="rutube-host-bar" class="rutube-host-bar" style="display:none;">
+                        <span class="rutube-host-label">RuTube · сек</span>
+                        <input type="number" id="rutube-seek-input" min="0" step="1" value="0" inputmode="numeric">
+                        <button type="button" class="secondary-btn" id="rutube-sync-push">Синхронизировать</button>
+                    </div>
                     <div id="reaction-layer"></div>
                     <div class="reaction-bar">
                         <button class="react-btn" data-emoji="🔥">🔥</button>
@@ -704,9 +767,11 @@
                 <div class="chat-content-area" id="users-list" style="display: none;"></div>
                 
                 <div class="chat-input-area" id="chat-input-container">
+                    <input type="file" id="chat-media-input" accept="image/*,video/*,audio/*" style="display:none;" multiple>
                     <div class="input-wrapper">
+                        <button type="button" class="mic-icon-btn" id="chat-attach-btn" title="Прикрепить файл">📎</button>
                         <button class="mic-icon-btn" id="mic-btn" title="Микрофон">🎤</button>
-                        <input type="text" id="chat-input" placeholder="Написать или :00 таймкод..." autocomplete="off">
+                        <input type="text" id="chat-input" placeholder="Текст, таймкод :00 или медиа…" autocomplete="off">
                         <button class="send-btn" id="send-btn">↑</button>
                     </div>
                 </div>
@@ -793,6 +858,11 @@
             <div class="security-note" id="security-verified-note"></div>
             <input type="email" id="security-email-input" placeholder="Введите новый email">
             <input type="password" id="security-password-input" placeholder="Введите текущий пароль" style="display:none;">
+            <div id="security-google-password-block" style="display:none;">
+                <p class="security-note" id="security-google-hint">Привяжите пароль к аккаунту Google — сможете входить и по почте с паролем.</p>
+                <input type="password" id="security-new-password" placeholder="Новый пароль (мин. 6)" autocomplete="new-password">
+                <input type="password" id="security-confirm-password" placeholder="Повтор пароля" autocomplete="new-password">
+            </div>
             <button class="primary-btn" id="btn-security-email-action">Указать email</button>
             <div class="modal-actions">
                 <button class="secondary-btn btn-close-modal">Закрыть</button>
@@ -863,7 +933,9 @@
                 <button class="dm-theme-chip" data-theme="ocean">ocean</button>
             </div>
             <div id="dm-messages" class="dm-messages"></div>
+            <input type="file" id="dm-media-input" accept="image/*,video/*,audio/*" style="display:none;" multiple>
             <div class="dm-compose">
+                <button type="button" class="mic-icon-btn" id="dm-attach-btn" title="Прикрепить">📎</button>
                 <input type="text" id="dm-input" placeholder="Написать другу..." autocomplete="off">
                 <button id="btn-dm-send" class="primary-btn" style="width: 50px;">↑</button>
             </div>
@@ -876,7 +948,7 @@
             <h2 id="room-modal-title">Создать комнату</h2>
             <div style="display: flex; flex-direction: column; gap: 12px;">
                 <input type="text" id="room-input-name" placeholder="Название комнаты">
-                <input type="url" id="room-input-url" placeholder="Прямая ссылка на видео (mp4, webm)">
+                <input type="url" id="room-input-url" placeholder="Прямая ссылка (mp4, webm) или страница RuTube">
                 
                 <label style="display: flex; align-items: center; gap: 10px; font-size: 14px; cursor: pointer; margin-top: 5px; color: var(--text-muted);">
                     <input type="checkbox" id="room-input-private" style="width: auto; margin: 0;">
@@ -908,6 +980,11 @@
                                     <div class="theme-name">light</div>
                                     <div class="theme-check">✓</div>
                                 </div>
+                                <div class="theme-card" data-theme="inverted">
+                                    <div class="theme-rect inverted"></div>
+                                    <div class="theme-name">inverted</div>
+                                    <div class="theme-check">✓</div>
+                                </div>
                                 <div class="theme-card" data-theme="aurora">
                                     <div class="theme-rect aurora"></div>
                                     <div class="theme-name">aurora</div>
@@ -921,6 +998,41 @@
                                 <div class="theme-card" data-theme="ocean">
                                     <div class="theme-rect ocean"></div>
                                     <div class="theme-name">ocean</div>
+                                    <div class="theme-check">✓</div>
+                                </div>
+                                <div class="theme-card" data-theme="racing_green">
+                                    <div class="theme-rect racing_green"></div>
+                                    <div class="theme-name">racing green</div>
+                                    <div class="theme-check">✓</div>
+                                </div>
+                                <div class="theme-card" data-theme="audi_racing">
+                                    <div class="theme-rect audi_racing"></div>
+                                    <div class="theme-name">audi red</div>
+                                    <div class="theme-check">✓</div>
+                                </div>
+                                <div class="theme-card" data-theme="alpine_bwt">
+                                    <div class="theme-rect alpine_bwt"></div>
+                                    <div class="theme-name">alpine bwt</div>
+                                    <div class="theme-check">✓</div>
+                                </div>
+                                <div class="theme-card" data-theme="solar_flare">
+                                    <div class="theme-rect solar_flare"></div>
+                                    <div class="theme-name">solar flare</div>
+                                    <div class="theme-check">✓</div>
+                                </div>
+                                <div class="theme-card" data-theme="neon_tide">
+                                    <div class="theme-rect neon_tide"></div>
+                                    <div class="theme-name">neon tide</div>
+                                    <div class="theme-check">✓</div>
+                                </div>
+                                <div class="theme-card" data-theme="dusk">
+                                    <div class="theme-rect dusk"></div>
+                                    <div class="theme-name">dusk</div>
+                                    <div class="theme-check">✓</div>
+                                </div>
+                                <div class="theme-card" data-theme="arctic">
+                                    <div class="theme-rect arctic"></div>
+                                    <div class="theme-name">arctic</div>
                                     <div class="theme-check">✓</div>
                                 </div>
                             </div>
