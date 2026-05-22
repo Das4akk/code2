@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @fileoverview COWIO Core Engine v4.0 - The Ultimate Edition
  * @description Интегрированы все фиксы: MPA-подобная стабильность, обход пароля по инвайтам,
  * улучшенный интерактивный нейрофон, левитация элементов, фикс мобильного скролла,
@@ -72,6 +72,7 @@ const AppState = {
         },
         lastAnnouncementId: null,
         activeSection: 'dashboard',
+        activeUsersTab: 'online',
         logs: [],
         shadowbans: {},
         globalMute: false,
@@ -1272,7 +1273,7 @@ class EasterEggManager {
             AppState.easterEggs.processedRoomEvents.add(snap.key);
             this.applyRoomEffect(payload);
         });
-        AppState.roomSubscriptions.push(() => off(fxRef, 'child_added', unsub));
+        AppState.roomSubscriptions.push(unsub);
     }
 
     static applyRoomEffect(payload) {
@@ -3591,10 +3592,14 @@ class AdminPanel {
                     <div style="display:flex; flex-direction:column; gap:16px; min-width:0;">
                         <div style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
                             <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px;">
-                                <div style="font-weight:700;">Онлайн пользователи</div>
-                                <div style="font-size:12px; color:var(--text-muted);">Форс-выход / кик из комнаты</div>
+                                <div style="font-weight:700;">Список пользователей</div>
+                                <div style="display:flex; gap:6px;">
+                                    <button class="secondary-btn btn-small admin-users-tab active" data-tab="online" style="padding:4px 8px; font-size:11px;">Онлайн</button>
+                                    <button class="secondary-btn btn-small admin-users-tab" data-tab="all" style="padding:4px 8px; font-size:11px;">Все</button>
+                                    <button class="secondary-btn btn-small admin-users-tab" data-tab="mods" style="padding:4px 8px; font-size:11px;">Модеры</button>
+                                </div>
                             </div>
-                            <div id="admin-online-users" style="display:flex; flex-direction:column; gap:8px; max-height:320px; overflow:auto;"></div>
+                            <div id="admin-online-users" style="display:flex; flex-direction:column; gap:8px; max-height:380px; overflow:auto;"></div>
                         </div>
                     </div>
 
@@ -3713,6 +3718,15 @@ class AdminPanel {
         Utils.$('btn-admin-badge-hybrid').onclick = () => this.setAdminBadgeForUser('creator_moderator');
         Utils.$('btn-admin-badge-remove').onclick = () => this.setAdminBadgeForUser(null);
         Utils.$('btn-admin-badge-custom').onclick = () => this.setAdminBadgeForUser('custom');
+        
+        modal.querySelectorAll('.admin-users-tab').forEach(btn => {
+            btn.onclick = () => {
+                AppState.admin.activeUsersTab = btn.dataset.tab || 'online';
+                modal.querySelectorAll('.admin-users-tab').forEach(b => b.classList.toggle('active', b === btn));
+                this.renderPanel();
+            };
+        });
+
         modal.querySelectorAll('.godmode-nav-btn').forEach(btn => {
             btn.onclick = () => this.switchGodModeSection(btn.dataset.section || 'dashboard');
         });
@@ -4205,39 +4219,46 @@ class AdminPanel {
         });
     }
 
-    static renderOnlineUsers(usersData) {
+    static renderUsersList(usersData) {
         const list = Utils.$('admin-online-users');
         if (!list) return;
 
-        const onlineEntries = Object.entries(usersData).filter(([, userData]) => userData?.status?.online);
-        if (!onlineEntries.length) {
-            list.innerHTML = `<div style="font-size:13px; color:var(--text-muted); padding:8px;">Сейчас никто не онлайн</div>`;
+        let entries = Object.entries(usersData);
+        if (AppState.admin.activeUsersTab === 'online') {
+            entries = entries.filter(([, userData]) => userData?.status?.online);
+        } else if (AppState.admin.activeUsersTab === 'mods') {
+            entries = entries.filter(([, userData]) => {
+                const isMod = userData?.moderation?.isModerator;
+                const isCreator = userData?.moderation?.isCreator;
+                return isMod || isCreator;
+            });
+        }
+
+        if (!entries.length) {
+            list.innerHTML = `<div style="font-size:13px; color:var(--text-muted); padding:8px;">Список пуст</div>`;
             return;
         }
 
-        list.innerHTML = onlineEntries.map(([uid, userData]) => {
+        list.innerHTML = entries.map(([uid, userData]) => {
             const profile = userData.profile || {};
             const roomMeta = this.getCurrentRoomForUid(uid);
+            const isOnline = userData?.status?.online;
             return `
-                <div style="border:1px solid var(--border-light); border-radius:12px; padding:12px; display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap;">
+                <div style="border:1px solid var(--border-light); border-radius:12px; padding:12px; display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap; background:${isOnline ? 'rgba(76,175,80,0.05)' : 'transparent'}">
                     <div style="min-width:0; flex:1;">
-                        <div style="font-weight:700;">${Utils.escapeHtml(profile.name || 'Без имени')} <span style="color:var(--accent); font-size:12px;">@${Utils.escapeHtml(profile.username || uid)}</span></div>
+                        <div style="font-weight:700;">${Utils.escapeHtml(profile.name || 'Без имени')} <span style="color:var(--accent); font-size:12px;">@${Utils.escapeHtml(profile.username || uid)}</span> ${isOnline ? '<span style="color:#4caf50; font-size:10px;">● ONLINE</span>' : ''}</div>
                         <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">
-                            UID: ${uid}${roomMeta ? ` • В комнате: ${Utils.escapeHtml(roomMeta.room.name || roomMeta.roomId)}` : ' • Вне комнаты'}
+                            UID: ${uid}${isOnline && roomMeta ? ` • В комнате: ${Utils.escapeHtml(roomMeta.room.name || roomMeta.roomId)}` : ''}
                         </div>
                     </div>
                     <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                        <button class="secondary-btn admin-load-user-btn" data-uid="${uid}" style="width:auto; padding:8px 12px;">Открыть</button>
-                        <button class="secondary-btn admin-force-leave-btn" data-uid="${uid}" style="width:auto; padding:8px 12px;" ${roomMeta ? '' : 'disabled'}>Кик из комнаты</button>
-                        <button class="danger-btn admin-force-logout-btn" data-uid="${uid}" style="width:auto; padding:8px 12px;">Выгнать</button>
+                        <button class="secondary-btn admin-load-user-btn" data-uid="${uid}" style="width:auto; padding:8px 12px;">Открыть профиль</button>
                     </div>
                 </div>
             `;
         }).join('');
 
         list.querySelectorAll('.admin-load-user-btn').forEach(btn => btn.onclick = () => this.loadUserEditor(btn.dataset.uid));
-        list.querySelectorAll('.admin-force-leave-btn').forEach(btn => btn.onclick = () => this.forceLeaveRoom(btn.dataset.uid));
-        list.querySelectorAll('.admin-force-logout-btn').forEach(btn => btn.onclick = () => this.forceSignOut(btn.dataset.uid));
     }
 
     static renderEmptyUserEditor() {
@@ -4706,7 +4727,7 @@ class AdminPanel {
         const stats = await this.collectDashboardData();
         this.renderStats(stats);
         this.renderRoomsList(stats.rooms);
-        this.renderOnlineUsers(stats.usersData);
+        this.renderUsersList(stats.usersData);
     }
 }
 
@@ -5121,7 +5142,10 @@ class RoomManager {
                 });
             }
         });
-        AppState.roomSubscriptions.push(() => off(presListRef, 'value', pUnsub), () => remove(presenceRef));
+        AppState.roomSubscriptions.push(() => {
+            pUnsub();
+            remove(presenceRef);
+        });
 
         const vid = Utils.$('native-player');
         let isRemoteSeek = false;
@@ -5144,7 +5168,7 @@ class RoomManager {
             if (d.type === 'play' && vid.paused) vid.play().catch(()=>{});
             if (d.type === 'pause' && !vid.paused) vid.pause();
         });
-        AppState.roomSubscriptions.push(() => off(syncRef, 'value', sUnsub));
+        AppState.roomSubscriptions.push(sUnsub);
 
         let processedMsgs = new Set();
         const cUnsub = onChildAdded(chatRef, (snap) => {
@@ -5168,7 +5192,30 @@ class RoomManager {
             let content = Utils.escapeHtml(msg.text);
             content = content.replace(/(\d{1,2}:\d{2})/g, '<span class="timecode-btn" data-time="$1">$1</span>');
 
-            line.innerHTML = `<strong class="profile-open-link chat-profile-link" data-uid="${Utils.escapeHtml(msg.uid || '')}">${Utils.escapeHtml(msg.name)}</strong><div class="bubble">${content}</div>`;
+            const fallbackChar = (msg.name || '?')[0].toUpperCase();
+            
+            const avatarHtml = `<div class="chat-avatar-placeholder" style="width:100%;height:100%;background:#111;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;">${fallbackChar}</div>`;
+
+            line.innerHTML = `
+                <div style="display:flex; gap:8px; align-items:flex-end; max-width:100%; ${isMe ? 'flex-direction:row-reverse;' : ''}">
+                    <div class="chat-profile-link" data-uid="${Utils.escapeHtml(msg.uid || '')}" style="width:26px; height:26px; border-radius:50%; flex-shrink:0; cursor:pointer; overflow:hidden; border:1px solid var(--border-light); background:rgba(255,255,255,0.05); transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='scale(1.1)'; this.style.boxShadow='0 0 8px rgba(255,255,255,0.2)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';">
+                        ${avatarHtml}
+                    </div>
+                    <div style="display:flex; flex-direction:column; ${isMe ? 'align-items:flex-end;' : 'align-items:flex-start;'} max-width:85%;">
+                        <strong class="profile-open-link chat-profile-link" data-uid="${Utils.escapeHtml(msg.uid || '')}" style="font-size:11px; margin-bottom:4px; opacity:0.75; padding:0 4px;">${Utils.escapeHtml(msg.name)}</strong>
+                        <div class="bubble" style="max-width:100%;">${content}</div>
+                    </div>
+                </div>
+            `;
+            
+            ProfileManager.loadUser(msg.uid).then(uProfile => {
+                if (uProfile && uProfile.avatar) {
+                    const placeholder = line.querySelector('.chat-avatar-placeholder');
+                    if (placeholder) {
+                        placeholder.outerHTML = `<img src="${Utils.escapeHtml(uProfile.avatar)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.outerHTML='<div style=\\'width:100%;height:100%;background:#111;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;\\'>${fallbackChar}</div>'">`;
+                    }
+                }
+            });
             
             line.querySelectorAll('.timecode-btn').forEach(btn => {
                 btn.onclick = () => {
@@ -5182,13 +5229,14 @@ class RoomManager {
                     set(syncRef, { type: 'seek', time: secs, ts: Date.now() });
                 };
             });
-            const profileBtn = line.querySelector('.chat-profile-link');
-            if (profileBtn && msg.uid) profileBtn.onclick = () => ProfileManager.openViewProfileModal(msg.uid);
+            line.querySelectorAll('.chat-profile-link').forEach(btn => {
+                if (msg.uid) btn.onclick = () => ProfileManager.openViewProfileModal(msg.uid);
+            });
 
             Utils.$('chat-messages').appendChild(line);
             Utils.$('chat-messages').scrollTop = Utils.$('chat-messages').scrollHeight;
         });
-        AppState.roomSubscriptions.push(() => off(chatRef, 'child_added', cUnsub));
+        AppState.roomSubscriptions.push(cUnsub);
 
         Utils.$('send-btn').onclick = async () => {
             const input = Utils.$('chat-input');
@@ -5231,7 +5279,7 @@ class RoomManager {
             Utils.$('reaction-layer').appendChild(el);
             setTimeout(() => el.remove(), 3000);
         });
-        AppState.roomSubscriptions.push(() => off(reactionsRef, 'child_added', rUnsub));
+        AppState.roomSubscriptions.push(rUnsub);
         EasterEggManager.bindRoom(roomId);
 
         Utils.$('tab-chat-btn').onclick = () => {
