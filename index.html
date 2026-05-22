@@ -515,6 +515,22 @@
         #room-screen.theme-ocean #btn-share-room,
         #room-screen.theme-ocean #btn-room-settings,
         #room-screen.theme-ocean #btn-leave-room { background: rgba(92, 209, 235, 0.24); color: #e9fdff; border-color: rgba(130, 227, 248, 0.4); }
+
+        /* // [NEW] Ambilight background animations for colored room themes */
+        @keyframes ambilightPulse {
+            0% { background-position: 0% 0%; filter: hue-rotate(0deg) brightness(1); }
+            33% { background-position: 100% 0%; filter: hue-rotate(8deg) brightness(1.05); }
+            66% { background-position: 100% 100%; filter: hue-rotate(-5deg) brightness(0.95); }
+            100% { background-position: 0% 100%; filter: hue-rotate(0deg) brightness(1); }
+        }
+        #room-screen.theme-love,
+        #room-screen.theme-aurora,
+        #room-screen.theme-sunset,
+        #room-screen.theme-ocean {
+            background-size: 180% 180%;
+            animation: ambilightPulse 28s ease-in-out infinite alternate;
+        }
+
         .chat-content-area { position: relative; z-index: 2; }
         .panel-love-hearts { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 1; }
         .love-heart { position: absolute; bottom: -70px; width: auto; height: auto; opacity: 0; animation: loveFloatUp 28s linear forwards; font-size: 32px; line-height: 1; filter: brightness(0.88) saturate(0.88) contrast(0.98); text-shadow: 0 0 10px rgba(255, 102, 194, 0.2); }
