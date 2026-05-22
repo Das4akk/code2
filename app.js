@@ -1231,15 +1231,16 @@ class EasterEggManager {
     static async handleChatInput(text, chatRef, uid) {
         const trimmed = text.trim();
         const command = this.COMMANDS.get(trimmed.toLowerCase());
+        const myName = AppState.usersCache.get(uid)?.name || AppState.currentUser?.displayName || 'Кто-то';
         if (command) {
-            await this.emitRoomEffect(command, { from: AppState.currentUser.displayName || 'Кто-то' });
+            await this.emitRoomEffect(command, { from: myName });
             Utils.toast(`Пасхалка ${trimmed} активирована`, 'info');
             return true;
         }
 
         if (trimmed.toLowerCase() === 'i am your father') {
-            await push(chatRef, { uid, name: AppState.currentUser.displayName, text: trimmed, ts: Date.now() });
-            await this.emitRoomEffect('vader', { from: AppState.currentUser.displayName || 'Кто-то' });
+            await push(chatRef, { uid, name: myName, text: trimmed, ts: Date.now() });
+            await this.emitRoomEffect('vader', { from: myName });
             return true;
         }
 
@@ -1854,6 +1855,7 @@ class AuthManager {
             }
         });
 
+        ThemeManager.init();
         this.bindUI();
     }
 
@@ -2048,6 +2050,143 @@ class HashtagManager {
         input.addEventListener('focus', updateSuggestions);
         input.addEventListener('input', updateSuggestions);
         input.addEventListener('blur', () => setTimeout(() => suggestions.classList.remove('active'), 120));
+    }
+}
+
+class ThemeManager {
+    static FOLDERS = {
+        'classic': { label: 'Классика', themes: ['default', 'light', 'inverted'] },
+        'nature': { label: 'Природа', themes: ['sunset', 'ocean', 'aurora', 'love'] },
+        'gradient': { label: 'Градиенты', themes: ['matte-toxic', 'audi-silver', 'racing-jet', 'alpine-pink', 'solar-flare', 'neon-tide', 'dusk', 'venom', 'twilight', 'noir-rose', 'vault-gold', 'abyss-frost', 'crimson-chalk'] }
+    };
+    
+    static EXTENDED_THEMES = {
+        'default': { bg: ['#0d0d10', '#040404'], accent: '#ffffff', symbol: '·' },
+        'light': { bg: ['#ffffff', '#e8ebf1'], accent: '#000000', symbol: '☼' },
+        'inverted': { bg: ['#f8f8f8', '#d9dce2'], accent: '#050505', symbol: '◐' },
+        'sunset': { bg: ['#ff9a76', '#7b2233', '#240b15'], accent: '#ff9a76', symbol: '☼' },
+        'ocean': { bg: ['#6de0ff', '#13667a', '#082835'], accent: '#6de0ff', symbol: '≈' },
+        'aurora': { bg: ['#4776ff', '#1a2f68', '#0a1023'], accent: '#4776ff', symbol: '✦' },
+        'love': { bg: ['#66304f', '#301226', '#10050d'], accent: '#ff99cc', symbol: '❤' },
+        'matte-toxic': { bg: ['#121212', '#0A0A0A'], accent: '#39FF14', symbol: '☣' },
+        'audi-silver': { bg: ['#bf0a30', '#1c1c1e'], accent: '#c0c0c0', symbol: '◆' },
+        'racing-jet': { bg: ['#004225', '#0a0a0a'], accent: '#004225', symbol: '🏁' },
+        'alpine-pink': { bg: ['#00529b', '#202022'], accent: '#f5b6c2', symbol: '⛰' },
+        'solar-flare': { bg: ['#ff4e00', '#ec9f05'], accent: '#ff4e00', symbol: '☀' },
+        'neon-tide': { bg: ['#00f2fe', '#4facfe'], accent: '#00f2fe', symbol: '🌊' },
+        'dusk': { bg: ['#2c3e50', '#fd746c'], accent: '#ff7b54', symbol: '🌆' },
+        'venom': { bg: ['#000000', '#1a1a1a'], accent: '#ff003c', symbol: '🕷' },
+        'twilight': { bg: ['#0f2027', '#2c5364'], accent: '#78ffd6', symbol: '☾' },
+        'noir-rose': { bg: ['#111111', '#1a1a1a'], accent: '#ff6666', symbol: '🌹' },
+        'vault-gold': { bg: ['#0d0d0d', '#1a1a1a'], accent: '#ffd700', symbol: '✦' },
+        'abyss-frost': { bg: ['#000428', '#004e92'], accent: '#00d2ff', symbol: '❄' },
+        'crimson-chalk': { bg: ['#800000', '#1a1111'], accent: '#f4f4f4', symbol: '♦' }
+    };
+
+    static init() {
+        this.injectCSS();
+        this.renderFolders();
+        this.renderCarousel();
+        this.renderDMChips();
+    }
+
+    static injectCSS() {
+        let css = '';
+        for (const [key, t] of Object.entries(this.EXTENDED_THEMES)) {
+            if (['default', 'light', 'inverted', 'sunset', 'ocean', 'aurora', 'love'].includes(key)) continue;
+            const gradPreview = `radial-gradient(circle at 20% 12%, ${t.bg.join(', ')})`;
+            const gradRoom = `radial-gradient(circle at 20% 12%, ${t.bg.map((c,i) => i===0 ? c : `${c} ${Math.floor(100/(t.bg.length-1))*i}%`).join(', ')})`;
+            
+            css += `
+                #room-screen.theme-${key} { background: ${gradRoom}; color: #ffffff; }
+                #room-screen.theme-${key} .glass-panel,
+                #room-screen.theme-${key} .chat-section,
+                #room-screen.theme-${key} .chat-input-area { background: rgba(10, 10, 15, 0.85); border-color: ${t.accent}40; box-shadow: 0 16px 40px ${t.accent}20; }
+                #room-screen.theme-${key} .input-wrapper { background: rgba(5, 5, 10, 0.9); border-color: ${t.accent}60; }
+                #room-screen.theme-${key} .bubble { background: rgba(255, 255, 255, 0.05); border-color: ${t.accent}40; color: #fff; }
+                #room-screen.theme-${key} .self .bubble { background: ${t.accent}20; border-color: ${t.accent}60; color: #fff; }
+                #room-screen.theme-${key} .send-btn,
+                #room-screen.theme-${key} #btn-share-room,
+                #room-screen.theme-${key} #btn-room-settings,
+                #room-screen.theme-${key} #btn-leave-room { background: ${t.accent}30; color: #fff; border-color: ${t.accent}60; }
+                
+                #modal-dm-chat.theme-${key} .modal-content { background: ${gradRoom} !important; border-color: ${t.accent}40 !important; box-shadow: 0 16px 40px ${t.accent}20 !important; color: #ffffff !important; }
+                #modal-dm-chat.theme-${key} .dm-messages,
+                #modal-dm-chat.theme-${key} .dm-compose { background: rgba(10,10,15,0.7) !important; color: #fff !important; }
+                #modal-dm-chat.theme-${key} .bubble { background: rgba(255, 255, 255, 0.05) !important; border-color: ${t.accent}40 !important; color: #fff !important; }
+                #modal-dm-chat.theme-${key} .self .bubble { background: ${t.accent}20 !important; border-color: ${t.accent}60 !important; color: #fff !important; }
+                #modal-dm-chat.theme-${key} input { color: #fff !important; }
+                
+                .theme-rect.${key}::before { content: ''; position: absolute; inset: 0; background: ${gradPreview}; }
+                .theme-rect.${key}::after { content: '${t.symbol}'; position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); color: ${t.accent}; letter-spacing: 4px; font-size: 14px; opacity: 0.8; }
+            `;
+        }
+        const style = document.createElement('style');
+        style.innerHTML = css;
+        document.head.appendChild(style);
+    }
+
+    static renderFolders() {
+        const foldersContainer = Utils.$('room-theme-folders');
+        if (!foldersContainer) return;
+        foldersContainer.innerHTML = '';
+        const fKeys = Object.keys(this.FOLDERS);
+        fKeys.forEach((fKey, index) => {
+            const btn = document.createElement('button');
+            btn.className = `secondary-btn theme-folder-btn ${index === 0 ? 'active' : ''}`;
+            btn.dataset.folder = fKey;
+            btn.innerText = this.FOLDERS[fKey].label;
+            btn.style.padding = '6px 12px';
+            btn.style.fontSize = '12px';
+            btn.onclick = () => {
+                foldersContainer.querySelectorAll('.theme-folder-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                RoomManager.currentThemeFolder = fKey;
+                this.renderCarouselTrack(fKey);
+            };
+            foldersContainer.appendChild(btn);
+        });
+        RoomManager.currentThemeFolder = fKeys[0];
+    }
+    
+    static renderCarousel() {
+        if (!RoomManager.currentThemeFolder) RoomManager.currentThemeFolder = Object.keys(this.FOLDERS)[0];
+        this.renderCarouselTrack(RoomManager.currentThemeFolder);
+    }
+
+    static renderCarouselTrack(fKey) {
+        const track = Utils.$('room-theme-track');
+        if (!track) return;
+        track.innerHTML = '';
+        const themesList = this.FOLDERS[fKey].themes;
+        themesList.forEach(themeKey => {
+            const t = this.EXTENDED_THEMES[themeKey];
+            if (!t) return;
+            const div = document.createElement('div');
+            div.className = `theme-card ${RoomManager.selectedTheme === themeKey ? 'active' : ''}`;
+            div.dataset.theme = themeKey;
+            div.innerHTML = `
+                <div class="theme-rect ${themeKey}"></div>
+                <div class="theme-name">${themeKey}</div>
+                <div class="theme-check">✓</div>
+            `;
+            track.appendChild(div);
+        });
+        RoomManager.themeIndex = Math.max(0, themesList.indexOf(RoomManager.selectedTheme));
+        RoomManager.updateThemeTransform();
+    }
+    
+    static renderDMChips() {
+        const dmControls = Utils.$('dm-theme-controls');
+        if (!dmControls) return;
+        dmControls.innerHTML = '';
+        Object.keys(this.EXTENDED_THEMES).forEach(key => {
+            const btn = document.createElement('button');
+            btn.className = 'dm-theme-chip';
+            btn.dataset.theme = key;
+            btn.innerText = key;
+            dmControls.appendChild(btn);
+        });
     }
 }
 
@@ -2607,7 +2746,7 @@ class ProfileManager {
         container.style.cursor = 'pointer';
         container.onclick = (e) => {
             if (!e.target.closest('button')) {
-                this.openViewProfileModal(partnerUid);
+                this.openPartnerModal(ownerUid || partnerUid, partnerUid);
             }
         };
 
@@ -2629,6 +2768,32 @@ class ProfileManager {
         Utils.$('partner-modal-their-avatar').innerHTML = this.getAvatarHtml(theirProf);
         Utils.$('partner-modal-names').innerText = `${myProf.name} & ${theirProf.name}`;
         Utils.$('partner-modal-stats').innerText = sinceTs ? `Мы вместе уже ${daysText} счастливых дней 💖` : 'Созданы друг для друга ✨';
+
+        const kissBtn = Utils.$('btn-partner-modal-kiss');
+        if (kissBtn) {
+            kissBtn.onclick = () => {
+                const rect = kissBtn.getBoundingClientRect();
+                for (let i = 0; i < 15; i++) {
+                    const heart = document.createElement('div');
+                    heart.innerText = ['💖', '💋', '💕', '💘'][Math.floor(Math.random()*4)];
+                    heart.style.position = 'fixed';
+                    heart.style.left = (rect.left + rect.width / 2 + (Math.random() - 0.5) * 50) + 'px';
+                    heart.style.top = rect.top + 'px';
+                    heart.style.fontSize = (20 + Math.random() * 20) + 'px';
+                    heart.style.pointerEvents = 'none';
+                    heart.style.zIndex = '10000';
+                    heart.style.transition = 'all 1.5s ease-out';
+                    document.body.appendChild(heart);
+                    
+                    setTimeout(() => {
+                        heart.style.transform = `translateY(-${100 + Math.random() * 100}px) scale(1.5) rotate(${(Math.random()-0.5)*90}deg)`;
+                        heart.style.opacity = '0';
+                    }, 50);
+                    setTimeout(() => heart.remove(), 1600);
+                }
+                Utils.toast('Вы послали воздушный поцелуй!');
+            };
+        }
 
         Utils.$('modal-partner-view').classList.add('active');
     }
@@ -2810,6 +2975,10 @@ class ProfileManager {
 
         updates[`users/${uid}/profile`] = { ...oldProfile, name, username, bio, hashtags, avatar, background }; // [UPDATE]
         await update(ref(db), updates);
+
+        if (uid === AppState.currentUser?.uid) {
+            await updateProfile(AppState.currentUser, { displayName: name, photoURL: avatar }).catch(e => console.warn('Failed to update auth profile', e));
+        }
     }
 
     static async loadUser(uid) {
@@ -3179,7 +3348,10 @@ class DirectMessages {
             if (!text) return;
             if (AdminPanel.isSystemReadOnlyForUser()) return Utils.toast('Система в режиме ReadOnly', 'error');
             input.value = '';
-            const payload = { type: 'text', fromUid: AppState.currentUser.uid, fromName: AppState.currentUser.displayName, text, ts: Date.now() };
+            
+            const myProfile = AppState.usersCache.get(AppState.currentUser.uid);
+            const myName = myProfile?.name || AppState.currentUser.displayName || 'User';
+            const payload = { type: 'text', fromUid: AppState.currentUser.uid, fromName: myName, text, ts: Date.now() };
             
             await update(ref(db, `direct-messages/${chatId}`), {
                 participants: { [AppState.currentUser.uid]: true, [targetUid]: true },
@@ -3249,15 +3421,14 @@ class DirectMessages {
     }
 
     static normalizeTheme(theme = 'default') {
-        if (theme === 'inverted') return 'light';
-        return this.themeOptions.includes(theme) ? theme : 'default';
+        return ThemeManager.EXTENDED_THEMES[theme] ? theme : 'default';
     }
 
     static applyTheme(theme = 'default', persist = false) {
         const modal = Utils.$('modal-dm-chat');
         if (!modal) return;
         this.theme = this.normalizeTheme(theme);
-        modal.classList.remove('theme-love', 'theme-light', 'theme-aurora', 'theme-sunset', 'theme-ocean');
+        Object.keys(ThemeManager.EXTENDED_THEMES).forEach(k => modal.classList.remove('theme-' + k));
         if (this.theme !== 'default') modal.classList.add(`theme-${this.theme}`);
         Utils.$('dm-theme-controls')?.querySelectorAll('.dm-theme-chip').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.theme === this.theme);
@@ -4400,7 +4571,21 @@ class AdminPanel {
             </div>
             <textarea id="admin-edit-bio" rows="4" placeholder="Описание">${Utils.escapeHtml(profile.bio || '')}</textarea>
             <div style="font-size:12px; color:var(--text-muted);">Email: ${Utils.escapeHtml(profile.email || 'не указан')}</div>
-            <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2);">
+            
+            <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
+                <div style="font-weight:700; margin-bottom:6px;">💖 Управление второй половинкой</div>
+                <input type="text" id="admin-partner-target" placeholder="UID или юзернейм существующего юзера">
+                <div style="font-size: 11px; color: var(--text-muted); margin: 5px 0;">ИЛИ создать фиктивную:</div>
+                <div style="display:flex; gap: 8px;">
+                    <input type="text" id="admin-partner-fake-name" placeholder="Имя">
+                    <input type="text" id="admin-partner-fake-url" placeholder="URL Аватарки">
+                </div>
+                <input type="date" id="admin-partner-date" style="margin-top:8px;" title="Дата начала (опционально)">
+                <button class="primary-btn" id="btn-admin-set-partner" style="margin-top:8px;">Применить изменения</button>
+                <div style="font-size:11px; margin-top:4px;">Текущий партнер: ${Utils.escapeHtml(userData?.partner || profile?.partner || 'нет')}</div>
+            </div>
+
+            <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
                 <div style="font-weight:700; margin-bottom:6px;">Live User Inspector</div>
                 <div style="font-size:12px; font-family:Consolas,monospace;">IP: ${Utils.escapeHtml(userData?.status?.ip || 'unavailable')}</div>
                 <div style="font-size:12px; font-family:Consolas,monospace;">Partner: ${Utils.escapeHtml(userData?.partner || profile?.partner || 'none')}</div>
@@ -4420,6 +4605,7 @@ class AdminPanel {
         `;
 
         Utils.$('btn-admin-save-user').onclick = () => this.saveUserProfile();
+        Utils.$('btn-admin-set-partner').onclick = () => this.forceSetPartner(uid);
         Utils.$('btn-admin-reset-user').onclick = () => this.resetUserProfile();
         Utils.$('btn-admin-delete-user').onclick = () => this.deleteUserCompletely(uid);
         Utils.$('btn-admin-force-leave-current').onclick = () => this.forceLeaveRoom(uid);
@@ -4427,6 +4613,65 @@ class AdminPanel {
         Utils.$('btn-admin-toggle-user-mute').onclick = () => this.toggleUserMute(uid);
         Utils.$('btn-admin-toggle-shadowban').onclick = () => this.toggleShadowban(uid);
         Utils.$('btn-admin-reset-password').onclick = () => this.issuePasswordReset(uid);
+    }
+
+    static async forceSetPartner(uid) {
+        if (!this.requireAdmin()) return;
+        const targetVal = Utils.$('admin-partner-target').value.trim();
+        const fakeName = Utils.$('admin-partner-fake-name').value.trim();
+        const fakeUrl = Utils.$('admin-partner-fake-url').value.trim();
+        const customDate = Utils.$('admin-partner-date').value;
+        let tsSince = customDate ? new Date(customDate).getTime() : Date.now();
+
+        let companionUid = null;
+        let previousTargetPartner = null;
+
+        if (fakeName) {
+            companionUid = `custom_partner_${Utils.generateCryptoId(6)}`;
+            await set(ref(db, `users/${companionUid}/profile`), {
+                name: fakeName,
+                username: `mock_${Utils.generateCryptoId(4)}`, // fake
+                avatar: fakeUrl || '',
+            });
+        } else if (targetVal) {
+            const byUsernameSnap = await get(ref(db, `usernames/${targetVal.toLowerCase()}`));
+            companionUid = byUsernameSnap.exists() ? byUsernameSnap.val() : targetVal;
+            const checkProf = await get(ref(db, `users/${companionUid}/profile`));
+            if (!checkProf.exists()) return Utils.toast('Реальный пользователь не найден!', 'error');
+            
+            const tcp = await get(ref(db, `users/${companionUid}/partner`));
+            previousTargetPartner = tcp.exists() ? tcp.val() : null;
+        } else {
+            return Utils.toast('Введите данные половинки', 'error');
+        }
+
+        const updates = {};
+        const snapMe = await get(ref(db, `users/${uid}/partner`));
+        const myPrev = snapMe.exists() ? snapMe.val() : null;
+
+        if (myPrev) {
+            updates[`users/${myPrev}/partner`] = null;
+            updates[`users/${myPrev}/partnerSince`] = null;
+        }
+        if (previousTargetPartner) {
+            updates[`users/${previousTargetPartner}/partner`] = null;
+            updates[`users/${previousTargetPartner}/partnerSince`] = null;
+        }
+
+        updates[`users/${uid}/partner`] = companionUid;
+        updates[`users/${uid}/partnerSince`] = tsSince;
+        
+        if (!fakeName) {
+            updates[`users/${companionUid}/partner`] = uid;
+            updates[`users/${companionUid}/partnerSince`] = tsSince;
+        } else {
+            updates[`users/${companionUid}/partner`] = uid;
+            updates[`users/${companionUid}/partnerSince`] = tsSince;
+        }
+
+        await update(ref(db), updates);
+        Utils.toast('Пара успешно изменена (СОЗДАТЕЛЬ)');
+        this.loadUserEditor(uid);
     }
 
     static async toggleUserMute(uid) {
@@ -4881,6 +5126,9 @@ class RoomManager {
         this.applyCreateRoomAvailability();
     }
 
+    static currentThemeFolder = 'classic';
+    static selectedTheme = 'default';
+
     static initThemes() {
         const toggleBtn = Utils.$('btn-room-theme-toggle');
         const carousel = Utils.$('room-theme-carousel');
@@ -4889,31 +5137,38 @@ class RoomManager {
         const track = Utils.$('room-theme-track');
         if (!toggleBtn || !carousel || !prevBtn || !nextBtn || !track) return;
 
-        const showTheme = (idx) => {
-            this.themeIndex = (idx + this.themeOptions.length) % this.themeOptions.length;
-            const value = this.themeOptions[this.themeIndex];
-            Utils.$('modal-room').dataset.selectedTheme = value;
-            track.style.transform = `translateX(-${this.themeIndex * 100}%)`;
-            track.querySelectorAll('.theme-card').forEach(card => {
-                card.classList.toggle('active', card.dataset.theme === value);
-            });
-        };
-
         toggleBtn.onclick = () => carousel.classList.toggle('active');
-        prevBtn.onclick = () => showTheme(this.themeIndex - 1);
-        nextBtn.onclick = () => showTheme(this.themeIndex + 1);
-        track.querySelectorAll('.theme-card').forEach(card => {
-            card.onclick = () => {
-                const next = this.themeOptions.indexOf(card.dataset.theme);
-                if (next >= 0) showTheme(next);
-            };
-        });
-        showTheme(0);
+        prevBtn.onclick = () => {
+            const numOpts = ThemeManager.FOLDERS[this.currentThemeFolder].themes.length;
+            this.themeIndex = (this.themeIndex - 1 + numOpts) % numOpts;
+            ThemeManager.renderCarouselTrack(this.currentThemeFolder);
+        };
+        nextBtn.onclick = () => {
+            const numOpts = ThemeManager.FOLDERS[this.currentThemeFolder].themes.length;
+            this.themeIndex = (this.themeIndex + 1) % numOpts;
+            ThemeManager.renderCarouselTrack(this.currentThemeFolder);
+        };
+        track.onclick = (e) => {
+            const card = e.target.closest('.theme-card');
+            if (!card) return;
+            const theme = card.dataset.theme;
+            const opts = ThemeManager.FOLDERS[this.currentThemeFolder].themes;
+            this.themeIndex = Math.max(0, opts.indexOf(theme));
+            ThemeManager.renderCarouselTrack(this.currentThemeFolder);
+        };
+    }
+
+    static updateThemeTransform() {
+        const track = Utils.$('room-theme-track');
+        if (!track) return;
+        const opts = ThemeManager.FOLDERS[this.currentThemeFolder].themes;
+        this.selectedTheme = opts[this.themeIndex] || 'default';
+        Utils.$('modal-room').dataset.selectedTheme = this.selectedTheme;
+        track.style.transform = `translateX(-${this.themeIndex * 100}%)`;
     }
 
     static normalizeRoomTheme(theme = 'default') { // [NEW]
-        if (theme === 'inverted') return 'light';
-        return this.themeOptions.includes(theme) ? theme : 'default'; // [NEW]
+        return ThemeManager.EXTENDED_THEMES[theme] ? theme : 'default'; // [NEW]
     } // [NEW]
 
     static getActorLabel() {
@@ -5082,7 +5337,7 @@ class RoomManager {
                 hashtags,
                 theme: this.normalizeRoomTheme(selectedTheme), // [UPDATE]
                 hostId: AppState.currentUser.uid,
-                hostName: AppState.currentUser.displayName || 'Хост',
+                hostName: AppState.usersCache.get(AppState.currentUser.uid)?.name || AppState.currentUser.displayName || 'Хост',
                 updatedAt: Date.now()
             };
             if (isPrivate && password) { roomData.salt = Utils.generateCryptoId(16); roomData.hash = await Utils.hashPassword(password, roomData.salt); }
@@ -5204,7 +5459,8 @@ class RoomManager {
         const reactionsRef = ref(db, `rooms/${roomId}/reactions`);
         let presenceBootstrapped = false;
 
-        set(presenceRef, { uid, name: AppState.currentUser.displayName, perms: this.getDefaultPerms() });
+        const myName = AppState.usersCache.get(AppState.currentUser.uid)?.name || AppState.currentUser.displayName || 'Пользователь';
+        set(presenceRef, { uid, name: myName, perms: this.getDefaultPerms() });
         onDisconnect(presenceRef).remove();
 
         const pUnsub = onValue(presListRef, (snap) => {
@@ -5342,7 +5598,7 @@ class RoomManager {
             if (!wasHandled) {
                 await push(chatRef, {
                     uid,
-                    name: AppState.currentUser.displayName,
+                    name: AppState.usersCache.get(AppState.currentUser.uid)?.name || AppState.currentUser.displayName || 'Пользователь',
                     text,
                     ts: Date.now(),
                     shadowbanned: Boolean(meModeration.shadowban)
@@ -5623,7 +5879,10 @@ class RoomManager {
     static applyRoomTheme(theme = 'default') {
         const roomScreen = Utils.$('room-screen');
         if (!roomScreen) return;
-        roomScreen.classList.remove('theme-love', 'theme-inverted', 'theme-light', 'theme-aurora', 'theme-sunset', 'theme-ocean'); // [UPDATE]
+        
+        Object.keys(ThemeManager.EXTENDED_THEMES).forEach(k => {
+            roomScreen.classList.remove('theme-' + k);
+        });
         document.body.classList.remove('theme-love-room', 'theme-inverted-room'); // [UPDATE]
         this.stopLoveHearts();
         

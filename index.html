@@ -850,8 +850,9 @@
             </div>
             <h3 id="partner-modal-names" style="font-weight: 800; margin-bottom: 10px;">Name & Name</h3>
             <p id="partner-modal-stats" style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px;">Мы вместе уже счастливых дней ✨</p>
-            <div class="modal-actions">
-                <button class="secondary-btn btn-close-modal">Закрыть</button>
+            <div class="modal-actions" style="flex-direction: column; gap: 10px;">
+                <button class="primary-btn" id="btn-partner-modal-kiss" style="width: 100%; background: linear-gradient(45deg, #ff6fae, #ff3377); border: none; box-shadow: 0 4px 15px rgba(255, 111, 174, 0.4);">Отправить поцелуй 💋</button>
+                <button class="secondary-btn btn-close-modal" style="width: 100%;">Закрыть</button>
             </div>
         </div>
     </div>
@@ -870,13 +871,8 @@
                     <button class="secondary-btn btn-close-modal" style="width: auto; padding: 8px 12px;">✕</button>
                 </div>
             </div>
-            <div class="dm-theme-controls" id="dm-theme-controls">
-                <button class="dm-theme-chip active" data-theme="default">default</button>
-                <button class="dm-theme-chip" data-theme="love">love</button>
-                <button class="dm-theme-chip" data-theme="light">light</button>
-                <button class="dm-theme-chip" data-theme="aurora">aurora</button>
-                <button class="dm-theme-chip" data-theme="sunset">sunset</button>
-                <button class="dm-theme-chip" data-theme="ocean">ocean</button>
+            <div class="dm-theme-controls" id="dm-theme-controls" style="overflow-x: auto; padding-bottom: 5px;">
+                <!-- Populated by JS -->
             </div>
             <div id="dm-messages" class="dm-messages"></div>
             <div class="dm-compose">
@@ -905,40 +901,15 @@
                 </div>
                 <button class="secondary-btn room-theme-toggle" id="btn-room-theme-toggle">Поменять тему</button>
                 <div class="room-theme-carousel" id="room-theme-carousel">
+                    <!-- [NEW] Theme Category Folders -->
+                    <div class="theme-folders" id="room-theme-folders" style="display: flex; gap: 8px; margin-bottom: 12px; overflow-x: auto; padding-bottom: 6px;">
+                        <!-- Will be populated by JS -->
+                    </div>
                     <div class="theme-carousel-top">
                         <button class="theme-arrow-btn" id="room-theme-prev">‹</button>
                         <div class="theme-preview-wrap">
                             <div class="theme-preview-track" id="room-theme-track">
-                                <div class="theme-card active" data-theme="default">
-                                    <div class="theme-rect default"></div>
-                                    <div class="theme-name">default</div>
-                                    <div class="theme-check">✓</div>
-                                </div>
-                                <div class="theme-card" data-theme="love">
-                                    <div class="theme-rect love"></div>
-                                    <div class="theme-name">love</div>
-                                    <div class="theme-check">✓</div>
-                                </div>
-                                <div class="theme-card" data-theme="light">
-                                    <div class="theme-rect light"></div>
-                                    <div class="theme-name">light</div>
-                                    <div class="theme-check">✓</div>
-                                </div>
-                                <div class="theme-card" data-theme="aurora">
-                                    <div class="theme-rect aurora"></div>
-                                    <div class="theme-name">aurora</div>
-                                    <div class="theme-check">✓</div>
-                                </div>
-                                <div class="theme-card" data-theme="sunset">
-                                    <div class="theme-rect sunset"></div>
-                                    <div class="theme-name">sunset</div>
-                                    <div class="theme-check">✓</div>
-                                </div>
-                                <div class="theme-card" data-theme="ocean">
-                                    <div class="theme-rect ocean"></div>
-                                    <div class="theme-name">ocean</div>
-                                    <div class="theme-check">✓</div>
-                                </div>
+                                <!-- Populated by JS -->
                             </div>
                         </div>
                         <button class="theme-arrow-btn" id="room-theme-next">›</button>
