@@ -780,113 +780,190 @@ class Ambilight {
     }
 }
 
-class PartnerStatsTracker {
-    static tickTimer = null;
-    static TICK_MS = 30000;
+/** Общая «связь» пары: тепло, серия дней, моменты — без трекинга комнат */
+class PartnerBondEngine {
+    static MOMENT_LABELS = {
+        union: 'Стались парой',
+        kiss: 'Поцелуй',
+        checkin: 'Отметка дня',
+        milestone: 'Веха'
+    };
 
     static dateKey(ts = Date.now()) {
         return new Date(ts).toISOString().slice(0, 10);
     }
 
-    static async setRoomPresence(roomId) {
-        const uid = AppState.currentUser?.uid;
-        if (!uid || !roomId) return;
-        const name = AppState.usersCache.get(uid)?.name || AppState.currentUser.displayName || 'User';
-        const presRef = ref(db, `users/${uid}/presence`);
-        await set(presRef, { roomId, name, ts: Date.now() });
-        onDisconnect(presRef).remove();
+    static pairKey(uidA, uidB) {
+        return [uidA, uidB].sort().join('__');
     }
 
-    static async clearPresence() {
-        const uid = AppState.currentUser?.uid;
-        if (!uid) return;
-        await remove(ref(db, `users/${uid}/presence`)).catch(() => {});
+    static bondRef(uidA, uidB) {
+        return ref(db, `bonds/${this.pairKey(uidA, uidB)}`);
     }
 
-    static start() {
-        this.stop();
-        if (!AppState.currentRoomId || !AppState.currentUser?.uid) return;
-        this.tick();
-        this.tickTimer = setInterval(() => this.tick(), this.TICK_MS);
+    static async getBond(uidA, uidB) {
+        if (!uidA || !uidB) return { totalWarmth: 0, streak: 0, lastStreakKey: '', moments: {}, daily: {}, checkins: {} };
+        const snap = await get(this.bondRef(uidA, uidB));
+        const raw = snap.val() || {};
+        return {
+            totalWarmth: Number(raw.totalWarmth || 0),
+            streak: Number(raw.streak || 0),
+            lastStreakKey: raw.lastStreakKey || '',
+            moments: raw.moments || {},
+            daily: raw.daily || {},
+            checkins: raw.checkins || {}
+        };
     }
 
-    static stop() {
-        if (this.tickTimer) clearInterval(this.tickTimer);
-        this.tickTimer = null;
+    static yesterdayKey() {
+        const d = new Date();
+        d.setDate(d.getDate() - 1);
+        return this.dateKey(d.getTime());
     }
 
-    static async tick() {
-        const myUid = AppState.currentUser?.uid;
-        const roomId = AppState.currentRoomId;
-        if (!myUid || !roomId) return;
-        const partnerUid = await ProfileManager.getPartnerUid(myUid);
-        if (!partnerUid || String(partnerUid).startsWith('custom_partner_')) return;
+    static calcStreak(bond, dateKey = this.dateKey()) {
+        const last = bond.lastStreakKey || '';
+        if (!last) return 1;
+        if (last === dateKey) return Math.max(1, bond.streak || 1);
+        if (last === this.yesterdayKey()) return Math.max(1, (bond.streak || 0) + 1);
+        return 1;
+    }
 
-        const partnerSnap = await get(ref(db, `users/${partnerUid}/presence`));
-        const partnerRoomId = partnerSnap.exists() ? partnerSnap.val()?.roomId : null;
+    static bondLevel(totalWarmth = 0) {
+        return Math.max(1, Math.floor(totalWarmth / 120) + 1);
+    }
+
+    static levelProgress(totalWarmth = 0) {
+        return Math.round(((totalWarmth % 120) / 120) * 100);
+    }
+
+    static async saveBond(uidA, uidB, bond) {
+        await set(this.bondRef(uidA, uidB), {
+            totalWarmth: bond.totalWarmth,
+            streak: bond.streak,
+            lastStreakKey: bond.lastStreakKey,
+            moments: bond.moments,
+            daily: bond.daily,
+            checkins: bond.checkins,
+            updatedAt: Date.now()
+        });
+    }
+
+    static async recordMoment(uidA, uidB, type, extra = {}) {
+        if (!uidA || !uidB || String(uidB).startsWith('custom_partner_')) return null;
+        const bond = await this.getBond(uidA, uidB);
         const dateKey = this.dateKey();
-        const field = partnerRoomId === roomId ? 'togetherMs' : (partnerRoomId ? 'apartMs' : null);
-        if (!field) return;
+        const momentId = Utils.generateCryptoId(10);
+        const label = extra.label || this.MOMENT_LABELS[type] || 'Момент';
+        const moment = { type, label, ts: extra.ts || Date.now(), fromUid: extra.fromUid || uidA };
+        bond.moments = bond.moments || {};
+        bond.moments[momentId] = moment;
+        if (extra.checkinKey) {
+            bond.checkins = bond.checkins || {};
+            bond.checkins[extra.checkinKey] = true;
+        }
 
-        await this.incrementDaily(myUid, dateKey, field, this.TICK_MS);
-        await this.incrementDaily(partnerUid, dateKey, field, this.TICK_MS);
+        const daily = bond.daily?.[dateKey] || { warmth: 0, moments: 0 };
+        const warmthGain = Number(extra.warmth || (type === 'kiss' ? 8 : type === 'checkin' ? 12 : type === 'union' ? 25 : 5));
+        daily.warmth = Math.min(100, Number(daily.warmth || 0) + warmthGain);
+        daily.moments = Number(daily.moments || 0) + 1;
+        bond.daily = bond.daily || {};
+        bond.daily[dateKey] = daily;
+        bond.totalWarmth = Number(bond.totalWarmth || 0) + warmthGain;
+        bond.streak = this.calcStreak(bond, dateKey);
+        bond.lastStreakKey = dateKey;
+
+        await this.saveBond(uidA, uidB, bond);
+        return bond;
     }
 
-    static async incrementDaily(uid, dateKey, field, delta) {
-        const pathRef = ref(db, `users/${uid}/partnerDaily/${dateKey}/${field}`);
-        const snap = await get(pathRef);
-        await set(pathRef, Number(snap.val() || 0) + delta);
+    static async onUnion(uidA, uidB, sinceTs = Date.now()) {
+        await this.recordMoment(uidA, uidB, 'union', { label: 'Стались парой 💞', warmth: 30, ts: sinceTs });
     }
 
-    static async loadDailyStats(uid, sinceTs = Date.now()) {
-        const snap = await get(ref(db, `users/${uid}/partnerDaily`));
-        const all = snap.val() || {};
+    static async sendKiss(fromUid, partnerUid) {
+        return this.recordMoment(fromUid, partnerUid, 'kiss', { fromUid, label: 'Воздушный поцелуй 💋', warmth: 10 });
+    }
+
+    static async dailyCheckin(uid, partnerUid) {
+        const dateKey = this.dateKey();
+        const checkinKey = `${dateKey}_${uid}`;
+        const bond = await this.getBond(uid, partnerUid);
+        if (bond.checkins?.[checkinKey]) return { ok: false, reason: 'already' };
+        await this.recordMoment(uid, partnerUid, 'checkin', {
+            fromUid: uid,
+            label: 'Отметили день вместе ✨',
+            warmth: 14,
+            checkinKey
+        });
+        return { ok: true };
+    }
+
+    static canCheckinToday(bond, uid) {
+        return !bond.checkins?.[`${this.dateKey()}_${uid}`];
+    }
+
+    static buildTrailDays(sinceTs, bond) {
         const days = [];
-        const cursor = new Date(sinceTs);
+        const cursor = new Date(sinceTs || Date.now());
         cursor.setHours(0, 0, 0, 0);
         const end = new Date();
         end.setHours(0, 0, 0, 0);
+        const momentsList = Object.values(bond.moments || {}).sort((a, b) => a.ts - b.ts);
 
         for (let d = new Date(cursor); d <= end; d.setDate(d.getDate() + 1)) {
-            const key = d.toISOString().slice(0, 10);
-            const row = all[key] || {};
+            const key = this.dateKey(d.getTime());
+            const row = bond.daily?.[key] || {};
+            const dayMoments = momentsList.filter(m => this.dateKey(m.ts) === key);
+            const lastMoment = dayMoments[dayMoments.length - 1];
             days.push({
                 key,
                 label: d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
                 weekday: d.toLocaleDateString('ru-RU', { weekday: 'short' }),
-                togetherMs: Number(row.togetherMs || 0),
-                apartMs: Number(row.apartMs || 0),
-                isToday: key === PartnerStatsTracker.dateKey()
+                warmth: Number(row.warmth || 0),
+                momentsCount: Number(row.moments || dayMoments.length),
+                lastMomentLabel: lastMoment?.label || '',
+                isToday: key === this.dateKey()
             });
         }
         return days;
     }
+
 }
 
 class PartnerRelationshipPanel {
     static milestones = [7, 30, 100, 365];
+    static lastContext = null;
 
     static async open(ownerUid, partnerUid, myProf, theirProf, sinceTs) {
         const root = Utils.$('partner-ambilight-root');
         const modal = Utils.$('modal-partner-view');
         if (!root || !modal) return;
 
+        const myUid = AppState.currentUser?.uid || ownerUid;
         const daysTogether = sinceTs ? Math.max(1, Math.ceil((Date.now() - sinceTs) / 86400000)) : 1;
         const sinceText = sinceTs ? new Date(sinceTs).toLocaleDateString('ru-RU') : 'недавно';
-        const daily = await PartnerStatsTracker.loadDailyStats(ownerUid, sinceTs || Date.now());
 
-        let totalTogether = 0;
-        let totalApart = 0;
-        daily.forEach(d => { totalTogether += d.togetherMs; totalApart += d.apartMs; });
-        const totalTracked = totalTogether + totalApart;
-        const togetherPct = totalTracked > 0 ? Math.round((totalTogether / totalTracked) * 100) : 0;
+        let bond = await PartnerBondEngine.getBond(myUid, partnerUid);
+        if (sinceTs && daysTogether >= 7 && Object.keys(bond.moments || {}).length === 0) {
+            await PartnerBondEngine.onUnion(myUid, partnerUid, sinceTs);
+            bond = await PartnerBondEngine.getBond(myUid, partnerUid);
+        }
 
-        const pathMarkup = this.buildZigzagMarkup(daily);
+        const trailDays = PartnerBondEngine.buildTrailDays(sinceTs || Date.now(), bond);
+        const level = PartnerBondEngine.bondLevel(bond.totalWarmth);
+        const levelPct = PartnerBondEngine.levelProgress(bond.totalWarmth);
+        const warmthFill = Math.min(100, Math.round((bond.totalWarmth % 120) / 1.2) || (trailDays[trailDays.length - 1]?.warmth || 0));
+        const momentsTotal = Object.keys(bond.moments || {}).length;
         const nextMilestone = this.milestones.find(m => m > daysTogether) || this.milestones[this.milestones.length - 1];
         const milestoneProgress = Math.min(100, Math.round((daysTogether / nextMilestone) * 100));
+        const canCheckin = PartnerBondEngine.canCheckinToday(bond, myUid);
 
+        this.lastContext = { ownerUid, partnerUid, myUid, myProf, theirProf, sinceTs };
+
+        const pathMarkup = this.buildZigzagMarkup(trailDays, daysTogether);
         root.innerHTML = `
-            <div class="partner-ambilight-panel" style="--together-pct:${togetherPct};">
+            <div class="partner-ambilight-panel" style="--together-pct:${warmthFill};">
                 <div class="partner-ambilight-glow" aria-hidden="true"></div>
                 <div class="partner-ambilight-shine" aria-hidden="true"></div>
                 <header class="partner-ambilight-header">
@@ -900,44 +977,43 @@ class PartnerRelationshipPanel {
                     </div>
                     <div class="partner-ambilight-titles">
                         <h2 id="partner-modal-names">${Utils.escapeHtml(myProf.name)} & ${Utils.escapeHtml(theirProf.name)}</h2>
-                        <p id="partner-modal-stats">${sinceTs ? `${daysTogether} дней вместе · с ${sinceText}` : 'Ваша история только начинается'}</p>
+                        <p id="partner-modal-stats">Уровень ${level} · ${daysTogether} дн. вместе · с ${sinceText}</p>
                     </div>
                 </header>
                 <section class="partner-ambilight-metrics">
-                    <div class="partner-metric-ring" data-tip="Доля времени в одной комнате">
+                    <div class="partner-metric-ring" title="Прогресс до следующего уровня связи">
                         <svg viewBox="0 0 72 72">
                             <defs><linearGradient id="partnerRingGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#ff9fd4"/><stop offset="100%" stop-color="#9eb8ff"/></linearGradient></defs>
                             <circle cx="36" cy="36" r="30" class="ring-bg"/>
-                            <circle cx="36" cy="36" r="30" class="ring-val" style="stroke-dasharray:${togetherPct * 1.885} 188.5"/>
+                            <circle cx="36" cy="36" r="30" class="ring-val" style="stroke-dasharray:${levelPct * 1.885} 188.5"/>
                         </svg>
-                        <div class="ring-label"><strong>${togetherPct}%</strong><span>вместе</span></div>
+                        <div class="ring-label"><strong>${levelPct}%</strong><span>уровень</span></div>
                     </div>
                     <div class="partner-metric-card">
-                        <span class="metric-label">В одной комнате</span>
-                        <strong>${Utils.formatDuration(totalTogether)}</strong>
+                        <span class="metric-label">Тепло связи</span>
+                        <strong>${bond.totalWarmth} ✦</strong>
                     </div>
                     <div class="partner-metric-card">
-                        <span class="metric-label">В разных комнатах</span>
-                        <strong>${Utils.formatDuration(totalApart)}</strong>
+                        <span class="metric-label">Серия дней</span>
+                        <strong>${bond.streak || 0} 🔥</strong>
                     </div>
                     <div class="partner-metric-card milestone-card">
-                        <span class="metric-label">До ${nextMilestone} дней</span>
+                        <span class="metric-label">Моментов · до ${nextMilestone} дн.</span>
                         <div class="milestone-bar"><span style="width:${milestoneProgress}%"></span></div>
-                        <strong>${milestoneProgress}%</strong>
+                        <strong>${momentsTotal} · ${milestoneProgress}%</strong>
                     </div>
                 </section>
                 <section class="partner-path-section">
                     <div class="partner-path-head">
-                        <span>Тропинка отношений</span>
-                        <span class="partner-path-hint">наведите на день</span>
+                        <span>Тропинка моментов</span>
+                        <span class="partner-path-hint">тепло дня и события</span>
                     </div>
-                    <div class="partner-path-scroll">
-                        ${pathMarkup}
-                    </div>
+                    <div class="partner-path-scroll">${pathMarkup}</div>
                     <div class="partner-path-tooltip" id="partner-path-tooltip" hidden></div>
                 </section>
                 <footer class="partner-ambilight-footer">
-                    <button type="button" class="partner-kiss-btn" id="btn-partner-modal-kiss">Воздушный поцелуй</button>
+                    <button type="button" class="partner-kiss-btn" id="btn-partner-modal-kiss">Поцелуй 💋</button>
+                    <button type="button" class="partner-checkin-btn" id="btn-partner-checkin" ${canCheckin ? '' : 'disabled'}>${canCheckin ? 'Отметить день ✨' : 'День отмечен'}</button>
                     <button type="button" class="secondary-btn btn-close-modal">Закрыть</button>
                 </footer>
             </div>
@@ -945,17 +1021,16 @@ class PartnerRelationshipPanel {
 
         Utils.$('partner-modal-my-avatar').innerHTML = ProfileManager.getAvatarHtml(myProf);
         Utils.$('partner-modal-their-avatar').innerHTML = ProfileManager.getAvatarHtml(theirProf);
-        this.bindPathNodes(daily);
-        this.bindKissButton();
+        this.bindPathNodes();
+        this.bindActions();
         modal.classList.add('active');
     }
 
-    static buildZigzagMarkup(days) {
+    static buildZigzagMarkup(days, daysTogether = 1) {
         if (!days.length) {
-            return '<div class="partner-path-empty">Пока нет данных — проведите время в комнатах вдвоём</div>';
+            return '<div class="partner-path-empty">Отметьте день или отправьте поцелуй — тропинка оживёт</div>';
         }
 
-        const padX = 28;
         const padY = 24;
         const rowGap = 56;
         const colLeft = 42;
@@ -966,25 +1041,24 @@ class PartnerRelationshipPanel {
 
         const points = days.map((day, i) => {
             const row = Math.floor(i / 2);
-            const leftCol = i % 2 === 0;
             return {
                 day,
-                x: leftCol ? colLeft : colRight,
+                x: i % 2 === 0 ? colLeft : colRight,
                 y: padY + row * rowGap
             };
         });
 
         const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
-        const maxTogether = Math.max(1, ...days.map(d => d.togetherMs));
+        const maxWarmth = Math.max(1, ...days.map(d => d.warmth));
         const nodes = points.map((p, i) => {
-            const intensity = 0.25 + (p.day.togetherMs / maxTogether) * 0.75;
+            const intensity = 0.2 + (p.day.warmth / maxWarmth) * 0.8;
             const dayNum = i + 1;
-            const isMilestone = PartnerRelationshipPanel.milestones.includes(dayNum);
+            const isMilestone = this.milestones.includes(dayNum) || this.milestones.includes(daysTogether - (days.length - 1 - i));
             return `
-                <g class="partner-path-node ${p.day.isToday ? 'is-today' : ''} ${isMilestone ? 'is-milestone' : ''}"
-                   data-index="${i}"
-                   data-together="${p.day.togetherMs}"
-                   data-apart="${p.day.apartMs}"
+                <g class="partner-path-node ${p.day.isToday ? 'is-today' : ''} ${isMilestone ? 'is-milestone' : ''} ${p.day.warmth > 0 ? 'has-warmth' : ''}"
+                   data-warmth="${p.day.warmth}"
+                   data-moments="${p.day.momentsCount}"
+                   data-moment="${Utils.escapeHtml(p.day.lastMomentLabel || '')}"
                    data-label="${Utils.escapeHtml(p.day.label)}"
                    data-weekday="${Utils.escapeHtml(p.day.weekday)}"
                    style="--node-glow:${intensity}">
@@ -1010,27 +1084,27 @@ class PartnerRelationshipPanel {
         `;
     }
 
-    static bindPathNodes(days) {
+    static bindPathNodes() {
         const tooltip = Utils.$('partner-path-tooltip');
         const scroll = document.querySelector('.partner-path-scroll');
         if (!tooltip || !scroll) return;
 
         const showTip = (node, clientX, clientY) => {
-            const together = Number(node.dataset.together || 0);
-            const apart = Number(node.dataset.apart || 0);
+            const warmth = Number(node.dataset.warmth || 0);
+            const moments = Number(node.dataset.moments || 0);
+            const moment = node.dataset.moment || '';
             const label = node.dataset.label || '';
             const weekday = node.dataset.weekday || '';
             tooltip.hidden = false;
             tooltip.innerHTML = `
                 <strong>${Utils.escapeHtml(label)} · ${Utils.escapeHtml(weekday)}</strong>
-                <span class="tip-together">Вместе: ${Utils.formatDuration(together)}</span>
-                <span class="tip-apart">Отдельно в комнатах: ${Utils.formatDuration(apart)}</span>
+                <span class="tip-warmth">Тепло дня: ${warmth}/100</span>
+                <span class="tip-moments">Моментов: ${moments}</span>
+                ${moment ? `<span class="tip-last">${Utils.escapeHtml(moment)}</span>` : '<span class="tip-last">Тихий день — добавьте поцелуй или отметку</span>'}
             `;
             const rect = scroll.getBoundingClientRect();
-            const left = Math.min(Math.max(12, clientX - rect.left), rect.width - tooltip.offsetWidth - 12);
-            const top = Math.max(8, clientY - rect.top - 72);
-            tooltip.style.left = `${left}px`;
-            tooltip.style.top = `${top}px`;
+            tooltip.style.left = `${Math.min(Math.max(12, clientX - rect.left), rect.width - 180)}px`;
+            tooltip.style.top = `${Math.max(8, clientY - rect.top - 88)}px`;
         };
 
         scroll.querySelectorAll('.partner-path-node').forEach(node => {
@@ -1045,24 +1119,40 @@ class PartnerRelationshipPanel {
         });
     }
 
-    static bindKissButton() {
+    static bindActions() {
+        const ctx = this.lastContext;
+        if (!ctx) return;
+
         const kissBtn = Utils.$('btn-partner-modal-kiss');
-        if (!kissBtn) return;
-        kissBtn.onclick = () => {
-            const rect = kissBtn.getBoundingClientRect();
-            for (let i = 0; i < 15; i++) {
-                const heart = document.createElement('div');
-                heart.innerText = ['💖', '💋', '💕', '💘'][Math.floor(Math.random() * 4)];
-                heart.style.cssText = `position:fixed;left:${rect.left + rect.width / 2 + (Math.random() - 0.5) * 50}px;top:${rect.top}px;font-size:${20 + Math.random() * 20}px;pointer-events:none;z-index:10000;transition:all 1.5s ease-out`;
-                document.body.appendChild(heart);
-                setTimeout(() => {
-                    heart.style.transform = `translateY(-${100 + Math.random() * 100}px) scale(1.5) rotate(${(Math.random() - 0.5) * 90}deg)`;
-                    heart.style.opacity = '0';
-                }, 50);
-                setTimeout(() => heart.remove(), 1600);
-            }
-            Utils.toast('Вы послали воздушный поцелуй!');
-        };
+        if (kissBtn) {
+            kissBtn.onclick = async () => {
+                const rect = kissBtn.getBoundingClientRect();
+                for (let i = 0; i < 15; i++) {
+                    const heart = document.createElement('div');
+                    heart.innerText = ['💖', '💋', '💕', '💘'][Math.floor(Math.random() * 4)];
+                    heart.style.cssText = `position:fixed;left:${rect.left + rect.width / 2 + (Math.random() - 0.5) * 50}px;top:${rect.top}px;font-size:${20 + Math.random() * 20}px;pointer-events:none;z-index:10000;transition:all 1.5s ease-out`;
+                    document.body.appendChild(heart);
+                    setTimeout(() => {
+                        heart.style.transform = `translateY(-${100 + Math.random() * 100}px) scale(1.5) rotate(${(Math.random() - 0.5) * 90}deg)`;
+                        heart.style.opacity = '0';
+                    }, 50);
+                    setTimeout(() => heart.remove(), 1600);
+                }
+                await PartnerBondEngine.sendKiss(ctx.myUid, ctx.partnerUid);
+                Utils.toast('Поцелуй отправлен — связь стала теплее');
+                await this.open(ctx.ownerUid, ctx.partnerUid, ctx.myProf, ctx.theirProf, ctx.sinceTs);
+            };
+        }
+
+        const checkinBtn = Utils.$('btn-partner-checkin');
+        if (checkinBtn) {
+            checkinBtn.onclick = async () => {
+                const res = await PartnerBondEngine.dailyCheckin(ctx.myUid, ctx.partnerUid);
+                if (!res.ok) return Utils.toast('Вы уже отметили сегодняшний день', 'info');
+                Utils.toast('День отмечен — +тепло к связи');
+                await this.open(ctx.ownerUid, ctx.partnerUid, ctx.myProf, ctx.theirProf, ctx.sinceTs);
+            };
+        }
     }
 }
 
@@ -2352,10 +2442,26 @@ class HashtagManager {
 }
 
 class ThemeManager {
+    static FAVORITES_KEY = 'cowio:favoriteThemes';
+
     static FOLDERS = {
+        'favorites': { label: '⭐ Любимые', themes: [] },
         'classic': { label: 'Классика', themes: ['default', 'light', 'inverted'] },
         'nature': { label: 'Природа', themes: ['sunset', 'ocean', 'aurora', 'love'] },
         'gradient': { label: 'Градиенты', themes: ['matte-toxic', 'audi-silver', 'racing-jet', 'alpine-pink', 'solar-flare', 'neon-tide', 'dusk', 'venom', 'twilight', 'noir-rose', 'vault-gold', 'abyss-frost', 'crimson-chalk'] }
+    };
+
+    static THEME_LABELS = {
+        'matte-toxic': 'matte toxic',
+        'audi-silver': 'audi silver',
+        'racing-jet': 'racing jet',
+        'alpine-pink': 'alpine pink',
+        'solar-flare': 'solar flare',
+        'neon-tide': 'neon tide',
+        'noir-rose': 'noir rose',
+        'vault-gold': 'vault gold',
+        'abyss-frost': 'abyss frost',
+        'crimson-chalk': 'crimson chalk'
     };
     
     static EXTENDED_THEMES = {
@@ -2366,22 +2472,55 @@ class ThemeManager {
         'ocean': { bg: ['#6de0ff', '#13667a', '#082835'], accent: '#6de0ff', symbol: '≈' },
         'aurora': { bg: ['#4776ff', '#1a2f68', '#0a1023'], accent: '#4776ff', symbol: '✦' },
         'love': { bg: ['#66304f', '#301226', '#10050d'], accent: '#ff99cc', symbol: '❤' },
-        'matte-toxic': { bg: ['#121212', '#0A0A0A'], accent: '#39FF14', symbol: '☣' },
-        'audi-silver': { bg: ['#bf0a30', '#1c1c1e'], accent: '#c0c0c0', symbol: '◆' },
-        'racing-jet': { bg: ['#004225', '#0a0a0a'], accent: '#004225', symbol: '🏁' },
-        'alpine-pink': { bg: ['#00529b', '#202022'], accent: '#f5b6c2', symbol: '⛰' },
-        'solar-flare': { bg: ['#ff4e00', '#ec9f05'], accent: '#ff4e00', symbol: '☀' },
-        'neon-tide': { bg: ['#00f2fe', '#4facfe'], accent: '#00f2fe', symbol: '🌊' },
-        'dusk': { bg: ['#2c3e50', '#fd746c'], accent: '#ff7b54', symbol: '🌆' },
-        'venom': { bg: ['#000000', '#1a1a1a'], accent: '#ff003c', symbol: '🕷' },
-        'twilight': { bg: ['#0f2027', '#2c5364'], accent: '#78ffd6', symbol: '☾' },
-        'noir-rose': { bg: ['#111111', '#1a1a1a'], accent: '#ff6666', symbol: '🌹' },
-        'vault-gold': { bg: ['#0d0d0d', '#1a1a1a'], accent: '#ffd700', symbol: '✦' },
-        'abyss-frost': { bg: ['#000428', '#004e92'], accent: '#00d2ff', symbol: '❄' },
-        'crimson-chalk': { bg: ['#800000', '#1a1111'], accent: '#f4f4f4', symbol: '♦' }
+        'matte-toxic': { bg: ['#141414', '#0a1208'], accent: '#7fff00', symbol: '☣' },
+        'audi-silver': { bg: ['#eceff3', '#9aa3ad', '#2b3138'], accent: '#d1d6dc', symbol: '◆' },
+        'racing-jet': { bg: ['#08080a', '#151c28', '#4a0a0a'], accent: '#e10600', symbol: '🏁' },
+        'alpine-pink': { bg: ['#a8d4f0', '#5b8fc9', '#3f5f48'], accent: '#f4b8c8', symbol: '⛰' },
+        'solar-flare': { bg: ['#ff6a00', '#ffb300', '#fff4d6'], accent: '#ff8c00', symbol: '☀' },
+        'neon-tide': { bg: ['#031a2b', '#0a4d6e', '#00e8ff'], accent: '#00e8ff', symbol: '🌊' },
+        'dusk': { bg: ['#2a1842', '#5a3f6e', '#e8785a'], accent: '#ffb07c', symbol: '🌆' },
+        'venom': { bg: ['#040804', '#0f1a10'], accent: '#39ff14', symbol: '🕷' },
+        'twilight': { bg: ['#1a103c', '#4a3f7a', '#98f5d4'], accent: '#c4b5fd', symbol: '☾' },
+        'noir-rose': { bg: ['#0a0a0a', '#1c1c1c', '#3a1a28'], accent: '#e8748a', symbol: '🌹' },
+        'vault-gold': { bg: ['#1b3a5c', '#0f2236', '#0a1520'], accent: '#ffd54f', symbol: '⛃' },
+        'abyss-frost': { bg: ['#010814', '#0a2a4a', '#7dd3fc'], accent: '#bae6fd', symbol: '❄' },
+        'crimson-chalk': { bg: ['#8b0000', '#3d1212', '#f5f0e8'], accent: '#fff5f0', symbol: '♦' }
     };
 
+    static getFavorites() {
+        try {
+            const raw = JSON.parse(localStorage.getItem(this.FAVORITES_KEY) || '[]');
+            return Array.isArray(raw) ? raw.filter(k => this.EXTENDED_THEMES[k]) : [];
+        } catch {
+            return [];
+        }
+    }
+
+    static isFavorite(themeKey) {
+        return this.getFavorites().includes(themeKey);
+    }
+
+    static toggleFavorite(themeKey) {
+        if (!this.EXTENDED_THEMES[themeKey]) return;
+        let favs = this.getFavorites();
+        favs = favs.includes(themeKey) ? favs.filter(k => k !== themeKey) : [...favs, themeKey];
+        localStorage.setItem(this.FAVORITES_KEY, JSON.stringify(favs));
+        this.refreshFavoritesFolder();
+        if (RoomManager.currentThemeFolder === 'favorites') this.renderCarouselTrack('favorites');
+        this.syncFavButtons();
+        Utils.toast(favs.includes(themeKey) ? 'Тема в любимых' : 'Убрано из любимых');
+    }
+
+    static refreshFavoritesFolder() {
+        this.FOLDERS.favorites.themes = this.getFavorites();
+    }
+
+    static getThemeLabel(themeKey) {
+        return this.THEME_LABELS[themeKey] || themeKey;
+    }
+
     static init() {
+        this.refreshFavoritesFolder();
         this.injectCSS();
         this.renderFolders();
         this.renderCarousel();
@@ -2452,7 +2591,7 @@ class ThemeManager {
             };
             foldersContainer.appendChild(btn);
         });
-        RoomManager.currentThemeFolder = fKeys[0];
+        RoomManager.currentThemeFolder = fKeys.includes('favorites') ? 'favorites' : fKeys[0];
     }
     
     static renderCarousel() {
@@ -2464,31 +2603,69 @@ class ThemeManager {
         const track = Utils.$('room-theme-track');
         if (!track) return;
         track.innerHTML = '';
-        const themesList = this.FOLDERS[fKey].themes;
+        const themesList = this.FOLDERS[fKey]?.themes || [];
+
+        if (fKey === 'favorites' && !themesList.length) {
+            track.innerHTML = `
+                <div class="theme-card theme-card-empty">
+                    <div class="theme-empty-msg">Нажмите ★ на любой теме,<br>чтобы добавить в любимые</div>
+                </div>
+            `;
+            RoomManager.themeIndex = 0;
+            RoomManager.updateThemeTransform();
+            return;
+        }
+
         themesList.forEach(themeKey => {
             const t = this.EXTENDED_THEMES[themeKey];
             if (!t) return;
+            const isFav = this.isFavorite(themeKey);
             const div = document.createElement('div');
             div.className = `theme-card ${RoomManager.selectedTheme === themeKey ? 'active' : ''}`;
             div.dataset.theme = themeKey;
             div.innerHTML = `
+                <button type="button" class="theme-fav-btn ${isFav ? 'active' : ''}" data-theme="${themeKey}" title="${isFav ? 'Убрать из любимых' : 'В любимые'}">★</button>
                 <div class="theme-rect ${themeKey}"></div>
-                <div class="theme-name">${themeKey}</div>
+                <div class="theme-name">${this.getThemeLabel(themeKey)}</div>
                 <div class="theme-check">✓</div>
             `;
             track.appendChild(div);
         });
+        this.bindCarouselFavButtons();
         const idx = themesList.indexOf(RoomManager.selectedTheme);
         if (idx >= 0) RoomManager.themeIndex = idx;
         else RoomManager.themeIndex = Math.min(RoomManager.themeIndex, Math.max(0, themesList.length - 1));
         RoomManager.updateThemeTransform();
     }
 
+    static bindCarouselFavButtons() {
+        const track = Utils.$('room-theme-track');
+        if (!track) return;
+        track.querySelectorAll('.theme-fav-btn').forEach(btn => {
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                this.toggleFavorite(btn.dataset.theme);
+            };
+        });
+    }
+
+    static syncFavButtons() {
+        const track = Utils.$('room-theme-track');
+        if (!track) return;
+        track.querySelectorAll('.theme-fav-btn').forEach(btn => {
+            const active = this.isFavorite(btn.dataset.theme);
+            btn.classList.toggle('active', active);
+            btn.title = active ? 'Убрать из любимых' : 'В любимые';
+        });
+    }
+
     static findFolderForTheme(themeKey) {
+        if (this.getFavorites().includes(themeKey)) return 'favorites';
         for (const [fKey, folder] of Object.entries(this.FOLDERS)) {
+            if (fKey === 'favorites') continue;
             if (folder.themes.includes(themeKey)) return fKey;
         }
-        return Object.keys(this.FOLDERS)[0];
+        return 'classic';
     }
     
     static renderDMChips() {
@@ -3045,13 +3222,18 @@ class ProfileManager {
         const sinceTs = sinceSnap?.exists() ? Number(sinceSnap.val()) : 0; // [NEW]
         const sinceText = sinceTs ? new Date(sinceTs).toLocaleDateString() : 'дата не указана'; // [NEW]
         const daysText = sinceTs ? Math.max(1, Math.ceil((Date.now() - sinceTs) / 86400000)) : 0; // [NEW]
-        // [NEW]
+        let bondMeta = '';
+        if (ownerUid && !String(partnerUid).startsWith('custom_partner_')) {
+            const bond = await PartnerBondEngine.getBond(ownerUid, partnerUid);
+            const lvl = PartnerBondEngine.bondLevel(bond.totalWarmth);
+            bondMeta = ` · ур. ${lvl}${bond.streak ? ` · 🔥${bond.streak}` : ''}`;
+        }
         container.innerHTML = `
             <div class="partner-avatar">${this.getAvatarHtml(partnerProfile)}</div>
             <div class="partner-info">
                 <div class="partner-label">Вторая половинка 💖</div>
                 <div class="partner-name">${Utils.escapeHtml(partnerProfile.name || 'Пользователь')}</div>
-                <div class="partner-meta">${sinceTs ? `Вместе ${daysText} дн. · с ${sinceText}` : 'Пара подтверждена'}</div>
+                <div class="partner-meta">${sinceTs ? `Вместе ${daysText} дн.${bondMeta}` : `Пара подтверждена${bondMeta}`}</div>
             </div>
             ${canRemove ? '<button class="danger-btn btn-remove-current-partner" style="width:auto; padding:8px 10px; z-index:10; position:relative;">Убрать</button>' : ''}
         `; // [NEW]
@@ -3137,6 +3319,7 @@ class ProfileManager {
         const myUid = AppState.currentUser?.uid; // [NEW]
         if (!myUid || !partnerUid) return; // [NEW]
         const updates = {}; // [NEW]
+        let partnerSince = Date.now(); // [NEW]
         if (accept) { // [NEW]
             const friendSnap = await get(ref(db, `users/${myUid}/friends/${partnerUid}`)); // [NEW]
             if (!friendSnap.exists() || friendSnap.val().status !== 'accepted') return Utils.toast('Вторая половинка доступна только друзьям', 'error'); // [NEW]
@@ -3149,7 +3332,7 @@ class ProfileManager {
                 await this.renderLoveRequests(); // [NEW]
                 return Utils.toast('У кого-то уже есть вторая половинка', 'error'); // [NEW]
             } // [NEW]
-            const partnerSince = Date.now(); // [NEW]
+            partnerSince = Date.now(); // [NEW]
             updates[`users/${myUid}/partner`] = partnerUid; // [NEW]
             updates[`users/${partnerUid}/partner`] = myUid; // [NEW]
             updates[`users/${myUid}/partnerSince`] = partnerSince; // [NEW]
@@ -3157,6 +3340,7 @@ class ProfileManager {
         } // [NEW]
         updates[`users/${myUid}/loveRequests/${partnerUid}`] = null; // [NEW]
         await update(ref(db), updates); // [NEW]
+        if (accept) await PartnerBondEngine.onUnion(myUid, partnerUid, partnerSince); // [NEW]
         Utils.toast(accept ? 'Вторая половинка добавлена' : 'Предложение отклонено'); // [NEW]
         await this.renderMyPartnerBox(); // [NEW]
         await this.renderLoveRequests(); // [NEW]
@@ -4951,6 +5135,7 @@ class AdminPanel {
         }
 
         await update(ref(db), updates);
+        if (!fakeName) await PartnerBondEngine.onUnion(uid, companionUid, tsSince);
         Utils.toast('Пара успешно изменена (СОЗДАТЕЛЬ)');
         this.loadUserEditor(uid);
     }
@@ -5753,9 +5938,6 @@ class RoomManager {
         const myName = AppState.usersCache.get(AppState.currentUser.uid)?.name || AppState.currentUser.displayName || 'Пользователь';
         set(presenceRef, { uid, name: myName, perms: this.getDefaultPerms() });
         onDisconnect(presenceRef).remove();
-        PartnerStatsTracker.setRoomPresence(roomId);
-        PartnerStatsTracker.start();
-
         const pUnsub = onValue(presListRef, (snap) => {
             const prevCache = AppState.currentPresenceCache || {};
             AppState.currentPresenceCache = snap.val() || {};
@@ -5785,8 +5967,6 @@ class RoomManager {
         AppState.roomSubscriptions.push(() => {
             pUnsub();
             remove(presenceRef);
-            PartnerStatsTracker.stop();
-            PartnerStatsTracker.clearPresence();
         });
 
         const vid = Utils.$('native-player');
@@ -6158,8 +6338,6 @@ class RoomManager {
         }
         
         Ambilight.stop();
-        PartnerStatsTracker.stop();
-        PartnerStatsTracker.clearPresence();
 
         AppState.currentPresenceCache = {};
         AppState.usersListRenderToken++;
