@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @fileoverview COWIO Core Engine v4.0 - The Ultimate Edition
  * @description Интегрированы все фиксы: MPA-подобная стабильность, обход пароля по инвайтам,
  * улучшенный интерактивный нейрофон, левитация элементов, фикс мобильного скролла,
@@ -154,6 +154,18 @@ class Utils {
             clearTimeout(timeout);
             timeout = setTimeout(() => func(...args), wait);
         };
+    }
+
+    static formatDuration(ms = 0) {
+        const totalMin = Math.max(0, Math.floor(Number(ms) / 60000));
+        if (totalMin < 1) return 'меньше минуты';
+        if (totalMin < 60) return `${totalMin} мин`;
+        const hours = Math.floor(totalMin / 60);
+        const mins = totalMin % 60;
+        if (hours < 24) return mins ? `${hours} ч ${mins} мин` : `${hours} ч`;
+        const days = Math.floor(hours / 24);
+        const remH = hours % 24;
+        return remH ? `${days} д ${remH} ч` : `${days} д`;
     }
 
     // [ADD] File to Base64 (Compressed for performance/DB)
@@ -765,6 +777,292 @@ class Ambilight {
         if (this.loopId) cancelAnimationFrame(this.loopId);
         const glowEl = Utils.$('ambilight-glow');
         if (glowEl) { glowEl.style.background = 'transparent'; glowEl.style.boxShadow = 'none'; }
+    }
+}
+
+class PartnerStatsTracker {
+    static tickTimer = null;
+    static TICK_MS = 30000;
+
+    static dateKey(ts = Date.now()) {
+        return new Date(ts).toISOString().slice(0, 10);
+    }
+
+    static async setRoomPresence(roomId) {
+        const uid = AppState.currentUser?.uid;
+        if (!uid || !roomId) return;
+        const name = AppState.usersCache.get(uid)?.name || AppState.currentUser.displayName || 'User';
+        const presRef = ref(db, `users/${uid}/presence`);
+        await set(presRef, { roomId, name, ts: Date.now() });
+        onDisconnect(presRef).remove();
+    }
+
+    static async clearPresence() {
+        const uid = AppState.currentUser?.uid;
+        if (!uid) return;
+        await remove(ref(db, `users/${uid}/presence`)).catch(() => {});
+    }
+
+    static start() {
+        this.stop();
+        if (!AppState.currentRoomId || !AppState.currentUser?.uid) return;
+        this.tick();
+        this.tickTimer = setInterval(() => this.tick(), this.TICK_MS);
+    }
+
+    static stop() {
+        if (this.tickTimer) clearInterval(this.tickTimer);
+        this.tickTimer = null;
+    }
+
+    static async tick() {
+        const myUid = AppState.currentUser?.uid;
+        const roomId = AppState.currentRoomId;
+        if (!myUid || !roomId) return;
+        const partnerUid = await ProfileManager.getPartnerUid(myUid);
+        if (!partnerUid || String(partnerUid).startsWith('custom_partner_')) return;
+
+        const partnerSnap = await get(ref(db, `users/${partnerUid}/presence`));
+        const partnerRoomId = partnerSnap.exists() ? partnerSnap.val()?.roomId : null;
+        const dateKey = this.dateKey();
+        const field = partnerRoomId === roomId ? 'togetherMs' : (partnerRoomId ? 'apartMs' : null);
+        if (!field) return;
+
+        await this.incrementDaily(myUid, dateKey, field, this.TICK_MS);
+        await this.incrementDaily(partnerUid, dateKey, field, this.TICK_MS);
+    }
+
+    static async incrementDaily(uid, dateKey, field, delta) {
+        const pathRef = ref(db, `users/${uid}/partnerDaily/${dateKey}/${field}`);
+        const snap = await get(pathRef);
+        await set(pathRef, Number(snap.val() || 0) + delta);
+    }
+
+    static async loadDailyStats(uid, sinceTs = Date.now()) {
+        const snap = await get(ref(db, `users/${uid}/partnerDaily`));
+        const all = snap.val() || {};
+        const days = [];
+        const cursor = new Date(sinceTs);
+        cursor.setHours(0, 0, 0, 0);
+        const end = new Date();
+        end.setHours(0, 0, 0, 0);
+
+        for (let d = new Date(cursor); d <= end; d.setDate(d.getDate() + 1)) {
+            const key = d.toISOString().slice(0, 10);
+            const row = all[key] || {};
+            days.push({
+                key,
+                label: d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
+                weekday: d.toLocaleDateString('ru-RU', { weekday: 'short' }),
+                togetherMs: Number(row.togetherMs || 0),
+                apartMs: Number(row.apartMs || 0),
+                isToday: key === PartnerStatsTracker.dateKey()
+            });
+        }
+        return days;
+    }
+}
+
+class PartnerRelationshipPanel {
+    static milestones = [7, 30, 100, 365];
+
+    static async open(ownerUid, partnerUid, myProf, theirProf, sinceTs) {
+        const root = Utils.$('partner-ambilight-root');
+        const modal = Utils.$('modal-partner-view');
+        if (!root || !modal) return;
+
+        const daysTogether = sinceTs ? Math.max(1, Math.ceil((Date.now() - sinceTs) / 86400000)) : 1;
+        const sinceText = sinceTs ? new Date(sinceTs).toLocaleDateString('ru-RU') : 'недавно';
+        const daily = await PartnerStatsTracker.loadDailyStats(ownerUid, sinceTs || Date.now());
+
+        let totalTogether = 0;
+        let totalApart = 0;
+        daily.forEach(d => { totalTogether += d.togetherMs; totalApart += d.apartMs; });
+        const totalTracked = totalTogether + totalApart;
+        const togetherPct = totalTracked > 0 ? Math.round((totalTogether / totalTracked) * 100) : 0;
+
+        const pathMarkup = this.buildZigzagMarkup(daily);
+        const nextMilestone = this.milestones.find(m => m > daysTogether) || this.milestones[this.milestones.length - 1];
+        const milestoneProgress = Math.min(100, Math.round((daysTogether / nextMilestone) * 100));
+
+        root.innerHTML = `
+            <div class="partner-ambilight-panel" style="--together-pct:${togetherPct};">
+                <div class="partner-ambilight-glow" aria-hidden="true"></div>
+                <div class="partner-ambilight-shine" aria-hidden="true"></div>
+                <header class="partner-ambilight-header">
+                    <div class="partner-ambilight-couple">
+                        <div class="partner-ambilight-avatar heartbeat" id="partner-modal-my-avatar"></div>
+                        <div class="partner-ambilight-link" aria-hidden="true">
+                            <span class="partner-link-pulse"></span>
+                            <span class="partner-link-icon">💞</span>
+                        </div>
+                        <div class="partner-ambilight-avatar heartbeat" id="partner-modal-their-avatar"></div>
+                    </div>
+                    <div class="partner-ambilight-titles">
+                        <h2 id="partner-modal-names">${Utils.escapeHtml(myProf.name)} & ${Utils.escapeHtml(theirProf.name)}</h2>
+                        <p id="partner-modal-stats">${sinceTs ? `${daysTogether} дней вместе · с ${sinceText}` : 'Ваша история только начинается'}</p>
+                    </div>
+                </header>
+                <section class="partner-ambilight-metrics">
+                    <div class="partner-metric-ring" data-tip="Доля времени в одной комнате">
+                        <svg viewBox="0 0 72 72">
+                            <defs><linearGradient id="partnerRingGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#ff9fd4"/><stop offset="100%" stop-color="#9eb8ff"/></linearGradient></defs>
+                            <circle cx="36" cy="36" r="30" class="ring-bg"/>
+                            <circle cx="36" cy="36" r="30" class="ring-val" style="stroke-dasharray:${togetherPct * 1.885} 188.5"/>
+                        </svg>
+                        <div class="ring-label"><strong>${togetherPct}%</strong><span>вместе</span></div>
+                    </div>
+                    <div class="partner-metric-card">
+                        <span class="metric-label">В одной комнате</span>
+                        <strong>${Utils.formatDuration(totalTogether)}</strong>
+                    </div>
+                    <div class="partner-metric-card">
+                        <span class="metric-label">В разных комнатах</span>
+                        <strong>${Utils.formatDuration(totalApart)}</strong>
+                    </div>
+                    <div class="partner-metric-card milestone-card">
+                        <span class="metric-label">До ${nextMilestone} дней</span>
+                        <div class="milestone-bar"><span style="width:${milestoneProgress}%"></span></div>
+                        <strong>${milestoneProgress}%</strong>
+                    </div>
+                </section>
+                <section class="partner-path-section">
+                    <div class="partner-path-head">
+                        <span>Тропинка отношений</span>
+                        <span class="partner-path-hint">наведите на день</span>
+                    </div>
+                    <div class="partner-path-scroll">
+                        ${pathMarkup}
+                    </div>
+                    <div class="partner-path-tooltip" id="partner-path-tooltip" hidden></div>
+                </section>
+                <footer class="partner-ambilight-footer">
+                    <button type="button" class="partner-kiss-btn" id="btn-partner-modal-kiss">Воздушный поцелуй</button>
+                    <button type="button" class="secondary-btn btn-close-modal">Закрыть</button>
+                </footer>
+            </div>
+        `;
+
+        Utils.$('partner-modal-my-avatar').innerHTML = ProfileManager.getAvatarHtml(myProf);
+        Utils.$('partner-modal-their-avatar').innerHTML = ProfileManager.getAvatarHtml(theirProf);
+        this.bindPathNodes(daily);
+        this.bindKissButton();
+        modal.classList.add('active');
+    }
+
+    static buildZigzagMarkup(days) {
+        if (!days.length) {
+            return '<div class="partner-path-empty">Пока нет данных — проведите время в комнатах вдвоём</div>';
+        }
+
+        const padX = 28;
+        const padY = 24;
+        const rowGap = 56;
+        const colLeft = 42;
+        const colRight = 258;
+        const width = 300;
+        const rows = Math.ceil(days.length / 2);
+        const height = padY * 2 + Math.max(0, rows - 1) * rowGap + 20;
+
+        const points = days.map((day, i) => {
+            const row = Math.floor(i / 2);
+            const leftCol = i % 2 === 0;
+            return {
+                day,
+                x: leftCol ? colLeft : colRight,
+                y: padY + row * rowGap
+            };
+        });
+
+        const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+        const maxTogether = Math.max(1, ...days.map(d => d.togetherMs));
+        const nodes = points.map((p, i) => {
+            const intensity = 0.25 + (p.day.togetherMs / maxTogether) * 0.75;
+            const dayNum = i + 1;
+            const isMilestone = PartnerRelationshipPanel.milestones.includes(dayNum);
+            return `
+                <g class="partner-path-node ${p.day.isToday ? 'is-today' : ''} ${isMilestone ? 'is-milestone' : ''}"
+                   data-index="${i}"
+                   data-together="${p.day.togetherMs}"
+                   data-apart="${p.day.apartMs}"
+                   data-label="${Utils.escapeHtml(p.day.label)}"
+                   data-weekday="${Utils.escapeHtml(p.day.weekday)}"
+                   style="--node-glow:${intensity}">
+                    <circle class="node-halo" cx="${p.x}" cy="${p.y}" r="14"/>
+                    <circle class="node-core" cx="${p.x}" cy="${p.y}" r="7"/>
+                    ${isMilestone ? `<text class="node-star" x="${p.x}" y="${p.y - 18}" text-anchor="middle">✦</text>` : ''}
+                </g>
+            `;
+        }).join('');
+
+        return `
+            <svg class="partner-zigzag-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMin meet">
+                <defs>
+                    <linearGradient id="partnerPathGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="rgba(255,143,198,0.9)"/>
+                        <stop offset="50%" stop-color="rgba(186,130,255,0.75)"/>
+                        <stop offset="100%" stop-color="rgba(120,210,255,0.85)"/>
+                    </linearGradient>
+                </defs>
+                <path class="partner-path-line" d="${pathD}" fill="none" stroke="url(#partnerPathGrad)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                ${nodes}
+            </svg>
+        `;
+    }
+
+    static bindPathNodes(days) {
+        const tooltip = Utils.$('partner-path-tooltip');
+        const scroll = document.querySelector('.partner-path-scroll');
+        if (!tooltip || !scroll) return;
+
+        const showTip = (node, clientX, clientY) => {
+            const together = Number(node.dataset.together || 0);
+            const apart = Number(node.dataset.apart || 0);
+            const label = node.dataset.label || '';
+            const weekday = node.dataset.weekday || '';
+            tooltip.hidden = false;
+            tooltip.innerHTML = `
+                <strong>${Utils.escapeHtml(label)} · ${Utils.escapeHtml(weekday)}</strong>
+                <span class="tip-together">Вместе: ${Utils.formatDuration(together)}</span>
+                <span class="tip-apart">Отдельно в комнатах: ${Utils.formatDuration(apart)}</span>
+            `;
+            const rect = scroll.getBoundingClientRect();
+            const left = Math.min(Math.max(12, clientX - rect.left), rect.width - tooltip.offsetWidth - 12);
+            const top = Math.max(8, clientY - rect.top - 72);
+            tooltip.style.left = `${left}px`;
+            tooltip.style.top = `${top}px`;
+        };
+
+        scroll.querySelectorAll('.partner-path-node').forEach(node => {
+            node.addEventListener('mouseenter', (e) => showTip(node, e.clientX, e.clientY));
+            node.addEventListener('mousemove', (e) => showTip(node, e.clientX, e.clientY));
+            node.addEventListener('mouseleave', () => { tooltip.hidden = true; });
+            node.addEventListener('click', (e) => {
+                scroll.querySelectorAll('.partner-path-node').forEach(n => n.classList.remove('is-pinned'));
+                node.classList.add('is-pinned');
+                showTip(node, e.clientX, e.clientY);
+            });
+        });
+    }
+
+    static bindKissButton() {
+        const kissBtn = Utils.$('btn-partner-modal-kiss');
+        if (!kissBtn) return;
+        kissBtn.onclick = () => {
+            const rect = kissBtn.getBoundingClientRect();
+            for (let i = 0; i < 15; i++) {
+                const heart = document.createElement('div');
+                heart.innerText = ['💖', '💋', '💕', '💘'][Math.floor(Math.random() * 4)];
+                heart.style.cssText = `position:fixed;left:${rect.left + rect.width / 2 + (Math.random() - 0.5) * 50}px;top:${rect.top}px;font-size:${20 + Math.random() * 20}px;pointer-events:none;z-index:10000;transition:all 1.5s ease-out`;
+                document.body.appendChild(heart);
+                setTimeout(() => {
+                    heart.style.transform = `translateY(-${100 + Math.random() * 100}px) scale(1.5) rotate(${(Math.random() - 0.5) * 90}deg)`;
+                    heart.style.opacity = '0';
+                }, 50);
+                setTimeout(() => heart.remove(), 1600);
+            }
+            Utils.toast('Вы послали воздушный поцелуй!');
+        };
     }
 }
 
@@ -2090,12 +2388,20 @@ class ThemeManager {
         this.renderDMChips();
     }
 
+    static buildThemeGradient(colors = [], preview = false) {
+        const bg = colors.length ? colors : ['#0d0d10', '#040404'];
+        if (bg.length === 1) return bg[0];
+        if (preview) return `linear-gradient(165deg, ${bg[0]} 0%, ${bg[bg.length - 1]} 100%)`;
+        const stops = bg.map((c, i) => `${c} ${Math.round((i / (bg.length - 1)) * 100)}%`).join(', ');
+        return `radial-gradient(ellipse 130% 95% at 18% 8%, ${stops})`;
+    }
+
     static injectCSS() {
         let css = '';
         for (const [key, t] of Object.entries(this.EXTENDED_THEMES)) {
             if (['default', 'light', 'inverted', 'sunset', 'ocean', 'aurora', 'love'].includes(key)) continue;
-            const gradPreview = `radial-gradient(circle at 20% 12%, ${t.bg.join(', ')})`;
-            const gradRoom = `radial-gradient(circle at 20% 12%, ${t.bg.map((c,i) => i===0 ? c : `${c} ${Math.floor(100/(t.bg.length-1))*i}%`).join(', ')})`;
+            const gradPreview = this.buildThemeGradient(t.bg, true);
+            const gradRoom = this.buildThemeGradient(t.bg, false);
             
             css += `
                 #room-screen.theme-${key} { background: ${gradRoom}; color: #ffffff; }
@@ -2172,8 +2478,17 @@ class ThemeManager {
             `;
             track.appendChild(div);
         });
-        RoomManager.themeIndex = Math.max(0, themesList.indexOf(RoomManager.selectedTheme));
+        const idx = themesList.indexOf(RoomManager.selectedTheme);
+        if (idx >= 0) RoomManager.themeIndex = idx;
+        else RoomManager.themeIndex = Math.min(RoomManager.themeIndex, Math.max(0, themesList.length - 1));
         RoomManager.updateThemeTransform();
+    }
+
+    static findFolderForTheme(themeKey) {
+        for (const [fKey, folder] of Object.entries(this.FOLDERS)) {
+            if (folder.themes.includes(themeKey)) return fKey;
+        }
+        return Object.keys(this.FOLDERS)[0];
     }
     
     static renderDMChips() {
@@ -2754,7 +3069,6 @@ class ProfileManager {
         if (removeBtn) removeBtn.onclick = (e) => { e.stopPropagation(); this.removePartner(partnerUid); }; // [NEW]
     } // [NEW]
 
-    // [ADD] New sweet romantic modal for partners
     static async openPartnerModal(ownerUid, partnerUid) {
         const myProf = await this.loadUser(ownerUid);
         const theirProf = await this.loadUser(partnerUid);
@@ -2762,40 +3076,7 @@ class ProfileManager {
 
         const sinceSnap = await get(ref(db, `users/${ownerUid}/partnerSince`));
         const sinceTs = sinceSnap?.exists() ? Number(sinceSnap.val()) : 0;
-        const daysText = sinceTs ? Math.max(1, Math.ceil((Date.now() - sinceTs) / 86400000)) : 1;
-
-        Utils.$('partner-modal-my-avatar').innerHTML = this.getAvatarHtml(myProf);
-        Utils.$('partner-modal-their-avatar').innerHTML = this.getAvatarHtml(theirProf);
-        Utils.$('partner-modal-names').innerText = `${myProf.name} & ${theirProf.name}`;
-        Utils.$('partner-modal-stats').innerText = sinceTs ? `Мы вместе уже ${daysText} счастливых дней 💖` : 'Созданы друг для друга ✨';
-
-        const kissBtn = Utils.$('btn-partner-modal-kiss');
-        if (kissBtn) {
-            kissBtn.onclick = () => {
-                const rect = kissBtn.getBoundingClientRect();
-                for (let i = 0; i < 15; i++) {
-                    const heart = document.createElement('div');
-                    heart.innerText = ['💖', '💋', '💕', '💘'][Math.floor(Math.random()*4)];
-                    heart.style.position = 'fixed';
-                    heart.style.left = (rect.left + rect.width / 2 + (Math.random() - 0.5) * 50) + 'px';
-                    heart.style.top = rect.top + 'px';
-                    heart.style.fontSize = (20 + Math.random() * 20) + 'px';
-                    heart.style.pointerEvents = 'none';
-                    heart.style.zIndex = '10000';
-                    heart.style.transition = 'all 1.5s ease-out';
-                    document.body.appendChild(heart);
-                    
-                    setTimeout(() => {
-                        heart.style.transform = `translateY(-${100 + Math.random() * 100}px) scale(1.5) rotate(${(Math.random()-0.5)*90}deg)`;
-                        heart.style.opacity = '0';
-                    }, 50);
-                    setTimeout(() => heart.remove(), 1600);
-                }
-                Utils.toast('Вы послали воздушный поцелуй!');
-            };
-        }
-
-        Utils.$('modal-partner-view').classList.add('active');
+        await PartnerRelationshipPanel.open(ownerUid, partnerUid, myProf, theirProf, sinceTs);
     }
 
     static async renderMyPartnerBox() { // [NEW]
@@ -5072,7 +5353,6 @@ class AdminPanel {
 // ============================================================================
 
 class RoomManager {
-    static themeOptions = ['default', 'love', 'light', 'aurora', 'sunset', 'ocean']; // [UPDATE]
     static themeIndex = 0;
     static heartsTimer = null;
     static loveHeartEmojis = ['💗', '💘', '💞', '💕'];
@@ -5138,33 +5418,55 @@ class RoomManager {
         if (!toggleBtn || !carousel || !prevBtn || !nextBtn || !track) return;
 
         toggleBtn.onclick = () => carousel.classList.toggle('active');
-        prevBtn.onclick = () => {
-            const numOpts = ThemeManager.FOLDERS[this.currentThemeFolder].themes.length;
-            this.themeIndex = (this.themeIndex - 1 + numOpts) % numOpts;
-            ThemeManager.renderCarouselTrack(this.currentThemeFolder);
-        };
-        nextBtn.onclick = () => {
-            const numOpts = ThemeManager.FOLDERS[this.currentThemeFolder].themes.length;
-            this.themeIndex = (this.themeIndex + 1) % numOpts;
-            ThemeManager.renderCarouselTrack(this.currentThemeFolder);
-        };
+        prevBtn.onclick = () => this.stepThemeCarousel(-1);
+        nextBtn.onclick = () => this.stepThemeCarousel(1);
         track.onclick = (e) => {
             const card = e.target.closest('.theme-card');
-            if (!card) return;
-            const theme = card.dataset.theme;
+            if (!card?.dataset.theme) return;
             const opts = ThemeManager.FOLDERS[this.currentThemeFolder].themes;
-            this.themeIndex = Math.max(0, opts.indexOf(theme));
-            ThemeManager.renderCarouselTrack(this.currentThemeFolder);
+            this.themeIndex = Math.max(0, opts.indexOf(card.dataset.theme));
+            this.updateThemeTransform();
+            this.syncThemeCarouselActive();
         };
+    }
+
+    static stepThemeCarousel(direction = 1) {
+        const opts = ThemeManager.FOLDERS[this.currentThemeFolder]?.themes || [];
+        if (!opts.length) return;
+        this.themeIndex = (this.themeIndex + direction + opts.length) % opts.length;
+        this.updateThemeTransform();
+        this.syncThemeCarouselActive();
+    }
+
+    static syncThemeCarouselActive() {
+        const track = Utils.$('room-theme-track');
+        if (!track) return;
+        track.querySelectorAll('.theme-card').forEach(card => {
+            card.classList.toggle('active', card.dataset.theme === this.selectedTheme);
+        });
+    }
+
+    static setRoomModalTheme(theme = 'default') {
+        const normalized = this.normalizeRoomTheme(theme);
+        this.selectedTheme = normalized;
+        this.currentThemeFolder = ThemeManager.findFolderForTheme(normalized);
+        const foldersContainer = Utils.$('room-theme-folders');
+        foldersContainer?.querySelectorAll('.theme-folder-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.folder === this.currentThemeFolder);
+        });
+        ThemeManager.renderCarouselTrack(this.currentThemeFolder);
+        this.syncThemeCarouselActive();
     }
 
     static updateThemeTransform() {
         const track = Utils.$('room-theme-track');
         if (!track) return;
-        const opts = ThemeManager.FOLDERS[this.currentThemeFolder].themes;
+        const opts = ThemeManager.FOLDERS[this.currentThemeFolder]?.themes || ['default'];
         this.selectedTheme = opts[this.themeIndex] || 'default';
-        Utils.$('modal-room').dataset.selectedTheme = this.selectedTheme;
+        const modal = Utils.$('modal-room');
+        if (modal) modal.dataset.selectedTheme = this.selectedTheme;
         track.style.transform = `translateX(-${this.themeIndex * 100}%)`;
+        this.syncThemeCarouselActive();
     }
 
     static normalizeRoomTheme(theme = 'default') { // [NEW]
@@ -5282,13 +5584,7 @@ class RoomManager {
             Utils.$('room-input-name').value = r.name || ''; Utils.$('room-input-url').value = r.videoUrl || '';
             Utils.$('room-input-private').checked = r.isPrivate; Utils.$('room-input-password').style.display = r.isPrivate ? 'block' : 'none';
             Utils.$('room-input-hashtag').value = Array.isArray(r.hashtags) ? (r.hashtags[0] || '') : '';
-            const theme = this.normalizeRoomTheme(r.theme || 'default'); // [UPDATE]
-            this.themeIndex = this.themeOptions.indexOf(theme);
-            Utils.$('modal-room').dataset.selectedTheme = theme;
-            Utils.$('room-theme-track').style.transform = `translateX(-${this.themeIndex * 100}%)`;
-            Utils.$('room-theme-track').querySelectorAll('.theme-card').forEach(card => {
-                card.classList.toggle('active', card.dataset.theme === theme);
-            });
+            this.setRoomModalTheme(r.theme || 'default');
             Utils.$('room-theme-carousel').classList.remove('active');
             Utils.$('btn-delete-room').onclick = async () => {
                 if(confirm('Точно удалить комнату навсегда?')) {
@@ -5299,12 +5595,7 @@ class RoomManager {
             Utils.$('room-input-name').value = ''; Utils.$('room-input-url').value = '';
             Utils.$('room-input-private').checked = false; Utils.$('room-input-password').style.display = 'none'; Utils.$('room-input-password').value = '';
             Utils.$('room-input-hashtag').value = '';
-            this.themeIndex = 0;
-            Utils.$('modal-room').dataset.selectedTheme = 'default';
-            Utils.$('room-theme-track').style.transform = 'translateX(0%)';
-            Utils.$('room-theme-track').querySelectorAll('.theme-card').forEach(card => {
-                card.classList.toggle('active', card.dataset.theme === 'default');
-            });
+            this.setRoomModalTheme('default');
             Utils.$('room-theme-carousel').classList.remove('active');
         }
         modal.classList.add('active'); modal.dataset.editingId = isEdit ? roomId : '';
@@ -5462,6 +5753,8 @@ class RoomManager {
         const myName = AppState.usersCache.get(AppState.currentUser.uid)?.name || AppState.currentUser.displayName || 'Пользователь';
         set(presenceRef, { uid, name: myName, perms: this.getDefaultPerms() });
         onDisconnect(presenceRef).remove();
+        PartnerStatsTracker.setRoomPresence(roomId);
+        PartnerStatsTracker.start();
 
         const pUnsub = onValue(presListRef, (snap) => {
             const prevCache = AppState.currentPresenceCache || {};
@@ -5492,6 +5785,8 @@ class RoomManager {
         AppState.roomSubscriptions.push(() => {
             pUnsub();
             remove(presenceRef);
+            PartnerStatsTracker.stop();
+            PartnerStatsTracker.clearPresence();
         });
 
         const vid = Utils.$('native-player');
@@ -5863,6 +6158,8 @@ class RoomManager {
         }
         
         Ambilight.stop();
+        PartnerStatsTracker.stop();
+        PartnerStatsTracker.clearPresence();
 
         AppState.currentPresenceCache = {};
         AppState.usersListRenderToken++;
@@ -5883,20 +6180,21 @@ class RoomManager {
         Object.keys(ThemeManager.EXTENDED_THEMES).forEach(k => {
             roomScreen.classList.remove('theme-' + k);
         });
-        document.body.classList.remove('theme-love-room', 'theme-inverted-room'); // [UPDATE]
+        document.body.classList.remove('theme-love-room', 'theme-inverted-room', 'theme-light-room');
         this.stopLoveHearts();
         
-        const safeTheme = this.normalizeRoomTheme(theme); // [NEW]
-        Ambilight.updateTheme(safeTheme); // [UPDATE]
+        const safeTheme = this.normalizeRoomTheme(theme);
+        Ambilight.updateTheme(safeTheme);
 
-        if (safeTheme === 'love') { // [UPDATE]
+        if (safeTheme === 'love') {
             roomScreen.classList.add('theme-love');
             document.body.classList.add('theme-love-room');
             this.startLoveHearts();
-            // Fallback: containers may appear a tick later after rerender.
             setTimeout(() => this.startLoveHearts(), 150);
             return;
         }
+        if (safeTheme === 'inverted') document.body.classList.add('theme-inverted-room');
+        if (safeTheme === 'light') document.body.classList.add('theme-light-room');
         if (safeTheme !== 'default') roomScreen.classList.add(`theme-${safeTheme}`);
     }
 

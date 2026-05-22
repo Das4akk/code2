@@ -327,7 +327,8 @@
         .profile-bg-row input[type="number"] { margin: 0; padding: 8px; } /* // [NEW] */
         .profile-bg-preview { min-height: 52px; border-radius: 12px; border: 1px solid var(--profile-border, var(--border-light)); display: flex; align-items: center; justify-content: center; color: var(--profile-text, var(--text-main)); font-size: 13px; font-weight: 800; } /* // [NEW] */
         .profile-bg-url { margin: 0; } /* // [NEW] */
-        .partner-container { display: none; align-items: center; gap: 10px; padding: 12px; border-radius: 14px; border: 1px solid rgba(255,129,182,0.28); background: rgba(255,129,182,0.08); margin-bottom: 14px; text-align: left; color: var(--profile-text, var(--text-main)); } /* // [UPDATE] */
+        .partner-container { display: none; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.16); background: linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,120,180,0.06)); backdrop-filter: blur(12px); margin-bottom: 14px; text-align: left; color: var(--profile-text, var(--text-main)); cursor: pointer; transition: border-color 0.25s ease, box-shadow 0.25s ease; }
+        .partner-container:hover { border-color: rgba(255,180,220,0.4); box-shadow: 0 8px 22px rgba(255,90,160,0.12); }
         .partner-container.active { display: flex; }
         .partner-avatar { width: 42px; height: 42px; border-radius: 50%; overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: #111; border: 1px solid var(--border-light); font-weight: 800; }
         .partner-avatar img { width: 100%; height: 100%; object-fit: cover; }
@@ -336,6 +337,57 @@
         .partner-name { font-size: 14px; color: var(--profile-text, var(--text-main)); font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } /* // [UPDATE] */
         .partner-meta { font-size: 12px; color: var(--profile-muted, var(--text-muted)); margin-top: 3px; } /* // [NEW] */
         .partner-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px; border: 1px solid rgba(255,111,174,0.35); background: rgba(255,111,174,0.12); color: #ff6fae; font-size: 11px; font-weight: 800; vertical-align: middle; margin-left: 6px; } /* // [NEW] */
+        /* Partner ambilight relationship panel */
+        #modal-partner-view .partner-ambilight-modal { width: min(520px, 96vw); padding: 0; background: transparent; border: none; box-shadow: none; overflow: visible; }
+        #modal-partner-view .partner-ambilight-panel { position: relative; padding: 22px 20px 18px; border-radius: 22px; border: 1px solid rgba(255,255,255,0.22); background: linear-gradient(135deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.04) 42%, rgba(120,80,160,0.08) 100%); backdrop-filter: blur(22px) saturate(1.35); -webkit-backdrop-filter: blur(22px) saturate(1.35); box-shadow: 0 24px 60px rgba(8,4,18,0.55), inset 0 1px 0 rgba(255,255,255,0.25); color: #f8f4ff; overflow: hidden; }
+        .partner-ambilight-glow { position: absolute; inset: -30% -20%; background: radial-gradient(circle at 20% 20%, rgba(255,120,190,calc(0.22 + var(--together-pct) * 0.004)) 0%, transparent 55%), radial-gradient(circle at 80% 70%, rgba(130,180,255,0.2) 0%, transparent 50%); pointer-events: none; animation: partnerGlowDrift 12s ease-in-out infinite; }
+        .partner-ambilight-shine { position: absolute; top: 0; left: -40%; width: 45%; height: 100%; background: linear-gradient(105deg, transparent, rgba(255,255,255,0.12), transparent); transform: skewX(-18deg); animation: partnerShine 7s ease-in-out infinite; pointer-events: none; }
+        @keyframes partnerGlowDrift { 0%, 100% { transform: translate(0,0) scale(1); } 50% { transform: translate(3%, -2%) scale(1.04); } }
+        @keyframes partnerShine { 0%, 100% { left: -50%; opacity: 0; } 45% { opacity: 1; } 55% { left: 120%; opacity: 0; } }
+        .partner-ambilight-header { position: relative; z-index: 2; text-align: center; margin-bottom: 16px; }
+        .partner-ambilight-couple { display: flex; align-items: center; justify-content: center; gap: 14px; margin-bottom: 12px; }
+        .partner-ambilight-avatar { width: 72px; height: 72px; border-radius: 50%; border: 2px solid rgba(255,180,220,0.55); background: rgba(0,0,0,0.35); overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 800; box-shadow: 0 8px 24px rgba(255,100,180,0.25); }
+        .partner-ambilight-link { position: relative; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; }
+        .partner-link-pulse { position: absolute; inset: 0; border-radius: 50%; border: 1px solid rgba(255,150,210,0.5); animation: pulseHeart 1.8s ease-in-out infinite; }
+        .partner-link-icon { font-size: 22px; z-index: 1; filter: drop-shadow(0 0 8px rgba(255,120,190,0.8)); }
+        .partner-ambilight-titles h2 { margin: 0 0 6px; font-size: 20px; font-weight: 900; letter-spacing: -0.02em; color: #fff; }
+        .partner-ambilight-titles p { margin: 0; font-size: 13px; color: rgba(255,255,255,0.72); }
+        .partner-ambilight-metrics { position: relative; z-index: 2; display: grid; grid-template-columns: 72px 1fr 1fr; grid-template-rows: auto auto; gap: 8px; margin-bottom: 14px; }
+        .partner-ambilight-metrics .milestone-card { grid-column: 2 / span 2; }
+        .partner-metric-ring { position: relative; width: 72px; height: 72px; }
+        .partner-metric-ring svg { width: 72px; height: 72px; transform: rotate(-90deg); }
+        .partner-metric-ring .ring-bg { fill: none; stroke: rgba(255,255,255,0.12); stroke-width: 6; }
+        .partner-metric-ring .ring-val { fill: none; stroke: url(#partnerRingGrad); stroke-width: 6; stroke-linecap: round; transition: stroke-dasharray 0.6s ease; }
+        .partner-metric-ring .ring-label { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; color: rgba(255,255,255,0.75); }
+        .partner-metric-ring .ring-label strong { font-size: 15px; color: #fff; line-height: 1; }
+        .partner-metric-card { padding: 10px 12px; border-radius: 14px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.14); display: flex; flex-direction: column; gap: 4px; min-height: 72px; justify-content: center; }
+        .partner-metric-card .metric-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(255,255,255,0.55); font-weight: 700; }
+        .partner-metric-card strong { font-size: 14px; font-weight: 800; color: #fff; }
+        .milestone-card .milestone-bar { height: 5px; border-radius: 999px; background: rgba(255,255,255,0.1); overflow: hidden; }
+        .milestone-card .milestone-bar span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #ff8cc8, #b49cff); transition: width 0.5s ease; }
+        .partner-path-section { position: relative; z-index: 2; padding: 12px; border-radius: 16px; background: rgba(0,0,0,0.22); border: 1px solid rgba(255,255,255,0.1); margin-bottom: 14px; }
+        .partner-path-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 12px; font-weight: 800; color: rgba(255,255,255,0.88); }
+        .partner-path-hint { font-size: 11px; color: rgba(255,255,255,0.45); font-weight: 600; }
+        .partner-path-scroll { max-height: 220px; overflow-y: auto; overflow-x: hidden; padding: 4px 2px 8px; }
+        .partner-zigzag-svg { width: 100%; height: auto; display: block; }
+        .partner-path-line { filter: drop-shadow(0 0 6px rgba(255,140,200,0.45)); }
+        .partner-path-node { cursor: pointer; }
+        .partner-path-node .node-halo { fill: rgba(255,150,210,calc(0.15 * var(--node-glow))); stroke: rgba(255,180,230,0.35); stroke-width: 1; transition: all 0.25s ease; }
+        .partner-path-node .node-core { fill: rgba(255,200,230,calc(0.5 + 0.5 * var(--node-glow))); stroke: #fff; stroke-width: 1.5; transition: all 0.25s ease; }
+        .partner-path-node:hover .node-halo, .partner-path-node.is-pinned .node-halo { fill: rgba(255,160,220,0.35); r: 18; }
+        .partner-path-node:hover .node-core, .partner-path-node.is-pinned .node-core { r: 9; fill: #fff; }
+        .partner-path-node.is-today .node-core { fill: #ffe0f2; filter: drop-shadow(0 0 8px rgba(255,120,200,0.9)); }
+        .partner-path-node.is-milestone .node-star { fill: #ffe9a8; font-size: 11px; }
+        .partner-path-tooltip { position: absolute; z-index: 5; min-width: 160px; padding: 10px 12px; border-radius: 12px; background: rgba(12,8,22,0.92); border: 1px solid rgba(255,180,230,0.35); box-shadow: 0 12px 28px rgba(0,0,0,0.45); font-size: 12px; pointer-events: none; display: flex; flex-direction: column; gap: 4px; }
+        .partner-path-tooltip strong { color: #fff; font-size: 12px; }
+        .partner-path-tooltip .tip-together { color: #9dffd0; }
+        .partner-path-tooltip .tip-apart { color: #ffc4a8; }
+        .partner-path-empty { text-align: center; padding: 24px 12px; color: rgba(255,255,255,0.55); font-size: 13px; }
+        .partner-ambilight-footer { position: relative; z-index: 2; display: flex; gap: 8px; }
+        .partner-kiss-btn { flex: 1; padding: 12px 16px; border-radius: 14px; border: 1px solid rgba(255,180,220,0.45); background: linear-gradient(135deg, rgba(255,120,180,0.35), rgba(200,100,255,0.28)); color: #fff; font-weight: 800; font-size: 14px; box-shadow: 0 8px 24px rgba(255,90,160,0.25); transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .partner-kiss-btn:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(255,90,160,0.38); }
+        .partner-ambilight-footer .secondary-btn { width: auto; padding: 12px 16px; background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); color: #fff; }
+        body.theme-light-room #particle-canvas { filter: brightness(0); opacity: 0.38; }
         .love-requests-box { display: none; padding: 12px; border-radius: 14px; border: 1px solid rgba(255,129,182,0.28); background: rgba(255,129,182,0.07); }
         .love-requests-box.active { display: block; }
         .love-request-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--text-main); }
@@ -838,22 +890,11 @@
         </div>
     </div>
 
-    <!-- Sweet Partner Modal (Beautiful Romance Modal) -->
+    <!-- Partner relationship ambilight panel -->
     <div class="modal" id="modal-partner-view">
-        <div class="modal-content glass-panel" style="text-align: center; max-width: 380px;">
+        <div class="modal-content partner-ambilight-modal">
             <div class="modal-drag-handle"></div>
-            <h2 style="color: #ff6fae; font-weight: 900; margin-bottom: 25px;">Вторая половинка 💖</h2>
-            <div style="display: flex; justify-content: center; align-items: center; gap: 20px; margin-bottom: 25px;">
-                <div class="avatar heartbeat" id="partner-modal-my-avatar" style="width: 80px; height: 80px; font-size: 28px; border: 3px solid #ff6fae; background: #111; overflow: hidden; display: flex; align-items: center; justify-content: center; border-radius: 50%;"></div>
-                <div style="font-size: 32px; color: #ff6fae; animation: pulseHeart 1.5s infinite;">💘</div>
-                <div class="avatar heartbeat" id="partner-modal-their-avatar" style="width: 80px; height: 80px; font-size: 28px; border: 3px solid #ff6fae; background: #111; overflow: hidden; display: flex; align-items: center; justify-content: center; border-radius: 50%;"></div>
-            </div>
-            <h3 id="partner-modal-names" style="font-weight: 800; margin-bottom: 10px;">Name & Name</h3>
-            <p id="partner-modal-stats" style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px;">Мы вместе уже счастливых дней ✨</p>
-            <div class="modal-actions" style="flex-direction: column; gap: 10px;">
-                <button class="primary-btn" id="btn-partner-modal-kiss" style="width: 100%; background: linear-gradient(45deg, #ff6fae, #ff3377); border: none; box-shadow: 0 4px 15px rgba(255, 111, 174, 0.4);">Отправить поцелуй 💋</button>
-                <button class="secondary-btn btn-close-modal" style="width: 100%;">Закрыть</button>
-            </div>
+            <div id="partner-ambilight-root"></div>
         </div>
     </div>
 
