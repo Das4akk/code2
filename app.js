@@ -2422,8 +2422,11 @@ class ProfileManager {
     static normalizeProfileBackgroundUrl(value = '') { // [NEW]
         const raw = String(value || '').trim(); // [NEW]
         if (!raw) return ''; // [NEW]
-        if (raw.startsWith('data:image')) return raw; // [ADD] Base64 allowance
-        if (raw.length > 420 || /["\\]/.test(raw)) return ''; // [NEW]
+        if (raw.startsWith('data:image')) {
+            if (raw.length > 5000000) return '';
+            return raw;
+        }
+        if (raw.length > 1024 || /["\\]/.test(raw)) return ''; // [NEW]
         if (!/^https?:\/\//i.test(raw)) return ''; // [NEW]
         try { new URL(raw); return raw; } catch (e) { return ''; } // [NEW]
     } // [NEW]
@@ -2525,6 +2528,14 @@ class ProfileManager {
         }; // [NEW]
         const colors = this.getReadableProfileColors(data.color); // [NEW]
         preview.style.background = data.color; // [NEW]
+        if (data.url) {
+            const overlay = `rgba(0,0,0,${data.dim})`;
+            preview.style.backgroundImage = `linear-gradient(${overlay}, ${overlay}), url("${data.url.replace(/"/g, '%22')}")`;
+            preview.style.backgroundSize = 'cover';
+            preview.style.backgroundPosition = 'center';
+        } else {
+            preview.style.backgroundImage = '';
+        }
         preview.style.color = colors.text; // [NEW]
         preview.style.borderColor = colors.border; // [NEW]
         preview.innerText = `Цвет ${data.index || 'RGB'} · ${data.color.toUpperCase()}`; // [NEW]
@@ -2538,18 +2549,18 @@ class ProfileManager {
         panel.style.setProperty('--profile-text', colors.text); // [NEW]
         panel.style.setProperty('--profile-muted', colors.muted); // [NEW]
         panel.style.setProperty('--profile-border', colors.border); // [NEW]
-        panel.style.background = data.color; // [UPDATE]
-        panel.style.color = colors.text; // [NEW]
-        panel.style.borderColor = colors.border; // [NEW]
-        panel.style.backgroundImage = ''; // [UPDATE]
-        panel.style.backgroundSize = ''; // [UPDATE]
-        panel.style.backgroundPosition = ''; // [UPDATE]
+        panel.style.setProperty('background', data.color, 'important'); // [UPDATE]
+        panel.style.setProperty('color', colors.text, 'important'); // [NEW]
+        panel.style.setProperty('border-color', colors.border, 'important'); // [NEW]
+        panel.style.removeProperty('background-image'); // [UPDATE]
+        panel.style.removeProperty('background-size'); // [UPDATE]
+        panel.style.removeProperty('background-position'); // [UPDATE]
         if (data.url) { // [UPDATE]
             const dimValue = data.dim !== undefined ? data.dim : 0.5; // [ADD] Apply custom dim
             const overlay = `rgba(0,0,0,${dimValue})`;
-            panel.style.backgroundImage = `linear-gradient(${overlay}, ${overlay}), url("${data.url}")`; // [UPDATE]
-            panel.style.backgroundSize = 'cover'; // [UPDATE]
-            panel.style.backgroundPosition = 'center'; // [UPDATE]
+            panel.style.setProperty('background-image', `linear-gradient(${overlay}, ${overlay}), url("${data.url.replace(/"/g, '%22')}")`, 'important'); // [UPDATE]
+            panel.style.setProperty('background-size', 'cover', 'important'); // [UPDATE]
+            panel.style.setProperty('background-position', 'center', 'important'); // [UPDATE]
         } // [UPDATE]
     } // [UPDATE]
 
@@ -2883,13 +2894,24 @@ class ProfileManager {
 // ============================================================================
 
 class FriendsManager {
+    static sentFriendRequests = new Set();
+    static pendingFriendRequestsMap = {};
+
     static initListeners() {
         const uid = AppState.currentUser.uid;
         const reqRef = ref(db, `users/${uid}/friend-requests`);
-        const unsubReq = onValue(reqRef, (snap) => this.renderRequests(snap.val() || {}));
+        const unsubReq = onValue(reqRef, (snap) => {
+            const reqs = snap.val() || {};
+            this.pendingFriendRequestsMap = reqs;
+            this.renderRequests(reqs);
+            if (AppState.currentRoomId) RoomManager.rerenderUsersList();
+        });
         
         const frRef = ref(db, `users/${uid}/friends`);
-        const unsubFr = onValue(frRef, (snap) => this.renderFriends(snap.val() || {}));
+        const unsubFr = onValue(frRef, (snap) => {
+            this.renderFriends(snap.val() || {});
+            if (AppState.currentRoomId) RoomManager.rerenderUsersList();
+        });
 
         AppState.activeSubscriptions.push(() => off(reqRef, 'value', unsubReq), () => off(frRef, 'value', unsubFr));
 
@@ -2907,7 +2929,9 @@ class FriendsManager {
         if (targetUid === AppState.currentUser.uid) return;
         try {
             await set(ref(db, `users/${targetUid}/friend-requests/${AppState.currentUser.uid}`), { ts: Date.now() });
+            this.sentFriendRequests.add(targetUid);
             Utils.toast('Заявка отправлена');
+            if (AppState.currentRoomId) RoomManager.rerenderUsersList();
         } catch (e) { Utils.toast('Ошибка отправки', 'error'); }
     }
 
@@ -2922,15 +2946,38 @@ class FriendsManager {
             }
             updates[`users/${myUid}/friend-requests/${targetUid}`] = null;
             await update(ref(db), updates);
+            delete this.pendingFriendRequestsMap[targetUid];
+            this.sentFriendRequests.delete(targetUid);
             Utils.toast(accept ? 'Друг добавлен' : 'Заявка отклонена');
+            if (AppState.currentRoomId) RoomManager.rerenderUsersList();
         } catch (e) { Utils.toast('Ошибка', 'error'); }
     }
 
+    static _lastRequestsKeys = [];
+    static _initialRequestsLoaded = false;
+
+    static _renderRequestsId = 0;
+
     static async renderRequests(requests) {
+        const renderId = ++this._renderRequestsId;
         const container = Utils.$('friend-requests-list');
         const badge = Utils.$('friend-req-badge');
         const keys = Object.keys(requests);
         
+        if (!this._initialRequestsLoaded) {
+            this._lastRequestsKeys = keys;
+            this._initialRequestsLoaded = true;
+        } else {
+            const newKeys = keys.filter(k => !this._lastRequestsKeys.includes(k));
+            this._lastRequestsKeys = keys;
+            
+            newKeys.forEach(uid => {
+                ProfileManager.loadUser(uid).then(profile => {
+                    if (profile) this.showFriendRequestNotification(uid, profile);
+                });
+            });
+        }
+
         if (keys.length > 0) {
             badge.innerText = keys.length; badge.classList.add('show');
         } else {
@@ -2939,11 +2986,17 @@ class FriendsManager {
             return;
         }
 
-        container.innerHTML = '';
+        const itemsHtml = [];
         for (const uid of keys) {
             const profile = await ProfileManager.loadUser(uid);
             if (!profile) continue;
+            itemsHtml.push({ uid, profile });
+        }
 
+        if (renderId !== this._renderRequestsId) return;
+
+        container.innerHTML = '';
+        for (const { uid, profile } of itemsHtml) {
             const roleBadgeHtml = ProfileManager.getRoleBadgeHtml(profile, uid);
             const div = document.createElement('div');
             div.className = 'friend-request-item';
@@ -2958,6 +3011,46 @@ class FriendsManager {
             div.querySelector('.btn-decline').onclick = () => this.handleRequest(uid, false);
             container.appendChild(div);
         }
+    }
+
+    static showFriendRequestNotification(uid, profile) {
+        let container = Utils.$('toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'toast-container';
+            document.body.appendChild(container);
+        }
+        
+        const div = document.createElement('div');
+        div.className = 'toast';
+        div.style.borderLeft = `4px solid var(--accent)`;
+        div.style.pointerEvents = 'all'; 
+        div.innerHTML = `
+            <div style="margin-bottom:8px;"><strong>${Utils.escapeHtml(profile.name)}</strong> хочет в друзья.</div>
+            <div style="display:flex; gap:8px;">
+                <button class="secondary-btn btn-small btn-accept-toast" style="flex:1; padding:6px; font-size:11px;">Принять</button>
+                <button class="secondary-btn btn-small btn-close-toast" style="padding:6px; font-size:11px;">✕</button>
+            </div>
+        `;
+        
+        div.querySelector('.btn-accept-toast').onclick = () => {
+            this.handleRequest(uid, true);
+            div.style.opacity = '0';
+            setTimeout(() => div.remove(), 300);
+        };
+        div.querySelector('.btn-close-toast').onclick = () => {
+            div.style.opacity = '0';
+            setTimeout(() => div.remove(), 300);
+        };
+        
+        container.appendChild(div);
+        
+        setTimeout(() => {
+            if (div.parentNode) {
+                div.style.opacity = '0';
+                setTimeout(() => div.remove(), 300);
+            }
+        }, 12000);
     }
 
     static async renderFriends(friendsMap) {
@@ -3960,7 +4053,7 @@ class AdminPanel {
 
         const forceSignOutUnsub = onValue(forceSignOutRef, async (snap) => {
             const payload = snap.val();
-            if (!payload?.ts) return;
+            if (!payload?.ts || Date.now() - Number(payload.ts) > 60000) return;
 
             const marker = `forceSignOutSeen:${payload.ts}`;
             if (sessionStorage.getItem(marker)) return;
@@ -3974,7 +4067,7 @@ class AdminPanel {
 
         const forceLeaveRoomUnsub = onValue(forceLeaveRoomRef, (snap) => {
             const payload = snap.val();
-            if (!payload?.ts) return;
+            if (!payload?.ts || Date.now() - Number(payload.ts) > 60000) return;
 
             const marker = `forceLeaveRoomSeen:${payload.ts}`;
             if (sessionStorage.getItem(marker)) return;
@@ -3989,7 +4082,7 @@ class AdminPanel {
         const globalSessionRefreshRef = ref(db, 'admin/actions/globalSessionRefresh');
         const globalSessionRefreshUnsub = onValue(globalSessionRefreshRef, async (snap) => {
             const payload = snap.val();
-            if (!payload?.ts) return;
+            if (!payload?.ts || Date.now() - Number(payload.ts) > 60000) return;
             const marker = `globalSessionRefreshSeen:${payload.ts}`;
             if (sessionStorage.getItem(marker)) return;
             sessionStorage.setItem(marker, '1');
@@ -4227,10 +4320,8 @@ class AdminPanel {
         if (AppState.admin.activeUsersTab === 'online') {
             entries = entries.filter(([, userData]) => userData?.status?.online);
         } else if (AppState.admin.activeUsersTab === 'mods') {
-            entries = entries.filter(([, userData]) => {
-                const isMod = userData?.moderation?.isModerator;
-                const isCreator = userData?.moderation?.isCreator;
-                return isMod || isCreator;
+            entries = entries.filter(([uid, userData]) => {
+                return AdminPanel.isAdminProfile(userData?.profile || {}, uid);
             });
         }
 
@@ -5358,13 +5449,13 @@ class RoomManager {
                     });
                     outsideFriendsHtml = inviteHtml;
                 }
-                renderRoomUsers();
+                renderRoomUsers(fr);
             });
         } else {
-            renderRoomUsers();
+            renderRoomUsers({});
         }
 
-        function renderRoomUsers() {
+        function renderRoomUsers(myFriends = {}) {
             if (!ensureActualRender()) return;
             container.innerHTML += `<div style="font-size:11px; color:var(--text-muted); margin: 10px 0 5px; text-transform:uppercase;">В комнате</div>`;
             ids.forEach(uid => {
@@ -5387,7 +5478,16 @@ class RoomManager {
                 html += `<div class="user-card-actions">`;
                 if (!isLocal) {
                     html += `<button class="dm-btn" data-uid="${uid}">💬</button>`;
-                    html += `<button class="add-friend-btn" data-uid="${uid}">+Друг</button>`;
+                    const fStatus = myFriends[uid]?.status;
+                    if (fStatus === 'accepted') {
+                        // Already friends
+                    } else if (FriendsManager.pendingFriendRequestsMap[uid]) {
+                        html += `<button class="add-friend-btn accept-friend-btn" data-uid="${uid}" style="background:var(--accent); color:#000;">✓ Принять</button>`;
+                    } else if (FriendsManager.sentFriendRequests.has(uid)) {
+                        html += `<button class="add-friend-btn" data-uid="${uid}" disabled style="opacity:0.5;">Запрос отправлен</button>`;
+                    } else {
+                        html += `<button class="add-friend-btn" data-uid="${uid}">+Друг</button>`;
+                    }
                 }
                 if ((AppState.isHost || AdminPanel.isCurrentUserCreator()) && !isLocal) {
                     html += `<button class="viewer-settings-btn" data-uid="${uid}" title="Настройки зрителя">⚙️</button>`;
@@ -5426,7 +5526,15 @@ class RoomManager {
                 node.onclick = () => ProfileManager.openViewProfileModal(node.dataset.uid);
             });
             container.querySelectorAll('.add-friend-btn').forEach(btn => {
-                btn.onclick = () => FriendsManager.sendFriendRequest(btn.dataset.uid);
+                btn.onclick = () => {
+                    if (btn.classList.contains('accept-friend-btn')) {
+                        FriendsManager.handleRequest(btn.dataset.uid, true);
+                    } else if (btn.disabled) {
+                        return;
+                    } else {
+                        FriendsManager.sendFriendRequest(btn.dataset.uid);
+                    }
+                };
             });
             container.querySelectorAll('.viewer-settings-btn').forEach(btn => {
                 btn.onclick = () => {
