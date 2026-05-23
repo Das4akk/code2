@@ -482,6 +482,11 @@
         .theme-check { margin-top: 6px; font-size: 16px; line-height: 1; color: transparent; transition: color 0.2s ease, text-shadow 0.2s ease; }
         .theme-card.active .theme-name { color: var(--text-main); }
         .theme-card.active .theme-check { color: #fff; text-shadow: 0 0 12px rgba(255,255,255,0.45); }
+        .room-media-actions { display: flex; gap: 8px; margin-top: -4px; }
+        .room-media-status { font-size: 12px; line-height: 1.45; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border-light); }
+        .room-media-status.state-loading { color: var(--text-muted); background: rgba(255,255,255,0.04); border-color: rgba(120,180,255,0.35); }
+        .room-media-status.state-success { color: #9dffd0; background: rgba(46,213,115,0.08); border-color: rgba(46,213,115,0.28); }
+        .room-media-status.state-error { color: #ffb4b4; background: rgba(255,80,80,0.08); border-color: rgba(255,120,120,0.32); }
         #room-screen { transition: background 0.9s ease, filter 0.9s ease; }
         #room-screen .glass-panel,
         #room-screen .chat-section,
@@ -939,7 +944,11 @@
             <h2 id="room-modal-title">Создать комнату</h2>
             <div style="display: flex; flex-direction: column; gap: 12px;">
                 <input type="text" id="room-input-name" placeholder="Название комнаты">
-                <input type="url" id="room-input-url" placeholder="Прямая ссылка на видео (mp4, webm)">
+                <input type="url" id="room-input-url" placeholder="Rutube, YouTube, VK, Vimeo, Twitch или прямая ссылка (mp4, m3u8)">
+                <div class="room-media-actions">
+                    <button type="button" class="secondary-btn" id="btn-preview-media" style="width:auto; padding:8px 12px; font-size:12px;">Проверить ссылку</button>
+                </div>
+                <div id="room-media-status" class="room-media-status state-idle" style="display:none;" aria-live="polite"></div>
                 
                 <label style="display: flex; align-items: center; gap: 10px; font-size: 14px; cursor: pointer; margin-top: 5px; color: var(--text-muted);">
                     <input type="checkbox" id="room-input-private" style="width: auto; margin: 0;">
@@ -1006,6 +1015,10 @@
         }
     </script>
     
+    <script>
+        window.COWIO_MEDIA_API = window.COWIO_MEDIA_API || 'http://localhost:3847';
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.7/dist/hls.min.js"></script>
     <script type="module" src="app.js"></script>
 </body>
 </html>

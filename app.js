@@ -712,6 +712,338 @@ class GlobalThemeManager { // [NEW]
     } // [NEW]
 } // [NEW]
 
+class MediaResolverClient {
+    static apiBase = (typeof window !== 'undefined' && window.COWIO_MEDIA_API)
+        ? String(window.COWIO_MEDIA_API).replace(/\/$/, '')
+        : 'http://localhost:3847';
+
+    static pending = new Map();
+    static RESOLVE_STALE_MS = 12 * 60 * 1000;
+
+    static PLATFORM_RE = /rutube\.ru|youtube\.com|youtu\.be|vk\.com|vkvideo\.ru|vimeo\.com|twitch\.tv/i;
+
+    static needsResolve(url = '') {
+        const value = String(url || '').trim();
+        if (!value) return false;
+        if (this.PLATFORM_RE.test(value)) return true;
+        try {
+            const host = new URL(value).hostname.toLowerCase();
+            return host.includes('rutube.ru');
+        } catch {
+            return false;
+        }
+    }
+
+    static isDirectMedia(url = '') {
+        return /\.(mp4|webm|m4v|mov|mkv|m3u8)(\?|#|$)/i.test(String(url || ''));
+    }
+
+    static getErrorMessage(code, fallback = '') {
+        const map = {
+            INVALID_URL: 'Некорректная ссылка',
+            UNSUPPORTED_URL: 'Платформа не поддерживается',
+            TIMEOUT: 'Превышено время ожидания извлечения',
+            EXTRACTION_FAILED: 'Не удалось извлечь видео',
+            RATE_LIMITED: 'Слишком много запросов, попробуйте позже',
+            NETWORK: 'Media resolver недоступен. Запустите backend на порту 3847'
+        };
+        return map[code] || fallback || 'Ошибка извлечения видео';
+    }
+
+    static setModalStatus(state = 'idle', message = '') {
+        const el = Utils.$('room-media-status');
+        if (!el) return;
+        el.dataset.state = state;
+        el.className = `room-media-status state-${state}`;
+        el.textContent = message || '';
+        el.style.display = message ? 'block' : 'none';
+    }
+
+    static bindRoomUrlInput() {
+        const input = Utils.$('room-input-url');
+        const previewBtn = Utils.$('btn-preview-media');
+        if (!input) return;
+
+        const runPreview = Utils.debounce(async () => {
+            const url = input.value.trim();
+            if (!url) {
+                this.setModalStatus('idle', '');
+                return;
+            }
+            if (!this.needsResolve(url) && !this.isDirectMedia(url)) {
+                this.setModalStatus('idle', 'Ссылка будет сохранена как есть');
+                return;
+            }
+            try {
+                const data = await this.resolve(url);
+                const dur = data.duration ? ` · ${Math.floor(data.duration / 60)}:${String(Math.floor(data.duration % 60)).padStart(2, '0')}` : '';
+                this.setModalStatus('success', `${data.platform}: ${data.title || 'Видео'}${dur}`);
+            } catch (err) {
+                this.setModalStatus('error', err.message);
+            }
+        }, 700);
+
+        input.addEventListener('input', runPreview);
+        if (previewBtn) {
+            previewBtn.onclick = async () => {
+                const url = input.value.trim();
+                if (!url) return Utils.toast('Вставьте ссылку на видео', 'error');
+                try {
+                    const data = await this.resolve(url);
+                    Utils.toast(`Готово: ${data.title || data.platform}`);
+                    this.setModalStatus('success', `${data.platform}: ${data.title || 'Видео'}`);
+                } catch (err) {
+                    Utils.toast(err.message, 'error');
+                    this.setModalStatus('error', err.message);
+                }
+            };
+        }
+    }
+
+    static async resolve(url) {
+        const normalized = String(url || '').trim();
+        if (!normalized) {
+            throw Object.assign(new Error('Пустая ссылка'), { code: 'INVALID_URL' });
+        }
+        if (this.pending.has(normalized)) return this.pending.get(normalized);
+
+        const task = (async () => {
+            this.setModalStatus('loading', 'Извлекаем поток через yt-dlp…');
+            let response;
+            try {
+                response = await fetch(`${this.apiBase}/api/resolve-media`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: normalized })
+                });
+            } catch {
+                throw Object.assign(new Error(this.getErrorMessage('NETWORK')), { code: 'NETWORK' });
+            }
+
+            let payload = null;
+            try {
+                payload = await response.json();
+            } catch {
+                throw Object.assign(new Error('Некорректный ответ media resolver'), { code: 'EXTRACTION_FAILED' });
+            }
+
+            if (!response.ok || !payload?.success) {
+                const code = payload?.code || (response.status === 504 ? 'TIMEOUT' : 'EXTRACTION_FAILED');
+                throw Object.assign(new Error(this.getErrorMessage(code, payload?.error)), { code });
+            }
+
+            return {
+                source: payload.source,
+                title: payload.title || '',
+                duration: Number(payload.duration) || 0,
+                thumbnail: payload.thumbnail || '',
+                platform: payload.platform || 'unknown',
+                isHls: Boolean(payload.isHls),
+                ext: payload.ext || '',
+                resolvedAt: Number(payload.resolvedAt) || Date.now()
+            };
+        })();
+
+        this.pending.set(normalized, task);
+        try {
+            return await task;
+        } finally {
+            this.pending.delete(normalized);
+            const input = Utils.$('room-input-url');
+            if (input && !input.value.trim()) this.setModalStatus('idle', '');
+        }
+    }
+
+    static async buildRoomVideoFields(inputUrl) {
+        const trimmed = String(inputUrl || '').trim();
+        if (!trimmed) {
+            return {
+                videoUrl: '',
+                videoSourceUrl: '',
+                videoPlatform: '',
+                videoIsHls: false,
+                videoResolvedAt: 0,
+                videoTitle: '',
+                videoThumbnail: ''
+            };
+        }
+
+        if (this.needsResolve(trimmed)) {
+            const resolved = await this.resolve(trimmed);
+            return {
+                videoUrl: resolved.source,
+                videoSourceUrl: trimmed,
+                videoPlatform: resolved.platform,
+                videoIsHls: resolved.isHls,
+                videoResolvedAt: resolved.resolvedAt,
+                videoTitle: resolved.title,
+                videoThumbnail: resolved.thumbnail
+            };
+        }
+
+        return {
+            videoUrl: trimmed,
+            videoSourceUrl: trimmed,
+            videoPlatform: this.isDirectMedia(trimmed) ? 'direct' : 'external',
+            videoIsHls: /\.m3u8(\?|#|$)/i.test(trimmed),
+            videoResolvedAt: Date.now(),
+            videoTitle: '',
+            videoThumbnail: ''
+        };
+    }
+
+    static shouldRefreshResolved(room = {}) {
+        const source = room.videoSourceUrl || '';
+        if (!source || !this.needsResolve(source)) return false;
+        const resolvedAt = Number(room.videoResolvedAt || 0);
+        if (!resolvedAt) return true;
+        return Date.now() - resolvedAt > this.RESOLVE_STALE_MS;
+    }
+}
+
+class VideoPlaybackManager {
+    static hlsInstance = null;
+    static lastSignature = '';
+
+    static getPlaybackSignature(room = {}) {
+        return [
+            room.videoUrl || '',
+            room.videoSourceUrl || '',
+            room.videoResolvedAt || '',
+            room.videoIsHls ? '1' : '0'
+        ].join('|');
+    }
+
+    static destroy() {
+        const vid = Utils.$('native-player');
+        if (this.hlsInstance) {
+            try { this.hlsInstance.destroy(); } catch { /* ignore */ }
+            this.hlsInstance = null;
+        }
+        if (vid) {
+            vid.pause();
+            vid.removeAttribute('src');
+            vid.load();
+            delete vid.dataset.playbackKey;
+            delete vid.dataset.roomUrl;
+            vid.onerror = null;
+        }
+        this.lastSignature = '';
+        Ambilight.stop();
+    }
+
+    static detach(vid) {
+        if (!vid) return;
+        if (this.hlsInstance) {
+            try { this.hlsInstance.destroy(); } catch { /* ignore */ }
+            this.hlsInstance = null;
+        }
+        vid.pause();
+        vid.removeAttribute('src');
+        vid.load();
+    }
+
+    static async resolvePlaybackSource(room = {}) {
+        const sourceUrl = String(room.videoSourceUrl || room.videoUrl || '').trim();
+        const playbackUrl = String(room.videoUrl || '').trim();
+
+        if (!sourceUrl) return { source: '', isHls: false };
+
+        if (MediaResolverClient.shouldRefreshResolved(room)) {
+            Utils.toast('Обновляем ссылку на поток…', 'info');
+            const fresh = await MediaResolverClient.resolve(sourceUrl);
+            return { source: fresh.source, isHls: fresh.isHls, meta: fresh };
+        }
+
+        if (MediaResolverClient.needsResolve(sourceUrl)) {
+            if (playbackUrl) {
+                return {
+                    source: playbackUrl,
+                    isHls: Boolean(room.videoIsHls) || /\.m3u8(\?|#|$)/i.test(playbackUrl)
+                };
+            }
+            const resolved = await MediaResolverClient.resolve(sourceUrl);
+            return { source: resolved.source, isHls: resolved.isHls, meta: resolved };
+        }
+
+        return {
+            source: playbackUrl || sourceUrl,
+            isHls: Boolean(room.videoIsHls) || /\.m3u8(\?|#|$)/i.test(playbackUrl || sourceUrl)
+        };
+    }
+
+    static attachSource(vid, source, isHls) {
+        this.detach(vid);
+        if (!source) return;
+
+        const useHls = isHls || /\.m3u8(\?|#|$)/i.test(source);
+        if (useHls && window.Hls && window.Hls.isSupported()) {
+            this.hlsInstance = new window.Hls({
+                enableWorker: true,
+                lowLatencyMode: false
+            });
+            this.hlsInstance.loadSource(source);
+            this.hlsInstance.attachMedia(vid);
+            this.hlsInstance.on(window.Hls.Events.ERROR, (_evt, data) => {
+                if (data?.fatal) Utils.toast('Ошибка HLS-потока', 'error');
+            });
+            return;
+        }
+
+        if (useHls && vid.canPlayType('application/vnd.apple.mpegurl')) {
+            vid.src = source;
+            vid.load();
+            return;
+        }
+
+        if (useHls) {
+            Utils.toast('HLS не поддерживается в этом браузере', 'error');
+            return;
+        }
+
+        vid.src = source;
+        vid.load();
+    }
+
+    static async applyRoomVideo(room = {}) {
+        const vid = Utils.$('native-player');
+        if (!vid) return;
+
+        const signature = this.getPlaybackSignature(room);
+        if (signature === this.lastSignature && vid.dataset.playbackKey) return;
+
+        try {
+            const playback = await this.resolvePlaybackSource(room);
+            const source = String(playback.source || '').trim();
+
+            this.lastSignature = signature;
+            vid.dataset.playbackKey = signature;
+            vid.dataset.roomUrl = source;
+
+            this.attachSource(vid, source, playback.isHls);
+
+            vid.controls = AppState.isHost || AdminPanel.isCurrentUserCreator();
+            vid.playsInline = true;
+            vid.preload = 'auto';
+            vid.onerror = () => {
+                Utils.toast('Плеер не смог загрузить видео. Проверьте ссылку или пересоздайте комнату.', 'error');
+            };
+
+            Ambilight.start(vid);
+        } catch (err) {
+            Utils.toast(err.message || 'Ошибка загрузки видео', 'error');
+        }
+    }
+
+    static syncRoomVideoIfChanged(room = {}) {
+        if (!AppState.currentRoomId) return;
+        const signature = this.getPlaybackSignature(room);
+        if (signature !== this.lastSignature) {
+            this.applyRoomVideo(room).catch(() => {});
+        }
+    }
+}
+
 // Адаптивный Ambilight для плеера
 class Ambilight {
     static loopId = null;
@@ -5567,11 +5899,13 @@ class RoomManager {
 
             // Автоматическая синхронизация тем
             if (AppState.currentRoomId && data[AppState.currentRoomId]) {
-                const newTheme = this.normalizeRoomTheme(data[AppState.currentRoomId].theme || 'default'); // [UPDATE]
+                const currentRoom = data[AppState.currentRoomId];
+                const newTheme = this.normalizeRoomTheme(currentRoom.theme || 'default');
                 if (AppState.currentTheme !== newTheme) {
                     AppState.currentTheme = newTheme;
                     this.applyRoomTheme(newTheme);
                 }
+                VideoPlaybackManager.syncRoomVideoIfChanged(currentRoom);
             }
             
             let totalOnline = 0;
@@ -5588,6 +5922,7 @@ class RoomManager {
         Utils.$('room-input-private').onchange = (e) => { Utils.$('room-input-password').style.display = e.target.checked ? 'block' : 'none'; };
         Utils.$('btn-leave-room').onclick = () => this.leaveRoom();
         this.initThemes();
+        MediaResolverClient.bindRoomUrlInput();
         this.applyCreateRoomAvailability();
     }
 
@@ -5766,7 +6101,9 @@ class RoomManager {
         
         if (isEdit) {
             const r = AppState.roomsCache.get(roomId);
-            Utils.$('room-input-name').value = r.name || ''; Utils.$('room-input-url').value = r.videoUrl || '';
+            Utils.$('room-input-name').value = r.name || '';
+            Utils.$('room-input-url').value = r.videoSourceUrl || r.videoUrl || '';
+            MediaResolverClient.setModalStatus(r.videoTitle ? 'success' : 'idle', r.videoTitle ? `${r.videoPlatform || 'video'}: ${r.videoTitle}` : '');
             Utils.$('room-input-private').checked = r.isPrivate; Utils.$('room-input-password').style.display = r.isPrivate ? 'block' : 'none';
             Utils.$('room-input-hashtag').value = Array.isArray(r.hashtags) ? (r.hashtags[0] || '') : '';
             this.setRoomModalTheme(r.theme || 'default');
@@ -5780,6 +6117,7 @@ class RoomManager {
             Utils.$('room-input-name').value = ''; Utils.$('room-input-url').value = '';
             Utils.$('room-input-private').checked = false; Utils.$('room-input-password').style.display = 'none'; Utils.$('room-input-password').value = '';
             Utils.$('room-input-hashtag').value = '';
+            MediaResolverClient.setModalStatus('idle', '');
             this.setRoomModalTheme('default');
             Utils.$('room-theme-carousel').classList.remove('active');
         }
@@ -5787,8 +6125,10 @@ class RoomManager {
     }
 
     static async saveRoom() {
-        const name = Utils.$('room-input-name').value.trim(); const videoUrl = Utils.$('room-input-url').value.trim();
-        const isPrivate = Utils.$('room-input-private').checked; const password = Utils.$('room-input-password').value.trim();
+        const name = Utils.$('room-input-name').value.trim();
+        const videoInputUrl = Utils.$('room-input-url').value.trim();
+        const isPrivate = Utils.$('room-input-private').checked;
+        const password = Utils.$('room-input-password').value.trim();
         const hashtags = HashtagManager.parseHashtags(Utils.$('room-input-hashtag').value, true);
         const roomId = Utils.$('modal-room').dataset.editingId;
         const selectedTheme = Utils.$('modal-room').dataset.selectedTheme || 'default';
@@ -5806,12 +6146,37 @@ class RoomManager {
         Utils.$('btn-save-room').disabled = true;
         try {
             const previousRoom = roomId ? (AppState.roomsCache.get(roomId) || {}) : null;
+            let videoFields = {
+                videoUrl: '',
+                videoSourceUrl: '',
+                videoPlatform: '',
+                videoIsHls: false,
+                videoResolvedAt: 0,
+                videoTitle: '',
+                videoThumbnail: ''
+            };
+
+            if (videoInputUrl) {
+                try {
+                    videoFields = await MediaResolverClient.buildRoomVideoFields(videoInputUrl);
+                } catch (err) {
+                    Utils.toast(err.message || 'Ошибка извлечения видео', 'error');
+                    return;
+                }
+            }
+
             const roomData = {
                 name,
-                videoUrl,
+                videoUrl: videoFields.videoUrl,
+                videoSourceUrl: videoFields.videoSourceUrl,
+                videoPlatform: videoFields.videoPlatform,
+                videoIsHls: videoFields.videoIsHls,
+                videoResolvedAt: videoFields.videoResolvedAt,
+                videoTitle: videoFields.videoTitle,
+                videoThumbnail: videoFields.videoThumbnail,
                 isPrivate,
                 hashtags,
-                theme: this.normalizeRoomTheme(selectedTheme), // [UPDATE]
+                theme: this.normalizeRoomTheme(selectedTheme),
                 hostId: AppState.currentUser.uid,
                 hostName: AppState.usersCache.get(AppState.currentUser.uid)?.name || AppState.currentUser.displayName || 'Хост',
                 updatedAt: Date.now()
@@ -5868,32 +6233,7 @@ class RoomManager {
         
         const roomTag = Array.isArray(roomData.hashtags) && roomData.hashtags[0] ? ` ${roomData.hashtags[0]}` : '';
         Utils.$('room-title-text').innerText = Utils.escapeHtml(`${roomData.name}${roomTag}`);
-        const vid = Utils.$('native-player');
-        const nextVideoUrl = String(roomData.videoUrl || '').trim();
-
-        if (vid) {
-            if (vid.dataset.roomUrl !== nextVideoUrl) {
-                vid.pause();
-                vid.removeAttribute('src');
-                vid.load();
-
-                if (nextVideoUrl) {
-                    vid.src = nextVideoUrl;
-                    vid.load();
-                }
-
-                vid.dataset.roomUrl = nextVideoUrl;
-            }
-
-            // Доступ для создателя и хоста
-            vid.controls = AppState.isHost || AdminPanel.isCurrentUserCreator();
-            vid.playsInline = true;
-            vid.preload = 'auto';
-            vid.onerror = () => Utils.toast('Плеер не смог загрузить видео. Нужна прямая ссылка на медиафайл.', 'error');
-            
-            // Включаем Ambilight
-            Ambilight.start(vid);
-        }
+        VideoPlaybackManager.applyRoomVideo(roomData).catch(() => {});
         
         let shareBtn = Utils.$('btn-share-room');
         if (!shareBtn) {
@@ -6337,7 +6677,7 @@ class RoomManager {
             vid.onerror = null;
         }
         
-        Ambilight.stop();
+        VideoPlaybackManager.destroy();
 
         AppState.currentPresenceCache = {};
         AppState.usersListRenderToken++;
