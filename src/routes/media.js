@@ -40,7 +40,7 @@ mediaRouter.post('/resolve-media', async (req, res) => {
         const status = code === 'INVALID_URL' ? 400
             : code === 'UNSUPPORTED_URL' ? 422
             : code === 'TIMEOUT' ? 504
-            : 502;
+            : 400;
 
         return res.status(status).json({
             success: false,

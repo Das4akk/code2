@@ -40,8 +40,10 @@ export function pickStreamFromYtDlpInfo(info) {
         throw Object.assign(new Error('Empty yt-dlp response'), { code: 'EXTRACTION_FAILED' });
     }
 
+    const isYouTube = String(root.extractor_key || '').toLowerCase() === 'youtube';
     const formats = Array.isArray(root.formats) ? root.formats.filter(hasUrl) : [];
 
+    // Progressive mp4 with both video and audio
     const progressiveMp4 = formats
         .filter(f => isMp4Format(f) && f.vcodec !== 'none' && f.acodec !== 'none')
         .sort((a, b) => scoreFormat(b) - scoreFormat(a));
@@ -57,7 +59,7 @@ export function pickStreamFromYtDlpInfo(info) {
     }
 
     const hlsFormats = formats
-        .filter(isHlsFormat)
+        .filter(f => isHlsFormat(f) && !isYouTube)
         .sort((a, b) => scoreFormat(b) - scoreFormat(a));
 
     if (hlsFormats.length) {
@@ -74,7 +76,7 @@ export function pickStreamFromYtDlpInfo(info) {
     if (fallback) {
         return {
             source: formatUrl(fallback),
-            isHls: isHlsFormat(fallback),
+            isHls: isYouTube ? false : isHlsFormat(fallback),
             ext: fallback.ext || 'unknown',
             formatNote: fallback.format_note || 'fallback'
         };
@@ -83,7 +85,7 @@ export function pickStreamFromYtDlpInfo(info) {
     if (root.url) {
         return {
             source: root.url,
-            isHls: /\.m3u8(\?|$)/i.test(root.url),
+            isHls: isYouTube ? false : /\.m3u8(\?|$)/i.test(root.url),
             ext: root.ext || 'unknown',
             formatNote: 'root'
         };
