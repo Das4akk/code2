@@ -763,8 +763,11 @@
                     <button class="secondary-btn" id="btn-room-settings" style="width: auto; padding: 10px 16px; display: none;">⚙️ Настройки</button>
                 </div>
                 
-                <div class="video-container glass-panel">
+                <div class="video-container glass-panel" style="position: relative;">
                     <video id="native-player" playsinline></video>
+                    <div id="yt-player-container" style="display:none; position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 16px; overflow: hidden; pointer-events: auto; z-index: 5;">
+                        <div id="yt-player"></div>
+                    </div>
                     <div id="reaction-layer"></div>
                     <div class="reaction-bar">
                         <button class="react-btn" data-emoji="🔥">🔥</button>

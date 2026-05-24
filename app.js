@@ -734,6 +734,13 @@ class MediaResolverClient {
         }
     }
 
+    static extractYouTubeId(url) {
+        if (!url || typeof url !== 'string') return null;
+        const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?\n]+)/i);
+        if (match && match[1] && match[1].length >= 10) return match[1];
+        return null;
+    }
+
     static isDirectMedia(url = '') {
         return /\.(mp4|webm|m4v|mov|mkv|m3u8)(\?|#|$)/i.test(String(url || ''));
     }
@@ -746,7 +753,7 @@ class MediaResolverClient {
             EXTRACTION_FAILED: 'Не удалось извлечь видео',
             BOT_PROTECTION: 'Видео защищено от ботов. Попробуйте другой сервис.',
             RATE_LIMITED: 'Слишком много запросов, попробуйте позже',
-            NETWORK: 'Media resolver недоступен. backend выключен.'
+            NETWORK: 'Backend выключен (node server.js). Без него извлечение видео невозможно.'
         };
         return map[code] || fallback || 'Ошибка извлечения видео';
     }
@@ -807,6 +814,20 @@ class MediaResolverClient {
             throw Object.assign(new Error('Пустая ссылка'), { code: 'INVALID_URL' });
         }
         if (this.pending.has(normalized)) return this.pending.get(normalized);
+
+        const ytId = this.extractYouTubeId(normalized);
+        if (ytId) {
+            return {
+                source: normalized,
+                title: 'YouTube Video',
+                duration: 0,
+                thumbnail: `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`,
+                platform: 'youtube',
+                isHls: false,
+                ext: 'youtube',
+                resolvedAt: Date.now()
+            };
+        }
 
         const task = (async () => {
             this.setModalStatus('loading', 'Извлекаем поток через yt-dlp…');
@@ -902,6 +923,72 @@ class MediaResolverClient {
     }
 }
 
+class YouTubePlayerManager {
+    static player = null;
+    static apiReady = false;
+
+    static loadApi() {
+        if (window.YT && window.YT.Player) {
+            this.apiReady = true;
+            return Promise.resolve();
+        }
+        return new Promise(resolve => {
+            window.onYouTubeIframeAPIReady = () => {
+                this.apiReady = true;
+                resolve();
+            };
+            if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
+                const tag = document.createElement('script');
+                tag.src = "https://www.youtube.com/iframe_api";
+                document.head.appendChild(tag);
+            }
+        });
+    }
+
+    static async initPlayer(videoId, onStateChange) {
+        await this.loadApi();
+        return new Promise(resolve => {
+            if (this.player) {
+                this.player.loadVideoById(videoId);
+                this.player.getIframe().style.pointerEvents = (AppState.isHost || AdminPanel.isCurrentUserCreator()) ? 'auto' : 'none';
+                resolve(this.player);
+            } else {
+                this.player = new window.YT.Player('yt-player', {
+                    videoId: videoId,
+                    width: '100%',
+                    height: '100%',
+                    playerVars: {
+                        autoplay: 1,
+                        controls: 1,
+                        disablekb: 0,
+                        fs: 0,
+                        modestbranding: 1,
+                        rel: 0
+                    },
+                    events: {
+                        onReady: () => {
+                            this.player.getIframe().style.pointerEvents = (AppState.isHost || AdminPanel.isCurrentUserCreator()) ? 'auto' : 'none';
+                            resolve(this.player);
+                        },
+                        onStateChange: (e) => onStateChange(e)
+                    }
+                });
+            }
+        });
+    }
+
+    static play() { if (this.player && this.player.playVideo) this.player.playVideo(); }
+    static pause() { if (this.player && this.player.pauseVideo) this.player.pauseVideo(); }
+    static seek(time) { if (this.player && this.player.seekTo) this.player.seekTo(time, true); }
+    static getCurrentTime() { return this.player && this.player.getCurrentTime ? this.player.getCurrentTime() : 0; }
+    static destroy() {
+        if (this.player && typeof this.player.destroy === 'function') {
+            try { this.player.destroy(); } catch(e){}
+            this.player = null;
+        }
+    }
+}
+
 class VideoPlaybackManager {
     static hlsInstance = null;
     static lastSignature = '';
@@ -942,6 +1029,15 @@ class VideoPlaybackManager {
         vid.pause();
         vid.removeAttribute('src');
         vid.load();
+        delete vid.dataset.playbackKey;
+        delete vid.dataset.roomUrl;
+        vid.onerror = null;
+        
+        YouTubePlayerManager.destroy();
+        this.lastSignature = '';
+        Ambilight.stop();
+        if (Utils.$('yt-player-container')) Utils.$('yt-player-container').style.display = 'none';
+        vid.style.display = 'block';
     }
 
     static async resolvePlaybackSource(room = {}) {
@@ -1026,9 +1122,43 @@ class VideoPlaybackManager {
         if (!vid) return;
 
         const signature = this.getPlaybackSignature(room);
-        if (signature === this.lastSignature && vid.dataset.playbackKey) return;
+        if (signature === this.lastSignature && (vid.dataset.playbackKey || (YouTubePlayerManager.player && AppState.currentRoom?.videoPlatform === 'youtube'))) return;
 
         try {
+            const ytId = MediaResolverClient.extractYouTubeId(room.videoSourceUrl || room.videoUrl);
+            
+            if (ytId) {
+                this.detach(vid);
+                this.lastSignature = signature;
+                if (Utils.$('yt-player-container')) Utils.$('yt-player-container').style.display = 'block';
+                vid.style.display = 'none';
+                
+                await YouTubePlayerManager.initPlayer(ytId, (e) => {
+                    if (window.YT && e.data === window.YT.PlayerState.PLAYING) {
+                        if (AppState.ignoreVideoEvents) return;
+                        if (!RoomManager.hasPerm('player')) return;
+                        AppState.ignoreVideoEvents = true;
+                        set(ref(db, `rooms/${AppState.currentRoomId}/sync`), {
+                            type: 'play',
+                            time: YouTubePlayerManager.getCurrentTime(),
+                            ts: Date.now()
+                        });
+                        setTimeout(() => AppState.ignoreVideoEvents = false, 150);
+                    } else if (window.YT && e.data === window.YT.PlayerState.PAUSED) {
+                        if (AppState.ignoreVideoEvents) return;
+                        if (!RoomManager.hasPerm('player')) return;
+                        AppState.ignoreVideoEvents = true;
+                        set(ref(db, `rooms/${AppState.currentRoomId}/sync`), {
+                            type: 'pause',
+                            time: YouTubePlayerManager.getCurrentTime(),
+                            ts: Date.now()
+                        });
+                        setTimeout(() => AppState.ignoreVideoEvents = false, 150);
+                    }
+                });
+                return;
+            }
+
             const playback = await this.resolvePlaybackSource(room);
             const source = String(playback.source || '').trim();
 
@@ -6335,9 +6465,22 @@ class RoomManager {
 
         const sUnsub = onValue(syncRef, (snap) => {
             const d = snap.val();
-            if (!d || !vid) return;
+            if (!d) return;
             if (Date.now() - d.ts > 2000) return;
 
+            if (YouTubePlayerManager.player && AppState.currentRoom?.videoPlatform === 'youtube') {
+                if (AppState.ignoreVideoEvents) return;
+                AppState.ignoreVideoEvents = true;
+                if (Math.abs(YouTubePlayerManager.getCurrentTime() - d.time) > 1.0) {
+                    YouTubePlayerManager.seek(d.time);
+                }
+                if (d.type === 'play') YouTubePlayerManager.play();
+                if (d.type === 'pause') YouTubePlayerManager.pause();
+                setTimeout(() => AppState.ignoreVideoEvents = false, 300);
+                return;
+            }
+
+            if (!vid) return;
             if (Math.abs(vid.currentTime - d.time) > 1.0) {
                 isRemoteSeek = true;
                 vid.currentTime = d.time;
@@ -6485,6 +6628,12 @@ class RoomManager {
         const vid = Utils.$('native-player');
         if (vid) { vid.controls = pPlayer; vid.style.pointerEvents = pPlayer ? 'auto' : 'none'; }
         
+        if (YouTubePlayerManager && YouTubePlayerManager.player && typeof YouTubePlayerManager.player.getIframe === 'function') {
+            try {
+                YouTubePlayerManager.player.getIframe().style.pointerEvents = pPlayer ? 'auto' : 'none';
+            } catch(e){}
+        }
+
         Utils.$('chat-input').disabled = !pChat;
         Utils.$('send-btn').disabled = !pChat;
         Utils.$('mic-btn').disabled = !pVoice;
