@@ -770,7 +770,15 @@ class MediaResolverClient {
     static bindRoomUrlInput() {
         const input = Utils.$('room-input-url');
         const previewBtn = Utils.$('btn-preview-media');
+        const ytNote = Utils.$('yt-create-note');
         if (!input) return;
+
+        const checkYt = () => {
+            if (!ytNote) return;
+            const url = input.value.trim();
+            const isYt = /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?\n]+)/i.test(url);
+            ytNote.style.display = isYt ? 'block' : 'none';
+        };
 
         const runPreview = Utils.debounce(async () => {
             const url = input.value.trim();
@@ -791,7 +799,17 @@ class MediaResolverClient {
             }
         }, 700);
 
-        input.addEventListener('input', runPreview);
+        input.addEventListener('input', () => {
+            checkYt();
+            runPreview();
+        });
+        
+        // Also check on init in case of edit mode
+        const observer = new MutationObserver((mutations) => {
+            if (input.value) checkYt();
+        });
+        observer.observe(Utils.$('modal-room'), { attributes: true, attributeFilter: ['class'] });
+
         if (previewBtn) {
             previewBtn.onclick = async () => {
                 const url = input.value.trim();
@@ -1144,20 +1162,22 @@ class VideoPlaybackManager {
                         AppState.ignoreVideoEvents = true;
                         set(ref(db, `rooms/${AppState.currentRoomId}/sync`), {
                             type: 'play',
+                            state: 'playing',
                             time: YouTubePlayerManager.getCurrentTime(),
                             ts: Date.now()
                         });
-                        setTimeout(() => AppState.ignoreVideoEvents = false, 150);
+                        setTimeout(() => AppState.ignoreVideoEvents = false, 1500);
                     } else if (window.YT && e.data === window.YT.PlayerState.PAUSED) {
                         if (AppState.ignoreVideoEvents) return;
                         if (!RoomManager.hasPerm('player')) return;
                         AppState.ignoreVideoEvents = true;
                         set(ref(db, `rooms/${AppState.currentRoomId}/sync`), {
                             type: 'pause',
+                            state: 'paused',
                             time: YouTubePlayerManager.getCurrentTime(),
                             ts: Date.now()
                         });
-                        setTimeout(() => AppState.ignoreVideoEvents = false, 150);
+                        setTimeout(() => AppState.ignoreVideoEvents = false, 1500);
                     }
                 });
                 return;
@@ -6206,12 +6226,17 @@ class RoomManager {
             
             const lock = room.isPrivate ? '🔒 ' : '';
             const membersCount = room.presence ? Object.keys(room.presence).length : 0;
+            const isYt = MediaResolverClient.extractYouTubeId(room.videoSourceUrl || room.videoUrl);
+            const platformBadge = isYt ? `<span style="background:var(--danger); color:#fff; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold; margin-right:4px; vertical-align:middle;">YouTube</span>` : '';
+
             let card = Utils.$(`room-card-${id}`);
             
             if (!card) {
                 card = document.createElement('div'); card.className = 'room-card'; card.id = `room-card-${id}`;
                 card.onclick = () => this.attemptJoinRoom(id, room);
-                const vidHtml = room.videoUrl ? `<video src="${Utils.escapeHtml(room.videoUrl)}" preload="metadata" muted playsinline></video>` : '';
+                const isYtUrl = MediaResolverClient.extractYouTubeId(room.videoSourceUrl || room.videoUrl);
+                const ytHtml = isYtUrl ? `<img src="https://i.ytimg.com/vi/${isYtUrl}/hqdefault.jpg" style="width:100%;height:100%;object-fit:cover;">` : '';
+                const vidHtml = (room.videoUrl && !isYtUrl) ? `<video src="${Utils.escapeHtml(room.videoUrl)}" preload="metadata" muted playsinline></video>` : ytHtml;
                 card.innerHTML = `
                     <div class="room-preview">${vidHtml}<div class="room-preview-overlay"></div></div>
                     <div class="room-info"><h4 class="rm-title"></h4><div class="room-meta"><span class="rm-host"></span><span class="rm-count"></span></div></div>
@@ -6219,10 +6244,11 @@ class RoomManager {
                 grid.appendChild(card);
                 const video = card.querySelector('video');
                 if (video) { video.addEventListener('loadedmetadata', () => { video.currentTime = Math.min(10, video.duration / 2); card.querySelector('.room-preview').classList.add('loaded'); }, { once: true }); }
+                if (isYtUrl) { card.querySelector('.room-preview').classList.add('loaded'); }
             }
-            card.querySelector('.rm-title').innerText = `${lock}${room.name}`;
+            card.querySelector('.rm-title').innerHTML = `${platformBadge}${lock}${Utils.escapeHtml(room.name)}`;
             if (Array.isArray(room.hashtags) && room.hashtags[0]) {
-                card.querySelector('.rm-title').innerText = `${lock}${room.name} ${room.hashtags[0]}`;
+                card.querySelector('.rm-title').innerHTML = `${platformBadge}${lock}${Utils.escapeHtml(room.name)} <span style="opacity:0.7;font-size:0.9em">${Utils.escapeHtml(room.hashtags[0])}</span>`;
             }
             card.querySelector('.rm-host').innerText = `Хост: ${room.hostName || 'Неизвестно'}`;
             card.querySelector('.rm-count').innerHTML = `<span class="avatars-stack">${this.getRoomAvatarsStack(room)}</span>`;
@@ -6385,6 +6411,18 @@ class RoomManager {
         Utils.$('room-title-text').innerText = Utils.escapeHtml(`${roomData.name}${roomTag}`);
         VideoPlaybackManager.applyRoomVideo(roomData).catch(() => {});
         
+        if (MediaResolverClient.extractYouTubeId(roomData.videoSourceUrl || roomData.videoUrl)) {
+            const ytVpnNotice = document.createElement('div');
+            ytVpnNotice.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(20,20,20,0.95); backdrop-filter: blur(10px); border: 2px solid #ff4757; border-radius: 16px; padding: 24px; z-index: 10000; color: #fff; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.5); max-width: 90%; width: 320px;';
+            ytVpnNotice.innerHTML = `
+                <div style="font-size: 32px; margin-bottom: 10px;">🔴</div>
+                <div style="font-size: 18px; font-weight: bold; margin-bottom: 10px;">Внимание: YouTube</div>
+                <div style="font-size: 14px; opacity: 0.9; line-height: 1.5; margin-bottom: 20px;">Для корректной загрузки и синхронизации видео с YouTube <b>обязательно включите VPN</b>.</div>
+                <button class="primary-btn" style="width: 100%;" onclick="this.parentElement.remove()">Я включил VPN</button>
+            `;
+            document.body.appendChild(ytVpnNotice);
+        }
+
         let shareBtn = Utils.$('btn-share-room');
         if (!shareBtn) {
             shareBtn = document.createElement('button');
@@ -6462,37 +6500,48 @@ class RoomManager {
         const vid = Utils.$('native-player');
         let isRemoteSeek = false;
         if (vid) {
-            vid.onplay = () => { if(!isRemoteSeek && this.hasPerm('player')) set(syncRef, { type: 'play', time: vid.currentTime, ts: Date.now() }); };
-            vid.onpause = () => { if(!isRemoteSeek && this.hasPerm('player')) set(syncRef, { type: 'pause', time: vid.currentTime, ts: Date.now() }); };
-            vid.onseeked = () => { if(!isRemoteSeek && this.hasPerm('player')) set(syncRef, { type: 'seek', time: vid.currentTime, ts: Date.now() }); };
+            vid.onplay = () => { if(!isRemoteSeek && this.hasPerm('player')) set(syncRef, { type: 'play', state: 'playing', time: vid.currentTime, ts: Date.now() }); };
+            vid.onpause = () => { if(!isRemoteSeek && this.hasPerm('player')) set(syncRef, { type: 'pause', state: 'paused', time: vid.currentTime, ts: Date.now() }); };
+            vid.onseeked = () => { if(!isRemoteSeek && this.hasPerm('player')) set(syncRef, { type: 'seek', state: vid.paused ? 'paused' : 'playing', time: vid.currentTime, ts: Date.now() }); };
         }
 
         const sUnsub = onValue(syncRef, (snap) => {
             const d = snap.val();
             if (!d) return;
-            if (Date.now() - d.ts > 2000) return;
+
+            // Compute target time and state considering the age of the event
+            const ageSec = (Date.now() - d.ts) / 1000;
+            let state = d.state || (d.type === 'play' ? 'playing' : 'paused');
+            let targetTime = d.time;
+            
+            // If the video was playing when this event was emitted and the event is older than 1s, it continued playing
+            if (state === 'playing' && ageSec > 1.0) {
+                targetTime += ageSec;
+            }
 
             const currentRoom = AppState.roomsCache.get(AppState.currentRoomId) || {};
             if (YouTubePlayerManager.player && MediaResolverClient.extractYouTubeId(currentRoom.videoSourceUrl || currentRoom.videoUrl)) {
                 if (AppState.ignoreVideoEvents) return;
                 AppState.ignoreVideoEvents = true;
-                if (Math.abs(YouTubePlayerManager.getCurrentTime() - d.time) > 1.0) {
-                    YouTubePlayerManager.seek(d.time);
+                if (Math.abs(YouTubePlayerManager.getCurrentTime() - targetTime) > 1.5) {
+                    YouTubePlayerManager.seek(targetTime);
                 }
-                if (d.type === 'play') YouTubePlayerManager.play();
-                if (d.type === 'pause') YouTubePlayerManager.pause();
+                if (state === 'playing') YouTubePlayerManager.play();
+                if (state === 'paused') YouTubePlayerManager.pause();
+                
+                // Allow some time for YouTube to seek and start playing smoothly
                 setTimeout(() => AppState.ignoreVideoEvents = false, 1500);
                 return;
             }
 
             if (!vid) return;
-            if (Math.abs(vid.currentTime - d.time) > 1.0) {
+            if (Math.abs(vid.currentTime - targetTime) > 1.5) {
                 isRemoteSeek = true;
-                vid.currentTime = d.time;
+                vid.currentTime = targetTime;
                 setTimeout(() => isRemoteSeek = false, 1500);
             }
-            if (d.type === 'play' && vid.paused) vid.play().catch(()=>{});
-            if (d.type === 'pause' && !vid.paused) vid.pause();
+            if (state === 'playing' && vid.paused) vid.play().catch(()=>{});
+            if (state === 'paused' && !vid.paused) vid.pause();
         });
         AppState.roomSubscriptions.push(sUnsub);
 
