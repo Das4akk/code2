@@ -96,6 +96,18 @@ const AppState = {
 // ============================================================================
 
 class Utils {
+    static formatLastSeen(ts) {
+        if (!ts) return 'Ещё не заходил';
+        const diff = Date.now() - ts;
+        if (diff < 60000) return 'Только что';
+        const mins = Math.floor(diff / 60000);
+        if (mins < 60) return `${mins} мин. назад`;
+        const hours = Math.floor(mins / 60);
+        if (hours < 24) return `${hours} ч. назад`;
+        const days = Math.floor(hours / 24);
+        return `${days} д. назад`;
+    }
+
     static $(id) { return document.getElementById(id); }
 
     static toast(msg, type = 'info') {
@@ -4231,11 +4243,11 @@ class FriendsManager {
                 
                 div.innerHTML = `
                     <div class="avatar">${av}</div>
-                    <div class="friend-info-col">
+                    <div class="friend-info-col" style="flex:1;">
                         <div class="friend-name">${Utils.escapeHtml(profile.name)} ${roleBadgeHtml}</div>
-                        <div class="friend-status">
-                            <div class="status-dot ${isOnline ? 'online' : ''}"></div>
-                            ${isOnline ? 'Онлайн' : 'Офлайн'}
+                        <div class="friend-status" style="font-size: 11px; opacity: 0.8; margin-top: 2px;">
+                            <div class="status-dot ${isOnline ? 'online' : ''}" style="display:inline-block;"></div>
+                            ${isOnline ? 'Онлайн' : status.ts ? `Был(а) ${Utils.formatLastSeen(status.ts)}` : 'Офлайн'}
                         </div>
                     </div>
                 `;
@@ -6447,6 +6459,17 @@ class RoomManager {
         Utils.$('btn-room-settings').style.display = (AppState.isHost || AdminPanel.isCurrentUserCreator()) ? 'block' : 'none';
         if (AppState.isHost || AdminPanel.isCurrentUserCreator()) Utils.$('btn-room-settings').onclick = () => this.openRoomModal(roomId);
 
+        const videoVolSlider = Utils.$('video-volume-slider');
+        if (videoVolSlider) {
+            videoVolSlider.oninput = () => {
+                const nativePlayer = Utils.$('native-player');
+                if (nativePlayer) nativePlayer.volume = videoVolSlider.value;
+                if (YouTubePlayerManager.player && typeof YouTubePlayerManager.player.setVolume === 'function') {
+                    YouTubePlayerManager.player.setVolume(videoVolSlider.value * 100);
+                }
+            };
+        }
+
         Utils.showScreen('room-screen');
         Utils.$('chat-messages').innerHTML = '<div class="sys-msg">Вы вошли в комнату</div>';
         Utils.$('users-list').innerHTML = '';
@@ -6624,7 +6647,18 @@ class RoomManager {
             if (Date.now() - rx.ts > 5000) return;
             const el = document.createElement('div');
             el.className = 'floating-emoji';
-            el.innerText = rx.emoji;
+            const imgMap = {
+                '🔥': 'https://em-content.zobj.net/source/telegram/386/fire_1f525.webp',
+                '😂': 'https://em-content.zobj.net/source/telegram/386/face-with-tears-of-joy_1f602.webp',
+                '😱': 'https://em-content.zobj.net/source/telegram/386/face-screaming-in-fear_1f631.webp',
+                '❤️': 'https://em-content.zobj.net/source/telegram/386/red-heart_2764-fe0f.webp',
+                '👏': 'https://em-content.zobj.net/source/telegram/386/clapping-hands_1f44f.webp'
+            };
+            if (imgMap[rx.emoji]) {
+                el.innerHTML = `<img src="${imgMap[rx.emoji]}" style="width: 48px; height: 48px; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3));">`;
+            } else {
+                el.innerText = rx.emoji;
+            }
             el.style.left = `${Math.random() * 80 + 10}%`;
             Utils.$('reaction-layer').appendChild(el);
             setTimeout(() => el.remove(), 3000);
@@ -6735,9 +6769,13 @@ class RoomManager {
                 let html = `<div class="user-item">`;
                 if (user.speaking) html = `<div class="user-item speaking">`;
                 html += `<div class="indicator online"></div>`; 
-                html += `<div class="user-main"><span class="user-name profile-open-link room-user-profile-link" data-uid="${uid}">${Utils.escapeHtml(user.name)}</span>${roleBadgeHtml}<span class="voice-wave"><i></i><i></i><i></i><i></i></span>`;
+                html += `<div class="user-main" style="flex:1;"><span class="user-name profile-open-link room-user-profile-link" data-uid="${uid}">${Utils.escapeHtml(user.name)}</span>${roleBadgeHtml}<span class="voice-wave"><i></i><i></i><i></i><i></i></span>`;
                 if (isTargetHost) html += `<span class="host-label">Host</span>`;
                 if (isLocal) html += `<span class="you-label">(Вы)</span>`;
+                
+                if (!isLocal) {
+                    html += `<div style="display:flex; align-items:center; gap:5px; margin-top:4px;"><span style="font-size:10px;">🔊</span><input type="range" class="user-mic-vol" data-uid="${uid}" min="0" max="1" step="0.05" value="${RTCManager.getUserVolume(uid) || 1}" style="width: 50px; height: 3px; cursor:pointer;"></div>`;
+                }
                 html += `</div>`;
 
                 html += `<div class="user-card-actions">`;
@@ -6800,6 +6838,9 @@ class RoomManager {
                         FriendsManager.sendFriendRequest(btn.dataset.uid);
                     }
                 };
+            });
+            container.querySelectorAll('.user-mic-vol').forEach(slider => {
+                slider.oninput = () => RTCManager.setUserVolume(slider.dataset.uid, slider.value);
             });
             container.querySelectorAll('.viewer-settings-btn').forEach(btn => {
                 btn.onclick = () => {
@@ -7023,8 +7064,25 @@ class RoomManager {
 
 class RTCManager {
     static RTC_CONFIG = {
-        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }]
+        iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' }, 
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:stun.l.google.com:19305' }
+        ]
     };
+
+    static userVolumes = new Map();
+
+    static getUserVolume(uid) {
+        return this.userVolumes.has(uid) ? this.userVolumes.get(uid) : 1;
+    }
+
+    static setUserVolume(uid, val) {
+        this.userVolumes.set(uid, parseFloat(val));
+        const audio = AppState.rtc.audioElements.get(uid);
+        if (audio) audio.volume = parseFloat(val);
+    }
 
     static init(roomId) {
         this.roomId = roomId;
@@ -7101,6 +7159,7 @@ class RTCManager {
                 btn.style.opacity = '1';
 
                 await this.writeParticipantState();
+                await new Promise(r => setTimeout(r, 200)); // Delay to let track fully start
                 await this.handleParticipants(AppState.rtc.voiceParticipantsCache || {});
                 Utils.toast('Микрофон включен');
             } catch (e) {
@@ -7226,6 +7285,7 @@ class RTCManager {
             AppState.rtc.audioElements.set(uid, audio);
         }
         audio.srcObject = stream;
+        audio.volume = this.getUserVolume(uid);
         audio.play().catch(e => console.warn('Audio play failed:', e));
     }
 
