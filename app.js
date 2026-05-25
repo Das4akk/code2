@@ -986,6 +986,10 @@ class YouTubePlayerManager {
             try { this.player.destroy(); } catch(e){}
             this.player = null;
         }
+        const container = document.getElementById('yt-player-container');
+        if (container) {
+            container.innerHTML = '<div id="yt-player"></div>';
+        }
     }
 }
 
@@ -1085,7 +1089,7 @@ class VideoPlaybackManager {
                 if (data && data.fatal) {
                     switch (data.type) {
                         case window.Hls.ErrorTypes.NETWORK_ERROR:
-                            Utils.toast('Сетевая ошибка HLS, пробую восстановить...', 'warn');
+                            Utils.toast('Сетевая ошибка потока (вероятно CORS или недоступен сервер). Пробую восстановить...', 'warn');
                             this.hlsInstance.startLoad();
                             break;
                         case window.Hls.ErrorTypes.MEDIA_ERROR:
@@ -1122,7 +1126,7 @@ class VideoPlaybackManager {
         if (!vid) return;
 
         const signature = this.getPlaybackSignature(room);
-        if (signature === this.lastSignature && (vid.dataset.playbackKey || (YouTubePlayerManager.player && AppState.currentRoom?.videoPlatform === 'youtube'))) return;
+        if (signature === this.lastSignature && (vid.dataset.playbackKey || (YouTubePlayerManager.player && MediaResolverClient.extractYouTubeId(room.videoSourceUrl || room.videoUrl)))) return;
 
         try {
             const ytId = MediaResolverClient.extractYouTubeId(room.videoSourceUrl || room.videoUrl);
@@ -6196,7 +6200,7 @@ class RoomManager {
         let count = 0;
         
         AppState.roomsCache.forEach((room, id) => {
-            if (search && !room.name.toLowerCase().includes(search)) {
+            if (search && !(room.name || '').toLowerCase().includes(search)) {
                 Utils.$(`room-card-${id}`)?.remove(); return;
             }
             
@@ -6468,7 +6472,8 @@ class RoomManager {
             if (!d) return;
             if (Date.now() - d.ts > 2000) return;
 
-            if (YouTubePlayerManager.player && AppState.currentRoom?.videoPlatform === 'youtube') {
+            const currentRoom = AppState.roomsCache.get(AppState.currentRoomId) || {};
+            if (YouTubePlayerManager.player && MediaResolverClient.extractYouTubeId(currentRoom.videoSourceUrl || currentRoom.videoUrl)) {
                 if (AppState.ignoreVideoEvents) return;
                 AppState.ignoreVideoEvents = true;
                 if (Math.abs(YouTubePlayerManager.getCurrentTime() - d.time) > 1.0) {
@@ -6476,7 +6481,7 @@ class RoomManager {
                 }
                 if (d.type === 'play') YouTubePlayerManager.play();
                 if (d.type === 'pause') YouTubePlayerManager.pause();
-                setTimeout(() => AppState.ignoreVideoEvents = false, 300);
+                setTimeout(() => AppState.ignoreVideoEvents = false, 1500);
                 return;
             }
 
@@ -6484,7 +6489,7 @@ class RoomManager {
             if (Math.abs(vid.currentTime - d.time) > 1.0) {
                 isRemoteSeek = true;
                 vid.currentTime = d.time;
-                setTimeout(() => isRemoteSeek = false, 300);
+                setTimeout(() => isRemoteSeek = false, 1500);
             }
             if (d.type === 'play' && vid.paused) vid.play().catch(()=>{});
             if (d.type === 'pause' && !vid.paused) vid.pause();
