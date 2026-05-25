@@ -980,7 +980,7 @@ class YouTubePlayerManager {
         return new Promise(resolve => {
             if (this.player) {
                 this.player.loadVideoById(videoId);
-                this.player.getIframe().style.pointerEvents = (AppState.isHost || AdminPanel.isCurrentUserCreator()) ? 'auto' : 'none';
+                this.player.getIframe().style.pointerEvents = 'auto';
                 setTimeout(() => typeof RoomManager !== 'undefined' && RoomManager.forceSyncVideo(), 800);
                 resolve(this.player);
             } else {
@@ -998,7 +998,7 @@ class YouTubePlayerManager {
                     },
                     events: {
                         onReady: () => {
-                            this.player.getIframe().style.pointerEvents = (AppState.isHost || AdminPanel.isCurrentUserCreator()) ? 'auto' : 'none';
+                            this.player.getIframe().style.pointerEvents = 'auto';
                             setTimeout(() => typeof RoomManager !== 'undefined' && RoomManager.forceSyncVideo(), 500);
                             resolve(this.player);
                         },
@@ -3983,6 +3983,12 @@ class ProfileManager {
         const friendsSnap = await get(ref(db, `users/${targetUid}/friends`));
         const friendsCount = friendsSnap.exists() ? Object.values(friendsSnap.val()).filter(f => f.status === 'accepted').length : 0;
         const joinDate = profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() : 'Неизвестно';
+        
+        const statusSnap = await get(ref(db, `status/${targetUid}`));
+        const st = statusSnap.val() || {};
+        const isOnline = st.online;
+        const statusText = isOnline ? 'Онлайн' : (st.ts ? `Был(а) ${Utils.formatLastSeen(st.ts)}` : 'Офлайн');
+        Utils.$('view-status').innerHTML = `<div class="indicator ${isOnline ? 'online' : ''}" style="width:8px;height:8px;border-radius:50%;background:${isOnline ? '#4caf50' : '#888'};display:inline-block;margin-right:6px;"></div>${statusText}`;
 
         const badgeHtml = this.getRoleBadgeHtml(profile, targetUid);
 
@@ -4310,7 +4316,17 @@ class DirectMessages {
         const chatId = this.getChatId(AppState.currentUser.uid, targetUid);
         AppState.currentDirectChat = { uid: targetUid, name: targetName, id: chatId };
         
-        Utils.$('dm-chat-title').innerText = `Чат: ${targetName}`;
+        Utils.$('dm-chat-title').innerText = `💬 Чат: ${targetName}`;
+        
+        // Fetch last seen for target
+        get(ref(db, `status/${targetUid}`)).then(snap => {
+            const st = snap.val() || {};
+            const isOnline = st.online;
+            const subtitle = isOnline ? 'Онлайн' : (st.ts ? `Был(а) ${Utils.formatLastSeen(st.ts)}` : 'Приватные сообщения');
+            const subtitleEl = Utils.$('dm-chat-title').nextElementSibling;
+            if (subtitleEl) subtitleEl.innerText = subtitle;
+        });
+
         Utils.$('modal-dm-chat').classList.add('active');
         this.bindThemeControls();
         this.applyTheme(this.theme, false);
@@ -6569,6 +6585,33 @@ class RoomManager {
             
             const avatarHtml = `<div class="chat-avatar-placeholder" style="width:100%;height:100%;background:#111;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;">${fallbackChar}</div>`;
 
+            // Overlay display
+            const overlayContainer = Utils.$('chat-overlay-container');
+            if (overlayContainer && !isMe) {
+                const overlayEl = document.createElement('div');
+                const avatarUrl = AppState.usersCache.get(msg.uid)?.avatar;
+                const avHtml = avatarUrl 
+                    ? `<img src="${Utils.escapeHtml(avatarUrl)}" style="width:100%;height:100%;object-fit:cover;">` 
+                    : avatarHtml;
+                    
+                overlayEl.style.cssText = `
+                    background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);
+                    border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;
+                    padding: 8px 12px; display: flex; align-items: center; gap: 8px;
+                    color: #fff; font-size: 14px; animation: chatOverlayFade 4s forwards;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.4); pointer-events: none;
+                `;
+                overlayEl.innerHTML = `
+                    <div style="width:28px; height:28px; border-radius: 50%; overflow:hidden; flex-shrink:0;">${avHtml}</div>
+                    <div style="display:flex; flex-direction:column; overflow:hidden;">
+                        <span style="font-size:11px; font-weight:bold; color: var(--accent);">${Utils.escapeHtml(msg.name)}</span>
+                        <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width: 250px;">${content}</span>
+                    </div>
+                `;
+                overlayContainer.appendChild(overlayEl);
+                setTimeout(() => { if (overlayEl.parentNode) overlayEl.remove(); }, 4000);
+            }
+
             line.innerHTML = `
                 <div style="display:flex; gap:8px; align-items:flex-end; max-width:100%; ${isMe ? 'flex-direction:row-reverse;' : ''}">
                     <div class="chat-profile-link" data-uid="${Utils.escapeHtml(msg.uid || '')}" style="width:26px; height:26px; border-radius:50%; flex-shrink:0; cursor:pointer; overflow:hidden; border:1px solid var(--border-light); background:rgba(255,255,255,0.05); transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='scale(1.1)'; this.style.boxShadow='0 0 8px rgba(255,255,255,0.2)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';">
@@ -6689,11 +6732,11 @@ class RoomManager {
         const pReactions = this.hasPerm('reactions');
 
         const vid = Utils.$('native-player');
-        if (vid) { vid.controls = pPlayer; vid.style.pointerEvents = pPlayer ? 'auto' : 'none'; }
+        if (vid) { vid.controls = pPlayer; vid.style.pointerEvents = 'auto'; }
         
         if (YouTubePlayerManager && YouTubePlayerManager.player && typeof YouTubePlayerManager.player.getIframe === 'function') {
             try {
-                YouTubePlayerManager.player.getIframe().style.pointerEvents = pPlayer ? 'auto' : 'none';
+                YouTubePlayerManager.player.getIframe().style.pointerEvents = 'auto';
             } catch(e){}
         }
 
@@ -6737,13 +6780,19 @@ class RoomManager {
                     friendsIds.forEach(fid => {
                         inviteHtml += `
                             <div class="user-item" style="background: rgba(46,213,115,0.05); border: 1px solid rgba(46,213,115,0.2);">
-                                <div class="user-main"><span class="user-name" id="inv-name-${fid}">Загрузка...</span></div>
+                                <div class="user-main" style="flex:1;"><span class="user-name" id="inv-name-${fid}">Загрузка...</span></div>
                                 <button class="primary-btn" style="width:auto; padding:4px 8px; font-size:11px;" onclick="DirectMessages.sendRoomInvite('${fid}')">Пригласить</button>
                             </div>
                         `;
-                        ProfileManager.loadUser(fid).then(p => {
+                        ProfileManager.loadUser(fid).then(async p => {
                             if (!ensureActualRender() || !p) return;
-                            if (Utils.$(`inv-name-${fid}`)) Utils.$(`inv-name-${fid}`).innerText = p.name;
+                            const st = (await get(ref(db, \`status/\${fid}\`))).val() || {};
+                            if (!ensureActualRender()) return;
+                            const isOnline = st.online;
+                            const statusText = isOnline ? 'Онлайн' : (st.ts ? \`Был(а) \${Utils.formatLastSeen(st.ts)}\` : 'Офлайн');
+                            if (Utils.$(\`inv-name-\${fid}\`)) {
+                                Utils.$(\`inv-name-\${fid}\`).innerHTML = \`<div style="display:flex; flex-direction:column;"><div style="display:flex; align-items:center;"><div class="indicator \${isOnline ? 'online' : ''}" style="width:8px;height:8px;border-radius:50%;background:\${isOnline ? '#4caf50' : '#888'};margin-right:6px;"></div>\${Utils.escapeHtml(p.name)}</div><span style="font-size:10px; color:var(--text-muted); margin-top:2px;">\${statusText}</span></div>\`;
+                            }
                         });
                     });
                     outsideFriendsHtml = inviteHtml;

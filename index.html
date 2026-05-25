@@ -211,13 +211,14 @@
         video#main-video { width: 100%; height: 100%; max-height: 100%; outline: none; }
         
         /* Reactions Layer */
-        .reaction-bar { display: flex; gap: 15px; align-items: center; justify-content: center; padding: 10px; background: rgba(0,0,0,0.5); border-radius: 16px; border: 1px solid var(--border-light); position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 10; backdrop-filter: blur(10px); }
-        .react-btn { background: none; border: none; font-size: 24px; cursor: pointer; transition: all 0.25s ease; }
-        .react-btn:hover { transform: scale(1.4); filter: drop-shadow(0 0 12px rgba(255,255,255,0.3)); }
+        .reaction-bar { display: flex; gap: 15px; align-items: center; justify-content: center; padding: 10px; position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 10; pointer-events: none; }
+        .react-btn { pointer-events: auto; background: none; border: none; font-size: 32px; cursor: pointer; transition: all 0.25s ease; padding: 0; outline: none; margin: 0; box-shadow: none; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.6)); }
+        .react-btn:hover { transform: scale(1.4) translateY(-5px); filter: drop-shadow(0 6px 12px rgba(0,0,0,0.8)) brightness(1.2); }
         .react-btn:disabled { opacity: 0.4; cursor: default; }
         #reaction-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; overflow: hidden; z-index: 50; }
-        .floating-emoji { position: absolute; bottom: -30px; font-size: 32px; animation: floatUp 3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
+        .floating-emoji { position: absolute; bottom: -30px; font-size: 48px; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.4)); animation: floatUp 3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
         @keyframes floatUp { 0% { transform: translateY(0) scale(0.6); opacity: 1; } 50% { transform: translateY(-150px) translateX(20px) scale(1.6); opacity: 1; } 100% { transform: translateY(-350px) translateX(-20px) scale(0.8); opacity: 0; } }
+        @keyframes chatOverlayFade { 0% { opacity: 0; transform: translateY(-10px); } 10% { opacity: 1; transform: translateY(0); } 80% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-10px); } }
 
         .chat-section { display: flex; flex-direction: column; height: 100%; overflow: hidden; border: 1px solid var(--border); }
         .chat-tabs { display: flex; padding: 10px; border-bottom: 1px solid var(--border); gap: 5px; }
@@ -907,7 +908,8 @@
             <div class="modal-drag-handle"></div>
             <div class="avatar" id="view-avatar" style="width: 90px; height: 90px; font-size: 32px; margin: 0 auto 15px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center; background:#111;">?</div>
             <h2 id="view-name" style="margin-bottom: 5px;">Пользователь</h2>
-            <div id="view-username" style="color: var(--accent); font-size: 14px; margin-bottom: 15px; font-weight: 600;">@user</div>
+            <div id="view-username" style="color: var(--accent); font-size: 14px; margin-bottom: 5px; font-weight: 600;">@user</div>
+            <div id="view-status" style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;"></div>
             <p id="view-bio" style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px; line-height: 1.5;"></p>
             <!-- // [NEW] SECOND HALF PROFILE CONTAINER -->
             <div class="partner-container" id="view-partner-container"></div>
