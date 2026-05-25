@@ -969,6 +969,7 @@ class YouTubePlayerManager {
             if (this.player) {
                 this.player.loadVideoById(videoId);
                 this.player.getIframe().style.pointerEvents = (AppState.isHost || AdminPanel.isCurrentUserCreator()) ? 'auto' : 'none';
+                setTimeout(() => typeof RoomManager !== 'undefined' && RoomManager.forceSyncVideo(), 800);
                 resolve(this.player);
             } else {
                 this.player = new window.YT.Player('yt-player', {
@@ -986,6 +987,7 @@ class YouTubePlayerManager {
                     events: {
                         onReady: () => {
                             this.player.getIframe().style.pointerEvents = (AppState.isHost || AdminPanel.isCurrentUserCreator()) ? 'auto' : 'none';
+                            setTimeout(() => typeof RoomManager !== 'undefined' && RoomManager.forceSyncVideo(), 500);
                             resolve(this.player);
                         },
                         onStateChange: (e) => onStateChange(e)
@@ -1142,6 +1144,10 @@ class VideoPlaybackManager {
     static async applyRoomVideo(room = {}) {
         const vid = Utils.$('native-player');
         if (!vid) return;
+
+        vid.onloadedmetadata = () => {
+            if (typeof RoomManager !== 'undefined') RoomManager.forceSyncVideo();
+        };
 
         const signature = this.getPlaybackSignature(room);
         if (signature === this.lastSignature && (vid.dataset.playbackKey || (YouTubePlayerManager.player && MediaResolverClient.extractYouTubeId(room.videoSourceUrl || room.videoUrl)))) return;
@@ -6509,39 +6515,8 @@ class RoomManager {
             const d = snap.val();
             if (!d) return;
 
-            // Compute target time and state considering the age of the event
-            const ageSec = (Date.now() - d.ts) / 1000;
-            let state = d.state || (d.type === 'play' ? 'playing' : 'paused');
-            let targetTime = d.time;
-            
-            // If the video was playing when this event was emitted and the event is older than 1s, it continued playing
-            if (state === 'playing' && ageSec > 1.0) {
-                targetTime += ageSec;
-            }
-
-            const currentRoom = AppState.roomsCache.get(AppState.currentRoomId) || {};
-            if (YouTubePlayerManager.player && MediaResolverClient.extractYouTubeId(currentRoom.videoSourceUrl || currentRoom.videoUrl)) {
-                if (AppState.ignoreVideoEvents) return;
-                AppState.ignoreVideoEvents = true;
-                if (Math.abs(YouTubePlayerManager.getCurrentTime() - targetTime) > 1.5) {
-                    YouTubePlayerManager.seek(targetTime);
-                }
-                if (state === 'playing') YouTubePlayerManager.play();
-                if (state === 'paused') YouTubePlayerManager.pause();
-                
-                // Allow some time for YouTube to seek and start playing smoothly
-                setTimeout(() => AppState.ignoreVideoEvents = false, 1500);
-                return;
-            }
-
-            if (!vid) return;
-            if (Math.abs(vid.currentTime - targetTime) > 1.5) {
-                isRemoteSeek = true;
-                vid.currentTime = targetTime;
-                setTimeout(() => isRemoteSeek = false, 1500);
-            }
-            if (state === 'playing' && vid.paused) vid.play().catch(()=>{});
-            if (state === 'paused' && !vid.paused) vid.pause();
+            AppState.lastKnownSyncState = d;
+            RoomManager.forceSyncVideo(d);
         });
         AppState.roomSubscriptions.push(sUnsub);
 
@@ -6877,6 +6852,40 @@ class RoomManager {
         `;
     }
 
+    static forceSyncVideo(d = AppState.lastKnownSyncState) {
+        if (!d) return;
+        const vid = Utils.$('native-player');
+        
+        const ageSec = (Date.now() - d.ts) / 1000;
+        let state = d.state || (d.type === 'play' ? 'playing' : 'paused');
+        let targetTime = d.time;
+        
+        if (state === 'playing' && ageSec > 1.0) {
+            targetTime += ageSec;
+        }
+
+        const currentRoom = AppState.roomsCache.get(AppState.currentRoomId) || {};
+        if (YouTubePlayerManager.player && MediaResolverClient.extractYouTubeId(currentRoom.videoSourceUrl || currentRoom.videoUrl)) {
+            if (AppState.ignoreVideoEvents) return;
+            AppState.ignoreVideoEvents = true;
+            if (Math.abs(YouTubePlayerManager.getCurrentTime() - targetTime) > 1.5) {
+                YouTubePlayerManager.seek(targetTime);
+            }
+            if (state === 'playing') YouTubePlayerManager.play();
+            if (state === 'paused') YouTubePlayerManager.pause();
+            
+            setTimeout(() => AppState.ignoreVideoEvents = false, 1500);
+            return;
+        }
+
+        if (!vid || !vid.readyState) return;
+        if (Math.abs(vid.currentTime - targetTime) > 1.5) {
+            vid.currentTime = targetTime;
+        }
+        if (state === 'playing' && vid.paused) vid.play().catch(()=>{});
+        if (state === 'paused' && !vid.paused) vid.pause();
+    }
+
     static leaveRoom() {
         if (!AppState.currentRoomId) return;
         AppState.roomSubscriptions.forEach(fn => fn());
@@ -6914,6 +6923,16 @@ class RoomManager {
         const roomScreen = Utils.$('room-screen');
         if (!roomScreen) return;
         
+        // Smooth transition trick: fade the old background out OVER the new background
+        let fadeLayer = document.createElement('div');
+        fadeLayer.style.cssText = `
+            position: absolute; inset: 0; z-index: 0; pointer-events: none;
+            background: ${getComputedStyle(roomScreen).background};
+            transition: opacity 0.8s ease;
+            opacity: 1;
+        `;
+        roomScreen.appendChild(fadeLayer);
+        
         Object.keys(ThemeManager.EXTENDED_THEMES).forEach(k => {
             roomScreen.classList.remove('theme-' + k);
         });
@@ -6928,11 +6947,19 @@ class RoomManager {
             document.body.classList.add('theme-love-room');
             this.startLoveHearts();
             setTimeout(() => this.startLoveHearts(), 150);
-            return;
+        } else {
+            if (safeTheme === 'inverted') document.body.classList.add('theme-inverted-room');
+            if (safeTheme === 'light') document.body.classList.add('theme-light-room');
+            if (safeTheme !== 'default') roomScreen.classList.add(`theme-${safeTheme}`);
         }
-        if (safeTheme === 'inverted') document.body.classList.add('theme-inverted-room');
-        if (safeTheme === 'light') document.body.classList.add('theme-light-room');
-        if (safeTheme !== 'default') roomScreen.classList.add(`theme-${safeTheme}`);
+        
+        // Trigger fade out
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                fadeLayer.style.opacity = '0';
+                setTimeout(() => fadeLayer.remove(), 850);
+            });
+        });
     }
 
     static startLoveHearts() {
@@ -7088,8 +7115,10 @@ class RTCManager {
     static async handleParticipants(map) {
         AppState.rtc.voiceParticipantsCache = map;
 
-        for (const [targetUid] of AppState.rtc.peerConnections) {
-            if (!map[targetUid] || !map[targetUid].sessionId) this.destroyConnection(targetUid);
+        for (const [targetUid, pc] of AppState.rtc.peerConnections) {
+            if (!map[targetUid] || !map[targetUid].sessionId || pc.targetSessionId !== map[targetUid].sessionId) {
+                this.destroyConnection(targetUid);
+            }
         }
 
         for (const targetUid in map) {
@@ -7110,6 +7139,7 @@ class RTCManager {
         }
 
         const pc = new RTCPeerConnection(this.RTC_CONFIG);
+        pc.targetSessionId = targetSessionId;
         this.syncLocalTracksToConnection(pc);
 
         pc.onicecandidate = ({ candidate }) => {
@@ -7196,6 +7226,7 @@ class RTCManager {
             AppState.rtc.audioElements.set(uid, audio);
         }
         audio.srcObject = stream;
+        audio.play().catch(e => console.warn('Audio play failed:', e));
     }
 
     static destroyConnection(uid) {
