@@ -3219,6 +3219,7 @@ class ProfileManager {
         if (AdminPanel.isCreatorProfile(profile, uid)) badges.push(`<span class="role-badge badge-creator">Создатель</span>`); // [UPDATE]
         if (AdminPanel.isModeratorProfile(profile, uid)) badges.push(`<span class="role-badge badge-moderator">Модератор</span>`); // [UPDATE]
         const adminBadge = String(profile?.adminBadge || '').toLowerCase().trim();
+        if (adminBadge === 'developer') badges.push(`<span class="role-badge badge-developer" style="background:#000; color:#0ff; border:1px solid #0ff; text-shadow:0 0 5px #0ff; box-shadow:0 0 8px rgba(0,255,255,0.4);">Разработчик</span>`);
         if (adminBadge === 'creator') badges.push(`<span class="role-badge badge-creator">Создатель</span>`);
         if (adminBadge === 'moderator') badges.push(`<span class="role-badge badge-moderator">Модератор</span>`);
         if (adminBadge === 'creator_moderator') badges.push(`<span class="role-badge badge-hybrid">Создатель/Модератор</span>`);
@@ -3230,7 +3231,7 @@ class ProfileManager {
             const border = Utils.escapeHtml(custom.border || 'rgba(255,255,255,0.35)');
             badges.push(`<span class="role-badge" style="color:${color}; background:${bg}; border:1px solid ${border}; box-shadow:none;">${text}</span>`);
         }
-        if (profile?.partner) badges.push(`<span class="partner-badge">💖 Пара</span>`); // [UPDATE]
+        if (profile?.partner) badges.push(`<span class="partner-badge">Пара</span>`); // [UPDATE]
         return badges.join(' '); // [UPDATE]
     }
 
@@ -3759,7 +3760,7 @@ class ProfileManager {
         container.innerHTML = `
             <div class="partner-avatar">${this.getAvatarHtml(partnerProfile)}</div>
             <div class="partner-info">
-                <div class="partner-label">Вторая половинка 💖</div>
+                <div class="partner-label">Вторая половинка</div>
                 <div class="partner-name">${Utils.escapeHtml(partnerProfile.name || 'Пользователь')}</div>
                 <div class="partner-meta">${sinceTs ? `Вместе ${daysText} дн.${bondMeta}` : `Пара подтверждена${bondMeta}`}</div>
             </div>
@@ -3992,10 +3993,10 @@ class ProfileManager {
         const friendsCount = friendsSnap.exists() ? Object.values(friendsSnap.val()).filter(f => f.status === 'accepted').length : 0;
         const joinDate = profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() : 'Неизвестно';
         
-        const statusSnap = await get(ref(db, `status/${targetUid}`));
+        const statusSnap = await get(ref(db, `users/${targetUid}/status`));
         const st = statusSnap.val() || {};
         const isOnline = st.online;
-        const statusText = isOnline ? 'Онлайн' : (st.ts ? `Был(а) ${Utils.formatLastSeen(st.ts)}` : 'Офлайн');
+        const statusText = isOnline ? 'Онлайн' : (st.lastSeen ? `Был(а) ${Utils.formatLastSeen(st.lastSeen)}` : 'Офлайн');
         Utils.$('view-status').innerHTML = `<div class="indicator ${isOnline ? 'online' : ''}" style="width:8px;height:8px;border-radius:50%;background:${isOnline ? '#4caf50' : '#888'};display:inline-block;margin-right:6px;"></div>${statusText}`;
 
         const badgeHtml = this.getRoleBadgeHtml(profile, targetUid);
@@ -4261,7 +4262,7 @@ class FriendsManager {
                         <div class="friend-name">${Utils.escapeHtml(profile.name)} ${roleBadgeHtml}</div>
                         <div class="friend-status" style="font-size: 11px; opacity: 0.8; margin-top: 2px;">
                             <div class="status-dot ${isOnline ? 'online' : ''}" style="display:inline-block;"></div>
-                            ${isOnline ? 'Онлайн' : status.ts ? `Был(а) ${Utils.formatLastSeen(status.ts)}` : 'Офлайн'}
+                            ${isOnline ? 'Онлайн' : status.lastSeen ? `Был(а) ${Utils.formatLastSeen(status.lastSeen)}` : 'Офлайн'}
                         </div>
                     </div>
                 `;
@@ -4324,13 +4325,13 @@ class DirectMessages {
         const chatId = this.getChatId(AppState.currentUser.uid, targetUid);
         AppState.currentDirectChat = { uid: targetUid, name: targetName, id: chatId };
         
-        Utils.$('dm-chat-title').innerText = `💬 Чат: ${targetName}`;
+        Utils.$('dm-chat-title').innerText = `Чат: ${targetName}`;
         
         // Fetch last seen for target
-        get(ref(db, `status/${targetUid}`)).then(snap => {
+        get(ref(db, `users/${targetUid}/status`)).then(snap => {
             const st = snap.val() || {};
             const isOnline = st.online;
-            const subtitle = isOnline ? 'Онлайн' : (st.ts ? `Был(а) ${Utils.formatLastSeen(st.ts)}` : 'Приватные сообщения');
+            const subtitle = isOnline ? 'Онлайн' : (st.lastSeen ? `Был(а) ${Utils.formatLastSeen(st.lastSeen)}` : 'Приватные сообщения');
             const subtitleEl = Utils.$('dm-chat-title').nextElementSibling;
             if (subtitleEl) subtitleEl.innerText = subtitle;
         });
@@ -4784,11 +4785,12 @@ class AdminPanel {
                         <button class="primary-btn" id="btn-admin-grant-mod" style="width:auto; padding:0 16px;">Назначить Модератора</button>
                         <button class="danger-btn" id="btn-admin-revoke-mod" style="width:auto; padding:0 16px;">Снять Модератора</button>
                     </div>
-                    <div style="display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin-top:10px;">
-                        <button class="secondary-btn" id="btn-admin-badge-creator">Плашка Создатель</button>
-                        <button class="secondary-btn" id="btn-admin-badge-moderator">Плашка Модератор</button>
-                        <button class="secondary-btn" id="btn-admin-badge-hybrid">Плашка Создатель/Модератор</button>
-                        <button class="danger-btn" id="btn-admin-badge-remove">Снять плашку</button>
+                    <div style="display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px; margin-top:10px;">
+                        <button class="secondary-btn" id="btn-admin-badge-developer">Разработчик</button>
+                        <button class="secondary-btn" id="btn-admin-badge-creator">Создатель</button>
+                        <button class="secondary-btn" id="btn-admin-badge-moderator">Модератор</button>
+                        <button class="secondary-btn" id="btn-admin-badge-hybrid">Соз/Мод</button>
+                        <button class="danger-btn" id="btn-admin-badge-remove">Снять</button>
                     </div>
                     <div class="admin-form-group" style="margin-top:10px;">
                         <label class="admin-form-label" for="admin-badge-text">Кастомная плашка</label>
@@ -4986,6 +4988,7 @@ class AdminPanel {
 
         Utils.$('btn-admin-grant-mod').onclick = () => this.toggleModRole(true);
         Utils.$('btn-admin-revoke-mod').onclick = () => this.toggleModRole(false);
+        Utils.$('btn-admin-badge-developer').onclick = () => this.setAdminBadgeForUser('developer');
         Utils.$('btn-admin-badge-creator').onclick = () => this.setAdminBadgeForUser('creator');
         Utils.$('btn-admin-badge-moderator').onclick = () => this.setAdminBadgeForUser('moderator');
         Utils.$('btn-admin-badge-hybrid').onclick = () => this.setAdminBadgeForUser('creator_moderator');
@@ -5117,11 +5120,11 @@ class AdminPanel {
         if (!snap.exists()) return Utils.toast('Пользователь не найден', 'error');
         const targetUid = snap.val();
 
-        const allowed = [null, 'creator', 'moderator', 'creator_moderator', 'custom'];
+        const allowed = [null, 'developer', 'creator', 'moderator', 'creator_moderator', 'custom'];
         if (!allowed.includes(mode)) return Utils.toast('Неверный тип плашки', 'error');
 
         const updates = { adminBadge: null, adminBadgeCustom: null };
-        if (mode === 'creator' || mode === 'moderator' || mode === 'creator_moderator') {
+        if (mode === 'developer' || mode === 'creator' || mode === 'moderator' || mode === 'creator_moderator') {
             updates.adminBadge = mode;
         } else if (mode === 'custom') {
             const text = Utils.$('admin-badge-text')?.value?.trim();
@@ -5582,7 +5585,7 @@ class AdminPanel {
             <div style="font-size:12px; color:var(--text-muted);">Email: ${Utils.escapeHtml(profile.email || 'не указан')}</div>
             
             <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
-                <div style="font-weight:700; margin-bottom:6px;">💖 Управление второй половинкой</div>
+                <div style="font-weight:700; margin-bottom:6px;">Управление второй половинкой</div>
                 <input type="text" id="admin-partner-target" placeholder="UID или юзернейм существующего юзера">
                 <div style="font-size: 11px; color: var(--text-muted); margin: 5px 0;">ИЛИ создать фиктивную:</div>
                 <div style="display:flex; gap: 8px;">
@@ -6567,6 +6570,7 @@ class RoomManager {
         });
         AppState.roomSubscriptions.push(sUnsub);
 
+        const roomJoinTime = Date.now();
         let processedMsgs = new Set();
         const cUnsub = onChildAdded(chatRef, (snap) => {
             const msg = snap.val(); const id = snap.key;
@@ -6595,7 +6599,7 @@ class RoomManager {
 
             // Overlay display
             const overlayContainer = Utils.$('chat-overlay-container');
-            if (overlayContainer && !isMe) {
+            if (overlayContainer && !isMe && msg.ts >= roomJoinTime) {
                 const overlayEl = document.createElement('div');
                 const avatarUrl = AppState.usersCache.get(msg.uid)?.avatar;
                 const avHtml = avatarUrl 
@@ -6740,13 +6744,10 @@ class RoomManager {
         const pReactions = this.hasPerm('reactions');
 
         const vid = Utils.$('native-player');
-        if (vid) { vid.controls = pPlayer; vid.style.pointerEvents = 'auto'; }
+        if (vid) { vid.controls = pPlayer; }
         
-        if (YouTubePlayerManager && YouTubePlayerManager.player && typeof YouTubePlayerManager.player.getIframe === 'function') {
-            try {
-                YouTubePlayerManager.player.getIframe().style.pointerEvents = 'auto';
-            } catch(e){}
-        }
+        const overlay = Utils.$('room-video-overlay');
+        if (overlay) overlay.style.pointerEvents = pPlayer ? 'none' : 'auto';
 
         Utils.$('chat-input').disabled = !pChat;
         Utils.$('send-btn').disabled = !pChat;
@@ -6794,10 +6795,10 @@ class RoomManager {
                         `;
                         ProfileManager.loadUser(fid).then(async p => {
                             if (!ensureActualRender() || !p) return;
-                            const st = (await get(ref(db, `status/${fid}`))).val() || {};
+                            const st = (await get(ref(db, `users/${fid}/status`))).val() || {};
                             if (!ensureActualRender()) return;
                             const isOnline = st.online;
-                            const statusText = isOnline ? 'Онлайн' : (st.ts ? `Был(а) ${Utils.formatLastSeen(st.ts)}` : 'Офлайн');
+                            const statusText = isOnline ? 'Онлайн' : (st.lastSeen ? `Был(а) ${Utils.formatLastSeen(st.lastSeen)}` : 'Офлайн');
                             if (Utils.$(`inv-name-${fid}`)) {
                                 Utils.$(`inv-name-${fid}`).innerHTML = `<div style="display:flex; flex-direction:column;"><div style="display:flex; align-items:center;"><div class="indicator ${isOnline ? 'online' : ''}" style="width:8px;height:8px;border-radius:50%;background:${isOnline ? '#4caf50' : '#888'};margin-right:6px;"></div>${Utils.escapeHtml(p.name)}</div><span style="font-size:10px; color:var(--text-muted); margin-top:2px;">${statusText}</span></div>`;
                             }
@@ -6831,13 +6832,13 @@ class RoomManager {
                 if (isLocal) html += `<span class="you-label">(Вы)</span>`;
                 
                 if (!isLocal) {
-                    html += `<div style="display:flex; align-items:center; gap:5px; margin-top:4px;"><span style="font-size:10px;">🔊</span><input type="range" class="user-mic-vol" data-uid="${uid}" min="0" max="1" step="0.05" value="${RTCManager.getUserVolume(uid) || 1}" style="width: 50px; height: 3px; cursor:pointer;"></div>`;
+                    html += `<div style="display:flex; align-items:center; gap:5px; margin-top:4px;"><span style="font-size:10px;">VOL</span><input type="range" class="user-mic-vol" data-uid="${uid}" min="0" max="1" step="0.05" value="${RTCManager.getUserVolume(uid) || 1}" style="width: 50px; height: 3px; cursor:pointer;"></div>`;
                 }
                 html += `</div>`;
 
                 html += `<div class="user-card-actions">`;
                 if (!isLocal) {
-                    html += `<button class="dm-btn" data-uid="${uid}">💬</button>`;
+                    html += `<button class="dm-btn" data-uid="${uid}">ЛС</button>`;
                     const fStatus = myFriends[uid]?.status;
                     if (fStatus === 'accepted') {
                         // Already friends
@@ -6850,7 +6851,7 @@ class RoomManager {
                     }
                 }
                 if ((AppState.isHost || AdminPanel.isCurrentUserCreator()) && !isLocal) {
-                    html += `<button class="viewer-settings-btn" data-uid="${uid}" title="Настройки зрителя">⚙️</button>`;
+                    html += `<button class="viewer-settings-btn" data-uid="${uid}" title="Настройки зрителя">Настр.</button>`;
                 }
                 html += `</div>`;
 
