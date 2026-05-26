@@ -1923,7 +1923,7 @@ class BackgroundFX {
 }
 
 class EasterEggManager {
-    static DURATION = 5000; // ПАТЧ: Увеличено время работы всех пасхалок до 15 секунд
+    static DURATION = 15000; // ПАТЧ: Увеличено время работы всех пасхалок до 15 секунд
     static SOUND_URLS = {
         notification: 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg',
         glass: 'https://actions.google.com/sounds/v1/impacts/glass_shatters_into_debris.ogg',
@@ -2077,7 +2077,10 @@ class EasterEggManager {
                 letter-spacing: 2px;
                 text-transform: uppercase;
                 backdrop-filter: blur(12px);
+                -webkit-backdrop-filter: blur(12px);
                 box-shadow: 0 12px 30px rgba(0,0,0,0.35);
+                transform: translateZ(0);
+                -webkit-transform: translateZ(0);
             }
             #matrix-canvas,
             #vhs-canvas {
@@ -2465,9 +2468,10 @@ class EasterEggManager {
 
         this.milkResizeHandler = () => {
             width = window.innerWidth; height = window.innerHeight;
-            canvas.width = width * (window.devicePixelRatio || 1);
-            canvas.height = height * (window.devicePixelRatio || 1);
-            ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+            const dpr = Math.min(window.devicePixelRatio || 1, 2); // iOS Safari memory limits fix
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            ctx.scale(dpr, dpr);
         };
         window.addEventListener('resize', this.milkResizeHandler);
         this.milkResizeHandler();
@@ -2629,7 +2633,7 @@ class EasterEggManager {
             y += dy;
             if (x <= 0 || x + logoRect.width >= bounds.width) dx *= -1;
             if (y <= 0 || y + logoRect.height >= bounds.height) dy *= -1;
-            logo.style.transform = `translate(${x}px, ${y}px)`;
+            logo.style.transform = `translate3d(${x}px, ${y}px, 0)`;
             const raf = requestAnimationFrame(step);
             AppState.easterEggs.animationHandles.set('dvd', raf);
         };
@@ -2704,11 +2708,16 @@ class EasterEggManager {
         const canvas = Utils.$('vhs-canvas');
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
-        const resize = () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+        const resizeVhs = () => {
+            const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+            canvas.width = window.innerWidth * dpr;
+            canvas.height = window.innerHeight * dpr;
+            ctx.scale(dpr, dpr);
         };
-        resize();
+        resizeVhs();
+        window.addEventListener('resize', resizeVhs);
+        this._vhsResize = resizeVhs;
+        
         const draw = () => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.fillStyle = 'rgba(255,255,255,0.03)';
@@ -2730,6 +2739,7 @@ class EasterEggManager {
     static stopVhs() {
         document.body.classList.remove('easter-vhs');
         this.hideOverlay('vhs-overlay');
+        if (this._vhsResize) window.removeEventListener('resize', this._vhsResize);
         setTimeout(() => {
             const overlay = Utils.$('vhs-overlay');
             if (overlay && !overlay.classList.contains('active')) {
@@ -3590,6 +3600,13 @@ class ProfileManager {
             const border = Utils.escapeHtml(custom.border || 'rgba(255,255,255,0.35)');
             badges.push(`<span class="role-badge" style="color:${color}; background:${bg}; border:1px solid ${border}; box-shadow:none;">${text}</span>`);
         }
+        
+        if (profile?.selectedBadge && AppState.customBadges && AppState.customBadges[profile.selectedBadge]) {
+            const b = AppState.customBadges[profile.selectedBadge];
+            const iconStr = b.icon && String(b.icon).indexOf('http') === 0 ? `<img src="${Utils.escapeHtml(b.icon)}" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;border-radius:2px;" />` : `<span style="font-size:12px;margin-right:2px;">${b.icon || ''}</span>`;
+            badges.push(`<span class="role-badge" style="background:${b.bg}; color:${b.color}; border:1px solid ${b.border}; display:inline-flex; align-items:center;">${iconStr} ${Utils.escapeHtml(b.name)}</span>`);
+        }
+
         if (profile?.partner) badges.push(`<span class="partner-badge">Пара</span>`); // [UPDATE]
         return badges.join(' '); // [UPDATE]
     }
@@ -4494,6 +4511,7 @@ class ProfileManager {
                         <div style="flex: 1; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding: 5px 6px; width:100%;">
                             <div style="color: #ffffff; font-weight: 800; font-size: 13px; line-height: 1.2;">${Utils.escapeHtml(bdg.name)}</div>
                             <div style="color: rgba(255,255,255,0.7); font-size: 10px; margin-top:4px; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">${Utils.escapeHtml(bdg.desc)}</div>
+                            <div id="ach-count-${i}" style="color: rgba(255,255,255,0.3); font-size: 9px; margin-top:6px; font-weight: 600;">Уже получили: ...</div>
                         </div>
                     </div>`;
                 }).join('');
@@ -4509,6 +4527,8 @@ class ProfileManager {
                         </div>
                         <button id="badge-next" style="position:absolute; right:10px; z-index:10; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.2); color:white; border-radius:50%; width:36px; height:36px; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.2s;">›</button>
                     </div>
+                    <!-- Action for selected badge -->
+                    <div id="badge-action-container" style="text-align:center; height:30px; margin-top:10px;"></div>
                 `;
                 
                 const updateBadgeCarousel = () => {
@@ -4521,8 +4541,10 @@ class ProfileManager {
                     const gap = 20;
                     const step = itemWidth + gap;
                     
-                    const wrapWidth = badgesContainer.querySelector('.badge-carousel-wrap').offsetWidth;
-                    const centerOffset = (wrapWidth / 2) - ((items[0].offsetWidth) / 2) - 300; // 300 is paddingLeft
+                    const wrapElem = badgesContainer.querySelector('.badge-carousel-wrap');
+                    let wrapWidth = wrapElem ? wrapElem.offsetWidth : 350;
+                    if (wrapWidth === 0) wrapWidth = Math.min(window.innerWidth - 40, 500); // 40px modal padding fallback
+                    const centerOffset = (wrapWidth / 2) - (itemWidth / 2) - 300; // 300 is paddingLeft
                     
                     track.style.transform = `translateX(${centerOffset - (window.ProfileBadgesState.index * step)}px)`;
                     
@@ -4541,6 +4563,28 @@ class ProfileManager {
                             el.style.boxShadow = 'none';
                         }
                     });
+
+                    // Update the action button
+                    const actionContainer = Utils.$('badge-action-container');
+                    const activeBadge = userBadges[window.ProfileBadgesState.index];
+                    if (actionContainer && activeBadge) {
+                        if (targetUid === AppState.currentUser.uid && activeBadge._id) {
+                            if (profile.selectedBadge === activeBadge._id) {
+                                actionContainer.innerHTML = `<span style="color:var(--text-muted); font-size:12px;">Установлен как основной</span>`;
+                            } else {
+                                actionContainer.innerHTML = `<button class="secondary-btn" id="btn-select-main-badge" style="padding: 4px 12px; font-size: 11px; width: auto; display: inline-block;">Выбрать основным</button>`;
+                                Utils.$('btn-select-main-badge').onclick = () => {
+                                    update(ref(db, `users/${targetUid}/profile`), { selectedBadge: activeBadge._id }).then(() => {
+                                        profile.selectedBadge = activeBadge._id;
+                                        updateBadgeCarousel();
+                                        Utils.toast('Бейдж установлен основным!');
+                                    });
+                                };
+                            }
+                        } else {
+                            actionContainer.innerHTML = '';
+                        }
+                    }
                 };
 
                 Utils.$('badge-prev').onclick = () => {
@@ -4584,7 +4628,32 @@ class ProfileManager {
                     };
                 });
                 
-                setTimeout(updateBadgeCarousel, 50);
+                setTimeout(updateBadgeCarousel, 200);
+                
+                // Fetch counts asynchronously
+                get(ref(db, 'users')).then(snap => {
+                    const allUsers = snap.val() || {};
+                    const badgeCounts = {};
+                    for (const u of Object.values(allUsers)) {
+                        let assigned = u.profile?.assignedBadges;
+                        if (Array.isArray(assigned)) {
+                            assigned.forEach(bId => {
+                                badgeCounts[bId] = (badgeCounts[bId] || 0) + 1;
+                            });
+                        }
+                        if (u.partnerSince && u.partner) badgeCounts['rel_1week'] = (badgeCounts['rel_1week']||0) + 1; // Simplified fallback for dynamic ones
+                    }
+                    
+                    userBadges.forEach((bdg, i) => {
+                        const countEl = Utils.$(`ach-count-${i}`);
+                        if (countEl) {
+                            const num = badgeCounts[bdg._id] || 0;
+                            // Add 1 for dynamic relationship badges or count properly
+                            const total = bdg._id ? num : "Многочисленно";
+                            countEl.innerHTML = `Уже получили: ${total}`;
+                        }
+                    });
+                }).catch(e => console.error(e));
             }
         }
 
