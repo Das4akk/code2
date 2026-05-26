@@ -2869,6 +2869,75 @@ class EasterEggManager {
 // ============================================================================
 
 class BadgeManager {
+    static async checkRelationshipBadges(uid) {
+        if (!uid) return;
+        const pSinceSnap = await get(ref(db, `users/${uid}/partnerSince`));
+        if (!pSinceSnap.exists()) return;
+        const sinceTs = parseInt(pSinceSnap.val());
+        if (!sinceTs) return;
+        
+        const now = Date.now();
+        const diffMs = now - sinceTs;
+        const diffDays = diffMs / (1000 * 60 * 60 * 24);
+        
+        const relBadges = [];
+        if (diffDays >= 7) relBadges.push('rel_1week');
+        if (diffDays >= 30) relBadges.push('rel_1month');
+        if (diffDays >= 180) relBadges.push('rel_6months');
+        if (diffDays >= 365) relBadges.push('rel_1year');
+        
+        if (relBadges.length > 0) {
+            const profSnap = await get(ref(db, `users/${uid}/profile/assignedBadges`));
+            let assigned = profSnap.val() || [];
+            if (!Array.isArray(assigned)) assigned = [];
+            
+            let changed = false;
+            relBadges.forEach(bId => {
+                if (!assigned.includes(bId)) {
+                    assigned.push(bId);
+                    changed = true;
+                }
+            });
+            
+            if (changed) {
+                await update(ref(db, `users/${uid}/profile`), { assignedBadges: assigned });
+            }
+        }
+    }
+
+    static async grantEventBadgeToOnline() {
+        if (!AdminPanel.requireAdmin()) return;
+        const badgeId = Utils.$('admin-event-badge-id')?.value.trim();
+        if (!badgeId) return Utils.toast('Введите ID бейджа', 'error');
+
+        if (!confirm(`Точно выдать бейдж "${badgeId}" всем, кто сейчас онлайн?`)) return;
+
+        const usersSnap = await get(ref(db, 'users'));
+        const usersData = usersSnap.val() || {};
+        
+        let count = 0;
+        const updates = {};
+        
+        for (const [uid, uData] of Object.entries(usersData)) {
+            if (uData.status && uData.status.online) {
+                let assigned = (uData.profile && uData.profile.assignedBadges) || [];
+                if (!Array.isArray(assigned)) assigned = [];
+                if (!assigned.includes(badgeId)) {
+                    assigned.push(badgeId);
+                    updates[`users/${uid}/profile/assignedBadges`] = assigned;
+                    count++;
+                }
+            }
+        }
+        
+        if (count > 0) {
+            await update(ref(db), updates);
+            Utils.toast(`Бейдж выдан ${count} пользователям!`);
+        } else {
+            Utils.toast('Нет новых пользователей для выдачи.', 'info');
+        }
+    }
+
     static init() {
         onValue(ref(db, 'badges'), snap => {
             AppState.customBadges = snap.val() || {};
@@ -3046,6 +3115,7 @@ class AuthManager {
                         await ProfileManager.ensureProfileExists(user);
                     }
                     await ProfileManager.migrateLegacyDefaultBackground(user.uid);
+                    await BadgeManager.checkRelationshipBadges(user.uid);
                     ProfileManager.bindMyProfileListener();
                     FriendsManager.initListeners();
                     RoomManager.initLobbyListeners();
@@ -4486,6 +4556,26 @@ class ProfileManager {
                         updateBadgeCarousel();
                     }
                 };
+
+                let badgeStartX = 0;
+                let badgeEndX = 0;
+                const trackElem = Utils.$('badge-track');
+                if (trackElem) {
+                    trackElem.addEventListener('touchstart', e => {
+                        badgeStartX = e.touches[0].clientX;
+                    }, { passive: true });
+                    trackElem.addEventListener('touchend', e => {
+                        badgeEndX = e.changedTouches[0].clientX;
+                        const diff = badgeEndX - badgeStartX;
+                        if (diff > 40 && window.ProfileBadgesState.index > 0) {
+                            window.ProfileBadgesState.index--;
+                            updateBadgeCarousel();
+                        } else if (diff < -40 && window.ProfileBadgesState.index < userBadges.length - 1) {
+                            window.ProfileBadgesState.index++;
+                            updateBadgeCarousel();
+                        }
+                    });
+                }
                 
                 badgesContainer.querySelectorAll('.ach-card').forEach((card, i) => {
                     card.onclick = () => {
@@ -5617,6 +5707,11 @@ class AdminPanel {
                             </div>
                             <button class="primary-btn" id="btn-admin-save-badge" style="margin-top:10px;">Сохранить бейдж</button>
                             <button class="secondary-btn" id="btn-admin-generate-rel-badges" style="margin-top:10px;">Сгенерировать авто-ачивки за отношения</button>
+                            <div style="margin-top:15px; border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">
+                                <div style="font-size:12px; margin-bottom:5px;">Ивенты (выдать всем онлайн)</div>
+                                <input type="text" id="admin-event-badge-id" placeholder="ID ачивки для онлайна" style="margin-bottom:8px;">
+                                <button class="primary-btn" id="btn-admin-grant-event-badge">Выдать всем Online</button>
+                            </div>
                         </div>
                     </div>
                     <div style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
@@ -5668,6 +5763,7 @@ class AdminPanel {
         Utils.$('btn-admin-badge-custom').onclick = () => this.setAdminBadgeForUser('custom');
         Utils.$('btn-admin-save-badge').onclick = () => BadgeManager.saveBadge();
         Utils.$('btn-admin-generate-rel-badges').onclick = () => BadgeManager.generateRelationshipBadges();
+        Utils.$('btn-admin-grant-event-badge').onclick = () => BadgeManager.grantEventBadgeToOnline();
 
         BadgeManager.renderBadgeList();
         
