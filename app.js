@@ -1175,6 +1175,8 @@ class VideoPlaybackManager {
             delete vid.dataset.roomUrl;
             vid.onerror = null;
         }
+        YouTubePlayerManager.destroy();
+        RutubePlayerManager.destroy();
         this.lastSignature = '';
         Ambilight.stop();
     }
@@ -1786,7 +1788,7 @@ class PartnerRelationshipPanel {
                 const rect = kissBtn.getBoundingClientRect();
                 for (let i = 0; i < 15; i++) {
                     const heart = document.createElement('div');
-                    heart.innerHTML = Utils.getAppleEmojiHtml(['💗', '💋', '💕', '💘'][Math.floor(Math.random() * 4)]);
+                    heart.innerText = ['💖', '💋', '💕', '💘'][Math.floor(Math.random() * 4)];
                     heart.style.cssText = `position:fixed;left:${rect.left + rect.width / 2 + (Math.random() - 0.5) * 50}px;top:${rect.top}px;font-size:${20 + Math.random() * 20}px;pointer-events:none;z-index:10000;transition:all 1.5s ease-out`;
                     document.body.appendChild(heart);
                     setTimeout(() => {
@@ -1936,7 +1938,7 @@ class EasterEggManager {
         notification: 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg',
         glass: 'https://actions.google.com/sounds/v1/impacts/glass_shatters_into_debris.ogg',
         vader: 'https://actions.google.com/sounds/v1/science_fiction/alien_breath.ogg',
-        moo: 'https://archive.org/download/TetrisThemeMusic/Tetris.mp3',
+        moo: 'https://actions.google.com/sounds/v1/animals/cow_moo_1.ogg', // cow sound
         grass: 'https://actions.google.com/sounds/v1/water/waves_crashing_on_rock_beach.ogg',
         milk: 'https://actions.google.com/sounds/v1/water/pour_water.ogg',
         popcorn: 'https://actions.google.com/sounds/v1/foley/bubble_wrap_popping.ogg',
@@ -2352,6 +2354,7 @@ class EasterEggManager {
                 break;
             case 'grass':
                 this.activateLocalEffect('grass', () => {
+                    this.playSound(this.SOUND_URLS.grass, { volume: 0.5 });
                     document.body.classList.add('easter-green');
                     this.showOverlay('green-overlay');
                 }, () => {
@@ -2360,7 +2363,7 @@ class EasterEggManager {
                 });
                 break;
             case 'milk':
-                this.startAdvancedMilk();
+                this.activateLocalEffect('milk', () => this.startAdvancedMilk(), () => this.stopAdvancedMilk());
                 break;
             case 'popcorn':
                 this.activateLocalEffect('popcorn', () => this.startPopcornRain(), () => this.stopPopcornRain());
@@ -2369,7 +2372,10 @@ class EasterEggManager {
                 this.activateLocalEffect('dvd', () => this.startDvd(), () => this.stopDvd());
                 break;
             case 'roll':
-                this.activateLocalEffect('roll', () => document.body.classList.add('easter-roll'), () => document.body.classList.remove('easter-roll'));
+                this.activateLocalEffect('roll', () => {
+                    this.playSound(this.SOUND_URLS.roll, { volume: 0.5 });
+                    document.body.classList.add('easter-roll');
+                }, () => document.body.classList.remove('easter-roll'));
                 break;
             case 'matrix':
                 this.activateLocalEffect('matrix', () => this.startMatrix(), () => this.stopMatrix());
@@ -2427,6 +2433,7 @@ class EasterEggManager {
     // ADVANCED MILK SIMULATION (ФИКСИРОВАННАЯ И ОПТИМИЗИРОВАННАЯ ВЕРСИЯ - 15 Секунд)
     static startAdvancedMilk() {
         if (this.milkActive) return;
+        this.playSound(this.SOUND_URLS.milk, { volume: 0.5 });
         this.milkActive = true;
         let container = Utils.$('advanced-milk-container');
         if (!container) {
@@ -2481,28 +2488,11 @@ class EasterEggManager {
     }
 
     static playMoo() {
-        const audioCtx = this.getAudioContext();
-        if (audioCtx) {
-            const now = audioCtx.currentTime;
-            const gain = audioCtx.createGain();
-            const low = audioCtx.createOscillator();
-            const high = audioCtx.createOscillator();
-            low.type = 'sawtooth'; high.type = 'triangle';
-            low.frequency.setValueAtTime(160, now);
-            low.frequency.exponentialRampToValueAtTime(105, now + 1.1);
-            high.frequency.setValueAtTime(320, now);
-            high.frequency.exponentialRampToValueAtTime(210, now + 1.1);
-            gain.gain.setValueAtTime(0.0001, now);
-            gain.gain.exponentialRampToValueAtTime(0.15, now + 0.08);
-            gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.3);
-            low.connect(gain); high.connect(gain); gain.connect(audioCtx.destination);
-            low.start(now); high.start(now);
-            low.stop(now + 1.35); high.stop(now + 1.35);
-        }
+        this.playSound(this.SOUND_URLS.moo, { volume: 0.6 });
         
         const container = document.createElement('div');
         container.style.cssText = `position:fixed; inset:0; pointer-events:none; z-index:9999; display:flex; align-items:center; justify-content:center;`;
-        container.innerHTML = `<div style="font-size: 25vw; animation: mooZoom 2.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.5)); will-change: transform, opacity;">${Utils.getAppleEmojiHtml('🐄')}</div>`;
+        container.innerHTML = `<div style="font-size: 25vw; animation: mooZoom 2.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.5)); will-change: transform, opacity;">🐄</div>`;
         if (!document.getElementById('moo-css')) {
             const s = document.createElement('style'); s.id = 'moo-css';
             s.innerHTML = `@keyframes mooZoom { 0% { transform: scale(0.1) translateY(50vh); opacity: 0; } 20% { opacity: 1; } 80% { opacity: 1; transform: scale(1.5) translateY(-5vh); } 100% { transform: scale(2) translateY(-10vh); opacity: 0; } }`;
@@ -2542,6 +2532,7 @@ class EasterEggManager {
     }
 
     static startPopcornRain() {
+        this.playSound(this.SOUND_URLS.popcorn, { volume: 0.5 });
         this.showOverlay('popcorn-overlay');
         const overlay = Utils.$('popcorn-overlay');
         if (!overlay) return;
@@ -2563,7 +2554,7 @@ class EasterEggManager {
             if (!particles) return;
             for(let i=0; i<3; i++) {
                 const item = document.createElement('div');
-                item.innerHTML = Utils.getAppleEmojiHtml('🍿');
+                item.innerText = '🍿';
                 item.className = 'popcorn-p';
                 particles.appendChild(item);
                 const angle = Math.random() * Math.PI * 2;
@@ -2656,6 +2647,7 @@ class EasterEggManager {
     }
 
     static startMatrix() {
+        this.playSound(this.SOUND_URLS.matrix, { volume: 0.5 });
         document.body.classList.add('easter-matrix');
         this.showOverlay('matrix-overlay');
         const canvas = Utils.$('matrix-canvas');
@@ -2801,6 +2793,7 @@ class EasterEggManager {
     }
 
     static startNyan() {
+        this.playSound(this.SOUND_URLS.nyan, { volume: 0.5 });
         document.body.classList.add('easter-nyan');
         this.showOverlay('nyan-overlay');
         const overlay = Utils.$('nyan-overlay');
@@ -5318,7 +5311,7 @@ class DirectMessages {
             const roll = Math.random();
             const mode = roll < 0.33 ? 'far' : roll > 0.74 ? 'near' : 'mid';
             heart.className = `love-heart ${mode}`;
-            heart.innerHTML = Utils.getAppleEmojiHtml(RoomManager.loveHeartEmojis[Math.floor(Math.random() * RoomManager.loveHeartEmojis.length)]);
+            heart.innerText = RoomManager.loveHeartEmojis[Math.floor(Math.random() * RoomManager.loveHeartEmojis.length)];
             heart.style.left = `${Utils.getDistributedHeartLeft(layer, 'dm-love')}%`; // [UPDATE]
             const scaleBase = mode === 'far' ? 0.45 : mode === 'near' ? 1.15 : 0.78;
             const scale = scaleBase + Math.random() * (mode === 'near' ? 0.35 : 0.25);
@@ -6077,16 +6070,16 @@ class AdminPanel {
             if (command) {
                 // ДОБАВЛЕНО: Индивидуальные мемы для каждой пасхалки
                 const memeTexts = {
-                    'moo': 'Кто-то выпустил корову на пастбище... Му-у-у! ' + Utils.getAppleEmojiHtml('🐄'),
-                    'grass': 'Пора потрогать траву, друзья! ' + Utils.getAppleEmojiHtml('🌱'),
-                    'milk': 'кто-нибудь желает молока? ' + Utils.getAppleEmojiHtml('🥛'),
-                    'popcorn': 'Запасаемся попкорном, сейчас начнется кино! ' + Utils.getAppleEmojiHtml('🍿'),
-                    'dvd': 'Ждем, когда логотип ударится в угол... ' + Utils.getAppleEmojiHtml('📀'),
-                    'roll': 'Делаем бочку! Уууииии! ' + Utils.getAppleEmojiHtml('🔄'),
-                    'matrix': 'Тук-тук, Нео. Матрица имеет тебя... ' + Utils.getAppleEmojiHtml('💻'),
-                    'shh': 'Тссс... Режим тишины активирован ' + Utils.getAppleEmojiHtml('🤫'),
-                    'vader': 'Люк, я твой отец... *тяжелое дыхание* ' + Utils.getAppleEmojiHtml('⚔️'),
-                    'nyan': 'Нян-кэт пролетает над сервером! ' + Utils.getAppleEmojiHtml('🐱') + Utils.getAppleEmojiHtml('🌈')
+                    'moo': 'Кто-то выпустил корову на пастбище... Му-у-у! 🐄',
+                    'grass': 'Пора потрогать траву, друзья! 🌱',
+                    'milk': 'кто-нибудь желает молока? 🥛',
+                    'popcorn': 'Запасаемся попкорном, сейчас начнется кино! 🍿',
+                    'dvd': 'Ждем, когда логотип ударится в угол... 📀',
+                    'roll': 'Делаем бочку! Уууииии! 🔄',
+                    'matrix': 'Тук-тук, Нео. Матрица имеет тебя... 💻',
+                    'shh': 'Тссс... Режим тишины активирован 🤫',
+                    'vader': 'Люк, я твой отец... *тяжелое дыхание* ⚔️',
+                    'nyan': 'Нян-кэт пролетает над сервером! 🐱🌈'
                 };
                 const msg = memeTexts[command] || `Глобальная пасхалка от ${payload.fromUsername}!`;
                 Utils.toast(msg, 'info');
@@ -7616,11 +7609,11 @@ class RoomManager {
             const el = document.createElement('div');
             el.className = 'floating-emoji';
             const imgMap = {
-                '🔥': 'https://emojigraph.org/media/144/apple/1f525.png',
-                '😂': 'https://emojigraph.org/media/144/apple/1f602.png',
-                '😱': 'https://emojigraph.org/media/144/apple/1f631.png',
-                '❤️': 'https://emojigraph.org/media/144/apple/2764-fe0f.png',
-                '👏': 'https://emojigraph.org/media/144/apple/1f44f.png'
+                '🔥': 'https://em-content.zobj.net/source/telegram/386/fire_1f525.webp',
+                '😂': 'https://em-content.zobj.net/source/telegram/386/face-with-tears-of-joy_1f602.webp',
+                '😱': 'https://em-content.zobj.net/source/telegram/386/face-screaming-in-fear_1f631.webp',
+                '❤️': 'https://em-content.zobj.net/source/telegram/386/red-heart_2764-fe0f.webp',
+                '👏': 'https://em-content.zobj.net/source/telegram/386/clapping-hands_1f44f.webp'
             };
             if (imgMap[rx.emoji]) {
                 el.innerHTML = `<img src="${imgMap[rx.emoji]}" style="width: 48px; height: 48px; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3));">`;
@@ -7992,7 +7985,7 @@ class RoomManager {
             if (!layer) return;
             const heart = document.createElement('div');
             heart.className = `love-heart ${mode}`;
-            heart.innerHTML = Utils.getAppleEmojiHtml(this.loveHeartEmojis[Math.floor(Math.random() * this.loveHeartEmojis.length)]);
+            heart.innerText = this.loveHeartEmojis[Math.floor(Math.random() * this.loveHeartEmojis.length)];
             heart.style.left = `${Utils.getDistributedHeartLeft(layer, 'room-love')}%`; // [UPDATE]
             const scaleBase = mode === 'far' ? 0.45 : mode === 'near' ? 1.15 : 0.78;
             const scale = scaleBase + Math.random() * (mode === 'near' ? 0.35 : 0.25);
