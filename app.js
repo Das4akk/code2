@@ -4327,54 +4327,159 @@ class ProfileManager {
         const badgesContainer = Utils.$('view-badges-collection');
         if (badgesContainer) {
             badgesContainer.innerHTML = '';
-            if (profile.assignedBadges && Array.isArray(profile.assignedBadges) && AppState.customBadges && profile.assignedBadges.length > 0) {
-                const badgesHtml = profile.assignedBadges.map(bId => {
-                    const bdg = AppState.customBadges[bId];
-                    if (!bdg) return '';
-                    const name = Utils.escapeHtml(bdg.name);
-                    const desc = Utils.escapeHtml(bdg.desc || '');
-                    const icon = bdg.icon ? (bdg.icon.match(/^http/) ? `<img src="${Utils.escapeHtml(bdg.icon)}" style="width:40px;height:40px;object-fit:contain;border-radius:6px;"/>` : `<span style="font-size:32px;">${Utils.escapeHtml(bdg.icon)}</span>`) : '';
-                    const color = Utils.escapeHtml(bdg.color || '#ffffff');
-                    const bg = Utils.escapeHtml(bdg.bg || 'rgba(120,120,120,0.2)');
-                    const border = Utils.escapeHtml(bdg.border || 'rgba(255,255,255,0.35)');
-                    
-                    const badgeB64 = btoa(encodeURIComponent(JSON.stringify(bdg)));
+            
+            let userBadges = [];
+            if (profile.assignedBadges && Array.isArray(profile.assignedBadges) && AppState.customBadges) {
+                profile.assignedBadges.forEach(bId => {
+                    const b = AppState.customBadges[bId];
+                    if (b) userBadges.push(b);
+                });
+            }
+            
+            // Partner dynamic badges
+            const partnerUid = await this.getPartnerUid(targetUid);
+            if (partnerUid) {
+                const partnerProfile = await this.loadUser(partnerUid);
+                const partnerName = partnerProfile ? partnerProfile.name : "Неизвестно";
+                const sinceSnap = await get(ref(db, `users/${targetUid}/partnerSince`));
+                const sinceTs = sinceSnap.exists() ? Number(sinceSnap.val()) : Date.now();
+                const days = Math.floor((Date.now() - sinceTs) / (1000 * 60 * 60 * 24));
+                
+                userBadges.push({
+                    name: 'Это любовь',
+                    desc: 'Вступить в отношения',
+                    icon: 'https://cdn3.emoji.gg/emojis/1690-love-face-emoji.gif',
+                    color: '#ffffff'
+                });
+                
+                if (days >= 7) {
+                    userBadges.push({
+                        name: 'И Долго это будет?',
+                        desc: `Первая неделя отношений с ${partnerName}`,
+                        icon: 'https://cdn3.emoji.gg/emojis/1690-love-face-emoji.gif',
+                        color: '#ffffff'
+                    });
+                }
+                
+                if (days >= 30) {
+                    userBadges.push({
+                        name: 'Ну врооде бы серьезка',
+                        desc: `Первый месяц отношений вместе с ${partnerName}`,
+                        icon: 'https://cdn3.emoji.gg/emojis/1690-love-face-emoji.gif',
+                        color: '#ffffff'
+                    });
+                }
+                
+                if (days >= 100) {
+                    userBadges.push({
+                        name: 'Брак',
+                        desc: `100 Дней отношений с ${partnerName}`,
+                        icon: 'https://cdn3.emoji.gg/emojis/1690-love-face-emoji.gif',
+                        color: '#ffffff'
+                    });
+                }
+            }
 
-                    // Returns a vertical card
+            if (userBadges.length > 0) {
+                window.ProfileBadgesState = { index: 0 };
+                
+                const badgesHtml = userBadges.map((bdg, i) => {
+                    const icon = bdg.icon ? (bdg.icon.match(/^http/) ? `<img src="${Utils.escapeHtml(bdg.icon)}" style="width:60px;height:60px;object-fit:contain;border-radius:6px;"/>` : `<span style="font-size:48px;">${Utils.escapeHtml(bdg.icon)}</span>`) : '';
                     return `
-                    <div style="
-                        --ac-bg: ${bg};
-                        --ac-border: ${border};
-                        --ac-color: ${color};
-                        width: 140px; 
-                        height: 180px; 
+                    <div class="ach-card" data-index="${i}" style="
+                        width: 160px; 
+                        height: 180px;
+                        flex-shrink: 0;
                         border-radius: 12px; 
-                        background: rgba(0, 0, 0, 0.4);
+                        background: rgba(0,0,0,0.2);
                         border: 1px solid var(--border-light, rgba(255,255,255,0.1));
-                        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
                         display: flex; 
                         flex-direction: column; 
                         align-items: center; 
                         text-align: center;
                         position: relative;
                         overflow: hidden;
+                        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+                        cursor: pointer;
+                        user-select: none;
                     ">
-                        <div style="
-                            flex: 1; display:flex; align-items:center; justify-content:center; 
-                            width:100%;
-                            padding-top: 10px; z-index:1;
-                        ">
+                        <div style="flex: 1; display:flex; align-items:flex-end; justify-content:center; width:100%; padding-bottom: 5px;">
                             ${icon}
                         </div>
-                        <div style="flex: 1; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding: 8px 6px; width:100%; z-index:1;">
-                            <div style="color: var(--ac-color); font-weight: 800; font-size: 13px; line-height: 1.2; text-shadow: 0 1px 3px rgba(0,0,0,0.5);">${name}</div>
-                            <div style="color: rgba(255,255,255,0.7); font-size: 10px; margin-top:4px; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">${desc}</div>
+                        <div style="flex: 1; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding: 5px 6px; width:100%;">
+                            <div style="color: #ffffff; font-weight: 800; font-size: 13px; line-height: 1.2;">${Utils.escapeHtml(bdg.name)}</div>
+                            <div style="color: rgba(255,255,255,0.7); font-size: 10px; margin-top:4px; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">${Utils.escapeHtml(bdg.desc)}</div>
                         </div>
                     </div>`;
                 }).join('');
-                if (badgesHtml) {
-                    badgesContainer.innerHTML = `<div style="width:100%; font-size:12px; color:var(--text-muted); font-weight:700; margin-bottom:10px; text-align:center; opacity:0.7; letter-spacing:0.5px;">ПОСТИЖЕНИЯ И АЧИВКИ</div><div style="display:flex; flex-wrap:wrap; gap:12px; justify-content:center;">${badgesHtml}</div>`;
-                }
+                
+                badgesContainer.innerHTML = `
+                    <div style="width:100%; font-size:12px; color:var(--text-muted); font-weight:700; margin-bottom:10px; text-align:center; opacity:0.7; letter-spacing:0.5px;">ПОСТИЖЕНИЯ И АЧИВКИ</div>
+                    <div style="position:relative; width:100%; height:200px; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+                        <button id="badge-prev" style="position:absolute; left:10px; z-index:10; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.2); color:white; border-radius:50%; width:36px; height:36px; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.2s;">‹</button>
+                        <div class="badge-carousel-wrap" style="width:100%; max-width:500px; height:100%; position:relative; overflow:hidden; mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent); -webkit-mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);">
+                            <div id="badge-track" style="display:flex; height:100%; align-items:center; transition:transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform:translateX(0px); gap:20px; padding:0 300px;">
+                                ${badgesHtml}
+                            </div>
+                        </div>
+                        <button id="badge-next" style="position:absolute; right:10px; z-index:10; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.2); color:white; border-radius:50%; width:36px; height:36px; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.2s;">›</button>
+                    </div>
+                `;
+                
+                const updateBadgeCarousel = () => {
+                    const track = Utils.$('badge-track');
+                    if(!track) return;
+                    const items = track.querySelectorAll('.ach-card');
+                    if (items.length === 0) return;
+                    
+                    const itemWidth = 160;
+                    const gap = 20;
+                    const step = itemWidth + gap;
+                    
+                    const wrapWidth = badgesContainer.querySelector('.badge-carousel-wrap').offsetWidth;
+                    const centerOffset = (wrapWidth / 2) - ((items[0].offsetWidth) / 2) - 300; // 300 is paddingLeft
+                    
+                    track.style.transform = \`translateX(\${centerOffset - (window.ProfileBadgesState.index * step)}px)\`;
+                    
+                    items.forEach((el, i) => {
+                        if(i === window.ProfileBadgesState.index) {
+                            el.style.transform = 'scale(1)';
+                            el.style.opacity = '1';
+                            el.style.filter = 'brightness(1)';
+                            el.style.zIndex = '5';
+                            el.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+                        } else {
+                            el.style.transform = 'scale(0.85)';
+                            el.style.opacity = '0.4';
+                            el.style.filter = 'brightness(0.4)';
+                            el.style.zIndex = '1';
+                            el.style.boxShadow = 'none';
+                        }
+                    });
+                };
+
+                Utils.$('badge-prev').onclick = () => {
+                    if (window.ProfileBadgesState.index > 0) {
+                        window.ProfileBadgesState.index--;
+                        updateBadgeCarousel();
+                    }
+                };
+                
+                Utils.$('badge-next').onclick = () => {
+                    if (window.ProfileBadgesState.index < userBadges.length - 1) {
+                        window.ProfileBadgesState.index++;
+                        updateBadgeCarousel();
+                    }
+                };
+                
+                badgesContainer.querySelectorAll('.ach-card').forEach((card, i) => {
+                    card.onclick = () => {
+                        window.ProfileBadgesState.index = i;
+                        updateBadgeCarousel();
+                    };
+                });
+                
+                setTimeout(updateBadgeCarousel, 50);
             }
         }
 
@@ -7126,11 +7231,10 @@ class RoomManager {
         });
 
         const vid = Utils.$('native-player');
-        let isRemoteSeek = false;
         if (vid) {
-            vid.onplay = () => { if(!isRemoteSeek && this.hasPerm('player')) set(syncRef, { type: 'play', state: 'playing', time: vid.currentTime, ts: Date.now() }); };
-            vid.onpause = () => { if(!isRemoteSeek && this.hasPerm('player')) set(syncRef, { type: 'pause', state: 'paused', time: vid.currentTime, ts: Date.now() }); };
-            vid.onseeked = () => { if(!isRemoteSeek && this.hasPerm('player')) set(syncRef, { type: 'seek', state: vid.paused ? 'paused' : 'playing', time: vid.currentTime, ts: Date.now() }); };
+            vid.onplay = () => { if(!AppState.ignoreVideoEvents && this.hasPerm('player')) set(syncRef, { type: 'play', state: 'playing', time: vid.currentTime, ts: Date.now() }); };
+            vid.onpause = () => { if(!AppState.ignoreVideoEvents && this.hasPerm('player')) set(syncRef, { type: 'pause', state: 'paused', time: vid.currentTime, ts: Date.now() }); };
+            vid.onseeked = () => { if(!AppState.ignoreVideoEvents && this.hasPerm('player')) set(syncRef, { type: 'seek', state: vid.paused ? 'paused' : 'playing', time: vid.currentTime, ts: Date.now() }); };
         }
 
         const sUnsub = onValue(syncRef, (snap) => {
@@ -7222,10 +7326,10 @@ class RoomManager {
                     if (!this.hasPerm('player')) return Utils.toast('Нет прав на управление плеером', 'error');
                     const parts = btn.dataset.time.split(':');
                     const secs = parseInt(parts[0])*60 + parseInt(parts[1]);
-                    isRemoteSeek = true;
+                    AppState.ignoreVideoEvents = true;
                     vid.currentTime = secs;
                     vid.play().catch(()=>{});
-                    setTimeout(() => isRemoteSeek = false, 300);
+                    setTimeout(() => AppState.ignoreVideoEvents = false, 300);
                     set(syncRef, { type: 'seek', time: secs, ts: Date.now() });
                 };
             });
@@ -7554,11 +7658,17 @@ class RoomManager {
         }
 
         if (!vid || !vid.readyState) return;
+        if (AppState.ignoreVideoEvents) return;
+        
+        AppState.ignoreVideoEvents = true;
+        
         if (Math.abs(vid.currentTime - targetTime) > 1.5) {
             vid.currentTime = targetTime;
         }
         if (state === 'playing' && vid.paused) vid.play().catch(()=>{});
         if (state === 'paused' && !vid.paused) vid.pause();
+        
+        setTimeout(() => AppState.ignoreVideoEvents = false, 1500);
     }
 
     static leaveRoom() {
