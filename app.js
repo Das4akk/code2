@@ -2751,12 +2751,6 @@ class BadgeManager {
             if (typeof RoomManager !== 'undefined') RoomManager.updateRoomsDOM();
             this.renderBadgeList();
         });
-        
-        // Settings for Admin badges tab
-        const saveBtn = Utils.$('btn-admin-save-badge');
-        if (saveBtn) {
-            saveBtn.onclick = () => this.saveBadge();
-        }
     }
 
     static async saveBadge() {
@@ -5174,6 +5168,9 @@ class AdminPanel {
         Utils.$('btn-admin-badge-hybrid').onclick = () => this.setAdminBadgeForUser('creator_moderator');
         Utils.$('btn-admin-badge-remove').onclick = () => this.setAdminBadgeForUser(null);
         Utils.$('btn-admin-badge-custom').onclick = () => this.setAdminBadgeForUser('custom');
+        Utils.$('btn-admin-save-badge').onclick = () => BadgeManager.saveBadge();
+
+        BadgeManager.renderBadgeList();
         
         modal.querySelectorAll('.admin-users-tab').forEach(btn => {
             btn.onclick = () => {
