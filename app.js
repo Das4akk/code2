@@ -957,12 +957,14 @@ class YouTubePlayerManager {
     static player = null;
     static apiReady = false;
 
+    static _loadPromise = null;
     static loadApi() {
         if (window.YT && window.YT.Player) {
             this.apiReady = true;
             return Promise.resolve();
         }
-        return new Promise(resolve => {
+        if (this._loadPromise) return this._loadPromise;
+        this._loadPromise = new Promise(resolve => {
             window.onYouTubeIframeAPIReady = () => {
                 this.apiReady = true;
                 resolve();
@@ -973,6 +975,7 @@ class YouTubePlayerManager {
                 document.head.appendChild(tag);
             }
         });
+        return this._loadPromise;
     }
 
     static async initPlayer(videoId, onStateChange) {
@@ -1002,7 +1005,12 @@ class YouTubePlayerManager {
                             setTimeout(() => typeof RoomManager !== 'undefined' && RoomManager.forceSyncVideo(), 500);
                             resolve(this.player);
                         },
-                        onStateChange: (e) => onStateChange(e)
+                        onStateChange: (e) => onStateChange(e),
+                        onError: (e) => {
+                            console.error('YouTube Player Error:', e.data);
+                            Utils.toast(e.data === 150 ? 'Владелец видео запретил его воспроизведение на других сайтах' : 'Ошибка YouTube плеера (Код ' + e.data + ')', 'error');
+                            resolve(this.player);
+                        }
                     }
                 });
             }
@@ -6786,12 +6794,12 @@ class RoomManager {
                         `;
                         ProfileManager.loadUser(fid).then(async p => {
                             if (!ensureActualRender() || !p) return;
-                            const st = (await get(ref(db, \`status/\${fid}\`))).val() || {};
+                            const st = (await get(ref(db, `status/${fid}`))).val() || {};
                             if (!ensureActualRender()) return;
                             const isOnline = st.online;
-                            const statusText = isOnline ? 'Онлайн' : (st.ts ? \`Был(а) \${Utils.formatLastSeen(st.ts)}\` : 'Офлайн');
-                            if (Utils.$(\`inv-name-\${fid}\`)) {
-                                Utils.$(\`inv-name-\${fid}\`).innerHTML = \`<div style="display:flex; flex-direction:column;"><div style="display:flex; align-items:center;"><div class="indicator \${isOnline ? 'online' : ''}" style="width:8px;height:8px;border-radius:50%;background:\${isOnline ? '#4caf50' : '#888'};margin-right:6px;"></div>\${Utils.escapeHtml(p.name)}</div><span style="font-size:10px; color:var(--text-muted); margin-top:2px;">\${statusText}</span></div>\`;
+                            const statusText = isOnline ? 'Онлайн' : (st.ts ? `Был(а) ${Utils.formatLastSeen(st.ts)}` : 'Офлайн');
+                            if (Utils.$(`inv-name-${fid}`)) {
+                                Utils.$(`inv-name-${fid}`).innerHTML = `<div style="display:flex; flex-direction:column;"><div style="display:flex; align-items:center;"><div class="indicator ${isOnline ? 'online' : ''}" style="width:8px;height:8px;border-radius:50%;background:${isOnline ? '#4caf50' : '#888'};margin-right:6px;"></div>${Utils.escapeHtml(p.name)}</div><span style="font-size:10px; color:var(--text-muted); margin-top:2px;">${statusText}</span></div>`;
                             }
                         });
                     });
