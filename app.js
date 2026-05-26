@@ -334,33 +334,43 @@ class Utils {
 
             /* ПЛАШКИ РОЛЕЙ */
             .role-badge {
-                display: inline-block;
-                font-size: 10px;
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                font-size: 11px;
                 font-weight: 800;
-                padding: 2px 6px;
-                border-radius: 6px;
+                padding: 4px 10px;
+                border-radius: 8px;
                 margin-left: 8px;
                 text-transform: uppercase;
                 vertical-align: middle;
                 letter-spacing: 0.5px;
+                transition: 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+                cursor: pointer;
+                position: relative;
+                overflow: hidden;
             }
+            .role-badge::before { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); transform: translateX(-100%); transition: 0.5s; }
+            .role-badge:hover { transform: translateY(-2px) scale(1.05); }
+            .role-badge:hover::before { transform: translateX(100%); }
+            
             .badge-creator {
-                background: rgba(255, 71, 87, 0.15);
+                background: linear-gradient(135deg, rgba(255, 71, 87, 0.2), rgba(255, 107, 129, 0.2));
                 color: #ff4757;
-                border: 1px solid rgba(255, 71, 87, 0.4);
-                box-shadow: 0 0 8px rgba(255, 71, 87, 0.2);
+                border: 1px solid rgba(255, 71, 87, 0.5);
+                box-shadow: 0 4px 12px rgba(255, 71, 87, 0.25);
             }
             .badge-moderator {
-                background: rgba(255, 165, 2, 0.15);
+                background: linear-gradient(135deg, rgba(255, 165, 2, 0.2), rgba(255, 195, 18, 0.2));
                 color: #ffa502;
-                border: 1px solid rgba(255, 165, 2, 0.4);
-                box-shadow: 0 0 8px rgba(255, 165, 2, 0.2);
+                border: 1px solid rgba(255, 165, 2, 0.5);
+                box-shadow: 0 4px 12px rgba(255, 165, 2, 0.25);
             }
             .badge-hybrid {
-                background: rgba(93, 63, 211, 0.15);
+                background: linear-gradient(135deg, rgba(93, 63, 211, 0.2), rgba(125, 95, 255, 0.2));
                 color: #8d63ff;
-                border: 1px solid rgba(141, 99, 255, 0.45);
-                box-shadow: 0 0 8px rgba(141, 99, 255, 0.25);
+                border: 1px solid rgba(141, 99, 255, 0.5);
+                box-shadow: 0 4px 12px rgba(141, 99, 255, 0.3);
             }
 
             /* СТИЛИ ФУТЕРА С ССЫЛКАМИ */
@@ -4458,13 +4468,13 @@ class DirectMessages {
                 if (!chat?.participants?.[AppState.currentUser.uid] || !chat.lastMessage) return;
                 
                 const marker = `dmSeen:${chatId}`;
-                const seenTs = Number(sessionStorage.getItem(marker) || '0');
+                const seenTs = Number(localStorage.getItem(marker) || '0');
                 const lastTs = Number(chat.lastMessage.ts || 0);
                 
                 if (lastTs <= seenTs || chat.lastMessage.fromUid === AppState.currentUser.uid) return;
                 if (AppState.currentDirectChat?.id === chatId) return; 
                 
-                sessionStorage.setItem(marker, String(lastTs));
+                localStorage.setItem(marker, String(lastTs));
                 EasterEggManager.playNotification();
                 if (chat.lastMessage.type === 'invite') {
                     Utils.toast(`ЛС: ${chat.lastMessage.fromName} приглашает вас в комнату!`);
@@ -4503,12 +4513,32 @@ class DirectMessages {
             if (dbTheme !== this.theme) this.applyTheme(dbTheme, false);
             const messages = Object.entries(data.messages || {}).map(([id, val]) => ({ id, ...val })).sort((a,b)=>a.ts - b.ts);
             this.renderMessages(messages);
-            if (data.lastMessage?.ts) sessionStorage.setItem(`dmSeen:${chatId}`, String(data.lastMessage.ts));
+            if (data.lastMessage?.ts) localStorage.setItem(`dmSeen:${chatId}`, String(data.lastMessage.ts));
         });
 
         const sendBtn = Utils.$('btn-dm-send');
         const input = Utils.$('dm-input');
         
+        const attachBtn = Utils.$('btn-dm-attach');
+        const gifBtn = Utils.$('btn-dm-gif');
+        
+        const sendMedia = async (type) => {
+            const url = prompt(`Введите ссылку на ${type === 'gif' ? 'GIF' : 'файл'} из интернета:`);
+            if (!url) return;
+            if (AdminPanel.isSystemReadOnlyForUser()) return Utils.toast('Система в режиме ReadOnly', 'error');
+            const myProfile = AppState.usersCache.get(AppState.currentUser.uid);
+            const myName = myProfile?.name || AppState.currentUser.displayName || 'User';
+            const payload = { type, url, fromUid: AppState.currentUser.uid, fromName: myName, ts: Date.now() };
+            await update(ref(db, `direct-messages/${chatId}`), {
+                participants: { [AppState.currentUser.uid]: true, [targetUid]: true },
+                updatedAt: payload.ts, lastMessage: payload
+            });
+            await push(ref(db, `direct-messages/${chatId}/messages`), payload);
+        };
+        
+        if (attachBtn) attachBtn.onclick = () => sendMedia('file');
+        if (gifBtn) gifBtn.onclick = () => sendMedia('gif');
+
         const sendAction = async () => {
             const text = input.value.trim();
             if (!text) return;
@@ -4560,6 +4590,18 @@ class DirectMessages {
                                     <button class="secondary-btn" style="padding:6px; font-size:12px; width:auto;" onclick="this.parentElement.innerHTML='Отклонено'">Отклонить</button>
                                 </div>
                             ` : `<div style="font-size:11px; opacity:0.6; margin-top:5px;">Приглашение отправлено</div>`}
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (m.type === 'file' || m.type === 'gif') {
+                const isImg = m.type === 'gif' || String(m.url).match(/\.(gif|jpe?g|png|webp|bmp)$/i);
+                return `
+                    <div class="m-line ${isSelf ? 'self' : ''}">
+                        <strong>${Utils.escapeHtml(isSelf ? 'Вы' : m.fromName)}</strong>
+                        <div class="bubble" style="padding: 4px;">
+                            ${isImg ? `<img src="${Utils.escapeHtml(m.url)}" style="max-width: 250px; border-radius: 8px; display: block;" onerror="this.onerror=null; this.src='https://via.placeholder.com/200x150?text=Error';" />` : `<a href="${Utils.escapeHtml(m.url)}" target="_blank" style="color: var(--accent); padding: 8px; display: inline-block;">📎 Прикрепленный файл</a>`}
                         </div>
                     </div>
                 `;
