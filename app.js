@@ -764,6 +764,13 @@ class MediaResolverClient {
         return null;
     }
 
+    static extractRutubeId(url) {
+        if (!url || typeof url !== 'string') return null;
+        const match = url.match(/rutube\.ru\/(?:video|play\/embed)\/([a-zA-Z0-9]+)/i);
+        if (match && match[1]) return match[1];
+        return null;
+    }
+
     static isDirectMedia(url = '') {
         return /\.(mp4|webm|m4v|mov|mkv|m3u8)(\?|#|$)/i.test(String(url || ''));
     }
@@ -869,6 +876,20 @@ class MediaResolverClient {
                 resolvedAt: Date.now()
             };
         }
+        
+        const rutubeId = this.extractRutubeId(normalized);
+        if (rutubeId) {
+            return {
+                source: normalized,
+                title: 'Rutube Video',
+                duration: 0,
+                thumbnail: `https://rutube.ru/api/video/${rutubeId}/thumbnail/?format=json`, // Placeholder, real thumbnail requires API call we skip for now
+                platform: 'rutube',
+                isHls: false,
+                ext: 'rutube',
+                resolvedAt: Date.now()
+            };
+        }
 
         const task = (async () => {
             this.setModalStatus('loading', 'Извлекаем поток через yt-dlp…');
@@ -961,6 +982,81 @@ class MediaResolverClient {
         const resolvedAt = Number(room.videoResolvedAt || 0);
         if (!resolvedAt) return true;
         return Date.now() - resolvedAt > this.RESOLVE_STALE_MS;
+    }
+}
+
+class RutubePlayerManager {
+    static player = null;
+    static apiReady = false;
+    static iframe = null;
+
+    static destroy() {
+        if (this.iframe) {
+            this.iframe.remove();
+            this.iframe = null;
+        }
+        this.player = null;
+        window.removeEventListener('message', this.handleMessage);
+    }
+
+    static handleMessage = (e) => {
+        try {
+            const data = JSON.parse(e.data);
+            if (data.type === 'player:currentTime') {
+                this.currentTime = data.data.time;
+            } else if (data.type === 'player:stateChange') {
+                if (this.onStateChange) this.onStateChange(data.data.state);
+            }
+        } catch {}
+    };
+
+    static initPlayer(rutubeId, onStateChangeCallback) {
+        this.destroy();
+        this.onStateChange = onStateChangeCallback;
+        const container = Utils.$('yt-player');
+        container.innerHTML = '';
+        this.iframe = document.createElement('iframe');
+        this.iframe.src = `https://rutube.ru/play/embed/${rutubeId}/?autoStart=false`;
+        this.iframe.frameBorder = '0';
+        this.iframe.allow = 'clipboard-write; autoplay';
+        this.iframe.webkitAllowFullScreen = true;
+        this.iframe.mozallowfullscreen = true;
+        this.iframe.allowFullscreen = true;
+        this.iframe.style.width = '100%';
+        this.iframe.style.height = '100%';
+        container.appendChild(this.iframe);
+        
+        window.addEventListener('message', this.handleMessage);
+        
+        this.player = {
+            postMessage: (type, data) => {
+                if (this.iframe && this.iframe.contentWindow) {
+                    this.iframe.contentWindow.postMessage(JSON.stringify({ type, data }), '*');
+                }
+            }
+        };
+        
+        return Promise.resolve(this.player);
+    }
+
+    static play() {
+        if (this.player) this.player.postMessage('player:play', {});
+    }
+
+    static pause() {
+        if (this.player) this.player.postMessage('player:pause', {});
+    }
+
+    static seek(time) {
+        if (this.player) this.player.postMessage('player:setCurrentTime', { time });
+    }
+
+    static getCurrentTime() {
+        return this.currentTime || 0;
+    }
+
+    static setVolume(vol) {
+        if (this.player) this.player.postMessage('player:setVolume', { volume: vol });
     }
 }
 
@@ -1181,42 +1277,56 @@ class VideoPlaybackManager {
         };
 
         const signature = this.getPlaybackSignature(room);
-        if (signature === this.lastSignature && (vid.dataset.playbackKey || (YouTubePlayerManager.player && MediaResolverClient.extractYouTubeId(room.videoSourceUrl || room.videoUrl)))) return;
+        const ytId = MediaResolverClient.extractYouTubeId(room.videoSourceUrl || room.videoUrl);
+        const rtId = MediaResolverClient.extractRutubeId(room.videoSourceUrl || room.videoUrl);
+        
+        if (signature === this.lastSignature && (vid.dataset.playbackKey || ((YouTubePlayerManager.player && ytId) || (RutubePlayerManager.player && rtId)))) return;
 
         try {
-            const ytId = MediaResolverClient.extractYouTubeId(room.videoSourceUrl || room.videoUrl);
-            
-            if (ytId) {
+            if (ytId || rtId) {
                 this.detach(vid);
                 this.lastSignature = signature;
                 if (Utils.$('yt-player-container')) Utils.$('yt-player-container').style.display = 'block';
                 vid.style.display = 'none';
                 
-                await YouTubePlayerManager.initPlayer(ytId, (e) => {
-                    if (window.YT && e.data === window.YT.PlayerState.PLAYING) {
+                const onStateChange = (e) => {
+                    const isYT = ytId;
+                    const state = isYT ? e.data : e; 
+                    const playingState = isYT ? (window.YT ? window.YT.PlayerState.PLAYING : 1) : 'playing';
+                    const pausedState = isYT ? (window.YT ? window.YT.PlayerState.PAUSED : 2) : 'paused';
+                    const Manager = isYT ? YouTubePlayerManager : RutubePlayerManager;
+                    
+                    if (state === playingState) {
                         if (AppState.ignoreVideoEvents) return;
                         if (!RoomManager.hasPerm('player')) return;
                         AppState.ignoreVideoEvents = true;
                         set(ref(db, `rooms/${AppState.currentRoomId}/sync`), {
                             type: 'play',
                             state: 'playing',
-                            time: YouTubePlayerManager.getCurrentTime(),
+                            time: Manager.getCurrentTime(),
                             ts: Date.now()
                         });
                         setTimeout(() => AppState.ignoreVideoEvents = false, 1500);
-                    } else if (window.YT && e.data === window.YT.PlayerState.PAUSED) {
+                    } else if (state === pausedState) {
                         if (AppState.ignoreVideoEvents) return;
                         if (!RoomManager.hasPerm('player')) return;
                         AppState.ignoreVideoEvents = true;
                         set(ref(db, `rooms/${AppState.currentRoomId}/sync`), {
                             type: 'pause',
                             state: 'paused',
-                            time: YouTubePlayerManager.getCurrentTime(),
+                            time: Manager.getCurrentTime(),
                             ts: Date.now()
                         });
                         setTimeout(() => AppState.ignoreVideoEvents = false, 1500);
                     }
-                });
+                };
+
+                if (ytId) {
+                    await YouTubePlayerManager.initPlayer(ytId, onStateChange);
+                } else {
+                    await RutubePlayerManager.initPlayer(rtId, onStateChange);
+                }
+                vid.dataset.playbackKey = signature;
                 return;
             }
 
@@ -2774,6 +2884,7 @@ class BadgeManager {
         
         const payload = {
             name,
+            desc: Utils.$('admin-badge-edit-desc')?.value.trim() || '',
             icon: Utils.$('admin-badge-edit-icon')?.value.trim() || '',
             color: Utils.$('admin-badge-edit-color')?.value || '#ffffff',
             bg: Utils.$('admin-badge-edit-bg')?.value || '#5d3fd3',
@@ -2828,6 +2939,7 @@ class BadgeManager {
             div.querySelector('.badge-edit-trigger').onclick = () => {
                 Utils.$('admin-badge-edit-id').value = id;
                 Utils.$('admin-badge-edit-name').value = b.name;
+                Utils.$('admin-badge-edit-desc').value = b.desc || '';
                 Utils.$('admin-badge-edit-icon').value = b.icon || '';
                 Utils.$('admin-badge-edit-color').value = b.color;
                 Utils.$('admin-badge-edit-bg').value = b.bg;
@@ -3427,6 +3539,33 @@ class ProfileManager {
         await update(ref(db), updates);
     }
 
+    static async updateDailyStreak(uid, profile) {
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
+        
+        let streak = profile.streak || 0;
+        const lastLoginDate = profile.lastLoginDate;
+        
+        if (lastLoginDate === todayStr) {
+            return; // Already logged in today
+        }
+        
+        const yesterday = new Date(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = `${yesterday.getFullYear()}-${yesterday.getMonth() + 1}-${yesterday.getDate()}`;
+        
+        if (lastLoginDate === yesterdayStr) {
+            streak += 1;
+        } else {
+            streak = 1;
+        }
+        
+        await update(ref(db, `users/${uid}/profile`), {
+            streak,
+            lastLoginDate: todayStr
+        });
+    }
+
     static async ensureProfileExists(user) {
         const snap = await get(ref(db, `users/${user.uid}/profile`));
         if (!snap.exists()) {
@@ -3435,6 +3574,9 @@ class ProfileManager {
                 provider: this.normalizeProvider(user),
                 emailVerified: Boolean(user.emailVerified)
             });
+            await this.updateDailyStreak(user.uid, {});
+        } else {
+            await this.updateDailyStreak(user.uid, snap.val());
         }
     }
 
@@ -3844,6 +3986,39 @@ class ProfileManager {
         preview.innerText = `Цвет ${data.index || 'RGB'} · ${data.color.toUpperCase()}`; // [NEW]
     } // [NEW]
 
+    static openBadgeModal(bdg) {
+        const modal = Utils.$('modal-badge-details');
+        if (!modal) return;
+        const body = Utils.$('badge-modal-body');
+        
+        const name = Utils.escapeHtml(bdg.name);
+        const desc = Utils.escapeHtml(bdg.desc || 'Нет описания');
+        const icon = bdg.icon ? (bdg.icon.match(/^http/) ? `<img src="${Utils.escapeHtml(bdg.icon)}" style="width:120px;height:120px;object-fit:contain;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,0.5);"/>` : `<span style="font-size:100px; filter:drop-shadow(0 10px 20px rgba(0,0,0,0.5));">${Utils.escapeHtml(bdg.icon)}</span>`) : '';
+        const color = Utils.escapeHtml(bdg.color || '#ffffff');
+        const bg = Utils.escapeHtml(bdg.bg || 'rgba(120,120,120,0.2)');
+        const border = Utils.escapeHtml(bdg.border || 'rgba(255,255,255,0.35)');
+
+        body.style.background = `radial-gradient(circle at center, ${bg}, #050505 80%)`;
+        body.innerHTML = `
+            <div style="flex:1; display:flex; flex-direction:row; align-items:center; justify-content:center; gap: 40px; padding: 40px; text-align:left;">
+                <div style="flex-shrink:0; background:rgba(0,0,0,0.4); border: 2px solid ${border}; border-radius:30px; padding:40px; display:flex; align-items:center; justify-content:center; box-shadow: 0 20px 50px rgba(0,0,0,0.7), inset 0 0 50px ${bg}; position:relative; overflow:hidden;">
+                    <div style="position:absolute; top:-50%; left:-50%; right:-50%; bottom:-50%; background:conic-gradient(from 0deg, transparent, ${bg}, transparent); animation: spinBadgeBg 6s linear infinite; opacity:0.3; pointer-events:none;"></div>
+                    <style>@keyframes spinBadgeBg { 100% { transform: rotate(360deg); } }</style>
+                    <div style="position:relative; z-index:1;">${icon}</div>
+                </div>
+                <div style="flex:1; max-width:600px; padding:20px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.1); border-radius:20px; backdrop-filter:blur(10px); box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+                    <h1 style="color: ${color}; font-size:48px; font-weight:900; margin-bottom:20px; line-height:1.1; text-shadow:0 4px 10px rgba(0,0,0,0.6);">${name}</h1>
+                    <p style="color: rgba(255,255,255,0.8); font-size:20px; line-height:1.6;">${desc}</p>
+                </div>
+            </div>
+        `;
+        modal.classList.add('active');
+        
+        modal.querySelector('.btn-close-modal').onclick = () => {
+            modal.classList.remove('active');
+        };
+    }
+
     static applyProfileBackground(panel, background = '') { // [UPDATE]
         if (!panel) return; // [UPDATE]
         const data = this.normalizeProfileBackground(background); // [UPDATE]
@@ -4132,6 +4307,14 @@ class ProfileManager {
         const profile = await this.loadUser(targetUid);
         if (!profile) return Utils.toast('Пользователь не найден', 'error');
 
+        const streakEl = Utils.$('view-streak');
+        if (profile.streak && Number(profile.streak) > 0) {
+            streakEl.style.display = 'flex';
+            Utils.$('view-streak-count').innerText = profile.streak;
+        } else {
+            streakEl.style.display = 'none';
+        }
+
         const friendsSnap = await get(ref(db, `users/${targetUid}/friends`));
         const friendsCount = friendsSnap.exists() ? Object.values(friendsSnap.val()).filter(f => f.status === 'accepted').length : 0;
         const joinDate = profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() : 'Неизвестно';
@@ -4160,18 +4343,69 @@ class ProfileManager {
                 const badgesHtml = profile.assignedBadges.map(bId => {
                     const bdg = AppState.customBadges[bId];
                     if (!bdg) return '';
-                    const text = Utils.escapeHtml(bdg.name);
-                    const icon = bdg.icon ? Utils.escapeHtml(bdg.icon) + ' ' : '';
+                    const name = Utils.escapeHtml(bdg.name);
+                    const desc = Utils.escapeHtml(bdg.desc || '');
+                    const icon = bdg.icon ? (bdg.icon.match(/^http/) ? `<img src="${Utils.escapeHtml(bdg.icon)}" style="width:40px;height:40px;object-fit:contain;border-radius:6px;"/>` : `<span style="font-size:32px;">${Utils.escapeHtml(bdg.icon)}</span>`) : '';
                     const color = Utils.escapeHtml(bdg.color || '#ffffff');
                     const bg = Utils.escapeHtml(bdg.bg || 'rgba(120,120,120,0.2)');
                     const border = Utils.escapeHtml(bdg.border || 'rgba(255,255,255,0.35)');
-                    return `<div class="role-badge" style="color:${color}; background:${bg}; border:1px solid ${border}; box-shadow:none; display:inline-flex; align-items:center; justify-content:center; padding: 6px 12px; font-size: 13px; border-radius: 8px;" title="${text}">
-                        ${icon}${text}
+                    
+                    const badgeB64 = btoa(encodeURIComponent(JSON.stringify(bdg)));
+
+                    // Returns a vertical card
+                    return `
+                    <div class="achievement-card" data-b64="${badgeB64}" style="
+                        --ac-bg: ${bg};
+                        --ac-border: ${border};
+                        --ac-color: ${color};
+                        width: 140px; 
+                        height: 180px; 
+                        border-radius: 16px; 
+                        background: linear-gradient(135deg, var(--ac-bg), rgba(0,0,0,0.5));
+                        border: 1px solid var(--ac-border);
+                        box-shadow: 0 8px 20px rgba(0,0,0,0.4), inset 0 0 20px var(--ac-bg);
+                        display: flex; 
+                        flex-direction: column; 
+                        align-items: center; 
+                        text-align: center;
+                        position: relative;
+                        overflow: hidden;
+                        cursor: pointer;
+                        transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s;
+                    " onmouseover="this.style.transform='translateY(-5px) scale(1.05)'; this.style.boxShadow='0 12px 25px rgba(0,0,0,0.6), inset 0 0 30px var(--ac-bg)';" onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.4), inset 0 0 20px var(--ac-bg)';">
+                        <div style="
+                            position: absolute; top:0; left:0; right:0; bottom:50%; 
+                            background: radial-gradient(circle at top, var(--ac-bg), transparent 80%);
+                            opacity: 0.6; pointer-events:none;
+                        "></div>
+                        <div style="
+                            flex: 1; display:flex; align-items:center; justify-content:center; 
+                            width:100%; border-bottom: 1px solid rgba(255,255,255,0.1);
+                            padding-top: 10px; z-index:1;
+                        ">
+                            ${icon}
+                        </div>
+                        <div style="flex: 1; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding: 8px 6px; width:100%; z-index:1;">
+                            <div style="color: var(--ac-color); font-weight: 800; font-size: 13px; line-height: 1.2; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">${name}</div>
+                            <div style="color: rgba(255,255,255,0.7); font-size: 10px; margin-top:4px; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">${desc}</div>
+                        </div>
                     </div>`;
                 }).join('');
                 if (badgesHtml) {
-                    badgesContainer.innerHTML = `<div style="width:100%; font-size:12px; color:var(--text-muted); font-weight:700; margin-bottom:4px; text-align:center; opacity:0.7; letter-spacing:0.5px;">НАГРАДЫ</div>${badgesHtml}`;
+                    badgesContainer.innerHTML = `<div style="width:100%; font-size:12px; color:var(--text-muted); font-weight:700; margin-bottom:10px; text-align:center; opacity:0.7; letter-spacing:0.5px;">ПОСТИЖЕНИЯ И АЧИВКИ</div><div style="display:flex; flex-wrap:wrap; gap:12px; justify-content:center;">${badgesHtml}</div>`;
                 }
+                
+                // Add click handlers for badges to open detailed modal
+                setTimeout(() => {
+                    badgesContainer.querySelectorAll('.achievement-card').forEach(card => {
+                        card.onclick = () => {
+                            try {
+                                const bdg = JSON.parse(decodeURIComponent(atob(card.dataset.b64)));
+                                ProfileManager.openBadgeModal(bdg);
+                            } catch(e) {}
+                        };
+                    });
+                }, 100);
             }
         }
 
@@ -4464,6 +4698,11 @@ class DirectMessages {
         const dmRoot = ref(db, 'direct-messages');
         const unsub = onValue(dmRoot, (snap) => {
             const chats = snap.val() || {};
+            // Update the sidebar whenever there's a new message or chat update
+            if (AppState.currentDirectChat) {
+                this.populateSidebar(AppState.currentDirectChat.uid, chats);
+            }
+
             Object.entries(chats).forEach(([chatId, chat]) => {
                 if (!chat?.participants?.[AppState.currentUser.uid] || !chat.lastMessage) return;
                 
@@ -4478,12 +4717,105 @@ class DirectMessages {
                 EasterEggManager.playNotification();
                 if (chat.lastMessage.type === 'invite') {
                     Utils.toast(`ЛС: ${chat.lastMessage.fromName} приглашает вас в комнату!`);
-                } else {
+                } else if (chat.lastMessage.type === 'text') {
                     Utils.toast(`ЛС от ${chat.lastMessage.fromName}: ${chat.lastMessage.text}`);
+                } else {
+                    Utils.toast(`ЛС от ${chat.lastMessage.fromName} отправил(а) медиа`);
                 }
             });
         });
         AppState.activeSubscriptions.push(() => off(dmRoot, 'value', unsub));
+    }
+
+    static async populateSidebar(activeTargetUid, chatsData = null) {
+        const sidebar = Utils.$('dm-sidebar-list');
+        if (!sidebar) return;
+
+        // Build list of users with whom we have chats AND friends, to show in sidebar
+        const myUid = AppState.currentUser.uid;
+        
+        let chats = chatsData;
+        if (!chats) {
+            const snap = await get(ref(db, 'direct-messages'));
+            chats = snap.val() || {};
+        }
+
+        const activeChats = Object.entries(chats)
+            .filter(([id, c]) => c.participants && c.participants[myUid])
+            .map(([id, c]) => ({
+                id, 
+                partnerUid: Object.keys(c.participants).find(x => x !== myUid) || myUid,
+                lastMsg: c.lastMessage || {},
+                updatedAt: c.updatedAt || 0
+            }));
+
+        const friendsKeys = Object.keys(AppState.friendsCache || {}).filter(k => AppState.friendsCache[k].status === 'accepted');
+        
+        const combinedUids = new Set([...activeChats.map(c => c.partnerUid), ...friendsKeys, activeTargetUid]);
+        
+        let listItems = [];
+
+        for (const uid of combinedUids) {
+            if (!uid) continue;
+            const profile = await ProfileManager.loadUser(uid);
+            if (!profile) continue;
+            
+            const chatObj = activeChats.find(c => c.partnerUid === uid);
+            const ts = chatObj ? chatObj.updatedAt : 0;
+            let lastText = '';
+            if (chatObj && chatObj.lastMsg) {
+                if (chatObj.lastMsg.type === 'text') lastText = chatObj.lastMsg.text;
+                else if (chatObj.lastMsg.type === 'invite') lastText = 'Приглашение в комнату';
+                else lastText = 'Медиа';
+            }
+
+            const isPinned = localStorage.getItem(`dmPin:${uid}`) === '1';
+
+            listItems.push({
+                uid,
+                name: profile.name,
+                avatar: profile.avatar,
+                lastText,
+                ts,
+                isPinned,
+                isActive: (activeTargetUid === uid)
+            });
+        }
+
+        listItems.sort((a, b) => {
+            if (a.isPinned && !b.isPinned) return -1;
+            if (!a.isPinned && b.isPinned) return 1;
+            return b.ts - a.ts;
+        });
+
+        // Ensure active user is present even if newly opened
+        sidebar.innerHTML = '';
+        listItems.forEach(item => {
+            const el = document.createElement('div');
+            el.className = `dm-chat-item ${item.isActive ? 'active' : ''} ${item.isPinned ? 'pinned' : ''}`;
+            const av = item.avatar ? `<img src="${Utils.escapeHtml(item.avatar)}" style="width:100%;height:100%;object-fit:cover;">` : item.name[0].toUpperCase();
+            el.innerHTML = `
+                <div class="dm-chat-avatar">${av}</div>
+                <div class="dm-chat-info">
+                    <div class="dm-chat-name">${Utils.escapeHtml(item.name)}</div>
+                    <div class="dm-chat-last-msg">${Utils.escapeHtml(item.lastText) || '<i>Нет сообщений</i>'}</div>
+                </div>
+                <button class="dm-pin-btn" title="Закрепить">${item.isPinned ? '📌' : '📍'}</button>
+            `;
+            
+            el.onclick = (e) => {
+                if(e.target.closest('.dm-pin-btn')) {
+                    if (item.isPinned) localStorage.removeItem(`dmPin:${item.uid}`);
+                    else localStorage.setItem(`dmPin:${item.uid}`, '1');
+                    this.populateSidebar(activeTargetUid, chatsData); // re-render
+                    return;
+                }
+                if (!item.isActive) {
+                    this.openChat(item.uid, item.name);
+                }
+            };
+            sidebar.appendChild(el);
+        });
     }
 
     static openChat(targetUid, targetName) {
@@ -4505,6 +4837,7 @@ class DirectMessages {
         Utils.$('modal-dm-chat').classList.add('active');
         this.bindThemeControls();
         this.applyTheme(this.theme, false);
+        this.populateSidebar(targetUid);
 
         const chatRef = ref(db, `direct-messages/${chatId}`);
         this.unsubCurrent = onValue(chatRef, (snap) => {
@@ -4520,15 +4853,30 @@ class DirectMessages {
         const input = Utils.$('dm-input');
         
         const attachBtn = Utils.$('btn-dm-attach');
-        const gifBtn = Utils.$('btn-dm-gif');
+        const mediaPicker = Utils.$('dm-media-picker');
+        const mediaInput = Utils.$('dm-media-input');
+        const mediaSendBtn = Utils.$('btn-dm-media-send');
+        const mediaCancelBtnTop = Utils.$('btn-dm-media-cancel-top');
         
-        const sendMedia = async (type) => {
-            const url = prompt(`Введите ссылку на ${type === 'gif' ? 'GIF' : 'файл'} из интернета:`);
+        const attachMediaAction = () => {
+            if (mediaPicker) {
+                mediaPicker.style.display = mediaPicker.style.display === 'none' ? 'flex' : 'none';
+                if (mediaPicker.style.display === 'flex') mediaInput.focus();
+            }
+        };
+        
+        if (attachBtn) attachBtn.onclick = attachMediaAction;
+        if (mediaCancelBtnTop) mediaCancelBtnTop.onclick = () => mediaPicker.style.display = 'none';
+
+        const performMediaSend = async (url) => {
             if (!url) return;
             if (AdminPanel.isSystemReadOnlyForUser()) return Utils.toast('Система в режиме ReadOnly', 'error');
+            mediaInput.value = '';
+            mediaPicker.style.display = 'none';
             const myProfile = AppState.usersCache.get(AppState.currentUser.uid);
             const myName = myProfile?.name || AppState.currentUser.displayName || 'User';
-            const payload = { type, url, fromUid: AppState.currentUser.uid, fromName: myName, ts: Date.now() };
+            
+            const payload = { type: 'media', url, fromUid: AppState.currentUser.uid, fromName: myName, ts: Date.now() };
             await update(ref(db, `direct-messages/${chatId}`), {
                 participants: { [AppState.currentUser.uid]: true, [targetUid]: true },
                 updatedAt: payload.ts, lastMessage: payload
@@ -4536,8 +4884,11 @@ class DirectMessages {
             await push(ref(db, `direct-messages/${chatId}/messages`), payload);
         };
         
-        if (attachBtn) attachBtn.onclick = () => sendMedia('file');
-        if (gifBtn) gifBtn.onclick = () => sendMedia('gif');
+        if (mediaSendBtn) mediaSendBtn.onclick = () => performMediaSend(mediaInput.value.trim());
+
+        document.querySelectorAll('.dm-preset-gif').forEach(img => {
+            img.onclick = () => performMediaSend(img.src);
+        });
 
         const sendAction = async () => {
             const text = input.value.trim();
@@ -4595,13 +4946,13 @@ class DirectMessages {
                 `;
             }
 
-            if (m.type === 'file' || m.type === 'gif') {
-                const isImg = m.type === 'gif' || String(m.url).match(/\.(gif|jpe?g|png|webp|bmp)$/i);
+            if (m.type === 'file' || m.type === 'gif' || m.type === 'media') {
+                const isImg = m.type === 'gif' || String(m.url).match(/\.(gif|jpe?g|png|webp|bmp)$/i) || String(m.url).match(/tenor\.com|giphy\.com|imgur\.com/i);
                 return `
                     <div class="m-line ${isSelf ? 'self' : ''}">
                         <strong>${Utils.escapeHtml(isSelf ? 'Вы' : m.fromName)}</strong>
                         <div class="bubble" style="padding: 4px;">
-                            ${isImg ? `<img src="${Utils.escapeHtml(m.url)}" style="max-width: 250px; border-radius: 8px; display: block;" onerror="this.onerror=null; this.src='https://via.placeholder.com/200x150?text=Error';" />` : `<a href="${Utils.escapeHtml(m.url)}" target="_blank" style="color: var(--accent); padding: 8px; display: inline-block;">📎 Прикрепленный файл</a>`}
+                            ${isImg ? `<img src="${Utils.escapeHtml(m.url)}" style="max-width: 250px; max-height: 250px; object-fit: contain; border-radius: 8px; display: block;" onerror="this.onerror=null; this.src='https://via.placeholder.com/200x150?text=Error';" />` : `<a href="${Utils.escapeHtml(m.url)}" target="_blank" style="color: var(--accent); padding: 8px; display: inline-block;">📎 Прикрепленный файл</a>`}
                         </div>
                     </div>
                 `;
@@ -5158,7 +5509,8 @@ class AdminPanel {
                         <div class="admin-form-group">
                             <input type="text" id="admin-badge-edit-id" placeholder="ID бейджа (только eng буквы, напр. dev)" style="margin-bottom:8px;">
                             <input type="text" id="admin-badge-edit-name" placeholder="Название бейджа (текст)" style="margin-bottom:8px;">
-                            <input type="text" id="admin-badge-edit-icon" placeholder="Иконка (эмодзи или пусто)" style="margin-bottom:8px;">
+                            <textarea id="admin-badge-edit-desc" placeholder="Описание ачивки" rows="2" style="width: 100%; border-radius: 8px; border: 1px solid var(--border-light); background: rgba(0,0,0,0.2); color: #fff; padding: 10px; font-family: inherit; font-size: 14px; resize: vertical; margin-bottom: 8px;"></textarea>
+                            <input type="text" id="admin-badge-edit-icon" placeholder="Иконка (ссылка на изображение или эмодзи)" style="margin-bottom:8px;">
                             <div class="admin-color-grid">
                                 <div class="admin-color-field">
                                     <label class="admin-form-label" for="admin-badge-edit-color">Цвет текста</label>
@@ -5816,6 +6168,11 @@ class AdminPanel {
             <textarea id="admin-edit-bio" rows="4" placeholder="Описание">${Utils.escapeHtml(profile.bio || '')}</textarea>
             
             <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
+                <div style="font-weight:700; margin-bottom:6px;">Стрик (Огонек)</div>
+                <input type="number" id="admin-edit-streak" min="0" value="${Utils.escapeHtml(profile.streak || 0)}" placeholder="Количество дней подряд">
+            </div>
+            
+            <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
                 <div style="font-weight:700; margin-bottom:6px;">Назначенные бейджи</div>
                 <div id="admin-edit-badges-container" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
             </div>
@@ -6031,6 +6388,7 @@ class AdminPanel {
         const username = Utils.$('admin-edit-username').value.toLowerCase().trim().replace('@', '');
         const avatar = Utils.$('admin-edit-avatar').value.trim();
         const bio = Utils.$('admin-edit-bio').value.trim();
+        const streak = parseInt(Utils.$('admin-edit-streak')?.value || 0, 10);
         const bgColor = Utils.$('admin-edit-bg-color')?.value || '#111111';
         const bgUrl = Utils.$('admin-edit-bg-url')?.value.trim() || '';
         const bgDim = Number(Utils.$('admin-edit-bg-dim')?.value || 0.5);
@@ -6058,6 +6416,7 @@ class AdminPanel {
             username,
             avatar,
             bio,
+            streak,
             background: ProfileManager.normalizeProfileBackground({
                 color: bgColor,
                 index: ProfileManager.normalizeProfileBackground(oldProfile.background).index || 10,
@@ -6734,6 +7093,9 @@ class RoomManager {
                 if (YouTubePlayerManager.player && typeof YouTubePlayerManager.player.setVolume === 'function') {
                     YouTubePlayerManager.player.setVolume(videoVolSlider.value * 100);
                 }
+                if (RutubePlayerManager.player) {
+                    RutubePlayerManager.player.postMessage('player:setVolume', { volume: videoVolSlider.value });
+                }
             };
         }
 
@@ -7204,14 +7566,18 @@ class RoomManager {
         }
 
         const currentRoom = AppState.roomsCache.get(AppState.currentRoomId) || {};
-        if (YouTubePlayerManager.player && MediaResolverClient.extractYouTubeId(currentRoom.videoSourceUrl || currentRoom.videoUrl)) {
+        const isYt = MediaResolverClient.extractYouTubeId(currentRoom.videoSourceUrl || currentRoom.videoUrl);
+        const isRt = MediaResolverClient.extractRutubeId(currentRoom.videoSourceUrl || currentRoom.videoUrl);
+
+        if ((YouTubePlayerManager.player && isYt) || (RutubePlayerManager.player && isRt)) {
             if (AppState.ignoreVideoEvents) return;
             AppState.ignoreVideoEvents = true;
-            if (Math.abs(YouTubePlayerManager.getCurrentTime() - targetTime) > 1.5) {
-                YouTubePlayerManager.seek(targetTime);
+            const Manager = isYt ? YouTubePlayerManager : RutubePlayerManager;
+            if (Math.abs(Manager.getCurrentTime() - targetTime) > 1.5) {
+                Manager.seek(targetTime);
             }
-            if (state === 'playing') YouTubePlayerManager.play();
-            if (state === 'paused') YouTubePlayerManager.pause();
+            if (state === 'playing') Manager.play();
+            if (state === 'paused') Manager.pause();
             
             setTimeout(() => AppState.ignoreVideoEvents = false, 1500);
             return;
@@ -7238,6 +7604,7 @@ class RoomManager {
             vid.removeAttribute('src');
             vid.load();
             delete vid.dataset.roomUrl;
+            delete vid.dataset.playbackKey;
             vid.onplay = null;
             vid.onpause = null;
             vid.onseeked = null;
