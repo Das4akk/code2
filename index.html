@@ -676,6 +676,7 @@
         #modal-view-profile #view-username,
         #modal-view-profile .hashtag-chip { color: var(--profile-muted, var(--text-muted)) !important; border-color: var(--profile-border, var(--border-light)); } /* // [NEW] */
         #modal-view-profile #view-name { color: var(--profile-text, var(--text-main)); } /* // [NEW] */
+        @keyframes popIn { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
     </style>
 </head>
 <body class="auth-loading">
@@ -941,9 +942,9 @@
     <!-- View User Profile Modal (Updated Button) -->
     <div class="modal" id="modal-view-profile">
         <div class="modal-content glass-panel" style="text-align: center; position:relative;">
-            <div id="view-streak" style="display:none; position:absolute; top:20px; right:20px; flex-direction:column; align-items:center; justify-content:center; animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
-                <img src="https://media.tenor.com/_Z8RSEqf2YMAAAAC/fire-flame.gif" style="width:40px; height:40px; filter:drop-shadow(0 4px 10px rgba(255, 100, 0, 0.6));" alt="Streak"/>
-                <div id="view-streak-count" style="font-size:16px; font-weight:800; color:#ff9f43; margin-top:-5px; text-shadow:0 2px 4px rgba(0,0,0,0.5);">0</div>
+            <div id="view-streak" style="display:none; position:absolute; top:20px; right:20px; width: 50px; height: 50px; align-items:center; justify-content:center; animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+                <img src="https://media.tenor.com/_Z8RSEqf2YMAAAAC/fire-flame.gif" style="width:100%; height:100%; position:absolute; top:0; left:0; filter:drop-shadow(0 2px 5px rgba(255, 100, 0, 0.6)); pointer-events: none;" alt="Streak"/>
+                <div id="view-streak-count" style="position:relative; z-index:1; font-size:16px; font-weight:900; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,1), 0 0 8px #ff4500; margin-top:14px;">0</div>
             </div>
             <div class="modal-drag-handle"></div>
             <div class="avatar" id="view-avatar" style="width: 90px; height: 90px; font-size: 32px; margin: 0 auto 15px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center; background:#111;">?</div>

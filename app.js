@@ -2874,6 +2874,33 @@ class BadgeManager {
             AppState.customBadges = snap.val() || {};
             this.renderBadgeList();
         });
+        
+        const presetEmojis = [
+            'https://cdn3.emoji.gg/emojis/22727-clown.gif', 'https://cdn3.emoji.gg/emojis/39391-bored.gif', 'https://cdn3.emoji.gg/emojis/28433-cool.gif',
+            'https://cdn3.emoji.gg/emojis/49250-freaky-1.gif', 'https://cdn3.emoji.gg/emojis/44214-laugh.gif', 'https://cdn3.emoji.gg/emojis/78235-liar.gif',
+            'https://cdn3.emoji.gg/emojis/20543-gasp.gif', 'https://cdn3.emoji.gg/emojis/81026-silent.gif', 'https://cdn3.emoji.gg/emojis/25754-swear.gif',
+            'https://cdn3.emoji.gg/emojis/49113-anxious.gif', 'https://cdn3.emoji.gg/emojis/98791-scream.gif', 'https://cdn3.emoji.gg/emojis/17320-yawn.gif',
+            'https://cdn3.emoji.gg/emojis/46858-think.gif', 'https://cdn3.emoji.gg/emojis/6153-freaky-2.gif', 'https://cdn3.emoji.gg/emojis/1352-yum.gif',
+            'https://cdn3.emoji.gg/emojis/13961-party.gif', 'https://cdn3.emoji.gg/emojis/83447-sleep.gif', 'https://cdn3.emoji.gg/emojis/68034-sad.gif',
+            'https://cdn3.emoji.gg/emojis/36840-demon-smile.gif', 'https://cdn3.emoji.gg/emojis/183382-rainbow-rat-boi.gif', 'https://cdn3.emoji.gg/emojis/112929-leftslowarrow.gif',
+            'https://cdn3.emoji.gg/emojis/911479-sparkle13.png', 'https://cdn3.emoji.gg/emojis/964729-moon6.gif', 'https://cdn3.emoji.gg/emojis/67834-ellen-bite.png',
+            'https://cdn3.emoji.gg/emojis/357824-ellenjoegumball.png', 'https://cdn3.emoji.gg/emojis/81992-zenlesszonezero.gif', 'https://cdn3.emoji.gg/emojis/29583-anby-burger.png',
+            'https://cdn3.emoji.gg/emojis/3102-dokille.png', 'https://cdn3.emoji.gg/emojis/8446-cauchemar.png', 'https://cdn3.emoji.gg/emojis/8337-kaliptus.png',
+            'https://cdn3.emoji.gg/emojis/5507-ddg.png', 'https://cdn3.emoji.gg/emojis/50886-rezewaving.png', 'https://cdn3.emoji.gg/emojis/694323-rezeloveeyes.png',
+            'https://cdn3.emoji.gg/emojis/953635-rezeembarrassed.png', 'https://cdn3.emoji.gg/emojis/769109-rezecalm.png', 'https://cdn3.emoji.gg/emojis/23410-taigablush.gif',
+            'https://cdn3.emoji.gg/emojis/3069-taiga-cute.png', 'https://cdn3.emoji.gg/emojis/4443-taiga-peace.png', 'https://cdn3.emoji.gg/emojis/8324-taiga-whiskers.png',
+            'https://cdn3.emoji.gg/emojis/516086-a-envelope.png', 'https://cdn3.emoji.gg/emojis/87361-miffypancake.png', 'https://cdn3.emoji.gg/emojis/75216-bow.png',
+            'https://cdn3.emoji.gg/emojis/40890-wing.png', 'https://cdn3.emoji.gg/emojis/1114-annoyed2.png', 'https://cdn3.emoji.gg/emojis/517918-wechat-ok.png'
+        ];
+        
+        setTimeout(() => {
+            const presetContainer = Utils.$('admin-badge-preset-icons');
+            if (presetContainer) {
+                presetContainer.innerHTML = presetEmojis.map(url => 
+                    `<img src="${url}" style="width:32px; height:32px; cursor:pointer; border-radius:4px;" onclick="document.getElementById('admin-badge-edit-icon').value='${url}'" />`
+                ).join('');
+            }
+        }, 1000);
     }
 
     static async saveBadge() {
@@ -5511,6 +5538,7 @@ class AdminPanel {
                             <input type="text" id="admin-badge-edit-name" placeholder="Название бейджа (текст)" style="margin-bottom:8px;">
                             <textarea id="admin-badge-edit-desc" placeholder="Описание ачивки" rows="2" style="width: 100%; border-radius: 8px; border: 1px solid var(--border-light); background: rgba(0,0,0,0.2); color: #fff; padding: 10px; font-family: inherit; font-size: 14px; resize: vertical; margin-bottom: 8px;"></textarea>
                             <input type="text" id="admin-badge-edit-icon" placeholder="Иконка (ссылка на изображение или эмодзи)" style="margin-bottom:8px;">
+                            <div id="admin-badge-preset-icons" style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:8px; max-height:100px; overflow-y:auto; background:rgba(0,0,0,0.2); padding:5px; border-radius:8px;"></div>
                             <div class="admin-color-grid">
                                 <div class="admin-color-field">
                                     <label class="admin-form-label" for="admin-badge-edit-color">Цвет текста</label>
