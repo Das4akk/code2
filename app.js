@@ -2914,6 +2914,21 @@ class BadgeManager {
         this.renderBadgeList();
     }
 
+    static async generateRelationshipBadges() {
+        if (!AdminPanel.requireAdmin()) return;
+        const badges = {
+            rel_1week: { name: "1 Неделя", desc: "Вместе уже неделю!", icon: "https://cdn3.emoji.gg/emojis/3468-love.gif", color: "#ffffff", bg: "#d81b60", border: "#ff4081" },
+            rel_1month: { name: "1 Месяц", desc: "Первый совместный месяц!", icon: "https://cdn3.emoji.gg/emojis/5232-heart.gif", color: "#ffffff", bg: "#c2185b", border: "#f50057" },
+            rel_6months: { name: "Полгода", desc: "Связь крепчает. 6 месяцев!", icon: "https://cdn3.emoji.gg/emojis/4638-heart.gif", color: "#ffffff", bg: "#ad1457", border: "#c51162" },
+            rel_1year: { name: "1 Год", desc: "Юбилей любви! 1 год", icon: "https://cdn3.emoji.gg/emojis/7697-ring.gif", color: "#ffffff", bg: "#880e4f", border: "#f50057" }
+        };
+        for (const [id, payload] of Object.entries(badges)) {
+            await set(ref(db, `badges/${id}`), payload);
+        }
+        Utils.toast('Ачивки за отношения добавлены!');
+        this.renderBadgeList();
+    }
+
     static async deleteBadge(id) {
         if (!AdminPanel.requireAdmin()) return;
         if (!confirm('Точно удалить бейдж?')) return;
@@ -4439,7 +4454,7 @@ class ProfileManager {
                     const wrapWidth = badgesContainer.querySelector('.badge-carousel-wrap').offsetWidth;
                     const centerOffset = (wrapWidth / 2) - ((items[0].offsetWidth) / 2) - 300; // 300 is paddingLeft
                     
-                    track.style.transform = \`translateX(\${centerOffset - (window.ProfileBadgesState.index * step)}px)\`;
+                    track.style.transform = `translateX(${centerOffset - (window.ProfileBadgesState.index * step)}px)`;
                     
                     items.forEach((el, i) => {
                         if(i === window.ProfileBadgesState.index) {
@@ -5601,6 +5616,7 @@ class AdminPanel {
                                 </div>
                             </div>
                             <button class="primary-btn" id="btn-admin-save-badge" style="margin-top:10px;">Сохранить бейдж</button>
+                            <button class="secondary-btn" id="btn-admin-generate-rel-badges" style="margin-top:10px;">Сгенерировать авто-ачивки за отношения</button>
                         </div>
                     </div>
                     <div style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
@@ -5651,6 +5667,7 @@ class AdminPanel {
         Utils.$('btn-admin-badge-remove').onclick = () => this.setAdminBadgeForUser(null);
         Utils.$('btn-admin-badge-custom').onclick = () => this.setAdminBadgeForUser('custom');
         Utils.$('btn-admin-save-badge').onclick = () => BadgeManager.saveBadge();
+        Utils.$('btn-admin-generate-rel-badges').onclick = () => BadgeManager.generateRelationshipBadges();
 
         BadgeManager.renderBadgeList();
         
