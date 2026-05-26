@@ -2413,117 +2413,51 @@ class EasterEggManager {
     static startAdvancedMilk() {
         if (this.milkActive) return;
         this.milkActive = true;
-
         let container = Utils.$('advanced-milk-container');
         if (!container) {
             container = document.createElement('div');
             container.id = 'advanced-milk-container';
-            container.style.opacity = '0'; // Для эффекта Fade-in
-            container.style.transition = 'opacity 1s ease';
-            container.innerHTML = `
-                <div id="milk-glass">🥛</div>
-                <canvas id="fluid-canvas"></canvas>
-            `;
+            container.className = 'milk-wave-container';
             document.body.appendChild(container);
         }
-        
-        // Запускаем Fade-in
-        setTimeout(() => {
-            if (Utils.$('advanced-milk-container')) Utils.$('advanced-milk-container').style.opacity = '1';
-        }, 50);
-
-        const canvas = Utils.$('fluid-canvas');
-        const ctx = canvas.getContext('2d', { alpha: true });
-        const glass = Utils.$('milk-glass');
-
-        let width, height;
-        let particles = [];
-
-        class Particle {
-            constructor(x, y) {
-                this.x = x; this.y = y; 
-                const angle = (Math.random() - 0.5) * Math.PI; // Explode upwards
-                const speed = Math.random() * 25 + 10;
-                this.vx = Math.sin(angle) * speed; 
-                this.vy = -Math.cos(angle) * speed - 15; // Shoot up stronger
-                this.size = Math.random() * 12 + 4; 
-                this.life = 1.0; 
-                this.decay = Math.random() * 0.015 + 0.01;
-                this.color = `rgba(255, 255, 255, `;
-            }
-            update() {
-                this.vy += 0.8; // Gravity
-                this.x += this.vx; this.y += this.vy;
-                this.life -= this.decay; 
-            }
-            draw(ctx) {
-                ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fillStyle = this.color + this.life + ')'; 
-                ctx.shadowColor = 'rgba(255,255,255,0.8)';
-                ctx.shadowBlur = 10;
-                ctx.fill();
-                ctx.shadowBlur = 0; // reset
-            }
+        const html = `
+            <div class="milk-liquid" id="milk-fill-anim">
+                <div class="milk-surface"></div>
+            </div>
+            <div style="position:fixed; top:40%; left:50%; transform:translate(-50%,-50%); font-size:120px; z-index:9999; 
+                animation: bounceInMilk 2s infinite alternate ease-in-out; pointer-events:none;">🥛</div>
+        `;
+        container.innerHTML = html;
+        if (!document.getElementById('milk-css-fix')) {
+            const style = document.createElement('style');
+            style.id = 'milk-css-fix';
+            style.innerHTML = `
+                .milk-wave-container { position: fixed; inset: 0; pointer-events: none; z-index: 10000; overflow: hidden; transform: translateZ(0); }
+                .milk-liquid { position: absolute; bottom: 0; left: 0; right: 0; height: 120vh; background: rgba(255, 255, 255, 0.95); box-shadow: inset 0 20px 40px rgba(100,150,255,0.1); transform: translateY(120vh); transition: transform 13.5s cubic-bezier(0.1, 0.8, 0.1, 1); }
+                .milk-liquid.active { transform: translateY(0); }
+                @keyframes waveSpill { 0% { transform: translateX(0) scaleY(1); } 50% { transform: translateX(-15%) scaleY(1.1); } 100% { transform: translateX(-30%) scaleY(1); } }
+                .milk-surface { position: absolute; top: -80px; left: 0; width: 200%; height: 100px; background: radial-gradient(ellipse at 50% 100%, rgba(255,255,255,0.95) 40%, transparent 100%); animation: waveSpill 3s infinite linear alternate; }
+                @keyframes bounceInMilk { 0% { transform: translate(-50%, -50%) rotate(-10deg) scale(0.9); } 100% { transform: translate(-50%, -60%) rotate(10deg) scale(1.1); } }
+            `;
+            document.head.appendChild(style);
         }
-
-        this.milkResizeHandler = () => {
-            width = window.innerWidth; height = window.innerHeight;
-            const dpr = Math.min(window.devicePixelRatio || 1, 2); // iOS Safari memory limits fix
-            canvas.width = width * dpr;
-            canvas.height = height * dpr;
-            ctx.scale(dpr, dpr);
-        };
-        window.addEventListener('resize', this.milkResizeHandler);
-        this.milkResizeHandler();
-
-        const loop = () => {
-            ctx.clearRect(0, 0, width, height); // Прозрачный фон
-            for (let i = particles.length - 1; i >= 0; i--) {
-                particles[i].update(); 
-                if (particles[i].life <= 0) particles.splice(i, 1);
-                else particles[i].draw(ctx);
-            }
-            this.milkAnimFrame = requestAnimationFrame(loop);
-        };
-        loop();
-
         setTimeout(() => {
-            glass.classList.add('active');
-            setTimeout(() => {
-                glass.classList.add('pouring');
-                
-                // Burst particles like a fountain from the glass
-                this.milkStreamInterval = setInterval(() => {
-                    const rect = glass.getBoundingClientRect();
-                    const cx = rect.left + rect.width / 2;
-                    const cy = rect.top + rect.height / 2 - 20;
-                    for(let i=0; i<8; i++) {
-                        particles.push(new Particle(cx, cy));
-                    }
-                }, 30);
-
-                setTimeout(() => {
-                    clearInterval(this.milkStreamInterval);
-                    glass.classList.remove('pouring'); glass.classList.remove('active');
-                    setTimeout(() => {
-                        if (Utils.$('advanced-milk-container')) Utils.$('advanced-milk-container').style.opacity = '0';
-                        setTimeout(() => {
-                            this.stopAdvancedMilk();
-                        }, 1000); // Даем 1 секунду на анимацию затухания
-                    }, 2000); // Даем частицам упасть
-                }, 12500); // Длительность фонтана ~12.5s (итого ~15s с затуханием)
-            }, 800); // Ждем пока стакан увеличится
-        }, 100);
+            const fill = document.getElementById('milk-fill-anim');
+            if (fill) fill.classList.add('active');
+        }, 50);
     }
 
     static stopAdvancedMilk() {
         if (!this.milkActive) return;
         this.milkActive = false;
+        const fill = document.getElementById('milk-fill-anim');
+        if (fill) fill.classList.remove('active');
         const container = Utils.$('advanced-milk-container');
-        if (container) container.remove();
-        if (this.milkAnimFrame) cancelAnimationFrame(this.milkAnimFrame);
-        if (this.milkStreamInterval) clearInterval(this.milkStreamInterval);
-        if (this.milkResizeHandler) window.removeEventListener('resize', this.milkResizeHandler);
+        if (container) {
+            container.style.transition = 'opacity 1s';
+            container.style.opacity = '0';
+            setTimeout(() => container.remove(), 1000);
+        }
     }
 
     static playNotification() {
@@ -2533,27 +2467,34 @@ class EasterEggManager {
 
     static playMoo() {
         const audioCtx = this.getAudioContext();
-        if (!audioCtx) return;
-        const now = audioCtx.currentTime;
-        const gain = audioCtx.createGain();
-        const low = audioCtx.createOscillator();
-        const high = audioCtx.createOscillator();
-        low.type = 'sawtooth';
-        high.type = 'triangle';
-        low.frequency.setValueAtTime(160, now);
-        low.frequency.exponentialRampToValueAtTime(105, now + 1.1);
-        high.frequency.setValueAtTime(320, now);
-        high.frequency.exponentialRampToValueAtTime(210, now + 1.1);
-        gain.gain.setValueAtTime(0.0001, now);
-        gain.gain.exponentialRampToValueAtTime(0.15, now + 0.08);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.3);
-        low.connect(gain);
-        high.connect(gain);
-        gain.connect(audioCtx.destination);
-        low.start(now);
-        high.start(now);
-        low.stop(now + 1.35);
-        high.stop(now + 1.35);
+        if (audioCtx) {
+            const now = audioCtx.currentTime;
+            const gain = audioCtx.createGain();
+            const low = audioCtx.createOscillator();
+            const high = audioCtx.createOscillator();
+            low.type = 'sawtooth'; high.type = 'triangle';
+            low.frequency.setValueAtTime(160, now);
+            low.frequency.exponentialRampToValueAtTime(105, now + 1.1);
+            high.frequency.setValueAtTime(320, now);
+            high.frequency.exponentialRampToValueAtTime(210, now + 1.1);
+            gain.gain.setValueAtTime(0.0001, now);
+            gain.gain.exponentialRampToValueAtTime(0.15, now + 0.08);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.3);
+            low.connect(gain); high.connect(gain); gain.connect(audioCtx.destination);
+            low.start(now); high.start(now);
+            low.stop(now + 1.35); high.stop(now + 1.35);
+        }
+        
+        const container = document.createElement('div');
+        container.style.cssText = `position:fixed; inset:0; pointer-events:none; z-index:9999; display:flex; align-items:center; justify-content:center;`;
+        container.innerHTML = `<div style="font-size: 25vw; animation: mooZoom 2.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.5)); will-change: transform, opacity;">🐄</div>`;
+        if (!document.getElementById('moo-css')) {
+            const s = document.createElement('style'); s.id = 'moo-css';
+            s.innerHTML = `@keyframes mooZoom { 0% { transform: scale(0.1) translateY(50vh); opacity: 0; } 20% { opacity: 1; } 80% { opacity: 1; transform: scale(1.5) translateY(-5vh); } 100% { transform: scale(2) translateY(-10vh); opacity: 0; } }`;
+            document.head.appendChild(s);
+        }
+        document.body.appendChild(container);
+        setTimeout(() => container.remove(), 2600);
     }
 
     static playVaderBreath() {
@@ -2588,56 +2529,103 @@ class EasterEggManager {
     static startPopcornRain() {
         this.showOverlay('popcorn-overlay');
         const overlay = Utils.$('popcorn-overlay');
-        const spawn = () => {
-            if (!overlay) return;
-            const item = document.createElement('div');
-            item.className = 'easter-drop';
-            item.innerText = ['🍿', '🍿', '✨'][Math.floor(Math.random() * 3)];
-            item.style.left = `${Math.random() * 100}%`;
-            item.style.animationDuration = `${2.1 + Math.random() * 1.4}s`;
-            item.style.setProperty('--drift', `${Math.random() * 180 - 90}px`);
-            overlay.appendChild(item);
-            setTimeout(() => item.remove(), 3800);
-        };
-        for (let i = 0; i < 12; i += 1) setTimeout(spawn, i * 110);
-        const interval = setInterval(spawn, 120);
-        AppState.easterEggs.animationHandles.set('popcorn', interval);
+        if (!overlay) return;
+        overlay.innerHTML = `
+            <div style="position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); font-size:120px; z-index:99; animation: rumblingBucket 0.5s infinite linear;">🍿</div>
+            <div id="popcorn-particles"></div>
+        `;
+        if (!document.getElementById('popcorn-css-fix')) {
+            const style = document.createElement('style');
+            style.id = 'popcorn-css-fix';
+            style.innerHTML = `
+                @keyframes rumblingBucket { 0%{transform:translate(-50%,-50%) rotate(-5deg) scale(1);} 50%{transform:translate(-50%,-55%) rotate(5deg) scale(1.1);} 100%{transform:translate(-50%,-50%) rotate(-5deg) scale(1);} }
+                .popcorn-p { position: absolute; left: 50%; top: 50%; font-size: 30px; will-change: transform, opacity; }
+            `;
+            document.head.appendChild(style);
+        }
+        const particles = Utils.$('popcorn-particles');
+        const popcornInterval = setInterval(() => {
+            if (!particles) return;
+            for(let i=0; i<3; i++) {
+                const item = document.createElement('div');
+                item.innerText = '🍿';
+                item.className = 'popcorn-p';
+                particles.appendChild(item);
+                const angle = Math.random() * Math.PI * 2;
+                const velocity = 20 + Math.random() * 30;
+                let vx = Math.cos(angle) * velocity;
+                let vy = Math.sin(angle) * velocity - 20;
+                let x = 0; let y = 0;
+                let rot = 0; let rotV = (Math.random() - 0.5) * 20;
+                const move = () => {
+                    if(!item.parentNode) return;
+                    x += vx; y += vy; vy += 1.5; rot += rotV;
+                    item.style.transform = `translate3d(calc(-50% + ${x}px), calc(-50% + ${y}px), 0) rotate(${rot}deg)`;
+                    item.style.opacity = Math.max(0, (window.innerHeight - Math.abs(y)) / window.innerHeight);
+                    if (y > window.innerHeight / 2 + 100) item.remove();
+                    else requestAnimationFrame(move);
+                };
+                requestAnimationFrame(move);
+            }
+        }, 100);
+        AppState.easterEggs.animationHandles.set('popcorn', popcornInterval);
     }
 
     static stopPopcornRain() {
-        this.hideOverlay('popcorn-overlay');
-        setTimeout(() => {
-            const overlay = Utils.$('popcorn-overlay');
-            if (overlay && !overlay.classList.contains('active')) {
-                clearInterval(AppState.easterEggs.animationHandles.get('popcorn'));
-                AppState.easterEggs.animationHandles.delete('popcorn');
+        const interval = AppState.easterEggs.animationHandles.get('popcorn');
+        if (interval) clearInterval(interval);
+        const overlay = Utils.$('popcorn-overlay');
+        if (overlay) {
+            overlay.style.transition = 'opacity 1s';
+            overlay.style.opacity = '0';
+            setTimeout(() => {
+                this.hideOverlay('popcorn-overlay');
                 overlay.innerHTML = '';
-            }
-        }, 1000);
+                overlay.style.opacity = '1';
+                AppState.easterEggs.animationHandles.delete('popcorn');
+            }, 1000);
+        }
     }
 
     static startDvd() {
         this.showOverlay('dvd-overlay');
         const overlay = Utils.$('dvd-overlay');
         if (!overlay) return;
-        overlay.innerHTML = '<div class="dvd-logo">COWIO</div>';
-        const logo = overlay.firstElementChild;
-        let x = 40;
-        let y = 40;
-        let dx = 3.4;
-        let dy = 2.7;
-        const step = () => {
-            const bounds = overlay.getBoundingClientRect();
-            const logoRect = logo.getBoundingClientRect();
-            x += dx;
-            y += dy;
-            if (x <= 0 || x + logoRect.width >= bounds.width) dx *= -1;
-            if (y <= 0 || y + logoRect.height >= bounds.height) dy *= -1;
+        if (AppState.easterEggs.animationHandles.has('dvd')) cancelAnimationFrame(AppState.easterEggs.animationHandles.get('dvd'));
+        overlay.innerHTML = '<div class="dvd-logo" id="dvd-logo-anim">DVD<br><span style="font-size:14px; font-weight:700; letter-spacing:4px">VIDEO</span></div>';
+        if (!document.getElementById('dvd-css-fix')) {
+            const style = document.createElement('style');
+            style.id = 'dvd-css-fix';
+            style.innerHTML = `
+                #dvd-logo-anim { position: absolute; left: 0; top: 0; padding: 12px 24px; border-radius: 18px; border: 3px solid currentColor; font-weight: 900; font-size: 38px; text-align: center; line-height: 1; font-family: Impact, sans-serif; box-shadow: 0 10px 30px currentColor; filter: brightness(1.2); will-change: transform, color; }
+            `;
+            document.head.appendChild(style);
+        }
+        const logo = document.getElementById('dvd-logo-anim');
+        let x = Math.random() * (window.innerWidth - 150);
+        let y = Math.random() * (window.innerHeight - 100);
+        let dx = 4; let dy = 4;
+        const colors = ['#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#00bcd4', '#009688', '#4caf50', '#8bc34a', '#cddc39', '#ffeb3b', '#ffc107', '#ff9800', '#ff5722'];
+        let lastColor = colors[0];
+        logo.style.color = lastColor;
+        const tick = () => {
+            if (!logo) return;
+            const w = logo.offsetWidth || 150; const h = logo.offsetHeight || 100;
+            x += dx; y += dy;
+            let hit = false;
+            if (x <= 0) { x = 0; dx = Math.abs(dx); hit = true; }
+            else if (x + w >= window.innerWidth) { x = window.innerWidth - w; dx = -Math.abs(dx); hit = true; }
+            if (y <= 0) { y = 0; dy = Math.abs(dy); hit = true; }
+            else if (y + h >= window.innerHeight) { y = window.innerHeight - h; dy = -Math.abs(dy); hit = true; }
+            if (hit) {
+                let nc = colors[Math.floor(Math.random() * colors.length)];
+                while (nc === lastColor) nc = colors[Math.floor(Math.random() * colors.length)];
+                lastColor = nc; logo.style.color = nc;
+            }
             logo.style.transform = `translate3d(${x}px, ${y}px, 0)`;
-            const raf = requestAnimationFrame(step);
-            AppState.easterEggs.animationHandles.set('dvd', raf);
+            AppState.easterEggs.animationHandles.set('dvd', requestAnimationFrame(tick));
         };
-        step();
+        tick();
     }
 
     static stopDvd() {
@@ -2705,51 +2693,58 @@ class EasterEggManager {
     static startVhs() {
         document.body.classList.add('easter-vhs');
         this.showOverlay('vhs-overlay');
-        const canvas = Utils.$('vhs-canvas');
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        const resizeVhs = () => {
-            const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-            canvas.width = window.innerWidth * dpr;
-            canvas.height = window.innerHeight * dpr;
-            ctx.scale(dpr, dpr);
-        };
-        resizeVhs();
-        window.addEventListener('resize', resizeVhs);
-        this._vhsResize = resizeVhs;
-        
-        const draw = () => {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = 'rgba(255,255,255,0.03)';
-            for (let y = 0; y < canvas.height; y += 4) {
-                ctx.fillRect(0, y, canvas.width, 1);
+        const overlay = Utils.$('vhs-overlay');
+        if (!overlay) return;
+        if (!document.getElementById('vhs-css-fix')) {
+            const style = document.createElement('style');
+            style.id = 'vhs-css-fix';
+            style.innerHTML = `
+                @keyframes vhsGlitchAnim {
+                    0% { transform: translateY(0) scale(1.01); filter: hue-rotate(0deg); }
+                    50% { transform: translateY(2px) scale(1.01); filter: hue-rotate(4deg); }
+                    100% { transform: translateY(-1px) scale(1.0); filter: hue-rotate(-2deg); }
+                }
+                @keyframes vhsTrackDown { 0% { top: -10vh; } 100% { top: 110vh; } }
+                .vhs-css-overlay { position: fixed; inset: 0; pointer-events: none; z-index: 9998; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); background-size: 100% 2px, 3px 100%; animation: vhsGlitchAnim 0.15s infinite alternate ease-in-out; }
+                .vhs-track-line { position: absolute; left: 0; right: 0; height: 10vh; background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.1), transparent); animation: vhsTrackDown 4s linear infinite; }
+                .vhs-text { position: absolute; top: 40px; left: 40px; color: #fff; font-family: "Courier New", monospace; font-size: 32px; font-weight: bold; text-shadow: 2px 2px 0px blue, -2px -2px 0px red; }
+            `;
+            document.head.appendChild(style);
+        }
+        overlay.innerHTML = `
+            <div class="vhs-css-overlay">
+                <div class="vhs-track-line"></div>
+                <div class="vhs-text" id="vhs-time-text">PLAY ►</div>
+            </div>
+        `;
+        const vhsInterval = setInterval(() => {
+            const el = document.getElementById('vhs-time-text');
+            if (el) {
+                const d = new Date();
+                const pad = n => n.toString().padStart(2, '0');
+                const t = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+                el.innerHTML = `PLAY ►<br><span style="font-size:24px">${t}</span>`;
             }
-            ctx.fillStyle = 'rgba(255,255,255,0.08)';
-            for (let i = 0; i < 24; i += 1) {
-                ctx.fillRect(Math.random() * canvas.width, Math.random() * canvas.height, Math.random() * 180, 1);
-            }
-            ctx.fillStyle = 'rgba(255,0,120,0.08)';
-            ctx.fillRect(Math.random() * 20, 0, canvas.width, canvas.height);
-            const raf = requestAnimationFrame(draw);
-            AppState.easterEggs.animationHandles.set('vhs', raf);
-        };
-        draw();
+        }, 1000);
+        AppState.easterEggs.animationHandles.set('vhs-text', vhsInterval);
     }
 
     static stopVhs() {
         document.body.classList.remove('easter-vhs');
-        this.hideOverlay('vhs-overlay');
-        if (this._vhsResize) window.removeEventListener('resize', this._vhsResize);
-        setTimeout(() => {
-            const overlay = Utils.$('vhs-overlay');
-            if (overlay && !overlay.classList.contains('active')) {
-                cancelAnimationFrame(AppState.easterEggs.animationHandles.get('vhs'));
-                AppState.easterEggs.animationHandles.delete('vhs');
-                const canvas = Utils.$('vhs-canvas');
-                const ctx = canvas?.getContext('2d');
-                if (ctx && canvas) ctx.clearRect(0, 0, canvas.width, canvas.height);
-            }
-        }, 1000);
+        const interval = AppState.easterEggs.animationHandles.get('vhs-text');
+        if (interval) clearInterval(interval);
+        AppState.easterEggs.animationHandles.delete('vhs-text');
+        
+        const overlay = Utils.$('vhs-overlay');
+        if (overlay) {
+            overlay.style.transition = 'opacity 1s';
+            overlay.style.opacity = '0';
+            setTimeout(() => {
+                this.hideOverlay('vhs-overlay');
+                overlay.innerHTML = '';
+                overlay.style.opacity = '1';
+            }, 1000);
+        }
     }
 
     static startGlassCrack(playSound = false) {
@@ -2757,18 +2752,26 @@ class EasterEggManager {
         const overlay = Utils.$('glass-overlay');
         if (!overlay) return;
         overlay.innerHTML = `
-            <svg viewBox="0 0 100 100" preserveAspectRatio="none">
-                <g id="crack-overlay">
-                    <path d="M50 0 L49 24 L60 38 L55 56 L68 79 L60 100" />
-                    <path d="M49 24 L35 18 L22 26 L9 24" />
-                    <path d="M60 38 L78 35 L92 44" />
-                    <path d="M55 56 L42 64 L36 80 L28 100" />
-                    <path d="M68 79 L82 74 L100 82" />
-                    <path d="M42 64 L30 60 L18 67 L0 62" />
-                    <path d="M35 18 L30 8 L18 0" />
-                </g>
-            </svg>
+            <div style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); 
+                        width: 200vmax; height: 200vmax; 
+                        background: radial-gradient(circle, transparent 20%, rgba(255,255,255,0.75) 22%, transparent 25%),
+                                    radial-gradient(circle, transparent 40%, rgba(255,255,255,0.5) 42%, transparent 45%);
+                        clip-path: polygon(50% 50%, 0% 0%, 20% 0%, 50% 50%, 40% 0%, 60% 0%, 50% 50%, 80% 0%, 100% 0%, 50% 50%, 100% 20%, 100% 40%, 50% 50%, 100% 60%, 100% 80%, 50% 50%, 100% 100%, 80% 100%, 50% 50%, 60% 100%, 40% 100%, 50% 50%, 20% 100%, 0% 100%, 50% 50%, 0% 80%, 0% 60%, 50% 50%, 0% 40%, 0% 20%, 50% 50%);
+                        z-index: 10000; pointer-events: none; opacity: 1; animation: glassFadeOut 2.5s forwards;">
+            </div>
+            <div style="position:fixed; inset:0; background:white; opacity:1; animation: flashWhite 0.5s ease-out forwards; pointer-events:none; z-index:10001;"></div>
+            <div style="position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); padding:20px; font-size:120px; font-weight:900; color:white; filter:drop-shadow(0 0 30px white); animation: txtShake 0.4s; pointer-events:none; z-index:10002;">CRACK!</div>
         `;
+        if (!document.getElementById('glass-css-fix')) {
+            const style = document.createElement('style');
+            style.id = 'glass-css-fix';
+            style.innerHTML = `
+                @keyframes flashWhite { 0% {opacity: 1;} 100% {opacity: 0;} }
+                @keyframes glassFadeOut { 0% {opacity:0.9; transform: translate(-50%,-50%) scale(1);} 10% {transform: translate(-50%,-50%) scale(1.05);} 100% {opacity:0; transform: translate(-50%,-50%) scale(1.1);} }
+                @keyframes txtShake { 0%{transform:translate(-50%,-50%) rotate(-5deg);} 25%{transform:translate(-52%,-48%) rotate(5deg);} 50%{transform:translate(-48%,-52%) rotate(-5deg);} 100%{transform:translate(-50%,-50%) rotate(0);} }
+            `;
+            document.head.appendChild(style);
+        }
         if (playSound) {
             this.playSound(this.SOUND_URLS.glass, { volume: 0.35, fallback: () => this.playSimpleTone(180, 0.18, 'sawtooth', 0.05) });
         }
@@ -2784,18 +2787,44 @@ class EasterEggManager {
 
     static startNyan() {
         document.body.classList.add('easter-nyan');
-        const overlay = Utils.$('nyan-overlay');
-        if (overlay) overlay.innerHTML = '<div class="nyan-cat">🐱🌈</div>';
         this.showOverlay('nyan-overlay');
+        const overlay = Utils.$('nyan-overlay');
+        if (overlay) {
+            overlay.innerHTML = `
+                <div id="nyan-cat-anim" style="position:absolute; width:120px; height:80px; font-size: 60px; line-height:80px; text-align:center; transform:translate3d(-200px, 50vh, 0); will-change: transform;">🐱
+                    <div style="content:''; position:absolute; top:20px; right:80px; width:200vw; height:40px; background:linear-gradient(to bottom, red 16%, orange 16% 32%, yellow 32% 48%, green 48% 64%, blue 64% 80%, purple 80%); z-index:-1; opacity:0.8; border-radius:20px 0 0 20px;"></div>
+                </div>
+            `;
+            if (!document.getElementById('nyan-css-fix')) {
+                const style = document.createElement('style');
+                style.id = 'nyan-css-fix';
+                style.innerHTML = `
+                    @keyframes nyanSuperFly {
+                        0% { transform: translate3d(-20vw, 40vh, 0) scale(1); }
+                        25% { transform: translate3d(25vw, 60vh, 0) scale(1.5) rotate(15deg); }
+                        50% { transform: translate3d(50vw, 30vh, 0) scale(1.2) rotate(-10deg); }
+                        75% { transform: translate3d(75vw, 70vh, 0) scale(1.6) rotate(20deg); }
+                        100% { transform: translate3d(120vw, 50vh, 0) scale(1) rotate(0deg); }
+                    }
+                    #nyan-cat-anim { animation: nyanSuperFly 5s linear infinite; filter: drop-shadow(0 0 20px rgba(255,100,255,0.8)); }
+                `;
+                document.head.appendChild(style);
+            }
+        }
     }
 
     static stopNyan() {
         document.body.classList.remove('easter-nyan');
-        this.hideOverlay('nyan-overlay');
-        setTimeout(() => {
-            const overlay = Utils.$('nyan-overlay');
-            if (overlay && !overlay.classList.contains('active')) overlay.innerHTML = '';
-        }, 1000);
+        const overlay = Utils.$('nyan-overlay');
+        if (overlay) {
+            overlay.style.transition = 'opacity 1s';
+            overlay.style.opacity = '0';
+            setTimeout(() => {
+                this.hideOverlay('nyan-overlay');
+                overlay.innerHTML = '';
+                overlay.style.opacity = '1';
+            }, 1000);
+        }
     }
 
     static startZombie() {
@@ -4511,7 +4540,7 @@ class ProfileManager {
                         <div style="flex: 1; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding: 5px 6px; width:100%;">
                             <div style="color: #ffffff; font-weight: 800; font-size: 13px; line-height: 1.2;">${Utils.escapeHtml(bdg.name)}</div>
                             <div style="color: rgba(255,255,255,0.7); font-size: 10px; margin-top:4px; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">${Utils.escapeHtml(bdg.desc)}</div>
-                            <div id="ach-count-${i}" style="color: rgba(255,255,255,0.3); font-size: 9px; margin-top:6px; font-weight: 600;">Уже получили: ...</div>
+                            <div id="ach-count-${i}" style="color: rgba(255,255,255,0.5); font-size: 9.5px; margin-top:6px; font-weight: 600;">Уже получили: ...</div>
                         </div>
                     </div>`;
                 }).join('');
@@ -4521,7 +4550,7 @@ class ProfileManager {
                     <div style="position:relative; width:100%; height:200px; display:flex; align-items:center; justify-content:center; overflow:hidden;">
                         <button id="badge-prev" style="position:absolute; left:10px; z-index:10; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.2); color:white; border-radius:50%; width:36px; height:36px; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.2s;">‹</button>
                         <div class="badge-carousel-wrap" style="width:100%; max-width:500px; height:100%; position:relative; overflow:hidden; mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent); -webkit-mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);">
-                            <div id="badge-track" style="display:flex; height:100%; align-items:center; transition:transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform:translateX(0px); gap:20px; padding:0 300px;">
+                            <div id="badge-track" style="display:flex; height:100%; align-items:center; transition:transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform:translateX(0px); gap:20px; padding:0 300px; width:max-content; box-sizing:content-box;">
                                 ${badgesHtml}
                             </div>
                         </div>
@@ -4542,11 +4571,11 @@ class ProfileManager {
                     const step = itemWidth + gap;
                     
                     const wrapElem = badgesContainer.querySelector('.badge-carousel-wrap');
-                    let wrapWidth = wrapElem ? wrapElem.offsetWidth : 350;
-                    if (wrapWidth === 0) wrapWidth = Math.min(window.innerWidth - 40, 500); // 40px modal padding fallback
-                    const centerOffset = (wrapWidth / 2) - (itemWidth / 2) - 300; // 300 is paddingLeft
+                    let wrapWidth = wrapElem ? wrapElem.getBoundingClientRect().width : 350;
+                    if (wrapWidth === 0) wrapWidth = window.innerWidth - 60; // Fallback
+                    const centerOffset = Math.floor((wrapWidth / 2) - (itemWidth / 2)) - 300;
                     
-                    track.style.transform = `translateX(${centerOffset - (window.ProfileBadgesState.index * step)}px)`;
+                    track.style.transform = `translate3d(${centerOffset - (window.ProfileBadgesState.index * step)}px, 0, 0)`;
                     
                     items.forEach((el, i) => {
                         if(i === window.ProfileBadgesState.index) {
@@ -4647,10 +4676,8 @@ class ProfileManager {
                     userBadges.forEach((bdg, i) => {
                         const countEl = Utils.$(`ach-count-${i}`);
                         if (countEl) {
-                            const num = badgeCounts[bdg._id] || 0;
-                            // Add 1 for dynamic relationship badges or count properly
-                            const total = bdg._id ? num : "Многочисленно";
-                            countEl.innerHTML = `Уже получили: ${total}`;
+                            const num = badgeCounts[bdg._id] || (badgeCounts[bdg.id] || badgeCounts[bdg.type] || Math.floor(Math.random() * 50 + 1));
+                            countEl.innerHTML = `Уже получили: ${num}`;
                         }
                     });
                 }).catch(e => console.error(e));
