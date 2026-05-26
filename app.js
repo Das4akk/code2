@@ -581,7 +581,7 @@ class Utils {
 
             #modal-admin-panel.godmode-modal .modal-content {
                 width: 100vw !important;
-                height: 100vh !important;
+                height: 100dvh !important;
                 max-width: none !important;
                 border-radius: 0 !important;
                 margin: 0 !important;
@@ -1689,6 +1689,10 @@ class BackgroundFX {
     static init() {
         const canvas = Utils.$('particle-canvas');
         if (!canvas) return;
+        if (window.innerWidth < 768) {
+            canvas.style.display = 'none';
+            return;
+        }
         const ctx = canvas.getContext('2d');
         let dots = [];
         const connectionStrength = new Map();
@@ -2748,13 +2752,12 @@ class BadgeManager {
     static init() {
         onValue(ref(db, 'badges'), snap => {
             AppState.customBadges = snap.val() || {};
-            if (typeof RoomManager !== 'undefined') RoomManager.updateRoomsDOM();
             this.renderBadgeList();
         });
     }
 
     static async saveBadge() {
-        if (!AdminPanel.isCurrentUserCreator()) return Utils.toast('Только Создатель может редактировать бейджи', 'error');
+        if (!AdminPanel.requireAdmin()) return Utils.toast('Только администраторы могут редактировать бейджи', 'error');
         const id = Utils.$('admin-badge-edit-id')?.value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
         const name = Utils.$('admin-badge-edit-name')?.value.trim();
         if (!id || !name) return Utils.toast('ID и название обязательны', 'error');
@@ -2772,7 +2775,7 @@ class BadgeManager {
     }
 
     static async deleteBadge(id) {
-        if (!AdminPanel.isCurrentUserCreator()) return;
+        if (!AdminPanel.requireAdmin()) return;
         if (!confirm('Точно удалить бейдж?')) return;
         await set(ref(db, `badges/${id}`), null);
         Utils.toast('Бейдж удален');
@@ -3360,19 +3363,6 @@ class ProfileManager {
             const bg = Utils.escapeHtml(custom.bg || 'rgba(120,120,120,0.2)');
             const border = Utils.escapeHtml(custom.border || 'rgba(255,255,255,0.35)');
             badges.push(`<span class="role-badge" style="color:${color}; background:${bg}; border:1px solid ${border}; box-shadow:none;">${text}</span>`);
-        }
-        if (profile?.assignedBadges && Array.isArray(profile.assignedBadges) && AppState.customBadges) {
-            for (const bId of profile.assignedBadges) {
-                const bdg = AppState.customBadges[bId];
-                if (bdg) {
-                    const text = Utils.escapeHtml(bdg.name);
-                    const icon = bdg.icon ? Utils.escapeHtml(bdg.icon) + ' ' : '';
-                    const color = Utils.escapeHtml(bdg.color || '#ffffff');
-                    const bg = Utils.escapeHtml(bdg.bg || 'rgba(120,120,120,0.2)');
-                    const border = Utils.escapeHtml(bdg.border || 'rgba(255,255,255,0.35)');
-                    badges.push(`<span class="role-badge" style="color:${color}; background:${bg}; border:1px solid ${border}; box-shadow:none;">${icon}${text}</span>`);
-                }
-            }
         }
         if (profile?.partner) badges.push(`<span class="partner-badge">Пара</span>`); // [UPDATE]
         return badges.join(' '); // [UPDATE]
@@ -4152,6 +4142,29 @@ class ProfileManager {
             Друзей: ${friendsCount}<br>
             На платформе с: ${joinDate}
         `;
+        
+        const badgesContainer = Utils.$('view-badges-collection');
+        if (badgesContainer) {
+            badgesContainer.innerHTML = '';
+            if (profile.assignedBadges && Array.isArray(profile.assignedBadges) && AppState.customBadges && profile.assignedBadges.length > 0) {
+                const badgesHtml = profile.assignedBadges.map(bId => {
+                    const bdg = AppState.customBadges[bId];
+                    if (!bdg) return '';
+                    const text = Utils.escapeHtml(bdg.name);
+                    const icon = bdg.icon ? Utils.escapeHtml(bdg.icon) + ' ' : '';
+                    const color = Utils.escapeHtml(bdg.color || '#ffffff');
+                    const bg = Utils.escapeHtml(bdg.bg || 'rgba(120,120,120,0.2)');
+                    const border = Utils.escapeHtml(bdg.border || 'rgba(255,255,255,0.35)');
+                    return `<div class="role-badge" style="color:${color}; background:${bg}; border:1px solid ${border}; box-shadow:none; display:inline-flex; align-items:center; justify-content:center; padding: 6px 12px; font-size: 13px; border-radius: 8px;" title="${text}">
+                        ${icon}${text}
+                    </div>`;
+                }).join('');
+                if (badgesHtml) {
+                    badgesContainer.innerHTML = `<div style="width:100%; font-size:12px; color:var(--text-muted); font-weight:700; margin-bottom:4px; text-align:center; opacity:0.7; letter-spacing:0.5px;">НАГРАДЫ</div>${badgesHtml}`;
+                }
+            }
+        }
+
         const hashtagsEl = Utils.$('view-hashtags');
         const profileTags = Array.isArray(profile.hashtags) ? profile.hashtags : [];
         hashtagsEl.innerHTML = profileTags.map(tag => `<span class="hashtag-chip">${Utils.escapeHtml(tag)}</span>`).join('');
