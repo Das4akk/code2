@@ -41,6 +41,7 @@ const AppState = {
     currentUser: null,
     currentRoomId: null,
     currentRoomJoinTs: 0, // Фикс синхронизации новых юзеров
+    customBadges: {},
     currentTheme: null,
     globalTheme: 'dark', // [NEW]
     isHost: false,
@@ -2743,6 +2744,141 @@ class EasterEggManager {
 // 3. АВТОРИЗАЦИЯ И СТРОГИЕ ПРОВЕРКИ ПРОФИЛЕЙ
 // ============================================================================
 
+class BadgeManager {
+    static init() {
+        onValue(ref(db, 'badges'), snap => {
+            AppState.customBadges = snap.val() || {};
+            if (typeof RoomManager !== 'undefined') RoomManager.updateRoomsDOM();
+            this.renderBadgeList();
+        });
+        
+        // Settings for Admin badges tab
+        const saveBtn = Utils.$('btn-admin-save-badge');
+        if (saveBtn) {
+            saveBtn.onclick = () => this.saveBadge();
+        }
+    }
+
+    static async saveBadge() {
+        if (!AdminPanel.isCurrentUserCreator()) return Utils.toast('Только Создатель может редактировать бейджи', 'error');
+        const id = Utils.$('admin-badge-edit-id')?.value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
+        const name = Utils.$('admin-badge-edit-name')?.value.trim();
+        if (!id || !name) return Utils.toast('ID и название обязательны', 'error');
+        
+        const payload = {
+            name,
+            icon: Utils.$('admin-badge-edit-icon')?.value.trim() || '',
+            color: Utils.$('admin-badge-edit-color')?.value || '#ffffff',
+            bg: Utils.$('admin-badge-edit-bg')?.value || '#5d3fd3',
+            border: Utils.$('admin-badge-edit-border')?.value || '#8d63ff'
+        };
+        await set(ref(db, `badges/${id}`), payload);
+        Utils.toast('Бейдж сохранен');
+        this.renderBadgeList();
+    }
+
+    static async deleteBadge(id) {
+        if (!AdminPanel.isCurrentUserCreator()) return;
+        if (!confirm('Точно удалить бейдж?')) return;
+        await set(ref(db, `badges/${id}`), null);
+        Utils.toast('Бейдж удален');
+        this.renderBadgeList();
+    }
+
+    static renderBadgeList() {
+        const container = Utils.$('admin-badges-list');
+        if (!container) return;
+        container.innerHTML = '';
+        const badges = AppState.customBadges || {};
+        const entries = Object.entries(badges);
+        if (entries.length === 0) {
+            container.innerHTML = `<div style="color:var(--text-muted); font-size:12px;">Нет бейджей</div>`;
+            return;
+        }
+
+        entries.forEach(([id, b]) => {
+            const div = document.createElement('div');
+            div.style.padding = '10px';
+            div.style.border = '1px solid var(--border-light)';
+            div.style.borderRadius = '10px';
+            div.style.background = 'rgba(0,0,0,0.2)';
+            div.style.display = 'flex';
+            div.style.alignItems = 'center';
+            div.style.justifyContent = 'space-between';
+            
+            let preview = '';
+            const text = Utils.escapeHtml(b.name);
+            const icon = b.icon ? Utils.escapeHtml(b.icon) + ' ' : '';
+            preview = `<span class="role-badge" style="color:${Utils.escapeHtml(b.color)}; background:${Utils.escapeHtml(b.bg)}; border:1px solid ${Utils.escapeHtml(b.border)}; box-shadow:none;">${icon}${text}</span>`;
+            
+            div.innerHTML = `
+                <div style="display:flex; flex-direction:column; gap:4px; cursor:pointer;" class="badge-edit-trigger">
+                    <span style="font-size:12px; font-weight:700; color:var(--text-muted);">ID: ${Utils.escapeHtml(id)}</span>
+                    <div>${preview}</div>
+                </div>
+                <button class="danger-btn btn-small" data-id="${Utils.escapeHtml(id)}">Удалить</button>
+            `;
+            div.querySelector('.badge-edit-trigger').onclick = () => {
+                Utils.$('admin-badge-edit-id').value = id;
+                Utils.$('admin-badge-edit-name').value = b.name;
+                Utils.$('admin-badge-edit-icon').value = b.icon || '';
+                Utils.$('admin-badge-edit-color').value = b.color;
+                Utils.$('admin-badge-edit-bg').value = b.bg;
+                Utils.$('admin-badge-edit-border').value = b.border;
+            };
+            div.querySelector('button').onclick = () => this.deleteBadge(id);
+            container.appendChild(div);
+        });
+    }
+
+    static renderUserEditorBadges(targetUid, userAssignedArray) {
+        const container = Utils.$('admin-edit-badges-container');
+        if (!container) return;
+        container.innerHTML = '';
+        const allBadges = AppState.customBadges || {};
+        const entries = Object.entries(allBadges);
+        if (entries.length === 0) {
+            container.innerHTML = `<div style="font-size:11px; color:var(--text-muted);">Нет созданных бейджей</div>`;
+            return;
+        }
+
+        const currentSet = new Set(userAssignedArray || []);
+
+        entries.forEach(([id, b]) => {
+            const label = document.createElement('label');
+            label.style.display = 'flex';
+            label.style.alignItems = 'center';
+            label.style.gap = '4px';
+            label.style.fontSize = '12px';
+            label.style.cursor = 'pointer';
+            label.style.padding = '4px 8px';
+            label.style.borderRadius = '6px';
+            label.style.background = currentSet.has(id) ? 'rgba(255,255,255,0.1)' : 'transparent';
+            label.style.border = '1px solid rgba(255,255,255,0.1)';
+
+            label.innerHTML = `
+                <input type="checkbox" value="${Utils.escapeHtml(id)}" ${currentSet.has(id) ? 'checked' : ''}>
+                ${Utils.escapeHtml(b.name)}
+            `;
+
+            const cb = label.querySelector('input');
+            cb.onchange = async () => {
+                const checked = cb.checked;
+                label.style.background = checked ? 'rgba(255,255,255,0.1)' : 'transparent';
+                
+                if (checked) currentSet.add(id);
+                else currentSet.delete(id);
+
+                const newArr = Array.from(currentSet);
+                await update(ref(db, `users/${targetUid}/profile`), { assignedBadges: newArr });
+                AdminPanel.pushAuditLog('admin.badge.custom_assigned', { targetUid, badgeId: id, granted: checked });
+                Utils.toast(checked ? 'Бейдж выдан' : 'Бейдж снят');
+            };
+            container.appendChild(label);
+        });
+    }
+}
+
 class AuthManager {
     static init() {
         Utils.injectFixes();
@@ -3230,6 +3366,19 @@ class ProfileManager {
             const bg = Utils.escapeHtml(custom.bg || 'rgba(120,120,120,0.2)');
             const border = Utils.escapeHtml(custom.border || 'rgba(255,255,255,0.35)');
             badges.push(`<span class="role-badge" style="color:${color}; background:${bg}; border:1px solid ${border}; box-shadow:none;">${text}</span>`);
+        }
+        if (profile?.assignedBadges && Array.isArray(profile.assignedBadges) && AppState.customBadges) {
+            for (const bId of profile.assignedBadges) {
+                const bdg = AppState.customBadges[bId];
+                if (bdg) {
+                    const text = Utils.escapeHtml(bdg.name);
+                    const icon = bdg.icon ? Utils.escapeHtml(bdg.icon) + ' ' : '';
+                    const color = Utils.escapeHtml(bdg.color || '#ffffff');
+                    const bg = Utils.escapeHtml(bdg.bg || 'rgba(120,120,120,0.2)');
+                    const border = Utils.escapeHtml(bdg.border || 'rgba(255,255,255,0.35)');
+                    badges.push(`<span class="role-badge" style="color:${color}; background:${bg}; border:1px solid ${border}; box-shadow:none;">${icon}${text}</span>`);
+                }
+            }
         }
         if (profile?.partner) badges.push(`<span class="partner-badge">Пара</span>`); // [UPDATE]
         return badges.join(' '); // [UPDATE]
@@ -4759,6 +4908,7 @@ class AdminPanel {
                     <button class="secondary-btn godmode-nav-btn active" data-section="dashboard">dashboard</button>
                     <button class="secondary-btn godmode-nav-btn" data-section="people">people</button>
                     <button class="secondary-btn godmode-nav-btn" data-section="rooms">rooms</button>
+                    <button class="secondary-btn godmode-nav-btn" data-section="badges">badges</button>
                     <button class="secondary-btn godmode-nav-btn" data-section="logs">logs</button>
                     <button class="secondary-btn godmode-nav-btn" data-section="settings">settings</button>
                     <button class="secondary-btn godmode-nav-btn" data-section="security">security</button>
@@ -4950,6 +5100,36 @@ class AdminPanel {
                         <button class="secondary-btn" disabled>Restore Sandbox (soon)</button>
                         <button class="secondary-btn" disabled>Retention Policy (soon)</button>
                         <button class="secondary-btn" disabled>Backup Integrity Check (soon)</button>
+                    </div>
+                </div>
+                <!-- // [NEW] BADGES SECTION -->
+                <div class="godmode-section" data-section="badges" style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                    <div style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
+                        <div style="font-weight:700; margin-bottom:10px;">Создать/Изменить бейдж</div>
+                        <div class="admin-form-group">
+                            <input type="text" id="admin-badge-edit-id" placeholder="ID бейджа (только eng буквы, напр. dev)" style="margin-bottom:8px;">
+                            <input type="text" id="admin-badge-edit-name" placeholder="Название бейджа (текст)" style="margin-bottom:8px;">
+                            <input type="text" id="admin-badge-edit-icon" placeholder="Иконка (эмодзи или пусто)" style="margin-bottom:8px;">
+                            <div class="admin-color-grid">
+                                <div class="admin-color-field">
+                                    <label class="admin-form-label" for="admin-badge-edit-color">Цвет текста</label>
+                                    <input type="color" id="admin-badge-edit-color" value="#ffffff">
+                                </div>
+                                <div class="admin-color-field">
+                                    <label class="admin-form-label" for="admin-badge-edit-bg">Цвет фона</label>
+                                    <input type="color" id="admin-badge-edit-bg" value="#5d3fd3">
+                                </div>
+                                <div class="admin-color-field">
+                                    <label class="admin-form-label" for="admin-badge-edit-border">Цвет рамки</label>
+                                    <input type="color" id="admin-badge-edit-border" value="#8d63ff">
+                                </div>
+                            </div>
+                            <button class="primary-btn" id="btn-admin-save-badge" style="margin-top:10px;">Сохранить бейдж</button>
+                        </div>
+                    </div>
+                    <div style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
+                        <div style="font-weight:700; margin-bottom:10px;">Список бейджей</div>
+                        <div id="admin-badges-list" style="display:flex; flex-direction:column; gap:8px; max-height:400px; overflow-y:auto; padding-right:5px;"></div>
                     </div>
                 </div>
                 </div>
@@ -5582,7 +5762,13 @@ class AdminPanel {
                 <input type="text" id="admin-edit-bg-url" placeholder="URL фона профиля" value="${Utils.escapeHtml(ProfileManager.normalizeProfileBackground(profile.background).url || '')}">
             </div>
             <textarea id="admin-edit-bio" rows="4" placeholder="Описание">${Utils.escapeHtml(profile.bio || '')}</textarea>
-            <div style="font-size:12px; color:var(--text-muted);">Email: ${Utils.escapeHtml(profile.email || 'не указан')}</div>
+            
+            <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
+                <div style="font-weight:700; margin-bottom:6px;">Назначенные бейджи</div>
+                <div id="admin-edit-badges-container" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+            </div>
+
+            <div style="font-size:12px; color:var(--text-muted); margin-top: 10px;">Email: ${Utils.escapeHtml(profile.email || 'не указан')}</div>
             
             <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
                 <div style="font-weight:700; margin-bottom:6px;">Управление второй половинкой</div>
@@ -5615,6 +5801,8 @@ class AdminPanel {
                 <button class="secondary-btn" id="btn-admin-reset-password">Reset password</button>
             </div>
         `;
+
+        BadgeManager.renderUserEditorBadges(uid, profile.assignedBadges);
 
         Utils.$('btn-admin-save-user').onclick = () => this.saveUserProfile();
         Utils.$('btn-admin-set-partner').onclick = () => this.forceSetPartner(uid);
@@ -7458,6 +7646,7 @@ class MobileSwipeManager {
 // ============================================================================
 
 window.onload = () => {
+    BadgeManager.init();
     GlobalThemeManager.init(); // [NEW]
     AuthManager.init();
     BackgroundFX.init();
