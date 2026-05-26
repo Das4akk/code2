@@ -2876,21 +2876,13 @@ class BadgeManager {
         });
         
         const presetEmojis = [
-            'https://cdn3.emoji.gg/emojis/22727-clown.gif', 'https://cdn3.emoji.gg/emojis/39391-bored.gif', 'https://cdn3.emoji.gg/emojis/28433-cool.gif',
-            'https://cdn3.emoji.gg/emojis/49250-freaky-1.gif', 'https://cdn3.emoji.gg/emojis/44214-laugh.gif', 'https://cdn3.emoji.gg/emojis/78235-liar.gif',
-            'https://cdn3.emoji.gg/emojis/20543-gasp.gif', 'https://cdn3.emoji.gg/emojis/81026-silent.gif', 'https://cdn3.emoji.gg/emojis/25754-swear.gif',
-            'https://cdn3.emoji.gg/emojis/49113-anxious.gif', 'https://cdn3.emoji.gg/emojis/98791-scream.gif', 'https://cdn3.emoji.gg/emojis/17320-yawn.gif',
-            'https://cdn3.emoji.gg/emojis/46858-think.gif', 'https://cdn3.emoji.gg/emojis/6153-freaky-2.gif', 'https://cdn3.emoji.gg/emojis/1352-yum.gif',
-            'https://cdn3.emoji.gg/emojis/13961-party.gif', 'https://cdn3.emoji.gg/emojis/83447-sleep.gif', 'https://cdn3.emoji.gg/emojis/68034-sad.gif',
-            'https://cdn3.emoji.gg/emojis/36840-demon-smile.gif', 'https://cdn3.emoji.gg/emojis/183382-rainbow-rat-boi.gif', 'https://cdn3.emoji.gg/emojis/112929-leftslowarrow.gif',
-            'https://cdn3.emoji.gg/emojis/911479-sparkle13.png', 'https://cdn3.emoji.gg/emojis/964729-moon6.gif', 'https://cdn3.emoji.gg/emojis/67834-ellen-bite.png',
-            'https://cdn3.emoji.gg/emojis/357824-ellenjoegumball.png', 'https://cdn3.emoji.gg/emojis/81992-zenlesszonezero.gif', 'https://cdn3.emoji.gg/emojis/29583-anby-burger.png',
-            'https://cdn3.emoji.gg/emojis/3102-dokille.png', 'https://cdn3.emoji.gg/emojis/8446-cauchemar.png', 'https://cdn3.emoji.gg/emojis/8337-kaliptus.png',
-            'https://cdn3.emoji.gg/emojis/5507-ddg.png', 'https://cdn3.emoji.gg/emojis/50886-rezewaving.png', 'https://cdn3.emoji.gg/emojis/694323-rezeloveeyes.png',
-            'https://cdn3.emoji.gg/emojis/953635-rezeembarrassed.png', 'https://cdn3.emoji.gg/emojis/769109-rezecalm.png', 'https://cdn3.emoji.gg/emojis/23410-taigablush.gif',
-            'https://cdn3.emoji.gg/emojis/3069-taiga-cute.png', 'https://cdn3.emoji.gg/emojis/4443-taiga-peace.png', 'https://cdn3.emoji.gg/emojis/8324-taiga-whiskers.png',
-            'https://cdn3.emoji.gg/emojis/516086-a-envelope.png', 'https://cdn3.emoji.gg/emojis/87361-miffypancake.png', 'https://cdn3.emoji.gg/emojis/75216-bow.png',
-            'https://cdn3.emoji.gg/emojis/40890-wing.png', 'https://cdn3.emoji.gg/emojis/1114-annoyed2.png', 'https://cdn3.emoji.gg/emojis/517918-wechat-ok.png'
+            'https://cdn3.emoji.gg/emojis/36840-demon-smile.gif',
+            'https://cdn3.emoji.gg/emojis/83447-sleep.gif',
+            'https://cdn3.emoji.gg/emojis/13961-party.gif',
+            'https://cdn3.emoji.gg/emojis/22727-clown.gif',
+            'https://cdn3.emoji.gg/emojis/28433-cool.gif',
+            'https://cdn3.emoji.gg/emojis/98791-scream.gif',
+            'https://cdn3.emoji.gg/emojis/81026-silent.gif'
         ];
         
         setTimeout(() => {
@@ -4013,38 +4005,7 @@ class ProfileManager {
         preview.innerText = `Цвет ${data.index || 'RGB'} · ${data.color.toUpperCase()}`; // [NEW]
     } // [NEW]
 
-    static openBadgeModal(bdg) {
-        const modal = Utils.$('modal-badge-details');
-        if (!modal) return;
-        const body = Utils.$('badge-modal-body');
-        
-        const name = Utils.escapeHtml(bdg.name);
-        const desc = Utils.escapeHtml(bdg.desc || 'Нет описания');
-        const icon = bdg.icon ? (bdg.icon.match(/^http/) ? `<img src="${Utils.escapeHtml(bdg.icon)}" style="width:120px;height:120px;object-fit:contain;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,0.5);"/>` : `<span style="font-size:100px; filter:drop-shadow(0 10px 20px rgba(0,0,0,0.5));">${Utils.escapeHtml(bdg.icon)}</span>`) : '';
-        const color = Utils.escapeHtml(bdg.color || '#ffffff');
-        const bg = Utils.escapeHtml(bdg.bg || 'rgba(120,120,120,0.2)');
-        const border = Utils.escapeHtml(bdg.border || 'rgba(255,255,255,0.35)');
 
-        body.style.background = `radial-gradient(circle at center, ${bg}, #050505 80%)`;
-        body.innerHTML = `
-            <div style="flex:1; display:flex; flex-direction:row; align-items:center; justify-content:center; gap: 40px; padding: 40px; text-align:left;">
-                <div style="flex-shrink:0; background:rgba(0,0,0,0.4); border: 2px solid ${border}; border-radius:30px; padding:40px; display:flex; align-items:center; justify-content:center; box-shadow: 0 20px 50px rgba(0,0,0,0.7), inset 0 0 50px ${bg}; position:relative; overflow:hidden;">
-                    <div style="position:absolute; top:-50%; left:-50%; right:-50%; bottom:-50%; background:conic-gradient(from 0deg, transparent, ${bg}, transparent); animation: spinBadgeBg 6s linear infinite; opacity:0.3; pointer-events:none;"></div>
-                    <style>@keyframes spinBadgeBg { 100% { transform: rotate(360deg); } }</style>
-                    <div style="position:relative; z-index:1;">${icon}</div>
-                </div>
-                <div style="flex:1; max-width:600px; padding:20px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.1); border-radius:20px; backdrop-filter:blur(10px); box-shadow:0 10px 30px rgba(0,0,0,0.5);">
-                    <h1 style="color: ${color}; font-size:48px; font-weight:900; margin-bottom:20px; line-height:1.1; text-shadow:0 4px 10px rgba(0,0,0,0.6);">${name}</h1>
-                    <p style="color: rgba(255,255,255,0.8); font-size:20px; line-height:1.6;">${desc}</p>
-                </div>
-            </div>
-        `;
-        modal.classList.add('active');
-        
-        modal.querySelector('.btn-close-modal').onclick = () => {
-            modal.classList.remove('active');
-        };
-    }
 
     static applyProfileBackground(panel, background = '') { // [UPDATE]
         if (!panel) return; // [UPDATE]
@@ -4381,39 +4342,32 @@ class ProfileManager {
 
                     // Returns a vertical card
                     return `
-                    <div class="achievement-card" data-b64="${badgeB64}" style="
+                    <div style="
                         --ac-bg: ${bg};
                         --ac-border: ${border};
                         --ac-color: ${color};
                         width: 140px; 
                         height: 180px; 
-                        border-radius: 16px; 
-                        background: linear-gradient(135deg, var(--ac-bg), rgba(0,0,0,0.5));
-                        border: 1px solid var(--ac-border);
-                        box-shadow: 0 8px 20px rgba(0,0,0,0.4), inset 0 0 20px var(--ac-bg);
+                        border-radius: 12px; 
+                        background: rgba(0, 0, 0, 0.4);
+                        border: 1px solid var(--border-light, rgba(255,255,255,0.1));
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
                         display: flex; 
                         flex-direction: column; 
                         align-items: center; 
                         text-align: center;
                         position: relative;
                         overflow: hidden;
-                        cursor: pointer;
-                        transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s;
-                    " onmouseover="this.style.transform='translateY(-5px) scale(1.05)'; this.style.boxShadow='0 12px 25px rgba(0,0,0,0.6), inset 0 0 30px var(--ac-bg)';" onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.4), inset 0 0 20px var(--ac-bg)';">
-                        <div style="
-                            position: absolute; top:0; left:0; right:0; bottom:50%; 
-                            background: radial-gradient(circle at top, var(--ac-bg), transparent 80%);
-                            opacity: 0.6; pointer-events:none;
-                        "></div>
+                    ">
                         <div style="
                             flex: 1; display:flex; align-items:center; justify-content:center; 
-                            width:100%; border-bottom: 1px solid rgba(255,255,255,0.1);
+                            width:100%;
                             padding-top: 10px; z-index:1;
                         ">
                             ${icon}
                         </div>
                         <div style="flex: 1; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding: 8px 6px; width:100%; z-index:1;">
-                            <div style="color: var(--ac-color); font-weight: 800; font-size: 13px; line-height: 1.2; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">${name}</div>
+                            <div style="color: var(--ac-color); font-weight: 800; font-size: 13px; line-height: 1.2; text-shadow: 0 1px 3px rgba(0,0,0,0.5);">${name}</div>
                             <div style="color: rgba(255,255,255,0.7); font-size: 10px; margin-top:4px; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">${desc}</div>
                         </div>
                     </div>`;
@@ -4421,18 +4375,6 @@ class ProfileManager {
                 if (badgesHtml) {
                     badgesContainer.innerHTML = `<div style="width:100%; font-size:12px; color:var(--text-muted); font-weight:700; margin-bottom:10px; text-align:center; opacity:0.7; letter-spacing:0.5px;">ПОСТИЖЕНИЯ И АЧИВКИ</div><div style="display:flex; flex-wrap:wrap; gap:12px; justify-content:center;">${badgesHtml}</div>`;
                 }
-                
-                // Add click handlers for badges to open detailed modal
-                setTimeout(() => {
-                    badgesContainer.querySelectorAll('.achievement-card').forEach(card => {
-                        card.onclick = () => {
-                            try {
-                                const bdg = JSON.parse(decodeURIComponent(atob(card.dataset.b64)));
-                                ProfileManager.openBadgeModal(bdg);
-                            } catch(e) {}
-                        };
-                    });
-                }, 100);
             }
         }
 
