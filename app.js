@@ -97,6 +97,14 @@ const AppState = {
 // ============================================================================
 
 class Utils {
+    static getAppleEmojiHtml(char) {
+        const appleMap = {
+            '💋': '1f48b', '✨': '2728', '💞': '1f49e', '🔥': '1f525', '🐄': '1f404', '🍿': '1f37f', '🐱': '1f431', '🌈': '1f308', '🥛': '1f95b', '📀': '1f4c0', '🔄': '1f504', '💻': '1f4bb', '🤫': '1f92b', '⚔️': '2694-fe0f', '🔒': '1f512', '👥': '1f465', '📺': '1f4fa', '📎': '1f4ce', '📌': '1f4cc', '📍': '1f4cd', '💗': '1f497', '💘': '1f498', '💕': '1f495', '❤️': '2764-fe0f', '🔴': '1f534', '😂': '1f602', '😱': '1f631', '👏': '1f44f', '🎵': '1f3b5', '📌': '1f4cc', '📍': '1f4cd', '👑': '1f451', '✅': '2705', '❌': '274c', '⚠️': '26a0-fe0f', '💬': '1f4ac', '💎': '1f48e', '⚙️': '2699-fe0f', '⭐': '2b50', '🌟': '1f31f', '🎮': '1f3ae', '🎧': '1f3a7', '🎉': '1f389', '💰': '1f4b0'
+        };
+        const codepoint = appleMap[char] || char.codePointAt(0).toString(16);
+        return `<img src="https://emojigraph.org/media/144/apple/${codepoint}.png" style="width: 1.25em; height: 1.25em; vertical-align: middle; display: inline-block; object-fit: contain;" alt="${char}" onerror="this.onerror=null; this.src=''; this.alt='${char}';"/>`;
+    }
+
     static formatLastSeen(ts) {
         if (!ts) return 'Ещё не заходил';
         const diff = Date.now() - ts;
@@ -1778,7 +1786,7 @@ class PartnerRelationshipPanel {
                 const rect = kissBtn.getBoundingClientRect();
                 for (let i = 0; i < 15; i++) {
                     const heart = document.createElement('div');
-                    heart.innerText = ['💖', '💋', '💕', '💘'][Math.floor(Math.random() * 4)];
+                    heart.innerHTML = Utils.getAppleEmojiHtml(['💗', '💋', '💕', '💘'][Math.floor(Math.random() * 4)]);
                     heart.style.cssText = `position:fixed;left:${rect.left + rect.width / 2 + (Math.random() - 0.5) * 50}px;top:${rect.top}px;font-size:${20 + Math.random() * 20}px;pointer-events:none;z-index:10000;transition:all 1.5s ease-out`;
                     document.body.appendChild(heart);
                     setTimeout(() => {
@@ -1923,11 +1931,18 @@ class BackgroundFX {
 }
 
 class EasterEggManager {
-    static DURATION = 15000; // ПАТЧ: Увеличено время работы всех пасхалок до 15 секунд
+    static DURATION = 5000;
     static SOUND_URLS = {
         notification: 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg',
         glass: 'https://actions.google.com/sounds/v1/impacts/glass_shatters_into_debris.ogg',
-        vader: 'https://actions.google.com/sounds/v1/science_fiction/alien_breath.ogg'
+        vader: 'https://actions.google.com/sounds/v1/science_fiction/alien_breath.ogg',
+        moo: 'https://archive.org/download/TetrisThemeMusic/Tetris.mp3',
+        grass: 'https://actions.google.com/sounds/v1/water/waves_crashing_on_rock_beach.ogg',
+        milk: 'https://actions.google.com/sounds/v1/water/pour_water.ogg',
+        popcorn: 'https://actions.google.com/sounds/v1/foley/bubble_wrap_popping.ogg',
+        roll: 'https://archive.org/download/Rick_Astley_Never_Gonna_Give_You_Up/Rick_Astley_Never_Gonna_Give_You_Up.mp3',
+        nyan: 'https://archive.org/download/nyancat_201906/nyancat.mp3',
+        matrix: 'https://actions.google.com/sounds/v1/science_fiction/sci_fi_hum.ogg'
     };
     static COMMANDS = new Map([
         ['/moo', 'moo'],
@@ -2310,8 +2325,8 @@ class EasterEggManager {
             const payload = snap.val();
             if (!payload) return;
             
-            // ФИКС СИНХРОНИЗАЦИИ: Игнорируем все, что было вызвано ДО захода в комнату, и старше 15 сек.
-            if (Date.now() - Number(payload.ts || 0) > 15000) return;
+            // ФИКС СИНХРОНИЗАЦИИ: Игнорируем все, что было вызвано ДО захода в комнату, и старше 5 сек.
+            if (Date.now() - Number(payload.ts || 0) > 5000) return;
             if (Number(payload.ts || 0) < AppState.currentRoomJoinTs) return;
 
             if (AppState.easterEggs.processedRoomEvents.has(snap.key)) return;
@@ -2487,7 +2502,7 @@ class EasterEggManager {
         
         const container = document.createElement('div');
         container.style.cssText = `position:fixed; inset:0; pointer-events:none; z-index:9999; display:flex; align-items:center; justify-content:center;`;
-        container.innerHTML = `<div style="font-size: 25vw; animation: mooZoom 2.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.5)); will-change: transform, opacity;">🐄</div>`;
+        container.innerHTML = `<div style="font-size: 25vw; animation: mooZoom 2.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.5)); will-change: transform, opacity;">${Utils.getAppleEmojiHtml('🐄')}</div>`;
         if (!document.getElementById('moo-css')) {
             const s = document.createElement('style'); s.id = 'moo-css';
             s.innerHTML = `@keyframes mooZoom { 0% { transform: scale(0.1) translateY(50vh); opacity: 0; } 20% { opacity: 1; } 80% { opacity: 1; transform: scale(1.5) translateY(-5vh); } 100% { transform: scale(2) translateY(-10vh); opacity: 0; } }`;
@@ -2548,7 +2563,7 @@ class EasterEggManager {
             if (!particles) return;
             for(let i=0; i<3; i++) {
                 const item = document.createElement('div');
-                item.innerText = '🍿';
+                item.innerHTML = Utils.getAppleEmojiHtml('🍿');
                 item.className = 'popcorn-p';
                 particles.appendChild(item);
                 const angle = Math.random() * Math.PI * 2;
@@ -2946,6 +2961,7 @@ class BadgeManager {
 
     static async grantEventBadgeToOnline() {
         if (!AdminPanel.requireAdmin()) return;
+        if (!AdminPanel.isCurrentUserCreator()) return Utils.toast('Только Создатель', 'error');
         const badgeId = Utils.$('admin-event-badge-id')?.value.trim();
         if (!badgeId) return Utils.toast('Введите ID бейджа', 'error');
 
@@ -3004,7 +3020,8 @@ class BadgeManager {
     }
 
     static async saveBadge() {
-        if (!AdminPanel.requireAdmin()) return Utils.toast('Только администраторы могут редактировать бейджи', 'error');
+        if (!AdminPanel.requireAdmin()) return;
+        if (!AdminPanel.isCurrentUserCreator()) return Utils.toast('Только Создатель', 'error');
         const id = Utils.$('admin-badge-edit-id')?.value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
         const name = Utils.$('admin-badge-edit-name')?.value.trim();
         if (!id || !name) return Utils.toast('ID и название обязательны', 'error');
@@ -3039,6 +3056,7 @@ class BadgeManager {
 
     static async deleteBadge(id) {
         if (!AdminPanel.requireAdmin()) return;
+        if (!AdminPanel.isCurrentUserCreator()) return Utils.toast('Только Создатель', 'error');
         if (!confirm('Точно удалить бейдж?')) return;
         await set(ref(db, `badges/${id}`), null);
         Utils.toast('Бейдж удален');
@@ -3125,6 +3143,10 @@ class BadgeManager {
             const cb = label.querySelector('input');
             cb.onchange = async () => {
                 const checked = cb.checked;
+                if (!AdminPanel.isCurrentUserCreator()) {
+                    cb.checked = !checked;
+                    return Utils.toast('Выдавать бейджи может только Создатель', 'error');
+                }
                 label.style.background = checked ? 'rgba(255,255,255,0.1)' : 'transparent';
                 
                 if (checked) currentSet.add(id);
@@ -4515,7 +4537,7 @@ class ProfileManager {
                 window.ProfileBadgesState = { index: 0 };
                 
                 const badgesHtml = userBadges.map((bdg, i) => {
-                    const icon = bdg.icon ? (bdg.icon.match(/^http/) ? `<img src="${Utils.escapeHtml(bdg.icon)}" style="width:60px;height:60px;object-fit:contain;border-radius:6px;"/>` : `<span style="font-size:48px;">${Utils.escapeHtml(bdg.icon)}</span>`) : '';
+                    const icon = bdg.icon ? (bdg.icon.match(/^http/) ? `<img src="${Utils.escapeHtml(bdg.icon)}" onerror="this.src='https://via.placeholder.com/60?text=Error'; this.onerror=null;" style="width:60px;height:60px;object-fit:contain;border-radius:6px;"/>` : `<span style="font-size:48px;">${Utils.escapeHtml(bdg.icon)}</span>`) : '';
                     return `
                     <div class="ach-card" data-index="${i}" style="
                         width: 160px; 
@@ -4676,7 +4698,7 @@ class ProfileManager {
                     userBadges.forEach((bdg, i) => {
                         const countEl = Utils.$(`ach-count-${i}`);
                         if (countEl) {
-                            const num = badgeCounts[bdg._id] || (badgeCounts[bdg.id] || badgeCounts[bdg.type] || Math.floor(Math.random() * 50 + 1));
+                            const num = badgeCounts[bdg._id] || badgeCounts[bdg.id] || badgeCounts[bdg.type] || 0;
                             countEl.innerHTML = `Уже получили: ${num}`;
                         }
                     });
@@ -5190,13 +5212,12 @@ class DirectMessages {
 
     static renderMessages(messages) {
         const list = Utils.$('dm-messages');
-        const heartsLayer = '<div class="panel-love-hearts" id="dm-love-hearts"></div>';
         if (!messages.length) {
-            list.innerHTML = `${heartsLayer}<div style="color:var(--text-muted); text-align:center; padding:20px;">Нет сообщений</div>`;
+            list.innerHTML = `<div style="color:var(--text-muted); text-align:center; padding:20px;">Нет сообщений</div>`;
             return;
         }
         
-        list.innerHTML = heartsLayer + messages.map(m => {
+        list.innerHTML = messages.map(m => {
             const isSelf = m.fromUid === AppState.currentUser.uid;
             if (m.type === 'system') {
                 return `<div class="sys-msg" style="margin:6px 0;">-------${Utils.escapeHtml(m.fromName || 'Пользователь')} ${Utils.escapeHtml(m.text || '')}-------</div>`;
@@ -5297,7 +5318,7 @@ class DirectMessages {
             const roll = Math.random();
             const mode = roll < 0.33 ? 'far' : roll > 0.74 ? 'near' : 'mid';
             heart.className = `love-heart ${mode}`;
-            heart.innerText = RoomManager.loveHeartEmojis[Math.floor(Math.random() * RoomManager.loveHeartEmojis.length)];
+            heart.innerHTML = Utils.getAppleEmojiHtml(RoomManager.loveHeartEmojis[Math.floor(Math.random() * RoomManager.loveHeartEmojis.length)]);
             heart.style.left = `${Utils.getDistributedHeartLeft(layer, 'dm-love')}%`; // [UPDATE]
             const scaleBase = mode === 'far' ? 0.45 : mode === 'near' ? 1.15 : 0.78;
             const scale = scaleBase + Math.random() * (mode === 'near' ? 0.35 : 0.25);
@@ -6056,16 +6077,16 @@ class AdminPanel {
             if (command) {
                 // ДОБАВЛЕНО: Индивидуальные мемы для каждой пасхалки
                 const memeTexts = {
-                    'moo': 'Кто-то выпустил корову на пастбище... Му-у-у! 🐄',
-                    'grass': 'Пора потрогать траву, друзья! 🌱',
-                    'milk': 'кто-нибудь желает молока? 🥛',
-                    'popcorn': 'Запасаемся попкорном, сейчас начнется кино! 🍿',
-                    'dvd': 'Ждем, когда логотип ударится в угол... 📀',
-                    'roll': 'Делаем бочку! Уууииии! 🔄',
-                    'matrix': 'Тук-тук, Нео. Матрица имеет тебя... 💻',
-                    'shh': 'Тссс... Режим тишины активирован 🤫',
-                    'vader': 'Люк, я твой отец... *тяжелое дыхание* ⚔️',
-                    'nyan': 'Нян-кэт пролетает над сервером! 🐱🌈'
+                    'moo': 'Кто-то выпустил корову на пастбище... Му-у-у! ' + Utils.getAppleEmojiHtml('🐄'),
+                    'grass': 'Пора потрогать траву, друзья! ' + Utils.getAppleEmojiHtml('🌱'),
+                    'milk': 'кто-нибудь желает молока? ' + Utils.getAppleEmojiHtml('🥛'),
+                    'popcorn': 'Запасаемся попкорном, сейчас начнется кино! ' + Utils.getAppleEmojiHtml('🍿'),
+                    'dvd': 'Ждем, когда логотип ударится в угол... ' + Utils.getAppleEmojiHtml('📀'),
+                    'roll': 'Делаем бочку! Уууииии! ' + Utils.getAppleEmojiHtml('🔄'),
+                    'matrix': 'Тук-тук, Нео. Матрица имеет тебя... ' + Utils.getAppleEmojiHtml('💻'),
+                    'shh': 'Тссс... Режим тишины активирован ' + Utils.getAppleEmojiHtml('🤫'),
+                    'vader': 'Люк, я твой отец... *тяжелое дыхание* ' + Utils.getAppleEmojiHtml('⚔️'),
+                    'nyan': 'Нян-кэт пролетает над сервером! ' + Utils.getAppleEmojiHtml('🐱') + Utils.getAppleEmojiHtml('🌈')
                 };
                 const msg = memeTexts[command] || `Глобальная пасхалка от ${payload.fromUsername}!`;
                 Utils.toast(msg, 'info');
@@ -6672,10 +6693,17 @@ class AdminPanel {
         const username = Utils.$('admin-edit-username').value.toLowerCase().trim().replace('@', '');
         const avatar = Utils.$('admin-edit-avatar').value.trim();
         const bio = Utils.$('admin-edit-bio').value.trim();
-        const streak = parseInt(Utils.$('admin-edit-streak')?.value || 0, 10);
+        let streak = parseInt(Utils.$('admin-edit-streak')?.value || 0, 10);
         const bgColor = Utils.$('admin-edit-bg-color')?.value || '#111111';
         const bgUrl = Utils.$('admin-edit-bg-url')?.value.trim() || '';
         const bgDim = Number(Utils.$('admin-edit-bg-dim')?.value || 0.5);
+
+        if (streak !== (oldProfile.streak || 0)) {
+            if (!this.isCurrentUserCreator()) {
+                Utils.toast('Изменять серию(стрик) может только Создатель', 'error');
+                streak = oldProfile.streak || 0;
+            }
+        }
 
         if (!name || !username) return Utils.toast('Имя и ID обязательны', 'error');
         if (!/^[a-z0-9_]{3,15}$/.test(username)) return Utils.toast('ID: 3-15 символов, a-z, 0-9, _', 'error');
@@ -7588,11 +7616,11 @@ class RoomManager {
             const el = document.createElement('div');
             el.className = 'floating-emoji';
             const imgMap = {
-                '🔥': 'https://em-content.zobj.net/source/telegram/386/fire_1f525.webp',
-                '😂': 'https://em-content.zobj.net/source/telegram/386/face-with-tears-of-joy_1f602.webp',
-                '😱': 'https://em-content.zobj.net/source/telegram/386/face-screaming-in-fear_1f631.webp',
-                '❤️': 'https://em-content.zobj.net/source/telegram/386/red-heart_2764-fe0f.webp',
-                '👏': 'https://em-content.zobj.net/source/telegram/386/clapping-hands_1f44f.webp'
+                '🔥': 'https://emojigraph.org/media/144/apple/1f525.png',
+                '😂': 'https://emojigraph.org/media/144/apple/1f602.png',
+                '😱': 'https://emojigraph.org/media/144/apple/1f631.png',
+                '❤️': 'https://emojigraph.org/media/144/apple/2764-fe0f.png',
+                '👏': 'https://emojigraph.org/media/144/apple/1f44f.png'
             };
             if (imgMap[rx.emoji]) {
                 el.innerHTML = `<img src="${imgMap[rx.emoji]}" style="width: 48px; height: 48px; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3));">`;
@@ -7964,7 +7992,7 @@ class RoomManager {
             if (!layer) return;
             const heart = document.createElement('div');
             heart.className = `love-heart ${mode}`;
-            heart.innerText = this.loveHeartEmojis[Math.floor(Math.random() * this.loveHeartEmojis.length)];
+            heart.innerHTML = Utils.getAppleEmojiHtml(this.loveHeartEmojis[Math.floor(Math.random() * this.loveHeartEmojis.length)]);
             heart.style.left = `${Utils.getDistributedHeartLeft(layer, 'room-love')}%`; // [UPDATE]
             const scaleBase = mode === 'far' ? 0.45 : mode === 'near' ? 1.15 : 0.78;
             const scale = scaleBase + Math.random() * (mode === 'near' ? 0.35 : 0.25);
