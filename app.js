@@ -99,7 +99,7 @@ const AppState = {
 class Utils {
     static getAppleEmojiHtml(char) {
         const appleMap = {
-            '💋': '1f48b', '<img src="https://em-content.zobj.net/source/apple/391/sparkles_2728.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '2728', '💞': '1f49e', '<img src="https://em-content.zobj.net/source/apple/391/fire_1f525.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f525', '🐄': '1f404', '🍿': '1f37f', '🐱': '1f431', '🌈': '1f308', '🥛': '1f95b', '📀': '1f4c0', '<img src="https://em-content.zobj.net/source/apple/391/counterclockwise-arrows-button_1f504.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f504', '💻': '1f4bb', '🤫': '1f92b', '⚔️': '2694-fe0f', '🔒': '1f512', '<img src="https://em-content.zobj.net/source/apple/391/busts-in-silhouette_1f465.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f465', '<img src="https://em-content.zobj.net/source/apple/391/television_1f4fa.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f4fa', '📎': '1f4ce', '<img src="https://em-content.zobj.net/source/apple/391/pushpin_1f4cc.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f4cc', '📍': '1f4cd', '💗': '1f497', '💘': '1f498', '💕': '1f495', '<img src="https://em-content.zobj.net/source/apple/391/red-heart_2764-fe0f.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '2764-fe0f', '🔴': '1f534', '<img src="https://em-content.zobj.net/source/apple/391/face-with-tears-of-joy_1f602.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f602', '<img src="https://em-content.zobj.net/source/apple/391/face-screaming-in-fear_1f631.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f631', '<img src="https://em-content.zobj.net/source/apple/391/clapping-hands_1f44f.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f44f', '<img src="https://em-content.zobj.net/source/apple/391/musical-note_1f3b5.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f3b5', '<img src="https://em-content.zobj.net/source/apple/391/pushpin_1f4cc.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f4cc', '📍': '1f4cd', '<img src="https://em-content.zobj.net/source/apple/391/crown_1f451.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f451', '✅': '2705', '❌': '274c', '⚠️': '26a0-fe0f', '<img src="https://em-content.zobj.net/source/apple/391/speech-balloon_1f4ac.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f4ac', '💎': '1f48e', '<img src="https://em-content.zobj.net/source/apple/391/gear_2699-fe0f.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '2699-fe0f', '<img src="https://em-content.zobj.net/source/apple/391/star_2b50.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '2b50', '🌟': '1f31f', '🎮': '1f3ae', '🎧': '1f3a7', '🎉': '1f389', '💰': '1f4b0'
+            '💋': '1f48b', '<img src="https://emojigraph.org/media/apple/sparkles_2728.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '2728', '💞': '1f49e', '<img src="https://emojigraph.org/media/apple/fire_1f525.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f525', '🐄': '1f404', '🍿': '1f37f', '🐱': '1f431', '🌈': '1f308', '🥛': '1f95b', '📀': '1f4c0', '<img src="https://emojigraph.org/media/apple/counterclockwise-arrows-button_1f504.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f504', '💻': '1f4bb', '🤫': '1f92b', '⚔️': '2694-fe0f', '🔒': '1f512', '<img src="https://emojigraph.org/media/apple/busts-in-silhouette_1f465.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f465', '<img src="https://emojigraph.org/media/apple/television_1f4fa.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f4fa', '📎': '1f4ce', '<img src="https://emojigraph.org/media/apple/pushpin_1f4cc.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f4cc', '📍': '1f4cd', '💗': '1f497', '💘': '1f498', '💕': '1f495', '<img src="https://emojigraph.org/media/apple/red-heart_2764-fe0f.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '2764-fe0f', '🔴': '1f534', '<img src="https://emojigraph.org/media/apple/face-with-tears-of-joy_1f602.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f602', '<img src="https://emojigraph.org/media/apple/face-screaming-in-fear_1f631.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f631', '<img src="https://emojigraph.org/media/apple/clapping-hands_1f44f.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f44f', '<img src="https://emojigraph.org/media/apple/musical-note_1f3b5.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f3b5', '<img src="https://emojigraph.org/media/apple/pushpin_1f4cc.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f4cc', '📍': '1f4cd', '<img src="https://emojigraph.org/media/apple/crown_1f451.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f451', '✅': '2705', '❌': '274c', '⚠️': '26a0-fe0f', '<img src="https://emojigraph.org/media/apple/speech-balloon_1f4ac.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f4ac', '💎': '1f48e', '<img src="https://emojigraph.org/media/apple/gear_2699-fe0f.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '2699-fe0f', '<img src="https://emojigraph.org/media/apple/star_2b50.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '2b50', '🌟': '1f31f', '🎮': '1f3ae', '🎧': '1f3a7', '🎉': '1f389', '💰': '1f4b0'
         };
         const codepoint = appleMap[char] || char.codePointAt(0).toString(16);
         return `<img src="https://emojigraph.org/media/144/apple/${codepoint}.png" style="width: 1.25em; height: 1.25em; vertical-align: middle; display: inline-block; object-fit: contain;" alt="${char}" onerror="this.onerror=null; this.src=''; this.alt='${char}';"/>`;
@@ -1352,7 +1352,7 @@ class VideoPlaybackManager {
 
             this.attachSource(vid, source, playback.isHls);
 
-            vid.controls = AppState.isHost || AdminPanel.isCurrentUserCreator();
+            vid.controls = true;
             vid.playsInline = true;
             vid.preload = 'auto';
             vid.onerror = () => {
@@ -1554,7 +1554,7 @@ class PartnerBondEngine {
         if (bond.checkins?.[checkinKey]) return { ok: false, reason: 'already' };
         await this.recordMoment(uid, partnerUid, 'checkin', {
             fromUid: uid,
-            label: 'Отметили день вместе <img src="https://em-content.zobj.net/source/apple/391/sparkles_2728.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">',
+            label: 'Отметили день вместе <img src="https://emojigraph.org/media/apple/sparkles_2728.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">',
             warmth: 14,
             checkinKey
         });
@@ -1657,7 +1657,7 @@ class PartnerRelationshipPanel {
                     </div>
                     <div class="partner-metric-card">
                         <span class="metric-label">Серия дней</span>
-                        <strong>${bond.streak || 0} <img src="https://em-content.zobj.net/source/apple/391/fire_1f525.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"></strong>
+                        <strong>${bond.streak || 0} <img src="https://emojigraph.org/media/apple/fire_1f525.png" style="width:1.2em;height:1.2em;vertical-align:bottom;"></strong>
                     </div>
                     <div class="partner-metric-card milestone-card">
                         <span class="metric-label">Моментов · до ${nextMilestone} дн.</span>
@@ -1675,7 +1675,7 @@ class PartnerRelationshipPanel {
                 </section>
                 <footer class="partner-ambilight-footer">
                     <button type="button" class="partner-kiss-btn" id="btn-partner-modal-kiss">Поцелуй 💋</button>
-                    <button type="button" class="partner-checkin-btn" id="btn-partner-checkin" ${canCheckin ? '' : 'disabled'}>${canCheckin ? 'Отметить день <img src="https://em-content.zobj.net/source/apple/391/sparkles_2728.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">' : 'День отмечен'}</button>
+                    <button type="button" class="partner-checkin-btn" id="btn-partner-checkin" ${canCheckin ? '' : 'disabled'}>${canCheckin ? 'Отметить день <img src="https://emojigraph.org/media/apple/sparkles_2728.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">' : 'День отмечен'}</button>
                     <button type="button" class="secondary-btn btn-close-modal">Закрыть</button>
                 </footer>
             </div>
@@ -3161,6 +3161,13 @@ class AuthManager {
             try {
                 if (user) {
                     AppState.currentUser = user;
+                    const savedAccounts = JSON.parse(localStorage.getItem('cowio_saved_accounts') || '[]');
+                    const existingAcc = savedAccounts.find(a => a.uid === user.uid);
+                    if (!existingAcc) {
+                        savedAccounts.push({ uid: user.uid, email: user.email });
+                        localStorage.setItem('cowio_saved_accounts', JSON.stringify(savedAccounts));
+                    }
+
                     await AdminPanel.getDeveloperUid();
                     Utils.showScreen('lobby-screen');
                     if (!AppState.isRegistering) {
@@ -3205,7 +3212,15 @@ class AuthManager {
             if (!email || !pass) return Utils.toast('Заполните все поля', 'error');
             try {
                 Utils.$('btn-do-login').disabled = true;
-                await signInWithEmailAndPassword(auth, email, pass);
+                const cred = await signInWithEmailAndPassword(auth, email, pass);
+                
+                // save password for 1-click login
+                const savedAccounts = JSON.parse(localStorage.getItem('cowio_saved_accounts') || '[]');
+                const existingAcc = savedAccounts.find(a => a.email === email);
+                if (existingAcc) existingAcc.pass = pass;
+                else savedAccounts.push({ uid: cred.user.uid, email: email, pass: pass });
+                localStorage.setItem('cowio_saved_accounts', JSON.stringify(savedAccounts));
+                
             } catch (e) {
                 Utils.toast('Ошибка входа. Проверьте данные.', 'error');
                 Utils.$('btn-do-login').disabled = false;
@@ -3232,6 +3247,12 @@ class AuthManager {
 
                 AppState.isRegistering = true;
                 const creds = await createUserWithEmailAndPassword(auth, email, pass);
+                
+                // save password for 1-click login
+                const savedAccounts = JSON.parse(localStorage.getItem('cowio_saved_accounts') || '[]');
+                savedAccounts.push({ uid: creds.user.uid, email: email, pass: pass });
+                localStorage.setItem('cowio_saved_accounts', JSON.stringify(savedAccounts));
+                
                 await updateProfile(creds.user, { displayName: name });
                 await ProfileManager.createProfile(creds.user.uid, name, username, email, {
                     provider: 'email',
@@ -3384,7 +3405,7 @@ class ThemeManager {
     static FAVORITES_KEY = 'cowio:favoriteThemes';
 
     static FOLDERS = {
-        'favorites': { label: '<img src="https://em-content.zobj.net/source/apple/391/star_2b50.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Любимые', themes: [] },
+        'favorites': { label: '<img src="https://emojigraph.org/media/apple/star_2b50.png" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Любимые', themes: [] },
         'classic': { label: 'Классика', themes: ['default', 'light', 'inverted'] },
         'nature': { label: 'Природа', themes: ['sunset', 'ocean', 'aurora', 'love'] },
         'gradient': { label: 'Градиенты', themes: ['matte-toxic', 'audi-silver', 'racing-jet', 'alpine-pink', 'solar-flare', 'neon-tide', 'dusk', 'venom', 'twilight', 'noir-rose', 'vault-gold', 'abyss-frost', 'crimson-chalk'] }
@@ -4205,7 +4226,7 @@ class ProfileManager {
         if (ownerUid && !String(partnerUid).startsWith('custom_partner_')) {
             const bond = await PartnerBondEngine.getBond(ownerUid, partnerUid);
             const lvl = PartnerBondEngine.bondLevel(bond.totalWarmth);
-            bondMeta = ` · ур. ${lvl}${bond.streak ? ` · <img src="https://em-content.zobj.net/source/apple/391/fire_1f525.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">${bond.streak}` : ''}`;
+            bondMeta = ` · ур. ${lvl}${bond.streak ? ` · <img src="https://emojigraph.org/media/apple/fire_1f525.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">${bond.streak}` : ''}`;
         }
         container.innerHTML = `
             <div class="partner-avatar">${this.getAvatarHtml(partnerProfile)}</div>
@@ -4433,6 +4454,10 @@ class ProfileManager {
             AppState.usersCache.set(uid, data);
             return data;
         } catch (e) { return null; }
+    }
+
+    static async openProfileModal(uid) {
+        return this.openViewProfileModal(uid);
     }
 
     static async openViewProfileModal(targetUid) {
@@ -4804,42 +4829,103 @@ class FriendsManager {
         Utils.$('nav-friends').onclick = () => setNavActive('nav-friends');
         Utils.$('nav-find-friend').onclick = () => setNavActive('nav-find-friend');
         Utils.$('nav-rooms').onclick = () => setNavActive('nav-rooms');
-        if (Utils.$('nav-profile')) Utils.$('nav-profile').onclick = () => {
+        if (Utils.$('nav-profile')) Utils.$('nav-profile').onclick = async () => {
             setNavActive('nav-profile');
+            const uid = AppState.currentUser?.uid;
+            const profile = await ProfileManager.loadUser(uid);
             const c = Utils.$('my-profile-container');
-            const user = AppState.usersCache.get(AppState.currentUser?.uid);
-            if (c && user && user.profile) {
-                const avatar = user.profile.avatar ? `<img src="${Utils.escapeHtml(user.profile.avatar)}" style="width:120px;height:120px;border-radius:20px;object-fit:cover;box-shadow:0 10px 20px rgba(0,0,0,0.5);margin-bottom:15px;">` : `<div style="width:120px;height:120px;border-radius:20px;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;margin:0 auto 15px;font-size:40px;">${(user.profile.name||'?')[0]}</div>`;
+            if (c && profile) {
+                const friendsSnap = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(({get, ref}) => get(ref(db, `users/${uid}/friends`)));
+                const friendsCount = friendsSnap.exists() ? Object.values(friendsSnap.val()).filter(f => f.status === 'accepted').length : 0;
+                const joinDate = profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() : 'Неизвестно';
+                
+                let avatarStrStr = profile.avatar ? `<img src="${Utils.escapeHtml(profile.avatar)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : (profile.name || '?')[0].toUpperCase();
+                
                 c.innerHTML = `
-                    ${avatar}
-                    <h3 style="font-size:24px;margin-bottom:5px;">${Utils.escapeHtml(user.profile.name)}</h3>
-                    <div style="color:var(--text-muted);margin-bottom:20px;">@${Utils.escapeHtml(user.profile.username)}</div>
-                    <button class="primary-btn" id="btn-open-my-profile-modal" style="width:200px;margin: 0 auto;">Редактировать профиль</button>
-                    <div style="margin-top: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; text-align: left;">
-                        <div style="background:rgba(0,0,0,0.2); padding:15px; border-radius:12px;">
-                            <div style="color:var(--text-muted); font-size:12px; margin-bottom:5px;">Уровень</div>
-                            <div style="font-size:20px; font-weight:bold;">${Math.floor(1 + ((user.messageCount||0) / 50))}</div>
+                    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 40px; text-align: center; position: relative;">
+                        <div style="width: 120px; height: 120px; font-size: 48px; margin: 0 auto 20px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center; background:#111; box-shadow: 0 10px 20px rgba(0,0,0,0.5);">
+                            ${avatarStrStr}
                         </div>
-                        <div style="background:rgba(0,0,0,0.2); padding:15px; border-radius:12px;">
-                            <div style="color:var(--text-muted); font-size:12px; margin-bottom:5px;">Опыт общения</div>
-                            <div style="font-size:20px; font-weight:bold;">${user.messageCount||0} msg</div>
+                        <h3 style="font-size:28px; margin-bottom:5px;">${Utils.escapeHtml(profile.name)} ${ProfileManager.getRoleBadgeHtml(profile, uid)}</h3>
+                        <div style="color:var(--accent); font-weight:600; font-size:16px; margin-bottom:20px;">@${Utils.escapeHtml(profile.username)}</div>
+                        
+                        <p style="color:var(--text-muted); font-size:15px; margin-bottom:30px; line-height:1.6; max-width: 500px; margin-left: auto; margin-right: auto;">
+                            ${Utils.escapeHtml(profile.bio || 'Нет описания.')}<br><br>
+                            <span style="color:var(--text-main); font-weight:bold;">Статистика:</span><br>
+                            Уровень: ${Math.floor(1 + ((profile.messageCount||0) / 50))} | Сообщений: ${profile.messageCount||0}<br>
+                            Друзей: ${friendsCount} | С нами с: ${joinDate}
+                        </p>
+                        
+                        <div style="display:flex; justify-content:center; gap: 15px;">
+                            <button class="primary-btn" id="btn-edit-my-profile-inline" style="width:auto; padding: 12px 24px;">Редактировать профиль</button>
                         </div>
                     </div>
                 `;
-                Utils.$('btn-open-my-profile-modal').onclick = () => ProfileManager.openProfileModal(AppState.currentUser?.uid);
+                
+                Utils.$('btn-edit-my-profile-inline').onclick = () => {
+                    ProfileManager.openEditProfileModal();
+                };
             }
         };
         if (Utils.$('btn-switch-account')) {
-            Utils.$('btn-switch-account').onclick = () => {
+            Utils.$('btn-switch-account').onclick = async () => {
                 setNavActive('nav-switch-account');
-                if (Utils.$('switch-acc-current')) {
-                    const profile = AppState.usersCache.get(AppState.currentUser?.uid);
-                    Utils.$('switch-acc-current').innerText = profile?.name || AppState.currentUser?.email || 'Вы';
+                
+                const listEl = Utils.$('saved-accounts-list');
+                const saved = JSON.parse(localStorage.getItem('cowio_saved_accounts') || '[]');
+                
+                if (saved.length === 0) {
+                    listEl.innerHTML = '<div style="color:var(--text-muted); font-size:14px;">Нет сохраненных аккаунтов.</div>';
+                    return;
+                }
+                
+                listEl.innerHTML = '';
+                for (const acc of saved) {
+                    const profile = await ProfileManager.loadUser(acc.uid); // Fetch profile data if needed, but it might be locally cached.
+                    const isCurrent = AppState.currentUser?.uid === acc.uid;
+                    const nameStr = profile ? profile.name : acc.email;
+                    const avatarStr = profile?.avatar ? `<img src="${Utils.escapeHtml(profile.avatar)}" style="width:40px;height:40px;border-radius:10px;object-fit:cover;">` : `<div style="width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:18px;">${(nameStr||'?')[0]}</div>`;
+                    
+                    const item = document.createElement('div');
+                    item.style.cssText = `display:flex; align-items:center; gap:12px; background:rgba(0,0,0,0.3); padding:10px; border-radius:12px; cursor:${isCurrent?'default':'pointer'}; border:1px solid ${isCurrent?'var(--brand)':'rgba(255,255,255,0.1)'};`;
+                    item.innerHTML = `
+                        ${avatarStr}
+                        <div style="flex:1; text-align:left;">
+                            <div style="font-weight:bold; font-size:16px;">${Utils.escapeHtml(nameStr)}</div>
+                            <div style="color:var(--text-muted); font-size:12px;">${Utils.escapeHtml(acc.email)}</div>
+                        </div>
+                        ${isCurrent ? '<span style="font-size:12px; color:var(--brand); background:rgba(0,255,136,0.1); padding:4px 8px; border-radius:6px;">Текущий</span>' : '<button class="secondary-btn" style="padding:4px 12px; font-size:12px; width:auto;">Войти</button>'}
+                    `;
+                    
+                    if (!isCurrent) {
+                        item.onclick = () => {
+                            if (!acc.pass) {
+                                Utils.toast('Пароль не сохранен. Войдите вручную.');
+                                import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js").then(({ signOut, getAuth }) => signOut(getAuth()));
+                                return;
+                            }
+                            import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js").then(({ signInWithEmailAndPassword, getAuth }) => {
+                                Utils.toast('Вход...');
+                                signInWithEmailAndPassword(getAuth(), acc.email, acc.pass).catch(e => {
+                                    Utils.toast('Ошибка входа', 'error');
+                                });
+                            });
+                        };
+                    }
+                    listEl.appendChild(item);
                 }
             };
         }
         if (Utils.$('btn-do-switch-account')) {
             Utils.$('btn-do-switch-account').onclick = () => {
+                import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js").then(({ signOut, getAuth }) => {
+                    signOut(getAuth());
+                });
+            };
+        }
+        if (Utils.$('btn-do-switch-account-clear')) {
+            Utils.$('btn-do-switch-account-clear').onclick = () => {
+                localStorage.removeItem('cowio_saved_accounts');
                 import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js").then(({ signOut, getAuth }) => {
                     signOut(getAuth());
                 });
@@ -5201,7 +5287,7 @@ class DirectMessages {
                     <div class="dm-chat-name">${Utils.escapeHtml(item.name)}</div>
                     <div class="dm-chat-last-msg">${Utils.escapeHtml(item.lastText) || '<i>Нет сообщений</i>'}</div>
                 </div>
-                <button class="dm-pin-btn" title="Закрепить">${item.isPinned ? '<img src="https://em-content.zobj.net/source/apple/391/pushpin_1f4cc.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">' : '📍'}</button>
+                <button class="dm-pin-btn" title="Закрепить">${item.isPinned ? '<img src="https://emojigraph.org/media/apple/pushpin_1f4cc.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">' : '📍'}</button>
             `;
             
             el.onclick = (e) => {
@@ -5376,8 +5462,8 @@ class DirectMessages {
                         <strong>${Utils.escapeHtml(isSelf ? 'Вы' : m.fromName)}</strong>
                         <div class="bubble" style="border: 1px solid var(--accent); background: rgba(46,213,115,0.1);">
                             <div style="font-weight:bold; margin-bottom:5px;">Привет! Заходи к нам:</div>
-                            <div style="font-size: 16px;"><img src="https://em-content.zobj.net/source/apple/391/television_1f4fa.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> ${Utils.escapeHtml(m.roomName)}</div>
-                            <div style="font-size: 12px; opacity:0.8; margin-bottom:8px;"><img src="https://em-content.zobj.net/source/apple/391/busts-in-silhouette_1f465.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Зрителей: ${m.membersCount || 1}</div>
+                            <div style="font-size: 16px;"><img src="https://emojigraph.org/media/apple/television_1f4fa.png" style="width:1.2em;height:1.2em;vertical-align:bottom;"> ${Utils.escapeHtml(m.roomName)}</div>
+                            <div style="font-size: 12px; opacity:0.8; margin-bottom:8px;"><img src="https://emojigraph.org/media/apple/busts-in-silhouette_1f465.png" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Зрителей: ${m.membersCount || 1}</div>
                             ${!isSelf ? `
                                 <div style="display:flex; gap:10px;">
                                     <button class="primary-btn" style="padding:6px; font-size:12px; width:auto;" onclick="window.acceptRoomInvite('${m.roomId}')">Принять</button>
@@ -6229,7 +6315,7 @@ class AdminPanel {
                     'milk': 'кто-нибудь желает молока? 🥛',
                     'popcorn': 'Запасаемся попкорном, сейчас начнется кино! 🍿',
                     'dvd': 'Ждем, когда логотип ударится в угол... 📀',
-                    'roll': 'Делаем бочку! Уууииии! <img src="https://em-content.zobj.net/source/apple/391/counterclockwise-arrows-button_1f504.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">',
+                    'roll': 'Делаем бочку! Уууииии! <img src="https://emojigraph.org/media/apple/counterclockwise-arrows-button_1f504.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">',
                     'matrix': 'Тук-тук, Нео. Матрица имеет тебя... 💻',
                     'shh': 'Тссс... Режим тишины активирован 🤫',
                     'vader': 'Люк, я твой отец... *тяжелое дыхание* ⚔️',
@@ -6505,7 +6591,7 @@ class AdminPanel {
                 <div style="border:1px solid var(--border-light); border-radius:12px; padding:12px; display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap;">
                     <div style="min-width:0; flex:1;">
                         <div style="font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${room.isPrivate ? '🔒 ' : ''}${Utils.escapeHtml(room.name || 'Без названия')}</div>
-                        <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">ID: ${roomId} • <img src="https://em-content.zobj.net/source/apple/391/busts-in-silhouette_1f465.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> ${membersCount} • Хост: ${Utils.escapeHtml(room.hostName || 'Неизвестно')}</div>
+                        <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">ID: ${roomId} • <img src="https://emojigraph.org/media/apple/busts-in-silhouette_1f465.png" style="width:1.2em;height:1.2em;vertical-align:bottom;"> ${membersCount} • Хост: ${Utils.escapeHtml(room.hostName || 'Неизвестно')}</div>
                     </div>
                     <div style="display:flex; gap:8px;">
                         <button class="secondary-btn admin-enter-room-btn" data-room-id="${roomId}" style="width:auto; padding:8px 12px;">Войти</button>
@@ -7763,11 +7849,11 @@ class RoomManager {
             const el = document.createElement('div');
             el.className = 'floating-emoji';
             const imgMap = {
-                '<img src="https://em-content.zobj.net/source/apple/391/fire_1f525.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': 'https://em-content.zobj.net/source/telegram/386/fire_1f525.webp',
-                '<img src="https://em-content.zobj.net/source/apple/391/face-with-tears-of-joy_1f602.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': 'https://em-content.zobj.net/source/telegram/386/face-with-tears-of-joy_1f602.webp',
-                '<img src="https://em-content.zobj.net/source/apple/391/face-screaming-in-fear_1f631.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': 'https://em-content.zobj.net/source/telegram/386/face-screaming-in-fear_1f631.webp',
-                '<img src="https://em-content.zobj.net/source/apple/391/red-heart_2764-fe0f.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': 'https://em-content.zobj.net/source/telegram/386/red-heart_2764-fe0f.webp',
-                '<img src="https://em-content.zobj.net/source/apple/391/clapping-hands_1f44f.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': 'https://em-content.zobj.net/source/telegram/386/clapping-hands_1f44f.webp'
+                '<img src="https://emojigraph.org/media/apple/fire_1f525.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': 'https://em-content.zobj.net/source/telegram/386/fire_1f525.webp',
+                '<img src="https://emojigraph.org/media/apple/face-with-tears-of-joy_1f602.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': 'https://em-content.zobj.net/source/telegram/386/face-with-tears-of-joy_1f602.webp',
+                '<img src="https://emojigraph.org/media/apple/face-screaming-in-fear_1f631.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': 'https://em-content.zobj.net/source/telegram/386/face-screaming-in-fear_1f631.webp',
+                '<img src="https://emojigraph.org/media/apple/red-heart_2764-fe0f.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': 'https://em-content.zobj.net/source/telegram/386/red-heart_2764-fe0f.webp',
+                '<img src="https://emojigraph.org/media/apple/clapping-hands_1f44f.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': 'https://em-content.zobj.net/source/telegram/386/clapping-hands_1f44f.webp'
             };
             if (imgMap[rx.emoji]) {
                 el.innerHTML = `<img src="${imgMap[rx.emoji]}" style="width: 48px; height: 48px; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3));">`;
@@ -8005,7 +8091,7 @@ class RoomManager {
 
         btn.innerHTML = `
             <span class="users-tab-inner">
-                <span class="users-tab-left"><img src="https://em-content.zobj.net/source/apple/391/busts-in-silhouette_1f465.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Люди (<span id="users-count">${count}</span>)</span>
+                <span class="users-tab-left"><img src="https://emojigraph.org/media/apple/busts-in-silhouette_1f465.png" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Люди (<span id="users-count">${count}</span>)</span>
                 <span class="users-tab-avatars">${avatarsHtml}</span>
             </span>
         `;
@@ -8572,3 +8658,6 @@ window.onload = () => {
         });
     });
 };
+
+window.ProfileManager = ProfileManager;
+window.FriendsManager = FriendsManager;
