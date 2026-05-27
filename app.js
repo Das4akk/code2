@@ -1347,6 +1347,9 @@ class VideoPlaybackManager {
             vid.dataset.playbackKey = signature;
             vid.dataset.roomUrl = source;
 
+            if (Utils.$('yt-player-container')) Utils.$('yt-player-container').style.display = 'none';
+            vid.style.display = 'block';
+
             this.attachSource(vid, source, playback.isHls);
 
             vid.controls = AppState.isHost || AdminPanel.isCurrentUserCreator();
@@ -2116,28 +2119,10 @@ class EasterEggManager {
                 background: rgba(0,0,0,0.65);
             }
             #nyan-overlay {
-                position: absolute;
-                left: 50%;
-                bottom: 28px;
-                width: min(460px, 80vw);
-                height: 22px;
-                transform: translateX(-50%);
-                border-radius: 999px;
-                background: linear-gradient(90deg, #ff004c, #ff9100, #ffe600, #2eff7b, #00c2ff, #5b5bff, #ff00c8);
-                background-size: 220% 100%;
-                animation: nyanRainbow 1.4s linear infinite;
-                box-shadow: 0 0 20px rgba(255,255,255,0.16);
+                position: fixed;
+                inset: 0;
             }
-            #nyan-overlay::before {
-                content: 'NYAN';
-                position: absolute;
-                right: 12px;
-                top: -28px;
-                font-size: 12px;
-                letter-spacing: 2px;
-                color: #fff;
-                opacity: 0.8;
-            }
+
             .nyan-cat {
                 position: absolute;
                 left: 0;
@@ -2417,6 +2402,19 @@ class EasterEggManager {
             stop?.();
         }
         AppState.easterEggs.activeEffects.clear();
+
+        // ФИКС: Остановка всех звуков при выходе
+        if (AppState.easterEggs.audioPool) {
+            for (const audio of AppState.easterEggs.audioPool) {
+                try {
+                    audio.pause();
+                    audio.currentTime = 0;
+                    audio.src = '';
+                } catch(e) {}
+            }
+            AppState.easterEggs.audioPool.clear();
+        }
+
         AppState.easterEggs.notificationMutedUntil = 0;
         ['easter-green', 'easter-roll', 'easter-matrix', 'easter-vhs', 'easter-potato', 'easter-mirror', 'easter-space', 'easter-hide-ui', 'easter-cow-cursor', 'easter-nyan', 'easter-zombie'].forEach(cls => document.body.classList.remove(cls));
         ['green-overlay', 'dvd-overlay', 'matrix-overlay', 'vhs-overlay', 'glass-overlay', 'cinema-overlay', 'popcorn-overlay', 'nyan-overlay'].forEach(id => this.hideOverlay(id));
@@ -4478,7 +4476,7 @@ class ProfileManager {
             if (profile.assignedBadges && Array.isArray(profile.assignedBadges) && AppState.customBadges) {
                 profile.assignedBadges.forEach(bId => {
                     const b = AppState.customBadges[bId];
-                    if (b) userBadges.push(b);
+                    if (b) userBadges.push({ ...b, _id: bId });
                 });
             }
             
@@ -4492,6 +4490,7 @@ class ProfileManager {
                 const days = Math.floor((Date.now() - sinceTs) / (1000 * 60 * 60 * 24));
                 
                 userBadges.push({
+                    _id: 'partner_0',
                     name: 'Это любовь',
                     desc: 'Вступить в отношения',
                     icon: 'https://cdn3.emoji.gg/emojis/1690-love-face-emoji.gif',
@@ -4500,6 +4499,7 @@ class ProfileManager {
                 
                 if (days >= 7) {
                     userBadges.push({
+                        _id: 'partner_7',
                         name: 'И Долго это будет?',
                         desc: `Первая неделя отношений с ${partnerName}`,
                         icon: 'https://cdn3.emoji.gg/emojis/1690-love-face-emoji.gif',
@@ -4518,11 +4518,21 @@ class ProfileManager {
                 
                 if (days >= 100) {
                     userBadges.push({
+                        _id: 'partner_100',
                         name: 'Брак',
                         desc: `100 Дней отношений с ${partnerName}`,
                         icon: 'https://cdn3.emoji.gg/emojis/1690-love-face-emoji.gif',
                         color: '#ffffff'
                     });
+                }
+            }
+
+            // Put selected badge first
+            if (profile.selectedBadge) {
+                const selectedIdx = userBadges.findIndex(b => b._id === profile.selectedBadge);
+                if (selectedIdx > -1) {
+                    const sb = userBadges.splice(selectedIdx, 1)[0];
+                    userBadges.unshift(sb);
                 }
             }
 
@@ -4672,7 +4682,9 @@ class ProfileManager {
                     };
                 });
                 
-                setTimeout(updateBadgeCarousel, 200);
+                setTimeout(updateBadgeCarousel, 50);
+                setTimeout(updateBadgeCarousel, 250);
+                setTimeout(updateBadgeCarousel, 500);
                 
                 // Fetch counts asynchronously
                 get(ref(db, 'users')).then(snap => {
@@ -4774,14 +4786,74 @@ class FriendsManager {
 
         AppState.activeSubscriptions.push(() => off(reqRef, 'value', unsubReq), () => off(frRef, 'value', unsubFr));
 
-        Utils.$('nav-friends').onclick = () => {
-            Utils.$('nav-friends').classList.add('active'); Utils.$('nav-rooms').classList.remove('active');
-            Utils.$('friends-section').style.display = 'flex'; document.querySelector('.rooms-main').style.display = 'none';
+        const navItems = ['nav-profile', 'nav-rooms', 'nav-find-friend', 'nav-friends'];
+        const setNavActive = (id) => {
+            navItems.forEach(n => {
+                const el = Utils.$(n);
+                if (el) el.classList.remove('active');
+            });
+            if (Utils.$(id)) Utils.$(id).classList.add('active');
+            
+            Utils.$('friends-section').style.display = id === 'nav-friends' ? 'flex' : 'none';
+            Utils.$('find-friend-section').style.display = id === 'nav-find-friend' ? 'flex' : 'none';
+            document.querySelector('.rooms-main').style.display = id === 'nav-rooms' ? 'flex' : 'none';
+            
+            if (id === 'nav-profile') {
+                ProfileManager.openProfileModal(AppState.currentUser?.uid);
+                // Switch back to rooms immediately after opening profile modal
+                setTimeout(() => setNavActive('nav-rooms'), 10);
+            }
         };
-        Utils.$('nav-rooms').onclick = () => {
-            Utils.$('nav-rooms').classList.add('active'); Utils.$('nav-friends').classList.remove('active');
-            Utils.$('friends-section').style.display = 'none'; document.querySelector('.rooms-main').style.display = 'flex';
+
+        Utils.$('nav-friends').onclick = () => setNavActive('nav-friends');
+        Utils.$('nav-find-friend').onclick = () => setNavActive('nav-find-friend');
+        Utils.$('nav-rooms').onclick = () => setNavActive('nav-rooms');
+        if (Utils.$('nav-profile')) Utils.$('nav-profile').onclick = () => setNavActive('nav-profile');
+
+        const doSearch = async () => {
+            const val = Utils.$('find-friend-input').value.trim().toLowerCase();
+            const resContainer = Utils.$('find-friend-results');
+            if (!val) {
+                resContainer.innerHTML = '<div style="font-size: 12px; color: var(--text-muted); text-align: center;">Введите username для поиска</div>';
+                return;
+            }
+            resContainer.innerHTML = '<div style="font-size: 12px; color: var(--text-muted); text-align: center;">Поиск...</div>';
+            try {
+                const snap = await get(ref(db, 'users'));
+                if (snap.exists()) {
+                    const allUsers = snap.val();
+                    let foundHtml = '';
+                    let foundCount = 0;
+                    for (const [uid, udata] of Object.entries(allUsers)) {
+                        if (uid === AppState.currentUser.uid) continue;
+                        if (udata.profile && udata.profile.username && udata.profile.username.toLowerCase().includes(val)) {
+                            foundCount++;
+                            const isFriend = udata.friends && udata.friends[AppState.currentUser.uid] && udata.friends[AppState.currentUser.uid].status === 'accepted';
+                            const avatar = udata.profile.avatar ? `<img src="${Utils.escapeHtml(udata.profile.avatar)}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">` : `<div style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;">${(udata.profile.name||'?')[0]}</div>`;
+                            foundHtml += `
+                            <div class="user-card" onclick="ProfileManager.openProfileModal('${uid}')" style="cursor:pointer; display:flex; align-items:center; space-between; gap:10px;">
+                                ${avatar}
+                                <div class="user-card-info" style="flex:1;">
+                                    <div class="user-card-name">${Utils.escapeHtml(udata.profile.name)}</div>
+                                    <div class="user-card-username">@${Utils.escapeHtml(udata.profile.username)}</div>
+                                </div>
+                                ${isFriend ? '<span style="font-size:12px; color:var(--accent);">✓ Друг</span>' : '<button class="secondary-btn" style="width:auto; padding:4px 8px; font-size:10px;" onclick="event.stopPropagation(); FriendsManager.sendFriendRequest(\''+uid+'\')">Добавить</button>'}
+                            </div>
+                            `;
+                        }
+                    }
+                    if (foundCount > 0) resContainer.innerHTML = foundHtml;
+                    else resContainer.innerHTML = '<div style="font-size: 12px; color: var(--text-muted); text-align: center;">Ничего не найдено</div>';
+                }
+            } catch (e) {
+                resContainer.innerHTML = '<div style="font-size: 12px; color: var(--text-error); text-align: center;">Ошибка поиска</div>';
+            }
         };
+
+        const searchBtn = Utils.$('btn-find-friend');
+        if(searchBtn) searchBtn.onclick = doSearch;
+        const searchInput = Utils.$('find-friend-input');
+        if(searchInput) searchInput.onkeyup = (e) => { if(e.key === 'Enter') doSearch(); };
     }
 
     static async sendFriendRequest(targetUid) {
@@ -5157,6 +5229,49 @@ class DirectMessages {
         
         if (attachBtn) attachBtn.onclick = attachMediaAction;
         if (mediaCancelBtnTop) mediaCancelBtnTop.onclick = () => mediaPicker.style.display = 'none';
+
+        let dmGifSearchTimeout = null;
+        if (mediaInput) {
+            mediaInput.addEventListener('input', () => {
+                if(dmGifSearchTimeout) clearTimeout(dmGifSearchTimeout);
+                const query = mediaInput.value.trim();
+                const container = Utils.$('dm-gif-results');
+                if(!container) return;
+                
+                if(!query) {
+                    container.innerHTML = '<div style="width: 100%; text-align: center; color: var(--text-muted); font-size: 12px; padding: 10px 0;">Начните вводить текст для поиска GIF</div>';
+                    return;
+                }
+                
+                if(query.startsWith('http')) {
+                    container.innerHTML = '<div style="width: 100%; text-align: center; color: var(--text-muted); font-size: 12px; padding: 10px 0;">Вы ввели ссылку. Нажмите "Отправить"</div>';
+                    return;
+                }
+                
+                container.innerHTML = '<div style="width: 100%; text-align: center; color: var(--text-muted); font-size: 12px; padding: 10px 0;">Поиск GIF...</div>';
+                
+                dmGifSearchTimeout = setTimeout(async () => {
+                    try {
+                        const res = await fetch(`https://g.tenor.com/v1/search?q=${encodeURIComponent(query)}&key=LIVDSRZULELA&limit=20`);
+                        const data = await res.json();
+                        if (data.results && data.results.length > 0) {
+                            container.innerHTML = data.results.map(g => {
+                                const url = g.media[0].gif.url;
+                                return `<img src="${url}" class="dm-preset-gif" style="height:80px; flex-grow:1; object-fit:cover; border-radius:6px; cursor:pointer;" />`;
+                            }).join('');
+                            // Bind clicks
+                            container.querySelectorAll('.dm-preset-gif').forEach(img => {
+                                img.onclick = () => performMediaSend(img.src);
+                            });
+                        } else {
+                            container.innerHTML = '<div style="width: 100%; text-align: center; color: var(--text-muted); font-size: 12px; padding: 10px 0;">Ничего не найдено</div>';
+                        }
+                    } catch(e) {
+                        container.innerHTML = '<div style="width: 100%; text-align: center; color: var(--text-error); font-size: 12px; padding: 10px 0;">Ошибка загрузки</div>';
+                    }
+                }, 500);
+            });
+        }
 
         const performMediaSend = async (url) => {
             if (!url) return;
@@ -7881,7 +7996,10 @@ class RoomManager {
                 Manager.seek(targetTime);
             }
             if (state === 'playing') Manager.play();
-            if (state === 'paused') Manager.pause();
+            if (state === 'paused') {
+                Manager.play();
+                setTimeout(() => { if (AppState.currentRoomId) Manager.pause(); }, 500);
+            }
             
             setTimeout(() => AppState.ignoreVideoEvents = false, 1500);
             return;
@@ -7896,7 +8014,10 @@ class RoomManager {
             vid.currentTime = targetTime;
         }
         if (state === 'playing' && vid.paused) vid.play().catch(()=>{});
-        if (state === 'paused' && !vid.paused) vid.pause();
+        if (state === 'paused') {
+            if (vid.paused) vid.play().then(() => vid.pause()).catch(() => {});
+            else vid.pause();
+        }
         
         setTimeout(() => AppState.ignoreVideoEvents = false, 1500);
     }

@@ -744,7 +744,9 @@
                 </div>
                 
                 <nav class="nav-menu">
+                    <div class="nav-item" id="nav-profile"><span>👤 Мой профиль</span></div>
                     <div class="nav-item active" id="nav-rooms"><span>📺 Комнаты</span></div>
+                    <div class="nav-item" id="nav-find-friend"><span>🔍 Найти друга</span></div>
                     <div class="nav-item" id="nav-friends">
                         <span>👥 Друзья</span>
                         <div class="nav-badge" id="friend-req-badge">0</div>
@@ -761,8 +763,18 @@
                     <div id="friends-list"></div>
                 </div>
 
-                <div id="lobby-sidebar-actions" style="margin-top: auto; display: flex; flex-direction: column; gap: 10px; padding-top: 20px; flex-shrink: 0;"> <!-- // [UPDATE] -->
-                    <!-- // [NEW] GLOBAL THEME TOGGLE MOVED TO SIDEBAR -->
+                <div id="find-friend-section" class="friends-container" style="display: none;">
+                    <div class="section-title">Найти человека</div>
+                    <div style="display: flex; gap: 8px; margin-bottom: 15px; flex-shrink: 0;">
+                        <input type="text" id="find-friend-input" placeholder="Введите имя пользователя..." style="flex: 1;">
+                        <button class="primary-btn" id="btn-find-friend" style="width: auto; padding: 0 16px;">Поиск</button>
+                    </div>
+                    <div id="find-friend-results" style="display: flex; flex-direction: column; gap: 10px; overflow-y: auto;">
+                        <div style="font-size: 12px; color: var(--text-muted); text-align: center;">Введите username для поиска</div>
+                    </div>
+                </div>
+
+                <div id="lobby-sidebar-actions" style="margin-top: auto; display: flex; flex-direction: column; gap: 10px; padding-top: 20px; flex-shrink: 0;">
                     <div id="lobby-theme-slot">
                         <label class="global-theme-toggle" title="Светлая тема">
                             <span class="global-theme-label">Тема лобби</span>
@@ -772,6 +784,7 @@
                             <span>☀️</span>
                         </label>
                     </div>
+                    <button class="secondary-btn" id="btn-switch-account" style="border-color: rgba(255,255,255,0.1); color: var(--text-muted);">🔄 Сменить аккаунт</button>
                     <button class="secondary-btn" id="btn-logout" style="border-color: rgba(255,255,255,0.1); color: var(--text-muted);">🚪 Выйти из аккаунта</button>
                 </div>
             </aside>
@@ -814,21 +827,11 @@
                     <div id="chat-overlay-container" style="position: absolute; top: 15%; left: 50%; transform: translateX(-50%); width: 80%; pointer-events: none; z-index: 10; display: flex; flex-direction: column; gap: 8px;"></div>
                     <div id="reaction-layer"></div>
                     <div class="reaction-bar">
-                        <button class="react-btn" data-emoji="🔥">
-                            <img src="https://em-content.zobj.net/source/telegram/386/fire_1f525.webp" style="width:32px; height:32px; pointer-events:none;">
-                        </button>
-                        <button class="react-btn" data-emoji="😂">
-                            <img src="https://em-content.zobj.net/source/telegram/386/face-with-tears-of-joy_1f602.webp" style="width:32px; height:32px; pointer-events:none;">
-                        </button>
-                        <button class="react-btn" data-emoji="😱">
-                            <img src="https://em-content.zobj.net/source/telegram/386/face-screaming-in-fear_1f631.webp" style="width:32px; height:32px; pointer-events:none;">
-                        </button>
-                        <button class="react-btn" data-emoji="❤️">
-                            <img src="https://em-content.zobj.net/source/telegram/386/red-heart_2764-fe0f.webp" style="width:32px; height:32px; pointer-events:none;">
-                        </button>
-                        <button class="react-btn" data-emoji="👏">
-                            <img src="https://em-content.zobj.net/source/telegram/386/clapping-hands_1f44f.webp" style="width:32px; height:32px; pointer-events:none;">
-                        </button>
+                        <button class="react-btn" data-emoji="🔥">🔥</button>
+                        <button class="react-btn" data-emoji="😂">😂</button>
+                        <button class="react-btn" data-emoji="😱">😱</button>
+                        <button class="react-btn" data-emoji="❤️">❤️</button>
+                        <button class="react-btn" data-emoji="👏">👏</button>
                     </div>
                 </div>
             </div>
@@ -1011,25 +1014,22 @@
                 <div class="panel-love-hearts" id="dm-love-hearts"></div>
                 <div id="dm-messages" class="dm-messages"></div>
                 
-                <div id="dm-media-picker" style="display: none; position: absolute; bottom: 85px; left: 20px; right: 20px; background: rgba(20,20,25,0.95); border: 1px solid var(--border-light); border-radius: 12px; padding: 10px; z-index: 10; flex-direction: column;">
+                <div id="dm-media-picker" style="display: none; position: absolute; bottom: 85px; left: 20px; right: 20px; background: rgba(20,20,25,0.95); border: 1px solid var(--border-light); border-radius: 12px; padding: 10px; z-index: 10; flex-direction: column; max-height: 400px;">
                     <div style="font-weight: bold; margin-bottom: 10px; flex-shrink: 0; display:flex; justify-content:space-between; align-items:center;">
-                        <span>Прикрепить медиа по ссылке</span>
+                        <span>Прикрепить медиа или GIF</span>
                         <button id="btn-dm-media-cancel-top" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer;">✕</button>
                     </div>
-                    <input type="text" id="dm-media-input" placeholder="Вставьте любую ссылку из интернета..." style="width: 100%; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); color: #fff; margin-bottom: 10px; flex-shrink:0;">
-                    <div style="display: flex; gap: 10px; flex-shrink: 0; margin-bottom: 10px;">
-                        <button id="btn-dm-media-send" class="primary-btn" style="flex: 1;">Отправить ссылку</button>
+                    <div style="display: flex; gap: 8px; flex-shrink: 0; margin-bottom: 10px;">
+                        <input type="text" id="dm-media-input" placeholder="Поиск GIF или вставьте ссылку..." style="flex: 1; padding: 8px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); color: #fff;">
+                        <button id="btn-dm-media-send" class="primary-btn" style="width: auto; padding: 0 12px;">Отправить</button>
                     </div>
-                    <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 5px; flex-shrink: 0;">Или выберите GIF:</div>
-                    <div id="dm-predefined-gifs" style="display:flex; gap:8px; overflow-x:auto; padding-bottom:5px;">
-                        <img src="https://media1.tenor.com/m/Zp9K-nmlJmMAAAAC/cat-kiss.gif" class="dm-preset-gif" style="height:60px; border-radius:6px; cursor:pointer;" />
-                        <img src="https://media.tenor.com/71wLpWv1H0IAAAAC/cat-kiss.gif" class="dm-preset-gif" style="height:60px; border-radius:6px; cursor:pointer;" />
-                        <img src="https://media.tenor.com/E1rNqJ1R-PMAAAAC/hi-waving.gif" class="dm-preset-gif" style="height:60px; border-radius:6px; cursor:pointer;" />
-                        <img src="https://media.tenor.com/fM-iEtyk_G4AAAAC/ok-okay.gif" class="dm-preset-gif" style="height:60px; border-radius:6px; cursor:pointer;" />
-                        <img src="https://media.tenor.com/A0-dY6qH55wAAAAC/cry-crying.gif" class="dm-preset-gif" style="height:60px; border-radius:6px; cursor:pointer;" />
-                        <img src="https://media.tenor.com/_7h7n8JftuMAAAAC/crying-emoji.gif" class="dm-preset-gif" style="height:60px; border-radius:6px; cursor:pointer;" />
-                        <img src="https://media.tenor.com/mPudX0N18T0AAAAC/angry-mad.gif" class="dm-preset-gif" style="height:60px; border-radius:6px; cursor:pointer;" />
-                        <img src="https://media.tenor.com/zWzHq_3uXoUAAAAC/huh.gif" class="dm-preset-gif" style="height:60px; border-radius:6px; cursor:pointer;" />
+                    <div id="dm-gif-results" style="display:flex; flex-wrap: wrap; gap:4px; overflow-y:auto; overflow-x:hidden; padding-bottom:5px; height: 200px; justify-content: space-between;">
+                        <!-- Default GIFs initially -->
+                        <img src="https://media1.tenor.com/m/Zp9K-nmlJmMAAAAC/cat-kiss.gif" class="dm-preset-gif" style="height:80px; flex-grow:1; object-fit:cover; border-radius:6px; cursor:pointer;" />
+                        <img src="https://media.tenor.com/71wLpWv1H0IAAAAC/cat-kiss.gif" class="dm-preset-gif" style="height:80px; flex-grow:1; object-fit:cover; border-radius:6px; cursor:pointer;" />
+                        <img src="https://media.tenor.com/E1rNqJ1R-PMAAAAC/hi-waving.gif" class="dm-preset-gif" style="height:80px; flex-grow:1; object-fit:cover; border-radius:6px; cursor:pointer;" />
+                        <img src="https://media.tenor.com/fM-iEtyk_G4AAAAC/ok-okay.gif" class="dm-preset-gif" style="height:80px; flex-grow:1; object-fit:cover; border-radius:6px; cursor:pointer;" />
+                        <img src="https://media.tenor.com/A0-dY6qH55wAAAAC/cry-crying.gif" class="dm-preset-gif" style="height:80px; flex-grow:1; object-fit:cover; border-radius:6px; cursor:pointer;" />
                     </div>
                 </div>
 
