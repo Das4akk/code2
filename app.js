@@ -99,7 +99,7 @@ const AppState = {
 class Utils {
     static getAppleEmojiHtml(char) {
         const appleMap = {
-            '💋': '1f48b', '✨': '2728', '💞': '1f49e', '🔥': '1f525', '🐄': '1f404', '🍿': '1f37f', '🐱': '1f431', '🌈': '1f308', '🥛': '1f95b', '📀': '1f4c0', '🔄': '1f504', '💻': '1f4bb', '🤫': '1f92b', '⚔️': '2694-fe0f', '🔒': '1f512', '👥': '1f465', '📺': '1f4fa', '📎': '1f4ce', '📌': '1f4cc', '📍': '1f4cd', '💗': '1f497', '💘': '1f498', '💕': '1f495', '❤️': '2764-fe0f', '🔴': '1f534', '😂': '1f602', '😱': '1f631', '👏': '1f44f', '🎵': '1f3b5', '📌': '1f4cc', '📍': '1f4cd', '👑': '1f451', '✅': '2705', '❌': '274c', '⚠️': '26a0-fe0f', '💬': '1f4ac', '💎': '1f48e', '⚙️': '2699-fe0f', '⭐': '2b50', '🌟': '1f31f', '🎮': '1f3ae', '🎧': '1f3a7', '🎉': '1f389', '💰': '1f4b0'
+            '💋': '1f48b', '<img src="https://em-content.zobj.net/source/apple/391/sparkles_2728.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '2728', '💞': '1f49e', '<img src="https://em-content.zobj.net/source/apple/391/fire_1f525.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f525', '🐄': '1f404', '🍿': '1f37f', '🐱': '1f431', '🌈': '1f308', '🥛': '1f95b', '📀': '1f4c0', '<img src="https://em-content.zobj.net/source/apple/391/counterclockwise-arrows-button_1f504.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f504', '💻': '1f4bb', '🤫': '1f92b', '⚔️': '2694-fe0f', '🔒': '1f512', '<img src="https://em-content.zobj.net/source/apple/391/busts-in-silhouette_1f465.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f465', '<img src="https://em-content.zobj.net/source/apple/391/television_1f4fa.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f4fa', '📎': '1f4ce', '<img src="https://em-content.zobj.net/source/apple/391/pushpin_1f4cc.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f4cc', '📍': '1f4cd', '💗': '1f497', '💘': '1f498', '💕': '1f495', '<img src="https://em-content.zobj.net/source/apple/391/red-heart_2764-fe0f.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '2764-fe0f', '🔴': '1f534', '<img src="https://em-content.zobj.net/source/apple/391/face-with-tears-of-joy_1f602.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f602', '<img src="https://em-content.zobj.net/source/apple/391/face-screaming-in-fear_1f631.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f631', '<img src="https://em-content.zobj.net/source/apple/391/clapping-hands_1f44f.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f44f', '<img src="https://em-content.zobj.net/source/apple/391/musical-note_1f3b5.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f3b5', '<img src="https://em-content.zobj.net/source/apple/391/pushpin_1f4cc.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f4cc', '📍': '1f4cd', '<img src="https://em-content.zobj.net/source/apple/391/crown_1f451.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f451', '✅': '2705', '❌': '274c', '⚠️': '26a0-fe0f', '<img src="https://em-content.zobj.net/source/apple/391/speech-balloon_1f4ac.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f4ac', '💎': '1f48e', '<img src="https://em-content.zobj.net/source/apple/391/gear_2699-fe0f.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '2699-fe0f', '<img src="https://em-content.zobj.net/source/apple/391/star_2b50.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '2b50', '🌟': '1f31f', '🎮': '1f3ae', '🎧': '1f3a7', '🎉': '1f389', '💰': '1f4b0'
         };
         const codepoint = appleMap[char] || char.codePointAt(0).toString(16);
         return `<img src="https://emojigraph.org/media/144/apple/${codepoint}.png" style="width: 1.25em; height: 1.25em; vertical-align: middle; display: inline-block; object-fit: contain;" alt="${char}" onerror="this.onerror=null; this.src=''; this.alt='${char}';"/>`;
@@ -1554,7 +1554,7 @@ class PartnerBondEngine {
         if (bond.checkins?.[checkinKey]) return { ok: false, reason: 'already' };
         await this.recordMoment(uid, partnerUid, 'checkin', {
             fromUid: uid,
-            label: 'Отметили день вместе ✨',
+            label: 'Отметили день вместе <img src="https://em-content.zobj.net/source/apple/391/sparkles_2728.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">',
             warmth: 14,
             checkinKey
         });
@@ -1657,7 +1657,7 @@ class PartnerRelationshipPanel {
                     </div>
                     <div class="partner-metric-card">
                         <span class="metric-label">Серия дней</span>
-                        <strong>${bond.streak || 0} 🔥</strong>
+                        <strong>${bond.streak || 0} <img src="https://em-content.zobj.net/source/apple/391/fire_1f525.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"></strong>
                     </div>
                     <div class="partner-metric-card milestone-card">
                         <span class="metric-label">Моментов · до ${nextMilestone} дн.</span>
@@ -1675,7 +1675,7 @@ class PartnerRelationshipPanel {
                 </section>
                 <footer class="partner-ambilight-footer">
                     <button type="button" class="partner-kiss-btn" id="btn-partner-modal-kiss">Поцелуй 💋</button>
-                    <button type="button" class="partner-checkin-btn" id="btn-partner-checkin" ${canCheckin ? '' : 'disabled'}>${canCheckin ? 'Отметить день ✨' : 'День отмечен'}</button>
+                    <button type="button" class="partner-checkin-btn" id="btn-partner-checkin" ${canCheckin ? '' : 'disabled'}>${canCheckin ? 'Отметить день <img src="https://em-content.zobj.net/source/apple/391/sparkles_2728.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">' : 'День отмечен'}</button>
                     <button type="button" class="secondary-btn btn-close-modal">Закрыть</button>
                 </footer>
             </div>
@@ -3384,7 +3384,7 @@ class ThemeManager {
     static FAVORITES_KEY = 'cowio:favoriteThemes';
 
     static FOLDERS = {
-        'favorites': { label: '⭐ Любимые', themes: [] },
+        'favorites': { label: '<img src="https://em-content.zobj.net/source/apple/391/star_2b50.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Любимые', themes: [] },
         'classic': { label: 'Классика', themes: ['default', 'light', 'inverted'] },
         'nature': { label: 'Природа', themes: ['sunset', 'ocean', 'aurora', 'love'] },
         'gradient': { label: 'Градиенты', themes: ['matte-toxic', 'audi-silver', 'racing-jet', 'alpine-pink', 'solar-flare', 'neon-tide', 'dusk', 'venom', 'twilight', 'noir-rose', 'vault-gold', 'abyss-frost', 'crimson-chalk'] }
@@ -4205,7 +4205,7 @@ class ProfileManager {
         if (ownerUid && !String(partnerUid).startsWith('custom_partner_')) {
             const bond = await PartnerBondEngine.getBond(ownerUid, partnerUid);
             const lvl = PartnerBondEngine.bondLevel(bond.totalWarmth);
-            bondMeta = ` · ур. ${lvl}${bond.streak ? ` · 🔥${bond.streak}` : ''}`;
+            bondMeta = ` · ур. ${lvl}${bond.streak ? ` · <img src="https://em-content.zobj.net/source/apple/391/fire_1f525.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">${bond.streak}` : ''}`;
         }
         container.innerHTML = `
             <div class="partner-avatar">${this.getAvatarHtml(partnerProfile)}</div>
@@ -4794,21 +4794,60 @@ class FriendsManager {
             });
             if (Utils.$(id)) Utils.$(id).classList.add('active');
             
-            Utils.$('friends-section').style.display = id === 'nav-friends' ? 'flex' : 'none';
-            Utils.$('find-friend-section').style.display = id === 'nav-find-friend' ? 'flex' : 'none';
-            document.querySelector('.rooms-main').style.display = id === 'nav-rooms' ? 'flex' : 'none';
-            
-            if (id === 'nav-profile') {
-                ProfileManager.openProfileModal(AppState.currentUser?.uid);
-                // Switch back to rooms immediately after opening profile modal
-                setTimeout(() => setNavActive('nav-rooms'), 10);
-            }
+            Utils.$('section-friends').style.display = id === 'nav-friends' ? 'flex' : 'none';
+            Utils.$('section-find-friend').style.display = id === 'nav-find-friend' ? 'flex' : 'none';
+            Utils.$('section-rooms').style.display = id === 'nav-rooms' ? 'flex' : 'none';
+            Utils.$('section-profile').style.display = id === 'nav-profile' ? 'flex' : 'none';
+            Utils.$('section-switch-account').style.display = id === 'nav-switch-account' ? 'flex' : 'none';
         };
 
         Utils.$('nav-friends').onclick = () => setNavActive('nav-friends');
         Utils.$('nav-find-friend').onclick = () => setNavActive('nav-find-friend');
         Utils.$('nav-rooms').onclick = () => setNavActive('nav-rooms');
-        if (Utils.$('nav-profile')) Utils.$('nav-profile').onclick = () => setNavActive('nav-profile');
+        if (Utils.$('nav-profile')) Utils.$('nav-profile').onclick = () => {
+            setNavActive('nav-profile');
+            const c = Utils.$('my-profile-container');
+            const user = AppState.usersCache.get(AppState.currentUser?.uid);
+            if (c && user && user.profile) {
+                const avatar = user.profile.avatar ? `<img src="${Utils.escapeHtml(user.profile.avatar)}" style="width:120px;height:120px;border-radius:20px;object-fit:cover;box-shadow:0 10px 20px rgba(0,0,0,0.5);margin-bottom:15px;">` : `<div style="width:120px;height:120px;border-radius:20px;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;margin:0 auto 15px;font-size:40px;">${(user.profile.name||'?')[0]}</div>`;
+                c.innerHTML = `
+                    ${avatar}
+                    <h3 style="font-size:24px;margin-bottom:5px;">${Utils.escapeHtml(user.profile.name)}</h3>
+                    <div style="color:var(--text-muted);margin-bottom:20px;">@${Utils.escapeHtml(user.profile.username)}</div>
+                    <button class="primary-btn" id="btn-open-my-profile-modal" style="width:200px;margin: 0 auto;">Редактировать профиль</button>
+                    <div style="margin-top: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; text-align: left;">
+                        <div style="background:rgba(0,0,0,0.2); padding:15px; border-radius:12px;">
+                            <div style="color:var(--text-muted); font-size:12px; margin-bottom:5px;">Уровень</div>
+                            <div style="font-size:20px; font-weight:bold;">${Math.floor(1 + ((user.messageCount||0) / 50))}</div>
+                        </div>
+                        <div style="background:rgba(0,0,0,0.2); padding:15px; border-radius:12px;">
+                            <div style="color:var(--text-muted); font-size:12px; margin-bottom:5px;">Опыт общения</div>
+                            <div style="font-size:20px; font-weight:bold;">${user.messageCount||0} msg</div>
+                        </div>
+                    </div>
+                `;
+                Utils.$('btn-open-my-profile-modal').onclick = () => ProfileManager.openProfileModal(AppState.currentUser?.uid);
+            }
+        };
+        if (Utils.$('btn-switch-account')) {
+            Utils.$('btn-switch-account').onclick = () => {
+                setNavActive('nav-switch-account');
+                if (Utils.$('switch-acc-current')) {
+                    const profile = AppState.usersCache.get(AppState.currentUser?.uid);
+                    Utils.$('switch-acc-current').innerText = profile?.name || AppState.currentUser?.email || 'Вы';
+                }
+            };
+        }
+        if (Utils.$('btn-do-switch-account')) {
+            Utils.$('btn-do-switch-account').onclick = () => {
+                import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js").then(({ signOut, getAuth }) => {
+                    signOut(getAuth());
+                });
+            };
+        }
+        if (Utils.$('btn-open-my-profile-modal')) {
+            Utils.$('btn-open-my-profile-modal').onclick = () => ProfileManager.openProfileModal(AppState.currentUser?.uid);
+        }
 
         const doSearch = async () => {
             const val = Utils.$('find-friend-input').value.trim().toLowerCase();
@@ -5162,7 +5201,7 @@ class DirectMessages {
                     <div class="dm-chat-name">${Utils.escapeHtml(item.name)}</div>
                     <div class="dm-chat-last-msg">${Utils.escapeHtml(item.lastText) || '<i>Нет сообщений</i>'}</div>
                 </div>
-                <button class="dm-pin-btn" title="Закрепить">${item.isPinned ? '📌' : '📍'}</button>
+                <button class="dm-pin-btn" title="Закрепить">${item.isPinned ? '<img src="https://em-content.zobj.net/source/apple/391/pushpin_1f4cc.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">' : '📍'}</button>
             `;
             
             el.onclick = (e) => {
@@ -5337,8 +5376,8 @@ class DirectMessages {
                         <strong>${Utils.escapeHtml(isSelf ? 'Вы' : m.fromName)}</strong>
                         <div class="bubble" style="border: 1px solid var(--accent); background: rgba(46,213,115,0.1);">
                             <div style="font-weight:bold; margin-bottom:5px;">Привет! Заходи к нам:</div>
-                            <div style="font-size: 16px;">📺 ${Utils.escapeHtml(m.roomName)}</div>
-                            <div style="font-size: 12px; opacity:0.8; margin-bottom:8px;">👥 Зрителей: ${m.membersCount || 1}</div>
+                            <div style="font-size: 16px;"><img src="https://em-content.zobj.net/source/apple/391/television_1f4fa.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> ${Utils.escapeHtml(m.roomName)}</div>
+                            <div style="font-size: 12px; opacity:0.8; margin-bottom:8px;"><img src="https://em-content.zobj.net/source/apple/391/busts-in-silhouette_1f465.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Зрителей: ${m.membersCount || 1}</div>
                             ${!isSelf ? `
                                 <div style="display:flex; gap:10px;">
                                     <button class="primary-btn" style="padding:6px; font-size:12px; width:auto;" onclick="window.acceptRoomInvite('${m.roomId}')">Принять</button>
@@ -6190,7 +6229,7 @@ class AdminPanel {
                     'milk': 'кто-нибудь желает молока? 🥛',
                     'popcorn': 'Запасаемся попкорном, сейчас начнется кино! 🍿',
                     'dvd': 'Ждем, когда логотип ударится в угол... 📀',
-                    'roll': 'Делаем бочку! Уууииии! 🔄',
+                    'roll': 'Делаем бочку! Уууииии! <img src="https://em-content.zobj.net/source/apple/391/counterclockwise-arrows-button_1f504.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">',
                     'matrix': 'Тук-тук, Нео. Матрица имеет тебя... 💻',
                     'shh': 'Тссс... Режим тишины активирован 🤫',
                     'vader': 'Люк, я твой отец... *тяжелое дыхание* ⚔️',
@@ -6466,7 +6505,7 @@ class AdminPanel {
                 <div style="border:1px solid var(--border-light); border-radius:12px; padding:12px; display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap;">
                     <div style="min-width:0; flex:1;">
                         <div style="font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${room.isPrivate ? '🔒 ' : ''}${Utils.escapeHtml(room.name || 'Без названия')}</div>
-                        <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">ID: ${roomId} • 👥 ${membersCount} • Хост: ${Utils.escapeHtml(room.hostName || 'Неизвестно')}</div>
+                        <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">ID: ${roomId} • <img src="https://em-content.zobj.net/source/apple/391/busts-in-silhouette_1f465.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> ${membersCount} • Хост: ${Utils.escapeHtml(room.hostName || 'Неизвестно')}</div>
                     </div>
                     <div style="display:flex; gap:8px;">
                         <button class="secondary-btn admin-enter-room-btn" data-room-id="${roomId}" style="width:auto; padding:8px 12px;">Войти</button>
@@ -7724,11 +7763,11 @@ class RoomManager {
             const el = document.createElement('div');
             el.className = 'floating-emoji';
             const imgMap = {
-                '🔥': 'https://em-content.zobj.net/source/telegram/386/fire_1f525.webp',
-                '😂': 'https://em-content.zobj.net/source/telegram/386/face-with-tears-of-joy_1f602.webp',
-                '😱': 'https://em-content.zobj.net/source/telegram/386/face-screaming-in-fear_1f631.webp',
-                '❤️': 'https://em-content.zobj.net/source/telegram/386/red-heart_2764-fe0f.webp',
-                '👏': 'https://em-content.zobj.net/source/telegram/386/clapping-hands_1f44f.webp'
+                '<img src="https://em-content.zobj.net/source/apple/391/fire_1f525.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': 'https://em-content.zobj.net/source/telegram/386/fire_1f525.webp',
+                '<img src="https://em-content.zobj.net/source/apple/391/face-with-tears-of-joy_1f602.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': 'https://em-content.zobj.net/source/telegram/386/face-with-tears-of-joy_1f602.webp',
+                '<img src="https://em-content.zobj.net/source/apple/391/face-screaming-in-fear_1f631.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': 'https://em-content.zobj.net/source/telegram/386/face-screaming-in-fear_1f631.webp',
+                '<img src="https://em-content.zobj.net/source/apple/391/red-heart_2764-fe0f.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': 'https://em-content.zobj.net/source/telegram/386/red-heart_2764-fe0f.webp',
+                '<img src="https://em-content.zobj.net/source/apple/391/clapping-hands_1f44f.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': 'https://em-content.zobj.net/source/telegram/386/clapping-hands_1f44f.webp'
             };
             if (imgMap[rx.emoji]) {
                 el.innerHTML = `<img src="${imgMap[rx.emoji]}" style="width: 48px; height: 48px; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3));">`;
@@ -7966,7 +8005,7 @@ class RoomManager {
 
         btn.innerHTML = `
             <span class="users-tab-inner">
-                <span class="users-tab-left">👥 Люди (<span id="users-count">${count}</span>)</span>
+                <span class="users-tab-left"><img src="https://em-content.zobj.net/source/apple/391/busts-in-silhouette_1f465.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Люди (<span id="users-count">${count}</span>)</span>
                 <span class="users-tab-avatars">${avatarsHtml}</span>
             </span>
         `;
