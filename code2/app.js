@@ -3010,28 +3010,6 @@ class BadgeManager {
         }, 1000);
     }
 
-    static updateLivePreview() {
-        const pCont = Utils.$('admin-badge-live-preview');
-        if (!pCont) return;
-        const name = Utils.$('admin-badge-edit-name')?.value.trim() || 'Название бейджа';
-        const desc = Utils.$('admin-badge-edit-desc')?.value.trim() || 'Описание будет здесь';
-        let icon = Utils.$('admin-badge-edit-icon')?.value.trim() || '';
-        const color = Utils.$('admin-badge-edit-color')?.value || '#ffffff';
-        const bg = Utils.$('admin-badge-edit-bg')?.value || '#5d3fd3';
-        const border = Utils.$('admin-badge-edit-border')?.value || '#8d63ff';
-
-        if (icon && !icon.startsWith('http') && icon.length < 5) {} // possibly an emoji
-        else if (icon) icon = `<img src="${Utils.escapeHtml(icon)}" style="width:48px;height:48px;margin-bottom:8px;filter:drop-shadow(0 0 8px ${Utils.escapeHtml(color)});">`;
-        
-        pCont.innerHTML = `
-            <div style="flex: none; width: 160px; height: 180px; border-radius: 16px; background: linear-gradient(135deg, ${Utils.escapeHtml(bg)}, #111111); border: 2px solid ${Utils.escapeHtml(border)}; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 20px 10px; position: relative; overflow: hidden; font-family: 'Space Grotesk', sans-serif; box-shadow: 0 10px 30px rgba(0,0,0,0.5); transform: scale(1.05);">
-                ${icon ? icon : `<div style="width:48px;height:48px;margin-bottom:8px;background:rgba(255,255,255,0.1);border-radius:12px;"></div>`}
-                <div style="color: ${Utils.escapeHtml(color)}; font-weight: 800; font-size: 13px; line-height: 1.2; text-align: center;">${Utils.escapeHtml(name)}</div>
-                <div style="color: rgba(255,255,255,0.7); font-size: 10px; margin-top:4px; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; text-align: center;">${Utils.escapeHtml(desc)}</div>
-                <div style="color: rgba(255,255,255,0.5); font-size: 9.5px; margin-top:6px; font-weight: 600;">Уже получили: 0</div>
-            </div>`;
-    }
-
     static async saveBadge() {
         if (!AdminPanel.requireAdmin()) return;
         if (!AdminPanel.isCurrentUserCreator()) return Utils.toast('Только Создатель', 'error');
@@ -3117,7 +3095,6 @@ class BadgeManager {
                 Utils.$('admin-badge-edit-color').value = b.color;
                 Utils.$('admin-badge-edit-bg').value = b.bg;
                 Utils.$('admin-badge-edit-border').value = b.border;
-                BadgeManager.updateLivePreview();
             };
             div.querySelector('button').onclick = () => this.deleteBadge(id);
             container.appendChild(div);
@@ -4668,8 +4645,8 @@ class ProfileManager {
                     const step = itemWidth + gap;
                     
                     const wrapElem = badgesContainer.querySelector('.badge-carousel-wrap');
-                    let wrapWidth = wrapElem ? wrapElem.getBoundingClientRect().width : 0;
-                    if (wrapWidth === 0) wrapWidth = Math.min(392, window.innerWidth - 80);
+                    let wrapWidth = wrapElem ? wrapElem.getBoundingClientRect().width : 350;
+                    if (wrapWidth === 0) wrapWidth = window.innerWidth > 500 ? 500 : window.innerWidth - 60; // Better Fallback
                     const centerOffset = Math.floor((wrapWidth / 2) - (itemWidth / 2)) - 300;
                     
                     track.style.transform = `translate3d(${centerOffset - (window.ProfileBadgesState.index * step)}px, 0, 0)`;
@@ -4892,53 +4869,20 @@ class FriendsManager {
                 
                 let avatarStrStr = profile.avatar ? `<img src="${Utils.escapeHtml(profile.avatar)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : (profile.name || '?')[0].toUpperCase();
                 
-                let userBadgesHtml = '';
-                if (profile.assignedBadges && Array.isArray(profile.assignedBadges) && AppState.customBadges) {
-                    profile.assignedBadges.forEach(bId => {
-                        const b = AppState.customBadges[bId];
-                        if (b) userBadgesHtml += `<div class="badge-tooltip" style="position:relative; display:inline-block; margin: 4px; cursor:help;"><img src="${Utils.escapeHtml(b.icon)}" style="width:24px;height:24px;vertical-align:middle;filter:drop-shadow(0 0 4px ${b.color||'#fff'});"></div>`;
-                    });
-                }
-
-                // Partner info for my profile section
-                let partnerHtml = '';
-                try {
-                    const {get, ref} = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
-                    const pRef = await get(ref(db, `users/${uid}/partnerUid`));
-                    if (pRef.exists() && pRef.val()) {
-                        const partnerUid = pRef.val();
-                        const sp = await ProfileManager.loadUser(partnerUid);
-                        const partnerName = sp ? sp.name : "Неизвестно";
-                        const sinceSnap = await get(ref(db, `users/${uid}/partnerSince`));
-                        const sinceTs = sinceSnap.exists() ? Number(sinceSnap.val()) : Date.now();
-                        const days = Math.floor((Date.now() - sinceTs) / (1000 * 60 * 60 * 24));
-                        partnerHtml = `<div style="margin-top:15px; padding: 10px; background: rgba(255,105,180,0.1); border: 1px solid rgba(255,105,180,0.3); border-radius: 12px; color: #ff6fae; font-weight: bold; font-size: 14px;">💕 В отношениях с ${Utils.escapeHtml(partnerName)} (${days} дней)</div>`;
-                    }
-                } catch(e) {}
-
-                // Streak
-                let streakHtml = '';
-                if (profile.streak && Number(profile.streak) > 0) {
-                    streakHtml = `<div style="display:inline-flex; align-items:center; background:linear-gradient(135deg, #ff9f43, #ff6b6b); color:#fff; font-size:12px; font-weight:800; padding:4px 10px; border-radius:20px; box-shadow:0 4px 10px rgba(255,107,107,0.4); margin-bottom:15px; transform:rotate(-2deg); border:1px solid rgba(255,255,255,0.2);">🔥 Серия: ${profile.streak} дней</div>`;
-                }
-                
                 c.innerHTML = `
                     <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 40px; text-align: center; position: relative;">
-                        ${streakHtml}
                         <div style="width: 120px; height: 120px; font-size: 48px; margin: 0 auto 20px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center; background:#111; box-shadow: 0 10px 20px rgba(0,0,0,0.5);">
                             ${avatarStrStr}
                         </div>
                         <h3 style="font-size:28px; margin-bottom:5px;">${Utils.escapeHtml(profile.name)} ${ProfileManager.getRoleBadgeHtml(profile, uid)}</h3>
                         <div style="color:var(--accent); font-weight:600; font-size:16px; margin-bottom:20px;">@${Utils.escapeHtml(profile.username)}</div>
                         
-                        <p style="color:var(--text-muted); font-size:15px; margin-bottom:10px; line-height:1.6; max-width: 500px; margin-left: auto; margin-right: auto;">
+                        <p style="color:var(--text-muted); font-size:15px; margin-bottom:30px; line-height:1.6; max-width: 500px; margin-left: auto; margin-right: auto;">
                             ${Utils.escapeHtml(profile.bio || 'Нет описания.')}<br><br>
                             <span style="color:var(--text-main); font-weight:bold;">Статистика:</span><br>
                             Уровень: ${Math.floor(1 + ((profile.messageCount||0) / 50))} | Сообщений: ${profile.messageCount||0}<br>
                             Друзей: ${friendsCount} | С нами с: ${joinDate}
                         </p>
-                        ${partnerHtml}
-                        <div style="margin: 20px 0;">${userBadgesHtml}</div>
                         
                         <div style="display:flex; justify-content:center; gap: 15px;">
                             <button class="primary-btn" id="btn-edit-my-profile-inline" style="width:auto; padding: 12px 24px;">Редактировать профиль</button>
@@ -4990,9 +4934,7 @@ class FriendsManager {
                             }
                             import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js").then(({ signInWithEmailAndPassword, getAuth }) => {
                                 Utils.toast('Вход...');
-                                signInWithEmailAndPassword(getAuth(), acc.email, acc.pass).then(() => {
-                                    if (Utils.$('btn-switch-account')) Utils.$('btn-switch-account').onclick();
-                                }).catch(e => {
+                                signInWithEmailAndPassword(getAuth(), acc.email, acc.pass).catch(e => {
                                     Utils.toast('Ошибка входа', 'error');
                                 });
                             });
@@ -5437,45 +5379,10 @@ class DirectMessages {
         const mediaSendBtn = Utils.$('btn-dm-media-send');
         const mediaCancelBtnTop = Utils.$('btn-dm-media-cancel-top');
         
-        const loadGifs = async (query = '') => {
-            const container = Utils.$('dm-gif-results');
-            if(!container) return;
-            if(query && query.startsWith('http')) {
-                container.innerHTML = '<div style="width: 100%; text-align: center; color: var(--text-muted); font-size: 12px; padding: 10px 0;">Вы ввели ссылку. Нажмите "Отправить"</div>';
-                return;
-            }
-            container.innerHTML = '<div style="width: 100%; text-align: center; color: var(--text-muted); font-size: 12px; padding: 10px 0;">Загрузка GIF...</div>';
-            try {
-                const url = query 
-                    ? `https://g.tenor.com/v1/search?q=${encodeURIComponent(query)}&key=LIVDSRZULELA&limit=20`
-                    : `https://g.tenor.com/v1/trending?key=LIVDSRZULELA&limit=20`;
-                const res = await fetch(url);
-                const data = await res.json();
-                if (data.results && data.results.length > 0) {
-                    container.innerHTML = data.results.map(g => {
-                        const imgUrl = g.media[0].tinygif.url;
-                        const fullUrl = g.media[0].gif.url;
-                        return `<img src="${imgUrl}" data-full="${fullUrl}" class="dm-preset-gif" style="height:80px; flex-grow:1; object-fit:cover; border-radius:6px; cursor:pointer;" />`;
-                    }).join('');
-                    container.querySelectorAll('.dm-preset-gif').forEach(img => {
-                        img.onclick = () => performMediaSend(img.dataset.full);
-                    });
-                } else {
-                    container.innerHTML = '<div style="width: 100%; text-align: center; color: var(--text-muted); font-size: 12px; padding: 10px 0;">Ничего не найдено</div>';
-                }
-            } catch(e) {
-                container.innerHTML = '<div style="width: 100%; text-align: center; color: var(--text-error); font-size: 12px; padding: 10px 0;">Ошибка загрузки</div>';
-            }
-        };
-
         const attachMediaAction = () => {
             if (mediaPicker) {
-                const isOpening = mediaPicker.style.display === 'none';
-                mediaPicker.style.display = isOpening ? 'flex' : 'none';
-                if (isOpening) {
-                    mediaInput.focus();
-                    if (!mediaInput.value) loadGifs();
-                }
+                mediaPicker.style.display = mediaPicker.style.display === 'none' ? 'flex' : 'none';
+                if (mediaPicker.style.display === 'flex') mediaInput.focus();
             }
         };
         
@@ -5487,8 +5394,40 @@ class DirectMessages {
             mediaInput.addEventListener('input', () => {
                 if(dmGifSearchTimeout) clearTimeout(dmGifSearchTimeout);
                 const query = mediaInput.value.trim();
-                dmGifSearchTimeout = setTimeout(() => {
-                    loadGifs(query);
+                const container = Utils.$('dm-gif-results');
+                if(!container) return;
+                
+                if(!query) {
+                    container.innerHTML = '<div style="width: 100%; text-align: center; color: var(--text-muted); font-size: 12px; padding: 10px 0;">Начните вводить текст для поиска GIF</div>';
+                    return;
+                }
+                
+                if(query.startsWith('http')) {
+                    container.innerHTML = '<div style="width: 100%; text-align: center; color: var(--text-muted); font-size: 12px; padding: 10px 0;">Вы ввели ссылку. Нажмите "Отправить"</div>';
+                    return;
+                }
+                
+                container.innerHTML = '<div style="width: 100%; text-align: center; color: var(--text-muted); font-size: 12px; padding: 10px 0;">Поиск GIF...</div>';
+                
+                dmGifSearchTimeout = setTimeout(async () => {
+                    try {
+                        const res = await fetch(`https://api.giphy.com/v1/gifs/search?api_key=dc6zaTOxFJmzC&q=${encodeURIComponent(query)}&limit=20`);
+                        const data = await res.json();
+                        if (data.data && data.data.length > 0) {
+                            container.innerHTML = data.data.map(g => {
+                                const url = g.images.fixed_height.url;
+                                return `<img src="${url}" class="dm-preset-gif" style="height:80px; flex-grow:1; object-fit:cover; border-radius:6px; cursor:pointer;" />`;
+                            }).join('');
+                            // Bind clicks
+                            container.querySelectorAll('.dm-preset-gif').forEach(img => {
+                                img.onclick = () => performMediaSend(img.src);
+                            });
+                        } else {
+                            container.innerHTML = '<div style="width: 100%; text-align: center; color: var(--text-muted); font-size: 12px; padding: 10px 0;">Ничего не найдено</div>';
+                        }
+                    } catch(e) {
+                        container.innerHTML = '<div style="width: 100%; text-align: center; color: var(--text-error); font-size: 12px; padding: 10px 0;">Ошибка загрузки</div>';
+                    }
                 }, 500);
             });
         }
@@ -5548,7 +5487,7 @@ class DirectMessages {
         list.innerHTML = messages.map(m => {
             const isSelf = m.fromUid === AppState.currentUser.uid;
             if (m.type === 'system') {
-                return `<div style="display:flex; justify-content:center;"><div class="sys-msg">${Utils.escapeHtml(m.fromName || 'Пользователь')} ${Utils.escapeHtml(m.text || '')}</div></div>`;
+                return `<div class="sys-msg" style="margin:6px 0;">-------${Utils.escapeHtml(m.fromName || 'Пользователь')} ${Utils.escapeHtml(m.text || '')}-------</div>`;
             }
             
             if (m.type === 'invite') {
@@ -6131,8 +6070,6 @@ class AdminPanel {
                     <div style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
                         <div style="font-weight:700; margin-bottom:10px;">Создать/Изменить бейдж</div>
                         <div class="admin-form-group">
-                            <div id="admin-badge-live-preview" style="margin-bottom:15px; display:flex; justify-content:center;">
-                            </div>
                             <input type="text" id="admin-badge-edit-id" placeholder="ID бейджа (только eng буквы, напр. dev)" style="margin-bottom:8px;">
                             <input type="text" id="admin-badge-edit-name" placeholder="Название бейджа (текст)" style="margin-bottom:8px;">
                             <textarea id="admin-badge-edit-desc" placeholder="Описание ачивки" rows="2" style="width: 100%; border-radius: 8px; border: 1px solid var(--border-light); background: rgba(0,0,0,0.2); color: #fff; padding: 10px; font-family: inherit; font-size: 14px; resize: vertical; margin-bottom: 8px;"></textarea>
@@ -6212,26 +6149,7 @@ class AdminPanel {
         Utils.$('btn-admin-generate-rel-badges').onclick = () => BadgeManager.generateRelationshipBadges();
         Utils.$('btn-admin-grant-event-badge').onclick = () => BadgeManager.grantEventBadgeToOnline();
 
-        const previewInputs = ['admin-badge-edit-name', 'admin-badge-edit-desc', 'admin-badge-edit-icon', 'admin-badge-edit-color', 'admin-badge-edit-bg', 'admin-badge-edit-border'];
-        previewInputs.forEach(id => {
-            if (Utils.$(id)) {
-                Utils.$(id).addEventListener('input', () => BadgeManager.updateLivePreview());
-                if (id === 'admin-badge-edit-icon') {
-                    // For when preset clicks change the value
-                    const originalDescriptor = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
-                    Object.defineProperty(Utils.$(id), 'value', {
-                        set(val) {
-                            originalDescriptor.set.call(this, val);
-                            BadgeManager.updateLivePreview();
-                        },
-                        get() { return originalDescriptor.get.call(this); }
-                    });
-                }
-            }
-        });
-
         BadgeManager.renderBadgeList();
-        BadgeManager.updateLivePreview();
         
         modal.querySelectorAll('.admin-users-tab').forEach(btn => {
             btn.onclick = () => {
@@ -8254,23 +8172,9 @@ class RoomManager {
         if (Math.abs(vid.currentTime - targetTime) > 1.5) {
             vid.currentTime = targetTime;
         }
-        if (state === 'playing' && vid.paused) {
-            vid.play().catch(e => {
-                if(e.name === 'NotAllowedError') {
-                    const overlay = Utils.$('play-interaction-overlay');
-                    if (overlay) overlay.style.display = 'flex';
-                }
-            });
-        }
+        if (state === 'playing' && vid.paused) vid.play().catch(()=>{});
         if (state === 'paused') {
-            if (vid.paused) {
-                vid.play().then(() => vid.pause()).catch(e => {
-                    if(e.name === 'NotAllowedError') {
-                        const overlay = Utils.$('play-interaction-overlay');
-                        if (overlay) overlay.style.display = 'flex';
-                    }
-                });
-            }
+            if (vid.paused) vid.play().then(() => vid.pause()).catch(() => {});
             else vid.pause();
         }
         
