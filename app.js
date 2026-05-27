@@ -3664,12 +3664,6 @@ class ProfileManager {
             badges.push(`<span class="role-badge" style="color:${color}; background:${bg}; border:1px solid ${border}; box-shadow:none;">${text}</span>`);
         }
         
-        if (profile?.selectedBadge && AppState.customBadges && AppState.customBadges[profile.selectedBadge]) {
-            const b = AppState.customBadges[profile.selectedBadge];
-            const iconStr = b.icon && String(b.icon).indexOf('http') === 0 ? `<img src="${Utils.escapeHtml(b.icon)}" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;border-radius:2px;" />` : `<span style="font-size:12px;margin-right:2px;">${b.icon || ''}</span>`;
-            badges.push(`<span class="role-badge" style="background:${b.bg}; color:${b.color}; border:1px solid ${b.border}; display:inline-flex; align-items:center;">${iconStr} ${Utils.escapeHtml(b.name)}</span>`);
-        }
-
         if (profile?.partner) badges.push(`<span class="partner-badge">Пара</span>`); // [UPDATE]
         return badges.join(' '); // [UPDATE]
     }
@@ -3929,13 +3923,43 @@ class ProfileManager {
         const passwordInput = Utils.$('security-password-input');
 
         if (provider === 'google') {
-            emailBox.innerText = 'Вы не указали почту';
-            actionBtn.innerText = 'Указать email';
+            emailBox.innerText = email || 'Вы авторизованы через Google';
+            actionBtn.innerText = 'Изменить почту';
             passwordInput.style.display = 'none';
+
+            // Show set password for google users if they haven't explicitly set one
+            // We can't perfectly check if password exists, but we can offer to set/reset it
+            Utils.$('security-set-password-section').style.display = 'block';
+            Utils.$('btn-security-set-password').onclick = async () => {
+                const newPass = Utils.$('security-new-password').value;
+                if (newPass.length < 6) return Utils.toast('Пароль минимум 6 символов', 'error');
+                
+                try {
+                    const { updatePassword } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
+                    await updatePassword(auth.currentUser, newPass);
+                    
+                    // Save to fast-switch cache
+                    const savedAccounts = JSON.parse(localStorage.getItem('cowio_saved_accounts') || '[]');
+                    const existingAcc = savedAccounts.find(a => a.uid === auth.currentUser.uid);
+                    if (existingAcc) { existingAcc.pass = newPass; }
+                    else { savedAccounts.push({ uid: auth.currentUser.uid, email: auth.currentUser.email, pass: newPass }); }
+                    localStorage.setItem('cowio_saved_accounts', JSON.stringify(savedAccounts));
+
+                    Utils.toast('Пароль успешно установлен!');
+                    Utils.$('security-new-password').value = '';
+                } catch(e) {
+                    if (e.code === 'auth/requires-recent-login') {
+                        Utils.toast('Нужна повторная авторизация. Перезайдите в аккаунт.', 'error');
+                    } else {
+                        Utils.toast(e.message || 'Ошибка установки пароля', 'error');
+                    }
+                }
+            };
         } else {
             emailBox.innerText = email || 'Email не указан';
             actionBtn.innerText = 'Изменить почту';
             passwordInput.style.display = 'block';
+            Utils.$('security-set-password-section').style.display = 'none';
         }
 
         note.innerText = `Почта подтверждена: ${emailVerified ? 'Да' : 'Нет'}`;
@@ -4622,12 +4646,14 @@ class ProfileManager {
                     
                     const wrapElem = badgesContainer.querySelector('.badge-carousel-wrap');
                     let wrapWidth = wrapElem ? wrapElem.getBoundingClientRect().width : 350;
-                    if (wrapWidth === 0) wrapWidth = window.innerWidth - 60; // Fallback
+                    if (wrapWidth === 0) wrapWidth = window.innerWidth > 500 ? 500 : window.innerWidth - 60; // Better Fallback
                     const centerOffset = Math.floor((wrapWidth / 2) - (itemWidth / 2)) - 300;
                     
                     track.style.transform = `translate3d(${centerOffset - (window.ProfileBadgesState.index * step)}px, 0, 0)`;
                     
                     items.forEach((el, i) => {
+                        // Ensure all cards are visible
+                        el.style.visibility = 'visible';
                         if(i === window.ProfileBadgesState.index) {
                             el.style.transform = 'scale(1)';
                             el.style.opacity = '1';
@@ -4636,8 +4662,8 @@ class ProfileManager {
                             el.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
                         } else {
                             el.style.transform = 'scale(0.85)';
-                            el.style.opacity = '0.4';
-                            el.style.filter = 'brightness(0.4)';
+                            el.style.opacity = '0.5';
+                            el.style.filter = 'brightness(0.5)';
                             el.style.zIndex = '1';
                             el.style.boxShadow = 'none';
                         }
@@ -4708,6 +4734,8 @@ class ProfileManager {
                 });
                 
                 setTimeout(updateBadgeCarousel, 50);
+                setTimeout(updateBadgeCarousel, 200);
+                setTimeout(updateBadgeCarousel, 500);
                 setTimeout(updateBadgeCarousel, 250);
                 setTimeout(updateBadgeCarousel, 500);
                 
@@ -5140,11 +5168,17 @@ class FriendsManager {
                     container.appendChild(div);
                 }
 
+                const relData = friendsMap[uid];
+                const streakHTML = (relData && relData.streak && relData.streak > 0) ? `<div style="position: absolute; bottom: -4px; right: -4px; background: rgba(0,0,0,0.8); border-radius: 50%; padding: 2px 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; border: 1px solid rgba(255,255,255,0.1);" title="Стрик общения: ${relData.streak} дней"><img src="https://em-content.zobj.net/source/telegram/386/fire_1f525.webp" style="width:14px; height:14px; margin-right:2px;">${relData.streak}</div>` : '';
+                
                 let av = profile.avatar ? `<img src="${Utils.escapeHtml(profile.avatar)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : (profile.name[0].toUpperCase());
                 const roleBadgeHtml = ProfileManager.getRoleBadgeHtml(profile, uid);
                 
                 div.innerHTML = `
-                    <div class="avatar">${av}</div>
+                    <div class="avatar" style="position:relative; overflow:visible; background:transparent;">
+                        <div style="width:100%; height:100%; border-radius:50%; overflow:hidden; background:rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:center;">${av}</div>
+                        ${streakHTML}
+                    </div>
                     <div class="friend-info-col" style="flex:1;">
                         <div class="friend-name">${Utils.escapeHtml(profile.name)} ${roleBadgeHtml}</div>
                         <div class="friend-status" style="font-size: 11px; opacity: 0.8; margin-top: 2px;">
@@ -5377,11 +5411,11 @@ class DirectMessages {
                 
                 dmGifSearchTimeout = setTimeout(async () => {
                     try {
-                        const res = await fetch(`https://g.tenor.com/v1/search?q=${encodeURIComponent(query)}&key=LIVDSRZULELA&limit=20`);
+                        const res = await fetch(`https://api.giphy.com/v1/gifs/search?api_key=dc6zaTOxFJmzC&q=${encodeURIComponent(query)}&limit=20`);
                         const data = await res.json();
-                        if (data.results && data.results.length > 0) {
-                            container.innerHTML = data.results.map(g => {
-                                const url = g.media[0].gif.url;
+                        if (data.data && data.data.length > 0) {
+                            container.innerHTML = data.data.map(g => {
+                                const url = g.images.fixed_height.url;
                                 return `<img src="${url}" class="dm-preset-gif" style="height:80px; flex-grow:1; object-fit:cover; border-radius:6px; cursor:pointer;" />`;
                             }).join('');
                             // Bind clicks
@@ -7655,7 +7689,7 @@ class RoomManager {
         RTCManager.init(roomId); 
     }
 
-    static getDefaultPerms() { return { chat: true, voice: true, player: (AppState.isHost || AdminPanel.isCurrentUserCreator()), reactions: true }; }
+    static getDefaultPerms() { return { chat: true, voice: true, player: true, reactions: true }; }
 
     static initRoomServicesFinal(roomId) {
         const uid = AppState.currentUser.uid;
@@ -7849,11 +7883,11 @@ class RoomManager {
             const el = document.createElement('div');
             el.className = 'floating-emoji';
             const imgMap = {
-                '<img src="https://emojigraph.org/media/apple/fire_1f525.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': 'https://em-content.zobj.net/source/telegram/386/fire_1f525.webp',
-                '<img src="https://emojigraph.org/media/apple/face-with-tears-of-joy_1f602.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': 'https://em-content.zobj.net/source/telegram/386/face-with-tears-of-joy_1f602.webp',
-                '<img src="https://emojigraph.org/media/apple/face-screaming-in-fear_1f631.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': 'https://em-content.zobj.net/source/telegram/386/face-screaming-in-fear_1f631.webp',
-                '<img src="https://emojigraph.org/media/apple/red-heart_2764-fe0f.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': 'https://em-content.zobj.net/source/telegram/386/red-heart_2764-fe0f.webp',
-                '<img src="https://emojigraph.org/media/apple/clapping-hands_1f44f.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': 'https://em-content.zobj.net/source/telegram/386/clapping-hands_1f44f.webp'
+                '🔥': 'https://em-content.zobj.net/source/telegram/386/fire_1f525.webp',
+                '😂': 'https://em-content.zobj.net/source/telegram/386/face-with-tears-of-joy_1f602.webp',
+                '😱': 'https://em-content.zobj.net/source/telegram/386/face-screaming-in-fear_1f631.webp',
+                '❤️': 'https://em-content.zobj.net/source/telegram/386/red-heart_2764-fe0f.webp',
+                '👏': 'https://em-content.zobj.net/source/telegram/386/clapping-hands_1f44f.webp'
             };
             if (imgMap[rx.emoji]) {
                 el.innerHTML = `<img src="${imgMap[rx.emoji]}" style="width: 48px; height: 48px; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3));">`;
