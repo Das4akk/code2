@@ -6067,10 +6067,10 @@ class AdminPanel {
 
                 <div id="admin-stats-grid" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:16px;"></div>
 
-                <div class="godmode-section" data-section="catalog" style="display:none; border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02); margin-bottom: 16px;">
+                <div class="godmode-section" data-section="catalog" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02); margin-bottom: 16px;">
                     <div style="font-weight:700; margin-bottom:10px;">Управление каталогом</div>
                     <div style="display:flex; gap:8px; margin-bottom: 16px;">
-                        <button class="primary-btn" id="btn-admin-add-catalog-item" style="width:auto; padding:8px 16px;">+ Добавить товар</button>
+                        <button class="primary-btn" id="btn-admin-add-catalog-item" onclick="CatalogManager.addNewAdminItem()" style="width:auto; padding:8px 16px;">+ Добавить товар</button>
                     </div>
                     <div id="admin-catalog-list" style="display:flex; flex-direction:column; gap:10px;"></div>
                 </div>
@@ -6405,6 +6405,11 @@ class AdminPanel {
             btn.onclick = () => this.switchGodModeSection(btn.dataset.section || 'dashboard');
         });
         this.switchGodModeSection('dashboard');
+        
+        // Render catalog items if data is already loaded
+        if (window.CatalogManager) {
+            window.CatalogManager.renderAdminCatalog();
+        }
     }
 
     static switchGodModeSection(section = 'dashboard') {
@@ -8986,7 +8991,6 @@ class CatalogManager {
     static activeFilter = 'all';
 
     static async init() {
-        if (!window.db) return; // Wait for firebase db
         this.bindFilters();
         
         onValue(ref(db, 'catalog'), (snap) => {
@@ -9011,17 +9015,17 @@ class CatalogManager {
             this.renderCatalog();
             this.renderAdminCatalog();
         });
-        
-        Utils.$('btn-admin-add-catalog-item')?.addEventListener('click', () => {
-            const id = 'item_' + Date.now();
-            set(ref(db, `catalog/${id}`), {
-                title: 'Новый Товар',
-                desc: 'Описание',
-                price: '100',
-                priceType: 'paid',
-                image: '',
-                type: 'frame'
-            });
+    }
+
+    static addNewAdminItem() {
+        const id = 'item_' + Date.now();
+        set(ref(db, `catalog/${id}`), {
+            title: 'Новый Товар',
+            desc: 'Описание',
+            price: '100',
+            priceType: 'paid',
+            image: '',
+            type: 'frame'
         });
     }
 
@@ -9176,9 +9180,13 @@ window.openCatalogItemModal = function(itemId) {
     }
 };
 
-// Initialize CatalogManager after loading
-setTimeout(() => CatalogManager.init(), 2000);
-
 window.CatalogManager = CatalogManager;
 window.ProfileManager = ProfileManager;
 window.FriendsManager = FriendsManager;
+
+// Initialize on load so it's visible to guests too
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => CatalogManager.init());
+} else {
+    CatalogManager.init();
+}
