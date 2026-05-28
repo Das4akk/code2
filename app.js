@@ -1096,12 +1096,17 @@ class YouTubePlayerManager {
     static async initPlayer(videoId, onStateChange) {
         await this.loadApi();
         return new Promise(resolve => {
-            if (this.player) {
-                this.player.loadVideoById(videoId);
-                this.player.getIframe().style.pointerEvents = 'auto';
-                setTimeout(() => typeof RoomManager !== 'undefined' && RoomManager.forceSyncVideo(), 800);
+            if (this.player && this.playerReady) {
+                try {
+                    this.player.loadVideoById(videoId);
+                    this.player.getIframe().style.pointerEvents = 'auto';
+                    setTimeout(() => typeof RoomManager !== 'undefined' && RoomManager.forceSyncVideo(), 800);
+                } catch(e) {
+                    console.error('Failed to load video on existing player', e);
+                }
                 resolve(this.player);
             } else {
+                this.playerReady = false;
                 this.player = new window.YT.Player('yt-player', {
                     videoId: videoId,
                     width: '100%',
@@ -1112,11 +1117,15 @@ class YouTubePlayerManager {
                         disablekb: 0,
                         fs: 0,
                         modestbranding: 1,
-                        rel: 0
+                        rel: 0,
+                        origin: window.location.origin
                     },
                     events: {
                         onReady: () => {
-                            this.player.getIframe().style.pointerEvents = 'auto';
+                            this.playerReady = true;
+                            try {
+                                this.player.getIframe().style.pointerEvents = 'auto';
+                            } catch (e) {}
                             setTimeout(() => typeof RoomManager !== 'undefined' && RoomManager.forceSyncVideo(), 500);
                             resolve(this.player);
                         },
@@ -1132,11 +1141,12 @@ class YouTubePlayerManager {
         });
     }
 
-    static play() { if (this.player && this.player.playVideo) this.player.playVideo(); }
-    static pause() { if (this.player && this.player.pauseVideo) this.player.pauseVideo(); }
-    static seek(time) { if (this.player && this.player.seekTo) this.player.seekTo(time, true); }
-    static getCurrentTime() { return this.player && this.player.getCurrentTime ? this.player.getCurrentTime() : 0; }
+    static play() { if (this.player && this.playerReady && this.player.playVideo) this.player.playVideo(); }
+    static pause() { if (this.player && this.playerReady && this.player.pauseVideo) this.player.pauseVideo(); }
+    static seek(time) { if (this.player && this.playerReady && this.player.seekTo) this.player.seekTo(time, true); }
+    static getCurrentTime() { return this.player && this.playerReady && this.player.getCurrentTime ? this.player.getCurrentTime() : 0; }
     static destroy() {
+        this.playerReady = false;
         if (this.player && typeof this.player.destroy === 'function') {
             try { this.player.destroy(); } catch(e){}
             this.player = null;
@@ -2235,6 +2245,7 @@ class EasterEggManager {
     }
 
     static handleKonami(key) {
+        if (!key) return;
         const expected = this.KONAMI[AppState.easterEggs.konamiIndex];
         const normalized = key.length === 1 ? key.toLowerCase() : key;
         if (normalized === expected) {
@@ -2249,6 +2260,7 @@ class EasterEggManager {
     }
 
     static handleWordSequence(key) {
+        if (!key) return;
         if (!/^[a-zа-я]$/i.test(key)) return;
         const now = Date.now();
         AppState.easterEggs.keyBuffer = now - AppState.easterEggs.lastKeyTs > 1200 ? '' : AppState.easterEggs.keyBuffer;
@@ -4646,7 +4658,7 @@ class ProfileManager {
                     <div style="position:relative; width:100%; height:200px; display:flex; align-items:center; justify-content:center; overflow:hidden;">
                         <button id="badge-prev" style="position:absolute; left:10px; z-index:10; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.2); color:white; border-radius:50%; width:36px; height:36px; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.2s;">‹</button>
                         <div class="badge-carousel-wrap" style="width:100%; max-width:500px; height:100%; position:relative; overflow:hidden; mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent); -webkit-mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);">
-                            <div id="badge-track" style="display:flex; height:100%; align-items:center; transition:transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform:translateX(0px); gap:20px; padding:0 300px; width:max-content; box-sizing:content-box;">
+                            <div id="badge-track" style="display:flex; height:100%; align-items:center; transition:transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform:translateX(0px); gap:20px; width:max-content; box-sizing:content-box;">
                                 ${badgesHtml}
                             </div>
                         </div>
@@ -6110,7 +6122,7 @@ class AdminPanel {
                         
                         <div style="font-weight:700; margin-bottom:5px; font-size:12px; color:var(--text-muted); text-align:center;">Предпросмотр</div>
                         <div id="admin-badge-preview-container" style="display:flex; justify-content:center; margin-bottom:15px; transform: scale(0.9);">
-                            <div class="ach-card" style="width: 160px; height: 180px; flex-shrink: 0; border-radius: 12px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-light, rgba(255,255,255,0.1)); display: flex; flex-direction: column; align-items: center; text-align: center; position: relative; overflow: hidden;">
+                            <div class="ach-card" style="width: 160px; height: 180px; flex-shrink: 0; border-radius: 12px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-light, rgba(255,255,255,0.1)); display: flex; flex-direction: column; align-items: center; text-align: center; position: relative; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
                                 <div style="flex: 1; display:flex; align-items:flex-end; justify-content:center; width:100%; padding-bottom: 5px;" id="admin-preview-icon">
                                     <span style="font-size:48px;">🌟</span>
                                 </div>
