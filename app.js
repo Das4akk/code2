@@ -2991,13 +2991,13 @@ class BadgeManager {
         });
         
         const presetEmojis = [
-            'https://cdn3.emoji.gg/emojis/36840-demon-smile.gif',
-            'https://cdn3.emoji.gg/emojis/83447-sleep.gif',
-            'https://cdn3.emoji.gg/emojis/13961-party.gif',
-            'https://cdn3.emoji.gg/emojis/22727-clown.gif',
-            'https://cdn3.emoji.gg/emojis/28433-cool.gif',
-            'https://cdn3.emoji.gg/emojis/98791-scream.gif',
-            'https://cdn3.emoji.gg/emojis/81026-silent.gif'
+            'https://cdn.emoji.gg/emojis/36840-demon-smile.gif',
+            'https://cdn.emoji.gg/emojis/83447-sleep.gif',
+            'https://cdn.emoji.gg/emojis/13961-party.gif',
+            'https://cdn.emoji.gg/emojis/22727-clown.gif',
+            'https://cdn.emoji.gg/emojis/28433-cool.gif',
+            'https://cdn.emoji.gg/emojis/98791-scream.gif',
+            'https://cdn.emoji.gg/emojis/81026-silent.gif'
         ];
         
         setTimeout(() => {
@@ -3033,10 +3033,10 @@ class BadgeManager {
     static async generateRelationshipBadges() {
         if (!AdminPanel.requireAdmin()) return;
         const badges = {
-            rel_1week: { name: "1 Неделя", desc: "Вместе уже неделю!", icon: "https://cdn3.emoji.gg/emojis/3468-love.gif", color: "#ffffff", bg: "#d81b60", border: "#ff4081" },
-            rel_1month: { name: "1 Месяц", desc: "Первый совместный месяц!", icon: "https://cdn3.emoji.gg/emojis/5232-heart.gif", color: "#ffffff", bg: "#c2185b", border: "#f50057" },
-            rel_6months: { name: "Полгода", desc: "Связь крепчает. 6 месяцев!", icon: "https://cdn3.emoji.gg/emojis/4638-heart.gif", color: "#ffffff", bg: "#ad1457", border: "#c51162" },
-            rel_1year: { name: "1 Год", desc: "Юбилей любви! 1 год", icon: "https://cdn3.emoji.gg/emojis/7697-ring.gif", color: "#ffffff", bg: "#880e4f", border: "#f50057" }
+            rel_1week: { name: "1 Неделя", desc: "Вместе уже неделю!", icon: "https://cdn.emoji.gg/emojis/3468-love.gif", color: "#ffffff", bg: "#d81b60", border: "#ff4081" },
+            rel_1month: { name: "1 Месяц", desc: "Первый совместный месяц!", icon: "https://cdn.emoji.gg/emojis/5232-heart.gif", color: "#ffffff", bg: "#c2185b", border: "#f50057" },
+            rel_6months: { name: "Полгода", desc: "Связь крепчает. 6 месяцев!", icon: "https://cdn.emoji.gg/emojis/4638-heart.gif", color: "#ffffff", bg: "#ad1457", border: "#c51162" },
+            rel_1year: { name: "1 Год", desc: "Юбилей любви! 1 год", icon: "https://cdn.emoji.gg/emojis/7697-ring.gif", color: "#ffffff", bg: "#880e4f", border: "#f50057" }
         };
         for (const [id, payload] of Object.entries(badges)) {
             await set(ref(db, `badges/${id}`), payload);
@@ -3095,6 +3095,7 @@ class BadgeManager {
                 Utils.$('admin-badge-edit-color').value = b.color;
                 Utils.$('admin-badge-edit-bg').value = b.bg;
                 Utils.$('admin-badge-edit-border').value = b.border;
+                if (window.updateAdminBadgePreview) window.updateAdminBadgePreview();
             };
             div.querySelector('button').onclick = () => this.deleteBadge(id);
             container.appendChild(div);
@@ -4542,7 +4543,7 @@ class ProfileManager {
                     _id: 'partner_0',
                     name: 'Это любовь',
                     desc: 'Вступить в отношения',
-                    icon: 'https://cdn3.emoji.gg/emojis/1690-love-face-emoji.gif',
+                    icon: 'https://cdn.emoji.gg/emojis/1690-love-face-emoji.gif',
                     color: '#ffffff'
                 });
                 
@@ -4551,7 +4552,7 @@ class ProfileManager {
                         _id: 'partner_7',
                         name: 'И Долго это будет?',
                         desc: `Первая неделя отношений с ${partnerName}`,
-                        icon: 'https://cdn3.emoji.gg/emojis/1690-love-face-emoji.gif',
+                        icon: 'https://cdn.emoji.gg/emojis/1690-love-face-emoji.gif',
                         color: '#ffffff'
                     });
                 }
@@ -4560,7 +4561,7 @@ class ProfileManager {
                     userBadges.push({
                         name: 'Ну врооде бы серьезка',
                         desc: `Первый месяц отношений вместе с ${partnerName}`,
-                        icon: 'https://cdn3.emoji.gg/emojis/1690-love-face-emoji.gif',
+                        icon: 'https://cdn.emoji.gg/emojis/1690-love-face-emoji.gif',
                         color: '#ffffff'
                     });
                 }
@@ -4570,7 +4571,7 @@ class ProfileManager {
                         _id: 'partner_100',
                         name: 'Брак',
                         desc: `100 Дней отношений с ${partnerName}`,
-                        icon: 'https://cdn3.emoji.gg/emojis/1690-love-face-emoji.gif',
+                        icon: 'https://cdn.emoji.gg/emojis/1690-love-face-emoji.gif',
                         color: '#ffffff'
                     });
                 }
@@ -4645,8 +4646,18 @@ class ProfileManager {
                     const step = itemWidth + gap;
                     
                     const wrapElem = badgesContainer.querySelector('.badge-carousel-wrap');
-                    let wrapWidth = wrapElem ? wrapElem.getBoundingClientRect().width : 350;
-                    if (wrapWidth === 0) wrapWidth = window.innerWidth > 500 ? 500 : window.innerWidth - 60; // Better Fallback
+                    let wrapWidth = 0;
+                    if (wrapElem && wrapElem.clientWidth > 0) {
+                        wrapWidth = wrapElem.clientWidth;
+                    } else {
+                        // Fallback checking modal width
+                        let modalParent = badgesContainer.closest('.modal-content');
+                        if (modalParent) {
+                            wrapWidth = modalParent.clientWidth - 48; // padding logic
+                        } else {
+                            wrapWidth = Math.min(440, window.innerWidth - 32) - 48;
+                        }
+                    }
                     const centerOffset = Math.floor((wrapWidth / 2) - (itemWidth / 2)) - 300;
                     
                     track.style.transform = `translate3d(${centerOffset - (window.ProfileBadgesState.index * step)}px, 0, 0)`;
@@ -4876,19 +4887,17 @@ class FriendsManager {
                         </div>
                         <h3 style="font-size:28px; margin-bottom:5px;">${Utils.escapeHtml(profile.name)} ${ProfileManager.getRoleBadgeHtml(profile, uid)}</h3>
                         <div style="color:var(--accent); font-weight:600; font-size:16px; margin-bottom:20px;">@${Utils.escapeHtml(profile.username)}</div>
-                        
-                        <p style="color:var(--text-muted); font-size:15px; margin-bottom:30px; line-height:1.6; max-width: 500px; margin-left: auto; margin-right: auto;">
-                            ${Utils.escapeHtml(profile.bio || 'Нет описания.')}<br><br>
-                            <span style="color:var(--text-main); font-weight:bold;">Статистика:</span><br>
-                            Уровень: ${Math.floor(1 + ((profile.messageCount||0) / 50))} | Сообщений: ${profile.messageCount||0}<br>
-                            Друзей: ${friendsCount} | С нами с: ${joinDate}
-                        </p>
-                        
+                        <p style="color:var(--text-muted); font-size:15px; margin-bottom:20px;">Для просмотра полной статистики, отношений и ачивок, откройте карточку профиля.</p>
                         <div style="display:flex; justify-content:center; gap: 15px;">
-                            <button class="primary-btn" id="btn-edit-my-profile-inline" style="width:auto; padding: 12px 24px;">Редактировать профиль</button>
+                            <button class="primary-btn" id="btn-open-full-profile-inline" style="width:auto; padding: 12px 24px;">Посмотреть в полном виде</button>
+                            <button class="secondary-btn" id="btn-edit-my-profile-inline" style="width:auto; padding: 12px 24px;">Редактировать</button>
                         </div>
                     </div>
                 `;
+                
+                Utils.$('btn-open-full-profile-inline').onclick = () => {
+                    ProfileManager.openViewProfileModal(uid);
+                };
                 
                 Utils.$('btn-edit-my-profile-inline').onclick = () => {
                     ProfileManager.openEditProfileModal();
@@ -4934,7 +4943,10 @@ class FriendsManager {
                             }
                             import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js").then(({ signInWithEmailAndPassword, getAuth }) => {
                                 Utils.toast('Вход...');
-                                signInWithEmailAndPassword(getAuth(), acc.email, acc.pass).catch(e => {
+                                signInWithEmailAndPassword(getAuth(), acc.email, acc.pass).then(() => {
+                                    Utils.toast('Успешно!', 'success');
+                                    Utils.$('btn-switch-account').onclick(); // Refresh UI
+                                }).catch(e => {
                                     Utils.toast('Ошибка входа', 'error');
                                 });
                             });
@@ -5487,7 +5499,7 @@ class DirectMessages {
         list.innerHTML = messages.map(m => {
             const isSelf = m.fromUid === AppState.currentUser.uid;
             if (m.type === 'system') {
-                return `<div class="sys-msg" style="margin:6px 0;">-------${Utils.escapeHtml(m.fromName || 'Пользователь')} ${Utils.escapeHtml(m.text || '')}-------</div>`;
+                return `<div class="sys-msg">${Utils.escapeHtml(m.fromName || 'Пользователь')} ${Utils.escapeHtml(m.text || '')}</div>`;
             }
             
             if (m.type === 'invite') {
@@ -6069,6 +6081,21 @@ class AdminPanel {
                 <div class="godmode-section" data-section="badges" style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
                     <div style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
                         <div style="font-weight:700; margin-bottom:10px;">Создать/Изменить бейдж</div>
+                        
+                        <div style="font-weight:700; margin-bottom:5px; font-size:12px; color:var(--text-muted); text-align:center;">Предпросмотр</div>
+                        <div id="admin-badge-preview-container" style="display:flex; justify-content:center; margin-bottom:15px; transform: scale(0.9);">
+                            <div class="ach-card" style="width: 160px; height: 180px; flex-shrink: 0; border-radius: 12px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-light, rgba(255,255,255,0.1)); display: flex; flex-direction: column; align-items: center; text-align: center; position: relative; overflow: hidden;">
+                                <div style="flex: 1; display:flex; align-items:flex-end; justify-content:center; width:100%; padding-bottom: 5px;" id="admin-preview-icon">
+                                    <span style="font-size:48px;">🌟</span>
+                                </div>
+                                <div style="flex: 1; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding: 5px 6px; width:100%;">
+                                    <div id="admin-preview-name" style="color: #ffffff; font-weight: 800; font-size: 13px; line-height: 1.2;">Новый бейдж</div>
+                                    <div id="admin-preview-desc" style="color: rgba(255,255,255,0.7); font-size: 10px; margin-top:4px; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">Описание нового бейджа</div>
+                                    <div style="color: rgba(255,255,255,0.5); font-size: 9.5px; margin-top:6px; font-weight: 600;">Уже получили: ...</div>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div class="admin-form-group">
                             <input type="text" id="admin-badge-edit-id" placeholder="ID бейджа (только eng буквы, напр. dev)" style="margin-bottom:8px;">
                             <input type="text" id="admin-badge-edit-name" placeholder="Название бейджа (текст)" style="margin-bottom:8px;">
@@ -6148,6 +6175,35 @@ class AdminPanel {
         Utils.$('btn-admin-save-badge').onclick = () => BadgeManager.saveBadge();
         Utils.$('btn-admin-generate-rel-badges').onclick = () => BadgeManager.generateRelationshipBadges();
         Utils.$('btn-admin-grant-event-badge').onclick = () => BadgeManager.grantEventBadgeToOnline();
+
+        const updateBadgePreview = () => {
+            const name = Utils.$('admin-badge-edit-name')?.value || 'Новый бейдж';
+            const desc = Utils.$('admin-badge-edit-desc')?.value || 'Описание';
+            const icon = Utils.$('admin-badge-edit-icon')?.value || '🌟';
+            
+            const color = Utils.$('admin-badge-edit-color')?.value || '#ffffff';
+            const bg = Utils.$('admin-badge-edit-bg')?.value || 'rgba(0,0,0,0.2)';
+            const border = Utils.$('admin-badge-edit-border')?.value || 'rgba(255,255,255,0.1)';
+            
+            if (Utils.$('admin-preview-name')) Utils.$('admin-preview-name').innerText = name;
+            if (Utils.$('admin-preview-desc')) Utils.$('admin-preview-desc').innerText = desc;
+            
+            const iconHtml = icon.match(/^http/) ? `<img src="${Utils.escapeHtml(icon)}" onerror="this.src='https://via.placeholder.com/60?text=Error'; this.onerror=null;" style="width:60px;height:60px;object-fit:contain;border-radius:6px;"/>` : `<span style="font-size:48px;">${Utils.escapeHtml(icon)}</span>`;
+            if (Utils.$('admin-preview-icon')) Utils.$('admin-preview-icon').innerHTML = iconHtml;
+            
+            const card = Utils.$('admin-badge-preview-container')?.querySelector('.ach-card');
+            if (card) {
+                card.style.background = bg;
+                card.style.borderColor = border;
+                if (Utils.$('admin-preview-name')) Utils.$('admin-preview-name').style.color = color;
+            }
+        };
+
+        ['admin-badge-edit-name', 'admin-badge-edit-desc', 'admin-badge-edit-icon', 'admin-badge-edit-color', 'admin-badge-edit-bg', 'admin-badge-edit-border'].forEach(id => {
+            const el = Utils.$(id);
+            if(el) el.addEventListener('input', updateBadgePreview);
+        });
+        window.updateAdminBadgePreview = updateBadgePreview;
 
         BadgeManager.renderBadgeList();
         
@@ -8172,7 +8228,13 @@ class RoomManager {
         if (Math.abs(vid.currentTime - targetTime) > 1.5) {
             vid.currentTime = targetTime;
         }
-        if (state === 'playing' && vid.paused) vid.play().catch(()=>{});
+        if (state === 'playing' && vid.paused) {
+            vid.play().catch(()=>{
+                vid.muted = true;
+                vid.play().catch(()=>{});
+                Utils.toast('Браузер заблокировал автовоспроизведение со звуком. Звук отключен.', 'warn');
+            });
+        }
         if (state === 'paused') {
             if (vid.paused) vid.play().then(() => vid.pause()).catch(() => {});
             else vid.pause();
