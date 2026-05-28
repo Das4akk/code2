@@ -4944,7 +4944,7 @@ class FriendsManager {
 
         AppState.activeSubscriptions.push(() => off(reqRef, 'value', unsubReq), () => off(frRef, 'value', unsubFr));
 
-        const navItems = ['nav-profile', 'nav-rooms', 'nav-find-friend', 'nav-friends'];
+        const navItems = ['nav-profile', 'nav-rooms', 'nav-catalog', 'nav-find-friend', 'nav-friends', 'nav-switch-account'];
         const setNavActive = (id) => {
             navItems.forEach(n => {
                 const el = Utils.$(n);
@@ -4955,6 +4955,7 @@ class FriendsManager {
             Utils.$('section-friends').style.display = id === 'nav-friends' ? 'flex' : 'none';
             Utils.$('section-find-friend').style.display = id === 'nav-find-friend' ? 'flex' : 'none';
             Utils.$('section-rooms').style.display = id === 'nav-rooms' ? 'flex' : 'none';
+            Utils.$('section-catalog').style.display = id === 'nav-catalog' ? 'flex' : 'none';
             Utils.$('section-profile').style.display = id === 'nav-profile' ? 'flex' : 'none';
             Utils.$('section-switch-account').style.display = id === 'nav-switch-account' ? 'flex' : 'none';
         };
@@ -4962,6 +4963,7 @@ class FriendsManager {
         Utils.$('nav-friends').onclick = () => setNavActive('nav-friends');
         Utils.$('nav-find-friend').onclick = () => setNavActive('nav-find-friend');
         Utils.$('nav-rooms').onclick = () => setNavActive('nav-rooms');
+        if (Utils.$('nav-catalog')) Utils.$('nav-catalog').onclick = () => setNavActive('nav-catalog');
         if (Utils.$('nav-profile')) Utils.$('nav-profile').onclick = async () => {
             setNavActive('nav-profile');
             const uid = AppState.currentUser?.uid;

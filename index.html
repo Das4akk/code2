@@ -770,6 +770,7 @@
                 <nav class="nav-menu">
                     <div class="nav-item" id="nav-profile"><span><img src="https://emojigraph.org/media/apple/bust-in-silhouette_1f464.png" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Мой профиль</span></div>
                     <div class="nav-item active" id="nav-rooms"><span><img src="https://emojigraph.org/media/apple/television_1f4fa.png" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Комнаты</span></div>
+                    <div class="nav-item" id="nav-catalog"><span><img src="https://emojigraph.org/media/apple/shopping-bags_1f6cd-fe0f.png" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Каталог</span></div>
                     <div class="nav-item" id="nav-find-friend"><span><img src="https://emojigraph.org/media/apple/magnifying-glass-tilted-left_1f50d.png" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Найти друга</span></div>
                     <div class="nav-item" id="nav-friends">
                         <span><img src="https://emojigraph.org/media/apple/busts-in-silhouette_1f465.png" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Друзья</span>
@@ -849,6 +850,45 @@
 
                     <button class="primary-btn" id="btn-do-switch-account" style="width: 100%; font-size: 16px; padding: 14px;">+ Добавить новый аккаунт</button>
                     <button class="danger-btn" id="btn-do-switch-account-clear" style="width: 100%; font-size: 14px; padding: 10px; margin-top: 10px; background: transparent; border: 1px solid rgba(255,0,0,0.5); color: rgba(255,100,100,0.8);">Очистить список (полный выход)</button>
+                </div>
+            </main>
+
+            <main class="rooms-main" id="section-catalog" style="display: none;">
+                <div class="friends-container" style="max-width: 800px; width: 100%; margin: 0 auto; padding-top: 20px;">
+                    <div class="section-title" style="font-size: 24px; margin-bottom: 20px;"><img src="https://emojigraph.org/media/apple/shopping-bags_1f6cd-fe0f.png" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Каталог</div>
+                    
+                    <div id="catalog-list" style="display: flex; flex-wrap: wrap; gap: 15px;">
+                        <div class="ach-card" style="
+                            width: 160px; 
+                            min-width: 160px;
+                            max-width: 160px;
+                            height: 180px;
+                            min-height: 180px;
+                            max-height: 180px;
+                            flex-shrink: 0;
+                            border-radius: 12px; 
+                            background: rgba(0,0,0,0.2);
+                            border: 1px solid var(--border-light, rgba(255,255,255,0.1));
+                            display: flex; 
+                            flex-direction: column; 
+                            align-items: center; 
+                            text-align: center;
+                            position: relative;
+                            overflow: hidden;
+                            justify-content: flex-start;
+                            padding: 12px;
+                            box-sizing: border-box;
+                            cursor: pointer;
+                        " onclick="alert('Бесплатно: Скоро появится возможность установки');">
+                            <div style="flex: 1; display:flex; align-items:center; justify-content:center; padding-top: 5px;">
+                                <img src="https://media1.tenor.com/m/jaoJQSjxO9MAAAAC/cat-onsie-discord.gif" style="width:60px;height:60px;object-fit:contain;border-radius:6px;"/>
+                            </div>
+                            <div style="width:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; flex: 1.5; gap:4px; margin-top: 10px;">
+                                <div style="color: #ffffff; font-weight: 700; font-size: 13px; line-height: 1.2;">Рамка Cat Onesie</div>
+                                <div style="font-size: 11px; color: var(--accent, #4cd137); font-weight:bold; line-height: 1.3;">БЕСПЛАТНО</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </main>
         </div>
