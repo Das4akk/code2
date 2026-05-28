@@ -1054,6 +1054,13 @@ class RutubePlayerManager {
     static pause() {
         if (this.player) this.player.postMessage('player:pause', {});
     }
+    
+    static getState() {
+        // Rutube has limited exposed state via postMessage unless tracked
+        // but we track onStateChange in handleMessage? Actually we just pass it.
+        // For simplicity, return null if unknown.
+        return null; 
+    }
 
     static seek(time) {
         if (this.player) this.player.postMessage('player:setCurrentTime', { time });
@@ -1146,6 +1153,13 @@ class YouTubePlayerManager {
 
     static play() { if (this.player && this.playerReady && this.player.playVideo) this.player.playVideo(); }
     static pause() { if (this.player && this.playerReady && this.player.pauseVideo) this.player.pauseVideo(); }
+    static getState() {
+        if (!this.player || !this.playerReady || !this.player.getPlayerState) return null;
+        const state = this.player.getPlayerState();
+        if (state === window.YT.PlayerState.PLAYING) return 'playing';
+        if (state === window.YT.PlayerState.PAUSED) return 'paused';
+        return null;
+    }
     static seek(time) { if (this.player && this.playerReady && this.player.seekTo) this.player.seekTo(time, true); }
     static getCurrentTime() { return this.player && this.playerReady && this.player.getCurrentTime ? this.player.getCurrentTime() : 0; }
     static destroy() {
@@ -1313,6 +1327,8 @@ class VideoPlaybackManager {
                 vid.style.display = 'none';
                 
                 const onStateChange = (e) => {
+                    if (window._isSyncingVideo) return; // ignore events during forceSync
+                    
                     const isYT = ytId;
                     const state = isYT ? e.data : e; 
                     const playingState = isYT ? (window.YT ? window.YT.PlayerState.PLAYING : 1) : 'playing';
@@ -1322,6 +1338,8 @@ class VideoPlaybackManager {
                     if (state === playingState) {
                         if (AppState.ignoreVideoEvents) return;
                         if (!RoomManager.hasPerm('player')) return;
+                        if (Manager.getCurrentTime() === 0 && AppState.lastKnownSyncState && AppState.lastKnownSyncState.time > 2) return; // Prevent spurious 0:00 broadcasts on load
+                        
                         AppState.ignoreVideoEvents = true;
                         set(ref(db, `rooms/${AppState.currentRoomId}/sync`), {
                             type: 'play',
@@ -1331,7 +1349,7 @@ class VideoPlaybackManager {
                         });
                         setTimeout(() => AppState.ignoreVideoEvents = false, 1500);
                     } else if (state === pausedState) {
-                        if (AppState.ignoreVideoEvents) return;
+                        if (AppState.ignoreVideoEvents || window._isSyncingVideo) return;
                         if (!RoomManager.hasPerm('player')) return;
                         AppState.ignoreVideoEvents = true;
                         set(ref(db, `rooms/${AppState.currentRoomId}/sync`), {
@@ -4562,14 +4580,19 @@ class ProfileManager {
         Utils.$('view-status').innerHTML = `<div class="indicator ${isOnline ? 'online' : ''}" style="width:8px;height:8px;border-radius:50%;background:${isOnline ? '#4caf50' : '#888'};display:inline-block;margin-right:6px;"></div>${statusText}`;
 
         const badgeHtml = this.getRoleBadgeHtml(profile, targetUid);
-        const genderEmoji = profile.gender === 'female' 
-            ? '<img src="https://emojigraph.org/media/apple/woman_1f469.png" style="width:1.2em;height:1.2em;vertical-align:bottom;margin-right:5px;" alt="Женщина">' 
-            : (profile.gender === 'male' ? '<img src="https://emojigraph.org/media/apple/man_1f468.png" style="width:1.2em;height:1.2em;vertical-align:bottom;margin-right:5px;" alt="Мужчина">' : '');
+        
+        let genderString = '';
+        if (profile.gender === 'female') {
+            genderString = 'Пол: Женский <img src="https://emojigraph.org/media/apple/woman_1f469.png" style="width:1.2em;height:1.2em;vertical-align:bottom;" alt="Женщина"><br>';
+        } else if (profile.gender === 'male') {
+            genderString = 'Пол: Мужской <img src="https://emojigraph.org/media/apple/man_1f468.png" style="width:1.2em;height:1.2em;vertical-align:bottom;" alt="Мужчина"><br>';
+        }
 
-        Utils.$('view-name').innerHTML = `${genderEmoji}${Utils.escapeHtml(profile.name)} ${badgeHtml}`;
+        Utils.$('view-name').innerHTML = `${Utils.escapeHtml(profile.name)} ${badgeHtml}`;
         Utils.$('view-username').innerText = `@${Utils.escapeHtml(profile.username)}`;
         Utils.$('view-bio').innerHTML = `
             ${Utils.escapeHtml(profile.bio || 'Пользователь не добавил описание.')}<br><br>
+            ${genderString}
             <strong style="color:var(--text-main);">Статистика:</strong><br>
             Друзей: ${friendsCount}<br>
             На платформе с: ${joinDate}
@@ -7428,14 +7451,20 @@ class RoomManager {
             this.updateRoomsDOM();
 
             // Автоматическая синхронизация тем
-            if (AppState.currentRoomId && data[AppState.currentRoomId]) {
-                const currentRoom = data[AppState.currentRoomId];
-                const newTheme = this.normalizeRoomTheme(currentRoom.theme || 'default');
-                if (AppState.currentTheme !== newTheme) {
-                    AppState.currentTheme = newTheme;
-                    this.applyRoomTheme(newTheme);
+            if (AppState.currentRoomId) {
+                if (!data[AppState.currentRoomId]) {
+                    // Комната была удалена
+                    Utils.toast('Комната была удалена', 'info');
+                    this.leaveRoom();
+                } else {
+                    const currentRoom = data[AppState.currentRoomId];
+                    const newTheme = this.normalizeRoomTheme(currentRoom.theme || 'default');
+                    if (AppState.currentTheme !== newTheme) {
+                        AppState.currentTheme = newTheme;
+                        this.applyRoomTheme(newTheme);
+                    }
+                    VideoPlaybackManager.syncRoomVideoIfChanged(currentRoom);
                 }
-                VideoPlaybackManager.syncRoomVideoIfChanged(currentRoom);
             }
             
             let totalOnline = 0;
@@ -7646,7 +7675,9 @@ class RoomManager {
             Utils.$('room-theme-carousel').classList.remove('active');
             Utils.$('btn-delete-room').onclick = async () => {
                 if(confirm('Точно удалить комнату навсегда?')) {
-                    await remove(ref(db, `rooms/${roomId}`)); modal.classList.remove('active'); this.leaveRoom();
+                    modal.classList.remove('active'); 
+                    this.leaveRoom();
+                    await remove(ref(db, `rooms/${roomId}`)); 
                 }
             };
         } else {
@@ -7888,9 +7919,9 @@ class RoomManager {
 
         const vid = Utils.$('native-player');
         if (vid) {
-            vid.onplay = () => { if(!AppState.ignoreVideoEvents && this.hasPerm('player')) set(syncRef, { type: 'play', state: 'playing', time: vid.currentTime, ts: Date.now() }); };
-            vid.onpause = () => { if(!AppState.ignoreVideoEvents && this.hasPerm('player')) set(syncRef, { type: 'pause', state: 'paused', time: vid.currentTime, ts: Date.now() }); };
-            vid.onseeked = () => { if(!AppState.ignoreVideoEvents && this.hasPerm('player')) set(syncRef, { type: 'seek', state: vid.paused ? 'paused' : 'playing', time: vid.currentTime, ts: Date.now() }); };
+            vid.onplay = () => { if(!AppState.ignoreVideoEvents && !window._isSyncingVideo && this.hasPerm('player')) set(syncRef, { type: 'play', state: 'playing', time: vid.currentTime, ts: Date.now() }); };
+            vid.onpause = () => { if(!AppState.ignoreVideoEvents && !window._isSyncingVideo && this.hasPerm('player')) set(syncRef, { type: 'pause', state: 'paused', time: vid.currentTime, ts: Date.now() }); };
+            vid.onseeked = () => { if(!AppState.ignoreVideoEvents && !window._isSyncingVideo && this.hasPerm('player')) set(syncRef, { type: 'seek', state: vid.paused ? 'paused' : 'playing', time: vid.currentTime, ts: Date.now() }); };
         }
 
         const sUnsub = onValue(syncRef, (snap) => {
@@ -8303,25 +8334,28 @@ class RoomManager {
         const isRt = MediaResolverClient.extractRutubeId(currentRoom.videoSourceUrl || currentRoom.videoUrl);
 
         if ((YouTubePlayerManager.player && isYt) || (RutubePlayerManager.player && isRt)) {
-            if (AppState.ignoreVideoEvents) return;
+            // Unconditionally apply sync from server, but ignore the resulting local video events
+            window._isSyncingVideo = true;
             AppState.ignoreVideoEvents = true;
             const Manager = isYt ? YouTubePlayerManager : RutubePlayerManager;
+            const currentState = Manager.getState ? Manager.getState() : null;
+            
             if (Math.abs(Manager.getCurrentTime() - targetTime) > 1.5) {
                 Manager.seek(targetTime);
             }
-            if (state === 'playing') Manager.play();
-            if (state === 'paused') {
-                Manager.play();
-                setTimeout(() => { if (AppState.currentRoomId) Manager.pause(); }, 500);
+            if (state === 'playing' && currentState !== 'playing') Manager.play();
+            if (state === 'paused' && currentState !== 'paused') {
+                if (!currentState) Manager.play(); // Buffer on init
+                setTimeout(() => { if (AppState.currentRoomId) Manager.pause(); }, currentState ? 0 : 500);
             }
             
-            setTimeout(() => AppState.ignoreVideoEvents = false, 1500);
+            setTimeout(() => { AppState.ignoreVideoEvents = false; window._isSyncingVideo = false; }, 1500);
             return;
         }
 
         if (!vid || !vid.readyState) return;
-        if (AppState.ignoreVideoEvents) return;
         
+        window._isSyncingVideo = true;
         AppState.ignoreVideoEvents = true;
         
         if (Math.abs(vid.currentTime - targetTime) > 1.5) {
@@ -8339,7 +8373,7 @@ class RoomManager {
             else vid.pause();
         }
         
-        setTimeout(() => AppState.ignoreVideoEvents = false, 1500);
+        setTimeout(() => { AppState.ignoreVideoEvents = false; window._isSyncingVideo = false; }, 1500);
     }
 
     static leaveRoom() {
