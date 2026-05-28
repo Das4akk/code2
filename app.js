@@ -3879,21 +3879,27 @@ class ProfileManager {
         Utils.$('edit-avatar-url').value = p.avatar || '';
         
         let selectedFrame = p.frame || null;
-        const frames = [
-            { id: null, name: 'Нет' },
-            { id: 'https://discord-decoration.art/decorations/gomah.webp', name: 'Gomah' },
-        ];
+        
+        let availableFrames = [{ id: null, name: 'Нет' }];
+        if (window.CatalogManager && CatalogManager.items) {
+            CatalogManager.items.filter(i => i.type === 'frame').forEach(frame => {
+                availableFrames.push({
+                    id: frame.image,
+                    name: frame.title
+                });
+            });
+        }
         
         const renderFramesCarousel = () => {
             const carousel = Utils.$('profile-frames-carousel');
             if (!carousel) return;
-            carousel.innerHTML = frames.map(f => `
+            carousel.innerHTML = availableFrames.map(f => `
                 <div class="frame-option" style="
                     width: 60px; height: 60px; flex-shrink: 0;
                     border-radius: 8px; border: 2px solid ${selectedFrame === f.id ? 'var(--accent)' : 'transparent'};
                     background: rgba(0,0,0,0.3); overflow: hidden; cursor: pointer;
                     display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative;
-                " onclick="window.selectAvatarFrame('${f.id || ''}')">
+                " onclick="window.selectAvatarFrame('${f.id || ''}')" title="${f.name || ''}">
                     ${f.id ? `<img src="${Utils.escapeHtml(f.id)}" style="width:50px;height:50px;object-fit:cover; pointer-events:none;">` : `<span style="font-size:12px;color:var(--text-muted);">✖</span>`}
                 </div>
             `).join('');
@@ -8993,28 +8999,31 @@ class CatalogManager {
     static async init() {
         this.bindFilters();
         
-        onValue(ref(db, 'catalog'), (snap) => {
-            if (snap.exists()) {
-                const data = snap.val();
-                this.items = Object.keys(data).map(k => ({id: k, ...data[k]}));
-            } else {
-                // Default items if db is empty
-                this.items = [
-                    {
-                        id: 'frame_gomah',
-                        title: 'Рамка Gomah',
-                        desc: 'Анимированная рамка профиля',
-                        price: 'БЕСПЛАТНО',
-                        priceType: 'free',
-                        image: 'https://discord-decoration.art/decorations/gomah.webp',
-                        type: 'frame'
-                    }
-                ];
-                // Optionally save defaults to DB here
-            }
-            this.renderCatalog();
-            this.renderAdminCatalog();
-        });
+        try {
+            onValue(ref(db, 'catalog'), (snap) => {
+                if (snap.exists() && snap.val()) {
+                    const data = snap.val();
+                    this.items = Object.keys(data).filter(k => data[k] !== null).map(k => ({id: k, ...data[k]}));
+                } else {
+                    // Default items if db is empty
+                    this.items = [
+                        {
+                            id: 'frame_gomah',
+                            title: 'Рамка Gomah',
+                            desc: 'Анимированная рамка профиля',
+                            price: 'БЕСПЛАТНО',
+                            priceType: 'free',
+                            image: 'https://discord-decoration.art/decorations/gomah.webp',
+                            type: 'frame'
+                        }
+                    ];
+                }
+                this.renderCatalog();
+                this.renderAdminCatalog();
+            });
+        } catch(e) {
+            console.error(e);
+        }
     }
 
     static addNewAdminItem() {
@@ -9058,33 +9067,49 @@ class CatalogManager {
         if (this.activeFilter === 'free') filtered = filtered.filter(i => i.priceType === 'free' || i.price === 'БЕСПЛАТНО' || i.price === '0');
         if (this.activeFilter === 'paid') filtered = filtered.filter(i => i.priceType === 'paid' || (i.price !== 'БЕСПЛАТНО' && i.price !== '0'));
 
-        list.innerHTML = filtered.map(item => `
-            <div class="ach-card" style="
-                width: 100%;
-                height: auto;
-                min-height: 120px;
-                border-radius: 12px; 
-                background: rgba(0,0,0,0.2);
-                border: 1px solid var(--border-light, rgba(255,255,255,0.1));
-                display: flex; 
-                flex-direction: row;
-                align-items: center; 
-                text-align: left;
-                position: relative;
-                overflow: hidden;
-                padding: 16px;
-                box-sizing: border-box;
-                cursor: pointer;
-                transition: transform 0.2s, background 0.2s;
-            " onmouseover="this.style.background='rgba(255,255,255,0.05)'; this.style.transform='scale(1.02)';" onmouseout="this.style.background='rgba(0,0,0,0.2)'; this.style.transform='scale(1)';" onclick="if(typeof openCatalogItemModal === 'function') openCatalogItemModal('${item.id}')">
-                <div style="width: 80px; height: 80px; display:flex; align-items:center; justify-content:center; flex-shrink: 0; margin-right: 15px; position:relative;">
-                    <div style="width:100%; height:100%; border-radius:50%; background:#222; position:absolute; top:0; left:0; z-index:1;"></div>
-                    <img src="${item.image}" style="width:100px;height:100px;object-fit:cover; position:absolute; top:-10px; left:-10px; z-index:2; pointer-events:none;"/>
+        list.innerHTML = `
+            <style>
+                @keyframes catalogFadeIn {
+                    from { opacity: 0; transform: translateY(15px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                .catalog-card-item {
+                    width: 100%;
+                    height: auto;
+                    min-height: 120px;
+                    border-radius: 16px; 
+                    background: rgba(0,0,0,0.25);
+                    border: 1px solid var(--border-light, rgba(255,255,255,0.1));
+                    display: flex; 
+                    flex-direction: row;
+                    align-items: center; 
+                    text-align: left;
+                    position: relative;
+                    overflow: hidden;
+                    padding: 20px;
+                    box-sizing: border-box;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    opacity: 0;
+                    animation: catalogFadeIn 0.4s ease forwards;
+                }
+                .catalog-card-item:hover {
+                    background: rgba(255,255,255,0.08);
+                    transform: translateY(-4px);
+                    box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+                    border-color: rgba(255,255,255,0.2);
+                }
+            </style>
+        ` + filtered.map((item, i) => `
+            <div class="catalog-card-item" style="animation-delay: ${i * 0.05}s;" onclick="if(typeof openCatalogItemModal === 'function') openCatalogItemModal('${item.id}')">
+                <div style="width: 80px; height: 80px; display:flex; align-items:center; justify-content:center; flex-shrink: 0; margin-right: 18px; position:relative;">
+                    <div style="width:100%; height:100%; border-radius:50%; background:#222; position:absolute; top:0; left:0; z-index:1; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);"></div>
+                    <img src="${item.image}" style="width:120px;height:120px;object-fit:cover; position:absolute; top:-20px; left:-20px; z-index:2; pointer-events:none;"/>
                 </div>
                 <div style="flex: 1; display:flex; flex-direction:column; justify-content:center;">
-                    <div style="color: #ffffff; font-weight: 700; font-size: 16px; line-height: 1.2; margin-bottom: 4px;">${item.title}</div>
-                    <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">${item.desc}</div>
-                    <div style="font-size: 13px; color: var(--accent, #4cd137); font-weight:bold;">${item.price}</div>
+                    <div style="color: #ffffff; font-weight: 700; font-size: 18px; line-height: 1.2; margin-bottom: 6px;">${item.title}</div>
+                    <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 10px; line-height: 1.4;">${item.desc}</div>
+                    <div style="font-size: 14px; color: var(--accent, #4cd137); font-weight:bold; letter-spacing: 0.5px;">${item.price}</div>
                 </div>
             </div>
         `).join('');
