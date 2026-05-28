@@ -857,16 +857,37 @@
                 <div class="friends-container" style="max-width: 800px; width: 100%; margin: 0 auto; padding-top: 20px;">
                     <div class="section-title" style="font-size: 24px; margin-bottom: 20px;"><img src="https://emojigraph.org/media/apple/shopping-bags_1f6cd-fe0f.png" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Каталог</div>
                     
-                    <!-- NEW CATALOG FILTER PANEL -->
-                    <div id="catalog-filters" style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
-                        <button class="secondary-btn active-filter" data-filter="all" style="width:auto; padding:8px 16px; border-radius: 20px; border-color: rgba(255,255,255,0.4); background: rgba(255,255,255,0.1);">Все</button>
-                        <button class="secondary-btn" data-filter="frames" style="width:auto; padding:8px 16px; border-radius: 20px;">Рамки</button>
-                        <button class="secondary-btn" data-filter="free" style="width:auto; padding:8px 16px; border-radius: 20px;">Бесплатные</button>
-                        <button class="secondary-btn" data-filter="paid" style="width:auto; padding:8px 16px; border-radius: 20px;">Платные</button>
-                    </div>
-
-                    <div id="catalog-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
-                        <!-- JS WILL RENDER CATALOG HERE -->
+                    <div id="catalog-list" style="display: flex; flex-wrap: wrap; gap: 15px;">
+                        <div class="ach-card" style="
+                            width: 100%;
+                            max-width: 400px;
+                            height: auto;
+                            min-height: 120px;
+                            max-height: none;
+                            flex-shrink: 0;
+                            border-radius: 12px; 
+                            background: rgba(0,0,0,0.2);
+                            border: 1px solid var(--border-light, rgba(255,255,255,0.1));
+                            display: flex; 
+                            flex-direction: row;
+                            align-items: center; 
+                            text-align: left;
+                            position: relative;
+                            overflow: hidden;
+                            padding: 16px;
+                            box-sizing: border-box;
+                            cursor: pointer;
+                        " onclick="if(typeof openCatalogItemModal === 'function') openCatalogItemModal('frame_gomah')">
+                            <div style="width: 80px; height: 80px; display:flex; align-items:center; justify-content:center; flex-shrink: 0; margin-right: 15px; position:relative;">
+                                <div style="width:100%; height:100%; border-radius:50%; background:#222; position:absolute; top:0; left:0; z-index:1;"></div>
+                                <img src="https://discord-decoration.art/decorations/gomah.webp" style="width:100px;height:100px;object-fit:cover; position:absolute; top:-10px; left:-10px; z-index:2; pointer-events:none;"/>
+                            </div>
+                            <div style="flex: 1; display:flex; flex-direction:column; justify-content:center;">
+                                <div style="color: #ffffff; font-weight: 700; font-size: 16px; line-height: 1.2; margin-bottom: 4px;">Рамка Gomah</div>
+                                <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">Анимированная рамка профиля</div>
+                                <div style="font-size: 13px; color: var(--accent, #4cd137); font-weight:bold;">БЕСПЛАТНО</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </main>
@@ -1229,16 +1250,11 @@
             <div class="modal-drag-handle"></div>
             <h2 id="catalog-item-title" style="margin-bottom: 10px;">Рамка Gomah</h2>
             <div style="width: 120px; height: 120px; margin: 0 auto 15px; position:relative;">
-                 <!-- User Avatar Preview Container -->
-                 <div style="width:100%; height:100%; border-radius:50%; background:#222; position:absolute; top:0; left:0; z-index:1; overflow: hidden;" id="catalog-item-avatar-preview-container">
-                    <img id="catalog-item-avatar-preview" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;" />
-                 </div>
+                 <div style="width:100%; height:100%; border-radius:50%; background:#222; position:absolute; top:0; left:0; z-index:1;"></div>
                  <img id="catalog-item-image" src="https://discord-decoration.art/decorations/gomah.webp" style="width:140px;height:140px;object-fit:cover; position:absolute; top:-10px; left:-10px; z-index:2; pointer-events:none;"/>
             </div>
             <p id="catalog-item-desc" style="color: var(--text-muted); font-size: 14px; margin-bottom: 15px;">Анимированная рамка профиля</p>
             <p id="catalog-item-price" style="font-size: 18px; color: var(--accent); font-weight: bold; margin-bottom: 20px;">БЕСПЛАТНО</p>
-            
-            <button class="secondary-btn" id="btn-preview-catalog-item" style="width: 100%; margin-bottom: 10px; font-weight: 700; border: 1px solid rgba(255,255,255,0.2);">Предпросмотр</button>
             <button class="primary-btn" id="btn-buy-catalog-item" style="width: 100%; margin-bottom: 10px; font-weight: 700;">Получить</button>
             <button class="secondary-btn btn-close-modal" id="btn-close-catalog-modal" style="width: 100%;">Отмена</button>
         </div>

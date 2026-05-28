@@ -6054,7 +6054,6 @@ class AdminPanel {
                     <button class="secondary-btn godmode-nav-btn" data-section="broadcast">broadcast</button>
                     <button class="secondary-btn godmode-nav-btn" data-section="integrations">integrations</button>
                     <button class="secondary-btn godmode-nav-btn" data-section="backups">backups</button>
-                    <button class="secondary-btn godmode-nav-btn" data-section="catalog">catalog</button>
                 </div>
                 <div class="godmode-main" id="godmode-main">
                 <div style="display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:16px;">
@@ -6066,14 +6065,6 @@ class AdminPanel {
                 </div>
 
                 <div id="admin-stats-grid" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:16px;"></div>
-
-                <div class="godmode-section" data-section="catalog" style="display:none; border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02); margin-bottom: 16px;">
-                    <div style="font-weight:700; margin-bottom:10px;">Управление каталогом</div>
-                    <div style="display:flex; gap:8px; margin-bottom: 16px;">
-                        <button class="primary-btn" id="btn-admin-add-catalog-item" style="width:auto; padding:8px 16px;">+ Добавить товар</button>
-                    </div>
-                    <div id="admin-catalog-list" style="display:flex; flex-direction:column; gap:10px;"></div>
-                </div>
 
                 <div class="godmode-section" data-section="settings" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02); margin-bottom: 16px;">
                     <div style="font-weight:700; margin-bottom:10px;">Управление правами (Только для Создателя)</div>
@@ -8981,176 +8972,9 @@ window.onload = () => {
     });
 };
 
-class CatalogManager {
-    static items = [];
-    static activeFilter = 'all';
-
-    static async init() {
-        if (!window.db) return; // Wait for firebase db
-        this.bindFilters();
-        
-        onValue(ref(db, 'catalog'), (snap) => {
-            if (snap.exists()) {
-                const data = snap.val();
-                this.items = Object.keys(data).map(k => ({id: k, ...data[k]}));
-            } else {
-                // Default items if db is empty
-                this.items = [
-                    {
-                        id: 'frame_gomah',
-                        title: 'Рамка Gomah',
-                        desc: 'Анимированная рамка профиля',
-                        price: 'БЕСПЛАТНО',
-                        priceType: 'free',
-                        image: 'https://discord-decoration.art/decorations/gomah.webp',
-                        type: 'frame'
-                    }
-                ];
-                // Optionally save defaults to DB here
-            }
-            this.renderCatalog();
-            this.renderAdminCatalog();
-        });
-        
-        Utils.$('btn-admin-add-catalog-item')?.addEventListener('click', () => {
-            const id = 'item_' + Date.now();
-            set(ref(db, `catalog/${id}`), {
-                title: 'Новый Товар',
-                desc: 'Описание',
-                price: '100',
-                priceType: 'paid',
-                image: '',
-                type: 'frame'
-            });
-        });
-    }
-
-    static bindFilters() {
-        const filters = document.querySelectorAll('#catalog-filters .secondary-btn');
-        filters.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                filters.forEach(b => {
-                    b.classList.remove('active-filter');
-                    b.style.borderColor = '';
-                    b.style.background = '';
-                });
-                const target = e.target;
-                target.classList.add('active-filter');
-                target.style.borderColor = 'rgba(255,255,255,0.4)';
-                target.style.background = 'rgba(255,255,255,0.1)';
-                
-                this.activeFilter = target.dataset.filter;
-                this.renderCatalog();
-            });
-        });
-    }
-
-    static renderCatalog() {
-        const list = Utils.$('catalog-list');
-        if (!list) return;
-
-        let filtered = this.items;
-        if (this.activeFilter === 'frames') filtered = filtered.filter(i => i.type === 'frame');
-        if (this.activeFilter === 'free') filtered = filtered.filter(i => i.priceType === 'free' || i.price === 'БЕСПЛАТНО' || i.price === '0');
-        if (this.activeFilter === 'paid') filtered = filtered.filter(i => i.priceType === 'paid' || (i.price !== 'БЕСПЛАТНО' && i.price !== '0'));
-
-        list.innerHTML = filtered.map(item => `
-            <div class="ach-card" style="
-                width: 100%;
-                height: auto;
-                min-height: 120px;
-                border-radius: 12px; 
-                background: rgba(0,0,0,0.2);
-                border: 1px solid var(--border-light, rgba(255,255,255,0.1));
-                display: flex; 
-                flex-direction: row;
-                align-items: center; 
-                text-align: left;
-                position: relative;
-                overflow: hidden;
-                padding: 16px;
-                box-sizing: border-box;
-                cursor: pointer;
-                transition: transform 0.2s, background 0.2s;
-            " onmouseover="this.style.background='rgba(255,255,255,0.05)'; this.style.transform='scale(1.02)';" onmouseout="this.style.background='rgba(0,0,0,0.2)'; this.style.transform='scale(1)';" onclick="if(typeof openCatalogItemModal === 'function') openCatalogItemModal('${item.id}')">
-                <div style="width: 80px; height: 80px; display:flex; align-items:center; justify-content:center; flex-shrink: 0; margin-right: 15px; position:relative;">
-                    <div style="width:100%; height:100%; border-radius:50%; background:#222; position:absolute; top:0; left:0; z-index:1;"></div>
-                    <img src="${item.image}" style="width:100px;height:100px;object-fit:cover; position:absolute; top:-10px; left:-10px; z-index:2; pointer-events:none;"/>
-                </div>
-                <div style="flex: 1; display:flex; flex-direction:column; justify-content:center;">
-                    <div style="color: #ffffff; font-weight: 700; font-size: 16px; line-height: 1.2; margin-bottom: 4px;">${item.title}</div>
-                    <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">${item.desc}</div>
-                    <div style="font-size: 13px; color: var(--accent, #4cd137); font-weight:bold;">${item.price}</div>
-                </div>
-            </div>
-        `).join('');
-    }
-
-    static renderAdminCatalog() {
-        const list = Utils.$('admin-catalog-list');
-        if (!list) return;
-
-        list.innerHTML = this.items.map(item => `
-            <div style="border: 1px solid var(--border-light); padding: 10px; border-radius: 8px;">
-                <input type="text" id="admin-cat-title-${item.id}" value="${item.title}" class="admin-form-input" placeholder="Название" style="margin-bottom: 4px;"/>
-                <input type="text" id="admin-cat-desc-${item.id}" value="${item.desc}" class="admin-form-input" placeholder="Описание" style="margin-bottom: 4px;"/>
-                <div style="display:flex; gap: 4px; margin-bottom: 4px;">
-                    <input type="text" id="admin-cat-price-${item.id}" value="${item.price}" class="admin-form-input" placeholder="Цена" style="flex:1;"/>
-                    <select id="admin-cat-pricetype-${item.id}" class="admin-form-input" style="flex:1;">
-                        <option value="free" ${item.priceType==='free'?'selected':''}>Free</option>
-                        <option value="paid" ${item.priceType==='paid'?'selected':''}>Paid</option>
-                    </select>
-                </div>
-                <input type="text" id="admin-cat-img-${item.id}" value="${item.image}" class="admin-form-input" placeholder="URL Картинки/Рамки" style="margin-bottom: 4px;"/>
-                <select id="admin-cat-type-${item.id}" class="admin-form-input" style="margin-bottom: 8px;">
-                    <option value="frame" ${item.type==='frame'?'selected':''}>Рамка</option>
-                </select>
-                <div style="display:flex; gap:8px;">
-                    <button class="primary-btn" onclick="CatalogManager.saveAdminItem('${item.id}')" style="flex:1; padding:6px;">Сохранить</button>
-                    <button class="danger-btn" onclick="CatalogManager.deleteAdminItem('${item.id}')" style="flex:1; padding:6px;">Удалить</button>
-                </div>
-            </div>
-        `).join('');
-    }
-
-    static saveAdminItem(id) {
-        const updates = {
-            title: Utils.$(`admin-cat-title-${id}`).value,
-            desc: Utils.$(`admin-cat-desc-${id}`).value,
-            price: Utils.$(`admin-cat-price-${id}`).value,
-            priceType: Utils.$(`admin-cat-pricetype-${id}`).value,
-            image: Utils.$(`admin-cat-img-${id}`).value,
-            type: Utils.$(`admin-cat-type-${id}`).value
-        };
-        update(ref(db, `catalog/${id}`), updates).then(() => Utils.toast('Товар сохранен', 'success'));
-    }
-
-    static deleteAdminItem(id) {
-        if(confirm('Удалить товар?')) {
-            remove(ref(db, `catalog/${id}`)).then(() => Utils.toast('Товар удален'));
-        }
-    }
-}
-
-window.openCatalogItemModal = function(itemId) {
-    const item = CatalogManager.items.find(i => i.id === itemId);
+window.openCatalogItemModal = function(frameId) {
     const modal = Utils.$('modal-catalog-item');
-    if (!modal || !item) return;
-
-    Utils.$('catalog-item-title').innerText = item.title;
-    Utils.$('catalog-item-desc').innerText = item.desc;
-    Utils.$('catalog-item-price').innerText = item.price;
-    Utils.$('catalog-item-image').src = item.image;
-
-    const previewContainer = Utils.$('catalog-item-avatar-preview-container');
-    const previewImg = Utils.$('catalog-item-avatar-preview');
-    
-    // Default hiding
-    if (previewImg) {
-        previewImg.style.display = 'none';
-        previewImg.src = '';
-    }
-
+    if (!modal) return;
     modal.classList.add('active');
     
     const buyBtn = Utils.$('btn-buy-catalog-item');
@@ -9160,25 +8984,7 @@ window.openCatalogItemModal = function(itemId) {
              modal.classList.remove('active');
        };
     }
-
-    const previewBtn = Utils.$('btn-preview-catalog-item');
-    if(previewBtn) {
-        previewBtn.onclick = () => {
-             // Temporarily apply current user's avatar
-             if(AppState.currentUser && AppState.currentUserProfile) {
-                 previewImg.src = AppState.currentUserProfile.photoURL || 'https://emojigraph.org/media/apple/bust-in-silhouette_1f464.png';
-                 previewImg.style.display = 'block';
-                 previewContainer.style.background = 'transparent';
-             } else {
-                 Utils.toast('Авторизуйтесь для предпросмотра', 'error');
-             }
-        };
-    }
 };
 
-// Initialize CatalogManager after loading
-setTimeout(() => CatalogManager.init(), 2000);
-
-window.CatalogManager = CatalogManager;
 window.ProfileManager = ProfileManager;
 window.FriendsManager = FriendsManager;
