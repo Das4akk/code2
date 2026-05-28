@@ -3,7 +3,6 @@ import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { mediaRouter } from './src/routes/media.js';
 import {
     CORS_ORIGIN,
     RATE_LIMIT_MAX,
@@ -40,7 +39,10 @@ app.use('/api', rateLimit({
     }
 }));
 
-app.use('/api', mediaRouter);
+// API temporary disabled due to missing files in repo
+app.get('/api/resolve-media', (req, res) => {
+    res.status(500).json({ error: 'Backend media resolver not found' });
+});
 
 const publicPath = __dirname;
 app.use(express.static(publicPath, { index: false })); // avoid index.html auto serving first if we want specific rules, or just allow it

@@ -715,6 +715,26 @@
             <div id="reg-form" class="auth-form">
                 <input type="text" id="reg-name" placeholder="Отображаемое имя (напр. Алексей)">
                 <input type="text" id="reg-username" placeholder="Уникальный ID (напр. @alexey99)">
+                
+                <style>
+                    input[type="radio"]:checked + .gender-btn { background: rgba(93, 63, 211, 0.4) !important; border-color: var(--primary) !important; color: white !important; }
+                    .gender-btn { color: var(--text-muted); transition: 0.2s; }
+                </style>
+                <div class="user-gender-select" style="display:flex; gap:10px; margin-bottom:10px;">
+                    <label style="flex:1; cursor:pointer;">
+                        <input type="radio" name="reg-gender" value="male" checked style="display:none;">
+                        <div class="gender-btn" style="padding:10px; border-radius:8px; border:1px solid var(--border-light); text-align:center; background:rgba(0,0,0,0.2); font-size:14px; font-weight:600;">
+                            <img src="https://emojigraph.org/media/apple/man_1f468.png" style="width:20px;height:20px;vertical-align:middle;margin-right:5px;"> Мужчина
+                        </div>
+                    </label>
+                    <label style="flex:1; cursor:pointer;">
+                        <input type="radio" name="reg-gender" value="female" style="display:none;">
+                        <div class="gender-btn" style="padding:10px; border-radius:8px; border:1px solid var(--border-light); text-align:center; background:rgba(0,0,0,0.2); font-size:14px; font-weight:600;">
+                            <img src="https://emojigraph.org/media/apple/woman_1f469.png" style="width:20px;height:20px;vertical-align:middle;margin-right:5px;"> Женщина
+                        </div>
+                    </label>
+                </div>
+
                 <input type="email" id="reg-email" placeholder="Электронная почта">
                 <input type="password" id="reg-pass" placeholder="Пароль (минимум 6 символов)">
                 <div class="agreement-wrap">
@@ -928,6 +948,21 @@
                 <input type="text" id="edit-name" placeholder="Отображаемое имя (напр. Алексей)">
                 <input type="text" id="edit-username-input" placeholder="Уникальный ID (напр. @alexey99)">
                 <textarea id="edit-bio" placeholder="Расскажите немного о себе..." rows="3"></textarea>
+                
+                <div class="user-gender-select" style="display:flex; gap:10px; margin-top:5px; margin-bottom:5px;">
+                    <label style="flex:1; cursor:pointer;">
+                        <input type="radio" name="edit-gender" value="male" style="display:none;">
+                        <div class="gender-btn" style="padding:10px; border-radius:8px; border:1px solid var(--border-light); text-align:center; background:rgba(0,0,0,0.2); font-size:14px; font-weight:600;">
+                            <img src="https://emojigraph.org/media/apple/man_1f468.png" style="width:20px;height:20px;vertical-align:middle;margin-right:5px;"> Мужчина
+                        </div>
+                    </label>
+                    <label style="flex:1; cursor:pointer;">
+                        <input type="radio" name="edit-gender" value="female" style="display:none;">
+                        <div class="gender-btn" style="padding:10px; border-radius:8px; border:1px solid var(--border-light); text-align:center; background:rgba(0,0,0,0.2); font-size:14px; font-weight:600;">
+                            <img src="https://emojigraph.org/media/apple/woman_1f469.png" style="width:20px;height:20px;vertical-align:middle;margin-right:5px;"> Женщина
+                        </div>
+                    </label>
+                </div>
                 <!-- // [UPDATE] PROFILE BACKGROUND SETTING -->
                 <button class="secondary-btn" id="btn-toggle-profile-bg" type="button">Настроить фон профиля</button>
                 <div class="profile-bg-panel" id="profile-bg-panel" data-selected-index="1">

@@ -1080,10 +1080,13 @@ class YouTubePlayerManager {
         }
         if (this._loadPromise) return this._loadPromise;
         this._loadPromise = new Promise(resolve => {
-            window.onYouTubeIframeAPIReady = () => {
-                this.apiReady = true;
-                resolve();
-            };
+            const check = setInterval(() => {
+                if (window.YT && window.YT.Player) {
+                    clearInterval(check);
+                    this.apiReady = true;
+                    resolve();
+                }
+            }, 100);
             if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
                 const tag = document.createElement('script');
                 tag.src = "https://www.youtube.com/iframe_api";
@@ -2065,7 +2068,7 @@ class EasterEggManager {
             }
             body.easter-cow-cursor,
             body.easter-cow-cursor * {
-                cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='18' fill='%23fffef8' stroke='%23111111' stroke-width='2'/%3E%3Cellipse cx='14' cy='13' rx='6' ry='8' fill='%23642f1a'/%3E%3Cellipse cx='34' cy='13' rx='6' ry='8' fill='%23642f1a'/%3E%3Cellipse cx='24' cy='28' rx='12' ry='9' fill='%23f6b3c1' stroke='%23111111' stroke-width='1.5'/%3E%3Ccircle cx='20' cy='27' r='2' fill='%23111111'/%3E%3Ccircle cx='28' cy='27' r='2' fill='%23111111'/%3E%3Ccircle cx='18' cy='20' r='2.5' fill='%23111111'/%3E%3Ccircle cx='30' cy='20' r='2.5' fill='%23111111'/%3E%3Cpath d='M19 35c2 2 8 2 10 0' fill='none' stroke='%23111111' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E") 12 12, auto !important;
+                cursor: url("https://emojigraph.org/media/apple/cow-face_1f42e.png") 16 16, auto !important;
             }
             #easter-egg-root {
                 position: fixed;
@@ -3268,10 +3271,12 @@ class AuthManager {
             const name = Utils.$('reg-name').value.trim();
             let username = Utils.$('reg-username').value.toLowerCase().trim().replace('@', '');
             const agreementAccepted = Utils.$('reg-agreement')?.checked;
+            const gender = document.querySelector('input[name="reg-gender"]:checked')?.value || 'male';
 
             if (!email || pass.length < 6 || !name || !username) return Utils.toast('Заполните поля. Пароль от 6 символов.', 'error');
             if (!agreementAccepted) return Utils.toast('Примите пользовательское соглашение', 'error');
             if (!/^[a-z0-9_]{3,15}$/.test(username)) return Utils.toast('ID: 3-15 символов, только a-z, 0-9 и _', 'error');
+            if (username === 'developer') return Utils.toast('ID developer зарезервирован!', 'error');
 
             try {
                 Utils.$('btn-do-reg').disabled = true;
@@ -3291,7 +3296,7 @@ class AuthManager {
                 await ProfileManager.createProfile(creds.user.uid, name, username, email, {
                     provider: 'email',
                     emailVerified: false
-                });
+                }, gender);
                 AppState.isRegistering = false;
             } catch (e) {
                 AppState.isRegistering = false;
@@ -3719,7 +3724,7 @@ class ProfileManager {
         return snap.val() === excludeUid;
     }
 
-    static async createProfile(uid, name, username, email, security = {}) {
+    static async createProfile(uid, name, username, email, security = {}, gender = 'male') {
         const cleanName = username.toLowerCase().trim();
         const developerUid = await AdminPanel.getDeveloperUid();
         const isDeveloperProfile = cleanName === 'developer';
@@ -3734,6 +3739,7 @@ class ProfileManager {
             email,
             bio: '',
             avatar: '',
+            gender,
             background: { color: '#111111', index: 1, url: '', dim: 0.5 }, // [UPDATE]
             hashtags: [],
             createdAt: Date.now(),
@@ -3853,6 +3859,10 @@ class ProfileManager {
         Utils.$('edit-bio').value = p.bio || '';
         Utils.$('edit-hashtags').value = Array.isArray(p.hashtags) ? p.hashtags.join(' ') : '';
         Utils.$('edit-avatar-url').value = p.avatar || '';
+        if (p.gender) {
+            const rad = document.querySelector(`input[name="edit-gender"][value="${p.gender}"]`);
+            if (rad) rad.checked = true;
+        }
         this.hydrateProfileBackgroundControls(p.background); // [UPDATE]
         this.updateAvatarPreview(p.avatar, p.name);
         this.applyProfileBackground(Utils.$('modal-edit-profile')?.querySelector('.modal-content'), p.background); // [NEW]
@@ -4362,6 +4372,15 @@ class ProfileManager {
     static async sendLoveRequest(targetUid) { // [NEW]
         const myUid = AppState.currentUser?.uid; // [NEW]
         if (!myUid || !targetUid || targetUid === myUid) return; // [NEW]
+        
+        const myProfile = AppState.usersCache.get(myUid) || await this.loadUser(myUid) || {};
+        const targetProfile = AppState.usersCache.get(targetUid) || await this.loadUser(targetUid) || {};
+        const myGender = myProfile.gender || 'male';
+        const targetGender = targetProfile.gender || 'male';
+        if (myGender === targetGender) {
+            return Utils.toast('Однополые браки запрещены', 'error');
+        }
+
         const friendSnap = await get(ref(db, `users/${myUid}/friends/${targetUid}`)); // [NEW]
         if (!friendSnap.exists() || friendSnap.val().status !== 'accepted') return Utils.toast('Предложение доступно только друзьям', 'error'); // [NEW]
         const [myPartnerSnap, targetPartnerSnap] = await Promise.all([ // [NEW]
@@ -4474,9 +4493,11 @@ class ProfileManager {
         const hashtags = HashtagManager.parseHashtags(Utils.$('edit-hashtags').value, false);
         const avatar = Utils.$('edit-avatar-url').value.trim();
         const background = this.readProfileBackgroundInput(); // [NEW]
+        const gender = document.querySelector('input[name="edit-gender"]:checked')?.value || 'male';
 
         if (!name || !username) throw new Error('Имя и ID обязательны');
         if (!/^[a-z0-9_]{3,15}$/.test(username)) throw new Error('ID: 3-15 символов, a-z, 0-9, _');
+        if (username === 'developer' && oldProfile.username !== 'developer') throw new Error('ID developer зарезервирован!');
 
         const developerUid = await AdminPanel.getDeveloperUid();
         const isCreatorProfile = Boolean(
@@ -4496,7 +4517,7 @@ class ProfileManager {
             updates[`usernames/${username}`] = uid;
         }
 
-        updates[`users/${uid}/profile`] = { ...oldProfile, name, username, bio, hashtags, avatar, background }; // [UPDATE]
+        updates[`users/${uid}/profile`] = { ...oldProfile, name, username, bio, hashtags, avatar, background, gender }; // [UPDATE]
         await update(ref(db), updates);
 
         if (uid === AppState.currentUser?.uid) {
@@ -4627,7 +4648,11 @@ class ProfileManager {
                     return `
                     <div class="ach-card" data-index="${i}" style="
                         width: 160px; 
+                        min-width: 160px;
+                        max-width: 160px;
                         height: 180px;
+                        min-height: 180px;
+                        max-height: 180px;
                         flex-shrink: 0;
                         border-radius: 12px; 
                         background: rgba(0,0,0,0.2);
@@ -4683,14 +4708,15 @@ class ProfileManager {
                     if (wrapElem && wrapElem.clientWidth > 0) {
                         wrapWidth = wrapElem.clientWidth;
                     } else {
-                        // Fallback checking modal width
                         let modalParent = badgesContainer.closest('.modal-content');
-                        if (modalParent) {
-                            wrapWidth = modalParent.clientWidth - 48; // padding logic
+                        if (modalParent && modalParent.clientWidth > 0) {
+                            wrapWidth = modalParent.clientWidth - 48;
                         } else {
                             wrapWidth = Math.min(440, window.innerWidth - 32) - 48;
                         }
                     }
+                    if (wrapWidth < 100) wrapWidth = Math.min(440, window.innerWidth - 32) - 48;
+                    
                     const centerOffset = Math.floor((wrapWidth / 2) - (itemWidth / 2));
                     
                     track.style.transform = `translate3d(${centerOffset - (window.ProfileBadgesState.index * step)}px, 0, 0)`;
@@ -6154,8 +6180,11 @@ class AdminPanel {
                                     <input type="color" id="admin-badge-edit-border" value="#8d63ff">
                                 </div>
                             </div>
-                            <button class="primary-btn" id="btn-admin-save-badge" style="margin-top:10px;">Сохранить бейдж</button>
-                            <button class="secondary-btn" id="btn-admin-generate-rel-badges" style="margin-top:10px;">Сгенерировать авто-ачивки за отношения</button>
+                            <div style="display:flex; gap:10px; margin-top:10px;">
+                                <button class="primary-btn" id="btn-admin-save-badge" style="flex:1;">Сохранить бейдж</button>
+                                <button class="secondary-btn" id="btn-admin-reset-badge" style="flex:1;">Сбросить / Новый</button>
+                            </div>
+                            <button class="secondary-btn" id="btn-admin-generate-rel-badges" style="margin-top:10px; width:100%;">Сгенерировать авто-ачивки</button>
                             <div style="margin-top:15px; border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">
                                 <div style="font-size:12px; margin-bottom:5px;">Ивенты (выдать всем онлайн)</div>
                                 <input type="text" id="admin-event-badge-id" placeholder="ID ачивки для онлайна" style="margin-bottom:8px;">
@@ -6211,6 +6240,17 @@ class AdminPanel {
         Utils.$('btn-admin-badge-remove').onclick = () => this.setAdminBadgeForUser(null);
         Utils.$('btn-admin-badge-custom').onclick = () => this.setAdminBadgeForUser('custom');
         Utils.$('btn-admin-save-badge').onclick = () => BadgeManager.saveBadge();
+        Utils.$('btn-admin-reset-badge').onclick = () => {
+            if (Utils.$('admin-badge-edit-id')) Utils.$('admin-badge-edit-id').value = '';
+            if (Utils.$('admin-badge-edit-id')) Utils.$('admin-badge-edit-id').readOnly = false;
+            if (Utils.$('admin-badge-edit-name')) Utils.$('admin-badge-edit-name').value = '';
+            if (Utils.$('admin-badge-edit-desc')) Utils.$('admin-badge-edit-desc').value = '';
+            if (Utils.$('admin-badge-edit-icon')) Utils.$('admin-badge-edit-icon').value = '';
+            if (Utils.$('admin-badge-edit-color')) Utils.$('admin-badge-edit-color').value = '#ffffff';
+            if (Utils.$('admin-badge-edit-bg')) Utils.$('admin-badge-edit-bg').value = '#5d3fd3';
+            if (Utils.$('admin-badge-edit-border')) Utils.$('admin-badge-edit-border').value = '#8d63ff';
+            if (window.updateAdminBadgePreview) window.updateAdminBadgePreview();
+        };
         Utils.$('btn-admin-generate-rel-badges').onclick = () => BadgeManager.generateRelationshipBadges();
         Utils.$('btn-admin-grant-event-badge').onclick = () => BadgeManager.grantEventBadgeToOnline();
 
