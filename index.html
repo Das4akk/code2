@@ -949,20 +949,6 @@
                 <input type="text" id="edit-username-input" placeholder="Уникальный ID (напр. @alexey99)">
                 <textarea id="edit-bio" placeholder="Расскажите немного о себе..." rows="3"></textarea>
                 
-                <div class="user-gender-select" style="display:flex; gap:10px; margin-top:5px; margin-bottom:5px;">
-                    <label style="flex:1; cursor:pointer;">
-                        <input type="radio" name="edit-gender" value="male" style="display:none;">
-                        <div class="gender-btn" style="padding:10px; border-radius:8px; border:1px solid var(--border-light); text-align:center; background:rgba(0,0,0,0.2); font-size:14px; font-weight:600;">
-                            <img src="https://emojigraph.org/media/apple/man_1f468.png" style="width:20px;height:20px;vertical-align:middle;margin-right:5px;"> Мужчина
-                        </div>
-                    </label>
-                    <label style="flex:1; cursor:pointer;">
-                        <input type="radio" name="edit-gender" value="female" style="display:none;">
-                        <div class="gender-btn" style="padding:10px; border-radius:8px; border:1px solid var(--border-light); text-align:center; background:rgba(0,0,0,0.2); font-size:14px; font-weight:600;">
-                            <img src="https://emojigraph.org/media/apple/woman_1f469.png" style="width:20px;height:20px;vertical-align:middle;margin-right:5px;"> Женщина
-                        </div>
-                    </label>
-                </div>
                 <!-- // [UPDATE] PROFILE BACKGROUND SETTING -->
                 <button class="secondary-btn" id="btn-toggle-profile-bg" type="button">Настроить фон профиля</button>
                 <div class="profile-bg-panel" id="profile-bg-panel" data-selected-index="1">
@@ -1133,7 +1119,7 @@
     </div>
 
     <div class="modal" id="modal-room">
-        <div class="modal-content glass-panel">
+        <div class="modal-content glass-panel" style="width: min(560px, calc(100vw - 32px)); max-width: 560px;">
             <div class="modal-drag-handle"></div>
             <h2 id="room-modal-title"><img src="https://emojigraph.org/media/apple/sparkles_2728.png" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Создать комнату</h2>
             <div style="display: flex; flex-direction: column; gap: 12px;">

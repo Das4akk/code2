@@ -3579,7 +3579,7 @@ class ThemeManager {
             const btn = document.createElement('button');
             btn.className = `secondary-btn theme-folder-btn ${index === 0 ? 'active' : ''}`;
             btn.dataset.folder = fKey;
-            btn.innerText = this.FOLDERS[fKey].label;
+            btn.innerHTML = this.FOLDERS[fKey].label;
             btn.style.padding = '6px 12px';
             btn.style.fontSize = '12px';
             btn.onclick = () => {
@@ -4562,8 +4562,11 @@ class ProfileManager {
         Utils.$('view-status').innerHTML = `<div class="indicator ${isOnline ? 'online' : ''}" style="width:8px;height:8px;border-radius:50%;background:${isOnline ? '#4caf50' : '#888'};display:inline-block;margin-right:6px;"></div>${statusText}`;
 
         const badgeHtml = this.getRoleBadgeHtml(profile, targetUid);
+        const genderEmoji = profile.gender === 'female' 
+            ? '<img src="https://emojigraph.org/media/apple/woman_1f469.png" style="width:1.2em;height:1.2em;vertical-align:bottom;margin-right:5px;" alt="Женщина">' 
+            : (profile.gender === 'male' ? '<img src="https://emojigraph.org/media/apple/man_1f468.png" style="width:1.2em;height:1.2em;vertical-align:bottom;margin-right:5px;" alt="Мужчина">' : '');
 
-        Utils.$('view-name').innerHTML = `${Utils.escapeHtml(profile.name)} ${badgeHtml}`;
+        Utils.$('view-name').innerHTML = `${genderEmoji}${Utils.escapeHtml(profile.name)} ${badgeHtml}`;
         Utils.$('view-username').innerText = `@${Utils.escapeHtml(profile.username)}`;
         Utils.$('view-bio').innerHTML = `
             ${Utils.escapeHtml(profile.bio || 'Пользователь не добавил описание.')}<br><br>
@@ -7689,12 +7692,26 @@ class RoomManager {
                 videoThumbnail: ''
             };
 
+            const prevInput = previousRoom ? (previousRoom.videoSourceUrl || previousRoom.videoUrl || '') : '';
+
             if (videoInputUrl) {
-                try {
-                    videoFields = await MediaResolverClient.buildRoomVideoFields(videoInputUrl);
-                } catch (err) {
-                    Utils.toast(err.message || 'Ошибка извлечения видео', 'error');
-                    return;
+                if (previousRoom && videoInputUrl === prevInput) {
+                    videoFields = {
+                        videoUrl: previousRoom.videoUrl || '',
+                        videoSourceUrl: previousRoom.videoSourceUrl || '',
+                        videoPlatform: previousRoom.videoPlatform || '',
+                        videoIsHls: previousRoom.videoIsHls || false,
+                        videoResolvedAt: previousRoom.videoResolvedAt || 0,
+                        videoTitle: previousRoom.videoTitle || '',
+                        videoThumbnail: previousRoom.videoThumbnail || ''
+                    };
+                } else {
+                    try {
+                        videoFields = await MediaResolverClient.buildRoomVideoFields(videoInputUrl);
+                    } catch (err) {
+                        Utils.toast(err.message || 'Ошибка извлечения видео', 'error');
+                        return;
+                    }
                 }
             }
 
@@ -7755,6 +7772,7 @@ class RoomManager {
     }
 
     static enterRoomFinal(roomId, roomData) {
+        AppState.ignoreVideoEvents = true;
         RTCManager.destroy();
         AppState.currentRoomId = roomId;
         AppState.currentRoomJoinTs = Date.now(); // ФИКС: Запоминаем время входа, чтобы не смотреть старые пасхалки
@@ -7877,7 +7895,10 @@ class RoomManager {
 
         const sUnsub = onValue(syncRef, (snap) => {
             const d = snap.val();
-            if (!d) return;
+            if (!d) {
+                setTimeout(() => AppState.ignoreVideoEvents = false, 1000);
+                return;
+            }
 
             AppState.lastKnownSyncState = d;
             RoomManager.forceSyncVideo(d);
