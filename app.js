@@ -3849,11 +3849,7 @@ class ProfileManager {
             const badgeHtml = this.getRoleBadgeHtml(p, uid);
             Utils.$('my-name-display').innerHTML = `${Utils.escapeHtml(p.name)} ${badgeHtml}`;
             Utils.$('my-username-display').innerText = `@${Utils.escapeHtml(p.username)}`;
-            if (p.avatar) {
-                Utils.$('my-avatar-display').innerHTML = `<img src="${Utils.escapeHtml(p.avatar)}" onerror="this.innerHTML='?'" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
-            } else {
-                Utils.$('my-avatar-display').innerHTML = (p.name || '?')[0].toUpperCase();
-            }
+            Utils.$('my-avatar-display').innerHTML = ProfileManager.getAvatarHtml(p);
 
             RoomManager.syncDeveloperControls(p);
         });
@@ -4357,15 +4353,8 @@ class ProfileManager {
             frameHTML = `<img src="${Utils.escapeHtml(profile.frame)}" style="width:125%; height:125%; object-fit:cover; position:absolute; top:-12.5%; left:-12.5%; z-index:2; pointer-events:none;">`;
         }
         
-        if (profile.frame) {
-            return `
-                <div style="position:relative; width:100%; height:100%; display:flex; align-items:center; justify-content:center;">
-                    <div style="width:100%; height:100%; overflow:hidden; border-radius:50%; background:#111; display:flex; align-items:center; justify-content:center;">${innerHTML}</div>
-                    ${frameHTML}
-                </div>
-            `;
-        }
-        return innerHTML;
+        return `\n                <div style=\"position:relative; width:100%; height:100%; display:flex; align-items:center; justify-content:center;\">\n                    <div style=\"width:100%; height:100%; overflow:hidden; border-radius:50%; background:rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:center; font-size:inherit; font-weight:bold; color:#fff;\">${innerHTML}</div>\n                    ${frameHTML}\n                </div>\n            `;
+        
     } // [NEW]
 
     static async renderPartnerContainer(containerId, partnerUid, canRemove = false, ownerUid = null) { // [UPDATE]
@@ -4945,11 +4934,7 @@ class ProfileManager {
         await this.renderPartnerContainer('view-partner-container', targetPartnerUid, targetUid === AppState.currentUser.uid, targetUid); // [UPDATE]
         
         const avatarEl = Utils.$('view-avatar');
-        if (profile.avatar) {
-            avatarEl.innerHTML = `<img src="${Utils.escapeHtml(profile.avatar)}" onerror="this.innerHTML='?'" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
-        } else {
-            avatarEl.innerHTML = (profile.name || '?')[0].toUpperCase();
-        }
+        avatarEl.innerHTML = ProfileManager.getAvatarHtml(profile);
 
         const actionBtn = Utils.$('btn-dm-modal');
         const loveBtn = Utils.$('btn-love-proposal'); // [NEW]
@@ -5042,11 +5027,10 @@ class FriendsManager {
                 const friendsCount = friendsSnap.exists() ? Object.values(friendsSnap.val()).filter(f => f.status === 'accepted').length : 0;
                 const joinDate = profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() : 'Неизвестно';
                 
-                let avatarStrStr = profile.avatar ? `<img src="${Utils.escapeHtml(profile.avatar)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : (profile.name || '?')[0].toUpperCase();
-                
+                let avatarStrStr = ProfileManager.getAvatarHtml(profile);
                 c.innerHTML = `
                     <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 40px; text-align: center; position: relative;">
-                        <div style="width: 120px; height: 120px; font-size: 48px; margin: 0 auto 20px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center; background:#111; box-shadow: 0 10px 20px rgba(0,0,0,0.5);">
+                        <div style="width: 120px; height: 120px; font-size: 48px; margin: 0 auto 20px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow: 0 10px 20px rgba(0,0,0,0.5);">
                             ${avatarStrStr}
                         </div>
                         <h3 style="font-size:28px; margin-bottom:5px;">${Utils.escapeHtml(profile.name)} ${ProfileManager.getRoleBadgeHtml(profile, uid)}</h3>
@@ -5090,7 +5074,7 @@ class FriendsManager {
                     const profile = await ProfileManager.loadUser(acc.uid); // Fetch profile data if needed, but it might be locally cached.
                     const isCurrent = AppState.currentUser?.uid === acc.uid;
                     const nameStr = profile ? profile.name : acc.email;
-                    const avatarStr = profile?.avatar ? `<img src="${Utils.escapeHtml(profile.avatar)}" style="width:40px;height:40px;border-radius:10px;object-fit:cover;">` : `<div style="width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:18px;">${(nameStr||'?')[0]}</div>`;
+                    const avatarStr = profile ? `<div style=\"width:40px;height:40px;\">${ProfileManager.getAvatarHtml(profile)}</div>` : `<div style=\"width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:18px;\">${(nameStr||'?')[0]}</div>`;
                     
                     const item = document.createElement('div');
                     item.style.cssText = `display:flex; align-items:center; gap:12px; background:rgba(0,0,0,0.3); padding:10px; border-radius:12px; cursor:${isCurrent?'default':'pointer'}; border:1px solid ${isCurrent?'var(--brand)':'rgba(255,255,255,0.1)'};`;
@@ -5163,7 +5147,7 @@ class FriendsManager {
                         if (udata.profile && udata.profile.username && udata.profile.username.toLowerCase().includes(val)) {
                             foundCount++;
                             const isFriend = udata.friends && udata.friends[AppState.currentUser.uid] && udata.friends[AppState.currentUser.uid].status === 'accepted';
-                            const avatar = udata.profile.avatar ? `<img src="${Utils.escapeHtml(udata.profile.avatar)}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">` : `<div style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;">${(udata.profile.name||'?')[0]}</div>`;
+                            const avatar = `<div style=\"width:40px;height:40px;\">${ProfileManager.getAvatarHtml(udata.profile)}</div>`;
                             foundHtml += `
                             <div class="user-card" onclick="ProfileManager.openProfileModal('${uid}')" style="cursor:pointer; display:flex; align-items:center; space-between; gap:10px;">
                                 ${avatar}
@@ -5352,12 +5336,10 @@ class FriendsManager {
                 const relData = friendsMap[uid];
                 const streakHTML = (relData && relData.streak && relData.streak > 0) ? `<div style="position: absolute; bottom: -4px; right: -4px; background: rgba(0,0,0,0.8); border-radius: 50%; padding: 2px 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; border: 1px solid rgba(255,255,255,0.1);" title="Стрик общения: ${relData.streak} дней"><img src="https://em-content.zobj.net/source/telegram/386/fire_1f525.webp" style="width:14px; height:14px; margin-right:2px;">${relData.streak}</div>` : '';
                 
-                let av = profile.avatar ? `<img src="${Utils.escapeHtml(profile.avatar)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : (profile.name[0].toUpperCase());
                 const roleBadgeHtml = ProfileManager.getRoleBadgeHtml(profile, uid);
-                
                 div.innerHTML = `
                     <div class="avatar" style="position:relative; overflow:visible; background:transparent;">
-                        <div style="width:100%; height:100%; border-radius:50%; overflow:hidden; background:rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:center;">${av}</div>
+                        ${ProfileManager.getAvatarHtml(profile)}
                         ${streakHTML}
                     </div>
                     <div class="friend-info-col" style="flex:1;">
@@ -5477,6 +5459,7 @@ class DirectMessages {
                 uid,
                 name: profile.name,
                 avatar: profile.avatar,
+                frame: profile.frame,
                 lastText,
                 ts,
                 isPinned,
@@ -5495,9 +5478,8 @@ class DirectMessages {
         listItems.forEach(item => {
             const el = document.createElement('div');
             el.className = `dm-chat-item ${item.isActive ? 'active' : ''} ${item.isPinned ? 'pinned' : ''}`;
-            const av = item.avatar ? `<img src="${Utils.escapeHtml(item.avatar)}" style="width:100%;height:100%;object-fit:cover;">` : item.name[0].toUpperCase();
             el.innerHTML = `
-                <div class="dm-chat-avatar">${av}</div>
+                <div class="dm-chat-avatar">${ProfileManager.getAvatarHtml(item)}</div>
                 <div class="dm-chat-info">
                     <div class="dm-chat-name">${Utils.escapeHtml(item.name)}</div>
                     <div class="dm-chat-last-msg">${Utils.escapeHtml(item.lastText) || '<i>Нет сообщений</i>'}</div>
@@ -7690,9 +7672,7 @@ class RoomManager {
         if (!ids.length) return `<span class="stack-avatar">0</span>`;
         return ids.map(uid => {
             const profile = AppState.usersCache.get(uid) || {};
-            if (profile.avatar) return `<span class="stack-avatar"><img src="${Utils.escapeHtml(profile.avatar)}" style="width:100%;height:100%;object-fit:cover;"></span>`;
-            const letter = Utils.escapeHtml((profile.name || '?')[0]?.toUpperCase() || '?');
-            return `<span class="stack-avatar">${letter}</span>`;
+            return `<span class=\"stack-avatar\">${ProfileManager.getAvatarHtml(profile)}</span>`;
         }).join('');
     }
 
@@ -8060,10 +8040,7 @@ class RoomManager {
             const overlayContainer = Utils.$('chat-overlay-container');
             if (overlayContainer && !isMe && msg.ts >= roomJoinTime) {
                 const overlayEl = document.createElement('div');
-                const avatarUrl = AppState.usersCache.get(msg.uid)?.avatar;
-                const avHtml = avatarUrl 
-                    ? `<img src="${Utils.escapeHtml(avatarUrl)}" style="width:100%;height:100%;object-fit:cover;">` 
-                    : avatarHtml;
+                const avHtml = ProfileManager.getAvatarHtml(AppState.usersCache.get(msg.uid) || {name: msg.name, avatar: null});
                     
                 overlayEl.style.cssText = `
                     background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);
@@ -8073,7 +8050,7 @@ class RoomManager {
                     box-shadow: 0 4px 12px rgba(0,0,0,0.4); pointer-events: none;
                 `;
                 overlayEl.innerHTML = `
-                    <div style="width:28px; height:28px; border-radius: 50%; overflow:hidden; flex-shrink:0;">${avHtml}</div>
+                    <div style="width:28px; height:28px; border-radius: 50%; overflow:visible; flex-shrink:0;">${avHtml}</div>
                     <div style="display:flex; flex-direction:column; overflow:hidden;">
                         <span style="font-size:11px; font-weight:bold; color: var(--accent);">${Utils.escapeHtml(msg.name)}</span>
                         <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width: 250px;">${content}</span>
@@ -8085,7 +8062,7 @@ class RoomManager {
 
             line.innerHTML = `
                 <div style="display:flex; gap:8px; align-items:flex-end; max-width:100%; ${isMe ? 'flex-direction:row-reverse;' : ''}">
-                    <div class="chat-profile-link" data-uid="${Utils.escapeHtml(msg.uid || '')}" style="width:26px; height:26px; border-radius:50%; flex-shrink:0; cursor:pointer; overflow:hidden; border:1px solid var(--border-light); background:rgba(255,255,255,0.05); transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='scale(1.1)'; this.style.boxShadow='0 0 8px rgba(255,255,255,0.2)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';">
+                    <div class="chat-profile-link" data-uid="${Utils.escapeHtml(msg.uid || '')}" style="width:26px; height:26px; border-radius:50%; flex-shrink:0; cursor:pointer; overflow:visible; border:1px solid var(--border-light); background:rgba(255,255,255,0.05); transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='scale(1.1)'; this.style.boxShadow='0 0 8px rgba(255,255,255,0.2)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';">
                         ${avatarHtml}
                     </div>
                     <div style="display:flex; flex-direction:column; ${isMe ? 'align-items:flex-end;' : 'align-items:flex-start;'} max-width:85%;">
@@ -8096,11 +8073,9 @@ class RoomManager {
             `;
             
             ProfileManager.loadUser(msg.uid).then(uProfile => {
-                if (uProfile && uProfile.avatar) {
-                    const placeholder = line.querySelector('.chat-avatar-placeholder');
-                    if (placeholder) {
-                        placeholder.outerHTML = `<img src="${Utils.escapeHtml(uProfile.avatar)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.outerHTML='<div style=\\'width:100%;height:100%;background:#111;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;\\'>${fallbackChar}</div>'">`;
-                    }
+                if (uProfile) {
+                    const container = line.querySelector('.chat-profile-link[data-uid=\x22' + Utils.escapeHtml(msg.uid || '') + '\x22]');
+                    if (container) container.innerHTML = ProfileManager.getAvatarHtml(uProfile);
                 }
             });
             
@@ -8396,10 +8371,7 @@ class RoomManager {
             const displayName = profile.name || cache?.[uid]?.name || 'User';
             const safeName = Utils.escapeHtml(displayName);
             const initial = Utils.escapeHtml((displayName[0] || 'U').toUpperCase());
-            if (profile.avatar) {
-                return `<span class="users-tab-avatar" title="${safeName}"><img src="${Utils.escapeHtml(profile.avatar)}" alt="${safeName}"></span>`;
-            }
-            return `<span class="users-tab-avatar users-tab-avatar-fallback" title="${safeName}">${initial}</span>`;
+            return `<span class=\"users-tab-avatar\" title=\"${safeName}\">${ProfileManager.getAvatarHtml(profile)}</span>`;
         }).join('');
 
         btn.innerHTML = `
@@ -9068,10 +9040,16 @@ class CatalogManager {
         if (this.activeFilter === 'paid') filtered = filtered.filter(i => i.priceType === 'paid' || (i.price !== 'БЕСПЛАТНО' && i.price !== '0'));
 
         list.innerHTML = `
+            
             <style>
                 @keyframes catalogFadeIn {
                     from { opacity: 0; transform: translateY(15px); }
                     to { opacity: 1; transform: translateY(0); }
+                }
+                @keyframes firePulseAnim {
+                    0% { transform: scale(1) rotate(0deg); opacity: 0.3; }
+                    50% { transform: scale(1.1) rotate(2deg); opacity: 0.5; }
+                    100% { transform: scale(1) rotate(0deg); opacity: 0.3; }
                 }
                 .catalog-card-item {
                     width: 100%;
@@ -9092,6 +9070,7 @@ class CatalogManager {
                     transition: all 0.3s ease;
                     opacity: 0;
                     animation: catalogFadeIn 0.4s ease forwards;
+                    z-index: 1;
                 }
                 .catalog-card-item:hover {
                     background: rgba(255,255,255,0.08);
@@ -9099,20 +9078,39 @@ class CatalogManager {
                     box-shadow: 0 10px 20px rgba(0,0,0,0.3);
                     border-color: rgba(255,255,255,0.2);
                 }
+                .catalog-card-item.is-hot {
+                    border-color: rgba(255, 136, 0, 0.4);
+                    box-shadow: 0 4px 15px rgba(255, 136, 0, 0.15);
+                }
+                .catalog-card-item.is-hot:hover {
+                    border-color: rgba(255, 136, 0, 0.8);
+                    box-shadow: 0 10px 25px rgba(255, 136, 0, 0.3);
+                }
+                .catalog-card-item.is-owned {
+                    border-color: var(--accent);
+                    background: rgba(var(--accent-rgb, 76, 209, 55), 0.05);
+                }
             </style>
-        ` + filtered.map((item, i) => `
-            <div class="catalog-card-item" style="animation-delay: ${i * 0.05}s;" onclick="if(typeof openCatalogItemModal === 'function') openCatalogItemModal('${item.id}')">
-                <div style="width: 80px; height: 80px; display:flex; align-items:center; justify-content:center; flex-shrink: 0; margin-right: 18px; position:relative;">
+
+        ` + filtered.map((item, i) => {
+            const inv = (window.AppState && AppState.currentUserProfile && AppState.currentUserProfile.inventory) ? AppState.currentUserProfile.inventory : [];
+            const isOwned = inv.includes(item.id) || item.priceType === 'free' || item.price === 'БЕСПЛАТНО' || item.price === '0';
+            const isHot = item.isHot === true || item.isHot === 'true';
+            return `
+            <div class="catalog-card-item ${isHot ? 'is-hot' : ''} ${isOwned ? 'is-owned' : ''}" style="animation-delay: ${i * 0.05}s;" onclick="if(typeof openCatalogItemModal === 'function') openCatalogItemModal('${item.id}')">
+                ${isHot ? `<img src="https://em-content.zobj.net/source/telegram/386/fire_1f525.webp" style="position:absolute; right:-20px; top:-20px; width:120px; height:120px; z-index:0; pointer-events:none; animation: firePulseAnim 3s infinite ease-in-out; filter:drop-shadow(0 0 10px rgba(255,100,0,0.5));">` : ''}
+                <div style="width: 80px; height: 80px; display:flex; align-items:center; justify-content:center; flex-shrink: 0; margin-right: 18px; position:relative; z-index:2;">
                     <div style="width:100%; height:100%; border-radius:50%; background:#222; position:absolute; top:0; left:0; z-index:1; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);"></div>
                     <img src="${item.image}" style="width:120px;height:120px;object-fit:cover; position:absolute; top:-20px; left:-20px; z-index:2; pointer-events:none;"/>
                 </div>
-                <div style="flex: 1; display:flex; flex-direction:column; justify-content:center;">
+                <div style="flex: 1; display:flex; flex-direction:column; justify-content:center; z-index:2;">
                     <div style="color: #ffffff; font-weight: 700; font-size: 18px; line-height: 1.2; margin-bottom: 6px;">${item.title}</div>
                     <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 10px; line-height: 1.4;">${item.desc}</div>
-                    <div style="font-size: 14px; color: var(--accent, #4cd137); font-weight:bold; letter-spacing: 0.5px;">${item.price}</div>
+                    <div style="font-size: 14px; color: var(--accent, #4cd137); font-weight:bold; letter-spacing: 0.5px;">${isOwned ? '✓ КУПЛЕНО' : item.price}</div>
                 </div>
             </div>
-        `).join('');
+            `;
+        }).join('');
     }
 
     static renderAdminCatalog() {
@@ -9131,9 +9129,13 @@ class CatalogManager {
                     </select>
                 </div>
                 <input type="text" id="admin-cat-img-${item.id}" value="${item.image}" class="admin-form-input" placeholder="URL Картинки/Рамки" style="margin-bottom: 4px;"/>
-                <select id="admin-cat-type-${item.id}" class="admin-form-input" style="margin-bottom: 8px;">
+                <select id="admin-cat-type-${item.id}" class="admin-form-input" style="margin-bottom: 4px;">
                     <option value="frame" ${item.type==='frame'?'selected':''}>Рамка</option>
                 </select>
+                <div style="display:flex; align-items:center; gap: 8px; margin-bottom: 8px;">
+                    <input type="checkbox" id="admin-cat-ishot-${item.id}" ${(item.isHot === true || item.isHot === 'true') ? 'checked' : ''} style="margin:0; width:16px; height:16px;">
+                    <label style="font-size: 12px; color: var(--text-muted); cursor:pointer;" for="admin-cat-ishot-${item.id}">Огненный фон (Акция)</label>
+                </div>
                 <div style="display:flex; gap:8px;">
                     <button class="primary-btn" onclick="CatalogManager.saveAdminItem('${item.id}')" style="flex:1; padding:6px;">Сохранить</button>
                     <button class="danger-btn" onclick="CatalogManager.deleteAdminItem('${item.id}')" style="flex:1; padding:6px;">Удалить</button>
@@ -9143,13 +9145,15 @@ class CatalogManager {
     }
 
     static saveAdminItem(id) {
+        const isHotCb = Utils.$(`admin-cat-ishot-${id}`);
         const updates = {
             title: Utils.$(`admin-cat-title-${id}`).value,
             desc: Utils.$(`admin-cat-desc-${id}`).value,
             price: Utils.$(`admin-cat-price-${id}`).value,
             priceType: Utils.$(`admin-cat-pricetype-${id}`).value,
             image: Utils.$(`admin-cat-img-${id}`).value,
-            type: Utils.$(`admin-cat-type-${id}`).value
+            type: Utils.$(`admin-cat-type-${id}`).value,
+            isHot: isHotCb ? isHotCb.checked : false
         };
         update(ref(db, `catalog/${id}`), updates).then(() => Utils.toast('Товар сохранен', 'success'));
     }
@@ -9184,9 +9188,28 @@ window.openCatalogItemModal = function(itemId) {
     
     const buyBtn = Utils.$('btn-buy-catalog-item');
     if(buyBtn) {
+       const userProfile = AppState.currentUserProfile || {};
+       const inventory = userProfile.inventory || [];
+       const isOwned = inventory.includes(item.id) || item.priceType === 'free' || item.price === 'БЕСПЛАТНО';
+       buyBtn.innerText = isOwned ? 'Применить' : 'Купить';
+       buyBtn.style.background = isOwned ? 'var(--accent)' : '';
        buyBtn.onclick = async () => {
-             Utils.toast('Рамка добавлена! Зайдите в редактор профиля, чтобы применить её', 'success');
-             modal.classList.remove('active');
+           if (!AppState.currentUser) return Utils.toast('Авторизуйтесь для покупки', 'error');
+           const uid = AppState.currentUser.uid;
+           const inv = (AppState.currentUserProfile && AppState.currentUserProfile.inventory) ? [...AppState.currentUserProfile.inventory] : [];
+           if (inv.includes(item.id) || item.priceType === 'free' || item.price === 'БЕСПЛАТНО') {
+               if (item.type === 'frame') {
+                   await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(({update, ref}) => update(ref(window.db), { [`users/${uid}/profile/frame`]: item.image }));
+                   Utils.toast('Рамка применена!', 'success');
+               }
+               modal.classList.remove('active');
+           } else {
+               inv.push(item.id);
+               await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(({update, ref}) => update(ref(window.db), { [`users/${uid}/profile/inventory`]: inv }));
+               Utils.toast('Товар приобретен!', 'success');
+               buyBtn.innerText = 'Применить';
+               buyBtn.style.background = 'var(--accent)';
+           }
        };
     }
 
