@@ -3065,38 +3065,59 @@ class BadgeManager {
             return;
         }
 
-        entries.forEach(([id, b]) => {
+        container.style.display = 'grid';
+        container.style.gridTemplateColumns = 'repeat(auto-fill, minmax(160px, 1fr))';
+        container.style.gap = '15px';
+
+        entries.forEach(([id, bdg]) => {
             const div = document.createElement('div');
-            div.style.padding = '10px';
-            div.style.border = '1px solid var(--border-light)';
-            div.style.borderRadius = '10px';
-            div.style.background = 'rgba(0,0,0,0.2)';
-            div.style.display = 'flex';
-            div.style.alignItems = 'center';
-            div.style.justifyContent = 'space-between';
+            div.style.position = 'relative';
+
+            const iconHtml = bdg.icon ? (bdg.icon.match(/^http/) ? `<img src="${Utils.escapeHtml(bdg.icon)}" onerror="this.src='https://via.placeholder.com/60?text=Error'; this.onerror=null;" style="width:60px;height:60px;object-fit:contain;border-radius:6px;"/>` : `<span style="font-size:48px;">${Utils.escapeHtml(bdg.icon)}</span>`) : '';
             
-            let preview = '';
-            const text = Utils.escapeHtml(b.name);
-            const icon = b.icon ? Utils.escapeHtml(b.icon) + ' ' : '';
-            preview = `<span class="role-badge" style="color:${Utils.escapeHtml(b.color)}; background:${Utils.escapeHtml(b.bg)}; border:1px solid ${Utils.escapeHtml(b.border)}; box-shadow:none;">${icon}${text}</span>`;
+            const cardHtml = `
+            <div class="ach-card admin-ach-item" data-id="${Utils.escapeHtml(id)}" style="
+                width: 100%; 
+                height: 180px;
+                border-radius: 12px;
+                background: ${bdg.bg || 'rgba(0,0,0,0.2)'};
+                border: 1px solid ${bdg.border || 'rgba(255,255,255,0.1)'};
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+                position: relative;
+                overflow: hidden;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+                cursor: pointer;
+                transition: transform 0.2s ease;
+            ">
+                <div style="position:absolute; top:5px; left:5px; background:rgba(0,0,0,0.6); padding:2px 6px; border-radius:4px; font-size:9px; font-weight:bold; font-family:monospace; color:var(--text-muted); pointer-events:none; z-index:2;">${Utils.escapeHtml(id)}</div>
+                <div style="flex: 1; display:flex; align-items:flex-end; justify-content:center; width:100%; padding-bottom: 5px; z-index:1;">
+                    ${iconHtml}
+                </div>
+                <div style="flex: 1; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding: 5px 6px; width:100%; z-index:1;">
+                    <div style="color: ${bdg.color || '#ffffff'}; font-weight: 800; font-size: 13px; line-height: 1.2;">${Utils.escapeHtml(bdg.name)}</div>
+                    <div style="color: rgba(255,255,255,0.7); font-size: 10px; margin-top:4px; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">${Utils.escapeHtml(bdg.desc)}</div>
+                </div>
+            </div>`;
             
             div.innerHTML = `
-                <div style="display:flex; flex-direction:column; gap:4px; cursor:pointer;" class="badge-edit-trigger">
-                    <span style="font-size:12px; font-weight:700; color:var(--text-muted);">ID: ${Utils.escapeHtml(id)}</span>
-                    <div>${preview}</div>
-                </div>
-                <button class="danger-btn btn-small" data-id="${Utils.escapeHtml(id)}">Удалить</button>
+                ${cardHtml}
+                <button class="danger-btn btn-small" data-id="${Utils.escapeHtml(id)}" style="margin-top:8px; width:100%;">Удалить</button>
             `;
-            div.querySelector('.badge-edit-trigger').onclick = () => {
+            
+            div.querySelector('.ach-card').onclick = () => {
                 Utils.$('admin-badge-edit-id').value = id;
-                Utils.$('admin-badge-edit-name').value = b.name;
-                Utils.$('admin-badge-edit-desc').value = b.desc || '';
-                Utils.$('admin-badge-edit-icon').value = b.icon || '';
-                Utils.$('admin-badge-edit-color').value = b.color;
-                Utils.$('admin-badge-edit-bg').value = b.bg;
-                Utils.$('admin-badge-edit-border').value = b.border;
+                Utils.$('admin-badge-edit-name').value = bdg.name;
+                Utils.$('admin-badge-edit-desc').value = bdg.desc || '';
+                Utils.$('admin-badge-edit-icon').value = bdg.icon || '';
+                Utils.$('admin-badge-edit-color').value = bdg.color;
+                Utils.$('admin-badge-edit-bg').value = bdg.bg;
+                Utils.$('admin-badge-edit-border').value = bdg.border;
                 if (window.updateAdminBadgePreview) window.updateAdminBadgePreview();
             };
+            
             div.querySelector('button').onclick = () => this.deleteBadge(id);
             container.appendChild(div);
         });
@@ -4658,7 +4679,7 @@ class ProfileManager {
                             wrapWidth = Math.min(440, window.innerWidth - 32) - 48;
                         }
                     }
-                    const centerOffset = Math.floor((wrapWidth / 2) - (itemWidth / 2)) - 300;
+                    const centerOffset = Math.floor((wrapWidth / 2) - (itemWidth / 2));
                     
                     track.style.transform = `translate3d(${centerOffset - (window.ProfileBadgesState.index * step)}px, 0, 0)`;
                     
@@ -4895,8 +4916,13 @@ class FriendsManager {
                     </div>
                 `;
                 
-                Utils.$('btn-open-full-profile-inline').onclick = () => {
-                    ProfileManager.openViewProfileModal(uid);
+                Utils.$('btn-open-full-profile-inline').onclick = async () => {
+                    try {
+                        await ProfileManager.openViewProfileModal(uid);
+                    } catch (e) {
+                        Utils.toast('Ошибка: ' + (e.message||e), 'error');
+                        console.error('Profile Modal error:', e);
+                    }
                 };
                 
                 Utils.$('btn-edit-my-profile-inline').onclick = () => {
@@ -7295,7 +7321,7 @@ class AdminPanel {
             type: 'system',
             uid: AppState.currentUser.uid,
             name: 'SYSTEM',
-            text: `-------ХОСТ ${actorName}(@${actorUsername}) кикнул ${targetName}-------`,
+            text: `ХОСТ ${actorName}(@${actorUsername}) кикнул ${targetName}`,
             ts: Date.now()
         }).catch(() => {});
         await this.pushAuditLog('user.forceLeaveRoom', { uid, roomId: roomMeta.roomId });
@@ -7457,7 +7483,7 @@ class RoomManager {
             type: 'system',
             uid: AppState.currentUser?.uid || 'system',
             name: 'SYSTEM',
-            text: `-------${text}-------`,
+            text: `${text}`,
             ts: Date.now(),
             ...extra
         }).catch(() => {});
