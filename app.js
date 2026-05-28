@@ -3877,6 +3877,47 @@ class ProfileManager {
         Utils.$('edit-bio').value = p.bio || '';
         Utils.$('edit-hashtags').value = Array.isArray(p.hashtags) ? p.hashtags.join(' ') : '';
         Utils.$('edit-avatar-url').value = p.avatar || '';
+        
+        let selectedFrame = p.frame || null;
+        const frames = [
+            { id: null, name: 'Нет' },
+            { id: 'https://discord-decoration.art/decorations/gomah.webp', name: 'Gomah' },
+        ];
+        
+        const renderFramesCarousel = () => {
+            const carousel = Utils.$('profile-frames-carousel');
+            if (!carousel) return;
+            carousel.innerHTML = frames.map(f => `
+                <div class="frame-option" style="
+                    width: 60px; height: 60px; flex-shrink: 0;
+                    border-radius: 8px; border: 2px solid ${selectedFrame === f.id ? 'var(--accent)' : 'transparent'};
+                    background: rgba(0,0,0,0.3); overflow: hidden; cursor: pointer;
+                    display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative;
+                " onclick="window.selectAvatarFrame('${f.id || ''}')">
+                    ${f.id ? `<img src="${Utils.escapeHtml(f.id)}" style="width:50px;height:50px;object-fit:cover; pointer-events:none;">` : `<span style="font-size:12px;color:var(--text-muted);">✖</span>`}
+                </div>
+            `).join('');
+            
+            const frameImg = Utils.$('edit-avatar-frame');
+            if (frameImg) {
+                if (selectedFrame) {
+                    frameImg.src = selectedFrame;
+                    frameImg.style.display = 'block';
+                } else {
+                    frameImg.style.display = 'none';
+                }
+            }
+        };
+        
+        window.selectAvatarFrame = (frameId) => {
+            selectedFrame = frameId || null;
+            Utils.$('modal-edit-profile').dataset.selectedFrame = selectedFrame || '';
+            renderFramesCarousel();
+        };
+        
+        renderFramesCarousel();
+        Utils.$('modal-edit-profile').dataset.selectedFrame = selectedFrame || '';
+
         if (p.gender) {
             const rad = document.querySelector(`input[name="edit-gender"][value="${p.gender}"]`);
             if (rad) rad.checked = true;
@@ -4297,8 +4338,28 @@ class ProfileManager {
     } // [NEW]
 
     static getAvatarHtml(profile = {}) { // [NEW]
-        if (profile.avatar) return `<img src="${Utils.escapeHtml(profile.avatar)}" onerror="this.parentElement.innerHTML='?';">`; // [NEW]
-        return Utils.escapeHtml((profile.name || '?')[0].toUpperCase()); // [NEW]
+        const textFallback = Utils.escapeHtml((profile.name || '?')[0].toUpperCase());
+        let innerHTML = '';
+        if (profile.avatar) {
+            innerHTML = `<img src="${Utils.escapeHtml(profile.avatar)}" onerror="this.parentElement.innerHTML='?';" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`; // [NEW]
+        } else {
+            innerHTML = textFallback;
+        }
+        
+        let frameHTML = '';
+        if (profile.frame) {
+            frameHTML = `<img src="${Utils.escapeHtml(profile.frame)}" style="width:125%; height:125%; object-fit:cover; position:absolute; top:-12.5%; left:-12.5%; z-index:2; pointer-events:none;">`;
+        }
+        
+        if (profile.frame) {
+            return `
+                <div style="position:relative; width:100%; height:100%; display:flex; align-items:center; justify-content:center;">
+                    <div style="width:100%; height:100%; overflow:hidden; border-radius:50%; background:#111; display:flex; align-items:center; justify-content:center;">${innerHTML}</div>
+                    ${frameHTML}
+                </div>
+            `;
+        }
+        return innerHTML;
     } // [NEW]
 
     static async renderPartnerContainer(containerId, partnerUid, canRemove = false, ownerUid = null) { // [UPDATE]
@@ -4521,6 +4582,7 @@ class ProfileManager {
         const avatar = Utils.$('edit-avatar-url').value.trim();
         const background = this.readProfileBackgroundInput(); // [NEW]
         const gender = document.querySelector('input[name="edit-gender"]:checked')?.value || 'male';
+        const frame = Utils.$('modal-edit-profile').dataset.selectedFrame || null;
 
         if (!name || !username) throw new Error('Имя и ID обязательны');
         if (!/^[a-z0-9_]{3,15}$/.test(username)) throw new Error('ID: 3-15 символов, a-z, 0-9, _');
@@ -4544,7 +4606,7 @@ class ProfileManager {
             updates[`usernames/${username}`] = uid;
         }
 
-        updates[`users/${uid}/profile`] = { ...oldProfile, name, username, bio, hashtags, avatar, background, gender }; // [UPDATE]
+        updates[`users/${uid}/profile`] = { ...oldProfile, name, username, bio, hashtags, avatar, background, gender, frame }; // [UPDATE]
         await update(ref(db), updates);
 
         if (uid === AppState.currentUser?.uid) {
@@ -8908,6 +8970,20 @@ window.onload = () => {
             else modal.classList.remove('active');
         });
     });
+};
+
+window.openCatalogItemModal = function(frameId) {
+    const modal = Utils.$('modal-catalog-item');
+    if (!modal) return;
+    modal.classList.add('active');
+    
+    const buyBtn = Utils.$('btn-buy-catalog-item');
+    if(buyBtn) {
+       buyBtn.onclick = async () => {
+             Utils.toast('Рамка добавлена! Зайдите в редактор профиля, чтобы применить её', 'success');
+             modal.classList.remove('active');
+       };
+    }
 };
 
 window.ProfileManager = ProfileManager;
