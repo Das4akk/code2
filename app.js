@@ -3880,6 +3880,15 @@ class ProfileManager {
         if (p.gender) {
             const rad = document.querySelector(`input[name="edit-gender"][value="${p.gender}"]`);
             if (rad) rad.checked = true;
+            const genderSelectDiv = document.querySelector('#modal-edit-profile .user-gender-select');
+            if (genderSelectDiv) {
+                genderSelectDiv.style.display = 'none';
+            }
+        } else {
+            const genderSelectDiv = document.querySelector('#modal-edit-profile .user-gender-select');
+            if (genderSelectDiv) {
+                genderSelectDiv.style.display = 'flex';
+            }
         }
         this.hydrateProfileBackgroundControls(p.background); // [UPDATE]
         this.updateAvatarPreview(p.avatar, p.name);
@@ -8353,27 +8362,38 @@ class RoomManager {
             return;
         }
 
-        if (!vid || !vid.readyState) return;
+        if (!vid) return;
         
-        window._isSyncingVideo = true;
-        AppState.ignoreVideoEvents = true;
-        
-        if (Math.abs(vid.currentTime - targetTime) > 1.5) {
-            vid.currentTime = targetTime;
+        const executeNativeSync = () => {
+            window._isSyncingVideo = true;
+            AppState.ignoreVideoEvents = true;
+            
+            if (Math.abs(vid.currentTime - targetTime) > 1.5) {
+                vid.currentTime = targetTime;
+            }
+            
+            if (state === 'playing' && vid.paused) {
+                vid.play().catch(()=>{
+                    vid.muted = true;
+                    vid.play().catch(()=>{});
+                    Utils.toast('Браузер заблокировал автовоспроизведение со звуком. Звук отключен.', 'warn');
+                });
+            } else if (state === 'paused' && !vid.paused) {
+                vid.pause();
+            }
+            
+            setTimeout(() => { AppState.ignoreVideoEvents = false; window._isSyncingVideo = false; }, 1500);
+        };
+
+        if (vid.readyState >= 1) {
+            executeNativeSync();
+        } else {
+            const onLoadedMetadata = () => {
+                executeNativeSync();
+                vid.removeEventListener('loadedmetadata', onLoadedMetadata);
+            };
+            vid.addEventListener('loadedmetadata', onLoadedMetadata);
         }
-        if (state === 'playing' && vid.paused) {
-            vid.play().catch(()=>{
-                vid.muted = true;
-                vid.play().catch(()=>{});
-                Utils.toast('Браузер заблокировал автовоспроизведение со звуком. Звук отключен.', 'warn');
-            });
-        }
-        if (state === 'paused') {
-            if (vid.paused) vid.play().then(() => vid.pause()).catch(() => {});
-            else vid.pause();
-        }
-        
-        setTimeout(() => { AppState.ignoreVideoEvents = false; window._isSyncingVideo = false; }, 1500);
     }
 
     static leaveRoom() {
