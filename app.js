@@ -5333,7 +5333,7 @@ class FriendsManager {
                 }
 
                 const relData = friendsMap[uid];
-                const streakHTML = (relData && relData.streak && relData.streak > 0) ? `<div style="position: absolute; bottom: -4px; right: -4px; background: rgba(0,0,0,0.8); border-radius: 50%; padding: 2px 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; border: 1px solid rgba(255,255,255,0.1);" title="Стрик общения: ${relData.streak} дней"><img src="https://em-content.zobj.net/source/telegram/386/fire_1f525.webp" style="width:14px; height:14px; margin-right:2px;">${relData.streak}</div>` : '';
+                const streakHTML = (relData && relData.streak && relData.streak > 0) ? `<div style="position: absolute; bottom: -4px; right: -4px; background: rgba(0,0,0,0.8); border-radius: 50%; padding: 2px 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; border: none;" title="Стрик общения: ${relData.streak} дней"><img src="https://em-content.zobj.net/source/telegram/386/fire_1f525.webp" style="width:14px; height:14px; margin-right:2px;">${relData.streak}</div>` : '';
                 
                 const roleBadgeHtml = ProfileManager.getRoleBadgeHtml(profile, uid);
                 div.innerHTML = `
@@ -5928,7 +5928,6 @@ class AdminPanel {
     }
 
     static isCreatorProfile(profile = {}, uid = null) {
-        if (!uid || !this.developerUidCache || uid !== this.developerUidCache) return false;
         return this.isValidCreatorProfile(profile);
     }
 
@@ -5942,13 +5941,13 @@ class AdminPanel {
 
     static isCurrentUserCreator() {
         const uid = AppState.currentUser?.uid || null;
-        const profile = AppState.usersCache.get(uid) || {};
+        const profile = AppState.currentUserProfile || AppState.usersCache.get(uid) || {};
         return this.isCreatorProfile(profile, uid);
     }
 
     static isCurrentUserAdmin() {
         const uid = AppState.currentUser?.uid || null;
-        const profile = AppState.usersCache.get(uid) || {};
+        const profile = AppState.currentUserProfile || AppState.usersCache.get(uid) || {};
         return this.isAdminProfile(profile, uid);
     }
 
@@ -6122,7 +6121,25 @@ class AdminPanel {
                     </div>
                 </div>
                 <div class="godmode-section active" data-section="dashboard" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02); margin-bottom:16px;">
-                    <div style="font-weight:700; margin-bottom:10px;">Глобальные функции</div>
+                    <div style="font-weight:700; margin-bottom:10px;">Ивенты (Выдача всем онлайн)</div>
+                    <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin-bottom:16px;">
+                        <div style="background:rgba(0,0,0,0.2); padding:12px; border-radius:12px;">
+                            <div style="font-size:12px; margin-bottom:5px;">Ачивки (Выдать всем)</div>
+                            <div style="display:flex; gap:8px;">
+                                <input type="text" id="admin-event-badge-id" placeholder="ID ачивки" style="margin:0; flex:1;">
+                                <button class="primary-btn" id="btn-admin-grant-event-badge" style="width:auto; padding:0 16px;">Выдать</button>
+                            </div>
+                        </div>
+                        <div style="background:rgba(0,0,0,0.2); padding:12px; border-radius:12px;">
+                            <div style="font-size:12px; margin-bottom:5px;">Рамки напрямую (Выдать всем)</div>
+                            <div style="display:flex; gap:8px;">
+                                <input type="text" id="admin-event-frame-url" class="admin-form-input" placeholder="Изображение рамки (URL)" style="margin:0; flex:1;">
+                                <button class="primary-btn" onclick="CatalogManager.grantFrameMass()" style="width:auto; padding:0 16px;">Выдать</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="font-weight:700; margin-bottom:10px; margin-top:10px;">Глобальные функции</div>
                     <div style="display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px;">
                         <button class="danger-btn" id="btn-admin-system-readonly">Системный ReadOnly</button>
                         <button class="secondary-btn" id="btn-admin-global-session-refresh">Обновить все сессии</button>
@@ -6280,11 +6297,6 @@ class AdminPanel {
                                 <button class="secondary-btn" id="btn-admin-reset-badge" style="flex:1;">Сбросить / Новый</button>
                             </div>
                             <button class="secondary-btn" id="btn-admin-generate-rel-badges" style="margin-top:10px; width:100%;">Сгенерировать авто-ачивки</button>
-                            <div style="margin-top:15px; border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">
-                                <div style="font-size:12px; margin-bottom:5px;">Ивенты (выдать всем онлайн)</div>
-                                <input type="text" id="admin-event-badge-id" placeholder="ID ачивки для онлайна" style="margin-bottom:8px;">
-                                <button class="primary-btn" id="btn-admin-grant-event-badge">Выдать всем Online</button>
-                            </div>
                         </div>
                     </div>
                     <div style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
@@ -6999,6 +7011,15 @@ class AdminPanel {
             </div>
 
             <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
+                <div style="font-weight:700; margin-bottom:6px;">Прямая выдача рамки (URL)</div>
+                <div style="display:flex; gap: 8px;">
+                    <input type="text" id="admin-user-frame-id" placeholder="Изображение рамки (URL)" style="margin:0; flex:1;">
+                    <button class="primary-btn" id="btn-admin-user-grant-frame" style="width:auto; padding:0 12px;">Выдать</button>
+                </div>
+                <div style="font-size:11px; margin-top:6px; color:var(--text-muted);">Рамка будет назначена напрямую в профиль.</div>
+            </div>
+
+            <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
                 <div style="font-weight:700; margin-bottom:6px;">Live User Inspector</div>
                 <div style="font-size:12px; font-family:Consolas,monospace;">IP: ${Utils.escapeHtml(userData?.status?.ip || 'unavailable')}</div>
                 <div style="font-size:12px; font-family:Consolas,monospace;">Partner: ${Utils.escapeHtml(userData?.partner || profile?.partner || 'none')}</div>
@@ -7018,6 +7039,18 @@ class AdminPanel {
         `;
 
         BadgeManager.renderUserEditorBadges(uid, profile.assignedBadges);
+        
+        const grantFrameBtn = Utils.$('btn-admin-user-grant-frame');
+        if (grantFrameBtn) {
+            grantFrameBtn.onclick = async () => {
+                if (!this.isCurrentUserCreator()) return Utils.toast('Только Создатель', 'error');
+                const frameUrl = Utils.$('admin-user-frame-id')?.value.trim();
+                if (!frameUrl) return Utils.toast('Укажите URL рамки', 'error');
+                
+                await update(ref(db, `users/${uid}/profile`), { frame: frameUrl });
+                Utils.toast('Рамка успешно выдана пользователю');
+            };
+        }
 
         Utils.$('btn-admin-save-user').onclick = () => this.saveUserProfile();
         Utils.$('btn-admin-set-partner').onclick = () => this.forceSetPartner(uid);
@@ -8998,6 +9031,7 @@ class CatalogManager {
     }
 
     static addNewAdminItem() {
+        if (!AdminPanel.isCurrentUserCreator()) return Utils.toast('Только Создатель может управлять товарами', 'error');
         const id = 'item_' + Date.now();
         set(ref(db, `catalog/${id}`), {
             title: 'Новый Товар',
@@ -9007,6 +9041,33 @@ class CatalogManager {
             image: '',
             type: 'frame'
         });
+    }
+
+    static async grantFrameMass() {
+        if (!AdminPanel.requireAdmin()) return;
+        if (!AdminPanel.isCurrentUserCreator()) return Utils.toast('Только Создатель может выдавать рамки', 'error');
+        const frameUrl = Utils.$('admin-event-frame-url')?.value.trim();
+        
+        if (!frameUrl) return Utils.toast('Укажите изображение (URL)', 'error');
+        
+        if (!confirm(`Точно ВЫДАТЬ РАМКУ ВСЕМ, кто сейчас онлайн?`)) return;
+        
+        const usersSnap = await get(ref(db, 'users'));
+        const usersData = usersSnap.val() || {};
+        let count = 0;
+        const updates = {};
+        for (const [uid, uData] of Object.entries(usersData)) {
+            if (uData.status && uData.status.online) {
+                updates[`users/${uid}/profile/frame`] = frameUrl;
+                count++;
+            }
+        }
+        if (count > 0) {
+            await update(ref(db), updates);
+            Utils.toast(`Рамка выдана ${count} пользователям!`);
+        } else {
+            Utils.toast('У всех онлайн-пользователей уже есть эта или никого нет онлайн.', 'info');
+        }
     }
 
     static bindFilters() {
@@ -9046,24 +9107,24 @@ class CatalogManager {
                     to { opacity: 1; transform: translateY(0); }
                 }
                 @keyframes firePulseAnim {
-                    0% { transform: scale(1) rotate(0deg); opacity: 0.3; }
-                    50% { transform: scale(1.1) rotate(2deg); opacity: 0.5; }
-                    100% { transform: scale(1) rotate(0deg); opacity: 0.3; }
+                    0% { transform: scale(1) rotate(0deg); opacity: 0.8; }
+                    50% { transform: scale(1.05) rotate(1deg); opacity: 1; }
+                    100% { transform: scale(1) rotate(0deg); opacity: 0.8; }
                 }
                 .catalog-card-item {
                     width: 100%;
                     height: auto;
-                    min-height: 120px;
-                    border-radius: 16px; 
-                    background: rgba(0,0,0,0.25);
-                    border: 1px solid var(--border-light, rgba(255,255,255,0.1));
+                    min-height: 250px;
+                    border-radius: 24px; 
+                    background: rgba(255,255,255,0.03);
+                    border: 1px solid rgba(255,255,255,0.05);
                     display: flex; 
-                    flex-direction: row;
+                    flex-direction: column;
                     align-items: center; 
-                    text-align: left;
+                    text-align: center;
                     position: relative;
-                    overflow: hidden;
-                    padding: 20px;
+                    overflow: visible;
+                    padding: 24px 16px;
                     box-sizing: border-box;
                     cursor: pointer;
                     transition: all 0.3s ease;
@@ -9072,22 +9133,24 @@ class CatalogManager {
                     z-index: 1;
                 }
                 .catalog-card-item:hover {
-                    background: rgba(255,255,255,0.08);
-                    transform: translateY(-4px);
-                    box-shadow: 0 10px 20px rgba(0,0,0,0.3);
-                    border-color: rgba(255,255,255,0.2);
+                    background: rgba(255,255,255,0.06);
+                    transform: translateY(-8px) scale(1.02);
+                    box-shadow: 0 15px 30px rgba(0,0,0,0.4);
+                    border-color: rgba(255,255,255,0.15);
                 }
                 .catalog-card-item.is-hot {
-                    border-color: rgba(255, 136, 0, 0.4);
-                    box-shadow: 0 4px 15px rgba(255, 136, 0, 0.15);
+                    background: transparent;
+                    border: none;
+                    box-shadow: none;
                 }
                 .catalog-card-item.is-hot:hover {
-                    border-color: rgba(255, 136, 0, 0.8);
-                    box-shadow: 0 10px 25px rgba(255, 136, 0, 0.3);
+                    background: transparent;
+                    border: none;
+                    box-shadow: none;
+                    transform: translateY(-8px) scale(1.05);
                 }
                 .catalog-card-item.is-owned {
-                    border-color: var(--accent);
-                    background: rgba(var(--accent-rgb, 76, 209, 55), 0.05);
+                    border-color: rgba(76, 209, 55, 0.3);
                 }
             </style>
 
@@ -9097,15 +9160,17 @@ class CatalogManager {
             const isHot = item.isHot === true || item.isHot === 'true';
             return `
             <div class="catalog-card-item ${isHot ? 'is-hot' : ''} ${isOwned ? 'is-owned' : ''}" style="animation-delay: ${i * 0.05}s;" onclick="if(typeof openCatalogItemModal === 'function') openCatalogItemModal('${item.id}')">
-                ${isHot ? `<img src="https://em-content.zobj.net/source/telegram/386/fire_1f525.webp" style="position:absolute; right:-20px; top:-20px; width:120px; height:120px; z-index:0; pointer-events:none; animation: firePulseAnim 3s infinite ease-in-out; filter:drop-shadow(0 0 10px rgba(255,100,0,0.5));">` : ''}
-                <div style="width: 80px; height: 80px; display:flex; align-items:center; justify-content:center; flex-shrink: 0; margin-right: 18px; position:relative; z-index:2;">
-                    <div style="width:100%; height:100%; border-radius:50%; background:#222; position:absolute; top:0; left:0; z-index:1; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);"></div>
-                    <img src="${item.image}" style="width:120px;height:120px;object-fit:cover; position:absolute; top:-20px; left:-20px; z-index:2; pointer-events:none;"/>
+                ${isHot ? `<img src="https://em-content.zobj.net/source/telegram/386/fire_1f525.webp" style="position:absolute; top:-5%; left:-5%; width:110%; height:110%; object-fit:contain; z-index:0; pointer-events:none; animation: firePulseAnim 3s infinite ease-in-out; filter:drop-shadow(0 10px 20px rgba(255,100,0,0.5));">` : ''}
+                
+                <div style="width: 100px; height: 100px; display:flex; align-items:center; justify-content:center; flex-shrink: 0; position:relative; z-index:2; margin: 0 auto 16px;">
+                    <div style="width:100px; height:100px; border-radius:50%; background:#1f1f23; position:absolute; top:0; left:0; z-index:1; box-shadow: inset 0 0 10px rgba(0,0,0,0.6);"></div>
+                    <img src="${item.image}" style="width:140px;height:140px;object-fit:contain; position:absolute; top:-20px; left:-20px; z-index:2; pointer-events:none;"/>
                 </div>
-                <div style="flex: 1; display:flex; flex-direction:column; justify-content:center; z-index:2;">
-                    <div style="color: #ffffff; font-weight: 700; font-size: 18px; line-height: 1.2; margin-bottom: 6px;">${item.title}</div>
-                    <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 10px; line-height: 1.4;">${item.desc}</div>
-                    <div style="font-size: 14px; color: var(--accent, #4cd137); font-weight:bold; letter-spacing: 0.5px;">${isOwned ? '✓ КУПЛЕНО' : item.price}</div>
+                
+                <div style="flex: 1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; z-index:2; width: 100%;">
+                    <div style="color: #ffffff; font-weight: 800; font-size: 18px; line-height: 1.2; margin-bottom: 6px; text-shadow: 0 1px 4px rgba(0,0,0,0.8);">${item.title}</div>
+                    <div style="font-size: 13px; color: rgba(255,255,255,0.7); margin-bottom: 20px; line-height: 1.4; text-shadow: 0 1px 3px rgba(0,0,0,0.8);">${item.desc}</div>
+                    <div style="font-size: 14px; font-weight:bold; letter-spacing: 0.5px; padding: 6px 16px; border-radius: 20px; background: rgba(0,0,0,0.4); backdrop-filter: blur(8px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); ${isOwned ? 'color: rgba(255,255,255,0.9);' : 'color: var(--accent);'} ">${isOwned ? '✓ В ИНВЕНТАРЕ' : item.price}</div>
                 </div>
             </div>
             `;
@@ -9144,6 +9209,7 @@ class CatalogManager {
     }
 
     static saveAdminItem(id) {
+        if (!AdminPanel.isCurrentUserCreator()) return Utils.toast('Только Создатель может управлять товарами', 'error');
         const isHotCb = Utils.$(`admin-cat-ishot-${id}`);
         const updates = {
             title: Utils.$(`admin-cat-title-${id}`).value,
@@ -9158,6 +9224,7 @@ class CatalogManager {
     }
 
     static deleteAdminItem(id) {
+        if (!AdminPanel.isCurrentUserCreator()) return Utils.toast('Только Создатель может управлять товарами', 'error');
         if(confirm('Удалить товар?')) {
             remove(ref(db, `catalog/${id}`)).then(() => Utils.toast('Товар удален'));
         }
@@ -9175,12 +9242,11 @@ window.openCatalogItemModal = function(itemId) {
     Utils.$('catalog-item-image').src = item.image;
 
     const previewContainer = Utils.$('catalog-item-avatar-preview-container');
-    const previewImg = Utils.$('catalog-item-avatar-preview');
     
     // Default hiding
-    if (previewImg) {
-        previewImg.style.display = 'none';
-        previewImg.src = '';
+    if (previewContainer) {
+        previewContainer.innerHTML = '';
+        previewContainer.style.background = '#1f1f23';
     }
 
     modal.classList.add('active');
@@ -9215,13 +9281,12 @@ window.openCatalogItemModal = function(itemId) {
     const previewBtn = Utils.$('btn-preview-catalog-item');
     if(previewBtn) {
         previewBtn.onclick = () => {
-             // Temporarily apply current user's avatar
-             if(AppState.currentUser && AppState.currentUserProfile) {
-                 previewImg.src = AppState.currentUserProfile.photoURL || 'https://emojigraph.org/media/apple/bust-in-silhouette_1f464.png';
-                 previewImg.style.display = 'block';
+             if (previewContainer && window.AppState && AppState.currentUserProfile) {
+                 previewContainer.innerHTML = ProfileManager.getAvatarHtml(AppState.currentUserProfile);
                  previewContainer.style.background = 'transparent';
-             } else {
-                 Utils.toast('Авторизуйтесь для предпросмотра', 'error');
+             } else if (previewContainer) {
+                 previewContainer.innerHTML = `<img src="https://emojigraph.org/media/apple/bust-in-silhouette_1f464.png" style="width:100%;height:100%;object-fit:cover;"/>`;
+                 previewContainer.style.background = 'transparent';
              }
         };
     }
