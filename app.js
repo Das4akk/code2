@@ -604,6 +604,37 @@ class Utils {
                 gap: 0;
                 background: radial-gradient(circle at top, rgba(255, 255, 255, 0.09), rgba(9, 9, 9, 0.98));
             }
+            @media (max-width: 1024px) {
+                #modal-admin-panel.godmode-modal .modal-content {
+                    grid-template-columns: 1fr;
+                    grid-template-rows: auto 1fr;
+                }
+                .godmode-sidebar {
+                    flex-direction: row !important;
+                    overflow-x: auto;
+                    padding: 8px !important;
+                    gap: 8px !important;
+                    scrollbar-width: none; /* Firefox */
+                }
+                .godmode-sidebar::-webkit-scrollbar {
+                    display: none; /* Safari and Chrome */
+                }
+                .godmode-sidebar button {
+                    font-size: 11px !important;
+                    padding: 6px 12px !important;
+                    white-space: nowrap !important;
+                }
+                .godmode-main {
+                    padding: 10px !important;
+                    overflow-x: hidden !important;
+                }
+                .godmode-main [style*="grid-template-columns"] {
+                    grid-template-columns: 1fr !important;
+                }
+                .godmode-main [style*="justify-content:space-between"] {
+                    flex-wrap: wrap;
+                }
+            }
             .godmode-sidebar {
                 border-right: 1px solid rgba(255, 255, 255, 0.25);
                 background: rgba(7, 7, 7, 0.92);
@@ -9063,6 +9094,13 @@ class CatalogManager {
                         }
                     ];
                 }
+                
+                this.items.sort((a, b) => {
+                    const aHot = (a.isHot === true || a.isHot === 'true') ? 1 : 0;
+                    const bHot = (b.isHot === true || b.isHot === 'true') ? 1 : 0;
+                    return bHot - aHot;
+                });
+
                 this.renderCatalog();
                 this.renderAdminCatalog();
             });
@@ -9139,7 +9177,13 @@ class CatalogManager {
         const list = Utils.$('catalog-list');
         if (!list) return;
 
-        let filtered = this.items;
+        let filtered = [...this.items];
+        filtered.sort((a, b) => {
+            const aHot = (a.isHot === true || a.isHot === 'true') ? 1 : 0;
+            const bHot = (b.isHot === true || b.isHot === 'true') ? 1 : 0;
+            return bHot - aHot;
+        });
+
         if (this.activeFilter === 'frames') filtered = filtered.filter(i => i.type === 'frame');
         if (this.activeFilter === 'free') filtered = filtered.filter(i => i.priceType === 'free' || i.price === 'БЕСПЛАТНО' || i.price === '0');
         if (this.activeFilter === 'paid') filtered = filtered.filter(i => i.priceType === 'paid' || (i.price !== 'БЕСПЛАТНО' && i.price !== '0'));
