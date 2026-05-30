@@ -648,9 +648,12 @@
         .love-heart.near { filter: blur(0.15px) brightness(0.96) saturate(0.92); }
         @keyframes loveFloatUp { from { transform: translate3d(0, 0, 0) scale(var(--heart-scale, 1)); opacity: 0; } 8% { opacity: var(--heart-opacity, 0.52); } to { transform: translate3d(var(--heart-drift, 8px), calc(-1 * var(--heart-travel, 700px)), 0) scale(calc(var(--heart-scale, 1) * 1.02)); opacity: 0; } }
 
+        .mobile-header { display: none; }
+        .sidebar-overlay { display: none; }
+
         @media (max-width: 1024px) {
             .lobby-layout { grid-template-columns: 1fr; padding: 0; }
-            .sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(2px); z-index: 499; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
+            .sidebar-overlay { display: block; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(2px); z-index: 499; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
             .sidebar-overlay.open { opacity: 1; pointer-events: auto; }
             .sidebar { position: fixed; left: -100%; top: 0; height: 100%; width: 280px; z-index: 500; background: #050505; border-right: 1px solid var(--border); transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); padding: calc(env(safe-area-inset-top) + 20px) 20px 20px 20px; box-shadow: 20px 0 50px rgba(0,0,0,0.8); }
             .sidebar.open { left: 0; }
