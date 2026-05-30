@@ -132,20 +132,18 @@
         /* ========================================================= */
         .lobby-layout { display: grid; grid-template-columns: 320px 1fr; gap: 20px; padding: 20px; height: 100vh; max-width: 1600px; margin: 0 auto; width: 100%; }
         
-        .sidebar { display: flex; flex-direction: column; padding: 20px; overflow-y: hidden; }
+        .sidebar { display: flex; flex-direction: column; padding: 20px; overflow-y: auto; }
         .sidebar::-webkit-scrollbar { width: 4px; }
         .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
         .user-card { display: flex; align-items: center; gap: 14px; padding: 16px; border-radius: 16px; background: rgba(255,255,255,0.02); cursor: pointer; border: 1px solid transparent; transition: 0.2s; margin-bottom: 24px; flex-shrink: 0; }
         .user-card:hover { background: rgba(255,255,255,0.05); border-color: var(--border-light); }
-        .avatar { width: 48px; height: 48px; border-radius: 50%; background: #111; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 20px; overflow: visible; border: 1px solid var(--border-light); flex-shrink: 0; }
+        .avatar { width: 48px; height: 48px; border-radius: 50%; background: #111; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 20px; overflow: hidden; border: 1px solid var(--border-light); flex-shrink: 0; }
         .avatar img { width: 100%; height: 100%; object-fit: cover; }
         .user-card-info { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
         .user-card-name { font-weight: 700; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .user-card-username { font-size: 12px; color: var(--accent); margin-top: 2px; font-weight: 500; }
         
-        .nav-menu { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; flex-shrink: 1; flex-grow: 1; overflow-y: auto; overflow-x: hidden; padding-right: 5px; }
-        .nav-menu::-webkit-scrollbar { width: 4px; }
-        .nav-menu::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+        .nav-menu { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; flex-shrink: 0; }
         .nav-item { padding: 14px 16px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; color: var(--text-muted); font-weight: 600; border: 1px solid transparent; transition: 0.2s; }
         .nav-item:hover { background: rgba(255,255,255,0.02); color: var(--text-main); }
         .nav-item.active { background: rgba(255,255,255,0.05); color: var(--text-main); border-color: var(--border-light); }
@@ -243,7 +241,7 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            overflow: visible;
+            overflow: hidden;
             margin-left: -6px;
             font-size: 10px;
             font-weight: 700;
@@ -349,7 +347,7 @@
         .partner-container { display: none; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.16); background: linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,120,180,0.06)); backdrop-filter: blur(12px); margin-bottom: 14px; text-align: left; color: var(--profile-text, var(--text-main)); cursor: pointer; transition: border-color 0.25s ease, box-shadow 0.25s ease; }
         .partner-container:hover { border-color: rgba(255,180,220,0.4); box-shadow: 0 8px 22px rgba(255,90,160,0.12); }
         .partner-container.active { display: flex; }
-        .partner-avatar { width: 42px; height: 42px; border-radius: 50%; overflow: visible; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: #111; border: 1px solid var(--border-light); font-weight: 800; }
+        .partner-avatar { width: 42px; height: 42px; border-radius: 50%; overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: #111; border: 1px solid var(--border-light); font-weight: 800; }
         .partner-avatar img { width: 100%; height: 100%; object-fit: cover; }
         .partner-info { flex: 1; min-width: 0; }
         .partner-label { font-size: 11px; color: #ff6fae; font-weight: 800; margin-bottom: 2px; } /* // [UPDATE] */
@@ -365,7 +363,7 @@
         @keyframes partnerShine { 0%, 100% { left: -50%; opacity: 0; } 45% { opacity: 1; } 55% { left: 120%; opacity: 0; } }
         .partner-ambilight-header { position: relative; z-index: 2; text-align: center; margin-bottom: 16px; }
         .partner-ambilight-couple { display: flex; align-items: center; justify-content: center; gap: 14px; margin-bottom: 12px; }
-        .partner-ambilight-avatar { width: 72px; height: 72px; border-radius: 50%; border: 2px solid rgba(255,180,220,0.55); background: rgba(0,0,0,0.35); overflow: visible; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 800; box-shadow: 0 8px 24px rgba(255,100,180,0.25); }
+        .partner-ambilight-avatar { width: 72px; height: 72px; border-radius: 50%; border: 2px solid rgba(255,180,220,0.55); background: rgba(0,0,0,0.35); overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 800; box-shadow: 0 8px 24px rgba(255,100,180,0.25); }
         .partner-ambilight-link { position: relative; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; }
         .partner-link-pulse { position: absolute; inset: 0; border-radius: 50%; border: 1px solid rgba(255,150,210,0.5); animation: pulseHeart 1.8s ease-in-out infinite; }
         .partner-link-icon { font-size: 22px; z-index: 1; filter: drop-shadow(0 0 8px rgba(255,120,190,0.8)); }
@@ -438,7 +436,7 @@
         .dm-chat-item.active { background: #ffffff; color: #000; box-shadow: none; }
         .dm-chat-item.active .dm-chat-name { color: #000; }
         .dm-chat-item.active .dm-chat-last-msg { color: rgba(0,0,0,0.6); }
-        .dm-chat-avatar { width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.1); background: #111; display: flex; align-items: center; justify-content: center; font-weight: bold; overflow: visible; flex-shrink: 0; }
+        .dm-chat-avatar { width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.1); background: #111; display: flex; align-items: center; justify-content: center; font-weight: bold; overflow: hidden; flex-shrink: 0; }
         .dm-chat-info { flex: 1; overflow: hidden; display: flex; flex-direction: column; gap: 4px; }
         .dm-chat-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 15px; }
         .dm-chat-last-msg { font-size: 13px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -859,16 +857,37 @@
                 <div class="friends-container" style="max-width: 800px; width: 100%; margin: 0 auto; padding-top: 20px;">
                     <div class="section-title" style="font-size: 24px; margin-bottom: 20px;"><img src="https://emojigraph.org/media/apple/shopping-bags_1f6cd-fe0f.png" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Каталог</div>
                     
-                    <!-- NEW CATALOG FILTER PANEL -->
-                    <div id="catalog-filters" style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
-                        <button class="secondary-btn active-filter" data-filter="all" style="width:auto; padding:8px 16px; border-radius: 20px; border-color: rgba(255,255,255,0.4); background: rgba(255,255,255,0.1);">Все</button>
-                        <button class="secondary-btn" data-filter="frames" style="width:auto; padding:8px 16px; border-radius: 20px;">Рамки</button>
-                        <button class="secondary-btn" data-filter="free" style="width:auto; padding:8px 16px; border-radius: 20px;">Бесплатные</button>
-                        <button class="secondary-btn" data-filter="paid" style="width:auto; padding:8px 16px; border-radius: 20px;">Платные</button>
-                    </div>
-
-                    <div id="catalog-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">
-                        <!-- JS WILL RENDER CATALOG HERE -->
+                    <div id="catalog-list" style="display: flex; flex-wrap: wrap; gap: 15px;">
+                        <div class="ach-card" style="
+                            width: 100%;
+                            max-width: 400px;
+                            height: auto;
+                            min-height: 120px;
+                            max-height: none;
+                            flex-shrink: 0;
+                            border-radius: 12px; 
+                            background: rgba(0,0,0,0.2);
+                            border: 1px solid var(--border-light, rgba(255,255,255,0.1));
+                            display: flex; 
+                            flex-direction: row;
+                            align-items: center; 
+                            text-align: left;
+                            position: relative;
+                            overflow: hidden;
+                            padding: 16px;
+                            box-sizing: border-box;
+                            cursor: pointer;
+                        " onclick="if(typeof openCatalogItemModal === 'function') openCatalogItemModal('frame_gomah')">
+                            <div style="width: 80px; height: 80px; display:flex; align-items:center; justify-content:center; flex-shrink: 0; margin-right: 15px; position:relative;">
+                                <div style="width:100%; height:100%; border-radius:50%; background:#222; position:absolute; top:0; left:0; z-index:1;"></div>
+                                <img src="https://discord-decoration.art/decorations/gomah.webp" style="width:100px;height:100px;object-fit:cover; position:absolute; top:-10px; left:-10px; z-index:2; pointer-events:none;"/>
+                            </div>
+                            <div style="flex: 1; display:flex; flex-direction:column; justify-content:center;">
+                                <div style="color: #ffffff; font-weight: 700; font-size: 16px; line-height: 1.2; margin-bottom: 4px;">Рамка Gomah</div>
+                                <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">Анимированная рамка профиля</div>
+                                <div style="font-size: 13px; color: var(--accent, #4cd137); font-weight:bold;">БЕСПЛАТНО</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </main>
@@ -961,8 +980,8 @@
             <div style="display: flex; flex-direction: column; gap: 12px;">
                 <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 10px;">
                     <div class="avatar-wrapper" style="position: relative; width: 70px; height: 70px; flex-shrink:0;">
-                        <div class="avatar" id="edit-avatar-preview" style="width: 100%; height: 100%; font-size: 24px; border-radius:50%; overflow:visible; display:flex; align-items:center; justify-content:center; background:#111;">?</div>
-                        <img id="edit-avatar-frame" src="" style="width: 130%; height: 130%; object-fit: contain; position: absolute; top: -15%; left: -15%; z-index: 2; pointer-events: none; display: none;"/>
+                        <div class="avatar" id="edit-avatar-preview" style="width: 100%; height: 100%; font-size: 24px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center; background:#111;">?</div>
+                        <img id="edit-avatar-frame" src="" style="width: 90px; height: 90px; object-fit: cover; position: absolute; top: -10px; left: -10px; z-index: 2; pointer-events: none; display: none;"/>
                     </div>
                     <div style="flex: 1; min-width: 0;">
                         <input type="text" id="edit-avatar-url" placeholder="URL аватарки (ссылка)" style="margin:0;">
@@ -1073,7 +1092,7 @@
                 <div id="view-streak-count" style="position:relative; z-index:1; font-size:16px; font-weight:900; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,1), 0 0 8px #ff4500; margin-top:14px;">0</div>
             </div>
             <div class="modal-drag-handle"></div>
-            <div class="avatar" id="view-avatar" style="width: 90px; height: 90px; font-size: 32px; margin: 0 auto 15px; border-radius:50%; overflow:visible; display:flex; align-items:center; justify-content:center; background:#111;">?</div>
+            <div class="avatar" id="view-avatar" style="width: 90px; height: 90px; font-size: 32px; margin: 0 auto 15px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center; background:#111;">?</div>
             <h2 id="view-name" style="margin-bottom: 5px;">Пользователь</h2>
             <div id="view-username" style="color: var(--accent); font-size: 14px; margin-bottom: 5px; font-weight: 600;">@user</div>
             <div id="view-status" style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;"></div>
@@ -1227,32 +1246,17 @@
 
     <!-- Catalog Item Modal -->
     <div class="modal" id="modal-catalog-item">
-        <div class="modal-content glass-panel" style="width: min(540px, calc(100vw - 32px)); padding: 0; background: rgba(20,20,22,0.85); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; box-shadow: 0 20px 80px rgba(0,0,0,0.8); overflow: hidden; display: flex; flex-direction: column;">
+        <div class="modal-content glass-panel" style="max-width: 400px; text-align: center;">
             <div class="modal-drag-handle"></div>
-            
-            <!-- Header Banner / Preview Area -->
-            <div style="position: relative; width: 100%; height: 260px; background: radial-gradient(circle at center, rgba(255,255,255,0.08) 0%, rgba(0,0,0,0.2) 100%); display: flex; align-items: center; justify-content: center; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                
-                <div style="width: 140px; height: 140px; position:relative; z-index:10;">
-                     <div style="width:100%; height:100%; border-radius:50%; background:#111; position:absolute; top:0; left:0; z-index:1; overflow: hidden; box-shadow: inset 0 0 20px rgba(0,0,0,0.8), 0 10px 30px rgba(0,0,0,0.5);" id="catalog-item-avatar-preview-container"></div>
-                     <img id="catalog-item-image" src="" style="width:180px;height:180px;object-fit:cover; position:absolute; top:-20px; left:-20px; z-index:2; pointer-events:none; filter:drop-shadow(0 10px 20px rgba(0,0,0,0.6));"/>
-                </div>
+            <h2 id="catalog-item-title" style="margin-bottom: 10px;">Рамка Gomah</h2>
+            <div style="width: 120px; height: 120px; margin: 0 auto 15px; position:relative;">
+                 <div style="width:100%; height:100%; border-radius:50%; background:#222; position:absolute; top:0; left:0; z-index:1;"></div>
+                 <img id="catalog-item-image" src="https://discord-decoration.art/decorations/gomah.webp" style="width:140px;height:140px;object-fit:cover; position:absolute; top:-10px; left:-10px; z-index:2; pointer-events:none;"/>
             </div>
-
-            <!-- Content Area -->
-            <div style="padding: 24px 32px; display: flex; flex-direction: column; align-items: center; text-align: center;">
-                <h2 id="catalog-item-title" style="margin: 0 0 12px 0; font-weight: 800; font-size: 24px; letter-spacing: -0.5px; color: #fff;">Название товара</h2>
-                <div id="catalog-item-price" style="display:inline-block; font-size: 14px; color: #fff; font-weight: 700; margin-bottom: 16px; padding: 6px 16px; background: rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.15); border-radius: 30px; letter-spacing: 0.5px;">БЕСПЛАТНО</div>
-                <p id="catalog-item-desc" style="color: rgba(255,255,255,0.6); font-size: 15px; margin: 0 0 32px 0; line-height: 1.5; max-width: 90%;">Описание товара</p>
-                
-                <div style="width: 100%; display: flex; flex-direction: column; gap: 12px;">
-                    <div style="display: flex; gap: 12px; width: 100%;">
-                        <button class="secondary-btn btn-close-modal" id="btn-close-catalog-modal" style="flex: 1; font-weight: 600; font-size: 15px; padding: 14px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; color: #fff; transition: background 0.2s;">Отмена</button>
-                        <button class="secondary-btn" id="btn-preview-catalog-item" style="flex: 1; font-weight: 600; font-size: 15px; padding: 14px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.2); border-radius: 16px; color: #fff; transition: background 0.2s;">Примерить</button>
-                    </div>
-                    <button class="primary-btn" id="btn-buy-catalog-item" style="width: 100%; font-weight: 700; font-size: 16px; padding: 16px; background: #fff; color: #000; border-radius: 16px; box-shadow: 0 8px 24px rgba(255, 255, 255, 0.15); border: none; transition: transform 0.2s, box-shadow 0.2s;">Купить</button>
-                </div>
-            </div>
+            <p id="catalog-item-desc" style="color: var(--text-muted); font-size: 14px; margin-bottom: 15px;">Анимированная рамка профиля</p>
+            <p id="catalog-item-price" style="font-size: 18px; color: var(--accent); font-weight: bold; margin-bottom: 20px;">БЕСПЛАТНО</p>
+            <button class="primary-btn" id="btn-buy-catalog-item" style="width: 100%; margin-bottom: 10px; font-weight: 700;">Получить</button>
+            <button class="secondary-btn btn-close-modal" id="btn-close-catalog-modal" style="width: 100%;">Отмена</button>
         </div>
     </div>
 
