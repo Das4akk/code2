@@ -115,6 +115,7 @@
         #auth-screen { align-items: center; justify-content: center; }
         .auth-wrapper { width: 420px; padding: 40px; text-align: center; max-width: 90%; }
         .logo { font-size: 52px; font-weight: 900; margin-bottom: 25px; letter-spacing: -2px; }
+        .burger-btn { color: #fff; }
         .auth-tabs { display: flex; gap: 8px; margin-bottom: 20px; background: #040404; padding: 6px; border-radius: 12px; border: 1px solid var(--border); }
         .auth-tabs button { flex: 1; padding: 10px; background: transparent; color: var(--text-muted); border-radius: 8px; transition: 0.3s; }
         .auth-tabs button.active { background: var(--panel-hover); color: var(--text-main); box-shadow: 0 2px 8px rgba(0,0,0,0.5); border: 1px solid var(--border-light); }
@@ -649,9 +650,11 @@
 
         @media (max-width: 1024px) {
             .lobby-layout { grid-template-columns: 1fr; padding: 0; }
-            .sidebar { position: fixed; left: -100%; top: 0; height: 100%; width: 300px; z-index: 500; background: #050505; border-right: 1px solid var(--border); transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); padding-top: 80px; box-shadow: 20px 0 50px rgba(0,0,0,0.8); }
+            .sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(2px); z-index: 499; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
+            .sidebar-overlay.open { opacity: 1; pointer-events: auto; }
+            .sidebar { position: fixed; left: -100%; top: 0; height: 100%; width: 280px; z-index: 500; background: #050505; border-right: 1px solid var(--border); transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); padding: calc(env(safe-area-inset-top) + 20px) 20px 20px 20px; box-shadow: 20px 0 50px rgba(0,0,0,0.8); }
             .sidebar.open { left: 0; }
-            .mobile-header { display: flex; position: sticky; top: 0; z-index: 400; }
+            .mobile-header { display: flex; position: sticky; top: 0; z-index: 400; background: rgba(5,5,5,0.85); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border-light); }
             .rooms-main { padding: 15px; }
             .room-layout { grid-template-columns: 1fr; padding: env(safe-area-inset-top) 8px env(safe-area-inset-bottom) 8px; height: 100dvh; display: flex; flex-direction: column; }
             .player-section { flex: none; display: flex; flex-direction: column; }
@@ -665,6 +668,9 @@
         html.theme-light-global .sidebar { background: rgba(255,255,255,0.94); box-shadow: 0 12px 28px rgba(17,24,39,0.08); } /* // [NEW] */
         html.theme-light-global .lobby-header input { background: #ffffff; color: var(--text-main); box-shadow: none; } /* // [NEW] */
         html.theme-light-global .global-theme-toggle { background: #ffffff; box-shadow: 0 8px 18px rgba(17,24,39,0.06); } /* // [NEW] */
+        html.theme-light-global .mobile-header { background: rgba(255,255,255,0.85); border-bottom: 1px solid rgba(0,0,0,0.1); }
+        html.theme-light-global .burger-btn { color: #000 !important; }
+        html.theme-light-global .logo { background: linear-gradient(90deg, #000, #444) !important; -webkit-background-clip: text !important; -webkit-text-fill-color: transparent !important; }
         #modal-edit-profile .modal-content,
         #modal-view-profile .modal-content {
             background: var(--profile-bg, #111111) !important;
@@ -755,13 +761,16 @@
     <!-- LOBBY SCREEN -->
     <!-- ========================================================================= -->
     <section id="lobby-screen" class="screen">
-        <div class="mobile-header">
+        <div class="mobile-header" style="justify-content: space-between; padding: 10px 15px; align-items: center;">
+            <button id="toggle-sidebar" class="burger-btn" style="background: none; border: none; font-size: 24px; cursor: pointer;">☰</button>
             <div class="logo" style="font-size: 24px; margin: 0; letter-spacing: -1px;">COWIO</div>
+            <div style="width: 24px;"></div> <!-- placeholder to center logo -->
         </div>
         
         <div class="lobby-layout">
+            <div class="sidebar-overlay" id="sidebar-overlay"></div>
             <aside class="sidebar glass-panel" id="main-sidebar">
-                <div class="user-card" id="btn-open-my-profile">
+                <div class="user-card" id="btn-open-my-profile" style="margin-top: 10px;">
                     <div class="avatar" id="my-avatar-display">?</div>
                     <div class="user-card-info">
                         <div class="user-card-name" id="my-name-display">Загрузка...</div>
@@ -1260,16 +1269,42 @@
     <script>
         const btnToggle = document.getElementById('toggle-sidebar');
         const sidebar = document.getElementById('main-sidebar');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+        
+        function closeSidebar() {
+            if (sidebar) sidebar.classList.remove('open');
+            if (sidebarOverlay) sidebarOverlay.classList.remove('open');
+        }
+        
+        function openSidebar() {
+            if (sidebar) sidebar.classList.add('open');
+            if (sidebarOverlay) sidebarOverlay.classList.add('open');
+        }
+
         if (btnToggle && sidebar) {
             btnToggle.addEventListener('click', (e) => {
                 e.stopPropagation();
-                sidebar.classList.toggle('open');
+                if (sidebar.classList.contains('open')) closeSidebar();
+                else openSidebar();
             });
-            document.addEventListener('click', (e) => {
-                if (window.innerWidth <= 1024 && sidebar.classList.contains('open')) {
-                    if (!sidebar.contains(e.target)) sidebar.classList.remove('open');
-                }
+            if (sidebarOverlay) {
+                sidebarOverlay.addEventListener('click', closeSidebar);
+            }
+            
+            // Close sidebar when clicking a nav menu item on mobile
+            const navItems = sidebar.querySelectorAll('.nav-item');
+            navItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    if (window.innerWidth <= 1024) closeSidebar();
+                });
             });
+            // Also close when opening profile
+            const myProfileBtn = document.getElementById('btn-open-my-profile');
+            if (myProfileBtn) {
+                myProfileBtn.addEventListener('click', () => {
+                   if (window.innerWidth <= 1024) closeSidebar(); 
+                });
+            }
         }
     </script>
     

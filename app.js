@@ -317,7 +317,7 @@ class Utils {
                     max-height: 70vh;
                     padding-bottom: 120px;
                 }
-                .logo { font-size: 32px !important; font-weight: 900; letter-spacing: 2px; background: linear-gradient(90deg, #fff, #888); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0 auto; text-align: center; width: 100%; display: block;}
+                .logo { font-size: 28px !important; font-weight: 900; letter-spacing: 2px; background: linear-gradient(90deg, #fff, #888); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0; text-align: center; display: inline-block; }
             }
             
             /* Бело-серый бейдж онлайна в лобби */
@@ -8957,6 +8957,8 @@ class MobileSwipeManager {
 
         // Sidebar swipe to close
         const sidebar = Utils.$('main-sidebar');
+        const sidebarOverlay = Utils.$('sidebar-overlay');
+        
         if (sidebar) {
             let startX = 0;
             sidebar.addEventListener('touchstart', (e) => {
@@ -8966,9 +8968,29 @@ class MobileSwipeManager {
                 const endX = e.changedTouches[0].clientX;
                 if (startX - endX > 60) { // swipe left
                     sidebar.classList.remove('open');
+                    if (sidebarOverlay) sidebarOverlay.classList.remove('open');
                 }
             });
         }
+        
+        // Edge swipe right to open sidebar
+        document.addEventListener('touchstart', (e) => {
+            if (e.touches[0].clientX < 30 && window.innerWidth <= 1024) { // Edge of screen
+                this.edgeStartX = e.touches[0].clientX;
+            } else {
+                this.edgeStartX = null;
+            }
+        }, { passive: true });
+        
+        document.addEventListener('touchend', (e) => {
+            if (this.edgeStartX !== null && window.innerWidth <= 1024) {
+                const endX = e.changedTouches[0].clientX;
+                if (endX - this.edgeStartX > 50 && sidebar) {
+                    sidebar.classList.add('open');
+                    if (sidebarOverlay) sidebarOverlay.classList.add('open');
+                }
+            }
+        });
     }
 }
 
