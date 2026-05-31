@@ -1516,10 +1516,10 @@ class PartnerBondEngine {
 
     static calcStreak(bond, dateKey = this.dateKey()) {
         const last = bond.lastStreakKey || '';
-        if (!last) return 1;
-        if (last === dateKey) return Math.max(1, bond.streak || 1);
-        if (last === this.yesterdayKey()) return Math.max(1, (bond.streak || 0) + 1);
-        return 1;
+        if (!last) return 0;
+        if (last === dateKey) return bond.streak || 0;
+        if (last === this.yesterdayKey()) return (bond.streak >= 1) ? (bond.streak + 1) : 2;
+        return 0;
     }
 
     static bondLevel(totalWarmth = 0) {
@@ -3791,9 +3791,9 @@ class ProfileManager {
         const yesterdayStr = `${yesterday.getFullYear()}-${yesterday.getMonth() + 1}-${yesterday.getDate()}`;
         
         if (lastLoginDate === yesterdayStr) {
-            streak += 1;
+            streak = streak >= 1 ? streak + 1 : 2;
         } else {
-            streak = 1;
+            streak = 0;
         }
         
         await update(ref(db, `users/${uid}/profile`), {

@@ -131,7 +131,7 @@
         /* ========================================================= */
         /* LOBBY LAYOUT */
         /* ========================================================= */
-        .lobby-layout { display: grid; grid-template-columns: 320px 1fr; gap: 20px; padding: 20px; height: 100vh; max-width: 1600px; margin: 0 auto; width: 100%; }
+        .lobby-layout { display: grid; grid-template-columns: 320px 1fr; gap: 20px; padding: 20px; flex: 1; min-height: 0; max-width: 1600px; margin: 0 auto; width: 100%; overflow-y: auto; }
         
         .sidebar { display: flex; flex-direction: column; padding: 20px; overflow-y: hidden; }
         .sidebar::-webkit-scrollbar { width: 4px; }
@@ -657,7 +657,7 @@
             .sidebar-overlay.open { opacity: 1; pointer-events: auto; }
             .sidebar { position: fixed; left: -100%; top: 0; height: 100%; width: 280px; z-index: 500; background: #050505; border-right: 1px solid var(--border); transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); padding: calc(env(safe-area-inset-top) + 20px) 20px 20px 20px; box-shadow: 20px 0 50px rgba(0,0,0,0.8); }
             .sidebar.open { left: 0; }
-            .mobile-header { display: flex; position: sticky; top: 0; z-index: 400; background: rgba(5,5,5,0.85); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border-light); }
+            .mobile-header { display: flex; position: sticky; top: 0; z-index: 400; background: rgba(5,5,5,0.85); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255,255,255,0.05); }
             .rooms-main { padding: 15px; }
             .room-layout { grid-template-columns: 1fr; padding: env(safe-area-inset-top) 8px env(safe-area-inset-bottom) 8px; height: 100dvh; display: flex; flex-direction: column; }
             .player-section { flex: none; display: flex; flex-direction: column; }
@@ -671,8 +671,8 @@
         html.theme-light-global .sidebar { background: rgba(255,255,255,0.94); box-shadow: 0 12px 28px rgba(17,24,39,0.08); } /* // [NEW] */
         html.theme-light-global .lobby-header input { background: #ffffff; color: var(--text-main); box-shadow: none; } /* // [NEW] */
         html.theme-light-global .global-theme-toggle { background: #ffffff; box-shadow: 0 8px 18px rgba(17,24,39,0.06); } /* // [NEW] */
-        html.theme-light-global .mobile-header { background: rgba(255,255,255,0.85); border-bottom: 1px solid rgba(0,0,0,0.1); }
-        html.theme-light-global .burger-btn { color: #000 !important; }
+        html.theme-light-global .mobile-header { background: none; border-bottom: none; }
+        html.theme-light-global .burger-btn { color: #000 !important; background: rgba(255,255,255,0.85) !important; border-color: rgba(0,0,0,0.1) !important; }
         html.theme-light-global .logo { background: linear-gradient(90deg, #000, #444) !important; -webkit-background-clip: text !important; -webkit-text-fill-color: transparent !important; }
         #modal-edit-profile .modal-content,
         #modal-view-profile .modal-content {
@@ -764,10 +764,12 @@
     <!-- LOBBY SCREEN -->
     <!-- ========================================================================= -->
     <section id="lobby-screen" class="screen">
-        <div class="mobile-header" style="justify-content: space-between; padding: 10px 15px; align-items: center;">
-            <button id="toggle-sidebar" class="burger-btn" style="background: none; border: none; font-size: 24px; cursor: pointer;">☰</button>
-            <div class="logo" style="font-size: 24px; margin: 0; letter-spacing: -1px;">COWIO</div>
-            <div style="width: 24px;"></div> <!-- placeholder to center logo -->
+        <div class="mobile-header" style="justify-content: space-between; padding: 12px 20px; align-items: center; min-height: 60px;">
+            <button id="toggle-sidebar" class="burger-btn" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-main); display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; margin-left: -8px; border-radius: 8px; transition: background 0.2s;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+            </button>
+            <div class="logo" style="font-size: 22px; margin: 0; font-weight: 800; letter-spacing: -0.5px; position: absolute; left: 50%; transform: translateX(-50%);">COWIO</div>
+            <div style="width: 40px;"></div> <!-- placeholder to center logo -->
         </div>
         
         <div class="lobby-layout">
@@ -1087,8 +1089,46 @@
             <div class="modal-drag-handle"></div>
             <div class="avatar" id="view-avatar" style="width: 90px; height: 90px; font-size: 32px; margin: 0 auto 15px; border-radius:50%; overflow:visible; display:flex; align-items:center; justify-content:center; background:#111;">?</div>
             <h2 id="view-name" style="margin-bottom: 5px;">Пользователь</h2>
-            <div id="view-username" style="color: var(--accent); font-size: 14px; margin-bottom: 5px; font-weight: 600;">@user</div>
-            <div id="view-status" style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;"></div>
+            <div id="view-username" style="color: var(--accent); font-size: 14px; margin-bottom: 12px; font-weight: 600;">@user</div>
+            
+            <div id="view-level-interactive" style="width:100%; max-width:340px; margin: 0 auto 24px; padding: 18px; border-radius: 20px; position: relative; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,0.3); z-index: 1;">
+                <!-- Telegram Premium style animated bg -->
+                <div style="position:absolute; top:-50%; left:-50%; width:200%; height:200%; background: conic-gradient(from 0deg, transparent 0%, rgba(138,43,226,0.3) 25%, transparent 50%, rgba(0,212,255,0.3) 75%, transparent 100%); animation: tgRotate 6s linear infinite; z-index:-2;"></div>
+                <div style="position:absolute; inset: 1px; background: linear-gradient(145deg, rgba(20,20,25,0.95), rgba(10,10,15,0.98)); border-radius: 19px; z-index:-1;"></div>
+                <style>@keyframes tgRotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }</style>
+
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; cursor: pointer; z-index: 2;" id="view-level-header">
+                     <div style="display:flex; align-items:center; gap: 14px;">
+                         <div id="view-level-icon-wrapper" style="width:42px; height:42px; border-radius:50%; background: linear-gradient(135deg, #a855f7, #ec4899); display:flex; align-items:center; justify-content:center; box-shadow: 0 4px 15px rgba(236,72,153,0.4); padding: 8px;">
+                             <img id="view-level-icon" src="https://em-content.zobj.net/source/apple/391/seedling_1f331.png" style="width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));" />
+                         </div>
+                         <div style="display:flex; flex-direction:column; align-items:flex-start;">
+                             <span id="view-steam-level-count" style="font-size: 18px; font-weight: 800; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.5); letter-spacing: -0.5px;">Level 0</span>
+                             <span style="font-size: 12px; color: #a1a1aa; font-weight: 500; margin-top:2px;">Ранг профиля</span>
+                         </div>
+                     </div>
+                     <div id="view-level-sticker" style="width: 44px; height: 44px; border-radius: 50%; display: flex; align-items:center; justify-content:center; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); filter:drop-shadow(0 4px 10px rgba(0,0,0,0.5)); transform-origin: center;">
+                          <img src="https://em-content.zobj.net/source/apple/391/sparkles_2728.png" style="width:34px;height:34px;object-fit:contain;" id="view-level-sticker-img" />
+                     </div>
+                </div>
+                
+                <div style="width:100%; height:8px; background:rgba(0,0,0,0.6); border-radius:10px; overflow:hidden; position:relative; box-shadow:inset 0 1px 3px rgba(0,0,0,0.8); margin-top: 16px;">
+                    <div id="view-xp-progress" style="position:absolute; top:0; left:0; width:0%; height:100%; background:linear-gradient(90deg, #3b82f6, #ec4899); border-radius:10px; transition:width 1s cubic-bezier(0.4, 0, 0.2, 1); box-shadow:0 0 15px rgba(236,72,153,0.6);"></div>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-top:10px;">
+                     <span style="font-size:12px; color:#a1a1aa; font-weight:500;">Текущий прогресс</span>
+                     <span id="view-xp-text" style="font-size:12px; color:#fff; font-weight:700;">0 / 100 XP</span>
+                </div>
+
+                <div id="view-level-drawer" style="height: 0; opacity: 0; overflow: hidden; transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); border-top: 1px solid rgba(255,255,255,0); margin-top: 0px; padding-top: 0px;">
+                    <div style="font-size: 11px; color: #a1a1aa; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; margin-top: 16px; text-align: left;">iOS Стикер Статуса</div>
+                    <div style="display:flex; gap:12px; overflow-x:auto; padding-bottom:12px; align-items:center;" class="no-scrollbar" id="level-stickers-container">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+            
+            <div id="view-status" style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;"></div>
             <p id="view-bio" style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px; line-height: 1.5;"></p>
             <!-- Achievements / Badges Collection -->
             <div id="view-badges-collection" style="margin-bottom:15px; display:flex; flex-wrap:wrap; gap:8px; justify-content:center;"></div>
@@ -1239,11 +1279,14 @@
 
     <!-- Catalog Item Modal -->
     <div class="modal" id="modal-catalog-item">
-        <div class="modal-content glass-panel" style="width: min(540px, calc(100vw - 32px)); padding: 0; background: rgba(20,20,22,0.85); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; box-shadow: 0 20px 80px rgba(0,0,0,0.8); overflow: hidden; display: flex; flex-direction: column;">
-            <div class="modal-drag-handle"></div>
+        <div class="modal-content glass-panel" style="width: min(540px, calc(100vw - 32px)); padding: 0; background: radial-gradient(circle at top, rgba(255,255,255,0.12), rgba(0,0,0,0.95)), repeating-linear-gradient(45deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 2px, transparent 2px, transparent 4px); backdrop-filter: blur(40px) saturate(180%); -webkit-backdrop-filter: blur(40px) saturate(180%); border: 1px solid rgba(255,255,255,0.1); border-top: 1px solid rgba(255,255,255,0.25); border-radius: 32px; box-shadow: 0 40px 100px rgba(0,0,0,0.9), inset 0 2px 20px rgba(255,255,255,0.08); overflow: hidden; display: flex; flex-direction: column; position: relative;">
+            <div style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, transparent 50%, rgba(0,0,0,0.3) 100%);"></div>
+            <div class="modal-drag-handle" style="position:relative; z-index:10;"></div>
             
             <!-- Header Banner / Preview Area -->
-            <div style="position: relative; width: 100%; height: 260px; background: radial-gradient(circle at center, rgba(255,255,255,0.08) 0%, rgba(0,0,0,0.2) 100%); display: flex; align-items: center; justify-content: center; border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <div style="position: relative; width: 100%; height: 260px; background: radial-gradient(circle at center, rgba(255,255,255,0.08) 0%, rgba(0,0,0,0.2) 100%); display: flex; align-items: center; justify-content: center; border-bottom: 1px solid rgba(255,255,255,0.05); overflow: hidden;">
+                <div style="position:absolute; inset:0; pointer-events:none; background: url('https://em-content.zobj.net/source/apple/391/sparkles_2728.png') repeat center/120px; opacity: 0.05; animation: panBg 40s linear infinite;"></div>
+                <style>@keyframes panBg { 0% { background-position: 0 0; } 100% { background-position: 1000px 1000px; } }</style>
                 
                 <div style="width: 140px; height: 140px; position:relative; z-index:10;">
                      <div style="width:100%; height:100%; border-radius:50%; background:#111; position:absolute; top:0; left:0; z-index:1; overflow: hidden; box-shadow: inset 0 0 20px rgba(0,0,0,0.8), 0 10px 30px rgba(0,0,0,0.5);" id="catalog-item-avatar-preview-container"></div>

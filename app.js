@@ -1543,10 +1543,10 @@ class PartnerBondEngine {
 
     static calcStreak(bond, dateKey = this.dateKey()) {
         const last = bond.lastStreakKey || '';
-        if (!last) return 1;
-        if (last === dateKey) return Math.max(1, bond.streak || 1);
-        if (last === this.yesterdayKey()) return Math.max(1, (bond.streak || 0) + 1);
-        return 1;
+        if (!last) return 0;
+        if (last === dateKey) return bond.streak || 0;
+        if (last === this.yesterdayKey()) return (bond.streak >= 1) ? (bond.streak + 1) : 2;
+        return 0;
     }
 
     static bondLevel(totalWarmth = 0) {
@@ -3024,6 +3024,8 @@ class BadgeManager {
         let count = 0;
         const updates = {};
         
+        let bXp = AppState.customBadges && AppState.customBadges[badgeId] ? Number(AppState.customBadges[badgeId].xp) || 0 : 0;
+        
         for (const [uid, uData] of Object.entries(usersData)) {
             if (uData.status && uData.status.online) {
                 let assigned = (uData.profile && uData.profile.assignedBadges) || [];
@@ -3031,6 +3033,15 @@ class BadgeManager {
                 if (!assigned.includes(badgeId)) {
                     assigned.push(badgeId);
                     updates[`users/${uid}/profile/assignedBadges`] = assigned;
+                    if (bXp > 0) {
+                        let curXp = Number(uData.profile?.xp) || 0;
+                        let curLevel = Number(uData.profile?.level) || 0;
+                        let newXp = curXp + bXp;
+                        let newLevel = Math.floor(newXp / 100);
+                        if (newLevel < curLevel) newLevel = curLevel;
+                        updates[`users/${uid}/profile/xp`] = newXp;
+                        updates[`users/${uid}/profile/level`] = newLevel;
+                    }
                     count++;
                 }
             }
@@ -3081,6 +3092,7 @@ class BadgeManager {
             name,
             desc: Utils.$('admin-badge-edit-desc')?.value.trim() || '',
             icon: Utils.$('admin-badge-edit-icon')?.value.trim() || '',
+            xp: parseInt(Utils.$('admin-badge-edit-xp')?.value, 10) || 0,
             color: Utils.$('admin-badge-edit-color')?.value || '#ffffff',
             bg: Utils.$('admin-badge-edit-bg')?.value || '#5d3fd3',
             border: Utils.$('admin-badge-edit-border')?.value || '#8d63ff'
@@ -3172,6 +3184,7 @@ class BadgeManager {
                 Utils.$('admin-badge-edit-name').value = bdg.name;
                 Utils.$('admin-badge-edit-desc').value = bdg.desc || '';
                 Utils.$('admin-badge-edit-icon').value = bdg.icon || '';
+                if(Utils.$('admin-badge-edit-xp')) Utils.$('admin-badge-edit-xp').value = bdg.xp || 0;
                 Utils.$('admin-badge-edit-color').value = bdg.color;
                 Utils.$('admin-badge-edit-bg').value = bdg.bg;
                 Utils.$('admin-badge-edit-border').value = bdg.border;
@@ -3226,9 +3239,25 @@ class BadgeManager {
                 else currentSet.delete(id);
 
                 const newArr = Array.from(currentSet);
-                await update(ref(db, `users/${targetUid}/profile`), { assignedBadges: newArr });
+                const updates = { assignedBadges: newArr };
+                let bXp = AppState.customBadges && AppState.customBadges[id] ? Number(AppState.customBadges[id].xp) || 0 : 0;
+                
+                if (checked && bXp > 0) {
+                    const pSnap = await get(ref(db, `users/${targetUid}/profile`));
+                    const p = pSnap.val() || {};
+                    let curXp = Number(p.xp) || 0;
+                    let curLevel = Number(p.level) || 0;
+                    let newXp = curXp + bXp;
+                    let newLevel = Math.floor(newXp / 100);
+                    if (newLevel < curLevel) newLevel = curLevel;
+                    updates.xp = newXp;
+                    updates.level = newLevel;
+                }
+                
+                await update(ref(db, `users/${targetUid}/profile`), updates);
                 AdminPanel.pushAuditLog('admin.badge.custom_assigned', { targetUid, badgeId: id, granted: checked });
                 Utils.toast(checked ? 'Бейдж выдан' : 'Бейдж снят');
+                if (checked && bXp > 0) AdminPanel.loadUserEditor(targetUid);
             };
             container.appendChild(label);
         });
@@ -3818,9 +3847,9 @@ class ProfileManager {
         const yesterdayStr = `${yesterday.getFullYear()}-${yesterday.getMonth() + 1}-${yesterday.getDate()}`;
         
         if (lastLoginDate === yesterdayStr) {
-            streak += 1;
+            streak = streak >= 1 ? streak + 1 : 2;
         } else {
-            streak = 1;
+            streak = 0;
         }
         
         await update(ref(db, `users/${uid}/profile`), {
@@ -4676,6 +4705,103 @@ class ProfileManager {
             streakEl.style.display = 'none';
         }
 
+        const lvl = Number(profile.level) || 0;
+        const xp = Number(profile.xp) || 0;
+        Utils.$('view-steam-level-count').innerText = `${lvl} Ур.`;
+        
+        // XP progress (level = total xp // 100, so remainder goes to progress bar)
+        let xpInCurrentLevel = xp % 100; 
+        if (lvl > 0 && xp === 0) xpInCurrentLevel = 0; // fallback if someone set level directly
+        Utils.$('view-xp-progress').style.width = `${xpInCurrentLevel}%`;
+        Utils.$('view-xp-text').innerText = `${xpInCurrentLevel} / 100 XP`;
+
+        const viewLevelIcon = Utils.$('view-level-icon');
+        let levelColor = '#9e9e9e'; 
+        let iconSrc = 'https://em-content.zobj.net/source/apple/391/seedling_1f331.png'; // Novice
+        
+        if (lvl >= 10 && lvl < 20) { levelColor = '#cddc39'; iconSrc = 'https://em-content.zobj.net/source/apple/391/glowing-star_1f31f.png'; }
+        else if (lvl >= 20 && lvl < 30) { levelColor = '#ff9800'; iconSrc = 'https://em-content.zobj.net/source/apple/391/fire_1f525.png'; }
+        else if (lvl >= 30 && lvl < 40) { levelColor = '#2196f3'; iconSrc = 'https://em-content.zobj.net/source/apple/391/gem-stone_1f48e.png'; }
+        else if (lvl >= 40 && lvl < 50) { levelColor = '#9c27b0'; iconSrc = 'https://em-content.zobj.net/source/apple/391/crystal-ball_1f52e.png'; }
+        else if (lvl >= 50 && lvl < 80) { levelColor = '#ffeb3b'; iconSrc = 'https://em-content.zobj.net/source/apple/391/crown_1f451.png'; }
+        else if (lvl >= 80) { levelColor = '#e91e63'; iconSrc = 'https://em-content.zobj.net/source/apple/391/milky-way_1f30c.png'; }
+        
+        viewLevelIcon.src = iconSrc;
+        
+        const interactiveEl = Utils.$('view-level-interactive');
+        const newInteractiveEl = interactiveEl.cloneNode(true);
+        interactiveEl.parentNode.replaceChild(newInteractiveEl, interactiveEl);
+        newInteractiveEl.removeAttribute('onclick');
+
+        const activeSticker = profile.sticker || 'https://em-content.zobj.net/source/apple/391/sparkles_2728.png';
+        Utils.$('view-level-sticker-img').src = activeSticker;
+        
+        const openDrawer = () => {
+            const drawer = Utils.$('view-level-drawer');
+            if (drawer.style.height && drawer.style.height !== '0px') {
+                drawer.style.height = '0px';
+                drawer.style.opacity = '0';
+                drawer.style.marginTop = '0px';
+                drawer.style.paddingTop = '0px';
+                drawer.style.borderTopColor = 'rgba(255,255,255,0)';
+            } else {
+                drawer.style.height = '80px';
+                drawer.style.opacity = '1';
+                drawer.style.marginTop = '12px';
+                drawer.style.paddingTop = '12px';
+                drawer.style.borderTopColor = 'rgba(255,255,255,0.08)';
+            }
+        };
+
+        const headerBtn = Utils.$('view-level-header');
+        if (headerBtn) {
+            headerBtn.onclick = () => {
+                if (targetUid !== AppState.currentUser?.uid) {
+                    Utils.toast('✨ ' + (profile.name || targetUid) + ' имеет ' + lvl + ' ранг!', 'success');
+                    return;
+                }
+                openDrawer();
+            };
+        }
+
+        // populate stickers
+        const container = Utils.$('level-stickers-container');
+        if (container) {
+            container.innerHTML = '';
+            const stickerSets = [
+                'https://em-content.zobj.net/source/apple/391/sparkles_2728.png',
+                'https://em-content.zobj.net/source/apple/391/fire_1f525.png',
+                'https://em-content.zobj.net/source/apple/391/ghost_1f47b.png',
+                'https://em-content.zobj.net/source/apple/391/alien-monster_1f47e.png',
+                'https://em-content.zobj.net/source/apple/391/skull-and-crossbones_2620-fe0f.png',
+                'https://em-content.zobj.net/source/apple/391/crown_1f451.png',
+                'https://em-content.zobj.net/source/apple/391/gem-stone_1f48e.png',
+                'https://em-content.zobj.net/source/apple/391/rocket_1f680.png',
+                'https://em-content.zobj.net/source/apple/391/unicorn_1f984.png',
+                'https://em-content.zobj.net/source/apple/391/heart-on-fire_2764-fe0f-200d-1f525.png'
+            ];
+            
+            stickerSets.forEach(s => {
+                const img = document.createElement('img');
+                img.src = s;
+                img.style.width = '36px';
+                img.style.height = '36px';
+                img.style.objectFit = 'contain';
+                img.style.cursor = 'pointer';
+                img.style.transition = 'transform 0.2s';
+                img.style.filter = s === activeSticker ? 'drop-shadow(0 4px 8px rgba(187,134,252,0.8))' : 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))';
+                img.onmouseenter = () => img.style.transform = 'scale(1.2)';
+                img.onmouseleave = () => img.style.transform = 'scale(1)';
+                img.onclick = () => {
+                    Utils.$('view-level-sticker-img').src = s;
+                    update(ref(db, `users/${targetUid}/profile/sticker`), s);
+                    Utils.toast('Стикер обновлен!', 'success');
+                    openDrawer();
+                };
+                container.appendChild(img);
+            });
+        }
+
         const friendsSnap = await get(ref(db, `users/${targetUid}/friends`));
         const friendsCount = friendsSnap.exists() ? Object.values(friendsSnap.val()).filter(f => f.status === 'accepted').length : 0;
         const joinDate = profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() : 'Неизвестно';
@@ -4725,14 +4851,6 @@ class ProfileManager {
                 const sinceSnap = await get(ref(db, `users/${targetUid}/partnerSince`));
                 const sinceTs = sinceSnap.exists() ? Number(sinceSnap.val()) : Date.now();
                 const days = Math.floor((Date.now() - sinceTs) / (1000 * 60 * 60 * 24));
-                
-                userBadges.push({
-                    _id: 'partner_0',
-                    name: 'Это любовь',
-                    desc: 'Вступить в отношения',
-                    icon: 'https://cdn.emoji.gg/emojis/1690-love-face-emoji.gif',
-                    color: '#ffffff'
-                });
                 
                 if (days >= 7) {
                     userBadges.push({
@@ -6319,6 +6437,7 @@ class AdminPanel {
                             <input type="text" id="admin-badge-edit-name" placeholder="Название бейджа (текст)" style="margin-bottom:8px;">
                             <textarea id="admin-badge-edit-desc" placeholder="Описание ачивки" rows="2" style="width: 100%; border-radius: 8px; border: 1px solid var(--border-light); background: rgba(0,0,0,0.2); color: #fff; padding: 10px; font-family: inherit; font-size: 14px; resize: vertical; margin-bottom: 8px;"></textarea>
                             <input type="text" id="admin-badge-edit-icon" placeholder="Иконка (ссылка на изображение или эмодзи)" style="margin-bottom:8px;">
+                            <input type="number" id="admin-badge-edit-xp" placeholder="Опыт (XP) за получение" min="0" value="0" style="margin-bottom:8px;">
                             <div id="admin-badge-preset-icons" style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:8px; max-height:100px; overflow-y:auto; background:rgba(0,0,0,0.2); padding:5px; border-radius:8px;"></div>
                             <div class="admin-color-grid">
                                 <div class="admin-color-field">
@@ -7031,6 +7150,20 @@ class AdminPanel {
                 <div style="font-weight:700; margin-bottom:6px;">Стрик (Огонек)</div>
                 <input type="number" id="admin-edit-streak" min="0" value="${Utils.escapeHtml(profile.streak || 0)}" placeholder="Количество дней подряд">
             </div>
+
+            <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
+                <div style="font-weight:700; margin-bottom:6px;">Уровень и XP (Стим-система)</div>
+                <div style="display:flex; gap:10px;">
+                    <div style="flex:1;">
+                        <label for="admin-edit-level" class="admin-form-label">Уровень</label>
+                        <input type="number" id="admin-edit-level" min="0" value="${profile.level || 0}" placeholder="Уровень">
+                    </div>
+                    <div style="flex:1;">
+                        <label for="admin-edit-xp" class="admin-form-label">XP</label>
+                        <input type="number" id="admin-edit-xp" min="0" value="${profile.xp || 0}" placeholder="Опыт">
+                    </div>
+                </div>
+            </div>
             
             <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
                 <div style="font-weight:700; margin-bottom:6px;">Назначенные бейджи</div>
@@ -7053,12 +7186,22 @@ class AdminPanel {
             </div>
 
             <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
-                <div style="font-weight:700; margin-bottom:6px;">Прямая выдача рамки (URL)</div>
+                <div style="font-weight:700; margin-bottom:6px;">Прямая выдача/удаление рамки</div>
                 <div style="display:flex; gap: 8px;">
                     <input type="text" id="admin-user-frame-id" placeholder="Изображение рамки (URL)" style="margin:0; flex:1;">
                     <button class="primary-btn" id="btn-admin-user-grant-frame" style="width:auto; padding:0 12px;">Выдать</button>
                 </div>
                 <div style="font-size:11px; margin-top:6px; color:var(--text-muted);">Рамка будет назначена напрямую в профиль.</div>
+                
+                <div id="admin-user-inventory-list" style="margin-top:10px; display:flex; flex-direction:column; gap:5px;">
+                    ${(profile.inventory || []).map((frameUrl, idx) => `
+                        <div style="display:flex; gap:10px; align-items:center; background:rgba(255,255,255,0.05); padding:5px; border-radius:6px;">
+                            <img src="${Utils.escapeHtml(frameUrl)}" style="width:30px;height:30px;object-fit:cover;border-radius:4px;">
+                            <input type="text" readonly value="${Utils.escapeHtml(frameUrl)}" style="flex:1; margin:0; font-size:11px; padding:4px;">
+                            <button class="danger-btn" onclick="AdminPanel.removeFrameFromUser('${uid}', '${idx}')" style="padding:4px 8px; font-size:12px;">Удалить</button>
+                        </div>
+                    `).join('')}
+                </div>
             </div>
 
             <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
@@ -7173,6 +7316,29 @@ class AdminPanel {
         this.loadUserEditor(uid);
     }
 
+    static async removeFrameFromUser(uid, idx) {
+        if (!this.isCurrentUserCreator()) return Utils.toast('Только Создатель', 'error');
+        if (!confirm('Удалить эту рамку у пользователя?')) return;
+        idx = parseInt(idx, 10);
+        const snap = await get(ref(db, `users/${uid}/profile/inventory`));
+        if (snap.exists()) {
+            const currentInv = snap.val();
+            if (currentInv[idx]) {
+                const removedUrl = currentInv[idx];
+                currentInv.splice(idx, 1);
+                const profileSnap = await get(ref(db, `users/${uid}/profile`));
+                const prof = profileSnap.val() || {};
+                const updates = { inventory: currentInv };
+                if (prof.frame === removedUrl) {
+                    updates.frame = null; // Remove active frame if deleted
+                }
+                await update(ref(db, `users/${uid}/profile`), updates);
+                Utils.toast('Рамка удалена');
+                this.loadUserEditor(uid); // Refresh
+            }
+        }
+    }
+
     static async toggleUserMute(uid) {
         if (!this.requireAdmin()) return;
         if (!(await this.checkModRestrictionsForTarget(uid))) return;
@@ -7281,11 +7447,15 @@ class AdminPanel {
         const bgColor = Utils.$('admin-edit-bg-color')?.value || '#111111';
         const bgUrl = Utils.$('admin-edit-bg-url')?.value.trim() || '';
         const bgDim = Number(Utils.$('admin-edit-bg-dim')?.value || 0.5);
+        let level = Number(Utils.$('admin-edit-level')?.value || 0);
+        let xp = Number(Utils.$('admin-edit-xp')?.value || 0);
 
-        if (streak !== (oldProfile.streak || 0)) {
+        if (streak !== (oldProfile.streak || 0) || level !== (oldProfile.level || 0) || xp !== (oldProfile.xp || 0)) {
             if (!this.isCurrentUserCreator()) {
-                Utils.toast('Изменять серию(стрик) может только Создатель', 'error');
+                Utils.toast('Изменять стрик и уровень(XP) может только Создатель', 'error');
                 streak = oldProfile.streak || 0;
+                level = oldProfile.level || 0;
+                xp = oldProfile.xp || 0;
             }
         }
 
@@ -7313,6 +7483,8 @@ class AdminPanel {
             avatar,
             bio,
             streak,
+            level,
+            xp,
             background: ProfileManager.normalizeProfileBackground({
                 color: bgColor,
                 index: ProfileManager.normalizeProfileBackground(oldProfile.background).index || 10,
@@ -8079,11 +8251,25 @@ class RoomManager {
             vid.onseeked = () => { if(!AppState.ignoreVideoEvents && !window._isSyncingVideo && this.hasPerm('player')) set(syncRef, { type: 'seek', state: vid.paused ? 'paused' : 'playing', time: vid.currentTime, ts: Date.now() }); };
         }
 
+        let hasHostRejoinedSync = false;
         const sUnsub = onValue(syncRef, (snap) => {
             const d = snap.val();
             if (!d) {
                 setTimeout(() => AppState.ignoreVideoEvents = false, 1000);
                 return;
+            }
+
+            if (AppState.isHost && !hasHostRejoinedSync) {
+                hasHostRejoinedSync = true;
+                if (d.state === 'paused') {
+                    set(syncRef, {
+                        type: 'play',
+                        state: 'playing',
+                        time: d.time,
+                        ts: Date.now()
+                    }).catch(()=>{});
+                    return;
+                }
             }
 
             AppState.lastKnownSyncState = d;
@@ -8536,6 +8722,27 @@ class RoomManager {
 
     static leaveRoom() {
         if (!AppState.currentRoomId) return;
+        
+        if (AppState.isHost) {
+            let currentTime = 0;
+            let isYt = !!YouTubePlayerManager.player;
+            let isRt = !!RutubePlayerManager.player;
+            if (isYt) currentTime = YouTubePlayerManager.getCurrentTime();
+            else if (isRt) currentTime = RutubePlayerManager.getCurrentTime();
+            else {
+                const vid = Utils.$('native-player');
+                if (vid) currentTime = vid.currentTime;
+            }
+            try {
+                set(ref(db, `rooms/${AppState.currentRoomId}/sync`), {
+                    type: 'pause',
+                    state: 'paused',
+                    time: currentTime,
+                    ts: Date.now()
+                }).catch(()=>{});
+            } catch(e) {}
+        }
+
         AppState.roomSubscriptions.forEach(fn => fn());
         AppState.roomSubscriptions = [];
         RTCManager.destroy();
@@ -9346,7 +9553,7 @@ window.openCatalogItemModal = function(itemId) {
        const userProfile = (window.AppState && AppState.currentUser) ? AppState.usersCache.get(AppState.currentUser.uid) : null;
        const inventory = userProfile?.inventory || [];
        const isOwned = inventory.includes(item.id);
-       buyBtn.innerText = isOwned ? 'Применить' : (item.priceType === 'free' || String(item.price).trim().toUpperCase() === 'БЕСПЛАТНО' || String(item.price).trim().toUpperCase() === 'FREE' || item.price === '0') ? 'Получить' : 'Купить';
+       buyBtn.innerText = isOwned ? 'Применить' : (item.priceType === 'free' || String(item.price).trim().toUpperCase() === 'БЕСПЛАТНО' || String(item.price).trim().toUpperCase() === 'FREE' || item.price === '0') ? 'Получить' : `Купить (${item.price} ур.)`;
        buyBtn.style.background = isOwned ? 'rgba(255,255,255,0.1)' : '#fff';
        buyBtn.style.color = isOwned ? '#fff' : '#000';
        buyBtn.onclick = async () => {
@@ -9373,6 +9580,20 @@ window.openCatalogItemModal = function(itemId) {
                    AppState.usersCache.set(uid, currentProf);
                } else {
                    Utils.toast('Недостаточно средств', 'error');
+           // Replaced with:
+           let cost = parseInt(item.price, 10) || 0;
+           let curLevel = Number(currentProf?.level) || 0;
+           if (curLevel >= cost) {
+               inv.push(item.id);
+               // no deduction
+               // xp unchanged
+               update(ref(db), { [`users/${uid}/profile/inventory`]: inv });
+               Utils.toast('Уровень подходит. Товар добавлен в инвентарь!', 'success');
+               buyBtn.innerText = 'Применить';
+               buyBtn.style.background = 'rgba(255,255,255,0.1)';
+               buyBtn.style.color = '#fff';
+               currentProf.inventory = inv; AppState.usersCache.set(uid, currentProf);
+           } else { Utils.toast('Недостаточно уровней (нужно: ' + cost + ')', 'error'); }
                }
            }
        };
@@ -9403,3 +9624,25 @@ if (document.readyState === 'loading') {
 } else {
     CatalogManager.init();
 }
+
+window.addEventListener('pagehide', () => {
+    if (AppState.currentRoomId && AppState.isHost) {
+        let currentTime = 0;
+        let isYt = !!YouTubePlayerManager.player;
+        let isRt = !!RutubePlayerManager.player;
+        if (isYt) currentTime = YouTubePlayerManager.getCurrentTime();
+        else if (isRt) currentTime = RutubePlayerManager.getCurrentTime();
+        else {
+            const vid = Utils.$('native-player');
+            if (vid) currentTime = vid.currentTime;
+        }
+        try {
+            set(ref(db, `rooms/${AppState.currentRoomId}/sync`), {
+                type: 'pause',
+                state: 'paused',
+                time: currentTime,
+                ts: Date.now()
+            }).catch(()=>{});
+        } catch(e) {}
+    }
+});
