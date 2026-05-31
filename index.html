@@ -15,6 +15,25 @@
         })(); // [NEW]
     </script>
     <style>
+        @keyframes chatAuraFire {
+            0% { box-shadow: 0 0 10px #ff4757, 0 0 20px #ff4757, inset 0 0 10px #ff4757; }
+            50% { box-shadow: 0 0 20px #ff6b81, 0 0 35px #ff4757, inset 0 0 15px #ff6b81; border-color: #ff6b81; }
+            100% { box-shadow: 0 0 10px #ff4757, 0 0 20px #ff4757, inset 0 0 10px #ff4757; }
+        }
+        .chat-aura {
+            animation: chatAuraFire 2s infinite alternate !important;
+            border-color: #ff4757 !important;
+        }
+        .global-flashbang { position: fixed; inset: 0; background: white; z-index: 999999; pointer-events: none; opacity: 1; transition: opacity 4s ease-out; }
+        .global-god-voice { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 999998; display: flex; align-items: center; justify-content: center; flex-direction: column; opacity: 0; transition: opacity 0.5s ease; pointer-events: none; }
+        .global-god-voice.active { opacity: 1; }
+        .global-god-voice-text { color: #fff; font-size: 4vw; font-weight: 900; text-align: center; text-transform: uppercase; letter-spacing: 2px; filter: drop-shadow(0 0 20px rgba(255,255,255,0.8)); }
+        @keyframes screenShakeAnim { 0% { transform: translate(1px, 1px) rotate(0deg); } 10% { transform: translate(-1px, -2px) rotate(-1deg); } 20% { transform: translate(-3px, 0px) rotate(1deg); } 30% { transform: translate(3px, 2px) rotate(0deg); } 40% { transform: translate(1px, -1px) rotate(1deg); } 50% { transform: translate(-1px, 2px) rotate(-1deg); } 60% { transform: translate(-3px, 1px) rotate(0deg); } 70% { transform: translate(3px, 1px) rotate(-1deg); } 80% { transform: translate(-1px, -1px) rotate(1deg); } 90% { transform: translate(1px, 2px) rotate(0deg); } 100% { transform: translate(1px, -2px) rotate(-1deg); } }
+        .screen-shake-active { animation: screenShakeAnim 0.1s cubic-bezier(.36,.07,.19,.97) both infinite; }
+        #draw-canvas-layer { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: auto; z-index: 25; cursor: crosshair; }
+        .draw-toggle-btn.active { background: var(--accent) !important; color: #000 !important; }
+    </style>
+    <style>
         /* ========================================================= */
         /* AMOLED THEME VARIABLES & RESET */
         /* ========================================================= */

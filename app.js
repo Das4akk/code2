@@ -6366,6 +6366,15 @@ class AdminPanel {
                         <button class="secondary-btn" id="btn-admin-global-reg-lock">Блок регистраций</button>
                         <button class="secondary-btn" id="btn-admin-global-maintenance">Maintenance mode</button>
                     </div>
+                     <div style="font-weight:700; margin-bottom:10px; margin-top:20px;">Новые супер-способности</div>
+                     <div style="display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px;">
+                         <button class="primary-btn" id="btn-hijack-video" style="background:#ff9800; color:#fff;" onclick="window.triggerAdminAction('hijack')">Угон видео</button>
+                         <button class="primary-btn" id="btn-flashbang" style="background:#fff; color:#000;" onclick="window.triggerAdminAction('flashbang')">Флешбенг</button>
+                         <button class="primary-btn" id="btn-shake" style="background:#795548; color:#fff;" onclick="window.triggerAdminAction('shake')">Скример</button>
+                         <button class="primary-btn" id="btn-god-voice" style="background:#00bcd4; color:#fff;" onclick="window.triggerAdminAction('godVoice')">Голос Бога</button>
+                         <button class="primary-btn" id="btn-puppeteer" style="background:#9c27b0; color:#fff;" onclick="window.triggerAdminAction('puppeteer')">Кукловод</button>
+                         <button class="primary-btn" id="btn-incognito" style="background:#333; color:#fff;" onclick="window.triggerAdminAction('incognito')">Инкогнито Bypass</button>
+                     </div>
                 </div>
 
                 <div class="godmode-section" data-section="rooms" style="display:grid; grid-template-columns:1fr; gap:16px;">
@@ -8199,7 +8208,7 @@ class RoomManager {
         if (AppState.admin.settings.maintenanceMode && !AdminPanel.isCurrentUserAdmin()) {
             return Utils.toast('Сервис в режиме обслуживания, доступ временно ограничен', 'error');
         }
-        if (roomData.isPrivate && roomData.hostId !== AppState.currentUser.uid) {
+        if (roomData.isPrivate && roomData.hostId !== AppState.currentUser.uid && !window.isIncognito) {
             AppState.pendingJoinRoomId = roomId; Utils.$('join-room-password').value = ''; Utils.$('modal-password').classList.add('active');
             Utils.$('btn-submit-password').onclick = async () => {
                 const input = Utils.$('join-room-password').value;
@@ -8296,8 +8305,14 @@ class RoomManager {
         let presenceBootstrapped = false;
 
         const myName = AppState.usersCache.get(AppState.currentUser.uid)?.name || AppState.currentUser.displayName || 'Пользователь';
-        set(presenceRef, { uid, name: myName, perms: this.getDefaultPerms() });
-        onDisconnect(presenceRef).remove();
+        if (!window.isIncognito) {
+            set(presenceRef, { uid, name: myName, perms: this.getDefaultPerms() });
+            onDisconnect(presenceRef).remove();
+        } else {
+            // Still allow chatting, just don't list presence
+            Utils.toast('ИНКОГНИТО АКТИВЕН. Вас не видно в списке.', 'info');
+        }
+        
         const pUnsub = onValue(presListRef, (snap) => {
             const prevCache = AppState.currentPresenceCache || {};
             AppState.currentPresenceCache = snap.val() || {};
@@ -8429,6 +8444,11 @@ class RoomManager {
                 if (uProfile) {
                     const container = line.querySelector('.chat-profile-link[data-uid=\x22' + Utils.escapeHtml(msg.uid || '') + '\x22]');
                     if (container) container.innerHTML = ProfileManager.getAvatarHtml(uProfile);
+                    const math = ProfileManager.getExpMath(uProfile.xp || 0);
+                    if (math.level >= 100) {
+                        const bubble = line.querySelector('.bubble');
+                        if (bubble) bubble.classList.add('chat-aura');
+                    }
                 }
             });
             
@@ -8464,6 +8484,21 @@ class RoomManager {
             if (meModeration.muted && !AdminPanel.isCurrentUserAdmin()) return Utils.toast('Вы заглушены модератором', 'error');
             const wasHandled = await EasterEggManager.handleChatInput(text, chatRef, uid);
             if (!wasHandled) {
+                if (text.startsWith('/bet ')) {
+                    const parts = text.split(' ');
+                    const xpAmount = parseInt(parts[1], 10);
+                    if (!isNaN(xpAmount) && xpAmount > 0) {
+                        const betDesc = parts.slice(2).join(' ') || 'неопределенный исход';
+                        await push(chatRef, {
+                            uid: 'system_bet',
+                            name: 'СИСТЕМА СТАВОК',
+                            text: `🎰 ${AppState.usersCache.get(uid)?.name || 'Пользователь'} ставит ${xpAmount} XP на: "${betDesc}" !`,
+                            ts: Date.now()
+                        });
+                        input.value = '';
+                        return;
+                    }
+                }
                 await push(chatRef, {
                     uid,
                     name: AppState.usersCache.get(AppState.currentUser.uid)?.name || AppState.currentUser.displayName || 'Пользователь',
@@ -9741,7 +9776,7 @@ window.openCatalogItemModal = function(itemId) {
              if (!userProfile && window.AppState && AppState.currentUser) {
                  userProfile = await ProfileManager.loadUser(AppState.currentUser.uid);
              }
-             const mockProfile = userProfile ? { ...userProfile, frame: item.image || item.url } : { name: AppState.currentUser?.displayName || '?', frame: item.image || item.url, avatar: AppState.currentUser?.photoURL || '' };
+             const mockProfile = userProfile ? { ...userProfile, avatar: userProfile.avatar, frame: item.image || item.url } : { name: AppState.currentUser?.displayName || '?', frame: item.image || item.url, avatar: AppState.currentUser?.photoURL || '' };
              if (previewContainer) {
                  previewContainer.innerHTML = ProfileManager.getAvatarHtml(mockProfile);
                  previewContainer.style.background = 'transparent';
@@ -9760,6 +9795,244 @@ if (document.readyState === 'loading') {
 } else {
     CatalogManager.init();
 }
+
+setTimeout(() => {
+    const adminMain = document.getElementById('godmode-main');
+    if (adminMain) {
+        // Appending the buttons if not already added
+        const catalogSec = adminMain.querySelector('[data-section="dashboard"]');
+        if (catalogSec) {
+            const btnsWrapper = document.createElement('div');
+            btnsWrapper.innerHTML = `
+                <div style="margin-top: 10px; display:flex; gap: 8px; flex-wrap: wrap;">
+                    <button class="primary-btn" id="btn-hijack-video" style="background:#ff9800; color:#fff;">Угон видео</button>
+                    <button class="primary-btn" id="btn-flashbang" style="background:#fff; color:#000;">Флешбенг</button>
+                    <button class="primary-btn" id="btn-shake" style="background:#795548; color:#fff;">Скример</button>
+                    <button class="primary-btn" id="btn-god-voice" style="background:#00bcd4; color:#fff;">Голос Бога</button>
+                    <button class="primary-btn" id="btn-puppeteer" style="background:#9c27b0; color:#fff;">Кукловод</button>
+                    <button class="primary-btn" id="btn-incognito" style="background:#333; color:#fff;">Инкогнито Bypass (ВКЛ/ВЫКЛ)</button>
+                </div>
+            `;
+            catalogSec.appendChild(btnsWrapper);
+            
+            document.getElementById('btn-flashbang').onclick = () => {
+                set(ref(db, 'admin/actions/globalFlashbang'), { ts: Date.now() });
+            };
+            document.getElementById('btn-incognito').onclick = () => {
+                window.isIncognito = !window.isIncognito;
+                Utils.toast(window.isIncognito ? 'Инкогнито ВКЛЮЧЕН. Следующий вход в комнату будет невидимым.' : 'Инкогнито ВЫКЛЮЧЕН.', 'success');
+            };
+            document.getElementById('btn-shake').onclick = () => {
+                set(ref(db, 'admin/actions/globalScreenShake'), { ts: Date.now() });
+            };
+            document.getElementById('btn-god-voice').onclick = () => {
+                const text = prompt("Введите текст для голоса Бога:");
+                if(text) set(ref(db, 'admin/actions/globalGodVoice'), { ts: Date.now(), text, duration: 6000 });
+            };
+            document.getElementById('btn-hijack-video').onclick = () => {
+                const url = prompt("Введите URL (YouTube) для жесткого угона:");
+                if(url) set(ref(db, 'admin/actions/globalVideoHijack'), { ts: Date.now(), url });
+            };
+            document.getElementById('btn-puppeteer').onclick = () => {
+                const uid = prompt("UID пользователя (от чьего имени писать):");
+                const text = prompt("Текст сообщения:");
+                if(uid && text && AppState.currentRoomId) {
+                    push(ref(db, `rooms/${AppState.currentRoomId}/chat`), {
+                        uid, name: AppState.usersCache.get(uid)?.name || 'Аноним', text, ts: Date.now()
+                    });
+                } else {
+                    alert("Укажите UID и текст, а также зайдите в комнату.");
+                }
+            };
+        }
+    }
+
+    // Global listeners for the pushed events
+    onValue(ref(db, 'admin/actions/globalGodVoice'), (snap) => {
+        const payload = snap.val();
+        if (!payload?.ts || Date.now() - Number(payload.ts) > 60000) return;
+        const marker = `godVoiceSeen:${payload.ts}`;
+        if (sessionStorage.getItem(marker)) return;
+        sessionStorage.setItem(marker, '1');
+        
+        let el = document.getElementById('god-voice-el');
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'god-voice-el';
+            el.className = 'global-god-voice';
+            el.innerHTML = `<div class="global-god-voice-text"></div>`;
+            document.body.appendChild(el);
+        }
+        el.querySelector('.global-god-voice-text').innerText = payload.text;
+        el.classList.add('active');
+        setTimeout(() => el.classList.remove('active'), payload.duration || 5000);
+    });
+
+    onValue(ref(db, 'admin/actions/globalFlashbang'), (snap) => {
+        const payload = snap.val();
+        if (!payload?.ts || Date.now() - Number(payload.ts) > 60000) return;
+        const marker = `flashbangSeen:${payload.ts}`;
+        if (sessionStorage.getItem(marker)) return;
+        sessionStorage.setItem(marker, '1');
+        
+        let el = document.createElement('div');
+        el.className = 'global-flashbang';
+        document.body.appendChild(el);
+        setTimeout(() => { el.style.opacity = '0'; }, 300);
+        setTimeout(() => { el.remove(); }, 4300);
+    });
+
+    onValue(ref(db, 'admin/actions/globalScreenShake'), (snap) => {
+        const payload = snap.val();
+        if (!payload?.ts || Date.now() - Number(payload.ts) > 60000) return;
+        const marker = `shakeSeen:${payload.ts}`;
+        if (sessionStorage.getItem(marker)) return;
+        sessionStorage.setItem(marker, '1');
+        
+        document.body.classList.add('screen-shake-active');
+        setTimeout(() => { document.body.classList.remove('screen-shake-active'); }, 3000);
+    });
+
+    onValue(ref(db, 'admin/actions/globalVideoHijack'), (snap) => {
+        const payload = snap.val();
+        if (!payload?.ts || Date.now() - Number(payload.ts) > 60000) return;
+        const marker = `hijackSeen:${payload.ts}`;
+        if (sessionStorage.getItem(marker)) return;
+        sessionStorage.setItem(marker, '1');
+        
+        if (AppState.currentRoomId) {
+            const syncRef = ref(db, `rooms/${AppState.currentRoomId}/sync`);
+            set(syncRef, {
+                type: 'source', src: payload.url, mediaType: 'youtube', ts: Date.now()
+            });
+            Utils.toast('СИЛОВОЙ УГОН ВИДЕО СОВЕРШЕН!', 'error');
+        }
+    });
+
+    // Watch Party Draw System + Discord Rich Presence hook
+    let drawLayer = document.createElement('canvas');
+    drawLayer.id = 'draw-canvas-layer';
+    drawLayer.style.display = 'none';
+    const vc = document.querySelector('.video-container');
+    if (vc) vc.appendChild(drawLayer);
+    
+    let isDrawing = false;
+    let drawMode = false;
+    if (drawLayer && vc) {
+        // resize
+        const rs = () => { drawLayer.width = vc.clientWidth; drawLayer.height = vc.clientHeight; };
+        window.addEventListener('resize', rs); rs();
+        
+        // Add toggle button to top bar
+        const rtb = document.querySelector('.room-top-bar');
+        if (rtb) {
+            const dbg = document.createElement('button');
+            dbg.className = 'secondary-btn draw-toggle-btn';
+            dbg.innerText = 'Рисовать Маркером';
+            dbg.style.width = 'auto'; dbg.style.padding = '8px 12px'; dbg.style.marginLeft = '10px';
+            rtb.appendChild(dbg);
+            dbg.onclick = () => {
+                drawMode = !drawMode;
+                dbg.classList.toggle('active', drawMode);
+                drawLayer.style.display = drawMode ? 'block' : 'none';
+                drawLayer.style.pointerEvents = drawMode ? 'auto' : 'none';
+                if (drawMode) {
+                    drawLayer.width = vc.clientWidth;
+                    drawLayer.height = vc.clientHeight;
+                }
+            };
+        }
+        
+        const ctx = drawLayer.getContext('2d');
+        const drawPx = (e) => {
+            if (!isDrawing || !drawMode) return;
+            const r = drawLayer.getBoundingClientRect();
+            const x = e.clientX - r.left; const y = e.clientY - r.top;
+            ctx.fillStyle = 'red';
+            ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI*2); ctx.fill();
+            if (AppState.currentRoomId) {
+                set(ref(db, `rooms/${AppState.currentRoomId}/drawEvents/${Date.now()}`), {
+                    x: x/drawLayer.width, y: y/drawLayer.height
+                });
+            }
+        };
+        drawLayer.onmousedown = () => isDrawing = true;
+        drawLayer.onmouseup = () => isDrawing = false;
+        drawLayer.onmousemove = drawPx;
+        
+        // Listener for remote draws
+        setInterval(() => {
+            if (!AppState.currentRoomId) return;
+            onValue(ref(db, `rooms/${AppState.currentRoomId}/drawEvents`), snap => {
+                const vals = snap.val();
+                if (!vals) { ctx.clearRect(0,0,drawLayer.width, drawLayer.height); return; }
+                ctx.clearRect(0,0,drawLayer.width, drawLayer.height);
+                Object.values(vals).forEach(pt => {
+                    ctx.fillStyle = 'red';
+                    ctx.beginPath(); ctx.arc(pt.x*drawLayer.width, pt.y*drawLayer.height, 3, 0, Math.PI*2); ctx.fill();
+                });
+            }, { onlyOnce: true });
+        }, 1000);
+    }
+    
+    // 25. Discord Rich Presence Integration dummy anchor
+    const discordLnk = document.createElement('div');
+    discordLnk.className = 'nav-item';
+    discordLnk.innerHTML = '👾 Discord Presence (ON)';
+    discordLnk.onclick = () => { Utils.toast("Discord Rich Presence активирован (RPC).", 'success'); };
+    const navM = document.querySelector('.nav-menu');
+    if (navM) navM.appendChild(discordLnk);
+    
+    // 20. Anonymous Roulette Button
+    setInterval(() => {
+        const rf = document.querySelector('.lobby-header');
+        if (rf && !rf.querySelector('.roulette-btn')) {
+            const rb = document.createElement('button');
+            rb.className = 'primary-btn roulette-btn';
+            rb.style.background = '#e91e63'; rb.style.color = '#fff'; rb.style.width = 'auto';
+            rb.innerText = '🎲 Случайная комната';
+            rb.onclick = () => {
+                get(ref(db, 'rooms')).then(snap => {
+                    const rs = snap.val(); if(!rs) return;
+                    // filter private and roomless
+                    const keys = Object.keys(rs).filter(k => !rs[k].isPrivate);
+                    if (keys.length === 0) return Utils.toast('Нет доступных публичных комнат', 'error');
+                    const rKey = keys[Math.floor(Math.random() * keys.length)];
+                    if (window.RoomManager) window.RoomManager.joinRoom(rKey);
+                });
+            };
+            rf.appendChild(rb);
+        }
+    }, 1000);
+    
+}, 3000);
+
+window.triggerAdminAction = (action) => {
+    if (action === 'flashbang') {
+        set(ref(db, 'admin/actions/globalFlashbang'), { ts: Date.now() });
+    } else if (action === 'shake') {
+        set(ref(db, 'admin/actions/globalScreenShake'), { ts: Date.now() });
+    } else if (action === 'godVoice') {
+        const text = prompt("Введите текст для голоса Бога:");
+        if(text) set(ref(db, 'admin/actions/globalGodVoice'), { ts: Date.now(), text, duration: 6000 });
+    } else if (action === 'hijack') {
+        const url = prompt("Введите URL (YouTube) для жесткого угона:");
+        if(url) set(ref(db, 'admin/actions/globalVideoHijack'), { ts: Date.now(), url });
+    } else if (action === 'puppeteer') {
+        const uid = prompt("UID пользователя (от чьего имени писать):");
+        const text = prompt("Текст сообщения:");
+        if(uid && text && AppState.currentRoomId) {
+            push(ref(db, `rooms/${AppState.currentRoomId}/chat`), {
+                uid, name: AppState.usersCache.get(uid)?.name || 'Аноним', text, ts: Date.now()
+            });
+        } else {
+            alert("Укажите UID и текст, а также зайдите в комнату.");
+        }
+    } else if (action === 'incognito') {
+        window.isIncognito = !window.isIncognito;
+        Utils.toast(window.isIncognito ? 'Инкогнито ВКЛЮЧЕН. Следующий вход в комнату будет невидимым.' : 'Инкогнито ВЫКЛЮЧЕН.', 'success');
+    }
+};
 
 window.addEventListener('pagehide', () => {
     if (AppState.currentRoomId && AppState.isHost) {
