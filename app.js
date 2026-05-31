@@ -6368,12 +6368,12 @@ class AdminPanel {
                     </div>
                      <div style="font-weight:700; margin-bottom:10px; margin-top:20px;">Новые супер-способности</div>
                      <div style="display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px;">
-                         <button class="primary-btn" id="btn-hijack-video" style="background:#ff9800; color:#fff;" onclick="window.triggerAdminAction('hijack')">Угон видео</button>
-                         <button class="primary-btn" id="btn-flashbang" style="background:#fff; color:#000;" onclick="window.triggerAdminAction('flashbang')">Флешбенг</button>
-                         <button class="primary-btn" id="btn-shake" style="background:#795548; color:#fff;" onclick="window.triggerAdminAction('shake')">Скример</button>
-                         <button class="primary-btn" id="btn-god-voice" style="background:#00bcd4; color:#fff;" onclick="window.triggerAdminAction('godVoice')">Голос Бога</button>
-                         <button class="primary-btn" id="btn-puppeteer" style="background:#9c27b0; color:#fff;" onclick="window.triggerAdminAction('puppeteer')">Кукловод</button>
-                         <button class="primary-btn" id="btn-incognito" style="background:#333; color:#fff;" onclick="window.triggerAdminAction('incognito')">Инкогнито Bypass</button>
+                         <button class="secondary-btn" id="btn-hijack-video" onclick="window.triggerAdminAction('hijack')">Угон видео</button>
+                         <button class="secondary-btn" id="btn-flashbang" onclick="window.triggerAdminAction('flashbang')">Флешбенг</button>
+                         <button class="secondary-btn" id="btn-shake" onclick="window.triggerAdminAction('shake')">Скример</button>
+                         <button class="secondary-btn" id="btn-god-voice" onclick="window.triggerAdminAction('godVoice')">Голос Бога</button>
+                         <button class="secondary-btn" id="btn-puppeteer" onclick="window.triggerAdminAction('puppeteer')">Кукловод</button>
+                         <button class="secondary-btn" id="btn-incognito" onclick="window.triggerAdminAction('incognito')">Инкогнито Bypass</button>
                      </div>
                 </div>
 
@@ -8268,6 +8268,21 @@ class RoomManager {
         Utils.$('btn-room-settings').style.display = (AppState.isHost || AdminPanel.isCurrentUserCreator()) ? 'block' : 'none';
         if (AppState.isHost || AdminPanel.isCurrentUserCreator()) Utils.$('btn-room-settings').onclick = () => this.openRoomModal(roomId);
 
+        // Add Admin button in room if admin
+        if (AdminPanel.isCurrentUserAdmin()) {
+            let roomAdminBtn = document.getElementById('btn-room-admin-panel');
+            if (!roomAdminBtn) {
+                roomAdminBtn = document.createElement('button');
+                roomAdminBtn.id = 'btn-room-admin-panel';
+                roomAdminBtn.className = 'secondary-btn';
+                roomAdminBtn.innerText = '🛡️ Админ-панель';
+                roomAdminBtn.style.cssText = 'width:auto; padding:10px 16px; margin-left:8px;';
+                roomAdminBtn.onclick = () => AdminPanel.openPanel();
+                const rrTopBar = Utils.$('btn-room-settings').parentNode;
+                if (rrTopBar) rrTopBar.appendChild(roomAdminBtn);
+            }
+        }
+
         const videoVolSlider = Utils.$('video-volume-slider');
         if (videoVolSlider) {
             videoVolSlider.oninput = () => {
@@ -8444,11 +8459,6 @@ class RoomManager {
                 if (uProfile) {
                     const container = line.querySelector('.chat-profile-link[data-uid=\x22' + Utils.escapeHtml(msg.uid || '') + '\x22]');
                     if (container) container.innerHTML = ProfileManager.getAvatarHtml(uProfile);
-                    const math = ProfileManager.getExpMath(uProfile.xp || 0);
-                    if (math.level >= 100) {
-                        const bubble = line.querySelector('.bubble');
-                        if (bubble) bubble.classList.add('chat-aura');
-                    }
                 }
             });
             
@@ -8499,9 +8509,17 @@ class RoomManager {
                         return;
                     }
                 }
+                let sendUid = uid;
+                let sendName = AppState.usersCache.get(AppState.currentUser.uid)?.name || AppState.currentUser.displayName || 'Пользователь';
+                
+                if (window.puppeteerUid && AdminPanel.isCurrentUserAdmin()) {
+                    sendUid = window.puppeteerUid;
+                    sendName = AppState.usersCache.get(sendUid)?.name || 'Аноним (Кукловод)';
+                }
+
                 await push(chatRef, {
-                    uid,
-                    name: AppState.usersCache.get(AppState.currentUser.uid)?.name || AppState.currentUser.displayName || 'Пользователь',
+                    uid: sendUid,
+                    name: sendName,
                     text,
                     ts: Date.now(),
                     shadowbanned: Boolean(meModeration.shadowban)
@@ -9797,56 +9815,6 @@ if (document.readyState === 'loading') {
 }
 
 setTimeout(() => {
-    const adminMain = document.getElementById('godmode-main');
-    if (adminMain) {
-        // Appending the buttons if not already added
-        const catalogSec = adminMain.querySelector('[data-section="dashboard"]');
-        if (catalogSec) {
-            const btnsWrapper = document.createElement('div');
-            btnsWrapper.innerHTML = `
-                <div style="margin-top: 10px; display:flex; gap: 8px; flex-wrap: wrap;">
-                    <button class="primary-btn" id="btn-hijack-video" style="background:#ff9800; color:#fff;">Угон видео</button>
-                    <button class="primary-btn" id="btn-flashbang" style="background:#fff; color:#000;">Флешбенг</button>
-                    <button class="primary-btn" id="btn-shake" style="background:#795548; color:#fff;">Скример</button>
-                    <button class="primary-btn" id="btn-god-voice" style="background:#00bcd4; color:#fff;">Голос Бога</button>
-                    <button class="primary-btn" id="btn-puppeteer" style="background:#9c27b0; color:#fff;">Кукловод</button>
-                    <button class="primary-btn" id="btn-incognito" style="background:#333; color:#fff;">Инкогнито Bypass (ВКЛ/ВЫКЛ)</button>
-                </div>
-            `;
-            catalogSec.appendChild(btnsWrapper);
-            
-            document.getElementById('btn-flashbang').onclick = () => {
-                set(ref(db, 'admin/actions/globalFlashbang'), { ts: Date.now() });
-            };
-            document.getElementById('btn-incognito').onclick = () => {
-                window.isIncognito = !window.isIncognito;
-                Utils.toast(window.isIncognito ? 'Инкогнито ВКЛЮЧЕН. Следующий вход в комнату будет невидимым.' : 'Инкогнито ВЫКЛЮЧЕН.', 'success');
-            };
-            document.getElementById('btn-shake').onclick = () => {
-                set(ref(db, 'admin/actions/globalScreenShake'), { ts: Date.now() });
-            };
-            document.getElementById('btn-god-voice').onclick = () => {
-                const text = prompt("Введите текст для голоса Бога:");
-                if(text) set(ref(db, 'admin/actions/globalGodVoice'), { ts: Date.now(), text, duration: 6000 });
-            };
-            document.getElementById('btn-hijack-video').onclick = () => {
-                const url = prompt("Введите URL (YouTube) для жесткого угона:");
-                if(url) set(ref(db, 'admin/actions/globalVideoHijack'), { ts: Date.now(), url });
-            };
-            document.getElementById('btn-puppeteer').onclick = () => {
-                const uid = prompt("UID пользователя (от чьего имени писать):");
-                const text = prompt("Текст сообщения:");
-                if(uid && text && AppState.currentRoomId) {
-                    push(ref(db, `rooms/${AppState.currentRoomId}/chat`), {
-                        uid, name: AppState.usersCache.get(uid)?.name || 'Аноним', text, ts: Date.now()
-                    });
-                } else {
-                    alert("Укажите UID и текст, а также зайдите в комнату.");
-                }
-            };
-        }
-    }
-
     // Global listeners for the pushed events
     onValue(ref(db, 'admin/actions/globalGodVoice'), (snap) => {
         const payload = snap.val();
@@ -9863,9 +9831,39 @@ setTimeout(() => {
             el.innerHTML = `<div class="global-god-voice-text"></div>`;
             document.body.appendChild(el);
         }
-        el.querySelector('.global-god-voice-text').innerText = payload.text;
+        
+        const txtEl = el.querySelector('.global-god-voice-text');
+        txtEl.innerHTML = '';
+        const totalDuration = payload.duration || 8000;
+        el.style.setProperty('--gv-duration', totalDuration + 'ms');
         el.classList.add('active');
-        setTimeout(() => el.classList.remove('active'), payload.duration || 5000);
+        
+        // Typewriter effect (slower and cinematic)
+        const textToType = payload.text || '';
+        let i = 0;
+        const typeInterval = setInterval(() => {
+            if (i < textToType.length) {
+                const charSpan = document.createElement('span');
+                charSpan.innerText = textToType.charAt(i);
+                charSpan.style.opacity = '0';
+                charSpan.style.transition = 'opacity 1s filter 1s';
+                charSpan.style.filter = 'blur(4px)';
+                txtEl.appendChild(charSpan);
+                requestAnimationFrame(() => {
+                    charSpan.style.opacity = '1';
+                    charSpan.style.filter = 'blur(0px)';
+                });
+                i++;
+            } else {
+                clearInterval(typeInterval);
+            }
+        }, 120); // 120ms per char
+        
+        // Remove slightly after finishing typing (e.g. 5 seconds after duration)
+        setTimeout(() => {
+            el.classList.remove('active');
+            setTimeout(() => { txtEl.innerHTML = ''; }, 1000); // clear after fade out
+        }, totalDuration);
     });
 
     onValue(ref(db, 'admin/actions/globalFlashbang'), (snap) => {
@@ -9909,7 +9907,8 @@ setTimeout(() => {
         }
     });
 
-    // Watch Party Draw System + Discord Rich Presence hook
+    // Watch Party Draw System
+
     let drawLayer = document.createElement('canvas');
     drawLayer.id = 'draw-canvas-layer';
     drawLayer.style.display = 'none';
@@ -9975,13 +9974,6 @@ setTimeout(() => {
         }, 1000);
     }
     
-    // 25. Discord Rich Presence Integration dummy anchor
-    const discordLnk = document.createElement('div');
-    discordLnk.className = 'nav-item';
-    discordLnk.innerHTML = '👾 Discord Presence (ON)';
-    discordLnk.onclick = () => { Utils.toast("Discord Rich Presence активирован (RPC).", 'success'); };
-    const navM = document.querySelector('.nav-menu');
-    if (navM) navM.appendChild(discordLnk);
     
     // 20. Anonymous Roulette Button
     setInterval(() => {
@@ -9998,7 +9990,7 @@ setTimeout(() => {
                     const keys = Object.keys(rs).filter(k => !rs[k].isPrivate);
                     if (keys.length === 0) return Utils.toast('Нет доступных публичных комнат', 'error');
                     const rKey = keys[Math.floor(Math.random() * keys.length)];
-                    if (window.RoomManager) window.RoomManager.joinRoom(rKey);
+                    RoomManager.attemptJoinRoom(rKey, rs[rKey]);
                 });
             };
             rf.appendChild(rb);
@@ -10008,29 +10000,99 @@ setTimeout(() => {
 }, 3000);
 
 window.triggerAdminAction = (action) => {
+    const showAdminPrompt = (title, inputs, onSubmit) => {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.8); backdrop-filter:blur(10px); z-index:100000; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity 0.2s;';
+        
+        // Modal container
+        const modal = document.createElement('div');
+        modal.style.cssText = 'background:rgba(20,20,22,0.9); border:1px solid var(--accent); border-radius:16px; width:90%; max-width:400px; padding:24px; box-shadow:0 10px 40px rgba(0,0,0,0.5); transform:translateY(20px); transition:all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);';
+        
+        // Title
+        const titleEl = document.createElement('h3');
+        titleEl.style.cssText = 'color:#fff; margin:0 0 16px 0; font-size:18px; font-weight:700;';
+        titleEl.innerText = title;
+        modal.appendChild(titleEl);
+        
+        const inputEls = [];
+        inputs.forEach(inp => {
+            const el = document.createElement('input');
+            el.type = 'text';
+            el.placeholder = inp.placeholder;
+            el.style.cssText = 'width:100%; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.1); color:#fff; padding:12px 16px; border-radius:8px; margin-bottom:12px; font-size:14px; outline:none; transition:border-color 0.2s;';
+            el.onfocus = () => el.style.borderColor = 'var(--accent)';
+            el.onblur = () => el.style.borderColor = 'rgba(255,255,255,0.1)';
+            modal.appendChild(el);
+            inputEls.push(el);
+        });
+
+        // Buttons row
+        const btnsRow = document.createElement('div');
+        btnsRow.style.cssText = 'display:flex; gap:10px; margin-top:8px;';
+        
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'secondary-btn';
+        cancelBtn.innerText = 'Отмена';
+        cancelBtn.style.flex = '1';
+        cancelBtn.onclick = () => { overlay.style.opacity = '0'; setTimeout(() => overlay.remove(), 200); };
+        
+        const submitBtn = document.createElement('button');
+        submitBtn.className = 'primary-btn';
+        submitBtn.innerText = 'Выполнить';
+        submitBtn.style.flex = '1';
+        submitBtn.onclick = () => {
+            const vals = inputEls.map(el => el.value.trim());
+            onSubmit(vals);
+            cancelBtn.onclick();
+        };
+
+        inputEls[inputEls.length - 1].onkeydown = (e) => {
+            if (e.key === 'Enter') submitBtn.click();
+        };
+
+        btnsRow.appendChild(cancelBtn);
+        btnsRow.appendChild(submitBtn);
+        modal.appendChild(btnsRow);
+        
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+        
+        // Open anim
+        requestAnimationFrame(() => {
+            overlay.style.opacity = '1';
+            modal.style.transform = 'translateY(0)';
+            if (inputEls.length) inputEls[0].focus();
+        });
+    };
+
     if (action === 'flashbang') {
         set(ref(db, 'admin/actions/globalFlashbang'), { ts: Date.now() });
     } else if (action === 'shake') {
         set(ref(db, 'admin/actions/globalScreenShake'), { ts: Date.now() });
     } else if (action === 'godVoice') {
-        const text = prompt("Введите текст для голоса Бога:");
-        if(text) set(ref(db, 'admin/actions/globalGodVoice'), { ts: Date.now(), text, duration: 6000 });
+        showAdminPrompt("Голос Бога", [{placeholder: "Введите текст для всех зрителей..."}], (vals) => {
+            if (!vals[0]) return Utils.toast('Текст не может быть пустым', 'error');
+            set(ref(db, 'admin/actions/globalGodVoice'), { ts: Date.now(), text: vals[0], duration: 8000 });
+        });
     } else if (action === 'hijack') {
-        const url = prompt("Введите URL (YouTube) для жесткого угона:");
-        if(url) set(ref(db, 'admin/actions/globalVideoHijack'), { ts: Date.now(), url });
+        showAdminPrompt("Угон видео", [{placeholder: "URL (YouTube) для угона..."}], (vals) => {
+            if (!vals[0]) return Utils.toast('URL не может быть пустым', 'error');
+            set(ref(db, 'admin/actions/globalVideoHijack'), { ts: Date.now(), url: vals[0] });
+        });
     } else if (action === 'puppeteer') {
-        const uid = prompt("UID пользователя (от чьего имени писать):");
-        const text = prompt("Текст сообщения:");
-        if(uid && text && AppState.currentRoomId) {
-            push(ref(db, `rooms/${AppState.currentRoomId}/chat`), {
-                uid, name: AppState.usersCache.get(uid)?.name || 'Аноним', text, ts: Date.now()
-            });
-        } else {
-            alert("Укажите UID и текст, а также зайдите в комнату.");
-        }
+        showAdminPrompt("Режим Кукловода", [{placeholder: "UID пользователя (оставьте пустым для отключения)"}], (vals) => {
+            const puppetUid = vals[0].trim();
+            if (puppetUid) {
+                window.puppeteerUid = puppetUid;
+                Utils.toast(`Режим Кукловода активирован для UID: ${puppetUid}. Ваши сообщения в чате теперь будут отправляться от его лица.`, 'success');
+            } else {
+                window.puppeteerUid = null;
+                Utils.toast('Режим Кукловода деактивирован', 'info');
+            }
+        });
     } else if (action === 'incognito') {
         window.isIncognito = !window.isIncognito;
-        Utils.toast(window.isIncognito ? 'Инкогнито ВКЛЮЧЕН. Следующий вход в комнату будет невидимым.' : 'Инкогнито ВЫКЛЮЧЕН.', 'success');
+        Utils.toast(window.isIncognito ? 'Инкогнито ВКЛЮЧЕН. Вы невидимы.' : 'Инкогнито ВЫКЛЮЧЕН.', 'success');
     }
 };
 

@@ -15,19 +15,40 @@
         })(); // [NEW]
     </script>
     <style>
-        @keyframes chatAuraFire {
-            0% { box-shadow: 0 0 10px #ff4757, 0 0 20px #ff4757, inset 0 0 10px #ff4757; }
-            50% { box-shadow: 0 0 20px #ff6b81, 0 0 35px #ff4757, inset 0 0 15px #ff6b81; border-color: #ff6b81; }
-            100% { box-shadow: 0 0 10px #ff4757, 0 0 20px #ff4757, inset 0 0 10px #ff4757; }
-        }
-        .chat-aura {
-            animation: chatAuraFire 2s infinite alternate !important;
-            border-color: #ff4757 !important;
-        }
         .global-flashbang { position: fixed; inset: 0; background: white; z-index: 999999; pointer-events: none; opacity: 1; transition: opacity 4s ease-out; }
-        .global-god-voice { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 999998; display: flex; align-items: center; justify-content: center; flex-direction: column; opacity: 0; transition: opacity 0.5s ease; pointer-events: none; }
-        .global-god-voice.active { opacity: 1; }
-        .global-god-voice-text { color: #fff; font-size: 4vw; font-weight: 900; text-align: center; text-transform: uppercase; letter-spacing: 2px; filter: drop-shadow(0 0 20px rgba(255,255,255,0.8)); }
+        @keyframes godVoiceTypewriter {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+        @keyframes godVoiceBlink {
+            50% { border-color: transparent; }
+        }
+        @keyframes godVoiceGlow {
+            0% { filter: drop-shadow(0 0 5px rgba(255,255,255,0.2)); text-shadow: 0 0 10px rgba(255,255,255,0.1); }
+            50% { filter: drop-shadow(0 0 15px rgba(255,255,255,0.7)); text-shadow: 0 0 30px rgba(255,255,255,0.5); }
+            100% { filter: drop-shadow(0 0 5px rgba(255,255,255,0.2)); text-shadow: 0 0 10px rgba(255,255,255,0.1); }
+        }
+        @keyframes godVoiceBg {
+            0% { background: rgba(0,0,0,0); backdrop-filter: blur(0px); }
+            20% { background: rgba(0,0,0,0.95); backdrop-filter: blur(10px); }
+            80% { background: rgba(0,0,0,0.95); backdrop-filter: blur(10px); }
+            100% { background: rgba(0,0,0,0); backdrop-filter: blur(0px); }
+        }
+        .global-god-voice { position: fixed; inset: 0; background: transparent; z-index: 999998; display: flex; align-items: center; justify-content: center; flex-direction: column; opacity: 0; pointer-events: none; transition: opacity 0.5s ease; }
+        .global-god-voice.active { opacity: 1; animation: godVoiceBg var(--gv-duration, 8s) ease-in-out forwards; }
+        .global-god-voice-text { 
+            color: #ececec; 
+            font-size: 4vw; 
+            font-family: "Georgia", serif;
+            font-weight: 300; 
+            text-align: center; 
+            text-transform: uppercase; 
+            letter-spacing: 8px;
+            white-space: pre-wrap; 
+            word-wrap: break-word;
+            max-width: 80%;
+            animation: godVoiceGlow 4s infinite ease-in-out;
+        }
         @keyframes screenShakeAnim { 0% { transform: translate(1px, 1px) rotate(0deg); } 10% { transform: translate(-1px, -2px) rotate(-1deg); } 20% { transform: translate(-3px, 0px) rotate(1deg); } 30% { transform: translate(3px, 2px) rotate(0deg); } 40% { transform: translate(1px, -1px) rotate(1deg); } 50% { transform: translate(-1px, 2px) rotate(-1deg); } 60% { transform: translate(-3px, 1px) rotate(0deg); } 70% { transform: translate(3px, 1px) rotate(-1deg); } 80% { transform: translate(-1px, -1px) rotate(1deg); } 90% { transform: translate(1px, 2px) rotate(0deg); } 100% { transform: translate(1px, -2px) rotate(-1deg); } }
         .screen-shake-active { animation: screenShakeAnim 0.1s cubic-bezier(.36,.07,.19,.97) both infinite; }
         #draw-canvas-layer { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: auto; z-index: 25; cursor: crosshair; }
