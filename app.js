@@ -3155,14 +3155,14 @@ class BadgeManager {
     static async generateSystemBadges() {
         if (!AdminPanel.requireAdmin()) return;
         const badges = {
-            rel_1week: { name: "1 Неделя", desc: "Вместе уже неделю!", icon: "https://cdn.emoji.gg/emojis/3468-love.gif", color: "#ffffff", bg: "#d81b60", border: "#ff4081" },
-            rel_1month: { name: "1 Месяц", desc: "Первый совместный месяц!", icon: "https://cdn.emoji.gg/emojis/5232-heart.gif", color: "#ffffff", bg: "#c2185b", border: "#f50057" },
-            rel_6months: { name: "Полгода", desc: "Связь крепчает. 6 месяцев!", icon: "https://cdn.emoji.gg/emojis/4638-heart.gif", color: "#ffffff", bg: "#ad1457", border: "#c51162" },
-            rel_1year: { name: "1 Год", desc: "Юбилей любви! 1 год", icon: "https://cdn.emoji.gg/emojis/7697-ring.gif", color: "#ffffff", bg: "#880e4f", border: "#f50057" },
-            lvl_10: { name: "Ветеран", desc: "Достиг 10 уровня", icon: "https://em-content.zobj.net/source/telegram/386/star_2b50.webp", color: "#cddc39", xp: 0, bg: "rgba(205, 220, 57, 0.2)", border: "#cddc39" },
-            lvl_25: { name: "Мастер", desc: "Достиг 25 уровня", icon: "https://em-content.zobj.net/source/apple/391/fire_1f525.png", color: "#ff9800", xp: 0, bg: "rgba(255, 152, 0, 0.2)", border: "#ff9800" },
-            lvl_50: { name: "Легенда", desc: "Достиг 50 уровня", icon: "https://em-content.zobj.net/source/apple/391/gem-stone_1f48e.png", color: "#2196f3", xp: 0, bg: "rgba(33, 150, 243, 0.2)", border: "#2196f3" },
-            lvl_100: { name: "Божество", desc: "Достиг 100 уровня", icon: "https://em-content.zobj.net/source/apple/391/crown_1f451.png", color: "#ffeb3b", xp: 0, bg: "rgba(255, 235, 59, 0.2)", border: "#ffeb3b" }
+            rel_1week: { name: "1 Неделя", desc: "Вместе уже неделю!", icon: "https://media.giphy.com/media/l4pTdcifPZLpDjL1e/giphy.gif", color: "#ffffff", bg: "#d81b60", border: "#ff4081" },
+            rel_1month: { name: "1 Месяц", desc: "Первый совместный месяц!", icon: "https://media.giphy.com/media/26BRv0ThflsHCqDrG/giphy.gif", color: "#ffffff", bg: "#c2185b", border: "#f50057" },
+            rel_6months: { name: "Полгода", desc: "Связь крепчает. 6 месяцев!", icon: "https://media.giphy.com/media/LpDmM2wSt6Hm5fKJVa/giphy.gif", color: "#ffffff", bg: "#ad1457", border: "#c51162" },
+            rel_1year: { name: "1 Год", desc: "Юбилей любви! 1 год", icon: "https://media.giphy.com/media/Mous21IAhJQiI/giphy.gif", color: "#ffffff", bg: "#880e4f", border: "#f50057" },
+            lvl_10: { name: "Ветеран", desc: "Достиг 10 уровня", icon: "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/2b50.png", color: "#cddc39", xp: 0, bg: "rgba(205, 220, 57, 0.2)", border: "#cddc39" },
+            lvl_25: { name: "Мастер", desc: "Достиг 25 уровня", icon: "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f525.png", color: "#ff9800", xp: 0, bg: "rgba(255, 152, 0, 0.2)", border: "#ff9800" },
+            lvl_50: { name: "Легенда", desc: "Достиг 50 уровня", icon: "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f48e.png", color: "#2196f3", xp: 0, bg: "rgba(33, 150, 243, 0.2)", border: "#2196f3" },
+            lvl_100: { name: "Божество", desc: "Достиг 100 уровня", icon: "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f451.png", color: "#ffeb3b", xp: 0, bg: "rgba(255, 235, 59, 0.2)", border: "#ffeb3b" }
         };
         for (const [id, payload] of Object.entries(badges)) {
             await set(ref(db, `badges/${id}`), payload);
@@ -4963,14 +4963,14 @@ class ProfileManager {
             let userBadges = [];
             if (profile.assignedBadges && Array.isArray(profile.assignedBadges)) {
                 const systemFallbacks = {
-                    lvl_10: { name: "Ветеран", desc: "Достиг 10 уровня", icon: "https://em-content.zobj.net/source/telegram/386/star_2b50.webp", color: "#cddc39", xp: 0, bg: "rgba(205, 220, 57, 0.2)", border: "#cddc39" },
-                    lvl_25: { name: "Мастер", desc: "Достиг 25 уровня", icon: "https://em-content.zobj.net/source/apple/391/fire_1f525.png", color: "#ff9800", xp: 0, bg: "rgba(255, 152, 0, 0.2)", border: "#ff9800" },
-                    lvl_50: { name: "Легенда", desc: "Достиг 50 уровня", icon: "https://em-content.zobj.net/source/apple/391/gem-stone_1f48e.png", color: "#2196f3", xp: 0, bg: "rgba(33, 150, 243, 0.2)", border: "#2196f3" },
-                    lvl_100: { name: "Божество", desc: "Достиг 100 уровня", icon: "https://em-content.zobj.net/source/apple/391/crown_1f451.png", color: "#ffeb3b", xp: 0, bg: "rgba(255, 235, 59, 0.2)", border: "#ffeb3b" },
-                    rel_1week: { name: "1 Неделя", desc: "Вместе уже неделю!", icon: "https://cdn.emoji.gg/emojis/3468-love.gif", color: "#ffffff", bg: "#d81b60", border: "#ff4081" },
-                    rel_1month: { name: "1 Месяц", desc: "Первый совместный месяц!", icon: "https://cdn.emoji.gg/emojis/5232-heart.gif", color: "#ffffff", bg: "#c2185b", border: "#f50057" },
-                    rel_6months: { name: "Полгода", desc: "Связь крепчает. 6 месяцев!", icon: "https://cdn.emoji.gg/emojis/4638-heart.gif", color: "#ffffff", bg: "#ad1457", border: "#c51162" },
-                    rel_1year: { name: "1 Год", desc: "Юбилей любви! 1 год", icon: "https://cdn.emoji.gg/emojis/7697-ring.gif", color: "#ffffff", bg: "#880e4f", border: "#f50057" }
+                    lvl_10: { name: "Ветеран", desc: "Достиг 10 уровня", icon: "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/2b50.png", color: "#cddc39", xp: 0, bg: "rgba(205, 220, 57, 0.2)", border: "#cddc39" },
+                    lvl_25: { name: "Мастер", desc: "Достиг 25 уровня", icon: "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f525.png", color: "#ff9800", xp: 0, bg: "rgba(255, 152, 0, 0.2)", border: "#ff9800" },
+                    lvl_50: { name: "Легенда", desc: "Достиг 50 уровня", icon: "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f48e.png", color: "#2196f3", xp: 0, bg: "rgba(33, 150, 243, 0.2)", border: "#2196f3" },
+                    lvl_100: { name: "Божество", desc: "Достиг 100 уровня", icon: "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f451.png", color: "#ffeb3b", xp: 0, bg: "rgba(255, 235, 59, 0.2)", border: "#ffeb3b" },
+                    rel_1week: { name: "1 Неделя", desc: "Вместе уже неделю!", icon: "https://media.giphy.com/media/l4pTdcifPZLpDjL1e/giphy.gif", color: "#ffffff", bg: "#d81b60", border: "#ff4081" },
+                    rel_1month: { name: "1 Месяц", desc: "Первый совместный месяц!", icon: "https://media.giphy.com/media/26BRv0ThflsHCqDrG/giphy.gif", color: "#ffffff", bg: "#c2185b", border: "#f50057" },
+                    rel_6months: { name: "Полгода", desc: "Связь крепчает. 6 месяцев!", icon: "https://media.giphy.com/media/LpDmM2wSt6Hm5fKJVa/giphy.gif", color: "#ffffff", bg: "#ad1457", border: "#c51162" },
+                    rel_1year: { name: "1 Год", desc: "Юбилей любви! 1 год", icon: "https://media.giphy.com/media/Mous21IAhJQiI/giphy.gif", color: "#ffffff", bg: "#880e4f", border: "#f50057" }
                 };
                 profile.assignedBadges.forEach(bId => {
                     const b = (AppState.customBadges && AppState.customBadges[bId]) || systemFallbacks[bId];
@@ -4992,7 +4992,7 @@ class ProfileManager {
                         _id: 'partner_7',
                         name: 'И Долго это будет?',
                         desc: `Первая неделя отношений с ${partnerName}`,
-                        icon: 'https://cdn.emoji.gg/emojis/1690-love-face-emoji.gif',
+                        icon: 'https://media.giphy.com/media/MDJ9IbxxvDUQM/giphy.gif',
                         color: '#ffffff'
                     });
                 }
@@ -5001,7 +5001,7 @@ class ProfileManager {
                     userBadges.push({
                         name: 'Ну врооде бы серьезка',
                         desc: `Первый месяц отношений вместе с ${partnerName}`,
-                        icon: 'https://cdn.emoji.gg/emojis/1690-love-face-emoji.gif',
+                        icon: 'https://media.giphy.com/media/MDJ9IbxxvDUQM/giphy.gif',
                         color: '#ffffff'
                     });
                 }
@@ -5011,7 +5011,7 @@ class ProfileManager {
                         _id: 'partner_100',
                         name: 'Брак',
                         desc: `100 Дней отношений с ${partnerName}`,
-                        icon: 'https://cdn.emoji.gg/emojis/1690-love-face-emoji.gif',
+                        icon: 'https://media.giphy.com/media/MDJ9IbxxvDUQM/giphy.gif',
                         color: '#ffffff'
                     });
                 }
@@ -5656,7 +5656,7 @@ class FriendsManager {
 
                 const relData = friendsMap[uid];
                 const activeStreak = ProfileManager.getActiveStreak ? ProfileManager.getActiveStreak(profile) : profile.streak;
-                const streakHTML = (activeStreak && activeStreak > 0) ? `<div style="position: absolute; bottom: -4px; right: -4px; background: rgba(0,0,0,0.8); border-radius: 50%; padding: 2px 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; border: none;" title="Стрик захода: ${activeStreak} дней"><img src="https://em-content.zobj.net/source/telegram/386/fire_1f525.webp" style="width:14px; height:14px; margin-right:2px;">${activeStreak}</div>` : '';
+                const streakHTML = (activeStreak && activeStreak > 0) ? `<div style="position: absolute; bottom: -4px; right: -4px; background: rgba(0,0,0,0.8); border-radius: 50%; padding: 2px 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; border: none;" title="Стрик захода: ${activeStreak} дней"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f525.png" style="width:14px; height:14px; margin-right:2px;">${activeStreak}</div>` : '';
                 
                 const roleBadgeHtml = ProfileManager.getRoleBadgeHtml(profile, uid);
                 div.innerHTML = `
@@ -8796,11 +8796,11 @@ class RoomManager {
             const el = document.createElement('div');
             el.className = 'floating-emoji';
             const imgMap = {
-                '🔥': 'https://em-content.zobj.net/source/telegram/386/fire_1f525.webp',
-                '😂': 'https://em-content.zobj.net/source/telegram/386/face-with-tears-of-joy_1f602.webp',
-                '😱': 'https://em-content.zobj.net/source/telegram/386/face-screaming-in-fear_1f631.webp',
-                '❤️': 'https://em-content.zobj.net/source/telegram/386/red-heart_2764-fe0f.webp',
-                '👏': 'https://em-content.zobj.net/source/telegram/386/clapping-hands_1f44f.webp'
+                '🔥': 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f525.png',
+                '😂': 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f602.png',
+                '😱': 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f631.png',
+                '❤️': 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/2764.png',
+                '👏': 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f44f.png'
             };
             if (imgMap[rx.emoji]) {
                 el.innerHTML = `<img src="${imgMap[rx.emoji]}" style="width: 48px; height: 48px; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3));">`;
@@ -10002,7 +10002,7 @@ class CatalogManager {
             <div class="catalog-card-wrapper ${isHot ? 'is-hot' : ''} ${isOwned ? 'is-owned' : ''}" style="animation-delay: ${i * 0.05}s;">
                 <div class="catalog-card-inner" onclick="if(typeof openCatalogItemModal === 'function') openCatalogItemModal('${item.id}')">
                     <div class="catalog-card-banner">
-                        ${isHot ? `<img src="https://em-content.zobj.net/source/telegram/386/fire_1f525.webp" style="position:absolute; top:8px; left:8px; width:28px; height:28px; object-fit:contain; z-index:5; pointer-events:none; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5));">` : ''}
+                        ${isHot ? `<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f525.png" style="position:absolute; top:8px; left:8px; width:28px; height:28px; object-fit:contain; z-index:5; pointer-events:none; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5));">` : ''}
                         
                         ${item.type === 'sound' ? `
                             <div style="width: 100%; display:flex; align-items:center; justify-content:center; position:relative; z-index:2; padding: 0 16px;">
@@ -10094,56 +10094,64 @@ window.openCatalogItemModal = function(itemId) {
     Utils.$('catalog-item-title').innerText = item.title;
     Utils.$('catalog-item-desc').innerText = item.desc;
     Utils.$('catalog-item-price').innerText = item.priceType === 'free' ? 'БЕСПЛАТНО' : (item.price + ' ур.');
+    Utils.$('catalog-item-type-label').innerText = item.type === 'sound' ? 'ЗВУК' : 'УКРАШЕНИЕ АВАТАРА';
 
-    const previewContainer = Utils.$('catalog-item-avatar-preview-container');
-    const catalogImage = Utils.$('catalog-item-image');
-    const catalogAudio = Utils.$('catalog-item-audio');
-    const previewWrapper = Utils.$('catalog-item-preview-wrapper');
-    const bannerBg = Utils.$('catalog-item-banner-bg');
+    const imageSolo = Utils.$('catalog-item-image-solo');
+    const audioSolo = Utils.$('catalog-item-audio-solo');
+    const rightBg = Utils.$('catalog-item-right-bg');
+    const blurObj = Utils.$('catalog-item-bg-blur');
 
-    const isHot = item.isHot === true || item.isHot === 'true';
-    if (bannerBg) {
-        if (isHot) {
-            bannerBg.style.background = 'linear-gradient(135deg, #ff4757, #ffa502, #ff4757)';
-            bannerBg.style.backgroundSize = '200% 200%';
-            bannerBg.style.animation = 'fireBgPan 3s linear infinite';
-        } else {
-            bannerBg.style.background = '#2b2d31';
-            bannerBg.style.animation = 'none';
-        }
-    }
+    let currentProf = (window.AppState && AppState.currentUser) ? AppState.usersCache.get(AppState.currentUser.uid) : null;
+    let fallbackAvatar = 'https://telegra.ph/file/0c9e88d184cf43b448f21.png';
 
     if (item.type === 'sound') {
-        if(previewContainer) previewContainer.style.display = 'none';
-        if(catalogImage) catalogImage.style.display = 'none';
-        if(catalogAudio) {
-            catalogAudio.style.display = 'block';
-            catalogAudio.src = item.image;
+        if(imageSolo) imageSolo.style.display = 'none';
+        if(audioSolo) {
+            audioSolo.style.display = 'block';
+            audioSolo.src = item.image;
         }
-        if(previewWrapper) {
-            previewWrapper.style.width = '280px';
-            previewWrapper.style.height = '60px';
+        if(rightBg) rightBg.style.display = 'none';
+        
+        const contentPanel = Utils.$('modal-catalog-content-panel');
+        if(contentPanel) {
+            contentPanel.style.width = '400px';
+            contentPanel.style.flexDirection = 'column';
         }
-        Utils.$('btn-preview-catalog-item').style.display = 'none';
+        
     } else {
-        if(previewContainer) {
-            previewContainer.style.display = 'block';
-            previewContainer.innerHTML = '';
-            previewContainer.style.background = '#111214';
+        if(imageSolo) {
+            imageSolo.style.display = 'block';
+            imageSolo.src = item.image;
         }
-        if(catalogImage) {
-            catalogImage.style.display = 'block';
-            catalogImage.src = item.image;
+        if(audioSolo) {
+            audioSolo.style.display = 'none';
+            audioSolo.src = '';
         }
-        if(catalogAudio) {
-            catalogAudio.style.display = 'none';
-            catalogAudio.src = '';
+        if(rightBg) rightBg.style.display = 'flex';
+        
+        const contentPanel = Utils.$('modal-catalog-content-panel');
+        if(contentPanel) {
+            contentPanel.style.width = '800px';
+            contentPanel.style.flexDirection = 'row';
         }
-        if(previewWrapper) {
-            previewWrapper.style.width = '140px';
-            previewWrapper.style.height = '140px';
+        
+        if (blurObj) {
+            blurObj.style.backgroundImage = `url('${item.image}')`;
         }
-        Utils.$('btn-preview-catalog-item').style.display = 'block';
+        const profileAvatarImg = Utils.$('catalog-profile-avatar-img');
+        if (profileAvatarImg) {
+            // Must be user's CURRENT avatar, falling back accurately
+            profileAvatarImg.src = currentProf?.avatar || fallbackAvatar;
+        }
+        const profileFrame = Utils.$('catalog-profile-frame');
+        if (profileFrame) {
+            profileFrame.src = item.image;
+            profileFrame.style.display = 'block';
+        }
+        
+        Utils.$('catalog-profile-name').innerText = currentProf?.displayName || currentProf?.username || 'Пользователь';
+        Utils.$('catalog-profile-user').innerText = currentProf?.username ? '@' + currentProf.username : '@user';
+        Utils.$('catalog-profile-message-ph').innerText = 'Сообщение для @' + (currentProf?.username || 'user');
     }
 
     modal.classList.add('active');
@@ -10154,8 +10162,11 @@ window.openCatalogItemModal = function(itemId) {
        const inventory = userProfile?.inventory || [];
        const isOwned = inventory.includes(item.id);
        buyBtn.innerText = isOwned ? 'Применить' : (item.priceType === 'free' || String(item.price).trim().toUpperCase() === 'БЕСПЛАТНО' || String(item.price).trim().toUpperCase() === 'FREE' || item.price === '0') ? 'Получить' : `Купить (${item.price} ур.)`;
-       buyBtn.style.background = isOwned ? 'rgba(255,255,255,0.1)' : '#5865F2';
-       buyBtn.style.color = '#fff';
+       buyBtn.style.background = isOwned ? 'var(--panel)' : '#fff';
+       buyBtn.style.color = isOwned ? 'var(--text-main)' : '#000';
+       if(isOwned) buyBtn.style.border = '1px solid var(--border-light)';
+       else buyBtn.style.border = 'none';
+
        buyBtn.onclick = async () => {
            if (!AppState.currentUser) return Utils.toast('Авторизуйтесь для покупки', 'error');
            const uid = AppState.currentUser.uid;
@@ -10165,6 +10176,9 @@ window.openCatalogItemModal = function(itemId) {
                if (item.type === 'frame' || !item.type) {
                    await update(ref(db), { [`users/${uid}/profile/frame`]: item.image });
                    Utils.toast('Рамка применена!', 'success');
+               } else if (item.type === 'sound') {
+                   // No profile application for sound directly from catalog modal yet
+                   Utils.toast('Звук выбран, но применение профильного звука пока в разработке', 'info');
                }
                modal.classList.remove('active');
            } else {
@@ -10173,8 +10187,9 @@ window.openCatalogItemModal = function(itemId) {
                    await update(ref(db), { [`users/${uid}/profile/inventory`]: inv });
                    Utils.toast('Товар добавлен в инвентарь!', 'success');
                    buyBtn.innerText = 'Применить';
-                   buyBtn.style.background = 'rgba(255,255,255,0.1)';
-                   buyBtn.style.color = '#fff';
+                   buyBtn.style.background = 'var(--panel)';
+                   buyBtn.style.color = 'var(--text-main)';
+                   buyBtn.style.border = '1px solid var(--border-light)';
                    
                    currentProf.inventory = inv;
                    AppState.usersCache.set(uid, currentProf);
@@ -10191,8 +10206,9 @@ if (window.SoundpadController) window.SoundpadController.renderGrid();
                update(ref(db), { [`users/${uid}/profile/inventory`]: inv });
                Utils.toast('Уровень подходит. Товар добавлен в инвентарь!', 'success');
                buyBtn.innerText = 'Применить';
-               buyBtn.style.background = 'rgba(255,255,255,0.1)';
-               buyBtn.style.color = '#fff';
+               buyBtn.style.background = 'var(--panel)';
+               buyBtn.style.color = 'var(--text-main)';
+               buyBtn.style.border = '1px solid var(--border-light)';
                currentProf.inventory = inv; AppState.usersCache.set(uid, currentProf);
                if (window.SoundpadController) window.SoundpadController.renderGrid();
            } else { Utils.toast('Недостаточно уровней (нужно: ' + cost + ')', 'error'); }
@@ -10203,17 +10219,7 @@ if (window.SoundpadController) window.SoundpadController.renderGrid();
 
     const previewBtn = Utils.$('btn-preview-catalog-item');
     if(previewBtn) {
-        previewBtn.onclick = async () => {
-             let userProfile = (window.AppState && AppState.currentUser) ? AppState.usersCache.get(AppState.currentUser.uid) : null;
-             if (!userProfile && window.AppState && AppState.currentUser) {
-                 userProfile = await ProfileManager.loadUser(AppState.currentUser.uid);
-             }
-             const mockProfile = userProfile ? { ...userProfile, avatar: userProfile.avatar, frame: item.image || item.url } : { name: AppState.currentUser?.displayName || '?', frame: item.image || item.url, avatar: AppState.currentUser?.photoURL || '' };
-             if (previewContainer) {
-                 previewContainer.innerHTML = ProfileManager.getAvatarHtml(mockProfile);
-                 previewContainer.style.background = 'transparent';
-             }
-        };
+        previewBtn.style.display = 'none';
     }
 };
 
