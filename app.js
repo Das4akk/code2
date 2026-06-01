@@ -99,7 +99,7 @@ const AppState = {
 class Utils {
     static getAppleEmojiHtml(char) {
         const appleMap = {
-            '💋': '1f48b', '<img src="https://emojigraph.org/media/apple/sparkles_2728.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '2728', '💞': '1f49e', '<img src="https://emojigraph.org/media/apple/fire_1f525.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f525', '🐄': '1f404', '🍿': '1f37f', '🐱': '1f431', '🌈': '1f308', '🥛': '1f95b', '📀': '1f4c0', '<img src="https://emojigraph.org/media/apple/counterclockwise-arrows-button_1f504.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f504', '💻': '1f4bb', '🤫': '1f92b', '⚔️': '2694-fe0f', '🔒': '1f512', '<img src="https://emojigraph.org/media/apple/busts-in-silhouette_1f465.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f465', '<img src="https://emojigraph.org/media/apple/television_1f4fa.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f4fa', '📎': '1f4ce', '<img src="https://emojigraph.org/media/apple/pushpin_1f4cc.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f4cc', '📍': '1f4cd', '💗': '1f497', '💘': '1f498', '💕': '1f495', '<img src="https://emojigraph.org/media/apple/red-heart_2764-fe0f.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '2764-fe0f', '🔴': '1f534', '<img src="https://emojigraph.org/media/apple/face-with-tears-of-joy_1f602.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f602', '<img src="https://emojigraph.org/media/apple/face-screaming-in-fear_1f631.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f631', '<img src="https://emojigraph.org/media/apple/clapping-hands_1f44f.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f44f', '<img src="https://emojigraph.org/media/apple/musical-note_1f3b5.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f3b5', '<img src="https://emojigraph.org/media/apple/pushpin_1f4cc.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f4cc', '📍': '1f4cd', '<img src="https://emojigraph.org/media/apple/crown_1f451.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f451', '✅': '2705', '❌': '274c', '⚠️': '26a0-fe0f', '<img src="https://emojigraph.org/media/apple/speech-balloon_1f4ac.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f4ac', '💎': '1f48e', '<img src="https://emojigraph.org/media/apple/gear_2699-fe0f.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '2699-fe0f', '<img src="https://emojigraph.org/media/apple/star_2b50.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '2b50', '🌟': '1f31f', '🎮': '1f3ae', '🎧': '1f3a7', '🎉': '1f389', '💰': '1f4b0'
+            '💋': '1f48b', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Sparkles.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '2728', '💞': '1f49e', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f525', '🐄': '1f404', '🍿': '1f37f', '🐱': '1f431', '🌈': '1f308', '🥛': '1f95b', '📀': '1f4c0', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Counterclockwise%20Arrows%20Button.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f504', '💻': '1f4bb', '🤫': '1f92b', '⚔️': '2694-fe0f', '🔒': '1f512', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f465', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Television.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f4fa', '📎': '1f4ce', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Pushpin.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f4cc', '📍': '1f4cd', '💗': '1f497', '💘': '1f498', '💕': '1f495', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Heart.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '2764-fe0f', '🔴': '1f534', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Tears%20Of%20Joy.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f602', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20Screaming%20In%20Fear.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f631', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Clapping%20Hands.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f44f', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Musical%20Note.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f3b5', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Pushpin.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f4cc', '📍': '1f4cd', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f451', '✅': '2705', '❌': '274c', '⚠️': '26a0-fe0f', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Speech%20Balloon.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f4ac', '💎': '1f48e', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Gear.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '2699-fe0f', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '2b50', '🌟': '1f31f', '🎮': '1f3ae', '🎧': '1f3a7', '🎉': '1f389', '💰': '1f4b0'
         };
         const codepoint = appleMap[char] || char.codePointAt(0).toString(16);
         return `<img src="https://emojigraph.org/media/144/apple/${codepoint}.png" style="width: 1.25em; height: 1.25em; vertical-align: middle; display: inline-block; object-fit: contain;" alt="${char}" onerror="this.onerror=null; this.src=''; this.alt='${char}';"/>`;
@@ -1621,7 +1621,7 @@ class PartnerBondEngine {
         if (bond.checkins?.[checkinKey]) return { ok: false, reason: 'already' };
         await this.recordMoment(uid, partnerUid, 'checkin', {
             fromUid: uid,
-            label: 'Отметили день вместе <img src="https://emojigraph.org/media/apple/sparkles_2728.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">',
+            label: 'Отметили день вместе <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Sparkles.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">',
             warmth: 14,
             checkinKey
         });
@@ -1724,7 +1724,7 @@ class PartnerRelationshipPanel {
                     </div>
                     <div class="partner-metric-card">
                         <span class="metric-label">Серия дней</span>
-                        <strong>${bond.streak || 0} <img src="https://emojigraph.org/media/apple/fire_1f525.png" style="width:1.2em;height:1.2em;vertical-align:bottom;"></strong>
+                        <strong>${bond.streak || 0} <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"></strong>
                     </div>
                     <div class="partner-metric-card milestone-card">
                         <span class="metric-label">Моментов · до ${nextMilestone} дн.</span>
@@ -1742,7 +1742,7 @@ class PartnerRelationshipPanel {
                 </section>
                 <footer class="partner-ambilight-footer">
                     <button type="button" class="partner-kiss-btn" id="btn-partner-modal-kiss">Поцелуй 💋</button>
-                    <button type="button" class="partner-checkin-btn" id="btn-partner-checkin" ${canCheckin ? '' : 'disabled'}>${canCheckin ? 'Отметить день <img src="https://emojigraph.org/media/apple/sparkles_2728.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">' : 'День отмечен'}</button>
+                    <button type="button" class="partner-checkin-btn" id="btn-partner-checkin" ${canCheckin ? '' : 'disabled'}>${canCheckin ? 'Отметить день <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Sparkles.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">' : 'День отмечен'}</button>
                     <button type="button" class="secondary-btn btn-close-modal">Закрыть</button>
                 </footer>
             </div>
@@ -2124,7 +2124,7 @@ class EasterEggManager {
             }
             body.easter-cow-cursor,
             body.easter-cow-cursor * {
-                cursor: url("https://emojigraph.org/media/apple/cow-face_1f42e.png") 16 16, auto !important;
+                cursor: url("https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Cow%20Face.webp") 16 16, auto !important;
             }
             #easter-egg-root {
                 position: fixed;
@@ -3112,13 +3112,13 @@ class BadgeManager {
         });
         
         const presetEmojis = [
-            'https://cdn.emoji.gg/emojis/36840-demon-smile.gif',
-            'https://cdn.emoji.gg/emojis/83447-sleep.gif',
-            'https://cdn.emoji.gg/emojis/13961-party.gif',
-            'https://cdn.emoji.gg/emojis/22727-clown.gif',
-            'https://cdn.emoji.gg/emojis/28433-cool.gif',
-            'https://cdn.emoji.gg/emojis/98791-scream.gif',
-            'https://cdn.emoji.gg/emojis/81026-silent.gif'
+            'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Smiling%20Face%20With%20Horns.webp',
+%20%20%20%20%20%20%20%20%20%20%20%20'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Sleeping%20Face.webp',
+%20%20%20%20%20%20%20%20%20%20%20%20'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Partying%20Face.webp',
+%20%20%20%20%20%20%20%20%20%20%20%20'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Clown%20Face.webp',
+%20%20%20%20%20%20%20%20%20%20%20%20'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Smiling%20Face%20With%20Sunglasses.webp',
+%20%20%20%20%20%20%20%20%20%20%20%20'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20Screaming%20In%20Fear.webp',
+%20%20%20%20%20%20%20%20%20%20%20%20'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20Without%20Mouth.webp'
         ];
         
         setTimeout(() => {
@@ -3155,14 +3155,14 @@ class BadgeManager {
     static async generateSystemBadges() {
         if (!AdminPanel.requireAdmin()) return;
         const badges = {
-            rel_1week: { name: "1 Неделя", desc: "Вместе уже неделю!", icon: "https://media.giphy.com/media/l4pTdcifPZLpDjL1e/giphy.gif", color: "#ffffff", bg: "#d81b60", border: "#ff4081" },
-            rel_1month: { name: "1 Месяц", desc: "Первый совместный месяц!", icon: "https://media.giphy.com/media/26BRv0ThflsHCqDrG/giphy.gif", color: "#ffffff", bg: "#c2185b", border: "#f50057" },
-            rel_6months: { name: "Полгода", desc: "Связь крепчает. 6 месяцев!", icon: "https://media.giphy.com/media/LpDmM2wSt6Hm5fKJVa/giphy.gif", color: "#ffffff", bg: "#ad1457", border: "#c51162" },
-            rel_1year: { name: "1 Год", desc: "Юбилей любви! 1 год", icon: "https://media.giphy.com/media/Mous21IAhJQiI/giphy.gif", color: "#ffffff", bg: "#880e4f", border: "#f50057" },
-            lvl_10: { name: "Ветеран", desc: "Достиг 10 уровня", icon: "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/2b50.png", color: "#cddc39", xp: 0, bg: "rgba(205, 220, 57, 0.2)", border: "#cddc39" },
-            lvl_25: { name: "Мастер", desc: "Достиг 25 уровня", icon: "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f525.png", color: "#ff9800", xp: 0, bg: "rgba(255, 152, 0, 0.2)", border: "#ff9800" },
-            lvl_50: { name: "Легенда", desc: "Достиг 50 уровня", icon: "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f48e.png", color: "#2196f3", xp: 0, bg: "rgba(33, 150, 243, 0.2)", border: "#2196f3" },
-            lvl_100: { name: "Божество", desc: "Достиг 100 уровня", icon: "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f451.png", color: "#ffeb3b", xp: 0, bg: "rgba(255, 235, 59, 0.2)", border: "#ffeb3b" }
+            rel_1week: { name: "1 Неделя", desc: "Вместе уже неделю!", icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Growing%20Heart.webp", color: "#ffffff", bg: "#d81b60", border: "#ff4081" },
+            rel_1month: { name: "1 Месяц", desc: "Первый совместный месяц!", icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Sparkling%20Heart.webp", color: "#ffffff", bg: "#c2185b", border: "#f50057" },
+            rel_6months: { name: "Полгода", desc: "Связь крепчает. 6 месяцев!", icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Two%20Hearts.webp", color: "#ffffff", bg: "#ad1457", border: "#c51162" },
+            rel_1year: { name: "1 Год", desc: "Юбилей любви! 1 год", icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Revolving%20Hearts.webp", color: "#ffffff", bg: "#880e4f", border: "#f50057" },
+            lvl_10: { name: "Ветеран", desc: "Достиг 10 уровня", icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp", color: "#cddc39", xp: 0, bg: "rgba(205, 220, 57, 0.2)", border: "#cddc39" },
+            lvl_25: { name: "Мастер", desc: "Достиг 25 уровня", icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp", color: "#ff9800", xp: 0, bg: "rgba(255, 152, 0, 0.2)", border: "#ff9800" },
+            lvl_50: { name: "Легенда", desc: "Достиг 50 уровня", icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Gem%20Stone.webp", color: "#2196f3", xp: 0, bg: "rgba(33, 150, 243, 0.2)", border: "#2196f3" },
+            lvl_100: { name: "Божество", desc: "Достиг 100 уровня", icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp", color: "#ffeb3b", xp: 0, bg: "rgba(255, 235, 59, 0.2)", border: "#ffeb3b" }
         };
         for (const [id, payload] of Object.entries(badges)) {
             await set(ref(db, `badges/${id}`), payload);
@@ -3601,7 +3601,7 @@ class ThemeManager {
     static FAVORITES_KEY = 'cowio:favoriteThemes';
 
     static FOLDERS = {
-        'favorites': { label: '<img src="https://emojigraph.org/media/apple/star_2b50.png" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Любимые', themes: [] },
+        'favorites': { label: '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Любимые', themes: [] },
         'classic': { label: 'Классика', themes: ['default', 'light', 'inverted'] },
         'nature': { label: 'Природа', themes: ['sunset', 'ocean', 'aurora', 'love'] },
         'gradient': { label: 'Градиенты', themes: ['matte-toxic', 'audi-silver', 'racing-jet', 'alpine-pink', 'solar-flare', 'neon-tide', 'dusk', 'venom', 'twilight', 'noir-rose', 'vault-gold', 'abyss-frost', 'crimson-chalk'] }
@@ -4537,7 +4537,7 @@ class ProfileManager {
         if (ownerUid && !String(partnerUid).startsWith('custom_partner_')) {
             const bond = await PartnerBondEngine.getBond(ownerUid, partnerUid);
             const lvl = PartnerBondEngine.bondLevel(bond.totalWarmth);
-            bondMeta = ` · ур. ${lvl}${bond.streak ? ` · <img src="https://emojigraph.org/media/apple/fire_1f525.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">${bond.streak}` : ''}`;
+            bondMeta = ` · ур. ${lvl}${bond.streak ? ` · <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">${bond.streak}` : ''}`;
         }
         container.innerHTML = `
             <div class="partner-avatar">${this.getAvatarHtml(partnerProfile)}</div>
@@ -4941,9 +4941,9 @@ class ProfileManager {
         
         let genderString = '';
         if (profile.gender === 'female') {
-            genderString = 'Пол: Женский <img src="https://emojigraph.org/media/apple/woman_1f469.png" style="width:1.2em;height:1.2em;vertical-align:bottom;" alt="Женщина"><br>';
+            genderString = 'Пол: Женский <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Woman.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;" alt="Женщина"><br>';
         } else if (profile.gender === 'male') {
-            genderString = 'Пол: Мужской <img src="https://emojigraph.org/media/apple/man_1f468.png" style="width:1.2em;height:1.2em;vertical-align:bottom;" alt="Мужчина"><br>';
+            genderString = 'Пол: Мужской <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Man.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;" alt="Мужчина"><br>';
         }
 
         Utils.$('view-name').innerHTML = `${Utils.escapeHtml(profile.name)} ${badgeHtml}`;
@@ -4963,14 +4963,14 @@ class ProfileManager {
             let userBadges = [];
             if (profile.assignedBadges && Array.isArray(profile.assignedBadges)) {
                 const systemFallbacks = {
-                    lvl_10: { name: "Ветеран", desc: "Достиг 10 уровня", icon: "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/2b50.png", color: "#cddc39", xp: 0, bg: "rgba(205, 220, 57, 0.2)", border: "#cddc39" },
-                    lvl_25: { name: "Мастер", desc: "Достиг 25 уровня", icon: "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f525.png", color: "#ff9800", xp: 0, bg: "rgba(255, 152, 0, 0.2)", border: "#ff9800" },
-                    lvl_50: { name: "Легенда", desc: "Достиг 50 уровня", icon: "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f48e.png", color: "#2196f3", xp: 0, bg: "rgba(33, 150, 243, 0.2)", border: "#2196f3" },
-                    lvl_100: { name: "Божество", desc: "Достиг 100 уровня", icon: "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f451.png", color: "#ffeb3b", xp: 0, bg: "rgba(255, 235, 59, 0.2)", border: "#ffeb3b" },
-                    rel_1week: { name: "1 Неделя", desc: "Вместе уже неделю!", icon: "https://media.giphy.com/media/l4pTdcifPZLpDjL1e/giphy.gif", color: "#ffffff", bg: "#d81b60", border: "#ff4081" },
-                    rel_1month: { name: "1 Месяц", desc: "Первый совместный месяц!", icon: "https://media.giphy.com/media/26BRv0ThflsHCqDrG/giphy.gif", color: "#ffffff", bg: "#c2185b", border: "#f50057" },
-                    rel_6months: { name: "Полгода", desc: "Связь крепчает. 6 месяцев!", icon: "https://media.giphy.com/media/LpDmM2wSt6Hm5fKJVa/giphy.gif", color: "#ffffff", bg: "#ad1457", border: "#c51162" },
-                    rel_1year: { name: "1 Год", desc: "Юбилей любви! 1 год", icon: "https://media.giphy.com/media/Mous21IAhJQiI/giphy.gif", color: "#ffffff", bg: "#880e4f", border: "#f50057" }
+                    lvl_10: { name: "Ветеран", desc: "Достиг 10 уровня", icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp", color: "#cddc39", xp: 0, bg: "rgba(205, 220, 57, 0.2)", border: "#cddc39" },
+                    lvl_25: { name: "Мастер", desc: "Достиг 25 уровня", icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp", color: "#ff9800", xp: 0, bg: "rgba(255, 152, 0, 0.2)", border: "#ff9800" },
+                    lvl_50: { name: "Легенда", desc: "Достиг 50 уровня", icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Gem%20Stone.webp", color: "#2196f3", xp: 0, bg: "rgba(33, 150, 243, 0.2)", border: "#2196f3" },
+                    lvl_100: { name: "Божество", desc: "Достиг 100 уровня", icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp", color: "#ffeb3b", xp: 0, bg: "rgba(255, 235, 59, 0.2)", border: "#ffeb3b" },
+                    rel_1week: { name: "1 Неделя", desc: "Вместе уже неделю!", icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Growing%20Heart.webp", color: "#ffffff", bg: "#d81b60", border: "#ff4081" },
+                    rel_1month: { name: "1 Месяц", desc: "Первый совместный месяц!", icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Sparkling%20Heart.webp", color: "#ffffff", bg: "#c2185b", border: "#f50057" },
+                    rel_6months: { name: "Полгода", desc: "Связь крепчает. 6 месяцев!", icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Two%20Hearts.webp", color: "#ffffff", bg: "#ad1457", border: "#c51162" },
+                    rel_1year: { name: "1 Год", desc: "Юбилей любви! 1 год", icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Revolving%20Hearts.webp", color: "#ffffff", bg: "#880e4f", border: "#f50057" }
                 };
                 profile.assignedBadges.forEach(bId => {
                     const b = (AppState.customBadges && AppState.customBadges[bId]) || systemFallbacks[bId];
@@ -4992,26 +4992,26 @@ class ProfileManager {
                         _id: 'partner_7',
                         name: 'И Долго это будет?',
                         desc: `Первая неделя отношений с ${partnerName}`,
-                        icon: 'https://media.giphy.com/media/MDJ9IbxxvDUQM/giphy.gif',
-                        color: '#ffffff'
-                    });
-                }
-                
-                if (days >= 30) {
-                    userBadges.push({
-                        name: 'Ну врооде бы серьезка',
-                        desc: `Первый месяц отношений вместе с ${partnerName}`,
-                        icon: 'https://media.giphy.com/media/MDJ9IbxxvDUQM/giphy.gif',
-                        color: '#ffffff'
-                    });
-                }
-                
-                if (days >= 100) {
-                    userBadges.push({
-                        _id: 'partner_100',
-                        name: 'Брак',
-                        desc: `100 Дней отношений с ${partnerName}`,
-                        icon: 'https://media.giphy.com/media/MDJ9IbxxvDUQM/giphy.gif',
+                        icon: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Smiling%20Face%20With%20Hearts.webp',
+%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20color:%20'#ffffff'
+%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20});
+%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20}
+%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20
+%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20if%20(days%20>=%2030)%20{
+%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20userBadges.push({
+%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20name:%20'Ну%20врооде%20бы%20серьезка',
+%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20desc:%20`Первый%20месяц%20отношений%20вместе%20с%20${partnerName}`,
+%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20icon:%20'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Smiling%20Face%20With%20Hearts.webp',
+%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20color:%20'#ffffff'
+%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20});
+%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20}
+%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20
+%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20if%20(days%20>=%20100)%20{
+%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20userBadges.push({
+%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20_id:%20'partner_100',
+%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20name:%20'Брак',
+%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20desc:%20`100%20Дней%20отношений%20с%20${partnerName}`,
+%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20icon:%20'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Smiling%20Face%20With%20Hearts.webp',
                         color: '#ffffff'
                     });
                 }
@@ -5656,7 +5656,7 @@ class FriendsManager {
 
                 const relData = friendsMap[uid];
                 const activeStreak = ProfileManager.getActiveStreak ? ProfileManager.getActiveStreak(profile) : profile.streak;
-                const streakHTML = (activeStreak && activeStreak > 0) ? `<div style="position: absolute; bottom: -4px; right: -4px; background: rgba(0,0,0,0.8); border-radius: 50%; padding: 2px 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; border: none;" title="Стрик захода: ${activeStreak} дней"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f525.png" style="width:14px; height:14px; margin-right:2px;">${activeStreak}</div>` : '';
+                const streakHTML = (activeStreak && activeStreak > 0) ? `<div style="position: absolute; bottom: -4px; right: -4px; background: rgba(0,0,0,0.8); border-radius: 50%; padding: 2px 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; border: none;" title="Стрик захода: ${activeStreak} дней"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" style="width:14px; height:14px; margin-right:2px;">${activeStreak}</div>` : '';
                 
                 const roleBadgeHtml = ProfileManager.getRoleBadgeHtml(profile, uid);
                 div.innerHTML = `
@@ -5806,7 +5806,7 @@ class DirectMessages {
                     <div class="dm-chat-name">${Utils.escapeHtml(item.name)}</div>
                     <div class="dm-chat-last-msg">${Utils.escapeHtml(item.lastText) || '<i>Нет сообщений</i>'}</div>
                 </div>
-                <button class="dm-pin-btn" title="Закрепить">${item.isPinned ? '<img src="https://emojigraph.org/media/apple/pushpin_1f4cc.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">' : '📍'}</button>
+                <button class="dm-pin-btn" title="Закрепить">${item.isPinned ? '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Pushpin.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">' : '📍'}</button>
             `;
             
             el.onclick = (e) => {
@@ -5981,8 +5981,8 @@ class DirectMessages {
                         <strong>${Utils.escapeHtml(isSelf ? 'Вы' : m.fromName)}</strong>
                         <div class="bubble" style="border: 1px solid var(--accent); background: rgba(46,213,115,0.1);">
                             <div style="font-weight:bold; margin-bottom:5px;">Привет! Заходи к нам:</div>
-                            <div style="font-size: 16px;"><img src="https://emojigraph.org/media/apple/television_1f4fa.png" style="width:1.2em;height:1.2em;vertical-align:bottom;"> ${Utils.escapeHtml(m.roomName)}</div>
-                            <div style="font-size: 12px; opacity:0.8; margin-bottom:8px;"><img src="https://emojigraph.org/media/apple/busts-in-silhouette_1f465.png" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Зрителей: ${m.membersCount || 1}</div>
+                            <div style="font-size: 16px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Television.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> ${Utils.escapeHtml(m.roomName)}</div>
+                            <div style="font-size: 12px; opacity:0.8; margin-bottom:8px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Зрителей: ${m.membersCount || 1}</div>
                             ${!isSelf ? `
                                 <div style="display:flex; gap:10px;">
                                     <button class="primary-btn" style="padding:6px; font-size:12px; width:auto;" onclick="window.acceptRoomInvite('${m.roomId}')">Принять</button>
@@ -6933,7 +6933,7 @@ class AdminPanel {
                     'milk': 'кто-нибудь желает молока? 🥛',
                     'popcorn': 'Запасаемся попкорном, сейчас начнется кино! 🍿',
                     'dvd': 'Ждем, когда логотип ударится в угол... 📀',
-                    'roll': 'Делаем бочку! Уууииии! <img src="https://emojigraph.org/media/apple/counterclockwise-arrows-button_1f504.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">',
+                    'roll': 'Делаем бочку! Уууииии! <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Counterclockwise%20Arrows%20Button.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">',
                     'matrix': 'Тук-тук, Нео. Матрица имеет тебя... 💻',
                     'shh': 'Тссс... Режим тишины активирован 🤫',
                     'vader': 'Люк, я твой отец... *тяжелое дыхание* ⚔️',
@@ -7211,7 +7211,7 @@ class AdminPanel {
                 <div style="border:1px solid var(--border-light); border-radius:12px; padding:12px; display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap;">
                     <div style="min-width:0; flex:1;">
                         <div style="font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${room.isPrivate ? '🔒 ' : ''}${Utils.escapeHtml(room.name || 'Без названия')}</div>
-                        <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">ID: ${roomId} • <img src="https://emojigraph.org/media/apple/busts-in-silhouette_1f465.png" style="width:1.2em;height:1.2em;vertical-align:bottom;"> ${membersCount} • Хост: ${Utils.escapeHtml(room.hostName || 'Неизвестно')}</div>
+                        <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">ID: ${roomId} • <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> ${membersCount} • Хост: ${Utils.escapeHtml(room.hostName || 'Неизвестно')}</div>
                     </div>
                     <div style="display:flex; gap:8px;">
                         <button class="secondary-btn admin-edit-room-btn" data-room-id="${roomId}" style="width:auto; padding:8px 12px;">✏️ Изменить</button>
@@ -8796,11 +8796,11 @@ class RoomManager {
             const el = document.createElement('div');
             el.className = 'floating-emoji';
             const imgMap = {
-                '🔥': 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f525.png',
-                '😂': 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f602.png',
-                '😱': 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f631.png',
-                '❤️': 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/2764.png',
-                '👏': 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f44f.png'
+                '🔥': 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp',
+%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20'😂':%20'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Tears%20Of%20Joy.webp',
+%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20'😱':%20'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20Screaming%20In%20Fear.webp',
+%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20'❤️':%20'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Heart.webp',
+%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20'👏':%20'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Clapping%20Hands.webp'
             };
             if (imgMap[rx.emoji]) {
                 el.innerHTML = `<img src="${imgMap[rx.emoji]}" style="width: 48px; height: 48px; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3));">`;
@@ -9054,7 +9054,7 @@ class RoomManager {
 
         btn.innerHTML = `
             <span class="users-tab-inner">
-                <span class="users-tab-left"><img src="https://emojigraph.org/media/apple/busts-in-silhouette_1f465.png" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Люди (<span id="users-count">${count}</span>)</span>
+                <span class="users-tab-left"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Люди (<span id="users-count">${count}</span>)</span>
                 <span class="users-tab-avatars">${avatarsHtml}</span>
             </span>
         `;
@@ -9924,7 +9924,9 @@ class CatalogManager {
                     100% { background-position: 0% 50%; }
                 }
                 .catalog-card-inner {
-                    background: #111214;
+                    background: rgba(17, 18, 20, 0.4);
+                    backdrop-filter: blur(8px);
+                    border: 1px solid rgba(255, 255, 255, 0.05);
                     border-radius: 12px;
                     width: 100%;
                     height: 100%;
@@ -9937,12 +9939,12 @@ class CatalogManager {
                     transition: background 0.2s;
                 }
                 .catalog-card-wrapper:hover .catalog-card-inner {
-                    background: #1e1f22;
+                    background: rgba(30, 31, 34, 0.5);
                 }
                 .catalog-card-banner {
                     width: 100%;
                     height: 140px;
-                    background: #2b2d31;
+                    background: rgba(0, 0, 0, 0.2);
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -10002,7 +10004,7 @@ class CatalogManager {
             <div class="catalog-card-wrapper ${isHot ? 'is-hot' : ''} ${isOwned ? 'is-owned' : ''}" style="animation-delay: ${i * 0.05}s;">
                 <div class="catalog-card-inner" onclick="if(typeof openCatalogItemModal === 'function') openCatalogItemModal('${item.id}')">
                     <div class="catalog-card-banner">
-                        ${isHot ? `<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f525.png" style="position:absolute; top:8px; left:8px; width:28px; height:28px; object-fit:contain; z-index:5; pointer-events:none; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5));">` : ''}
+                        ${isHot ? `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" style="position:absolute; top:8px; left:8px; width:28px; height:28px; object-fit:contain; z-index:5; pointer-events:none; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5));">` : ''}
                         
                         ${item.type === 'sound' ? `
                             <div style="width: 100%; display:flex; align-items:center; justify-content:center; position:relative; z-index:2; padding: 0 16px;">
@@ -10118,6 +10120,12 @@ window.openCatalogItemModal = function(itemId) {
             contentPanel.style.flexDirection = 'column';
         }
         
+        const leftPanel = Utils.$('catalog-item-left-panel');
+        if (leftPanel) {
+            leftPanel.style.width = '100%';
+            leftPanel.style.borderRight = 'none';
+        }
+        
     } else {
         if(imageSolo) {
             imageSolo.style.display = 'block';
@@ -10133,6 +10141,12 @@ window.openCatalogItemModal = function(itemId) {
         if(contentPanel) {
             contentPanel.style.width = '800px';
             contentPanel.style.flexDirection = 'row';
+        }
+        
+        const leftPanel = Utils.$('catalog-item-left-panel');
+        if (leftPanel) {
+            leftPanel.style.width = '40%';
+            leftPanel.style.borderRight = '1px solid var(--border-light)';
         }
         
         if (blurObj) {
