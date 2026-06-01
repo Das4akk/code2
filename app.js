@@ -3113,12 +3113,12 @@ class BadgeManager {
         
         const presetEmojis = [
             'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Smiling%20Face%20With%20Horns.webp',
-%20%20%20%20%20%20%20%20%20%20%20%20'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Sleeping%20Face.webp',
-%20%20%20%20%20%20%20%20%20%20%20%20'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Partying%20Face.webp',
-%20%20%20%20%20%20%20%20%20%20%20%20'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Clown%20Face.webp',
-%20%20%20%20%20%20%20%20%20%20%20%20'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Smiling%20Face%20With%20Sunglasses.webp',
-%20%20%20%20%20%20%20%20%20%20%20%20'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20Screaming%20In%20Fear.webp',
-%20%20%20%20%20%20%20%20%20%20%20%20'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20Without%20Mouth.webp'
+            'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Sleeping%20Face.webp',
+            'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Partying%20Face.webp',
+            'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Clown%20Face.webp',
+            'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Smiling%20Face%20With%20Sunglasses.webp',
+            'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20Screaming%20In%20Fear.webp',
+            'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20Without%20Mouth.webp'
         ];
         
         setTimeout(() => {
@@ -4993,25 +4993,25 @@ class ProfileManager {
                         name: 'И Долго это будет?',
                         desc: `Первая неделя отношений с ${partnerName}`,
                         icon: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Smiling%20Face%20With%20Hearts.webp',
-%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20color:%20'#ffffff'
-%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20});
-%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20}
-%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20
-%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20if%20(days%20>=%2030)%20{
-%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20userBadges.push({
-%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20name:%20'Ну%20врооде%20бы%20серьезка',
-%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20desc:%20`Первый%20месяц%20отношений%20вместе%20с%20${partnerName}`,
-%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20icon:%20'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Smiling%20Face%20With%20Hearts.webp',
-%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20color:%20'#ffffff'
-%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20});
-%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20}
-%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20
-%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20if%20(days%20>=%20100)%20{
-%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20userBadges.push({
-%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20_id:%20'partner_100',
-%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20name:%20'Брак',
-%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20desc:%20`100%20Дней%20отношений%20с%20${partnerName}`,
-%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20icon:%20'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Smiling%20Face%20With%20Hearts.webp',
+                        color: '#ffffff'
+                    });
+                }
+                
+                if (days >= 30) {
+                    userBadges.push({
+                        name: 'Ну врооде бы серьезка',
+                        desc: `Первый месяц отношений вместе с ${partnerName}`,
+                        icon: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Smiling%20Face%20With%20Hearts.webp',
+                        color: '#ffffff'
+                    });
+                }
+                
+                if (days >= 100) {
+                    userBadges.push({
+                        _id: 'partner_100',
+                        name: 'Брак',
+                        desc: `100 Дней отношений с ${partnerName}`,
+                        icon: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Smiling%20Face%20With%20Hearts.webp',
                         color: '#ffffff'
                     });
                 }
@@ -8797,10 +8797,10 @@ class RoomManager {
             el.className = 'floating-emoji';
             const imgMap = {
                 '🔥': 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp',
-%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20'😂':%20'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Tears%20Of%20Joy.webp',
-%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20'😱':%20'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20Screaming%20In%20Fear.webp',
-%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20'❤️':%20'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Heart.webp',
-%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20'👏':%20'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Clapping%20Hands.webp'
+                '😂': 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Tears%20Of%20Joy.webp',
+                '😱': 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20Screaming%20In%20Fear.webp',
+                '❤️': 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Heart.webp',
+                '👏': 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Clapping%20Hands.webp'
             };
             if (imgMap[rx.emoji]) {
                 el.innerHTML = `<img src="${imgMap[rx.emoji]}" style="width: 48px; height: 48px; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3));">`;
@@ -10186,6 +10186,7 @@ window.openCatalogItemModal = function(itemId) {
            const uid = AppState.currentUser.uid;
            const currentProf = AppState.usersCache.get(uid);
            const inv = currentProf?.inventory ? [...currentProf.inventory] : [];
+           
            if (inv.includes(item.id)) {
                if (item.type === 'frame' || !item.type) {
                    await update(ref(db), { [`users/${uid}/profile/frame`]: item.image });
@@ -10196,7 +10197,9 @@ window.openCatalogItemModal = function(itemId) {
                }
                modal.classList.remove('active');
            } else {
-               if (item.priceType === 'free' || String(item.price).trim().toUpperCase() === 'БЕСПЛАТНО' || String(item.price).trim().toUpperCase() === 'FREE' || item.price === '0') {
+               const isFree = item.priceType === 'free' || String(item.price).trim().toUpperCase() === 'БЕСПЛАТНО' || String(item.price).trim().toUpperCase() === 'FREE' || item.price === '0';
+               
+               if (isFree) {
                    inv.push(item.id);
                    await update(ref(db), { [`users/${uid}/profile/inventory`]: inv });
                    Utils.toast('Товар добавлен в инвентарь!', 'success');
@@ -10207,28 +10210,28 @@ window.openCatalogItemModal = function(itemId) {
                    
                    currentProf.inventory = inv;
                    AppState.usersCache.set(uid, currentProf);
-if (window.SoundpadController) window.SoundpadController.renderGrid();
-} else {
-                   Utils.toast('Недостаточно средств', 'error');
-           // Replaced with:
-           let cost = parseInt(item.price, 10) || 0;
-           let curLevel = Number(currentProf?.level) || 0;
-           if (curLevel >= cost) {
-               inv.push(item.id);
-               // no deduction
-               // xp unchanged
-               update(ref(db), { [`users/${uid}/profile/inventory`]: inv });
-               Utils.toast('Уровень подходит. Товар добавлен в инвентарь!', 'success');
-               buyBtn.innerText = 'Применить';
-               buyBtn.style.background = 'var(--panel)';
-               buyBtn.style.color = 'var(--text-main)';
-               buyBtn.style.border = '1px solid var(--border-light)';
-               currentProf.inventory = inv; AppState.usersCache.set(uid, currentProf);
-               if (window.SoundpadController) window.SoundpadController.renderGrid();
-           } else { Utils.toast('Недостаточно уровней (нужно: ' + cost + ')', 'error'); }
+                   if (window.SoundpadController) window.SoundpadController.renderGrid();
+               } else {
+                   let cost = parseInt(item.price, 10) || 0;
+                   let curLevel = Number(currentProf?.level) || 0;
+                   if (curLevel >= cost) {
+                       inv.push(item.id);
+                       await update(ref(db), { [`users/${uid}/profile/inventory`]: inv });
+                       Utils.toast('Уровень подходит. Товар добавлен в инвентарь!', 'success');
+                       buyBtn.innerText = 'Применить';
+                       buyBtn.style.background = 'var(--panel)';
+                       buyBtn.style.color = 'var(--text-main)';
+                       buyBtn.style.border = '1px solid var(--border-light)';
+                       
+                       currentProf.inventory = inv;
+                       AppState.usersCache.set(uid, currentProf);
+                       if (window.SoundpadController) window.SoundpadController.renderGrid();
+                   } else {
+                       Utils.toast('Недостаточно уровней (нужно: ' + cost + ')', 'error');
+                   }
                }
            }
-       };
+       };;
     }
 
     const previewBtn = Utils.$('btn-preview-catalog-item');
