@@ -10002,18 +10002,18 @@ class CatalogManager {
             <div class="catalog-card-wrapper ${isHot ? 'is-hot' : ''} ${isOwned ? 'is-owned' : ''}" style="animation-delay: ${i * 0.05}s;">
                 <div class="catalog-card-inner" onclick="if(typeof openCatalogItemModal === 'function') openCatalogItemModal('${item.id}')">
                     <div class="catalog-card-banner">
-                        ${isHot ? \`<img src="https://em-content.zobj.net/source/telegram/386/fire_1f525.webp" style="position:absolute; top:8px; left:8px; width:28px; height:28px; object-fit:contain; z-index:5; pointer-events:none; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5));">\` : ''}
+                        ${isHot ? `<img src="https://em-content.zobj.net/source/telegram/386/fire_1f525.webp" style="position:absolute; top:8px; left:8px; width:28px; height:28px; object-fit:contain; z-index:5; pointer-events:none; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5));">` : ''}
                         
-                        ${item.type === 'sound' ? \`
+                        ${item.type === 'sound' ? `
                             <div style="width: 100%; display:flex; align-items:center; justify-content:center; position:relative; z-index:2; padding: 0 16px;">
                                 <audio controls src="${item.image}" style="width:100%; height: 35px; border-radius: 8px; outline:none;" onclick="event.stopPropagation();"></audio>
                             </div>
-                        \` : \`
+                        ` : `
                             <div style="width: 90px; height: 90px; display:flex; align-items:center; justify-content:center; position:relative; z-index:2;">
                                 <div style="width:90px; height:90px; border-radius:50%; background:#111214; position:absolute; top:0; left:0; z-index:1; box-shadow: inset 0 0 10px rgba(0,0,0,0.8);"></div>
                                 <img src="${item.image}" style="width:125px;height:125px;object-fit:contain; position:absolute; top:-17.5px; left:-17.5px; z-index:2; pointer-events:none;"/>
                             </div>
-                        \`}
+                        `}
                     </div>
                     
                     <div class="catalog-card-info">
@@ -10022,12 +10022,12 @@ class CatalogManager {
                         
                         <div class="catalog-card-bottom">
                             <div class="catalog-card-price">${item.priceType === 'free' ? 'БЕСПЛАТНО' : item.price + ' ур.'}</div>
-                            ${isOwned ? \`<div class="catalog-card-status">В КОЛЛЕКЦИИ</div>\` : ''}
+                            ${isOwned ? `<div class="catalog-card-status">В КОЛЛЕКЦИИ</div>` : ''}
                         </div>
                     </div>
                 </div>
             </div>
-            \`;
+            `;
         }).join('');
     }
 
