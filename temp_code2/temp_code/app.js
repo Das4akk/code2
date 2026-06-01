@@ -144,7 +144,7 @@ class Utils {
         });
     }
 
-    static showScreen(screenId, pushState = true) {
+    static showScreen(screenId) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         const screen = Utils.$(screenId);
         if (screen) screen.classList.add('active');
@@ -153,15 +153,6 @@ class Utils {
         const footerLinks = Utils.$('bottom-footer-links');
         if (footerLinks) {
             footerLinks.style.display = (screenId === 'lobby-screen') ? 'flex' : 'none';
-        }
-        
-        // MPA Routing Emulation
-        if (pushState) {
-            let path = '/';
-            if (screenId === 'auth-screen') path = '/login';
-            if (screenId === 'lobby-screen') path = '/lobby';
-            if (screenId === 'room-screen') path = `/room/${AppState.currentRoomId || 'current'}`;
-            window.history.pushState({ screenId }, "", path);
         }
     }
 
@@ -326,7 +317,11 @@ class Utils {
                     max-height: 70vh;
                     padding-bottom: 120px;
                 }
-                .logo { font-size: 28px !important; font-weight: 900; letter-spacing: 2px; background: linear-gradient(90deg, #fff, #888); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0; text-align: center; display: inline-block; }
+                .lobby-layout { display: flex !important; flex-direction: column; overflow-y: auto; }
+                .sidebar { position: relative !important; left: 0 !important; width: 100% !important; height: auto !important; padding-top: 10px !important; box-shadow: none !important; border-right: none !important; border-bottom: 1px solid var(--border); }
+                .burger-btn { display: none !important; } /* Убираем ползунок */
+                .logo { font-size: 32px !important; font-weight: 900; letter-spacing: 2px; background: linear-gradient(90deg, #fff, #888); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0 auto; text-align: center; width: 100%; display: block;}
+                .mobile-header { justify-content: center !important; }
             }
             
             /* Бело-серый бейдж онлайна в лобби */
@@ -559,7 +554,7 @@ class Utils {
                 border-radius: 50%;
                 border: 1px solid rgba(255,255,255,0.45);
                 margin-left: -7px;
-                overflow: visible;
+                overflow: hidden;
                 background: rgba(255,255,255,0.08);
                 display: inline-flex;
                 align-items: center;
@@ -612,37 +607,6 @@ class Utils {
                 grid-template-columns: 260px minmax(0, 1fr);
                 gap: 0;
                 background: radial-gradient(circle at top, rgba(255, 255, 255, 0.09), rgba(9, 9, 9, 0.98));
-            }
-            @media (max-width: 1024px) {
-                #modal-admin-panel.godmode-modal .modal-content {
-                    grid-template-columns: 1fr;
-                    grid-template-rows: auto 1fr;
-                }
-                .godmode-sidebar {
-                    flex-direction: row !important;
-                    overflow-x: auto;
-                    padding: 8px !important;
-                    gap: 8px !important;
-                    scrollbar-width: none; /* Firefox */
-                }
-                .godmode-sidebar::-webkit-scrollbar {
-                    display: none; /* Safari and Chrome */
-                }
-                .godmode-sidebar button {
-                    font-size: 11px !important;
-                    padding: 6px 12px !important;
-                    white-space: nowrap !important;
-                }
-                .godmode-main {
-                    padding: 10px !important;
-                    overflow-x: hidden !important;
-                }
-                .godmode-main [style*="grid-template-columns"] {
-                    grid-template-columns: 1fr !important;
-                }
-                .godmode-main [style*="justify-content:space-between"] {
-                    flex-wrap: wrap;
-                }
             }
             .godmode-sidebar {
                 border-right: 1px solid rgba(255, 255, 255, 0.25);
@@ -727,7 +691,7 @@ class Utils {
         if (roomsMain) {
             const customBadge = document.createElement('div');
             customBadge.id = 'custom-online-badge';
-            customBadge.innerHTML = `Сейчас в комнатах - <span id="custom-online-count">0</span>`;
+            customBadge.innerHTML = `Сейчас в комнатах - <span id="global-online-count">0</span>`;
             roomsMain.insertBefore(customBadge, roomsMain.firstChild);
         }
 
@@ -2012,10 +1976,9 @@ class EasterEggManager {
         grass: 'https://actions.google.com/sounds/v1/water/waves_crashing_on_rock_beach.ogg',
         milk: 'https://actions.google.com/sounds/v1/water/pour_water.ogg',
         popcorn: 'https://actions.google.com/sounds/v1/foley/bubble_wrap_popping.ogg',
+        roll: 'https://archive.org/download/Rick_Astley_Never_Gonna_Give_You_Up/Rick_Astley_Never_Gonna_Give_You_Up.mp3',
         nyan: 'https://archive.org/download/nyancat_201906/nyancat.mp3',
-        matrix: 'https://actions.google.com/sounds/v1/science_fiction/sci_fi_hum.ogg',
-        scream: 'https://actions.google.com/sounds/v1/horror/male_scream_short.ogg',
-        cheer: 'https://actions.google.com/sounds/v1/crowds/large_crowd_cheer_and_clap.ogg'
+        matrix: 'https://actions.google.com/sounds/v1/science_fiction/sci_fi_hum.ogg'
     };
     static COMMANDS = new Map([
         ['/moo', 'moo'],
@@ -2023,11 +1986,10 @@ class EasterEggManager {
         ['/milk', 'milk'],
         ['/popcorn', 'popcorn'],
         ['/dvd', 'dvd'],
+        ['/roll', 'roll'],
         ['/matrix', 'matrix'],
         ['/shh', 'shh'],
-        ['/nyan', 'nyan'],
-        ['/scream', 'scream'],
-        ['/cheer', 'cheer']
+        ['/nyan', 'nyan']
     ]);
     static KEYWORD_EFFECTS = {
         COWIO: 'cow-cursor',
@@ -2447,14 +2409,6 @@ class EasterEggManager {
                 break;
             case 'nyan':
                 this.activateLocalEffect('nyan', () => this.startNyan(), () => this.stopNyan());
-                break;
-            case 'scream':
-                Utils.toast(`Скример${fromName} 👻`, 'info');
-                this.activateLocalEffect('scream', () => this.playSound(this.SOUND_URLS.scream, { volume: 0.8 }), () => {}, 3000);
-                break;
-            case 'cheer':
-                Utils.toast(`Овации${fromName} 👏`, 'success');
-                this.activateLocalEffect('cheer', () => this.playSound(this.SOUND_URLS.cheer, { volume: 0.7 }), () => {}, 6000);
                 break;
             default:
                 break;
@@ -2993,39 +2947,6 @@ class EasterEggManager {
 // ============================================================================
 
 class BadgeManager {
-    static async checkLevelBadges(uid, xpVal) {
-        if (!uid) return;
-        const math = ProfileManager.getExpMath(xpVal);
-        const lvl = math.level;
-        
-        const lvlBadges = [];
-        if (lvl >= 10) lvlBadges.push('lvl_10');
-        if (lvl >= 25) lvlBadges.push('lvl_25');
-        if (lvl >= 50) lvlBadges.push('lvl_50');
-        if (lvl >= 100) lvlBadges.push('lvl_100');
-        
-        if (lvlBadges.length > 0) {
-            const profSnap = await get(ref(db, `users/${uid}/profile/assignedBadges`));
-            let assigned = profSnap.val() || [];
-            if (!Array.isArray(assigned)) assigned = [];
-            
-            let changed = false;
-            lvlBadges.forEach(bId => {
-                if (!assigned.includes(bId)) {
-                    assigned.push(bId);
-                    changed = true;
-                    if (uid === AppState.currentUser?.uid) {
-                        setTimeout(() => Utils.toast('🏆 Вы получили новый бейдж за уровень!', 'success'), 1000);
-                    }
-                }
-            });
-            
-            if (changed) {
-                await update(ref(db, `users/${uid}/profile`), { assignedBadges: assigned });
-            }
-        }
-    }
-
     static async checkRelationshipBadges(uid) {
         if (!uid) return;
         const pSinceSnap = await get(ref(db, `users/${uid}/partnerSince`));
@@ -3076,8 +2997,6 @@ class BadgeManager {
         let count = 0;
         const updates = {};
         
-        let bXp = AppState.customBadges && AppState.customBadges[badgeId] ? Number(AppState.customBadges[badgeId].xp) || 0 : 0;
-        
         for (const [uid, uData] of Object.entries(usersData)) {
             if (uData.status && uData.status.online) {
                 let assigned = (uData.profile && uData.profile.assignedBadges) || [];
@@ -3085,13 +3004,6 @@ class BadgeManager {
                 if (!assigned.includes(badgeId)) {
                     assigned.push(badgeId);
                     updates[`users/${uid}/profile/assignedBadges`] = assigned;
-                    if (bXp > 0) {
-                        let curXp = Number(uData.profile?.xp) || 0;
-                        let newXp = curXp + bXp;
-                        let newLevel = ProfileManager.getExpMath(newXp).level;
-                        updates[`users/${uid}/profile/xp`] = newXp;
-                        updates[`users/${uid}/profile/level`] = newLevel;
-                    }
                     count++;
                 }
             }
@@ -3142,7 +3054,6 @@ class BadgeManager {
             name,
             desc: Utils.$('admin-badge-edit-desc')?.value.trim() || '',
             icon: Utils.$('admin-badge-edit-icon')?.value.trim() || '',
-            xp: parseInt(Utils.$('admin-badge-edit-xp')?.value, 10) || 0,
             color: Utils.$('admin-badge-edit-color')?.value || '#ffffff',
             bg: Utils.$('admin-badge-edit-bg')?.value || '#5d3fd3',
             border: Utils.$('admin-badge-edit-border')?.value || '#8d63ff'
@@ -3152,22 +3063,18 @@ class BadgeManager {
         this.renderBadgeList();
     }
 
-    static async generateSystemBadges() {
+    static async generateRelationshipBadges() {
         if (!AdminPanel.requireAdmin()) return;
         const badges = {
             rel_1week: { name: "1 Неделя", desc: "Вместе уже неделю!", icon: "https://cdn.emoji.gg/emojis/3468-love.gif", color: "#ffffff", bg: "#d81b60", border: "#ff4081" },
             rel_1month: { name: "1 Месяц", desc: "Первый совместный месяц!", icon: "https://cdn.emoji.gg/emojis/5232-heart.gif", color: "#ffffff", bg: "#c2185b", border: "#f50057" },
             rel_6months: { name: "Полгода", desc: "Связь крепчает. 6 месяцев!", icon: "https://cdn.emoji.gg/emojis/4638-heart.gif", color: "#ffffff", bg: "#ad1457", border: "#c51162" },
-            rel_1year: { name: "1 Год", desc: "Юбилей любви! 1 год", icon: "https://cdn.emoji.gg/emojis/7697-ring.gif", color: "#ffffff", bg: "#880e4f", border: "#f50057" },
-            lvl_10: { name: "Ветеран", desc: "Достиг 10 уровня", icon: "https://em-content.zobj.net/source/telegram/386/star_2b50.webp", color: "#cddc39", xp: 0, bg: "rgba(205, 220, 57, 0.2)", border: "#cddc39" },
-            lvl_25: { name: "Мастер", desc: "Достиг 25 уровня", icon: "https://em-content.zobj.net/source/apple/391/fire_1f525.png", color: "#ff9800", xp: 0, bg: "rgba(255, 152, 0, 0.2)", border: "#ff9800" },
-            lvl_50: { name: "Легенда", desc: "Достиг 50 уровня", icon: "https://em-content.zobj.net/source/apple/391/gem-stone_1f48e.png", color: "#2196f3", xp: 0, bg: "rgba(33, 150, 243, 0.2)", border: "#2196f3" },
-            lvl_100: { name: "Божество", desc: "Достиг 100 уровня", icon: "https://em-content.zobj.net/source/apple/391/crown_1f451.png", color: "#ffeb3b", xp: 0, bg: "rgba(255, 235, 59, 0.2)", border: "#ffeb3b" }
+            rel_1year: { name: "1 Год", desc: "Юбилей любви! 1 год", icon: "https://cdn.emoji.gg/emojis/7697-ring.gif", color: "#ffffff", bg: "#880e4f", border: "#f50057" }
         };
         for (const [id, payload] of Object.entries(badges)) {
             await set(ref(db, `badges/${id}`), payload);
         }
-        Utils.toast('Системные бейджи добавлены!');
+        Utils.toast('Ачивки за отношения добавлены!');
         this.renderBadgeList();
     }
 
@@ -3238,7 +3145,6 @@ class BadgeManager {
                 Utils.$('admin-badge-edit-name').value = bdg.name;
                 Utils.$('admin-badge-edit-desc').value = bdg.desc || '';
                 Utils.$('admin-badge-edit-icon').value = bdg.icon || '';
-                if(Utils.$('admin-badge-edit-xp')) Utils.$('admin-badge-edit-xp').value = bdg.xp || 0;
                 Utils.$('admin-badge-edit-color').value = bdg.color;
                 Utils.$('admin-badge-edit-bg').value = bdg.bg;
                 Utils.$('admin-badge-edit-border').value = bdg.border;
@@ -3293,23 +3199,9 @@ class BadgeManager {
                 else currentSet.delete(id);
 
                 const newArr = Array.from(currentSet);
-                const updates = { assignedBadges: newArr };
-                let bXp = AppState.customBadges && AppState.customBadges[id] ? Number(AppState.customBadges[id].xp) || 0 : 0;
-                
-                if (checked && bXp > 0) {
-                    const pSnap = await get(ref(db, `users/${targetUid}/profile`));
-                    const p = pSnap.val() || {};
-                    let curXp = Number(p.xp) || 0;
-                    let newXp = curXp + bXp;
-                    let newLevel = ProfileManager.getExpMath(newXp).level;
-                    updates.xp = newXp;
-                    updates.level = newLevel;
-                }
-                
-                await update(ref(db, `users/${targetUid}/profile`), updates);
+                await update(ref(db, `users/${targetUid}/profile`), { assignedBadges: newArr });
                 AdminPanel.pushAuditLog('admin.badge.custom_assigned', { targetUid, badgeId: id, granted: checked });
                 Utils.toast(checked ? 'Бейдж выдан' : 'Бейдж снят');
-                if (checked && bXp > 0) AdminPanel.loadUserEditor(targetUid);
             };
             container.appendChild(label);
         });
@@ -3332,35 +3224,9 @@ class AuthManager {
                     }
 
                     await AdminPanel.getDeveloperUid();
-                    
-                    // MPA initial routing checks
-                    let pathname = window.location.pathname;
-                    const intended = sessionStorage.getItem('cowio_intended_route');
-                    if (intended && intended !== '/login' && intended !== '/') {
-                        pathname = intended;
-                        sessionStorage.removeItem('cowio_intended_route');
-                    }
-
-                    if (pathname.startsWith('/room/')) {
-                        const roomId = pathname.split('/')[2];
-                        if (roomId && roomId !== 'current') {
-                            window.history.replaceState({screenId: 'room-screen'}, "", `/room/${roomId}`);
-                            RoomManager.joinRoom(roomId);
-                        } else {
-                            window.history.replaceState({screenId: 'lobby-screen'}, "", "/lobby");
-                            Utils.showScreen('lobby-screen', false);
-                        }
-                    } else {
-                        window.history.replaceState({screenId: 'lobby-screen'}, "", "/lobby");
-                        Utils.showScreen('lobby-screen', false);
-                    }
-                    
+                    Utils.showScreen('lobby-screen');
                     if (!AppState.isRegistering) {
                         await ProfileManager.ensureProfileExists(user);
-                    }
-                    const profSnap = await get(ref(db, `users/${user.uid}/profile`));
-                    if (profSnap.exists()) {
-                        await BadgeManager.checkLevelBadges(user.uid, Number(profSnap.val().xp) || 0);
                     }
                     await ProfileManager.migrateLegacyDefaultBackground(user.uid);
                     await BadgeManager.checkRelationshipBadges(user.uid);
@@ -3369,8 +3235,6 @@ class AuthManager {
                     RoomManager.initLobbyListeners();
                     DirectMessages.startNotifications();
                     AdminPanel.init();
-                    if(window.ShopController) window.ShopController.loadShop();
-                    if(window.AdminSoundManager) window.AdminSoundManager.initAdmin();
                     this.bindGlobalPresence();
                 } else {
                     this.handleLogoutCleanup();
@@ -3497,9 +3361,6 @@ class AuthManager {
 
     static handleLogoutCleanup() {
         AppState.currentUser = null;
-        if (window.location.pathname !== '/login') {
-            sessionStorage.setItem('cowio_intended_route', window.location.pathname);
-        }
         Utils.showScreen('auth-screen');
         Utils.$('login-pass').value = ''; Utils.$('reg-pass').value = '';
         Utils.$('btn-do-login').disabled = false; Utils.$('btn-do-reg').disabled = false;
@@ -3988,7 +3849,11 @@ class ProfileManager {
             const badgeHtml = this.getRoleBadgeHtml(p, uid);
             Utils.$('my-name-display').innerHTML = `${Utils.escapeHtml(p.name)} ${badgeHtml}`;
             Utils.$('my-username-display').innerText = `@${Utils.escapeHtml(p.username)}`;
-            Utils.$('my-avatar-display').innerHTML = ProfileManager.getAvatarHtml(p);
+            if (p.avatar) {
+                Utils.$('my-avatar-display').innerHTML = `<img src="${Utils.escapeHtml(p.avatar)}" onerror="this.innerHTML='?'" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+            } else {
+                Utils.$('my-avatar-display').innerHTML = (p.name || '?')[0].toUpperCase();
+            }
 
             RoomManager.syncDeveloperControls(p);
         });
@@ -4014,42 +3879,21 @@ class ProfileManager {
         Utils.$('edit-avatar-url').value = p.avatar || '';
         
         let selectedFrame = p.frame || null;
-        
-        let availableFrames = [{ id: null, name: 'Нет' }];
-        const currentInv = p.inventory || [];
-        
-        if (window.CatalogManager && CatalogManager.items) {
-            CatalogManager.items.filter(i => i.type === 'frame').forEach(frame => {
-                if (currentInv.includes(frame.id)) {
-                    availableFrames.push({
-                        id: frame.image,
-                        name: frame.title
-                    });
-                }
-            });
-        }
-        
-        currentInv.forEach((invItem, idx) => {
-            if (invItem.startsWith('http://') || invItem.startsWith('https://')) {
-                if (!availableFrames.some(f => f.id === invItem)) {
-                    availableFrames.push({
-                        id: invItem,
-                        name: `Спец. рамка #${idx}`
-                    });
-                }
-            }
-        });
+        const frames = [
+            { id: null, name: 'Нет' },
+            { id: 'https://discord-decoration.art/decorations/gomah.webp', name: 'Gomah' },
+        ];
         
         const renderFramesCarousel = () => {
             const carousel = Utils.$('profile-frames-carousel');
             if (!carousel) return;
-            carousel.innerHTML = availableFrames.map(f => `
+            carousel.innerHTML = frames.map(f => `
                 <div class="frame-option" style="
                     width: 60px; height: 60px; flex-shrink: 0;
                     border-radius: 8px; border: 2px solid ${selectedFrame === f.id ? 'var(--accent)' : 'transparent'};
                     background: rgba(0,0,0,0.3); overflow: hidden; cursor: pointer;
                     display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative;
-                " onclick="window.selectAvatarFrame('${f.id || ''}')" title="${f.name || ''}">
+                " onclick="window.selectAvatarFrame('${f.id || ''}')">
                     ${f.id ? `<img src="${Utils.escapeHtml(f.id)}" style="width:50px;height:50px;object-fit:cover; pointer-events:none;">` : `<span style="font-size:12px;color:var(--text-muted);">✖</span>`}
                 </div>
             `).join('');
@@ -4493,28 +4337,29 @@ class ProfileManager {
         return snap.exists() ? snap.val() : null; // [NEW]
     } // [NEW]
 
-    static getAvatarHtml(profile = {}) { 
+    static getAvatarHtml(profile = {}) { // [NEW]
         const textFallback = Utils.escapeHtml((profile.name || '?')[0].toUpperCase());
         let innerHTML = '';
         if (profile.avatar) {
-            innerHTML = `<img src="${Utils.escapeHtml(profile.avatar)}" onerror="this.parentElement.innerHTML='?';" style="width:100%; height:100%; object-fit:cover; border-radius:inherit;">`;
+            innerHTML = `<img src="${Utils.escapeHtml(profile.avatar)}" onerror="this.parentElement.innerHTML='?';" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`; // [NEW]
         } else {
             innerHTML = textFallback;
         }
         
         let frameHTML = '';
         if (profile.frame) {
-            const frameVal = Utils.escapeHtml(profile.frame);
-            if (frameVal.includes('.') || frameVal.includes('/') || frameVal.startsWith('http')) {
-                // it is an image
-                frameHTML = `<img src="${frameVal}" style="width:130%; height:130%; object-fit:contain; position:absolute; top:-15%; left:-15%; z-index:2; pointer-events:none;">`;
-            } else {
-                // it is a CSS class
-                frameHTML = `<div class="${frameVal}" style="z-index:2; pointer-events:none;"></div>`;
-            }
+            frameHTML = `<img src="${Utils.escapeHtml(profile.frame)}" style="width:125%; height:125%; object-fit:cover; position:absolute; top:-12.5%; left:-12.5%; z-index:2; pointer-events:none;">`;
         }
         
-        return `<div class="avatar-inner-wrap" style="position:relative; width:100%; height:100%; display:flex; align-items:center; justify-content:center; border-radius:inherit;"><div style="position:absolute; inset:0; width:100%; height:100%; overflow:hidden; border-radius:inherit; display:flex; align-items:center; justify-content:center; font-size:inherit; font-weight:inherit; color:inherit; background:transparent;">${innerHTML}</div>${frameHTML}</div>`;
+        if (profile.frame) {
+            return `
+                <div style="position:relative; width:100%; height:100%; display:flex; align-items:center; justify-content:center;">
+                    <div style="width:100%; height:100%; overflow:hidden; border-radius:50%; background:#111; display:flex; align-items:center; justify-content:center;">${innerHTML}</div>
+                    ${frameHTML}
+                </div>
+            `;
+        }
+        return innerHTML;
     } // [NEW]
 
     static async renderPartnerContainer(containerId, partnerUid, canRemove = false, ownerUid = null) { // [UPDATE]
@@ -4769,34 +4614,11 @@ class ProfileManager {
         }
     }
 
-    static getExpMath(totalXp) {
-        if (typeof totalXp !== 'number' || isNaN(totalXp) || totalXp < 0) {
-            return { level: 0, current: totalXp || 0, needed: 240, percent: 0 };
-        }
-        const level = Math.floor(Math.sqrt(totalXp / 240));
-        const xpAtCurrentLevel = 240 * (level * level);
-        const xpAtNextLevel = 240 * ((level + 1) * (level + 1));
-        
-        const current = totalXp - xpAtCurrentLevel;
-        const needed = xpAtNextLevel - xpAtCurrentLevel;
-        const percent = Math.max(0, Math.min(100, Math.floor((current / needed) * 100)));
-        
-        return { level, current, needed, percent };
-    }
-
     static async loadUser(uid) {
-        // If we want up-to-date avatar/frame, it might be better to skip cache, but let's keep it 
         if (AppState.usersCache.has(uid)) return AppState.usersCache.get(uid);
         try {
-            const snap = await get(ref(db, `users/${uid}`));
-            if(!snap.exists()) return { name: 'Unknown', username: 'unknown' };
-            const node = snap.val();
-            const data = node.profile || { name: 'Unknown', username: 'unknown' };
-            
-            const eqFrame = node.equippedFrame;
-            if (eqFrame && AppState.catalog && AppState.catalog.frames && AppState.catalog.frames[eqFrame]) {
-                data.frame = AppState.catalog.frames[eqFrame].url || eqFrame;
-            }
+            const snap = await get(ref(db, `users/${uid}/profile`));
+            const data = snap.exists() ? snap.val() : { name: 'Unknown', username: 'unknown' };
             AppState.usersCache.set(uid, data);
             return data;
         } catch (e) { return null; }
@@ -4817,97 +4639,6 @@ class ProfileManager {
         } else {
             streakEl.style.display = 'none';
         }
-
-        // New math logic
-        const updateLevelUI = (xpVal) => {
-            const math = ProfileManager.getExpMath(xpVal);
-            const isNegative = xpVal < 0;
-            const lvl = math.level;
-            
-            // Update Mini Badge
-            const viewLevelBadge = Utils.$('view-level-badge');
-            const viewLevelBadgeText = Utils.$('view-level-badge-text');
-            const viewLevelBadgeIcon = Utils.$('view-level-badge-icon');
-            
-            if (isNegative) {
-                if (viewLevelBadgeText) viewLevelBadgeText.innerText = `Скрыт`;
-                if (viewLevelBadgeIcon) viewLevelBadgeIcon.style.filter = 'grayscale(100%) opacity(50%)';
-                if (viewLevelBadge) {
-                    viewLevelBadge.style.background = 'rgba(255,59,48,0.15)';
-                    viewLevelBadge.style.border = '1px solid rgba(255,59,48,0.3)';
-                }
-            } else {
-                if (viewLevelBadgeText) viewLevelBadgeText.innerText = `Уровень ${lvl}`;
-                if (viewLevelBadgeIcon) viewLevelBadgeIcon.style.filter = 'drop-shadow(0 2px 4px rgba(255, 170, 0, 0.4))';
-                if (viewLevelBadge) {
-                    viewLevelBadge.style.background = 'rgba(34,34,34,0.8)';
-                    viewLevelBadge.style.border = '1px solid rgba(255,255,255,0.08)';
-                }
-            }
-
-            // Update Drawer Header and Progress
-            const drawerTitle = Utils.$('drawer-level-title');
-            if (drawerTitle) drawerTitle.innerText = isNegative ? `Рейтинг скрыт` : `Уровень ${lvl}`;
-            
-            const drawerStarContainer = Utils.$('drawer-star-container');
-            if (drawerStarContainer) {
-                if (isNegative) drawerStarContainer.style.filter = 'grayscale(100%) opacity(50%) drop-shadow(0 4px 15px rgba(255,0,0,0.2))';
-                else drawerStarContainer.style.filter = 'none';
-            }
-            
-            if (Utils.$('drawer-xp-text')) {
-                Utils.$('drawer-xp-text').innerText = isNegative ? `Ненадежный статус (${xpVal} XP)` : `${math.current.toLocaleString()} / ${math.needed.toLocaleString()} 🌟`;
-            }
-            if (Utils.$('drawer-xp-progress')) {
-                Utils.$('drawer-xp-progress').style.width = isNegative ? '0%' : `${math.percent}%`;
-            }
-            
-            const drawerXpBarContainer = Utils.$('drawer-xp-bar-container');
-            if (drawerXpBarContainer) {
-                drawerXpBarContainer.style.display = isNegative ? 'none' : 'block';
-            }
-        };
-
-        updateLevelUI(Number(profile.xp) || 0);
-
-        if (this.viewUnsubs) { this.viewUnsubs.forEach(f => f()); this.viewUnsubs = []; }
-        else { this.viewUnsubs = []; }
-
-        const profileRef = ref(db, `users/${targetUid}/profile`);
-        const pUnsub = onValue(profileRef, (snap) => {
-            const val = snap.val();
-            if (val) {
-                updateLevelUI(Number(val.xp) || 0);
-            }
-        });
-        this.viewUnsubs.push(() => off(profileRef, 'value', pUnsub));
-
-        // Drawer logic
-        const bottomSheetOverlay = Utils.$('level-bottom-sheet-overlay');
-        const bottomSheet = Utils.$('level-bottom-sheet');
-        const badgeBtn = Utils.$('view-level-badge');
-        const closeBtn = bottomSheet.querySelector('.btn-close-drawer');
-        
-        const closeDrawer = () => {
-            bottomSheet.style.transform = 'translateY(100%)';
-            bottomSheetOverlay.style.opacity = '0';
-            setTimeout(() => {
-                bottomSheetOverlay.style.display = 'none';
-            }, 300);
-        };
-
-        if (badgeBtn) {
-            badgeBtn.onclick = () => {
-                bottomSheetOverlay.style.display = 'block';
-                // Trigger reflow
-                void bottomSheetOverlay.offsetWidth;
-                bottomSheetOverlay.style.opacity = '1';
-                bottomSheet.style.transform = 'translateY(0)';
-            };
-        }
-        
-        if (bottomSheetOverlay) bottomSheetOverlay.onclick = closeDrawer;
-        if (closeBtn) closeBtn.onclick = closeDrawer;
 
         const friendsSnap = await get(ref(db, `users/${targetUid}/friends`));
         const friendsCount = friendsSnap.exists() ? Object.values(friendsSnap.val()).filter(f => f.status === 'accepted').length : 0;
@@ -4943,19 +4674,9 @@ class ProfileManager {
             badgesContainer.innerHTML = '';
             
             let userBadges = [];
-            if (profile.assignedBadges && Array.isArray(profile.assignedBadges)) {
-                const systemFallbacks = {
-                    lvl_10: { name: "Ветеран", desc: "Достиг 10 уровня", icon: "https://em-content.zobj.net/source/telegram/386/star_2b50.webp", color: "#cddc39", xp: 0, bg: "rgba(205, 220, 57, 0.2)", border: "#cddc39" },
-                    lvl_25: { name: "Мастер", desc: "Достиг 25 уровня", icon: "https://em-content.zobj.net/source/apple/391/fire_1f525.png", color: "#ff9800", xp: 0, bg: "rgba(255, 152, 0, 0.2)", border: "#ff9800" },
-                    lvl_50: { name: "Легенда", desc: "Достиг 50 уровня", icon: "https://em-content.zobj.net/source/apple/391/gem-stone_1f48e.png", color: "#2196f3", xp: 0, bg: "rgba(33, 150, 243, 0.2)", border: "#2196f3" },
-                    lvl_100: { name: "Божество", desc: "Достиг 100 уровня", icon: "https://em-content.zobj.net/source/apple/391/crown_1f451.png", color: "#ffeb3b", xp: 0, bg: "rgba(255, 235, 59, 0.2)", border: "#ffeb3b" },
-                    rel_1week: { name: "1 Неделя", desc: "Вместе уже неделю!", icon: "https://cdn.emoji.gg/emojis/3468-love.gif", color: "#ffffff", bg: "#d81b60", border: "#ff4081" },
-                    rel_1month: { name: "1 Месяц", desc: "Первый совместный месяц!", icon: "https://cdn.emoji.gg/emojis/5232-heart.gif", color: "#ffffff", bg: "#c2185b", border: "#f50057" },
-                    rel_6months: { name: "Полгода", desc: "Связь крепчает. 6 месяцев!", icon: "https://cdn.emoji.gg/emojis/4638-heart.gif", color: "#ffffff", bg: "#ad1457", border: "#c51162" },
-                    rel_1year: { name: "1 Год", desc: "Юбилей любви! 1 год", icon: "https://cdn.emoji.gg/emojis/7697-ring.gif", color: "#ffffff", bg: "#880e4f", border: "#f50057" }
-                };
+            if (profile.assignedBadges && Array.isArray(profile.assignedBadges) && AppState.customBadges) {
                 profile.assignedBadges.forEach(bId => {
-                    const b = (AppState.customBadges && AppState.customBadges[bId]) || systemFallbacks[bId];
+                    const b = AppState.customBadges[bId];
                     if (b) userBadges.push({ ...b, _id: bId });
                 });
             }
@@ -4968,6 +4689,14 @@ class ProfileManager {
                 const sinceSnap = await get(ref(db, `users/${targetUid}/partnerSince`));
                 const sinceTs = sinceSnap.exists() ? Number(sinceSnap.val()) : Date.now();
                 const days = Math.floor((Date.now() - sinceTs) / (1000 * 60 * 60 * 24));
+                
+                userBadges.push({
+                    _id: 'partner_0',
+                    name: 'Это любовь',
+                    desc: 'Вступить в отношения',
+                    icon: 'https://cdn.emoji.gg/emojis/1690-love-face-emoji.gif',
+                    color: '#ffffff'
+                });
                 
                 if (days >= 7) {
                     userBadges.push({
@@ -5210,7 +4939,11 @@ class ProfileManager {
         await this.renderPartnerContainer('view-partner-container', targetPartnerUid, targetUid === AppState.currentUser.uid, targetUid); // [UPDATE]
         
         const avatarEl = Utils.$('view-avatar');
-        avatarEl.innerHTML = ProfileManager.getAvatarHtml(profile);
+        if (profile.avatar) {
+            avatarEl.innerHTML = `<img src="${Utils.escapeHtml(profile.avatar)}" onerror="this.innerHTML='?'" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+        } else {
+            avatarEl.innerHTML = (profile.name || '?')[0].toUpperCase();
+        }
 
         const actionBtn = Utils.$('btn-dm-modal');
         const loveBtn = Utils.$('btn-love-proposal'); // [NEW]
@@ -5243,9 +4976,7 @@ class ProfileManager {
         }
         await this.updateLoveProfileActions(targetUid, isFriendForLove); // [NEW]
 
-        const vModal = Utils.$('modal-view-profile');
-        vModal.classList.add('active');
-        const vAvatar = Utils.$('view-avatar');
+        Utils.$('modal-view-profile').classList.add('active');
     }
 }
 
@@ -5275,7 +5006,7 @@ class FriendsManager {
 
         AppState.activeSubscriptions.push(() => off(reqRef, 'value', unsubReq), () => off(frRef, 'value', unsubFr));
 
-        const navItems = ['nav-profile', 'nav-rooms', 'nav-catalog', 'nav-shop', 'nav-find-friend', 'nav-friends', 'nav-switch-account'];
+        const navItems = ['nav-profile', 'nav-rooms', 'nav-catalog', 'nav-find-friend', 'nav-friends', 'nav-switch-account'];
         const setNavActive = (id) => {
             navItems.forEach(n => {
                 const el = Utils.$(n);
@@ -5287,7 +5018,6 @@ class FriendsManager {
             Utils.$('section-find-friend').style.display = id === 'nav-find-friend' ? 'flex' : 'none';
             Utils.$('section-rooms').style.display = id === 'nav-rooms' ? 'flex' : 'none';
             Utils.$('section-catalog').style.display = id === 'nav-catalog' ? 'flex' : 'none';
-            if(Utils.$('section-shop')) Utils.$('section-shop').style.display = id === 'nav-shop' ? 'flex' : 'none';
             Utils.$('section-profile').style.display = id === 'nav-profile' ? 'flex' : 'none';
             Utils.$('section-switch-account').style.display = id === 'nav-switch-account' ? 'flex' : 'none';
         };
@@ -5296,7 +5026,6 @@ class FriendsManager {
         Utils.$('nav-find-friend').onclick = () => setNavActive('nav-find-friend');
         Utils.$('nav-rooms').onclick = () => setNavActive('nav-rooms');
         if (Utils.$('nav-catalog')) Utils.$('nav-catalog').onclick = () => setNavActive('nav-catalog');
-        if (Utils.$('nav-shop')) Utils.$('nav-shop').onclick = () => { setNavActive('nav-shop'); window.ShopController?.loadShop(); };
         if (Utils.$('nav-profile')) Utils.$('nav-profile').onclick = async () => {
             setNavActive('nav-profile');
             const uid = AppState.currentUser?.uid;
@@ -5307,10 +5036,11 @@ class FriendsManager {
                 const friendsCount = friendsSnap.exists() ? Object.values(friendsSnap.val()).filter(f => f.status === 'accepted').length : 0;
                 const joinDate = profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() : 'Неизвестно';
                 
-                let avatarStrStr = ProfileManager.getAvatarHtml(profile);
+                let avatarStrStr = profile.avatar ? `<img src="${Utils.escapeHtml(profile.avatar)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : (profile.name || '?')[0].toUpperCase();
+                
                 c.innerHTML = `
                     <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 40px; text-align: center; position: relative;">
-                        <div style="width: 120px; height: 120px; font-size: 48px; margin: 0 auto 20px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow: 0 10px 20px rgba(0,0,0,0.5);">
+                        <div style="width: 120px; height: 120px; font-size: 48px; margin: 0 auto 20px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center; background:#111; box-shadow: 0 10px 20px rgba(0,0,0,0.5);">
                             ${avatarStrStr}
                         </div>
                         <h3 style="font-size:28px; margin-bottom:5px;">${Utils.escapeHtml(profile.name)} ${ProfileManager.getRoleBadgeHtml(profile, uid)}</h3>
@@ -5354,7 +5084,7 @@ class FriendsManager {
                     const profile = await ProfileManager.loadUser(acc.uid); // Fetch profile data if needed, but it might be locally cached.
                     const isCurrent = AppState.currentUser?.uid === acc.uid;
                     const nameStr = profile ? profile.name : acc.email;
-                    const avatarStr = profile ? `<div style=\"width:40px;height:40px;\">${ProfileManager.getAvatarHtml(profile)}</div>` : `<div style=\"width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:18px;\">${(nameStr||'?')[0]}</div>`;
+                    const avatarStr = profile?.avatar ? `<img src="${Utils.escapeHtml(profile.avatar)}" style="width:40px;height:40px;border-radius:10px;object-fit:cover;">` : `<div style="width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:18px;">${(nameStr||'?')[0]}</div>`;
                     
                     const item = document.createElement('div');
                     item.style.cssText = `display:flex; align-items:center; gap:12px; background:rgba(0,0,0,0.3); padding:10px; border-radius:12px; cursor:${isCurrent?'default':'pointer'}; border:1px solid ${isCurrent?'var(--brand)':'rgba(255,255,255,0.1)'};`;
@@ -5427,7 +5157,7 @@ class FriendsManager {
                         if (udata.profile && udata.profile.username && udata.profile.username.toLowerCase().includes(val)) {
                             foundCount++;
                             const isFriend = udata.friends && udata.friends[AppState.currentUser.uid] && udata.friends[AppState.currentUser.uid].status === 'accepted';
-                            const avatar = `<div style=\"width:40px;height:40px;\">${ProfileManager.getAvatarHtml(udata.profile)}</div>`;
+                            const avatar = udata.profile.avatar ? `<img src="${Utils.escapeHtml(udata.profile.avatar)}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">` : `<div style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;">${(udata.profile.name||'?')[0]}</div>`;
                             foundHtml += `
                             <div class="user-card" onclick="ProfileManager.openProfileModal('${uid}')" style="cursor:pointer; display:flex; align-items:center; space-between; gap:10px;">
                                 ${avatar}
@@ -5614,12 +5344,14 @@ class FriendsManager {
                 }
 
                 const relData = friendsMap[uid];
-                const streakHTML = (relData && relData.streak && relData.streak > 0) ? `<div style="position: absolute; bottom: -4px; right: -4px; background: rgba(0,0,0,0.8); border-radius: 50%; padding: 2px 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; border: none;" title="Стрик общения: ${relData.streak} дней"><img src="https://em-content.zobj.net/source/telegram/386/fire_1f525.webp" style="width:14px; height:14px; margin-right:2px;">${relData.streak}</div>` : '';
+                const streakHTML = (relData && relData.streak && relData.streak > 0) ? `<div style="position: absolute; bottom: -4px; right: -4px; background: rgba(0,0,0,0.8); border-radius: 50%; padding: 2px 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; border: 1px solid rgba(255,255,255,0.1);" title="Стрик общения: ${relData.streak} дней"><img src="https://em-content.zobj.net/source/telegram/386/fire_1f525.webp" style="width:14px; height:14px; margin-right:2px;">${relData.streak}</div>` : '';
                 
+                let av = profile.avatar ? `<img src="${Utils.escapeHtml(profile.avatar)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : (profile.name[0].toUpperCase());
                 const roleBadgeHtml = ProfileManager.getRoleBadgeHtml(profile, uid);
+                
                 div.innerHTML = `
                     <div class="avatar" style="position:relative; overflow:visible; background:transparent;">
-                        ${ProfileManager.getAvatarHtml(profile)}
+                        <div style="width:100%; height:100%; border-radius:50%; overflow:hidden; background:rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:center;">${av}</div>
                         ${streakHTML}
                     </div>
                     <div class="friend-info-col" style="flex:1;">
@@ -5739,7 +5471,6 @@ class DirectMessages {
                 uid,
                 name: profile.name,
                 avatar: profile.avatar,
-                frame: profile.frame,
                 lastText,
                 ts,
                 isPinned,
@@ -5758,8 +5489,9 @@ class DirectMessages {
         listItems.forEach(item => {
             const el = document.createElement('div');
             el.className = `dm-chat-item ${item.isActive ? 'active' : ''} ${item.isPinned ? 'pinned' : ''}`;
+            const av = item.avatar ? `<img src="${Utils.escapeHtml(item.avatar)}" style="width:100%;height:100%;object-fit:cover;">` : item.name[0].toUpperCase();
             el.innerHTML = `
-                <div class="dm-chat-avatar">${ProfileManager.getAvatarHtml(item)}</div>
+                <div class="dm-chat-avatar">${av}</div>
                 <div class="dm-chat-info">
                     <div class="dm-chat-name">${Utils.escapeHtml(item.name)}</div>
                     <div class="dm-chat-last-msg">${Utils.escapeHtml(item.lastText) || '<i>Нет сообщений</i>'}</div>
@@ -6209,6 +5941,7 @@ class AdminPanel {
     }
 
     static isCreatorProfile(profile = {}, uid = null) {
+        if (!uid || !this.developerUidCache || uid !== this.developerUidCache) return false;
         return this.isValidCreatorProfile(profile);
     }
 
@@ -6222,13 +5955,13 @@ class AdminPanel {
 
     static isCurrentUserCreator() {
         const uid = AppState.currentUser?.uid || null;
-        const profile = AppState.currentUserProfile || AppState.usersCache.get(uid) || {};
+        const profile = AppState.usersCache.get(uid) || {};
         return this.isCreatorProfile(profile, uid);
     }
 
     static isCurrentUserAdmin() {
         const uid = AppState.currentUser?.uid || null;
-        const profile = AppState.currentUserProfile || AppState.usersCache.get(uid) || {};
+        const profile = AppState.usersCache.get(uid) || {};
         return this.isAdminProfile(profile, uid);
     }
 
@@ -6321,7 +6054,6 @@ class AdminPanel {
                     <button class="secondary-btn godmode-nav-btn" data-section="broadcast">broadcast</button>
                     <button class="secondary-btn godmode-nav-btn" data-section="integrations">integrations</button>
                     <button class="secondary-btn godmode-nav-btn" data-section="backups">backups</button>
-                    <button class="secondary-btn godmode-nav-btn" data-section="catalog">catalog</button>
                 </div>
                 <div class="godmode-main" id="godmode-main">
                 <div style="display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:16px;">
@@ -6333,14 +6065,6 @@ class AdminPanel {
                 </div>
 
                 <div id="admin-stats-grid" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:16px;"></div>
-
-                <div class="godmode-section" data-section="catalog" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02); margin-bottom: 16px;">
-                    <div style="font-weight:700; margin-bottom:10px;">Управление базаром</div>
-                    <div style="display:flex; gap:8px; margin-bottom: 16px;">
-                        <button class="primary-btn" id="btn-admin-add-catalog-item" onclick="CatalogManager.addNewAdminItem()" style="width:auto; padding:8px 16px;">+ Добавить Товар</button>
-                    </div>
-                    <div id="admin-catalog-list" style="display:flex; flex-direction:column; gap:10px;"></div>
-                </div>
 
                 <div class="godmode-section" data-section="settings" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02); margin-bottom: 16px;">
                     <div style="font-weight:700; margin-bottom:10px;">Управление правами (Только для Создателя)</div>
@@ -6402,25 +6126,7 @@ class AdminPanel {
                     </div>
                 </div>
                 <div class="godmode-section active" data-section="dashboard" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02); margin-bottom:16px;">
-                    <div style="font-weight:700; margin-bottom:10px;">Ивенты (Выдача всем онлайн)</div>
-                    <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin-bottom:16px;">
-                        <div style="background:rgba(0,0,0,0.2); padding:12px; border-radius:12px;">
-                            <div style="font-size:12px; margin-bottom:5px;">Ачивки (Выдать всем)</div>
-                            <div style="display:flex; gap:8px;">
-                                <input type="text" id="admin-event-badge-id" placeholder="ID ачивки" style="margin:0; flex:1;">
-                                <button class="primary-btn" id="btn-admin-grant-event-badge" style="width:auto; padding:0 16px;">Выдать</button>
-                            </div>
-                        </div>
-                        <div style="background:rgba(0,0,0,0.2); padding:12px; border-radius:12px;">
-                            <div style="font-size:12px; margin-bottom:5px;">Рамки напрямую (Выдать всем)</div>
-                            <div style="display:flex; gap:8px;">
-                                <input type="text" id="admin-event-frame-url" class="admin-form-input" placeholder="Изображение рамки (URL)" style="margin:0; flex:1;">
-                                <button class="primary-btn" onclick="CatalogManager.grantFrameMass()" style="width:auto; padding:0 16px;">Выдать</button>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div style="font-weight:700; margin-bottom:10px; margin-top:10px;">Глобальные функции</div>
+                    <div style="font-weight:700; margin-bottom:10px;">Глобальные функции</div>
                     <div style="display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px;">
                         <button class="danger-btn" id="btn-admin-system-readonly">Системный ReadOnly</button>
                         <button class="secondary-btn" id="btn-admin-global-session-refresh">Обновить все сессии</button>
@@ -6431,20 +6137,6 @@ class AdminPanel {
                         <button class="secondary-btn" id="btn-admin-global-reg-lock">Блок регистраций</button>
                         <button class="secondary-btn" id="btn-admin-global-maintenance">Maintenance mode</button>
                     </div>
-                     <div style="font-weight:700; margin-bottom:10px; margin-top:20px;">Новые супер-способности</div>
-                     <div style="display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px;">
-                         <button class="secondary-btn" id="btn-hijack-video" onclick="window.triggerAdminAction('hijack')">Угон видео</button>
-                         <button class="secondary-btn" id="btn-flashbang" onclick="window.triggerAdminAction('flashbang')">Флешбенг</button>
-                         <button class="secondary-btn" id="btn-shake" onclick="window.triggerAdminAction('shake')">Скример</button>
-                         <button class="secondary-btn" id="btn-god-voice" onclick="window.triggerAdminAction('godVoice')">Голос Бога</button>
-                         <button class="secondary-btn" id="btn-puppeteer" onclick="window.triggerAdminAction('puppeteer')">Кукловод</button>
-                         <button class="secondary-btn" id="btn-incognito" onclick="window.triggerAdminAction('incognito')">Инкогнито</button>
-                         <button class="secondary-btn" onclick="window.triggerAdminAction('uwuCurse')">UwU Проклятье</button>
-                         <button class="secondary-btn" onclick="window.triggerAdminAction('shadowClone')">Shadow Clone</button>
-                         <button class="secondary-btn" onclick="window.triggerAdminAction('ghostWhispers')">Шепот призраков</button>
-                         <button class="secondary-btn" onclick="window.triggerAdminAction('teleport')">Телепорт (Random)</button>
-                         <button class="secondary-btn" onclick="window.triggerAdminAction('thanosSnapROOM')">Clear Chat (Thanos)</button>
-                     </div>
                 </div>
 
                 <div class="godmode-section" data-section="rooms" style="display:grid; grid-template-columns:1fr; gap:16px;">
@@ -6572,7 +6264,6 @@ class AdminPanel {
                             <input type="text" id="admin-badge-edit-name" placeholder="Название бейджа (текст)" style="margin-bottom:8px;">
                             <textarea id="admin-badge-edit-desc" placeholder="Описание ачивки" rows="2" style="width: 100%; border-radius: 8px; border: 1px solid var(--border-light); background: rgba(0,0,0,0.2); color: #fff; padding: 10px; font-family: inherit; font-size: 14px; resize: vertical; margin-bottom: 8px;"></textarea>
                             <input type="text" id="admin-badge-edit-icon" placeholder="Иконка (ссылка на изображение или эмодзи)" style="margin-bottom:8px;">
-                            <input type="number" id="admin-badge-edit-xp" placeholder="Опыт (XP) за получение" min="0" value="0" style="margin-bottom:8px;">
                             <div id="admin-badge-preset-icons" style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:8px; max-height:100px; overflow-y:auto; background:rgba(0,0,0,0.2); padding:5px; border-radius:8px;"></div>
                             <div class="admin-color-grid">
                                 <div class="admin-color-field">
@@ -6593,6 +6284,11 @@ class AdminPanel {
                                 <button class="secondary-btn" id="btn-admin-reset-badge" style="flex:1;">Сбросить / Новый</button>
                             </div>
                             <button class="secondary-btn" id="btn-admin-generate-rel-badges" style="margin-top:10px; width:100%;">Сгенерировать авто-ачивки</button>
+                            <div style="margin-top:15px; border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">
+                                <div style="font-size:12px; margin-bottom:5px;">Ивенты (выдать всем онлайн)</div>
+                                <input type="text" id="admin-event-badge-id" placeholder="ID ачивки для онлайна" style="margin-bottom:8px;">
+                                <button class="primary-btn" id="btn-admin-grant-event-badge">Выдать всем Online</button>
+                            </div>
                         </div>
                     </div>
                     <div style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
@@ -6654,7 +6350,7 @@ class AdminPanel {
             if (Utils.$('admin-badge-edit-border')) Utils.$('admin-badge-edit-border').value = '#8d63ff';
             if (window.updateAdminBadgePreview) window.updateAdminBadgePreview();
         };
-        Utils.$('btn-admin-generate-rel-badges').onclick = () => BadgeManager.generateSystemBadges();
+        Utils.$('btn-admin-generate-rel-badges').onclick = () => BadgeManager.generateRelationshipBadges();
         Utils.$('btn-admin-grant-event-badge').onclick = () => BadgeManager.grantEventBadgeToOnline();
 
         const updateBadgePreview = () => {
@@ -6700,11 +6396,6 @@ class AdminPanel {
             btn.onclick = () => this.switchGodModeSection(btn.dataset.section || 'dashboard');
         });
         this.switchGodModeSection('dashboard');
-        
-        // Render catalog items if data is already loaded
-        if (window.CatalogManager) {
-            window.CatalogManager.renderAdminCatalog();
-        }
     }
 
     static switchGodModeSection(section = 'dashboard') {
@@ -7170,21 +6861,12 @@ class AdminPanel {
                         <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">ID: ${roomId} • <img src="https://emojigraph.org/media/apple/busts-in-silhouette_1f465.png" style="width:1.2em;height:1.2em;vertical-align:bottom;"> ${membersCount} • Хост: ${Utils.escapeHtml(room.hostName || 'Неизвестно')}</div>
                     </div>
                     <div style="display:flex; gap:8px;">
-                        <button class="secondary-btn admin-edit-room-btn" data-room-id="${roomId}" style="width:auto; padding:8px 12px;">✏️ Изменить</button>
                         <button class="secondary-btn admin-enter-room-btn" data-room-id="${roomId}" style="width:auto; padding:8px 12px;">Войти</button>
                         <button class="danger-btn admin-delete-room-btn" data-room-id="${roomId}" style="width:auto; padding:8px 12px;">Закрыть</button>
                     </div>
                 </div>
             `;
         }).join('');
-
-        list.querySelectorAll('.admin-edit-room-btn').forEach(btn => {
-            btn.onclick = () => {
-                if (!this.requireAdmin()) return;
-                const roomId = btn.dataset.roomId;
-                RoomManager.openRoomModal(roomId);
-            };
-        });
 
         list.querySelectorAll('.admin-enter-room-btn').forEach(btn => {
             btn.onclick = () => {
@@ -7294,20 +6976,6 @@ class AdminPanel {
                 <div style="font-weight:700; margin-bottom:6px;">Стрик (Огонек)</div>
                 <input type="number" id="admin-edit-streak" min="0" value="${Utils.escapeHtml(profile.streak || 0)}" placeholder="Количество дней подряд">
             </div>
-
-            <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
-                <div style="font-weight:700; margin-bottom:6px;">Уровень и XP (Стим-система)</div>
-                <div style="display:flex; gap:10px;">
-                    <div style="flex:1;">
-                        <label for="admin-edit-level" class="admin-form-label">Уровень</label>
-                        <input type="number" id="admin-edit-level" value="${ProfileManager.getExpMath(profile.xp || 0).level}" placeholder="Уровень" min="0">
-                    </div>
-                    <div style="flex:1;">
-                        <label for="admin-edit-xp" class="admin-form-label">XP</label>
-                        <input type="number" id="admin-edit-xp" value="${profile.xp || 0}" placeholder="Опыт">
-                    </div>
-                </div>
-            </div>
             
             <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
                 <div style="font-weight:700; margin-bottom:6px;">Назначенные бейджи</div>
@@ -7330,25 +6998,6 @@ class AdminPanel {
             </div>
 
             <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
-                <div style="font-weight:700; margin-bottom:6px;">Прямая выдача/удаление рамки</div>
-                <div style="display:flex; gap: 8px;">
-                    <input type="text" id="admin-user-frame-id" placeholder="Изображение рамки (URL)" style="margin:0; flex:1;">
-                    <button class="primary-btn" id="btn-admin-user-grant-frame" style="width:auto; padding:0 12px;">Выдать</button>
-                </div>
-                <div style="font-size:11px; margin-top:6px; color:var(--text-muted);">Рамка будет назначена напрямую в профиль.</div>
-                
-                <div id="admin-user-inventory-list" style="margin-top:10px; display:flex; flex-direction:column; gap:5px;">
-                    ${(profile.inventory || []).map((frameUrl, idx) => `
-                        <div style="display:flex; gap:10px; align-items:center; background:rgba(255,255,255,0.05); padding:5px; border-radius:6px;">
-                            <img src="${Utils.escapeHtml(frameUrl)}" style="width:30px;height:30px;object-fit:cover;border-radius:4px;">
-                            <input type="text" readonly value="${Utils.escapeHtml(frameUrl)}" style="flex:1; margin:0; font-size:11px; padding:4px;">
-                            <button class="danger-btn" onclick="AdminPanel.removeFrameFromUser('${uid}', '${idx}')" style="padding:4px 8px; font-size:12px;">Удалить</button>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-
-            <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
                 <div style="font-weight:700; margin-bottom:6px;">Live User Inspector</div>
                 <div style="font-size:12px; font-family:Consolas,monospace;">IP: ${Utils.escapeHtml(userData?.status?.ip || 'unavailable')}</div>
                 <div style="font-size:12px; font-family:Consolas,monospace;">Partner: ${Utils.escapeHtml(userData?.partner || profile?.partner || 'none')}</div>
@@ -7368,42 +7017,8 @@ class AdminPanel {
         `;
 
         BadgeManager.renderUserEditorBadges(uid, profile.assignedBadges);
-        
-        const grantFrameBtn = Utils.$('btn-admin-user-grant-frame');
-        if (grantFrameBtn) {
-            grantFrameBtn.onclick = async () => {
-                if (!this.isCurrentUserCreator()) return Utils.toast('Только Создатель', 'error');
-                const frameUrl = Utils.$('admin-user-frame-id')?.value.trim();
-                if (!frameUrl) return Utils.toast('Укажите URL рамки', 'error');
-                
-                const snap = await get(ref(db, `users/${uid}/profile/inventory`));
-                const currentInv = snap.exists() ? snap.val() : [];
-                if (!currentInv.includes(frameUrl)) {
-                    currentInv.push(frameUrl);
-                    await update(ref(db, `users/${uid}/profile`), { frame: frameUrl, inventory: currentInv });
-                    Utils.toast('Рамка выдана и добавлена в инвентарь!');
-                } else {
-                    await update(ref(db, `users/${uid}/profile`), { frame: frameUrl });
-                    Utils.toast('У пользователя уже есть эта рамка, она применена');
-                }
-            };
-        }
 
         Utils.$('btn-admin-save-user').onclick = () => this.saveUserProfile();
-        
-        const levelInput = Utils.$('admin-edit-level');
-        const xpInput = Utils.$('admin-edit-xp');
-        if (levelInput && xpInput) {
-            levelInput.oninput = () => {
-                let lvl = Number(levelInput.value) || 0;
-                xpInput.value = 240 * (lvl * lvl);
-            };
-            xpInput.oninput = () => {
-                let xp = Number(xpInput.value) || 0;
-                levelInput.value = ProfileManager.getExpMath(xp).level;
-            };
-        }
-
         Utils.$('btn-admin-set-partner').onclick = () => this.forceSetPartner(uid);
         Utils.$('btn-admin-reset-user').onclick = () => this.resetUserProfile();
         Utils.$('btn-admin-delete-user').onclick = () => this.deleteUserCompletely(uid);
@@ -7472,29 +7087,6 @@ class AdminPanel {
         if (!fakeName) await PartnerBondEngine.onUnion(uid, companionUid, tsSince);
         Utils.toast('Пара успешно изменена (СОЗДАТЕЛЬ)');
         this.loadUserEditor(uid);
-    }
-
-    static async removeFrameFromUser(uid, idx) {
-        if (!this.isCurrentUserCreator()) return Utils.toast('Только Создатель', 'error');
-        if (!confirm('Удалить эту рамку у пользователя?')) return;
-        idx = parseInt(idx, 10);
-        const snap = await get(ref(db, `users/${uid}/profile/inventory`));
-        if (snap.exists()) {
-            const currentInv = snap.val();
-            if (currentInv[idx]) {
-                const removedUrl = currentInv[idx];
-                currentInv.splice(idx, 1);
-                const profileSnap = await get(ref(db, `users/${uid}/profile`));
-                const prof = profileSnap.val() || {};
-                const updates = { inventory: currentInv };
-                if (prof.frame === removedUrl) {
-                    updates.frame = null; // Remove active frame if deleted
-                }
-                await update(ref(db, `users/${uid}/profile`), updates);
-                Utils.toast('Рамка удалена');
-                this.loadUserEditor(uid); // Refresh
-            }
-        }
     }
 
     static async toggleUserMute(uid) {
@@ -7605,15 +7197,11 @@ class AdminPanel {
         const bgColor = Utils.$('admin-edit-bg-color')?.value || '#111111';
         const bgUrl = Utils.$('admin-edit-bg-url')?.value.trim() || '';
         const bgDim = Number(Utils.$('admin-edit-bg-dim')?.value || 0.5);
-        let xp = Number(Utils.$('admin-edit-xp')?.value || 0);
-        let level = ProfileManager.getExpMath(xp).level;
 
-        if (streak !== (oldProfile.streak || 0) || xp !== (oldProfile.xp || 0)) {
+        if (streak !== (oldProfile.streak || 0)) {
             if (!this.isCurrentUserCreator()) {
-                Utils.toast('Изменять стрик и уровень(XP) может только Создатель', 'error');
+                Utils.toast('Изменять серию(стрик) может только Создатель', 'error');
                 streak = oldProfile.streak || 0;
-                xp = oldProfile.xp || 0;
-                level = ProfileManager.getExpMath(xp).level;
             }
         }
 
@@ -7641,8 +7229,6 @@ class AdminPanel {
             avatar,
             bio,
             streak,
-            level,
-            xp,
             background: ProfileManager.normalizeProfileBackground({
                 color: bgColor,
                 index: ProfileManager.normalizeProfileBackground(oldProfile.background).index || 10,
@@ -7653,9 +7239,6 @@ class AdminPanel {
         updates[`users/${uid}/profile`] = nextProfile;
 
         await update(ref(db), updates);
-        if (oldProfile.xp !== xp) {
-            await BadgeManager.checkLevelBadges(uid, xp);
-        }
         AppState.usersCache.set(uid, nextProfile);
         Utils.toast('Профиль пользователя обновлён');
         await this.loadUserEditor(uid);
@@ -7960,7 +7543,6 @@ class RoomManager {
             let totalOnline = 0;
             for(const r in data) { if (data[r].presence) totalOnline += Object.keys(data[r].presence).length; }
             if(Utils.$('global-online-count')) Utils.$('global-online-count').innerText = totalOnline;
-            if(Utils.$('custom-online-count')) Utils.$('custom-online-count').innerText = totalOnline;
             AdminPanel.renderIfOpen();
         });
         AppState.activeSubscriptions.push(() => off(roomsRef, 'value', unsub));
@@ -8088,7 +7670,9 @@ class RoomManager {
         if (!ids.length) return `<span class="stack-avatar">0</span>`;
         return ids.map(uid => {
             const profile = AppState.usersCache.get(uid) || {};
-            return `<span class=\"stack-avatar\">${ProfileManager.getAvatarHtml(profile)}</span>`;
+            if (profile.avatar) return `<span class="stack-avatar"><img src="${Utils.escapeHtml(profile.avatar)}" style="width:100%;height:100%;object-fit:cover;"></span>`;
+            const letter = Utils.escapeHtml((profile.name || '?')[0]?.toUpperCase() || '?');
+            return `<span class="stack-avatar">${letter}</span>`;
         }).join('');
     }
 
@@ -8278,7 +7862,7 @@ class RoomManager {
         if (AppState.admin.settings.maintenanceMode && !AdminPanel.isCurrentUserAdmin()) {
             return Utils.toast('Сервис в режиме обслуживания, доступ временно ограничен', 'error');
         }
-        if (roomData.isPrivate && roomData.hostId !== AppState.currentUser.uid && !window.isIncognito) {
+        if (roomData.isPrivate && roomData.hostId !== AppState.currentUser.uid) {
             AppState.pendingJoinRoomId = roomId; Utils.$('join-room-password').value = ''; Utils.$('modal-password').classList.add('active');
             Utils.$('btn-submit-password').onclick = async () => {
                 const input = Utils.$('join-room-password').value;
@@ -8301,8 +7885,6 @@ class RoomManager {
         AppState.currentPresenceCache = {};
         AppState.usersListRenderToken++;
         AppState.roomSubscriptions.forEach(fn => fn()); AppState.roomSubscriptions = [];
-        
-        RoomManager.startRoomExperienceTimer();
         
         const roomTag = Array.isArray(roomData.hashtags) && roomData.hashtags[0] ? ` ${roomData.hashtags[0]}` : '';
         Utils.$('room-title-text').innerText = Utils.escapeHtml(`${roomData.name}${roomTag}`);
@@ -8338,21 +7920,6 @@ class RoomManager {
         Utils.$('btn-room-settings').style.display = (AppState.isHost || AdminPanel.isCurrentUserCreator()) ? 'block' : 'none';
         if (AppState.isHost || AdminPanel.isCurrentUserCreator()) Utils.$('btn-room-settings').onclick = () => this.openRoomModal(roomId);
 
-        // Add Admin button in room if admin
-        if (AdminPanel.isCurrentUserAdmin()) {
-            let roomAdminBtn = document.getElementById('btn-room-admin-panel');
-            if (!roomAdminBtn) {
-                roomAdminBtn = document.createElement('button');
-                roomAdminBtn.id = 'btn-room-admin-panel';
-                roomAdminBtn.className = 'secondary-btn';
-                roomAdminBtn.innerText = '🛡️ Админ-панель';
-                roomAdminBtn.style.cssText = 'width:auto; padding:10px 16px; margin-left:8px;';
-                roomAdminBtn.onclick = () => AdminPanel.openPanel();
-                const rrTopBar = Utils.$('btn-room-settings').parentNode;
-                if (rrTopBar) rrTopBar.appendChild(roomAdminBtn);
-            }
-        }
-
         const videoVolSlider = Utils.$('video-volume-slider');
         if (videoVolSlider) {
             videoVolSlider.oninput = () => {
@@ -8376,7 +7943,6 @@ class RoomManager {
         
         this.initRoomServicesFinal(roomId);
         RTCManager.init(roomId); 
-        if(window.SoundpadController) window.SoundpadController.loadPad();
     }
 
     static getDefaultPerms() { return { chat: true, voice: true, player: true, reactions: true }; }
@@ -8391,14 +7957,8 @@ class RoomManager {
         let presenceBootstrapped = false;
 
         const myName = AppState.usersCache.get(AppState.currentUser.uid)?.name || AppState.currentUser.displayName || 'Пользователь';
-        if (!window.isIncognito) {
-            set(presenceRef, { uid, name: myName, perms: this.getDefaultPerms() });
-            onDisconnect(presenceRef).remove();
-        } else {
-            // Still allow chatting, just don't list presence
-            Utils.toast('ИНКОГНИТО АКТИВЕН. Вас не видно в списке.', 'info');
-        }
-        
+        set(presenceRef, { uid, name: myName, perms: this.getDefaultPerms() });
+        onDisconnect(presenceRef).remove();
         const pUnsub = onValue(presListRef, (snap) => {
             const prevCache = AppState.currentPresenceCache || {};
             AppState.currentPresenceCache = snap.val() || {};
@@ -8437,7 +7997,6 @@ class RoomManager {
             vid.onseeked = () => { if(!AppState.ignoreVideoEvents && !window._isSyncingVideo && this.hasPerm('player')) set(syncRef, { type: 'seek', state: vid.paused ? 'paused' : 'playing', time: vid.currentTime, ts: Date.now() }); };
         }
 
-        let hasHostRejoinedSync = false;
         const sUnsub = onValue(syncRef, (snap) => {
             const d = snap.val();
             if (!d) {
@@ -8445,117 +8004,10 @@ class RoomManager {
                 return;
             }
 
-            if (AppState.isHost && !hasHostRejoinedSync) {
-                hasHostRejoinedSync = true;
-                if (d.state === 'paused') {
-                    set(syncRef, {
-                        type: 'play',
-                        state: 'playing',
-                        time: d.time,
-                        ts: Date.now()
-                    }).catch(()=>{});
-                    return;
-                }
-            }
-
             AppState.lastKnownSyncState = d;
             RoomManager.forceSyncVideo(d);
         });
         AppState.roomSubscriptions.push(sUnsub);
-
-        const chatActionRef = ref(db, `rooms/${roomId}/chatAction`);
-        const caUnsub = onValue(chatActionRef, (snap) => {
-            const data = snap.val();
-            if (data?.type === 'thanosSnap' && Date.now() - data.ts < 10000) {
-                const marker = `thanosSeen:${data.ts}`;
-                if (sessionStorage.getItem(marker)) return;
-                sessionStorage.setItem(marker, '1');
-
-                document.querySelectorAll('.m-line').forEach((el) => {
-                    el.style.transition = `transform ${1 + Math.random()}s cubic-bezier(.36,.07,.19,.97), opacity 1s, filter 1s`;
-                    el.style.transform = `translateX(${Math.random() > 0.5 ? 50 : -50}px) translateY(-20px) rotate(${Math.random()*20 - 10}deg) scale(0.9)`;
-                    el.style.filter = `blur(${2 + Math.random()*5}px)`;
-                    el.style.opacity = '0';
-                    setTimeout(() => el.remove(), 2000);
-                });
-                
-                if (AppState.isHost) {
-                    setTimeout(() => {
-                        set(chatRef, null); // Actually clear DB chat
-                    }, 500);
-                }
-            }
-        });
-        AppState.roomSubscriptions.push(caUnsub);
-
-        let myCursorSyncInterval = null;
-        const screenEl = document.getElementById('room-screen');
-        const updateMyCursor = (e) => {
-            if(!screenEl) return;
-            const rect = screenEl.getBoundingClientRect();
-            const x = (e.clientX - rect.left) / rect.width;
-            const y = (e.clientY - rect.top) / rect.height;
-            window._myLastCursorPos = {x, y};
-        };
-        const csUnsub = onValue(ref(db, `rooms/${roomId}/cursorSync`), (snap) => {
-            const isActive = !!snap.val();
-            if (isActive) {
-                document.addEventListener('mousemove', updateMyCursor);
-                myCursorSyncInterval = setInterval(() => {
-                    if (window._myLastCursorPos) {
-                        set(ref(db, `rooms/${roomId}/cursors/${uid}`), {
-                            x: window._myLastCursorPos.x,
-                            y: window._myLastCursorPos.y,
-                            ts: Date.now()
-                        });
-                    }
-                }, 200);
-            } else {
-                document.removeEventListener('mousemove', updateMyCursor);
-                if(myCursorSyncInterval) clearInterval(myCursorSyncInterval);
-                set(ref(db, `rooms/${roomId}/cursors/${uid}`), null);
-                document.querySelectorAll('.quantum-cursor').forEach(el => el.remove());
-            }
-        });
-        AppState.roomSubscriptions.push(csUnsub);
-        AppState.roomSubscriptions.push(() => {
-             document.removeEventListener('mousemove', updateMyCursor);
-             if(myCursorSyncInterval) clearInterval(myCursorSyncInterval);
-             document.querySelectorAll('.quantum-cursor').forEach(el => el.remove());
-        });
-
-        const curUnsub = onValue(ref(db, `rooms/${roomId}/cursors`), (snap) => {
-            const activeCursors = snap.val() || {};
-            const screen = document.getElementById('room-screen');
-            if(!screen) return;
-            const rect = screen.getBoundingClientRect();
-            
-            Object.keys(activeCursors).forEach(cId => {
-                let el = document.getElementById(`cursor-${cId}`);
-                if(cId === uid || Date.now() - activeCursors[cId].ts > 3000) {
-                    if(el) el.remove();
-                    return;
-                }
-                if (!el) {
-                    el = document.createElement('div');
-                    el.id = `cursor-${cId}`;
-                    el.className = 'quantum-cursor';
-                    const fallbackChar = (AppState.usersCache.get(cId)?.name || '?')[0].toUpperCase();
-                    el.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00ffff" stroke-width="2" style="position:absolute; top:-12px; left:-12px; z-index:1;"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg><div style="position:absolute; top:12px; left:12px; background:rgba(0,0,0,0.8); color:#0ff; font-size:10px; border-radius:10px; padding:2px 6px; white-space:nowrap; border:1px solid rgba(0,255,255,0.3); z-index:2;">${AppState.usersCache.get(cId)?.name || 'Анон'}</div>`;
-                    el.style.cssText = `position:absolute; pointer-events:none; z-index:500; transition: transform 0.2s linear;`;
-                    screen.appendChild(el);
-                }
-                const px = activeCursors[cId].x * rect.width;
-                const py = activeCursors[cId].y * rect.height;
-                el.style.transform = `translate(${px}px, ${py}px)`;
-            });
-            // Cleanup obsolete
-            document.querySelectorAll('.quantum-cursor').forEach(el => {
-                const id = el.id.replace('cursor-', '');
-                if(!activeCursors[id]) el.remove();
-            });
-        });
-        AppState.roomSubscriptions.push(curUnsub);
 
         const roomJoinTime = Date.now();
         let processedMsgs = new Set();
@@ -8588,7 +8040,10 @@ class RoomManager {
             const overlayContainer = Utils.$('chat-overlay-container');
             if (overlayContainer && !isMe && msg.ts >= roomJoinTime) {
                 const overlayEl = document.createElement('div');
-                const avHtml = ProfileManager.getAvatarHtml(AppState.usersCache.get(msg.uid) || {name: msg.name, avatar: null});
+                const avatarUrl = AppState.usersCache.get(msg.uid)?.avatar;
+                const avHtml = avatarUrl 
+                    ? `<img src="${Utils.escapeHtml(avatarUrl)}" style="width:100%;height:100%;object-fit:cover;">` 
+                    : avatarHtml;
                     
                 overlayEl.style.cssText = `
                     background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);
@@ -8598,7 +8053,7 @@ class RoomManager {
                     box-shadow: 0 4px 12px rgba(0,0,0,0.4); pointer-events: none;
                 `;
                 overlayEl.innerHTML = `
-                    <div style="width:28px; height:28px; border-radius: 50%; overflow:visible; flex-shrink:0;">${avHtml}</div>
+                    <div style="width:28px; height:28px; border-radius: 50%; overflow:hidden; flex-shrink:0;">${avHtml}</div>
                     <div style="display:flex; flex-direction:column; overflow:hidden;">
                         <span style="font-size:11px; font-weight:bold; color: var(--accent);">${Utils.escapeHtml(msg.name)}</span>
                         <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width: 250px;">${content}</span>
@@ -8610,7 +8065,7 @@ class RoomManager {
 
             line.innerHTML = `
                 <div style="display:flex; gap:8px; align-items:flex-end; max-width:100%; ${isMe ? 'flex-direction:row-reverse;' : ''}">
-                    <div class="chat-profile-link" data-uid="${Utils.escapeHtml(msg.uid || '')}" style="width:26px; height:26px; border-radius:50%; flex-shrink:0; cursor:pointer; overflow:visible; border:1px solid var(--border-light); background:rgba(255,255,255,0.05); transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='scale(1.1)'; this.style.boxShadow='0 0 8px rgba(255,255,255,0.2)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';">
+                    <div class="chat-profile-link" data-uid="${Utils.escapeHtml(msg.uid || '')}" style="width:26px; height:26px; border-radius:50%; flex-shrink:0; cursor:pointer; overflow:hidden; border:1px solid var(--border-light); background:rgba(255,255,255,0.05); transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='scale(1.1)'; this.style.boxShadow='0 0 8px rgba(255,255,255,0.2)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';">
                         ${avatarHtml}
                     </div>
                     <div style="display:flex; flex-direction:column; ${isMe ? 'align-items:flex-end;' : 'align-items:flex-start;'} max-width:85%;">
@@ -8621,9 +8076,11 @@ class RoomManager {
             `;
             
             ProfileManager.loadUser(msg.uid).then(uProfile => {
-                if (uProfile) {
-                    const container = line.querySelector('.chat-profile-link[data-uid=\x22' + Utils.escapeHtml(msg.uid || '') + '\x22]');
-                    if (container) container.innerHTML = ProfileManager.getAvatarHtml(uProfile);
+                if (uProfile && uProfile.avatar) {
+                    const placeholder = line.querySelector('.chat-avatar-placeholder');
+                    if (placeholder) {
+                        placeholder.outerHTML = `<img src="${Utils.escapeHtml(uProfile.avatar)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.outerHTML='<div style=\\'width:100%;height:100%;background:#111;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;\\'>${fallbackChar}</div>'">`;
+                    }
                 }
             });
             
@@ -8659,69 +8116,13 @@ class RoomManager {
             if (meModeration.muted && !AdminPanel.isCurrentUserAdmin()) return Utils.toast('Вы заглушены модератором', 'error');
             const wasHandled = await EasterEggManager.handleChatInput(text, chatRef, uid);
             if (!wasHandled) {
-                if (text.startsWith('/bet ')) {
-                    const parts = text.split(' ');
-                    const xpAmount = parseInt(parts[1], 10);
-                    if (!isNaN(xpAmount) && xpAmount > 0) {
-                        const betDesc = parts.slice(2).join(' ') || 'неопределенный исход';
-                        await push(chatRef, {
-                            uid: 'system_bet',
-                            name: 'СИСТЕМА СТАВОК',
-                            text: `🎰 ${AppState.usersCache.get(uid)?.name || 'Пользователь'} ставит ${xpAmount} XP на: "${betDesc}" !`,
-                            ts: Date.now()
-                        });
-                        input.value = '';
-                        return;
-                    }
-                } else if (text.startsWith('/roll')) {
-                    const roll = Math.floor(Math.random() * 100) + 1;
-                    await push(chatRef, {
-                        uid: 'system_dice',
-                        name: 'СИСТЕМА КОСТЕЙ',
-                        text: `🎲 ${AppState.usersCache.get(uid)?.name || 'Пользователь'} бросает кости и выбивает: ${roll} из 100!`,
-                        ts: Date.now()
-                    });
-                    input.value = '';
-                    return;
-                }
-                
-                let sendUid = uid;
-                let sendName = AppState.usersCache.get(AppState.currentUser.uid)?.name || AppState.currentUser.displayName || 'Пользователь';
-                
-                if (window.puppeteerUid && AdminPanel.isCurrentUserAdmin()) {
-                    sendUid = window.puppeteerUid;
-                    sendName = AppState.usersCache.get(sendUid)?.name || 'Аноним (Кукловод)';
-                }
-
-                let finalOutput = text;
-                try {
-                    const curseSnap = await get(ref(db, `admin/curses/uwu/${sendUid}`));
-                    const curseTime = curseSnap.val();
-                    // 5 minutes
-                    if (curseTime && (Date.now() - curseTime < 300000)) {
-                        finalOutput = finalOutput.replace(/[рл]/g, 'w').replace(/[РЛ]/g, 'W').replace(/ч/g, 'c') + ' uwu :3';
-                    }
-                } catch(e) {}
-
-                if (window.isShadowCloneActive && AdminPanel.isCurrentUserAdmin()) {
-                    await push(chatRef, { uid: sendUid, name: sendName, text: finalOutput, ts: Date.now() });
-                    const roomKeys = Object.keys(AppState.currentPresenceCache || {});
-                    if (roomKeys.length > 0) {
-                        for(let i=0; i<5; i++) {
-                            const rUid = roomKeys[Math.floor(Math.random() * roomKeys.length)];
-                            const rName = AppState.currentPresenceCache[rUid]?.name || 'Клон';
-                            await push(chatRef, { uid: rUid, name: rName, text: finalOutput, ts: Date.now() + i + 1 });
-                        }
-                    }
-                } else {
-                    await push(chatRef, {
-                        uid: sendUid,
-                        name: sendName,
-                        text: finalOutput,
-                        ts: Date.now(),
-                        shadowbanned: Boolean(meModeration.shadowban)
-                    });
-                }
+                await push(chatRef, {
+                    uid,
+                    name: AppState.usersCache.get(AppState.currentUser.uid)?.name || AppState.currentUser.displayName || 'Пользователь',
+                    text,
+                    ts: Date.now(),
+                    shadowbanned: Boolean(meModeration.shadowban)
+                });
             }
             input.value = '';
         };
@@ -8759,19 +8160,14 @@ class RoomManager {
         AppState.roomSubscriptions.push(rUnsub);
         EasterEggManager.bindRoom(roomId);
 
-        const rbChat = Utils.$('tab-chat-btn'); const rbUsers = Utils.$('tab-users-btn'); const rbSound = Utils.$('tab-soundpad-btn');
-        const rcChat = Utils.$('chat-messages'); const rcUsers = Utils.$('users-list'); const rcSound = Utils.$('soundpad-list');
-        const setRoomTab = (name) => {
-            if(rbChat) rbChat.classList.toggle('active', name === 'chat');
-            if(rbUsers) rbUsers.classList.toggle('active', name === 'users');
-            if(rbSound) rbSound.classList.toggle('active', name === 'sound');
-            if(rcChat) rcChat.style.display = name === 'chat' ? 'flex' : 'none';
-            if(rcUsers) rcUsers.style.display = name === 'users' ? 'flex' : 'none';
-            if(rcSound) rcSound.style.display = name === 'sound' ? 'block' : 'none';
+        Utils.$('tab-chat-btn').onclick = () => {
+            Utils.$('tab-chat-btn').classList.add('active'); Utils.$('tab-users-btn').classList.remove('active');
+            Utils.$('chat-messages').style.display = 'flex'; Utils.$('users-list').style.display = 'none';
         };
-        if(rbChat) rbChat.onclick = () => setRoomTab('chat');
-        if(rbUsers) rbUsers.onclick = () => setRoomTab('users');
-        if(rbSound) rbSound.onclick = () => { setRoomTab('sound'); window.SoundpadController?.loadPad(); };
+        Utils.$('tab-users-btn').onclick = () => {
+            Utils.$('tab-users-btn').classList.add('active'); Utils.$('tab-chat-btn').classList.remove('active');
+            Utils.$('users-list').style.display = 'flex'; Utils.$('chat-messages').style.display = 'none';
+        };
     }
 
     static hasPerm(permName) {
@@ -8800,19 +8196,6 @@ class RoomManager {
         document.querySelectorAll('.timecode-btn').forEach(b => {
             if (pPlayer) b.classList.remove('disabled'); else b.classList.add('disabled');
         });
-        
-        const soundpadBtn = Utils.$('tab-soundpad-btn');
-        if (soundpadBtn) {
-            const isHost = AppState.isHost || AdminPanel.isCurrentUserCreator();
-            soundpadBtn.style.display = isHost ? 'flex' : 'none';
-            if (!isHost) {
-                const spList = Utils.$('soundpad-list');
-                if (spList && spList.style.display !== 'none') {
-                    if (typeof setRoomTab === 'function') setRoomTab('chat');
-                    else if (Utils.$('tab-chat-btn')) Utils.$('tab-chat-btn').click();
-                }
-            }
-        }
 
         if (!pVoice && RTCManager.isMicActive) RTCManager.toggleMic(true); 
     }
@@ -8880,11 +8263,10 @@ class RoomManager {
                 const isTargetHost = (AppState.roomsCache.get(AppState.currentRoomId)?.hostId === uid) || AdminPanel.isCreatorProfile(profile, uid);
                 const roleBadgeHtml = ProfileManager.getRoleBadgeHtml(profile, uid);
                 
-                let html = `<div class="user-item" data-uid="${uid}">`;
-                if (user.speaking) html = `<div class="user-item speaking" data-uid="${uid}">`;
-                html += `<div class="indicator online" style="margin-right:8px;"></div>`; 
-                html += `<div style="width:24px;height:24px;flex-shrink:0;margin-right:8px;border-radius:50%;">${ProfileManager.getAvatarHtml(profile)}</div>`;
-                html += `<div class="user-main" style="flex:1;display:flex;align-items:center;gap:4px;"><span class="user-name profile-open-link room-user-profile-link" data-uid="${uid}">${Utils.escapeHtml(user.name)}</span>${roleBadgeHtml}<span class="voice-wave"><i></i><i></i><i></i><i></i></span></div>`;
+                let html = `<div class="user-item">`;
+                if (user.speaking) html = `<div class="user-item speaking">`;
+                html += `<div class="indicator online"></div>`; 
+                html += `<div class="user-main" style="flex:1;"><span class="user-name profile-open-link room-user-profile-link" data-uid="${uid}">${Utils.escapeHtml(user.name)}</span>${roleBadgeHtml}<span class="voice-wave"><i></i><i></i><i></i><i></i></span>`;
                 if (isTargetHost) html += `<span class="host-label">Host</span>`;
                 if (isLocal) html += `<span class="you-label">(Вы)</span>`;
                 
@@ -8994,7 +8376,10 @@ class RoomManager {
             const displayName = profile.name || cache?.[uid]?.name || 'User';
             const safeName = Utils.escapeHtml(displayName);
             const initial = Utils.escapeHtml((displayName[0] || 'U').toUpperCase());
-            return `<span class=\"users-tab-avatar\" title=\"${safeName}\">${ProfileManager.getAvatarHtml(profile)}</span>`;
+            if (profile.avatar) {
+                return `<span class="users-tab-avatar" title="${safeName}"><img src="${Utils.escapeHtml(profile.avatar)}" alt="${safeName}"></span>`;
+            }
+            return `<span class="users-tab-avatar users-tab-avatar-fallback" title="${safeName}">${initial}</span>`;
         }).join('');
 
         btn.innerHTML = `
@@ -9075,79 +8460,8 @@ class RoomManager {
         }
     }
 
-    static startRoomExperienceTimer() {
-        if (AppState.roomExpTimer) clearInterval(AppState.roomExpTimer);
-
-        AppState.roomExpTimer = setInterval(async () => {
-            if (!AppState.currentRoomId || !AppState.currentUser) return;
-
-            const uid = AppState.currentUser.uid;
-            if (!AppState.pendingRoomExp) AppState.pendingRoomExp = 0;
-            AppState.pendingRoomExp += 1;
-
-            if (AppState.pendingRoomExp >= 10) {
-                const addXp = AppState.pendingRoomExp;
-                AppState.pendingRoomExp = 0;
-                
-                try {
-                    const profRef = ref(db, `users/${uid}/profile`);
-                    const snap = await get(profRef);
-                    if (snap.exists()) {
-                        let curXp = Number(snap.val().xp) || 0;
-                        let newXp = curXp + addXp;
-                        await update(profRef, { xp: newXp });
-                        await BadgeManager.checkLevelBadges(uid, newXp);
-                    }
-                } catch(e) {}
-            }
-        }, 1000);
-    }
-    
-    static stopRoomExperienceTimer() {
-        if (AppState.roomExpTimer) clearInterval(AppState.roomExpTimer);
-        AppState.roomExpTimer = null;
-        
-        if (AppState.pendingRoomExp > 0 && AppState.currentUser) {
-             const uid = AppState.currentUser.uid;
-             const addXp = AppState.pendingRoomExp;
-             AppState.pendingRoomExp = 0;
-             const profRef = ref(db, `users/${uid}/profile`);
-             get(profRef).then(snap => {
-                 if (snap.exists()) {
-                     let curXp = Number(snap.val().xp) || 0;
-                     let newXp = curXp + addXp;
-                     update(profRef, { xp: newXp });
-                     BadgeManager.checkLevelBadges(uid, newXp);
-                 }
-             }).catch(()=>{});
-        }
-    }
-
     static leaveRoom() {
         if (!AppState.currentRoomId) return;
-        
-        RoomManager.stopRoomExperienceTimer();
-        
-        if (AppState.isHost) {
-            let currentTime = 0;
-            let isYt = !!YouTubePlayerManager.player;
-            let isRt = !!RutubePlayerManager.player;
-            if (isYt) currentTime = YouTubePlayerManager.getCurrentTime();
-            else if (isRt) currentTime = RutubePlayerManager.getCurrentTime();
-            else {
-                const vid = Utils.$('native-player');
-                if (vid) currentTime = vid.currentTime;
-            }
-            try {
-                set(ref(db, `rooms/${AppState.currentRoomId}/sync`), {
-                    type: 'pause',
-                    state: 'paused',
-                    time: currentTime,
-                    ts: Date.now()
-                }).catch(()=>{});
-            } catch(e) {}
-        }
-
         AppState.roomSubscriptions.forEach(fn => fn());
         AppState.roomSubscriptions = [];
         RTCManager.destroy();
@@ -9365,7 +8679,6 @@ class RTCManager {
             AppState.rtc.sessionId = Utils.generateCryptoId();
             await this.writeParticipantState();
             await this.handleParticipants(AppState.rtc.voiceParticipantsCache || {});
-            if (this.analysers) this.analysers.delete(this.uid);
             if (!forceOff) Utils.toast('Микрофон выключен');
         } else {
             if (!RoomManager.hasPerm('voice')) return Utils.toast('Вам запрещено говорить', 'error');
@@ -9381,7 +8694,6 @@ class RTCManager {
 
                 await this.writeParticipantState();
                 await new Promise(r => setTimeout(r, 200)); // Delay to let track fully start
-                this.setupAudioAnalyzer(this.uid, stream);
                 await this.handleParticipants(AppState.rtc.voiceParticipantsCache || {});
                 Utils.toast('Микрофон включен');
             } catch (e) {
@@ -9509,46 +8821,6 @@ class RTCManager {
         audio.srcObject = stream;
         audio.volume = this.getUserVolume(uid);
         audio.play().catch(e => console.warn('Audio play failed:', e));
-        this.setupAudioAnalyzer(uid, stream);
-    }
-    
-    static setupAudioAnalyzer(uid, stream) {
-        if (!this.audioCtx) {
-            this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            this.analysers = new Map();
-            const animateEQ = () => {
-                requestAnimationFrame(animateEQ);
-                this.analysers.forEach((analyser, u) => {
-                    const data = new Uint8Array(analyser.frequencyBinCount);
-                    analyser.getByteFrequencyData(data);
-                    let sum = 0; for(let i=0; i<data.length; i++) sum += data[i];
-                    const avg = sum / data.length;
-                    
-                    const avatarEls = document.querySelectorAll(`[data-uid="${u}"]`);
-                    avatarEls.forEach(el => {
-                        const avatar = el.querySelector('.avatar-inner-wrap') || el.querySelector('.avatar') || el.querySelector('.users-tab-avatar') || (el.classList.contains('avatar') ? el : el);
-                        if (avatar) {
-                            if (avg > 10) {
-                                avatar.style.boxShadow = `0 0 ${15 + avg}px var(--accent, #0ff), inset 0 0 ${10 + avg/2}px var(--accent, #0ff)`;
-                                avatar.style.transform = `scale(${1 + avg / 400})`;
-                            } else {
-                                avatar.style.boxShadow = '';
-                                avatar.style.transform = '';
-                            }
-                        }
-                    });
-                });
-            };
-            requestAnimationFrame(animateEQ);
-        }
-        if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
-        try {
-            const source = this.audioCtx.createMediaStreamSource(stream);
-            const analyser = this.audioCtx.createAnalyser();
-            analyser.fftSize = 64;
-            source.connect(analyser);
-            this.analysers.set(uid, analyser);
-        } catch(e) { console.warn("EQ Analyzer error:", e); }
     }
 
     static destroyConnection(uid) {
@@ -9642,8 +8914,6 @@ class MobileSwipeManager {
 
         // Sidebar swipe to close
         const sidebar = Utils.$('main-sidebar');
-        const sidebarOverlay = Utils.$('sidebar-overlay');
-        
         if (sidebar) {
             let startX = 0;
             sidebar.addEventListener('touchstart', (e) => {
@@ -9653,29 +8923,9 @@ class MobileSwipeManager {
                 const endX = e.changedTouches[0].clientX;
                 if (startX - endX > 60) { // swipe left
                     sidebar.classList.remove('open');
-                    if (sidebarOverlay) sidebarOverlay.classList.remove('open');
                 }
             });
         }
-        
-        // Edge swipe right to open sidebar
-        document.addEventListener('touchstart', (e) => {
-            if (e.touches[0].clientX < 30 && window.innerWidth <= 1024) { // Edge of screen
-                this.edgeStartX = e.touches[0].clientX;
-            } else {
-                this.edgeStartX = null;
-            }
-        }, { passive: true });
-        
-        document.addEventListener('touchend', (e) => {
-            if (this.edgeStartX !== null && window.innerWidth <= 1024) {
-                const endX = e.changedTouches[0].clientX;
-                if (endX - this.edgeStartX > 50 && sidebar) {
-                    sidebar.classList.add('open');
-                    if (sidebarOverlay) sidebarOverlay.classList.add('open');
-                }
-            }
-        });
     }
 }
 
@@ -9712,12 +8962,6 @@ window.onload = () => {
             else modal.classList.remove('active');
         });
     });
-    
-    const viewProfModal = Utils.$('modal-view-profile');
-    if (viewProfModal) {
-        const vpContent = viewProfModal.querySelector('.modal-content');
-        // Removed 3D tilt
-    }
 
     document.querySelectorAll('.modal').forEach(modal => {
         modal.addEventListener('click', (e) => {
@@ -9728,813 +8972,19 @@ window.onload = () => {
     });
 };
 
-class CatalogManager {
-    static items = [];
-    static activeFilter = 'all';
-
-    static async init() {
-        this.bindFilters();
-        
-        try {
-            onValue(ref(db, 'catalog'), (snap) => {
-                if (snap.exists() && snap.val()) {
-                    const data = snap.val();
-                    this.items = Object.keys(data).filter(k => data[k] !== null).map(k => ({id: k, ...data[k]}));
-                } else {
-                    this.items = [];
-                }
-                
-                this.items.sort((a, b) => {
-                    const aHot = (a.isHot === true || a.isHot === 'true') ? 1 : 0;
-                    const bHot = (b.isHot === true || b.isHot === 'true') ? 1 : 0;
-                    return bHot - aHot;
-                });
-
-                this.renderCatalog();
-                this.renderAdminCatalog();
-            });
-        } catch(e) {
-            console.error(e);
-        }
-    }
-
-    static addNewAdminItem() {
-        if (!AdminPanel.isCurrentUserCreator()) return Utils.toast('Только Создатель может управлять товарами', 'error');
-        const id = 'item_' + Date.now();
-        set(ref(db, `catalog/${id}`), {
-            title: 'Новый Товар',
-            desc: 'Описание',
-            price: '100',
-            priceType: 'paid',
-            image: '',
-            type: 'frame',
-            isHot: false
-        });
-    }
-
-    static async grantFrameMass() {
-        if (!AdminPanel.requireAdmin()) return;
-        if (!AdminPanel.isCurrentUserCreator()) return Utils.toast('Только Создатель может выдавать рамки', 'error');
-        const frameUrl = Utils.$('admin-event-frame-url')?.value.trim();
-        
-        if (!frameUrl) return Utils.toast('Укажите изображение (URL)', 'error');
-        
-        if (!confirm(`Точно ВЫДАТЬ РАМКУ ВСЕМ, кто сейчас онлайн?`)) return;
-        
-        const usersSnap = await get(ref(db, 'users'));
-        const usersData = usersSnap.val() || {};
-        let count = 0;
-        const updates = {};
-        for (const [uid, uData] of Object.entries(usersData)) {
-            if (uData.status && uData.status.online) {
-                const currentInv = uData.profile?.inventory || [];
-                if (!currentInv.includes(frameUrl)) {
-                    updates[`users/${uid}/profile/inventory`] = [...currentInv, frameUrl];
-                }
-                updates[`users/${uid}/profile/frame`] = frameUrl;
-                count++;
-            }
-        }
-        if (count > 0) {
-            await update(ref(db), updates);
-            Utils.toast(`Рамка выдана ${count} пользователям!`);
-        } else {
-            Utils.toast('У всех онлайн-пользователей уже есть эта или никого нет онлайн.', 'info');
-        }
-    }
-
-    static bindFilters() {
-        const filters = document.querySelectorAll('#catalog-filters .secondary-btn');
-        filters.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                filters.forEach(b => {
-                    b.classList.remove('active-filter');
-                    b.style.borderColor = '';
-                    b.style.background = '';
-                });
-                const target = e.target;
-                target.classList.add('active-filter');
-                target.style.borderColor = 'rgba(255,255,255,0.4)';
-                target.style.background = 'rgba(255,255,255,0.1)';
-                
-                this.activeFilter = target.dataset.filter;
-                this.renderCatalog();
-            });
-        });
-    }
-
-    static renderCatalog() {
-        const list = Utils.$('catalog-list');
-        if (!list) return;
-
-        let filtered = [...this.items];
-        filtered.sort((a, b) => {
-            const aHot = (a.isHot === true || a.isHot === 'true') ? 1 : 0;
-            const bHot = (b.isHot === true || b.isHot === 'true') ? 1 : 0;
-            return bHot - aHot;
-        });
-
-        if (this.activeFilter === 'frames') filtered = filtered.filter(i => i.type === 'frame');
-        if (this.activeFilter === 'free') filtered = filtered.filter(i => i.priceType === 'free' || i.price === 'БЕСПЛАТНО' || i.price === '0');
-        if (this.activeFilter === 'paid') filtered = filtered.filter(i => i.priceType === 'paid' || (i.price !== 'БЕСПЛАТНО' && i.price !== '0'));
-
-        list.innerHTML = `
-            
-            <style>
-                @keyframes catalogFadeIn {
-                    from { opacity: 0; transform: translateY(15px); }
-                    to { opacity: 1; transform: translateY(0); }
-                }
-                @keyframes firePulseAnim {
-                    0% { transform: scale(1) rotate(0deg); opacity: 0.8; }
-                    50% { transform: scale(1.05) rotate(1deg); opacity: 1; }
-                    100% { transform: scale(1) rotate(0deg); opacity: 0.8; }
-                }
-                .catalog-card-item {
-                    width: 100%;
-                    height: auto;
-                    min-height: 250px;
-                    border-radius: 24px; 
-                    background: rgba(255,255,255,0.03);
-                    border: 1px solid rgba(255,255,255,0.05);
-                    display: flex; 
-                    flex-direction: column;
-                    align-items: center; 
-                    text-align: center;
-                    position: relative;
-                    overflow: visible;
-                    padding: 24px 16px;
-                    box-sizing: border-box;
-                    cursor: pointer;
-                    transition: all 0.3s ease;
-                    opacity: 0;
-                    animation: catalogFadeIn 0.4s ease forwards;
-                    z-index: 1;
-                }
-                .catalog-card-item:hover {
-                    background: rgba(255,255,255,0.06);
-                    transform: translateY(-8px) scale(1.02);
-                    box-shadow: 0 15px 30px rgba(0,0,0,0.4);
-                    border-color: rgba(255,255,255,0.15);
-                }
-                .catalog-card-item.is-hot {
-                    background: transparent;
-                    border: none;
-                    box-shadow: none;
-                }
-                .catalog-card-item.is-hot:hover {
-                    background: transparent;
-                    border: none;
-                    box-shadow: none;
-                    transform: translateY(-8px) scale(1.05);
-                }
-                .catalog-card-item.is-owned {
-                    border-color: rgba(76, 209, 55, 0.3);
-                }
-            </style>
-
-        ` + filtered.map((item, i) => {
-            const currentProf = (window.AppState && AppState.currentUser) ? AppState.usersCache.get(AppState.currentUser.uid) : null;
-            const inv = currentProf?.inventory || [];
-            const isOwned = inv.includes(item.id);
-            const isHot = item.isHot === true || item.isHot === 'true';
-            return `
-            <div class="catalog-card-item ${isHot ? 'is-hot' : ''} ${isOwned ? 'is-owned' : ''}" style="animation-delay: ${i * 0.05}s;" onclick="if(typeof openCatalogItemModal === 'function') openCatalogItemModal('${item.id}')">
-                ${isHot ? `<img src="https://em-content.zobj.net/source/telegram/386/fire_1f525.webp" style="position:absolute; top:-5%; left:-5%; width:110%; height:110%; object-fit:contain; z-index:0; pointer-events:none; animation: firePulseAnim 3s infinite ease-in-out; filter:drop-shadow(0 10px 20px rgba(255,100,0,0.5));">` : ''}
-                
-                ${item.type === 'sound' ? `
-                    <div style="width: 100%; display:flex; align-items:center; justify-content:center; flex-shrink: 0; position:relative; z-index:2; margin: 0 auto 16px;">
-                        <audio controls src="${item.image}" style="width:100%; height: 35px; border-radius: 8px; outline:none;" onclick="event.stopPropagation();"></audio>
-                    </div>
-                ` : `
-                    <div style="width: 100px; height: 100px; display:flex; align-items:center; justify-content:center; flex-shrink: 0; position:relative; z-index:2; margin: 0 auto 16px;">
-                        <div style="width:100px; height:100px; border-radius:50%; background:#1f1f23; position:absolute; top:0; left:0; z-index:1; box-shadow: inset 0 0 10px rgba(0,0,0,0.6);"></div>
-                        <img src="${item.image}" style="width:140px;height:140px;object-fit:contain; position:absolute; top:-20px; left:-20px; z-index:2; pointer-events:none;"/>
-                    </div>
-                `}
-                
-                <div style="flex: 1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; z-index:2; width: 100%;">
-                    <div style="color: #ffffff; font-weight: 800; font-size: 18px; line-height: 1.2; margin-bottom: 6px; text-shadow: 0 1px 4px rgba(0,0,0,0.8);">${item.title}</div>
-                    <div style="font-size: 13px; color: rgba(255,255,255,0.7); margin-bottom: 20px; line-height: 1.4; text-shadow: 0 1px 3px rgba(0,0,0,0.8);">${item.desc}</div>
-                    <div style="font-size: 14px; font-weight:bold; letter-spacing: 0.5px; padding: 6px 16px; border-radius: 20px; background: rgba(0,0,0,0.4); backdrop-filter: blur(8px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); ${isOwned ? 'color: rgba(255,255,255,0.9);' : 'color: var(--accent);'} ">${isOwned ? '✓ В ИНВЕНТАРЕ' : item.price}</div>
-                </div>
-            </div>
-            `;
-        }).join('');
-    }
-
-    static renderAdminCatalog() {
-        const list = Utils.$('admin-catalog-list');
-        if (!list) return;
-
-        list.innerHTML = this.items.map(item => `
-            <div style="border: 1px solid var(--border-light); padding: 10px; border-radius: 8px;">
-                <input type="text" id="admin-cat-title-${item.id}" value="${item.title}" class="admin-form-input" placeholder="Название" style="margin-bottom: 4px;"/>
-                <input type="text" id="admin-cat-desc-${item.id}" value="${item.desc}" class="admin-form-input" placeholder="Описание" style="margin-bottom: 4px;"/>
-                <div style="display:flex; gap: 4px; margin-bottom: 4px;">
-                    <input type="text" id="admin-cat-price-${item.id}" value="${item.price}" class="admin-form-input" placeholder="Цена" style="flex:1;"/>
-                    <select id="admin-cat-pricetype-${item.id}" class="admin-form-input" style="flex:1;">
-                        <option value="free" ${item.priceType==='free'?'selected':''}>Free</option>
-                        <option value="paid" ${item.priceType==='paid'?'selected':''}>Paid</option>
-                    </select>
-                </div>
-                <input type="text" id="admin-cat-img-${item.id}" value="${item.image}" class="admin-form-input" placeholder="URL Картинки/Рамки/Звука" style="margin-bottom: 4px;"/>
-                <select id="admin-cat-type-${item.id}" class="admin-form-input" style="margin-bottom: 4px;">
-                    <option value="frame" ${item.type==='frame'?'selected':''}>Рамка</option>
-                    <option value="sound" ${item.type==='sound'?'selected':''}>Звук</option>
-                </select>
-                <div style="display:flex; align-items:center; gap: 8px; margin-bottom: 8px;">
-                    <input type="checkbox" id="admin-cat-ishot-${item.id}" ${(item.isHot === true || item.isHot === 'true') ? 'checked' : ''} style="margin:0; width:16px; height:16px;">
-                    <label style="font-size: 12px; color: var(--text-muted); cursor:pointer;" for="admin-cat-ishot-${item.id}">Огненный фон (Акция)</label>
-                </div>
-                <div style="display:flex; gap:8px;">
-                    <button class="primary-btn" onclick="CatalogManager.saveAdminItem('${item.id}')" style="flex:1; padding:6px;">Сохранить</button>
-                    <button class="danger-btn" onclick="CatalogManager.deleteAdminItem('${item.id}')" style="flex:1; padding:6px;">Удалить</button>
-                </div>
-            </div>
-        `).join('');
-    }
-
-    static saveAdminItem(id) {
-        if (!AdminPanel.isCurrentUserCreator()) return Utils.toast('Только Создатель может управлять товарами', 'error');
-        const isHotCb = Utils.$(`admin-cat-ishot-${id}`);
-        const updates = {
-            title: Utils.$(`admin-cat-title-${id}`).value,
-            desc: Utils.$(`admin-cat-desc-${id}`).value,
-            price: Utils.$(`admin-cat-price-${id}`).value,
-            priceType: Utils.$(`admin-cat-pricetype-${id}`).value,
-            image: Utils.$(`admin-cat-img-${id}`).value,
-            type: Utils.$(`admin-cat-type-${id}`).value,
-            isHot: isHotCb ? isHotCb.checked : false
-        };
-        update(ref(db, `catalog/${id}`), updates).then(() => Utils.toast('Товар сохранен', 'success'));
-    }
-
-    static deleteAdminItem(id) {
-        if (!AdminPanel.isCurrentUserCreator()) return Utils.toast('Только Создатель может управлять товарами', 'error');
-        if(confirm('Удалить товар?')) {
-            remove(ref(db, `catalog/${id}`)).then(() => Utils.toast('Товар удален'));
-        }
-    }
-}
-
-window.openCatalogItemModal = function(itemId) {
-    const item = CatalogManager.items.find(i => i.id === itemId);
+window.openCatalogItemModal = function(frameId) {
     const modal = Utils.$('modal-catalog-item');
-    if (!modal || !item) return;
-
-    Utils.$('catalog-item-title').innerText = item.title;
-    Utils.$('catalog-item-desc').innerText = item.desc;
-    Utils.$('catalog-item-price').innerText = item.price;
-    Utils.$('catalog-item-image').src = item.image;
-
-    const previewContainer = Utils.$('catalog-item-avatar-preview-container');
-    
-    // Default hiding
-    if (previewContainer) {
-        previewContainer.innerHTML = '';
-        previewContainer.style.background = '#1f1f23';
-    }
-
+    if (!modal) return;
     modal.classList.add('active');
     
     const buyBtn = Utils.$('btn-buy-catalog-item');
     if(buyBtn) {
-       const userProfile = (window.AppState && AppState.currentUser) ? AppState.usersCache.get(AppState.currentUser.uid) : null;
-       const inventory = userProfile?.inventory || [];
-       const isOwned = inventory.includes(item.id);
-       buyBtn.innerText = isOwned ? 'Применить' : (item.priceType === 'free' || String(item.price).trim().toUpperCase() === 'БЕСПЛАТНО' || String(item.price).trim().toUpperCase() === 'FREE' || item.price === '0') ? 'Получить' : `Купить (${item.price} ур.)`;
-       buyBtn.style.background = isOwned ? 'rgba(255,255,255,0.1)' : '#fff';
-       buyBtn.style.color = isOwned ? '#fff' : '#000';
        buyBtn.onclick = async () => {
-           if (!AppState.currentUser) return Utils.toast('Авторизуйтесь для покупки', 'error');
-           const uid = AppState.currentUser.uid;
-           const currentProf = AppState.usersCache.get(uid);
-           const inv = currentProf?.inventory ? [...currentProf.inventory] : [];
-           if (inv.includes(item.id)) {
-               if (item.type === 'frame' || !item.type) {
-                   await update(ref(db), { [`users/${uid}/profile/frame`]: item.image });
-                   Utils.toast('Рамка применена!', 'success');
-               }
-               modal.classList.remove('active');
-           } else {
-               if (item.priceType === 'free' || String(item.price).trim().toUpperCase() === 'БЕСПЛАТНО' || String(item.price).trim().toUpperCase() === 'FREE' || item.price === '0') {
-                   inv.push(item.id);
-                   await update(ref(db), { [`users/${uid}/profile/inventory`]: inv });
-                   Utils.toast('Товар добавлен в инвентарь!', 'success');
-                   buyBtn.innerText = 'Применить';
-                   buyBtn.style.background = 'rgba(255,255,255,0.1)';
-                   buyBtn.style.color = '#fff';
-                   
-                   currentProf.inventory = inv;
-                   AppState.usersCache.set(uid, currentProf);
-if (window.SoundpadController) window.SoundpadController.renderGrid();
-} else {
-                   Utils.toast('Недостаточно средств', 'error');
-           // Replaced with:
-           let cost = parseInt(item.price, 10) || 0;
-           let curLevel = Number(currentProf?.level) || 0;
-           if (curLevel >= cost) {
-               inv.push(item.id);
-               // no deduction
-               // xp unchanged
-               update(ref(db), { [`users/${uid}/profile/inventory`]: inv });
-               Utils.toast('Уровень подходит. Товар добавлен в инвентарь!', 'success');
-               buyBtn.innerText = 'Применить';
-               buyBtn.style.background = 'rgba(255,255,255,0.1)';
-               buyBtn.style.color = '#fff';
-               currentProf.inventory = inv; AppState.usersCache.set(uid, currentProf);
-               if (window.SoundpadController) window.SoundpadController.renderGrid();
-           } else { Utils.toast('Недостаточно уровней (нужно: ' + cost + ')', 'error'); }
-               }
-           }
+             Utils.toast('Рамка добавлена! Зайдите в редактор профиля, чтобы применить её', 'success');
+             modal.classList.remove('active');
        };
     }
-
-    const previewBtn = Utils.$('btn-preview-catalog-item');
-    if(previewBtn) {
-        previewBtn.onclick = async () => {
-             let userProfile = (window.AppState && AppState.currentUser) ? AppState.usersCache.get(AppState.currentUser.uid) : null;
-             if (!userProfile && window.AppState && AppState.currentUser) {
-                 userProfile = await ProfileManager.loadUser(AppState.currentUser.uid);
-             }
-             const mockProfile = userProfile ? { ...userProfile, avatar: userProfile.avatar, frame: item.image || item.url } : { name: AppState.currentUser?.displayName || '?', frame: item.image || item.url, avatar: AppState.currentUser?.photoURL || '' };
-             if (previewContainer) {
-                 previewContainer.innerHTML = ProfileManager.getAvatarHtml(mockProfile);
-                 previewContainer.style.background = 'transparent';
-             }
-        };
-    }
 };
 
-window.CatalogManager = CatalogManager;
 window.ProfileManager = ProfileManager;
 window.FriendsManager = FriendsManager;
-
-window.addEventListener('popstate', (e) => {
-    if (window.AppState && AppState.currentRoomId) {
-        RoomManager.leaveRoom();
-    }
-    if (e.state && e.state.screenId) {
-        if (e.state.screenId === 'room-screen') {
-            Utils.showScreen('lobby-screen', false);
-            window.history.replaceState({ screenId: 'lobby-screen' }, "", "/lobby");
-        } else {
-            Utils.showScreen(e.state.screenId, false);
-        }
-    }
-});
-
-// Initialize on load so it's visible to guests too
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => CatalogManager.init());
-} else {
-    CatalogManager.init();
-}
-
-setTimeout(() => {
-    // Global listeners for the pushed events
-    onValue(ref(db, 'admin/actions/globalGhostWhispers'), (snap) => {
-        const payload = snap.val();
-        if (!payload?.ts || Date.now() - Number(payload.ts) > 60000) return;
-        const marker = `ghostWhispersSeen:${payload.ts}`;
-        if (sessionStorage.getItem(marker)) return;
-        sessionStorage.setItem(marker, '1');
-        
-        const words = ["почему?", "ты слышишь?", "темнота...", "оно здесь", "не оборачивайся", "холодно", "тссс...", "беги", "мы видим"];
-        
-        for (let i = 0; i < 15; i++) {
-            setTimeout(() => {
-                const el = document.createElement('div');
-                el.innerText = words[Math.floor(Math.random() * words.length)];
-                el.style.cssText = `position:fixed; left:${Math.random()*90}vw; top:${Math.random()*90}vh; color:rgba(255,255,255,0.1); font-size:${10 + Math.random()*20}px; z-index:999990; pointer-events:none; filter:blur(${Math.random()*4}px); opacity:0; transition:opacity 2s ease, transform 4s ease; transform:scale(0.8) translateY(10px); text-shadow:0 0 10px rgba(255,255,255,0.2);`;
-                document.body.appendChild(el);
-                
-                requestAnimationFrame(() => {
-                    el.style.opacity = '0.7';
-                    el.style.transform = 'scale(1) translateY(0px)';
-                    setTimeout(() => {
-                        el.style.opacity = '0';
-                        el.style.transform = 'scale(1.1) translateY(-10px)';
-                        setTimeout(() => el.remove(), 2000);
-                    }, 2000 + Math.random()*2000);
-                });
-            }, Math.random() * 3000);
-        }
-    });
-    
-    // Teleport Listener (inside setTimout 1000 so AppState is ready)
-    setTimeout(() => {
-        if (!AppState.currentUser) return;
-        onValue(ref(db, `admin/curses/teleport/${AppState.currentUser.uid}`), (snap) => {
-            const data = snap.val();
-            if(!data || !data.roomId || Date.now() - data.ts > 10000) return;
-            const marker = `teleportSeen:${data.ts}`;
-            if(sessionStorage.getItem(marker)) return;
-            sessionStorage.setItem(marker, '1');
-            Utils.toast('Вас телепортировали!', 'info');
-            if (AppState.currentRoomId) RoomManager.leaveRoom();
-            setTimeout(() => {
-                RoomManager.joinRoom(data.roomId);
-            }, 500);
-        });
-    }, 2000);
-
-    onValue(ref(db, 'admin/actions/globalGodVoice'), (snap) => {
-        const payload = snap.val();
-        if (!payload?.ts || Date.now() - Number(payload.ts) > 60000) return;
-        const marker = `godVoiceSeen:${payload.ts}`;
-        if (sessionStorage.getItem(marker)) return;
-        sessionStorage.setItem(marker, '1');
-        
-        let el = document.getElementById('god-voice-el');
-        if (!el) {
-            el = document.createElement('div');
-            el.id = 'god-voice-el';
-            el.className = 'global-god-voice';
-            el.innerHTML = `<div class="global-god-voice-text"></div>`;
-            document.body.appendChild(el);
-        }
-        
-        const txtEl = el.querySelector('.global-god-voice-text');
-        txtEl.innerHTML = '';
-        const totalDuration = payload.duration || 8000;
-        el.style.setProperty('--gv-duration', totalDuration + 'ms');
-        el.classList.add('active');
-        
-        // Typewriter effect (slower and cinematic)
-        const textToType = payload.text || '';
-        let i = 0;
-        const typeInterval = setInterval(() => {
-            if (i < textToType.length) {
-                const charSpan = document.createElement('span');
-                charSpan.innerText = textToType.charAt(i);
-                charSpan.style.opacity = '0';
-                charSpan.style.transition = 'opacity 1s filter 1s';
-                charSpan.style.filter = 'blur(4px)';
-                txtEl.appendChild(charSpan);
-                requestAnimationFrame(() => {
-                    charSpan.style.opacity = '1';
-                    charSpan.style.filter = 'blur(0px)';
-                });
-                i++;
-            } else {
-                clearInterval(typeInterval);
-            }
-        }, 120); // 120ms per char
-        
-        // Remove slightly after finishing typing (e.g. 5 seconds after duration)
-        setTimeout(() => {
-            el.classList.remove('active');
-            setTimeout(() => { txtEl.innerHTML = ''; }, 1000); // clear after fade out
-        }, totalDuration);
-    });
-
-    onValue(ref(db, 'admin/actions/globalFlashbang'), (snap) => {
-        const payload = snap.val();
-        if (!payload?.ts || Date.now() - Number(payload.ts) > 60000) return;
-        const marker = `flashbangSeen:${payload.ts}`;
-        if (sessionStorage.getItem(marker)) return;
-        sessionStorage.setItem(marker, '1');
-        
-        let el = document.createElement('div');
-        el.className = 'global-flashbang';
-        document.body.appendChild(el);
-        setTimeout(() => { el.style.opacity = '0'; }, 300);
-        setTimeout(() => { el.remove(); }, 4300);
-    });
-
-    onValue(ref(db, 'admin/actions/globalScreenShake'), (snap) => {
-        const payload = snap.val();
-        if (!payload?.ts || Date.now() - Number(payload.ts) > 60000) return;
-        const marker = `shakeSeen:${payload.ts}`;
-        if (sessionStorage.getItem(marker)) return;
-        sessionStorage.setItem(marker, '1');
-        
-        document.body.classList.add('screen-shake-active');
-        setTimeout(() => { document.body.classList.remove('screen-shake-active'); }, 3000);
-    });
-
-    onValue(ref(db, 'admin/actions/globalVideoHijack'), (snap) => {
-        const payload = snap.val();
-        if (!payload?.ts || Date.now() - Number(payload.ts) > 60000) return;
-        const marker = `hijackSeen:${payload.ts}`;
-        if (sessionStorage.getItem(marker)) return;
-        sessionStorage.setItem(marker, '1');
-        
-        if (AppState.currentRoomId) {
-            const syncRef = ref(db, `rooms/${AppState.currentRoomId}/sync`);
-            set(syncRef, {
-                type: 'source', src: payload.url, mediaType: 'youtube', ts: Date.now()
-            });
-            Utils.toast('СИЛОВОЙ УГОН ВИДЕО СОВЕРШЕН!', 'error');
-        }
-    });
-
-    // Watch Party Draw System
-
-    let drawLayer = document.createElement('canvas');
-    drawLayer.id = 'draw-canvas-layer';
-    drawLayer.style.display = 'none';
-    const vc = document.querySelector('.video-container');
-    if (vc) vc.appendChild(drawLayer);
-    
-    let isDrawing = false;
-    let drawMode = false;
-    if (drawLayer && vc) {
-        // resize
-        const rs = () => { drawLayer.width = vc.clientWidth; drawLayer.height = vc.clientHeight; };
-        window.addEventListener('resize', rs); rs();
-        
-        // Add toggle button to top bar
-        const rtb = document.querySelector('.room-top-bar');
-        if (rtb) {
-            const dbg = document.createElement('button');
-            dbg.className = 'secondary-btn draw-toggle-btn';
-            dbg.innerText = 'Рисовать Маркером';
-            dbg.style.width = 'auto'; dbg.style.padding = '8px 12px'; dbg.style.marginLeft = '10px';
-            rtb.appendChild(dbg);
-            dbg.onclick = () => {
-                drawMode = !drawMode;
-                dbg.classList.toggle('active', drawMode);
-                drawLayer.style.display = drawMode ? 'block' : 'none';
-                drawLayer.style.pointerEvents = drawMode ? 'auto' : 'none';
-                if (drawMode) {
-                    drawLayer.width = vc.clientWidth;
-                    drawLayer.height = vc.clientHeight;
-                }
-            };
-        }
-        
-        const ctx = drawLayer.getContext('2d');
-        const drawPx = (e) => {
-            if (!isDrawing || !drawMode) return;
-            const r = drawLayer.getBoundingClientRect();
-            const x = e.clientX - r.left; const y = e.clientY - r.top;
-            ctx.fillStyle = 'red';
-            ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI*2); ctx.fill();
-            if (AppState.currentRoomId) {
-                set(ref(db, `rooms/${AppState.currentRoomId}/drawEvents/${Date.now()}`), {
-                    x: x/drawLayer.width, y: y/drawLayer.height
-                });
-            }
-        };
-        drawLayer.onmousedown = () => isDrawing = true;
-        drawLayer.onmouseup = () => isDrawing = false;
-        drawLayer.onmousemove = drawPx;
-        
-        // Listener for remote draws
-        setInterval(() => {
-            if (!AppState.currentRoomId) return;
-            onValue(ref(db, `rooms/${AppState.currentRoomId}/drawEvents`), snap => {
-                const vals = snap.val();
-                if (!vals) { ctx.clearRect(0,0,drawLayer.width, drawLayer.height); return; }
-                ctx.clearRect(0,0,drawLayer.width, drawLayer.height);
-                Object.values(vals).forEach(pt => {
-                    ctx.fillStyle = 'red';
-                    ctx.beginPath(); ctx.arc(pt.x*drawLayer.width, pt.y*drawLayer.height, 3, 0, Math.PI*2); ctx.fill();
-                });
-            }, { onlyOnce: true });
-        }, 1000);
-    }
-    
-    
-    // 20. Anonymous Roulette Button
-    setInterval(() => {
-        const rf = document.querySelector('.lobby-header');
-        if (rf && !rf.querySelector('.roulette-btn')) {
-            const rb = document.createElement('button');
-            rb.className = 'primary-btn roulette-btn';
-            rb.style.background = '#e91e63'; rb.style.color = '#fff'; rb.style.width = 'auto';
-            rb.innerText = '🎲 Случайная комната';
-            rb.onclick = () => {
-                get(ref(db, 'rooms')).then(snap => {
-                    const rs = snap.val(); if(!rs) return;
-                    // filter private and roomless
-                    const keys = Object.keys(rs).filter(k => !rs[k].isPrivate);
-                    if (keys.length === 0) return Utils.toast('Нет доступных публичных комнат', 'error');
-                    const rKey = keys[Math.floor(Math.random() * keys.length)];
-                    RoomManager.attemptJoinRoom(rKey, rs[rKey]);
-                });
-            };
-            rf.appendChild(rb);
-        }
-    }, 1000);
-    
-}, 3000);
-
-window.triggerAdminAction = (action) => {
-    const showAdminPrompt = (title, inputs, onSubmit) => {
-        const overlay = document.createElement('div');
-        overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.8); backdrop-filter:blur(10px); z-index:100000; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity 0.2s;';
-        
-        // Modal container
-        const modal = document.createElement('div');
-        modal.style.cssText = 'background:rgba(20,20,22,0.9); border:1px solid var(--accent); border-radius:16px; width:90%; max-width:400px; padding:24px; box-shadow:0 10px 40px rgba(0,0,0,0.5); transform:translateY(20px); transition:all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);';
-        
-        // Title
-        const titleEl = document.createElement('h3');
-        titleEl.style.cssText = 'color:#fff; margin:0 0 16px 0; font-size:18px; font-weight:700;';
-        titleEl.innerText = title;
-        modal.appendChild(titleEl);
-        
-        const inputEls = [];
-        inputs.forEach(inp => {
-            const el = document.createElement('input');
-            el.type = 'text';
-            el.placeholder = inp.placeholder;
-            el.style.cssText = 'width:100%; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.1); color:#fff; padding:12px 16px; border-radius:8px; margin-bottom:12px; font-size:14px; outline:none; transition:border-color 0.2s;';
-            el.onfocus = () => el.style.borderColor = 'var(--accent)';
-            el.onblur = () => el.style.borderColor = 'rgba(255,255,255,0.1)';
-            modal.appendChild(el);
-            inputEls.push(el);
-        });
-
-        // Buttons row
-        const btnsRow = document.createElement('div');
-        btnsRow.style.cssText = 'display:flex; gap:10px; margin-top:8px;';
-        
-        const cancelBtn = document.createElement('button');
-        cancelBtn.className = 'secondary-btn';
-        cancelBtn.innerText = 'Отмена';
-        cancelBtn.style.flex = '1';
-        cancelBtn.onclick = () => { overlay.style.opacity = '0'; setTimeout(() => overlay.remove(), 200); };
-        
-        const submitBtn = document.createElement('button');
-        submitBtn.className = 'primary-btn';
-        submitBtn.innerText = 'Выполнить';
-        submitBtn.style.flex = '1';
-        submitBtn.onclick = () => {
-            const vals = inputEls.map(el => el.value.trim());
-            onSubmit(vals);
-            cancelBtn.onclick();
-        };
-
-        inputEls[inputEls.length - 1].onkeydown = (e) => {
-            if (e.key === 'Enter') submitBtn.click();
-        };
-
-        btnsRow.appendChild(cancelBtn);
-        btnsRow.appendChild(submitBtn);
-        modal.appendChild(btnsRow);
-        
-        overlay.appendChild(modal);
-        document.body.appendChild(overlay);
-        
-        // Open anim
-        requestAnimationFrame(() => {
-            overlay.style.opacity = '1';
-            modal.style.transform = 'translateY(0)';
-            if (inputEls.length) inputEls[0].focus();
-        });
-    };
-
-    if (action === 'flashbang') {
-        set(ref(db, 'admin/actions/globalFlashbang'), { ts: Date.now() });
-    } else if (action === 'shake') {
-        set(ref(db, 'admin/actions/globalScreenShake'), { ts: Date.now() });
-    } else if (action === 'godVoice') {
-        showAdminPrompt("Голос Бога", [{placeholder: "Введите текст для всех зрителей..."}], (vals) => {
-            if (!vals[0]) return Utils.toast('Текст не может быть пустым', 'error');
-            set(ref(db, 'admin/actions/globalGodVoice'), { ts: Date.now(), text: vals[0], duration: 8000 });
-        });
-    } else if (action === 'hijack') {
-        showAdminPrompt("Угон видео", [{placeholder: "URL (YouTube) для угона..."}], (vals) => {
-            if (!vals[0]) return Utils.toast('URL не может быть пустым', 'error');
-            set(ref(db, 'admin/actions/globalVideoHijack'), { ts: Date.now(), url: vals[0] });
-        });
-    } else if (action === 'puppeteer') {
-        showAdminPrompt("Режим Кукловода", [{placeholder: "UID пользователя (оставьте пустым для отключения)"}], (vals) => {
-            const puppetUid = vals[0].trim();
-            if (puppetUid) {
-                window.puppeteerUid = puppetUid;
-                Utils.toast(`Режим Кукловода активирован для UID: ${puppetUid}. Ваши сообщения в чате теперь будут отправляться от его лица.`, 'success');
-            } else {
-                window.puppeteerUid = null;
-                Utils.toast('Режим Кукловода деактивирован', 'info');
-            }
-        });
-    } else if (action === 'incognito') {
-        window.isIncognito = !window.isIncognito;
-        Utils.toast(window.isIncognito ? 'Инкогнито ВКЛЮЧЕН. Вы невидимы.' : 'Инкогнито ВЫКЛЮЧЕН.', 'success');
-    } else if (action === 'uwuCurse') {
-        showAdminPrompt("Проклятие UwU", [{placeholder: "UID пользователя"}], (vals) => {
-            const curUid = vals[0].trim();
-            if(!curUid) return;
-            set(ref(db, `admin/curses/uwu/${curUid}`), Date.now());
-            Utils.toast('Проклятие наложено.', 'success');
-        });
-    } else if (action === 'shadowClone') {
-        window.isShadowCloneActive = !window.isShadowCloneActive;
-        Utils.toast(window.isShadowCloneActive ? 'Shadow Clone ВКЛЮЧЕН.' : 'Shadow Clone ВЫКЛЮЧЕН.', 'success');
-    } else if (action === 'ghostWhispers') {
-        set(ref(db, 'admin/actions/globalGhostWhispers'), { ts: Date.now() });
-        Utils.toast('Шепот призраков отправлен.', 'success');
-    } else if (action === 'thanosSnapROOM') {
-        if(!AppState.currentRoomId) return Utils.toast('Вы не в комнате', 'error');
-        set(ref(db, `rooms/${AppState.currentRoomId}/chatAction`), { type: 'thanosSnap', ts: Date.now() });
-    } else if (action === 'teleport') {
-        showAdminPrompt("Random Teleport", [{placeholder: "UID пользователя для телепортации"}], async (vals) => {
-            const uid = vals[0].trim();
-            if(!uid) return;
-            const roomsSnap = await get(ref(db, 'rooms'));
-            if(roomsSnap.exists()) {
-                const rooms = Object.keys(roomsSnap.val() || {}).filter(k => roomsSnap.val()[k]?.type === 'public');
-                if(rooms.length > 0) {
-                    const rndRoom = rooms[Math.floor(Math.random() * rooms.length)];
-                    set(ref(db, `admin/curses/teleport/${uid}`), { roomId: rndRoom, ts: Date.now() });
-                    Utils.toast('Юзер телепортирован!', 'success');
-                } else Utils.toast('Нет публичных комнат', 'error');
-            }
-        });
-    } else if (action === 'cursorSync') {
-        if(!AppState.currentRoomId) return Utils.toast('Вы не в комнате', 'error');
-        showAdminPrompt("Режим Cursor Sync (0=Выкл, 1=Вкл)", [{placeholder: "1"}], (vals) => {
-            const v = vals[0].trim();
-            set(ref(db, `rooms/${AppState.currentRoomId}/cursorSync`), v === '1');
-            Utils.toast('Изменено', 'success');
-        });
-    }
-};
-
-window.addEventListener('pagehide', () => {
-    if (AppState.currentRoomId && AppState.isHost) {
-        let currentTime = 0;
-        let isYt = !!YouTubePlayerManager.player;
-        let isRt = !!RutubePlayerManager.player;
-        if (isYt) currentTime = YouTubePlayerManager.getCurrentTime();
-        else if (isRt) currentTime = RutubePlayerManager.getCurrentTime();
-        else {
-            const vid = Utils.$('native-player');
-            if (vid) currentTime = vid.currentTime;
-        }
-        try {
-            set(ref(db, `rooms/${AppState.currentRoomId}/sync`), {
-                type: 'pause',
-                state: 'paused',
-                time: currentTime,
-                ts: Date.now()
-            }).catch(()=>{});
-        } catch(e) {}
-    }
-});
-
-// ============================================================================
-// MARKETPLACE & SOUNDPAD
-// ============================
-window.SoundpadController = class SoundpadController {
-    static loadPad() {
-        if(!AppState.currentRoomId) return;
-        const triggerRef = ref(db, `rooms/${AppState.currentRoomId}/soundTrigger`);
-        onValue(triggerRef, (snap) => {
-            const data = snap.val();
-            if(data && data.timestamp && (Date.now() - data.timestamp < 5000)) {
-                if(data.triggeredBy === AppState.currentUser?.uid) return;
-                this.playAudio(data.url);
-            }
-        });
-        this.renderGrid();
-    }
-    static playAudio(url) {
-        if(!url) return;
-        const volSlider = Utils.$('soundpad-vol-slider');
-        const vol = volSlider ? parseFloat(volSlider.value) : 0.8;
-        const a = new Audio(url);
-        a.volume = vol;
-        a.play().catch(()=>{});
-    }
-    static async renderGrid() {
-        const grid = Utils.$('soundpad-grid');
-        if(!grid) return;
-        const uid = AppState.currentUser?.uid;
-        if (!uid) return;
-        const currentProf = AppState.usersCache.get(uid);
-        const ownedIds = currentProf?.inventory || [];
-        const sounds = [
-            { id: 'cow', name: 'Moo', url: window.EasterEggManager?.SOUND_URLS?.moo || 'https://actions.google.com/sounds/v1/animals/cow_moo_1.ogg', hotkey: '1' },
-            { id: 'glass', name: 'Glass', url: window.EasterEggManager?.SOUND_URLS?.glass || 'https://actions.google.com/sounds/v1/impacts/glass_shatters_into_debris.ogg', hotkey: '2' },
-        ];
-        if (window.CatalogManager && CatalogManager.items) {
-            ownedIds.forEach(id => {
-                const snd = CatalogManager.items.find(i => i.id === id && i.type === 'sound');
-                if (snd) sounds.push({ id: snd.id, name: snd.title, url: snd.image, hotkey: '' });
-            });
-        }
-        grid.innerHTML = sounds.map(s => `
-            <div class="sound-btn" onclick="SoundpadController.triggerSound('${s.url}')">
-                <div class="sound-icon">🎵</div>
-                <div class="sound-name">${s.name}</div>
-                ${s.hotkey ? `<div class="sound-hotkey">${s.hotkey}</div>` : ''}
-            </div>
-        `).join('');
-    }
-    static triggerSound(url) {
-        if(!AppState.currentRoomId) return;
-        if(this.lastTrigger && Date.now() - this.lastTrigger < 3000) return Utils.toast('Не спамьте!', 'error');
-        this.lastTrigger = Date.now();
-        this.playAudio(url);
-        set(ref(db, `rooms/${AppState.currentRoomId}/soundTrigger`), { url, timestamp: Date.now(), triggeredBy: AppState.currentUser?.uid });
-    }
-};
-window.AdminSoundManager = class { static initAdmin() {} };
-window.ShopController = class { static loadShop() {} };

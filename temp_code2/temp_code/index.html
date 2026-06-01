@@ -15,88 +15,6 @@
         })(); // [NEW]
     </script>
     <style>
-        .global-flashbang { position: fixed; inset: 0; background: white; z-index: 999999; pointer-events: none; opacity: 1; transition: opacity 4s ease-out; }
-        @keyframes godVoiceTypewriter {
-            from { width: 0; }
-            to { width: 100%; }
-        }
-        @keyframes godVoiceBlink {
-            50% { border-color: transparent; }
-        }
-        @keyframes godVoiceGlow {
-            0% { filter: drop-shadow(0 0 5px rgba(255,255,255,0.2)); text-shadow: 0 0 10px rgba(255,255,255,0.1); }
-            50% { filter: drop-shadow(0 0 15px rgba(255,255,255,0.7)); text-shadow: 0 0 30px rgba(255,255,255,0.5); }
-            100% { filter: drop-shadow(0 0 5px rgba(255,255,255,0.2)); text-shadow: 0 0 10px rgba(255,255,255,0.1); }
-        }
-        @keyframes godVoiceBg {
-            0% { background: rgba(0,0,0,0); backdrop-filter: blur(0px); }
-            20% { background: rgba(0,0,0,0.95); backdrop-filter: blur(10px); }
-            80% { background: rgba(0,0,0,0.95); backdrop-filter: blur(10px); }
-            100% { background: rgba(0,0,0,0); backdrop-filter: blur(0px); }
-        }
-        .global-god-voice { position: fixed; inset: 0; background: transparent; z-index: 999998; display: flex; align-items: center; justify-content: center; flex-direction: column; opacity: 0; pointer-events: none; transition: opacity 0.5s ease; }
-        .global-god-voice.active { opacity: 1; animation: godVoiceBg var(--gv-duration, 8s) ease-in-out forwards; }
-        .global-god-voice-text { 
-            color: #ececec; 
-            font-size: 4vw; 
-            font-family: "Georgia", serif;
-            font-weight: 300; 
-            text-align: center; 
-            text-transform: uppercase; 
-            letter-spacing: 8px;
-            white-space: pre-wrap; 
-            word-wrap: break-word;
-            max-width: 80%;
-            animation: godVoiceGlow 4s infinite ease-in-out;
-        }
-        @keyframes screenShakeAnim { 0% { transform: translate(1px, 1px) rotate(0deg); } 10% { transform: translate(-1px, -2px) rotate(-1deg); } 20% { transform: translate(-3px, 0px) rotate(1deg); } 30% { transform: translate(3px, 2px) rotate(0deg); } 40% { transform: translate(1px, -1px) rotate(1deg); } 50% { transform: translate(-1px, 2px) rotate(-1deg); } 60% { transform: translate(-3px, 1px) rotate(0deg); } 70% { transform: translate(3px, 1px) rotate(-1deg); } 80% { transform: translate(-1px, -1px) rotate(1deg); } 90% { transform: translate(1px, 2px) rotate(0deg); } 100% { transform: translate(1px, -2px) rotate(-1deg); } }
-        .screen-shake-active { animation: screenShakeAnim 0.1s cubic-bezier(.36,.07,.19,.97) both infinite; }
-        
-        @keyframes cinematicModalReveal {
-            0% { transform: scale(0.85) translateY(40px); filter: blur(24px); opacity: 0; }
-            100% { transform: scale(1) translateY(0); filter: blur(0px); opacity: 1; }
-        }
-        @keyframes cinematicTextReveal {
-            0% { transform: translateY(15px); filter: blur(12px); opacity: 0; letter-spacing: -2px; }
-            40% { opacity: 0.5; }
-            100% { transform: translateY(0); filter: blur(0px); opacity: 1; letter-spacing: normal; }
-        }
-        @keyframes cinematicImageReveal {
-            0% { transform: scale(0.6) translateY(20px) rotate(-5deg); filter: blur(20px) brightness(0.2); opacity: 0; }
-            50% { filter: blur(10px) brightness(1.5); }
-            100% { transform: scale(1) translateY(0) rotate(0deg); filter: blur(0px) brightness(1); opacity: 1; }
-        }
-
-        #modal-catalog-item.active .modal-content {
-            animation: cinematicModalReveal 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
-            transform-origin: center center;
-        }
-
-        #modal-catalog-item.active #catalog-item-title {
-            animation: cinematicTextReveal 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards 0.2s;
-            opacity: 0;
-        }
-
-        #modal-catalog-item.active #catalog-item-price {
-            animation: cinematicTextReveal 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards 0.3s;
-            opacity: 0;
-        }
-
-        #modal-catalog-item.active #catalog-item-desc {
-            animation: cinematicTextReveal 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards 0.4s;
-            opacity: 0;
-        }
-
-        #modal-catalog-item.active #catalog-item-avatar-preview-container, 
-        #modal-catalog-item.active #catalog-item-image {
-            animation: cinematicImageReveal 1s cubic-bezier(0.16, 1, 0.3, 1) forwards 0.1s;
-            opacity: 0;
-        }
-
-        #draw-canvas-layer { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: auto; z-index: 25; cursor: crosshair; }
-        .draw-toggle-btn.active { background: var(--accent) !important; color: #000 !important; }
-    </style>
-    <style>
         /* ========================================================= */
         /* AMOLED THEME VARIABLES & RESET */
         /* ========================================================= */
@@ -197,7 +115,6 @@
         #auth-screen { align-items: center; justify-content: center; }
         .auth-wrapper { width: 420px; padding: 40px; text-align: center; max-width: 90%; }
         .logo { font-size: 52px; font-weight: 900; margin-bottom: 25px; letter-spacing: -2px; }
-        .burger-btn { color: #fff; }
         .auth-tabs { display: flex; gap: 8px; margin-bottom: 20px; background: #040404; padding: 6px; border-radius: 12px; border: 1px solid var(--border); }
         .auth-tabs button { flex: 1; padding: 10px; background: transparent; color: var(--text-muted); border-radius: 8px; transition: 0.3s; }
         .auth-tabs button.active { background: var(--panel-hover); color: var(--text-main); box-shadow: 0 2px 8px rgba(0,0,0,0.5); border: 1px solid var(--border-light); }
@@ -213,22 +130,20 @@
         /* ========================================================= */
         /* LOBBY LAYOUT */
         /* ========================================================= */
-        .lobby-layout { display: grid; grid-template-columns: 320px 1fr; gap: 20px; padding: 20px; flex: 1; min-height: 0; max-width: 1600px; margin: 0 auto; width: 100%; overflow-y: auto; }
+        .lobby-layout { display: grid; grid-template-columns: 320px 1fr; gap: 20px; padding: 20px; height: 100vh; max-width: 1600px; margin: 0 auto; width: 100%; }
         
-        .sidebar { display: flex; flex-direction: column; padding: 20px; overflow-y: hidden; }
+        .sidebar { display: flex; flex-direction: column; padding: 20px; overflow-y: auto; }
         .sidebar::-webkit-scrollbar { width: 4px; }
         .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
         .user-card { display: flex; align-items: center; gap: 14px; padding: 16px; border-radius: 16px; background: rgba(255,255,255,0.02); cursor: pointer; border: 1px solid transparent; transition: 0.2s; margin-bottom: 24px; flex-shrink: 0; }
         .user-card:hover { background: rgba(255,255,255,0.05); border-color: var(--border-light); }
-        .avatar { width: 48px; height: 48px; border-radius: 50%; background: #111; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 20px; overflow: visible; border: 1px solid var(--border-light); flex-shrink: 0; }
+        .avatar { width: 48px; height: 48px; border-radius: 50%; background: #111; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 20px; overflow: hidden; border: 1px solid var(--border-light); flex-shrink: 0; }
         .avatar img { width: 100%; height: 100%; object-fit: cover; }
         .user-card-info { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
         .user-card-name { font-weight: 700; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .user-card-username { font-size: 12px; color: var(--accent); margin-top: 2px; font-weight: 500; }
         
-        .nav-menu { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; flex-shrink: 1; flex-grow: 1; overflow-y: auto; overflow-x: hidden; padding-right: 5px; }
-        .nav-menu::-webkit-scrollbar { width: 4px; }
-        .nav-menu::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+        .nav-menu { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; flex-shrink: 0; }
         .nav-item { padding: 14px 16px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; color: var(--text-muted); font-weight: 600; border: 1px solid transparent; transition: 0.2s; }
         .nav-item:hover { background: rgba(255,255,255,0.02); color: var(--text-main); }
         .nav-item.active { background: rgba(255,255,255,0.05); color: var(--text-main); border-color: var(--border-light); }
@@ -326,7 +241,7 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            overflow: visible;
+            overflow: hidden;
             margin-left: -6px;
             font-size: 10px;
             font-weight: 700;
@@ -432,7 +347,7 @@
         .partner-container { display: none; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.16); background: linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,120,180,0.06)); backdrop-filter: blur(12px); margin-bottom: 14px; text-align: left; color: var(--profile-text, var(--text-main)); cursor: pointer; transition: border-color 0.25s ease, box-shadow 0.25s ease; }
         .partner-container:hover { border-color: rgba(255,180,220,0.4); box-shadow: 0 8px 22px rgba(255,90,160,0.12); }
         .partner-container.active { display: flex; }
-        .partner-avatar { width: 42px; height: 42px; border-radius: 50%; overflow: visible; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: #111; border: 1px solid var(--border-light); font-weight: 800; }
+        .partner-avatar { width: 42px; height: 42px; border-radius: 50%; overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: #111; border: 1px solid var(--border-light); font-weight: 800; }
         .partner-avatar img { width: 100%; height: 100%; object-fit: cover; }
         .partner-info { flex: 1; min-width: 0; }
         .partner-label { font-size: 11px; color: #ff6fae; font-weight: 800; margin-bottom: 2px; } /* // [UPDATE] */
@@ -448,7 +363,7 @@
         @keyframes partnerShine { 0%, 100% { left: -50%; opacity: 0; } 45% { opacity: 1; } 55% { left: 120%; opacity: 0; } }
         .partner-ambilight-header { position: relative; z-index: 2; text-align: center; margin-bottom: 16px; }
         .partner-ambilight-couple { display: flex; align-items: center; justify-content: center; gap: 14px; margin-bottom: 12px; }
-        .partner-ambilight-avatar { width: 72px; height: 72px; border-radius: 50%; border: 2px solid rgba(255,180,220,0.55); background: rgba(0,0,0,0.35); overflow: visible; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 800; box-shadow: 0 8px 24px rgba(255,100,180,0.25); }
+        .partner-ambilight-avatar { width: 72px; height: 72px; border-radius: 50%; border: 2px solid rgba(255,180,220,0.55); background: rgba(0,0,0,0.35); overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 800; box-shadow: 0 8px 24px rgba(255,100,180,0.25); }
         .partner-ambilight-link { position: relative; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; }
         .partner-link-pulse { position: absolute; inset: 0; border-radius: 50%; border: 1px solid rgba(255,150,210,0.5); animation: pulseHeart 1.8s ease-in-out infinite; }
         .partner-link-icon { font-size: 22px; z-index: 1; filter: drop-shadow(0 0 8px rgba(255,120,190,0.8)); }
@@ -521,7 +436,7 @@
         .dm-chat-item.active { background: #ffffff; color: #000; box-shadow: none; }
         .dm-chat-item.active .dm-chat-name { color: #000; }
         .dm-chat-item.active .dm-chat-last-msg { color: rgba(0,0,0,0.6); }
-        .dm-chat-avatar { width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.1); background: #111; display: flex; align-items: center; justify-content: center; font-weight: bold; overflow: visible; flex-shrink: 0; }
+        .dm-chat-avatar { width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.1); background: #111; display: flex; align-items: center; justify-content: center; font-weight: bold; overflow: hidden; flex-shrink: 0; }
         .dm-chat-info { flex: 1; overflow: hidden; display: flex; flex-direction: column; gap: 4px; }
         .dm-chat-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 15px; }
         .dm-chat-last-msg { font-size: 13px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -730,16 +645,11 @@
         .love-heart.near { filter: blur(0.15px) brightness(0.96) saturate(0.92); }
         @keyframes loveFloatUp { from { transform: translate3d(0, 0, 0) scale(var(--heart-scale, 1)); opacity: 0; } 8% { opacity: var(--heart-opacity, 0.52); } to { transform: translate3d(var(--heart-drift, 8px), calc(-1 * var(--heart-travel, 700px)), 0) scale(calc(var(--heart-scale, 1) * 1.02)); opacity: 0; } }
 
-        .mobile-header { display: none; }
-        .sidebar-overlay { display: none; }
-
         @media (max-width: 1024px) {
             .lobby-layout { grid-template-columns: 1fr; padding: 0; }
-            .sidebar-overlay { display: block; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(2px); z-index: 499; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
-            .sidebar-overlay.open { opacity: 1; pointer-events: auto; }
-            .sidebar { position: fixed; left: -100%; top: 0; height: 100%; width: 280px; z-index: 500; background: #050505; border-right: 1px solid var(--border); transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); padding: calc(env(safe-area-inset-top) + 20px) 20px 20px 20px; box-shadow: 20px 0 50px rgba(0,0,0,0.8); }
+            .sidebar { position: fixed; left: -100%; top: 0; height: 100%; width: 300px; z-index: 500; background: #050505; border-right: 1px solid var(--border); transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); padding-top: 80px; box-shadow: 20px 0 50px rgba(0,0,0,0.8); }
             .sidebar.open { left: 0; }
-            .mobile-header { display: flex; position: sticky; top: 0; z-index: 400; background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; border-bottom: none; }
+            .mobile-header { display: flex; position: sticky; top: 0; z-index: 400; }
             .rooms-main { padding: 15px; }
             .room-layout { grid-template-columns: 1fr; padding: env(safe-area-inset-top) 8px env(safe-area-inset-bottom) 8px; height: 100dvh; display: flex; flex-direction: column; }
             .player-section { flex: none; display: flex; flex-direction: column; }
@@ -753,9 +663,6 @@
         html.theme-light-global .sidebar { background: rgba(255,255,255,0.94); box-shadow: 0 12px 28px rgba(17,24,39,0.08); } /* // [NEW] */
         html.theme-light-global .lobby-header input { background: #ffffff; color: var(--text-main); box-shadow: none; } /* // [NEW] */
         html.theme-light-global .global-theme-toggle { background: #ffffff; box-shadow: 0 8px 18px rgba(17,24,39,0.06); } /* // [NEW] */
-        html.theme-light-global .mobile-header { background: none; border-bottom: none; }
-        html.theme-light-global .burger-btn { color: #000 !important; background: rgba(255,255,255,0.85) !important; border-color: rgba(0,0,0,0.1) !important; }
-        html.theme-light-global .logo { background: linear-gradient(90deg, #000, #444) !important; -webkit-background-clip: text !important; -webkit-text-fill-color: transparent !important; }
         #modal-edit-profile .modal-content,
         #modal-view-profile .modal-content {
             background: var(--profile-bg, #111111) !important;
@@ -775,28 +682,6 @@
         #modal-view-profile .hashtag-chip { color: var(--profile-muted, var(--text-muted)) !important; border-color: var(--profile-border, var(--border-light)); } /* // [NEW] */
         #modal-view-profile #view-name { color: var(--profile-text, var(--text-main)); } /* // [NEW] */
         @keyframes popIn { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
-
-
-        /* Soundpad & Shop Styles */
-        .glass-panel.rare-sound-common { border-color: rgba(255,255,255,0.2) !important; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        .glass-panel.rare-sound-epic { border-color: #a335ee !important; box-shadow: 0 0 15px rgba(163,53,238,0.5); }
-        .glass-panel.rare-sound-legendary { border-color: #ff8000 !important; box-shadow: 0 0 20px rgba(255,128,0,0.6); }
-        
-        .sound-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; gap: 5px; cursor: pointer; border-radius: 12px; transition: transform 0.2s, box-shadow 0.2s; position: relative; overflow: hidden; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); }
-        .sound-btn:hover { transform: translateY(-2px); box-shadow: 0 0 15px var(--accent); }
-        .sound-btn:active { transform: translateY(0); }
-        .sound-btn .sound-icon { font-size: 24px; }
-        .sound-btn .sound-name { font-size: 11px; font-weight: 600; text-align: center; color: var(--text-main); }
-        .sound-btn .sound-hotkey { position: absolute; top: 4px; right: 4px; font-size: 9px; opacity: 0.5; background: rgba(0,0,0,0.5); padding: 2px 4px; border-radius: 4px; }
-        
-        @keyframes frameGlow {
-            0% { filter: hue-rotate(0deg) drop-shadow(0 0 10px rgba(255,0,255,0.8)); }
-            50% { filter: hue-rotate(180deg) drop-shadow(0 0 20px rgba(0,255,255,0.8)); transform: scale(1.05); }
-            100% { filter: hue-rotate(360deg) drop-shadow(0 0 10px rgba(255,0,255,0.8)); }
-        }
-        .anim-chroma-frame { position: absolute; inset: -5px; border-radius: 50%; border: 2px solid transparent; background: linear-gradient(45deg, #ff00ff, #00ffff, #ffff00) border-box; -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0); -webkit-mask-composite: destination-out; animation: frameGlow 3s linear infinite; pointer-events: none; z-index: 5; }
-        
-        .mic-active-glow { transition: transform 0.1s linear, box-shadow 0.1s linear; }
     </style>
 </head>
 <body class="auth-loading">
@@ -868,17 +753,13 @@
     <!-- LOBBY SCREEN -->
     <!-- ========================================================================= -->
     <section id="lobby-screen" class="screen">
-        <div class="mobile-header" style="justify-content: space-between; padding: 12px 20px; align-items: center; min-height: 60px; pointer-events: none;">
-            <button id="toggle-sidebar" class="burger-btn" style="pointer-events: auto; background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-main); display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; margin-left: -8px; border-radius: 8px; transition: background 0.2s;">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
-            </button>
-            <div style="width: 40px;"></div> <!-- placeholder to center -->
+        <div class="mobile-header">
+            <div class="logo" style="font-size: 24px; margin: 0; letter-spacing: -1px;">COWIO</div>
         </div>
         
         <div class="lobby-layout">
-            <div class="sidebar-overlay" id="sidebar-overlay"></div>
             <aside class="sidebar glass-panel" id="main-sidebar">
-                <div class="user-card" id="btn-open-my-profile" style="margin-top: 10px;">
+                <div class="user-card" id="btn-open-my-profile">
                     <div class="avatar" id="my-avatar-display">?</div>
                     <div class="user-card-info">
                         <div class="user-card-name" id="my-name-display">Загрузка...</div>
@@ -889,9 +770,8 @@
                 <nav class="nav-menu">
                     <div class="nav-item" id="nav-profile"><span><img src="https://emojigraph.org/media/apple/bust-in-silhouette_1f464.png" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Мой профиль</span></div>
                     <div class="nav-item active" id="nav-rooms"><span><img src="https://emojigraph.org/media/apple/television_1f4fa.png" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Комнаты</span></div>
-                    <div class="nav-item" id="nav-catalog"><span><img src="https://em-content.zobj.net/source/telegram/386/shopping-bags_1f6cd-fe0f.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Каталог</span></div>
+                    <div class="nav-item" id="nav-catalog"><span><img src="https://emojigraph.org/media/apple/shopping-bags_1f6cd-fe0f.png" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Каталог</span></div>
                     <div class="nav-item" id="nav-find-friend"><span><img src="https://emojigraph.org/media/apple/magnifying-glass-tilted-left_1f50d.png" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Найти друга</span></div>
-
                     <div class="nav-item" id="nav-friends">
                         <span><img src="https://emojigraph.org/media/apple/busts-in-silhouette_1f465.png" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Друзья</span>
                         <div class="nav-badge" id="friend-req-badge">0</div>
@@ -975,17 +855,42 @@
 
             <main class="rooms-main" id="section-catalog" style="display: none;">
                 <div class="friends-container" style="max-width: 800px; width: 100%; margin: 0 auto; padding-top: 20px;">
-                    <div class="section-title" style="font-size: 24px; margin-bottom: 20px;"><img src="https://em-content.zobj.net/source/telegram/386/shopping-bags_1f6cd-fe0f.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Каталог</div>
+                    <div class="section-title" style="font-size: 24px; margin-bottom: 20px;"><img src="https://emojigraph.org/media/apple/shopping-bags_1f6cd-fe0f.png" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Каталог</div>
                     
-                    <div id="catalog-filters" style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
-                        <button class="secondary-btn active-filter" data-filter="all" style="width:auto; padding:8px 16px; border-radius: 20px;">Все</button>
+                    <div id="catalog-list" style="display: flex; flex-wrap: wrap; gap: 15px;">
+                        <div class="ach-card" style="
+                            width: 100%;
+                            max-width: 400px;
+                            height: auto;
+                            min-height: 120px;
+                            max-height: none;
+                            flex-shrink: 0;
+                            border-radius: 12px; 
+                            background: rgba(0,0,0,0.2);
+                            border: 1px solid var(--border-light, rgba(255,255,255,0.1));
+                            display: flex; 
+                            flex-direction: row;
+                            align-items: center; 
+                            text-align: left;
+                            position: relative;
+                            overflow: hidden;
+                            padding: 16px;
+                            box-sizing: border-box;
+                            cursor: pointer;
+                        " onclick="if(typeof openCatalogItemModal === 'function') openCatalogItemModal('frame_gomah')">
+                            <div style="width: 80px; height: 80px; display:flex; align-items:center; justify-content:center; flex-shrink: 0; margin-right: 15px; position:relative;">
+                                <div style="width:100%; height:100%; border-radius:50%; background:#222; position:absolute; top:0; left:0; z-index:1;"></div>
+                                <img src="https://discord-decoration.art/decorations/gomah.webp" style="width:100px;height:100px;object-fit:cover; position:absolute; top:-10px; left:-10px; z-index:2; pointer-events:none;"/>
+                            </div>
+                            <div style="flex: 1; display:flex; flex-direction:column; justify-content:center;">
+                                <div style="color: #ffffff; font-weight: 700; font-size: 16px; line-height: 1.2; margin-bottom: 4px;">Рамка Gomah</div>
+                                <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">Анимированная рамка профиля</div>
+                                <div style="font-size: 13px; color: var(--accent, #4cd137); font-weight:bold;">БЕСПЛАТНО</div>
+                            </div>
+                        </div>
                     </div>
-
-                    <div id="catalog-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;"></div>
                 </div>
             </main>
-            
-
         </div>
     </section>
 
@@ -1040,18 +945,10 @@
                 <div class="chat-tabs">
                     <button id="tab-chat-btn" class="active"><img src="https://emojigraph.org/media/apple/speech-balloon_1f4ac.png" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Чат</button>
                     <button id="tab-users-btn"><img src="https://emojigraph.org/media/apple/busts-in-silhouette_1f465.png" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Люди (<span id="users-count">0</span>)</button>
-                    <button id="tab-soundpad-btn"><img src="https://em-content.zobj.net/source/telegram/386/musical-notes_1f3b6.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Soundpad</button>
                 </div>
                 
                 <div class="chat-content-area" id="chat-messages"></div>
                 <div class="chat-content-area" id="users-list" style="display: none;"></div>
-                <div class="chat-content-area" id="soundpad-list" style="display: none; padding: 10px; overflow-y: auto;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                        <input type="range" id="soundpad-vol-slider" min="0" max="1" step="0.05" value="0.8" style="width:100px;">
-                        <span style="font-size:12px;color:var(--text-muted);">VOL</span>
-                    </div>
-                    <div class="sound-grid" id="soundpad-grid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(80px, 1fr));gap:10px;"></div>
-                </div>
                 
                 <div class="chat-input-area" id="chat-input-container">
                     <div class="input-wrapper">
@@ -1083,8 +980,8 @@
             <div style="display: flex; flex-direction: column; gap: 12px;">
                 <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 10px;">
                     <div class="avatar-wrapper" style="position: relative; width: 70px; height: 70px; flex-shrink:0;">
-                        <div class="avatar" id="edit-avatar-preview" style="width: 100%; height: 100%; font-size: 24px; border-radius:50%; overflow:visible; display:flex; align-items:center; justify-content:center; background:#111;">?</div>
-                        <img id="edit-avatar-frame" src="" style="width: 130%; height: 130%; object-fit: contain; position: absolute; top: -15%; left: -15%; z-index: 2; pointer-events: none; display: none;"/>
+                        <div class="avatar" id="edit-avatar-preview" style="width: 100%; height: 100%; font-size: 24px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center; background:#111;">?</div>
+                        <img id="edit-avatar-frame" src="" style="width: 90px; height: 90px; object-fit: cover; position: absolute; top: -10px; left: -10px; z-index: 2; pointer-events: none; display: none;"/>
                     </div>
                     <div style="flex: 1; min-width: 0;">
                         <input type="text" id="edit-avatar-url" placeholder="URL аватарки (ссылка)" style="margin:0;">
@@ -1195,17 +1092,10 @@
                 <div id="view-streak-count" style="position:relative; z-index:1; font-size:16px; font-weight:900; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,1), 0 0 8px #ff4500; margin-top:14px;">0</div>
             </div>
             <div class="modal-drag-handle"></div>
-            <div class="avatar" id="view-avatar" style="width: 90px; height: 90px; font-size: 32px; margin: 0 auto 15px; border-radius:50%; overflow:visible; display:flex; align-items:center; justify-content:center; background:#111;">?</div>
+            <div class="avatar" id="view-avatar" style="width: 90px; height: 90px; font-size: 32px; margin: 0 auto 15px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center; background:#111;">?</div>
             <h2 id="view-name" style="margin-bottom: 5px;">Пользователь</h2>
-            <div id="view-username" style="color: var(--accent); font-size: 14px; margin-bottom: 12px; font-weight: 600;">@user</div>
-            
-            <div id="view-level-badge" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; background: rgba(34,34,34,0.8); border: 1px solid rgba(255,255,255,0.08); border-radius: 100px; cursor: pointer; margin-bottom: 24px; transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 2px 10px rgba(0,0,0,0.2);">
-                 <img src="https://em-content.zobj.net/source/telegram/386/star_2b50.webp" style="width: 18px; height: 18px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(255, 170, 0, 0.4));" id="view-level-badge-icon" />
-                 <span id="view-level-badge-text" style="font-size: 14px; font-weight: 600; color: #fff; letter-spacing: -0.2px;">Уровень 0</span>
-                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 2px;"><polyline points="9 18 15 12 9 6"></polyline></svg>
-            </div>
-            
-            <div id="view-status" style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;"></div>
+            <div id="view-username" style="color: var(--accent); font-size: 14px; margin-bottom: 5px; font-weight: 600;">@user</div>
+            <div id="view-status" style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;"></div>
             <p id="view-bio" style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px; line-height: 1.5;"></p>
             <!-- Achievements / Badges Collection -->
             <div id="view-badges-collection" style="margin-bottom:15px; display:flex; flex-wrap:wrap; gap:8px; justify-content:center;"></div>
@@ -1356,35 +1246,17 @@
 
     <!-- Catalog Item Modal -->
     <div class="modal" id="modal-catalog-item">
-        <div class="modal-content glass-panel" style="width: min(540px, calc(100vw - 32px)); padding: 0; background: radial-gradient(circle at top, rgba(255,255,255,0.12), rgba(0,0,0,0.95)), repeating-linear-gradient(45deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 2px, transparent 2px, transparent 4px); backdrop-filter: blur(40px) saturate(180%); -webkit-backdrop-filter: blur(40px) saturate(180%); border: 1px solid rgba(255,255,255,0.1); border-top: 1px solid rgba(255,255,255,0.25); border-radius: 32px; box-shadow: 0 40px 100px rgba(0,0,0,0.9), inset 0 2px 20px rgba(255,255,255,0.08); overflow: hidden; display: flex; flex-direction: column; position: relative;">
-            <div style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, transparent 50%, rgba(0,0,0,0.3) 100%);"></div>
-            <div class="modal-drag-handle" style="position:relative; z-index:10;"></div>
-            
-            <!-- Header Banner / Preview Area -->
-            <div style="position: relative; width: 100%; height: 260px; background: radial-gradient(circle at center, rgba(255,255,255,0.08) 0%, rgba(0,0,0,0.2) 100%); display: flex; align-items: center; justify-content: center; border-bottom: 1px solid rgba(255,255,255,0.05); overflow: hidden;">
-                <div style="position:absolute; inset:0; pointer-events:none; background: url('https://em-content.zobj.net/source/apple/391/sparkles_2728.png') repeat center/120px; opacity: 0.05; animation: panBg 40s linear infinite;"></div>
-                <style>@keyframes panBg { 0% { background-position: 0 0; } 100% { background-position: 1000px 1000px; } }</style>
-                
-                <div style="width: 140px; height: 140px; position:relative; z-index:10;">
-                     <div style="width:100%; height:100%; border-radius:50%; background:#111; position:absolute; top:0; left:0; z-index:1; overflow: hidden; box-shadow: inset 0 0 20px rgba(0,0,0,0.8), 0 10px 30px rgba(0,0,0,0.5);" id="catalog-item-avatar-preview-container"></div>
-                     <img id="catalog-item-image" src="" style="width:180px;height:180px;object-fit:cover; position:absolute; top:-20px; left:-20px; z-index:2; pointer-events:none; filter:drop-shadow(0 10px 20px rgba(0,0,0,0.6));"/>
-                </div>
+        <div class="modal-content glass-panel" style="max-width: 400px; text-align: center;">
+            <div class="modal-drag-handle"></div>
+            <h2 id="catalog-item-title" style="margin-bottom: 10px;">Рамка Gomah</h2>
+            <div style="width: 120px; height: 120px; margin: 0 auto 15px; position:relative;">
+                 <div style="width:100%; height:100%; border-radius:50%; background:#222; position:absolute; top:0; left:0; z-index:1;"></div>
+                 <img id="catalog-item-image" src="https://discord-decoration.art/decorations/gomah.webp" style="width:140px;height:140px;object-fit:cover; position:absolute; top:-10px; left:-10px; z-index:2; pointer-events:none;"/>
             </div>
-
-            <!-- Content Area -->
-            <div style="padding: 24px 32px; display: flex; flex-direction: column; align-items: center; text-align: center;">
-                <h2 id="catalog-item-title" style="margin: 0 0 12px 0; font-weight: 800; font-size: 24px; letter-spacing: -0.5px; color: #fff;">Название товара</h2>
-                <div id="catalog-item-price" style="display:inline-block; font-size: 14px; color: #fff; font-weight: 700; margin-bottom: 16px; padding: 6px 16px; background: rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.15); border-radius: 30px; letter-spacing: 0.5px;">БЕСПЛАТНО</div>
-                <p id="catalog-item-desc" style="color: rgba(255,255,255,0.6); font-size: 15px; margin: 0 0 32px 0; line-height: 1.5; max-width: 90%;">Описание товара</p>
-                
-                <div style="width: 100%; display: flex; flex-direction: column; gap: 12px;">
-                    <div style="display: flex; gap: 12px; width: 100%;">
-                        <button class="secondary-btn btn-close-modal" id="btn-close-catalog-modal" style="flex: 1; font-weight: 600; font-size: 15px; padding: 14px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; color: #fff; transition: background 0.2s;">Отмена</button>
-                        <button class="secondary-btn" id="btn-preview-catalog-item" style="flex: 1; font-weight: 600; font-size: 15px; padding: 14px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.2); border-radius: 16px; color: #fff; transition: background 0.2s;">Примерить</button>
-                    </div>
-                    <button class="primary-btn" id="btn-buy-catalog-item" style="width: 100%; font-weight: 700; font-size: 16px; padding: 16px; background: #fff; color: #000; border-radius: 16px; box-shadow: 0 8px 24px rgba(255, 255, 255, 0.15); border: none; transition: transform 0.2s, box-shadow 0.2s;">Купить</button>
-                </div>
-            </div>
+            <p id="catalog-item-desc" style="color: var(--text-muted); font-size: 14px; margin-bottom: 15px;">Анимированная рамка профиля</p>
+            <p id="catalog-item-price" style="font-size: 18px; color: var(--accent); font-weight: bold; margin-bottom: 20px;">БЕСПЛАТНО</p>
+            <button class="primary-btn" id="btn-buy-catalog-item" style="width: 100%; margin-bottom: 10px; font-weight: 700;">Получить</button>
+            <button class="secondary-btn btn-close-modal" id="btn-close-catalog-modal" style="width: 100%;">Отмена</button>
         </div>
     </div>
 
@@ -1392,82 +1264,18 @@
     <script>
         const btnToggle = document.getElementById('toggle-sidebar');
         const sidebar = document.getElementById('main-sidebar');
-        const sidebarOverlay = document.getElementById('sidebar-overlay');
-        
-        function closeSidebar() {
-            if (sidebar) sidebar.classList.remove('open');
-            if (sidebarOverlay) sidebarOverlay.classList.remove('open');
-        }
-        
-        function openSidebar() {
-            if (sidebar) sidebar.classList.add('open');
-            if (sidebarOverlay) sidebarOverlay.classList.add('open');
-        }
-
         if (btnToggle && sidebar) {
             btnToggle.addEventListener('click', (e) => {
                 e.stopPropagation();
-                if (sidebar.classList.contains('open')) closeSidebar();
-                else openSidebar();
+                sidebar.classList.toggle('open');
             });
-            if (sidebarOverlay) {
-                sidebarOverlay.addEventListener('click', closeSidebar);
-            }
-            
-            // Close sidebar when clicking a nav menu item on mobile
-            const navItems = sidebar.querySelectorAll('.nav-item');
-            navItems.forEach(item => {
-                item.addEventListener('click', () => {
-                    if (window.innerWidth <= 1024) closeSidebar();
-                });
+            document.addEventListener('click', (e) => {
+                if (window.innerWidth <= 1024 && sidebar.classList.contains('open')) {
+                    if (!sidebar.contains(e.target)) sidebar.classList.remove('open');
+                }
             });
-            // Also close when opening profile
-            const myProfileBtn = document.getElementById('btn-open-my-profile');
-            if (myProfileBtn) {
-                myProfileBtn.addEventListener('click', () => {
-                   if (window.innerWidth <= 1024) closeSidebar(); 
-                });
-            }
         }
     </script>
-
-    <!-- NEW TGS STYLE PROFILE DRAWER -->
-    <div id="level-bottom-sheet-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 10000; opacity: 0; transition: opacity 0.3s ease;"></div>
-    <div id="level-bottom-sheet" style="position: fixed; inset: auto 0 0 0; background: rgba(28,28,30,0.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-radius: 20px 20px 0 0; z-index: 10001; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); border-top: 1px solid rgba(255,255,255,0.05); padding: 12px 20px 40px; box-shadow: 0 -10px 40px rgba(0,0,0,0.5); display: flex; flex-direction: column; max-height: 85vh;">
-        <!-- Handle -->
-        <div style="width: 36px; height: 5px; background: rgba(255,255,255,0.3); border-radius: 5px; margin: 0 auto 24px;"></div>
-        
-        <div style="flex: 1; overflow-y: auto; overflow-x: hidden;" class="no-scrollbar">
-            <!-- Header -->
-            <div style="text-align: center; margin-bottom: 32px;">
-                <style>
-                    @keyframes throbStar { 0% { transform: scale(1); filter: drop-shadow(0 4px 15px rgba(255,170,0,0.4)); } 50% { transform: scale(1.05); filter: drop-shadow(0 4px 25px rgba(255,170,0,0.8)); } 100% { transform: scale(1); filter: drop-shadow(0 4px 15px rgba(255,170,0,0.4)); } }
-                </style>
-                <div id="drawer-star-container" style="display: inline-block; animation: throbStar 4s ease-in-out infinite; margin-bottom: 20px;">
-                    <img src="https://em-content.zobj.net/source/telegram/386/star_2b50.webp" style="width: 100px; height: 100px; object-fit: contain;" />
-                </div>
-                <h3 style="font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-                    Рейтинг профиля
-                </h3>
-                <div style="font-size: 15px; color: rgba(255,255,255,0.5); font-weight: 400; line-height: 1.4; max-width: 280px; margin: 0 auto;">
-                    Уровень профиля отражает вашу общую активность и надежность.
-                </div>
-            </div>
-
-            <!-- Progress Bar Section -->
-            <div style="background: rgba(44,44,46,0.5); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
-                <div style="display:flex; justify-content: space-between; margin-bottom: 12px; align-items: flex-end;">
-                    <span id="drawer-level-title" style="font-size: 16px; color: #fff; font-weight: 600;">Уровень 0</span>
-                    <span id="drawer-xp-text" style="font-size: 15px; color: rgba(255,255,255,0.6); font-weight: 500;">0 / 100 🌟</span>
-                </div>
-                <div id="drawer-xp-bar-container" style="width: 100%; height: 6px; background: rgba(0,0,0,0.3); border-radius: 6px; overflow: hidden; position: relative;">
-                    <div id="drawer-xp-progress" style="position: absolute; top: 0; left: 0; width: 0%; height: 100%; background: linear-gradient(90deg, #f5d142, #ff9d00); border-radius: 6px; transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);"></div>
-                </div>
-            </div>
-            
-            <button class="primary-btn btn-close-drawer" style="width: 100%; padding: 14px; font-size: 16px; border-radius: 12px; background: #007aff; color: #fff; font-weight: 600;">ОК</button>
-        </div>
-    </div>
     
     <script>
         window.COWIO_MEDIA_API = window.COWIO_MEDIA_API || '';

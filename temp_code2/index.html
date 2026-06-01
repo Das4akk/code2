@@ -762,6 +762,26 @@
             color: var(--profile-text, #ffffff) !important;
             border-color: var(--profile-border, rgba(255,255,255,0.22)) !important;
         } /* // [UPDATE] */
+        #modal-view-profile.holo-active .modal-content {
+            box-shadow: 0 0 50px rgba(0, 255, 255, 0.2), inset 0 0 20px rgba(0, 255, 255, 0.1);
+        }
+        #view-avatar.holo-scan {
+            position: relative;
+            overflow: hidden;
+        }
+        #view-avatar.holo-scan::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 10px;
+            background: rgba(0, 255, 255, 0.5);
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+            animation: holoScanAnim 2s infinite linear;
+            pointer-events: none;
+        }
+        @keyframes holoScanAnim {
+            0% { transform: translateY(-10px); }
+            100% { transform: translateY(100px); }
+        }
         #modal-edit-profile .modal-content input,
         #modal-edit-profile .modal-content textarea,
         #modal-view-profile .modal-content input,

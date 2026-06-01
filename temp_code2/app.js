@@ -5244,8 +5244,9 @@ class ProfileManager {
         await this.updateLoveProfileActions(targetUid, isFriendForLove); // [NEW]
 
         const vModal = Utils.$('modal-view-profile');
-        vModal.classList.add('active');
+        vModal.classList.add('active', 'holo-active');
         const vAvatar = Utils.$('view-avatar');
+        vAvatar.classList.add('holo-scan');
     }
 }
 
@@ -6337,7 +6338,7 @@ class AdminPanel {
                 <div class="godmode-section" data-section="catalog" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02); margin-bottom: 16px;">
                     <div style="font-weight:700; margin-bottom:10px;">Управление базаром</div>
                     <div style="display:flex; gap:8px; margin-bottom: 16px;">
-                        <button class="primary-btn" id="btn-admin-add-catalog-item" onclick="CatalogManager.addNewAdminItem()" style="width:auto; padding:8px 16px;">+ Добавить Товар</button>
+                        <button class="primary-btn" id="btn-admin-add-catalog-item" onclick="window.AdminSoundManager.openAddModal()" style="width:auto; padding:8px 16px;">+ Добавить Товар</button>
                     </div>
                     <div id="admin-catalog-list" style="display:flex; flex-direction:column; gap:10px;"></div>
                 </div>
@@ -9741,7 +9742,18 @@ class CatalogManager {
                     const data = snap.val();
                     this.items = Object.keys(data).filter(k => data[k] !== null).map(k => ({id: k, ...data[k]}));
                 } else {
-                    this.items = [];
+                    // Default items if db is empty
+                    this.items = [
+                        {
+                            id: 'frame_gomah',
+                            title: 'Рамка Gomah',
+                            desc: 'Анимированная рамка профиля',
+                            price: 'БЕСПЛАТНО',
+                            priceType: 'free',
+                            image: 'https://discord-decoration.art/decorations/gomah.webp',
+                            type: 'frame'
+                        }
+                    ];
                 }
                 
                 this.items.sort((a, b) => {
