@@ -6180,6 +6180,10 @@ window.acceptRoomInvite = async (roomId) => {
 // ============================================================================
 
 class SupportSystem {
+    static activeTicketId = null;
+    static unsubList = null;
+    static unsub = null;
+
     static async renderTickets() {
         const uid = AppState.currentUser?.uid;
         if (!uid) return;
@@ -6187,10 +6191,16 @@ class SupportSystem {
         const isOperator = AdminPanel.isOperatorProfile(AppState.currentUserProfile || {}, uid);
         const hasAccess = isCreator || isOperator;
         const list = Utils.$('support-tickets-list');
-        list.innerHTML = `<div style="text-align:center; padding: 20px; color: var(--text-muted);">Загрузка...</div>`;
 
+        const btnOpenCreate = Utils.$('btn-open-create-ticket-modal');
+        if (btnOpenCreate) btnOpenCreate.onclick = () => {
+            const m = Utils.$('modal-create-ticket');
+            if(m) m.classList.add('active');
+        };
+
+        if (this.unsubList) this.unsubList();
         const dbRef = hasAccess ? ref(db, 'support_tickets') : ref(db, `support_tickets`);
-        get(dbRef).then(snap => {
+        this.unsubList = onValue(dbRef, snap => {
             const val = snap.val() || {};
             let tickets = Object.entries(val).map(([id, t]) => ({ id, ...t }));
             if (!hasAccess) {
@@ -6200,17 +6210,34 @@ class SupportSystem {
                 list.innerHTML = `<div style="text-align:center; padding: 20px; color: var(--text-muted);">Тикетов нет</div>`;
                 return;
             }
-            list.innerHTML = tickets.map(t => `
-                <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px; cursor: pointer;" onclick="SupportSystem.openTicket('${t.id}')">
-                    <div style="font-weight: bold;">${Utils.escapeHtml(t.title || 'Без темы')}</div>
-                    <div style="font-size: 12px; color: var(--text-muted);">Статус: ${t.status === 'open' ? 'Открыт' : 'Закрыт'} | Сообщений: ${Object.keys(t.messages || {}).length}</div>
-                </div>
-            `).join('');
+            tickets.sort((a,b) => b.createdAt - a.createdAt); // newest first
+            list.innerHTML = tickets.map(t => {
+                const titleStr = Utils.escapeHtml(t.title || 'Без темы');
+                const titleEscaped = titleStr.replace(/'/g, "\\'"); // escape to insert to onclick
+                const isOpen = t.status === 'open';
+                return `
+                <div class="dm-chat-item ${this.activeTicketId === t.id ? 'active' : ''}" onclick="SupportSystem.openTicket('${t.id}', '${titleEscaped}', '${t.status}')">
+                    <div class="dm-chat-avatar" style="background:${isOpen ? 'rgba(0, 255, 128, 0.1)' : 'rgba(255, 0, 0, 0.1)'}; color:${isOpen ? '#00ff80' : '#ff4444'}">
+                        <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp" style="width:24px;">
+                    </div>
+                    <div class="dm-chat-info">
+                        <div class="dm-chat-name">${titleStr}</div>
+                        <div class="dm-chat-last-msg">${isOpen ? '🟢 Открыт' : '🔴 Закрыт'}</div>
+                    </div>
+                </div>`;
+            }).join('');
         });
 
         Utils.$('btn-new-ticket').onclick = async () => {
-            const title = prompt('Введите тему проблемы:');
-            if (!title) return;
+            const inputEl = Utils.$('support-new-ticket-title');
+            const title = inputEl ? inputEl.value.trim() : '';
+            if (!title) {
+                if (inputEl) {
+                    inputEl.style.borderColor = 'var(--accent)';
+                    setTimeout(() => inputEl.style.borderColor = '', 1000);
+                }
+                return;
+            }
             const newRef = push(ref(db, 'support_tickets'));
             await set(newRef, {
                 title,
@@ -6218,52 +6245,77 @@ class SupportSystem {
                 status: 'open',
                 createdAt: Date.now()
             });
-            this.renderTickets();
+            if (inputEl) inputEl.value = '';
+            document.getElementById('modal-create-ticket')?.classList.remove('active');
+            SupportSystem.openTicket(newRef.key, title, 'open');
         };
+
+        const inputEl = Utils.$('support-new-ticket-title');
+        if (inputEl) {
+            inputEl.onkeypress = (e) => {
+                if (e.key === 'Enter') Utils.$('btn-new-ticket').click();
+            };
+        }
     }
 
-    static async openTicket(id) {
+    static async openTicket(id, title = '', status = 'open') {
         const uid = AppState.currentUser?.uid;
         this.activeTicketId = id;
-        Utils.$('btn-new-ticket').style.display = 'none';
-        Utils.$('support-tickets-list').style.display = 'none';
+
+        // Render tickets to update active state
+        const items = document.querySelectorAll('#support-tickets-list .dm-chat-item');
+        items.forEach(el => el.classList.remove('active'));
+        const clickedItem = Array.from(items).find(el => el.getAttribute('onclick').includes(id));
+        if (clickedItem) clickedItem.classList.add('active');
+        
+        Utils.$('support-no-ticket').style.display = 'none';
         Utils.$('support-active-ticket').style.display = 'flex';
         
         const isSupportStaff = AdminPanel.isCreatorProfile(AppState.currentUserProfile || {}, uid) || AdminPanel.isOperatorProfile(AppState.currentUserProfile || {}, uid);
-        const closeBtnHtml = isSupportStaff ? `<button class="danger-btn" onclick="SupportSystem.closeTicket('${id}')" style="width:auto; padding: 4px 12px; font-size:12px;">Закрыть тикет</button>` : '';
-        Utils.$('support-ticket-title').innerHTML = `Тикет ${id} <button class="secondary-btn" onclick="SupportSystem.renderList()" style="width:auto; padding: 4px 12px; font-size: 12px; float: right;">Назад</button> ${closeBtnHtml}`;
+        const closeBtn = Utils.$('btn-support-close-ticket');
+        if (isSupportStaff && status === 'open') {
+            closeBtn.style.display = 'block';
+            closeBtn.onclick = () => SupportSystem.closeTicket(id);
+        } else {
+            closeBtn.style.display = 'none';
+        }
+
+        Utils.$('support-ticket-title-text').innerText = title || 'Без темы';
+        Utils.$('support-ticket-status-text').innerHTML = status === 'open' ? '<span style="color:#00ff80">🟢 Открыт</span>' : '<span style="color:#ff4444">🔴 Закрыт</span>';
         
         const chat = Utils.$('support-ticket-chat');
         if (this.unsub) this.unsub();
         this.unsub = onValue(ref(db, `support_tickets/${id}/messages`), (snap) => {
             const val = snap.val() || {};
             chat.innerHTML = Object.values(val).sort((a,b) => a.timestamp - b.timestamp).map(m => `
-                <div style="align-self: ${m.uid === uid ? 'flex-end' : 'flex-start'}; background: ${m.uid === uid ? 'var(--accent)' : 'rgba(255,255,255,0.1)'}; color: ${m.uid === uid ? '#000': '#fff'}; padding: 8px 14px; border-radius: 12px; max-width: 80%;">
-                    <div style="font-size: 10px; opacity: 0.6; margin-bottom: 4px;">${m.uid === uid ? 'Вы' : (m.isAdmin ? 'Поддержка' : m.name)}</div>
+                <div style="align-self: ${m.uid === uid ? 'flex-end' : 'flex-start'}; background: ${m.uid === uid ? 'var(--accent)' : 'rgba(255,255,255,0.06)'}; color: ${m.uid === uid ? '#000': '#fff'}; padding: 10px 16px; border-radius: 16px; border-bottom-${m.uid === uid ? 'right' : 'left'}-radius: 4px; max-width: 80%; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                    <div style="font-size: 11px; opacity: 0.6; margin-bottom: 4px; font-weight: 600;">${m.uid === uid ? 'Вы' : (m.isAdmin ? '🔹 Поддержка' : m.name)}</div>
                     ${m.image ? `<img src="${Utils.escapeHtml(m.image)}" style="max-width: 100%; border-radius: 8px; margin-bottom: 5px;">` : ''}
-                    <div>${Utils.escapeHtml(m.text || '')}</div>
+                    <div style="line-height: 1.4; word-wrap: break-word;">${Utils.escapeHtml(m.text || '')}</div>
                 </div>
             `).join('');
-            chat.scrollTop = chat.scrollHeight;
+            setTimeout(() => { chat.scrollTop = chat.scrollHeight; }, 50);
         });
 
         Utils.$('btn-support-send').onclick = () => this.sendMessage(id);
+        const input = Utils.$('support-msg-input');
+        input.onkeypress = (e) => { if (e.key === 'Enter') this.sendMessage(id); };
+
         Utils.$('btn-support-attach').onclick = () => {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = 'image/*';
-            input.onchange = async (e) => {
+            const inputImg = document.createElement('input');
+            inputImg.type = 'file';
+            inputImg.accept = 'image/*';
+            inputImg.onchange = async (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
                 Utils.toast('Загрузка картинки...', 'info');
-                // Upload via FileReader to string
                 const reader = new FileReader();
                 reader.onload = async (re) => {
                     await this.sendMessage(id, '', re.target.result);
                 };
                 reader.readAsDataURL(file);
             };
-            input.click();
+            inputImg.click();
         };
     }
 
@@ -6285,15 +6337,11 @@ class SupportSystem {
 
     static async closeTicket(id) {
         await update(ref(db, `support_tickets/${id}`), { status: 'closed' });
-        this.renderList();
-    }
-
-    static renderList() {
-        if (this.unsub) { this.unsub(); this.unsub = null; }
-        Utils.$('btn-new-ticket').style.display = 'block';
-        Utils.$('support-tickets-list').style.display = 'flex';
-        Utils.$('support-active-ticket').style.display = 'none';
-        this.renderTickets();
+        // Local active update if the current is closed
+        if (this.activeTicketId === id) {
+             Utils.$('support-ticket-status-text').innerHTML = '<span style="color:#ff4444">🔴 Закрыт</span>';
+             Utils.$('btn-support-close-ticket').style.display = 'none';
+        }
     }
 }
 window.SupportSystem = SupportSystem;
@@ -6386,11 +6434,11 @@ class AdminPanel {
     }
 
     static isModeratorProfile(profile = {}, uid = null) {
-        return profile?.role === 'moderator' && !this.isCreatorProfile(profile, uid);
+        return (profile?.role === 'moderator' || profile?.role === 'operator') && !this.isCreatorProfile(profile, uid);
     }
 
     static isOperatorProfile(profile = {}, uid = null) {
-        return Boolean(profile?.isOperator) && profile?.role === 'moderator' && !this.isCreatorProfile(profile, uid);
+        return profile?.role === 'operator' && !this.isCreatorProfile(profile, uid);
     }
 
     static isAdminProfile(profile = {}, uid = null) {
@@ -7503,14 +7551,11 @@ class AdminPanel {
 
             <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
                 <div style="font-weight:700; margin-bottom:6px;">Роль</div>
-                <select id="admin-owner-target-role" style="padding:8px; border-radius:8px; background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.1); width:100%; margin-bottom: 8px;">
+                <select id="admin-owner-target-role" style="padding:8px; border-radius:8px; background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.1); width:100%;">
                     <option value="user" ${profile.role === 'user' || !profile.role ? 'selected' : ''}>Пользователь</option>
                     <option value="moderator" ${profile.role === 'moderator' ? 'selected' : ''}>Модератор</option>
+                    <option value="operator" ${profile.role === 'operator' ? 'selected' : ''}>Модератор (Оператор Поддержки)</option>
                 </select>
-                <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; opacity: ${profile.role === 'moderator' ? '1' : '0.5'}" id="admin-owner-target-operator-label">
-                    <input type="checkbox" id="admin-owner-target-operator" ${profile.isOperator ? 'checked' : ''} ${profile.role === 'moderator' ? '' : 'disabled'}>
-                    Оператор поддержки (только для модераторов)
-                </label>
             </div>
             
             <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
@@ -7587,22 +7632,6 @@ class AdminPanel {
         }
 
         Utils.$('btn-admin-save-user').onclick = () => this.saveUserProfile();
-        
-        const roleSelect = Utils.$('admin-owner-target-role');
-        const operatorCheck = Utils.$('admin-owner-target-operator');
-        const operatorLabel = Utils.$('admin-owner-target-operator-label');
-        if (roleSelect && operatorCheck && operatorLabel) {
-            roleSelect.onchange = () => {
-                if (roleSelect.value === 'moderator') {
-                    operatorCheck.disabled = false;
-                    operatorLabel.style.opacity = '1';
-                } else {
-                    operatorCheck.disabled = true;
-                    operatorCheck.checked = false;
-                    operatorLabel.style.opacity = '0.5';
-                }
-            };
-        }
         
         const levelInput = Utils.$('admin-edit-level');
         const xpInput = Utils.$('admin-edit-xp');
@@ -7822,12 +7851,9 @@ class AdminPanel {
         let level = ProfileManager.getExpMath(xp).level;
         
         let newRole = undefined;
-        let isOperator = undefined;
         const roleSelect = Utils.$('admin-owner-target-role');
-        const operatorCheck = Utils.$('admin-owner-target-operator');
         if (roleSelect && this.isCurrentUserCreator()) {
              newRole = roleSelect.value;
-             isOperator = operatorCheck ? operatorCheck.checked : false;
         }
 
         if (streak !== (oldProfile.streak || 0) || xp !== (oldProfile.xp || 0)) {
@@ -7876,9 +7902,6 @@ class AdminPanel {
             nextProfile.role = newRole;
         } else if (newRole === 'user') {
             nextProfile.role = null;
-        }
-        if (isOperator !== undefined) {
-            nextProfile.isOperator = isOperator;
         }
         updates[`users/${uid}/profile`] = nextProfile;
 
