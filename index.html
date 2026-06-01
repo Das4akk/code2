@@ -761,8 +761,6 @@
             background: var(--profile-bg, #111111) !important;
             color: var(--profile-text, #ffffff) !important;
             border-color: var(--profile-border, rgba(255,255,255,0.22)) !important;
-            transform-style: preserve-3d;
-            transition: transform 0.1s;
         } /* // [UPDATE] */
         #modal-view-profile.holo-active .modal-content {
             box-shadow: 0 0 50px rgba(0, 255, 255, 0.2), inset 0 0 20px rgba(0, 255, 255, 0.1);
@@ -910,10 +908,10 @@
                 
                 <nav class="nav-menu">
                     <div class="nav-item" id="nav-profile"><span><img src="https://emojigraph.org/media/apple/bust-in-silhouette_1f464.png" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Мой профиль</span></div>
-                    <div class="nav-item" id="nav-shop"><span><img src="https://em-content.zobj.net/source/telegram/386/shopping-bags_1f6cd-fe0f.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Магазин (Bazaar)</span></div>
                     <div class="nav-item active" id="nav-rooms"><span><img src="https://emojigraph.org/media/apple/television_1f4fa.png" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Комнаты</span></div>
-                    <div class="nav-item" id="nav-catalog"><span><img src="https://emojigraph.org/media/apple/shopping-bags_1f6cd-fe0f.png" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Каталог</span></div>
+                    <div class="nav-item" id="nav-catalog"><span><img src="https://em-content.zobj.net/source/telegram/386/shopping-bags_1f6cd-fe0f.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Каталог</span></div>
                     <div class="nav-item" id="nav-find-friend"><span><img src="https://emojigraph.org/media/apple/magnifying-glass-tilted-left_1f50d.png" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Найти друга</span></div>
+
                     <div class="nav-item" id="nav-friends">
                         <span><img src="https://emojigraph.org/media/apple/busts-in-silhouette_1f465.png" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Друзья</span>
                         <div class="nav-badge" id="friend-req-badge">0</div>
@@ -997,7 +995,7 @@
 
             <main class="rooms-main" id="section-catalog" style="display: none;">
                 <div class="friends-container" style="max-width: 800px; width: 100%; margin: 0 auto; padding-top: 20px;">
-                    <div class="section-title" style="font-size: 24px; margin-bottom: 20px;"><img src="https://emojigraph.org/media/apple/shopping-bags_1f6cd-fe0f.png" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Каталог</div>
+                    <div class="section-title" style="font-size: 24px; margin-bottom: 20px;"><img src="https://em-content.zobj.net/source/telegram/386/shopping-bags_1f6cd-fe0f.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Каталог</div>
                     
                     <div id="catalog-filters" style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
                         <button class="secondary-btn active-filter" data-filter="all" style="width:auto; padding:8px 16px; border-radius: 20px;">Все</button>
@@ -1007,25 +1005,7 @@
                 </div>
             </main>
             
-            <main class="rooms-main" id="section-shop" style="display: none;">
-                <div class="friends-container" style="max-width: 800px; width: 100%; margin: 0 auto; padding-top: 20px;">
-                    <div class="section-title" style="font-size: 24px; margin-bottom: 20px;"><img src="https://em-content.zobj.net/source/telegram/386/shopping-bags_1f6cd-fe0f.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> The Bazaar</div>
-                    
-                    <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 16px; margin-bottom: 20px; text-align: center; border: 1px solid rgba(255,255,255,0.1);">
-                        <div style="font-size: 14px; color: var(--text-muted);">Ваш баланс:</div>
-                        <div style="font-size: 24px; font-weight: 800; color: #ffeb3b;"><span id="shop-balance-display">0</span> поинтов</div>
-                    </div>
 
-                    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-                        <button class="secondary-btn shop-tab-btn active-filter" data-tab="sounds" style="width:auto; padding:8px 16px; border-radius: 20px; border-color: rgba(255,255,255,0.4); background: rgba(255,255,255,0.1);">Звуки</button>
-                        <button class="secondary-btn shop-tab-btn" data-tab="frames" style="width:auto; padding:8px 16px; border-radius: 20px;">Рамки для профиля</button>
-                    </div>
-
-                    <div id="shop-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">
-                        <!-- JS WILL RENDER SHOP HERE -->
-                    </div>
-                </div>
-            </main>
         </div>
     </section>
 

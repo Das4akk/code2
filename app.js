@@ -8801,6 +8801,19 @@ class RoomManager {
         document.querySelectorAll('.timecode-btn').forEach(b => {
             if (pPlayer) b.classList.remove('disabled'); else b.classList.add('disabled');
         });
+        
+        const soundpadBtn = Utils.$('tab-soundpad-btn');
+        if (soundpadBtn) {
+            const isHost = AppState.isHost || AdminPanel.isCurrentUserCreator();
+            soundpadBtn.style.display = isHost ? 'flex' : 'none';
+            if (!isHost) {
+                const spList = Utils.$('soundpad-list');
+                if (spList && spList.style.display !== 'none') {
+                    if (typeof setRoomTab === 'function') setRoomTab('chat');
+                    else if (Utils.$('tab-chat-btn')) Utils.$('tab-chat-btn').click();
+                }
+            }
+        }
 
         if (!pVoice && RTCManager.isMicActive) RTCManager.toggleMic(true); 
     }
@@ -9704,18 +9717,7 @@ window.onload = () => {
     const viewProfModal = Utils.$('modal-view-profile');
     if (viewProfModal) {
         const vpContent = viewProfModal.querySelector('.modal-content');
-        viewProfModal.addEventListener('mousemove', (e) => {
-            if (!viewProfModal.classList.contains('active')) return;
-            const rect = vpContent.getBoundingClientRect();
-            const x = e.clientX - rect.left - rect.width / 2;
-            const y = e.clientY - rect.top - rect.height / 2;
-            const rotateY = (x / (rect.width / 2)) * 10;
-            const rotateX = -(y / (rect.height / 2)) * 10;
-            vpContent.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.02)`;
-        });
-        viewProfModal.addEventListener('mouseleave', () => {
-            vpContent.style.transform = 'perspective(1000px) rotateX(0) rotateY(0) scale(1)';
-        });
+        // Removed 3D tilt
     }
 
     document.querySelectorAll('.modal').forEach(modal => {
@@ -9777,7 +9779,8 @@ class CatalogManager {
             price: '100',
             priceType: 'paid',
             image: '',
-            type: 'frame'
+            type: 'frame',
+            isHot: false
         });
     }
 
@@ -9911,10 +9914,16 @@ class CatalogManager {
             <div class="catalog-card-item ${isHot ? 'is-hot' : ''} ${isOwned ? 'is-owned' : ''}" style="animation-delay: ${i * 0.05}s;" onclick="if(typeof openCatalogItemModal === 'function') openCatalogItemModal('${item.id}')">
                 ${isHot ? `<img src="https://em-content.zobj.net/source/telegram/386/fire_1f525.webp" style="position:absolute; top:-5%; left:-5%; width:110%; height:110%; object-fit:contain; z-index:0; pointer-events:none; animation: firePulseAnim 3s infinite ease-in-out; filter:drop-shadow(0 10px 20px rgba(255,100,0,0.5));">` : ''}
                 
-                <div style="width: 100px; height: 100px; display:flex; align-items:center; justify-content:center; flex-shrink: 0; position:relative; z-index:2; margin: 0 auto 16px;">
-                    <div style="width:100px; height:100px; border-radius:50%; background:#1f1f23; position:absolute; top:0; left:0; z-index:1; box-shadow: inset 0 0 10px rgba(0,0,0,0.6);"></div>
-                    <img src="${item.image}" style="width:140px;height:140px;object-fit:contain; position:absolute; top:-20px; left:-20px; z-index:2; pointer-events:none;"/>
-                </div>
+                ${item.type === 'sound' ? `
+                    <div style="width: 100%; display:flex; align-items:center; justify-content:center; flex-shrink: 0; position:relative; z-index:2; margin: 0 auto 16px;">
+                        <audio controls src="${item.image}" style="width:100%; height: 35px; border-radius: 8px; outline:none;" onclick="event.stopPropagation();"></audio>
+                    </div>
+                ` : `
+                    <div style="width: 100px; height: 100px; display:flex; align-items:center; justify-content:center; flex-shrink: 0; position:relative; z-index:2; margin: 0 auto 16px;">
+                        <div style="width:100px; height:100px; border-radius:50%; background:#1f1f23; position:absolute; top:0; left:0; z-index:1; box-shadow: inset 0 0 10px rgba(0,0,0,0.6);"></div>
+                        <img src="${item.image}" style="width:140px;height:140px;object-fit:contain; position:absolute; top:-20px; left:-20px; z-index:2; pointer-events:none;"/>
+                    </div>
+                `}
                 
                 <div style="flex: 1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; z-index:2; width: 100%;">
                     <div style="color: #ffffff; font-weight: 800; font-size: 18px; line-height: 1.2; margin-bottom: 6px; text-shadow: 0 1px 4px rgba(0,0,0,0.8);">${item.title}</div>
@@ -9941,9 +9950,10 @@ class CatalogManager {
                         <option value="paid" ${item.priceType==='paid'?'selected':''}>Paid</option>
                     </select>
                 </div>
-                <input type="text" id="admin-cat-img-${item.id}" value="${item.image}" class="admin-form-input" placeholder="URL Картинки/Рамки" style="margin-bottom: 4px;"/>
+                <input type="text" id="admin-cat-img-${item.id}" value="${item.image}" class="admin-form-input" placeholder="URL Картинки/Рамки/Звука" style="margin-bottom: 4px;"/>
                 <select id="admin-cat-type-${item.id}" class="admin-form-input" style="margin-bottom: 4px;">
                     <option value="frame" ${item.type==='frame'?'selected':''}>Рамка</option>
+                    <option value="sound" ${item.type==='sound'?'selected':''}>Звук</option>
                 </select>
                 <div style="display:flex; align-items:center; gap: 8px; margin-bottom: 8px;">
                     <input type="checkbox" id="admin-cat-ishot-${item.id}" ${(item.isHot === true || item.isHot === 'true') ? 'checked' : ''} style="margin:0; width:16px; height:16px;">
@@ -10030,7 +10040,8 @@ window.openCatalogItemModal = function(itemId) {
                    
                    currentProf.inventory = inv;
                    AppState.usersCache.set(uid, currentProf);
-               } else {
+if (window.SoundpadController) window.SoundpadController.renderGrid();
+} else {
                    Utils.toast('Недостаточно средств', 'error');
            // Replaced with:
            let cost = parseInt(item.price, 10) || 0;
@@ -10045,6 +10056,7 @@ window.openCatalogItemModal = function(itemId) {
                buyBtn.style.background = 'rgba(255,255,255,0.1)';
                buyBtn.style.color = '#fff';
                currentProf.inventory = inv; AppState.usersCache.set(uid, currentProf);
+               if (window.SoundpadController) window.SoundpadController.renderGrid();
            } else { Utils.toast('Недостаточно уровней (нужно: ' + cost + ')', 'error'); }
                }
            }
@@ -10072,8 +10084,16 @@ window.ProfileManager = ProfileManager;
 window.FriendsManager = FriendsManager;
 
 window.addEventListener('popstate', (e) => {
+    if (window.AppState && AppState.currentRoomId) {
+        RoomManager.leaveRoom();
+    }
     if (e.state && e.state.screenId) {
-        Utils.showScreen(e.state.screenId, false);
+        if (e.state.screenId === 'room-screen') {
+            Utils.showScreen('lobby-screen', false);
+            window.history.replaceState({ screenId: 'lobby-screen' }, "", "/lobby");
+        } else {
+            Utils.showScreen(e.state.screenId, false);
+        }
     }
 });
 
@@ -10473,160 +10493,10 @@ window.addEventListener('pagehide', () => {
 
 // ============================================================================
 // MARKETPLACE & SOUNDPAD
-// ============================================================================
-
-window.ShopController = class ShopController {
-    static async loadShop() {
-        const uid = AppState.currentUser?.uid;
-        if (!uid) return;
-        
-        // Listen to balance
-        onValue(ref(db, `users/${uid}/balance`), (snap) => {
-            const balance = snap.val() || 0;
-            const el = Utils.$('shop-balance-display');
-            if(el) el.innerText = balance;
-        });
-
-        // Tabs
-        const btnSounds = document.querySelector('button[data-tab="sounds"]');
-        const btnFrames = document.querySelector('button[data-tab="frames"]');
-        let currentTab = 'sounds';
-        const render = () => this.renderItems(currentTab);
-        
-        if (btnSounds) btnSounds.onclick = () => {
-            btnSounds.classList.add('active-filter'); btnFrames?.classList.remove('active-filter');
-            currentTab = 'sounds'; render();
-        };
-        if (btnFrames) btnFrames.onclick = () => {
-            btnFrames.classList.add('active-filter'); btnSounds?.classList.remove('active-filter');
-            currentTab = 'frames'; render();
-        };
-
-        // Fetch Catalog & Inven
-        onValue(ref(db, 'catalog'), async (snap) => {
-            AppState.catalog = snap.val() || { sounds: {}, frames: {} };
-            const invSnap = await get(ref(db, `users/${uid}/inventory`));
-            AppState.inventory = invSnap.val() || { sounds: [], frames: [] };
-            render();
-        });
-    }
-
-    static renderItems(tab) {
-        const list = Utils.$('shop-list');
-        if (!list) return;
-        const items = AppState.catalog[tab] || {};
-        const inventory = AppState.inventory?.[tab] || [];
-        
-        // If empty, add mock
-        if(Object.keys(items).length === 0) {
-            list.innerHTML = `<div style="color:var(--text-muted);">Пусто. Скоро тут будут крутые ${tab}!</div>`;
-            return;
-        }
-
-        list.innerHTML = Object.keys(items).map(key => {
-            const item = items[key];
-            const isOwned = inventory.includes(key);
-            const rareClass = `rare-sound-${item.rareness || 'common'}`;
-            return `
-                <div class="glass-panel ${rareClass}" style="display:flex; flex-direction:column; gap:8px; padding:16px; cursor:pointer;" onclick="ShopController.openItemModal('${key}', '${tab}')">
-                    <strong style="color:var(--text-main);">${item.name}</strong>
-                    <div style="font-size:12px; color:var(--text-muted);">${item.category || 'Без категории'}</div>
-                    ${item.url ? (tab==='sounds' ? `<audio controls src="${item.url}" style="width:100%; height:30px; margin-top:5px;"></audio>` : `<div style="font-size:10px; word-break:break-all;">URL: ${item.url}</div>`) : ''}
-                    <div style="flex:1;"></div>
-                    <button class="primary-btn" ${isOwned ? 'disabled' : ''} style="opacity:${isOwned? '0.5' : '1'};">
-                        ${isOwned ? 'В инвентаре' : `💰 ${item.cost}`}
-                    </button>
-                </div>
-            `;
-        }).join('');
-    }
-
-    static openItemModal(itemId, tab) {
-        const item = AppState.catalog[tab][itemId];
-        if(!item) return;
-        
-        Utils.$('catalog-item-title').innerText = item.name;
-        Utils.$('catalog-item-price').innerText = `💰 ${item.cost}`;
-        Utils.$('catalog-item-desc').innerText = item.category || 'Великолепный предмет.';
-        
-        const avatarContainer = Utils.$('catalog-item-avatar-preview-container');
-        const img = Utils.$('catalog-item-image');
-        
-        if (tab === 'frames') {
-            avatarContainer.style.display = 'block';
-            img.style.display = 'none';
-            // Render mock avatar
-            const p = AppState.currentUser ? { name: AppState.currentUser.displayName, avatar: AppState.currentUser.photoURL, frame: item.url } : { name: 'Player', frame: item.url };
-            avatarContainer.innerHTML = ProfileManager.getAvatarHtml(p);
-        } else {
-            avatarContainer.style.display = 'none';
-            img.style.display = 'block';
-            img.src = "https://emojigraph.org/media/apple/musical-note_1f3b5.png";
-        }
-        
-        const buyBtn = Utils.$('btn-buy-catalog-item');
-        const inventory = AppState.inventory?.[tab] || [];
-        if (inventory.includes(itemId)) {
-            buyBtn.innerText = 'В инвентаре';
-            buyBtn.disabled = true;
-            buyBtn.onclick = null;
-        } else {
-            buyBtn.innerText = 'Купить (' + item.cost + ')';
-            buyBtn.disabled = false;
-            buyBtn.onclick = () => {
-                Utils.$('modal-catalog-item').classList.remove('active');
-                this.purchase(itemId, tab, item.cost);
-            };
-        }
-        
-        Utils.$('btn-close-catalog-modal').onclick = () => Utils.$('modal-catalog-item').classList.remove('active');
-        Utils.$('modal-catalog-item').classList.add('active');
-    }
-
-    static async purchase(itemId, tab, cost) {
-        const uid = AppState.currentUser?.uid;
-        if (!uid) return;
-        try {
-            const balRef = ref(db, `users/${uid}/balance`);
-            const invRef = ref(db, `users/${uid}/inventory/${tab}`);
-            const balSnap = await get(balRef);
-            let bal = balSnap.val() || 0;
-            if (bal < cost) {
-                Utils.toast('Недостаточно поинтов!', 'error');
-                return; // Optionally, add points for demo purposes
-            }
-            await set(balRef, bal - cost);
-            
-            const invSnap = await get(invRef);
-            let invList = invSnap.val() || [];
-            if (!invList.includes(itemId)) {
-                invList.push(itemId);
-                await set(invRef, invList);
-            }
-            if (tab === 'frames') {
-                await set(ref(db, `users/${uid}/equippedFrame`), itemId);
-            }
-            Utils.toast('Покупка успешна!', 'success');
-            const newInvSnap = await get(ref(db, `users/${uid}/inventory`));
-            AppState.inventory = newInvSnap.val() || { sounds: [], frames: [] };
-            this.renderItems(tab);
-            
-            // Reload avatar if we bought a frame
-            if (tab === 'frames') {
-                if (AppState.usersCache) AppState.usersCache.delete(uid);
-                ProfileManager.renderMyCard(AppState.currentUser);
-            }
-        } catch(e) {
-            Utils.toast('Ошибка транзакции', 'error');
-        }
-    }
-};
-
+// ============================
 window.SoundpadController = class SoundpadController {
     static loadPad() {
         if(!AppState.currentRoomId) return;
-        
-        // Listen to sound triggers in room
         const triggerRef = ref(db, `rooms/${AppState.currentRoomId}/soundTrigger`);
         onValue(triggerRef, (snap) => {
             const data = snap.val();
@@ -10635,10 +10505,8 @@ window.SoundpadController = class SoundpadController {
                 this.playAudio(data.url);
             }
         });
-
         this.renderGrid();
     }
-
     static playAudio(url) {
         if(!url) return;
         const volSlider = Utils.$('soundpad-vol-slider');
@@ -10647,111 +10515,38 @@ window.SoundpadController = class SoundpadController {
         a.volume = vol;
         a.play().catch(()=>{});
     }
-
     static async renderGrid() {
         const grid = Utils.$('soundpad-grid');
         if(!grid) return;
-        
         const uid = AppState.currentUser?.uid;
-        const invSnap = await get(ref(db, `users/${uid}/inventory/sounds`));
-        const ownedIds = invSnap.val() || [];
-        
+        if (!uid) return;
+        const currentProf = AppState.usersCache.get(uid);
+        const ownedIds = currentProf?.inventory || [];
         const sounds = [
             { id: 'cow', name: 'Moo', url: window.EasterEggManager?.SOUND_URLS?.moo || 'https://actions.google.com/sounds/v1/animals/cow_moo_1.ogg', hotkey: '1' },
             { id: 'glass', name: 'Glass', url: window.EasterEggManager?.SOUND_URLS?.glass || 'https://actions.google.com/sounds/v1/impacts/glass_shatters_into_debris.ogg', hotkey: '2' },
         ];
-        
-        if (AppState.catalog && AppState.catalog.sounds) {
+        if (window.CatalogManager && CatalogManager.items) {
             ownedIds.forEach(id => {
-                const snd = AppState.catalog.sounds[id];
-                if(snd) sounds.push({ id, ...snd, hotkey: '' });
+                const snd = CatalogManager.items.find(i => i.id === id && i.type === 'sound');
+                if (snd) sounds.push({ id: snd.id, name: snd.title, url: snd.image, hotkey: '' });
             });
         }
-        
-        grid.innerHTML = sounds.map(s => {
-            return `
-                <div class="sound-btn" onclick="SoundpadController.triggerSound('${s.url}')">
-                    <div class="sound-icon">🎵</div>
-                    <div class="sound-name">${s.name}</div>
-                    ${s.hotkey ? `<div class="sound-hotkey">${s.hotkey}</div>` : ''}
-                </div>
-            `;
-        }).join('');
+        grid.innerHTML = sounds.map(s => `
+            <div class="sound-btn" onclick="SoundpadController.triggerSound('${s.url}')">
+                <div class="sound-icon">🎵</div>
+                <div class="sound-name">${s.name}</div>
+                ${s.hotkey ? `<div class="sound-hotkey">${s.hotkey}</div>` : ''}
+            </div>
+        `).join('');
     }
-
     static triggerSound(url) {
         if(!AppState.currentRoomId) return;
-        if(this.lastTrigger && Date.now() - this.lastTrigger < 3000) {
-            return Utils.toast('Не спамьте!', 'error');
-        }
+        if(this.lastTrigger && Date.now() - this.lastTrigger < 3000) return Utils.toast('Не спамьте!', 'error');
         this.lastTrigger = Date.now();
         this.playAudio(url);
-        set(ref(db, `rooms/${AppState.currentRoomId}/soundTrigger`), {
-            url,
-            timestamp: Date.now(),
-            triggeredBy: AppState.currentUser?.uid
-        });
+        set(ref(db, `rooms/${AppState.currentRoomId}/soundTrigger`), { url, timestamp: Date.now(), triggeredBy: AppState.currentUser?.uid });
     }
 };
-
-window.AdminSoundManager = class AdminSoundManager {
-    static initAdmin() {
-        onValue(ref(db, 'catalog'), (snap) => {
-            const data = snap.val() || { sounds:{}, frames:{} };
-            this.renderAdminCatalog(data.sounds || {}, data.frames || {});
-        });
-    }
-    
-    static renderAdminCatalog(sounds, frames) {
-        const list = Utils.$('admin-catalog-list');
-        if(!list) return;
-        
-        let html = '<div style="font-size:12px; font-weight:bold; margin-top:10px;">Звуки</div>';
-        Object.keys(sounds).forEach(k => {
-            const s = sounds[k];
-            html += `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); padding:8px; border-radius:8px;">
-                        <div>${s.name} <span style="font-size:10px; color:#aaa;">(${s.cost} pts)</span></div>
-                        <button class="danger-btn" onclick="AdminSoundManager.deleteItem('sounds', '${k}')" style="width:auto; padding:4px 8px;">✕</button>
-                    </div>`;
-        });
-        
-        html += '<div style="font-size:12px; font-weight:bold; margin-top:10px;">Рамки</div>';
-        Object.keys(frames).forEach(k => {
-            const f = frames[k];
-            html += `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); padding:8px; border-radius:8px;">
-                        <div>${f.name} <span style="font-size:10px; color:#aaa;">(${f.cost} pts)</span></div>
-                        <button class="danger-btn" onclick="AdminSoundManager.deleteItem('frames', '${k}')" style="width:auto; padding:4px 8px;">✕</button>
-                    </div>`;
-        });
-        
-        list.innerHTML = html;
-    }
-    
-    static async deleteItem(type, id) {
-        if(confirm('Удалить?')) {
-            await set(ref(db, `catalog/${type}/${id}`), null);
-            Utils.toast('Удалено', 'success');
-        }
-    }
-
-    static openAddModal() {
-        const title = prompt("Название (Звук/Рамка):");
-        if(!title) return;
-        const type = prompt("Тип (sounds или frames):", "sounds");
-        if(type !== 'sounds' && type !== 'frames') return;
-        const cost = parseInt(prompt("Стоимость (поинты):", "100") || "100");
-        const rare = prompt("Редкость (common/epic/legendary):", "common");
-        const url = prompt("Сырая URL ссылка на медиа/стиль (base64 или storage):");
-        
-        if(title && url) {
-            push(ref(db, `catalog/${type}`), {
-                name: title,
-                cost: cost,
-                rareness: rare,
-                url: url
-            });
-            Utils.toast('Успешно добавлено!', 'success');
-        }
-    }
-};
-
+window.AdminSoundManager = class { static initAdmin() {} };
+window.ShopController = class { static loadShop() {} };
