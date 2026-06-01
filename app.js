@@ -6183,16 +6183,17 @@ class SupportSystem {
     static async renderTickets() {
         const uid = AppState.currentUser?.uid;
         if (!uid) return;
-        const isAdmin = AdminPanel.isAdminProfile(AppState.currentUserProfile || {}, uid);
-        const list = Utils.$('support-tickets-list');
+        const isCreator = AdminPanel.isCreatorProfile(AppState.currentUserProfile || {}, uid);
         const isOperator = AdminPanel.isOperatorProfile(AppState.currentUserProfile || {}, uid);
+        const hasAccess = isCreator || isOperator;
+        const list = Utils.$('support-tickets-list');
         list.innerHTML = `<div style="text-align:center; padding: 20px; color: var(--text-muted);">Загрузка...</div>`;
 
-        const dbRef = (isAdmin || isOperator) ? window.firebaseRef(db, 'support_tickets') : window.firebaseRef(db, `support_tickets`);
-        window.firebaseGet(dbRef).then(snap => {
+        const dbRef = hasAccess ? ref(db, 'support_tickets') : ref(db, `support_tickets`);
+        get(dbRef).then(snap => {
             const val = snap.val() || {};
             let tickets = Object.entries(val).map(([id, t]) => ({ id, ...t }));
-            if (!isAdmin && !isOperator) {
+            if (!hasAccess) {
                 tickets = tickets.filter(t => t.creatorUid === uid);
             }
             if (tickets.length === 0) {
@@ -6210,8 +6211,8 @@ class SupportSystem {
         Utils.$('btn-new-ticket').onclick = async () => {
             const title = prompt('Введите тему проблемы:');
             if (!title) return;
-            const newRef = window.firebasePush(window.firebaseRef(db, 'support_tickets'));
-            await window.firebaseSet(newRef, {
+            const newRef = push(ref(db, 'support_tickets'));
+            await set(newRef, {
                 title,
                 creatorUid: uid,
                 status: 'open',
@@ -6228,12 +6229,13 @@ class SupportSystem {
         Utils.$('support-tickets-list').style.display = 'none';
         Utils.$('support-active-ticket').style.display = 'flex';
         
-        const closeBtnHtml = (AdminPanel.isAdminProfile(AppState.currentUserProfile || {}, uid) || AdminPanel.isOperatorProfile(AppState.currentUserProfile || {}, uid)) ? `<button class="danger-btn" onclick="SupportSystem.closeTicket('${id}')" style="width:auto; padding: 4px 12px; font-size:12px;">Закрыть тикет</button>` : '';
+        const isSupportStaff = AdminPanel.isCreatorProfile(AppState.currentUserProfile || {}, uid) || AdminPanel.isOperatorProfile(AppState.currentUserProfile || {}, uid);
+        const closeBtnHtml = isSupportStaff ? `<button class="danger-btn" onclick="SupportSystem.closeTicket('${id}')" style="width:auto; padding: 4px 12px; font-size:12px;">Закрыть тикет</button>` : '';
         Utils.$('support-ticket-title').innerHTML = `Тикет ${id} <button class="secondary-btn" onclick="SupportSystem.renderList()" style="width:auto; padding: 4px 12px; font-size: 12px; float: right;">Назад</button> ${closeBtnHtml}`;
         
         const chat = Utils.$('support-ticket-chat');
         if (this.unsub) this.unsub();
-        this.unsub = window.firebaseOnValue(window.firebaseRef(db, `support_tickets/${id}/messages`), (snap) => {
+        this.unsub = onValue(ref(db, `support_tickets/${id}/messages`), (snap) => {
             const val = snap.val() || {};
             chat.innerHTML = Object.values(val).sort((a,b) => a.timestamp - b.timestamp).map(m => `
                 <div style="align-self: ${m.uid === uid ? 'flex-end' : 'flex-start'}; background: ${m.uid === uid ? 'var(--accent)' : 'rgba(255,255,255,0.1)'}; color: ${m.uid === uid ? '#000': '#fff'}; padding: 8px 14px; border-radius: 12px; max-width: 80%;">
@@ -6270,8 +6272,7 @@ class SupportSystem {
         if (!msg && !imageBase64) return;
         const uid = AppState.currentUser?.uid;
         const profile = AppState.currentUserProfile;
-        const isAdmin = AdminPanel.isAdminProfile(AppState.currentUserProfile || {}, uid);
-        await window.firebasePush(window.firebaseRef(db, `support_tickets/${ticketId}/messages`), {
+        await push(ref(db, `support_tickets/${ticketId}/messages`), {
             text: msg,
             image: imageBase64 || null,
             uid,
@@ -6283,7 +6284,7 @@ class SupportSystem {
     }
 
     static async closeTicket(id) {
-        await window.firebaseUpdate(window.firebaseRef(db, `support_tickets/${id}`), { status: 'closed' });
+        await update(ref(db, `support_tickets/${id}`), { status: 'closed' });
         this.renderList();
     }
 
@@ -6389,7 +6390,7 @@ class AdminPanel {
     }
 
     static isOperatorProfile(profile = {}, uid = null) {
-        return profile?.role === 'operator' && !this.isCreatorProfile(profile, uid);
+        return Boolean(profile?.isOperator) && profile?.role === 'moderator' && !this.isCreatorProfile(profile, uid);
     }
 
     static isAdminProfile(profile = {}, uid = null) {
@@ -7186,9 +7187,10 @@ class AdminPanel {
         const footer = Utils.$('btn-logout')?.parentNode;
         
         let hasAdminAccess = this.isAdminProfile(profile, AppState.currentUser?.uid || null);
+        let hasSupportAccess = this.isCreatorProfile(profile, AppState.currentUser?.uid || null) || this.isOperatorProfile(profile, AppState.currentUser?.uid || null);
         
-        if (Utils.$('nav-support-staff')) Utils.$('nav-support-staff').style.display = hasAdminAccess ? 'flex' : 'none';
-        if (Utils.$('nav-support')) Utils.$('nav-support').style.display = hasAdminAccess ? 'none' : 'flex';
+        if (Utils.$('nav-support-staff')) Utils.$('nav-support-staff').style.display = hasSupportAccess ? 'flex' : 'none';
+        if (Utils.$('nav-support')) Utils.$('nav-support').style.display = hasSupportAccess ? 'none' : 'flex';
 
         if (!footer) return;
 
@@ -7501,11 +7503,14 @@ class AdminPanel {
 
             <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
                 <div style="font-weight:700; margin-bottom:6px;">Роль</div>
-                <select id="admin-owner-target-role" style="padding:8px; border-radius:8px; background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.1); width:100%;">
+                <select id="admin-owner-target-role" style="padding:8px; border-radius:8px; background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.1); width:100%; margin-bottom: 8px;">
                     <option value="user" ${profile.role === 'user' || !profile.role ? 'selected' : ''}>Пользователь</option>
                     <option value="moderator" ${profile.role === 'moderator' ? 'selected' : ''}>Модератор</option>
-                    <option value="operator" ${profile.role === 'operator' ? 'selected' : ''}>Оператор Поддержки</option>
                 </select>
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; opacity: ${profile.role === 'moderator' ? '1' : '0.5'}" id="admin-owner-target-operator-label">
+                    <input type="checkbox" id="admin-owner-target-operator" ${profile.isOperator ? 'checked' : ''} ${profile.role === 'moderator' ? '' : 'disabled'}>
+                    Оператор поддержки (только для модераторов)
+                </label>
             </div>
             
             <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
@@ -7582,6 +7587,22 @@ class AdminPanel {
         }
 
         Utils.$('btn-admin-save-user').onclick = () => this.saveUserProfile();
+        
+        const roleSelect = Utils.$('admin-owner-target-role');
+        const operatorCheck = Utils.$('admin-owner-target-operator');
+        const operatorLabel = Utils.$('admin-owner-target-operator-label');
+        if (roleSelect && operatorCheck && operatorLabel) {
+            roleSelect.onchange = () => {
+                if (roleSelect.value === 'moderator') {
+                    operatorCheck.disabled = false;
+                    operatorLabel.style.opacity = '1';
+                } else {
+                    operatorCheck.disabled = true;
+                    operatorCheck.checked = false;
+                    operatorLabel.style.opacity = '0.5';
+                }
+            };
+        }
         
         const levelInput = Utils.$('admin-edit-level');
         const xpInput = Utils.$('admin-edit-xp');
@@ -7801,9 +7822,12 @@ class AdminPanel {
         let level = ProfileManager.getExpMath(xp).level;
         
         let newRole = undefined;
+        let isOperator = undefined;
         const roleSelect = Utils.$('admin-owner-target-role');
+        const operatorCheck = Utils.$('admin-owner-target-operator');
         if (roleSelect && this.isCurrentUserCreator()) {
              newRole = roleSelect.value;
+             isOperator = operatorCheck ? operatorCheck.checked : false;
         }
 
         if (streak !== (oldProfile.streak || 0) || xp !== (oldProfile.xp || 0)) {
@@ -7852,6 +7876,9 @@ class AdminPanel {
             nextProfile.role = newRole;
         } else if (newRole === 'user') {
             nextProfile.role = null;
+        }
+        if (isOperator !== undefined) {
+            nextProfile.isOperator = isOperator;
         }
         updates[`users/${uid}/profile`] = nextProfile;
 
