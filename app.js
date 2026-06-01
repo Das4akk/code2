@@ -9894,87 +9894,140 @@ class CatalogManager {
         if (this.activeFilter === 'paid') filtered = filtered.filter(i => i.priceType === 'paid' || (i.price !== 'БЕСПЛАТНО' && i.price !== '0'));
 
         list.innerHTML = `
-            
             <style>
                 @keyframes catalogFadeIn {
                     from { opacity: 0; transform: translateY(15px); }
                     to { opacity: 1; transform: translateY(0); }
                 }
-                @keyframes firePulseAnim {
-                    0% { transform: scale(1) rotate(0deg); opacity: 0.8; }
-                    50% { transform: scale(1.05) rotate(1deg); opacity: 1; }
-                    100% { transform: scale(1) rotate(0deg); opacity: 0.8; }
-                }
-                .catalog-card-item {
-                    width: 100%;
-                    height: auto;
-                    min-height: 250px;
-                    border-radius: 24px; 
-                    background: rgba(255,255,255,0.03);
-                    border: 1px solid rgba(255,255,255,0.05);
-                    display: flex; 
-                    flex-direction: column;
-                    align-items: center; 
-                    text-align: center;
+                .catalog-card-wrapper {
                     position: relative;
-                    overflow: visible;
-                    padding: 24px 16px;
-                    box-sizing: border-box;
-                    cursor: pointer;
-                    transition: all 0.3s ease;
+                    border-radius: 14px;
+                    padding: 2px;
+                    background: transparent;
+                    transition: transform 0.2s ease, box-shadow 0.2s ease;
                     opacity: 0;
                     animation: catalogFadeIn 0.4s ease forwards;
-                    z-index: 1;
+                    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
                 }
-                .catalog-card-item:hover {
-                    background: rgba(255,255,255,0.06);
-                    transform: translateY(-8px) scale(1.02);
-                    box-shadow: 0 15px 30px rgba(0,0,0,0.4);
-                    border-color: rgba(255,255,255,0.15);
+                .catalog-card-wrapper:hover {
+                    transform: translateY(-4px);
+                    box-shadow: 0 12px 24px rgba(0,0,0,0.3);
                 }
-                .catalog-card-item.is-hot {
-                    background: transparent;
-                    border: none;
-                    box-shadow: none;
+                .catalog-card-wrapper.is-hot {
+                    background: linear-gradient(135deg, #ff4757, #ffa502, #ff4757);
+                    background-size: 200% 200%;
+                    animation: catalogFadeIn 0.4s ease forwards, fireBgPan 3s linear infinite;
                 }
-                .catalog-card-item.is-hot:hover {
-                    background: transparent;
-                    border: none;
-                    box-shadow: none;
-                    transform: translateY(-8px) scale(1.05);
+                @keyframes fireBgPan {
+                    0% { background-position: 0% 50%; }
+                    50% { background-position: 100% 50%; }
+                    100% { background-position: 0% 50%; }
                 }
-                .catalog-card-item.is-owned {
-                    border-color: rgba(76, 209, 55, 0.3);
+                .catalog-card-inner {
+                    background: #111214;
+                    border-radius: 12px;
+                    width: 100%;
+                    height: 100%;
+                    min-height: 250px;
+                    display: flex;
+                    flex-direction: column;
+                    cursor: pointer;
+                    overflow: hidden;
+                    position: relative;
+                    transition: background 0.2s;
+                }
+                .catalog-card-wrapper:hover .catalog-card-inner {
+                    background: #1e1f22;
+                }
+                .catalog-card-banner {
+                    width: 100%;
+                    height: 140px;
+                    background: #2b2d31;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    position: relative;
+                }
+                .catalog-card-info {
+                    padding: 16px;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: flex-start;
+                    text-align: left;
+                    flex: 1;
+                }
+                .catalog-card-title {
+                    color: #fff;
+                    font-size: 16px;
+                    font-weight: 800;
+                    margin-bottom: 4px;
+                }
+                .catalog-card-type {
+                    color: #b5bac1;
+                    font-size: 12px;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    margin-bottom: 12px;
+                }
+                .catalog-card-bottom {
+                    width: 100%;
+                    display: flex;
+                    align-items: flex-end;
+                    justify-content: space-between;
+                    margin-top: auto;
+                }
+                .catalog-card-price {
+                    color: #f2f3f5;
+                    font-weight: 700;
+                    font-size: 14px;
+                }
+                .catalog-card-status {
+                    background: rgba(76, 209, 55, 0.15);
+                    color: #4cd137;
+                    padding: 4px 8px;
+                    border-radius: 4px;
+                    font-size: 10px;
+                    font-weight: 800;
+                }
+                .catalog-card-wrapper.is-owned .catalog-card-inner {
+                    border: 1px solid rgba(76, 209, 55, 0.3);
                 }
             </style>
-
         ` + filtered.map((item, i) => {
             const currentProf = (window.AppState && AppState.currentUser) ? AppState.usersCache.get(AppState.currentUser.uid) : null;
             const inv = currentProf?.inventory || [];
             const isOwned = inv.includes(item.id);
             const isHot = item.isHot === true || item.isHot === 'true';
             return `
-            <div class="catalog-card-item ${isHot ? 'is-hot' : ''} ${isOwned ? 'is-owned' : ''}" style="animation-delay: ${i * 0.05}s;" onclick="if(typeof openCatalogItemModal === 'function') openCatalogItemModal('${item.id}')">
-                ${item.type === 'sound' ? `
-                    <div style="width: 100%; display:flex; align-items:center; justify-content:center; flex-shrink: 0; position:relative; z-index:2; margin: 0 auto 16px;">
-                        ${isHot ? `<img src="https://em-content.zobj.net/source/telegram/386/fire_1f525.webp" style="position:absolute; top:-25px; left:5px; height:60px; object-fit:contain; z-index:-1; pointer-events:none; animation: firePulseAnim 3s infinite ease-in-out; filter:drop-shadow(0 5px 10px rgba(255,100,0,0.5));">` : ''}
-                        <audio controls src="${item.image}" style="width:100%; height: 35px; border-radius: 8px; outline:none;" onclick="event.stopPropagation();"></audio>
+            <div class="catalog-card-wrapper ${isHot ? 'is-hot' : ''} ${isOwned ? 'is-owned' : ''}" style="animation-delay: ${i * 0.05}s;">
+                <div class="catalog-card-inner" onclick="if(typeof openCatalogItemModal === 'function') openCatalogItemModal('${item.id}')">
+                    <div class="catalog-card-banner">
+                        ${isHot ? \`<img src="https://em-content.zobj.net/source/telegram/386/fire_1f525.webp" style="position:absolute; top:8px; left:8px; width:28px; height:28px; object-fit:contain; z-index:5; pointer-events:none; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5));">\` : ''}
+                        
+                        ${item.type === 'sound' ? \`
+                            <div style="width: 100%; display:flex; align-items:center; justify-content:center; position:relative; z-index:2; padding: 0 16px;">
+                                <audio controls src="${item.image}" style="width:100%; height: 35px; border-radius: 8px; outline:none;" onclick="event.stopPropagation();"></audio>
+                            </div>
+                        \` : \`
+                            <div style="width: 90px; height: 90px; display:flex; align-items:center; justify-content:center; position:relative; z-index:2;">
+                                <div style="width:90px; height:90px; border-radius:50%; background:#111214; position:absolute; top:0; left:0; z-index:1; box-shadow: inset 0 0 10px rgba(0,0,0,0.8);"></div>
+                                <img src="${item.image}" style="width:125px;height:125px;object-fit:contain; position:absolute; top:-17.5px; left:-17.5px; z-index:2; pointer-events:none;"/>
+                            </div>
+                        \`}
                     </div>
-                ` : `
-                    ${isHot ? `<img src="https://em-content.zobj.net/source/telegram/386/fire_1f525.webp" style="position:absolute; top:-5%; left:-5%; width:110%; height:110%; object-fit:contain; z-index:0; pointer-events:none; animation: firePulseAnim 3s infinite ease-in-out; filter:drop-shadow(0 10px 20px rgba(255,100,0,0.5));">` : ''}
-                    <div style="width: 100px; height: 100px; display:flex; align-items:center; justify-content:center; flex-shrink: 0; position:relative; z-index:2; margin: 0 auto 16px;">
-                        <div style="width:100px; height:100px; border-radius:50%; background:#1f1f23; position:absolute; top:0; left:0; z-index:1; box-shadow: inset 0 0 10px rgba(0,0,0,0.6);"></div>
-                        <img src="${item.image}" style="width:140px;height:140px;object-fit:contain; position:absolute; top:-20px; left:-20px; z-index:2; pointer-events:none;"/>
+                    
+                    <div class="catalog-card-info">
+                        <div class="catalog-card-title">${item.title}</div>
+                        <div class="catalog-card-type">${item.type === 'sound' ? 'ЗВУК' : 'УКРАШЕНИЕ АВАТАРА'}</div>
+                        
+                        <div class="catalog-card-bottom">
+                            <div class="catalog-card-price">${item.priceType === 'free' ? 'БЕСПЛАТНО' : item.price + ' ур.'}</div>
+                            ${isOwned ? \`<div class="catalog-card-status">В КОЛЛЕКЦИИ</div>\` : ''}
+                        </div>
                     </div>
-                `}
-                
-                <div style="flex: 1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; z-index:2; width: 100%;">
-                    <div style="color: #ffffff; font-weight: 800; font-size: 18px; line-height: 1.2; margin-bottom: 6px; text-shadow: 0 1px 4px rgba(0,0,0,0.8);">${item.title}</div>
-                    <div style="font-size: 13px; color: rgba(255,255,255,0.7); margin-bottom: 20px; line-height: 1.4; text-shadow: 0 1px 3px rgba(0,0,0,0.8);">${item.desc}</div>
-                    <div style="font-size: 14px; font-weight:bold; letter-spacing: 0.5px; padding: 6px 16px; border-radius: 20px; background: rgba(0,0,0,0.4); backdrop-filter: blur(8px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); ${isOwned ? 'color: rgba(255,255,255,0.9);' : 'color: var(--accent);'} ">${isOwned ? '✓ В ИНВЕНТАРЕ' : (item.priceType === 'free' ? 'БЕСПЛАТНО' : (item.price + ' ур.'))}</div>
                 </div>
             </div>
-            `;
+            \`;
         }).join('');
     }
 
@@ -10046,6 +10099,19 @@ window.openCatalogItemModal = function(itemId) {
     const catalogImage = Utils.$('catalog-item-image');
     const catalogAudio = Utils.$('catalog-item-audio');
     const previewWrapper = Utils.$('catalog-item-preview-wrapper');
+    const bannerBg = Utils.$('catalog-item-banner-bg');
+
+    const isHot = item.isHot === true || item.isHot === 'true';
+    if (bannerBg) {
+        if (isHot) {
+            bannerBg.style.background = 'linear-gradient(135deg, #ff4757, #ffa502, #ff4757)';
+            bannerBg.style.backgroundSize = '200% 200%';
+            bannerBg.style.animation = 'fireBgPan 3s linear infinite';
+        } else {
+            bannerBg.style.background = '#2b2d31';
+            bannerBg.style.animation = 'none';
+        }
+    }
 
     if (item.type === 'sound') {
         if(previewContainer) previewContainer.style.display = 'none';
@@ -10063,7 +10129,7 @@ window.openCatalogItemModal = function(itemId) {
         if(previewContainer) {
             previewContainer.style.display = 'block';
             previewContainer.innerHTML = '';
-            previewContainer.style.background = '#1f1f23';
+            previewContainer.style.background = '#111214';
         }
         if(catalogImage) {
             catalogImage.style.display = 'block';
@@ -10088,8 +10154,8 @@ window.openCatalogItemModal = function(itemId) {
        const inventory = userProfile?.inventory || [];
        const isOwned = inventory.includes(item.id);
        buyBtn.innerText = isOwned ? 'Применить' : (item.priceType === 'free' || String(item.price).trim().toUpperCase() === 'БЕСПЛАТНО' || String(item.price).trim().toUpperCase() === 'FREE' || item.price === '0') ? 'Получить' : `Купить (${item.price} ур.)`;
-       buyBtn.style.background = isOwned ? 'rgba(255,255,255,0.1)' : '#fff';
-       buyBtn.style.color = isOwned ? '#fff' : '#000';
+       buyBtn.style.background = isOwned ? 'rgba(255,255,255,0.1)' : '#5865F2';
+       buyBtn.style.color = '#fff';
        buyBtn.onclick = async () => {
            if (!AppState.currentUser) return Utils.toast('Авторизуйтесь для покупки', 'error');
            const uid = AppState.currentUser.uid;
