@@ -46,7 +46,7 @@ app.get('/api/resolve-media', (req, res) => {
 
 const publicPath = __dirname;
 app.use(express.static(publicPath, { index: false })); // avoid index.html auto serving first if we want specific rules, or just allow it
-app.get('/', (req, res) => {
+app.get('*', (req, res) => {
     res.sendFile(path.join(publicPath, 'index.html'));
 });
 

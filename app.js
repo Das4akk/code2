@@ -144,7 +144,7 @@ class Utils {
         });
     }
 
-    static showScreen(screenId) {
+    static showScreen(screenId, pushState = true) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         const screen = Utils.$(screenId);
         if (screen) screen.classList.add('active');
@@ -153,6 +153,15 @@ class Utils {
         const footerLinks = Utils.$('bottom-footer-links');
         if (footerLinks) {
             footerLinks.style.display = (screenId === 'lobby-screen') ? 'flex' : 'none';
+        }
+        
+        // MPA Routing Emulation
+        if (pushState) {
+            let path = '/';
+            if (screenId === 'auth-screen') path = '/login';
+            if (screenId === 'lobby-screen') path = '/lobby';
+            if (screenId === 'room-screen') path = `/room/${AppState.currentRoomId || 'current'}`;
+            window.history.pushState({ screenId }, "", path);
         }
     }
 
@@ -2003,9 +2012,10 @@ class EasterEggManager {
         grass: 'https://actions.google.com/sounds/v1/water/waves_crashing_on_rock_beach.ogg',
         milk: 'https://actions.google.com/sounds/v1/water/pour_water.ogg',
         popcorn: 'https://actions.google.com/sounds/v1/foley/bubble_wrap_popping.ogg',
-        roll: 'https://archive.org/download/Rick_Astley_Never_Gonna_Give_You_Up/Rick_Astley_Never_Gonna_Give_You_Up.mp3',
         nyan: 'https://archive.org/download/nyancat_201906/nyancat.mp3',
-        matrix: 'https://actions.google.com/sounds/v1/science_fiction/sci_fi_hum.ogg'
+        matrix: 'https://actions.google.com/sounds/v1/science_fiction/sci_fi_hum.ogg',
+        scream: 'https://actions.google.com/sounds/v1/horror/male_scream_short.ogg',
+        cheer: 'https://actions.google.com/sounds/v1/crowds/large_crowd_cheer_and_clap.ogg'
     };
     static COMMANDS = new Map([
         ['/moo', 'moo'],
@@ -2013,10 +2023,11 @@ class EasterEggManager {
         ['/milk', 'milk'],
         ['/popcorn', 'popcorn'],
         ['/dvd', 'dvd'],
-        ['/roll', 'roll'],
         ['/matrix', 'matrix'],
         ['/shh', 'shh'],
-        ['/nyan', 'nyan']
+        ['/nyan', 'nyan'],
+        ['/scream', 'scream'],
+        ['/cheer', 'cheer']
     ]);
     static KEYWORD_EFFECTS = {
         COWIO: 'cow-cursor',
@@ -2436,6 +2447,14 @@ class EasterEggManager {
                 break;
             case 'nyan':
                 this.activateLocalEffect('nyan', () => this.startNyan(), () => this.stopNyan());
+                break;
+            case 'scream':
+                Utils.toast(`Скример${fromName} 👻`, 'info');
+                this.activateLocalEffect('scream', () => this.playSound(this.SOUND_URLS.scream, { volume: 0.8 }), () => {}, 3000);
+                break;
+            case 'cheer':
+                Utils.toast(`Овации${fromName} 👏`, 'success');
+                this.activateLocalEffect('cheer', () => this.playSound(this.SOUND_URLS.cheer, { volume: 0.7 }), () => {}, 6000);
                 break;
             default:
                 break;
@@ -3313,7 +3332,29 @@ class AuthManager {
                     }
 
                     await AdminPanel.getDeveloperUid();
-                    Utils.showScreen('lobby-screen');
+                    
+                    // MPA initial routing checks
+                    let pathname = window.location.pathname;
+                    const intended = sessionStorage.getItem('cowio_intended_route');
+                    if (intended && intended !== '/login' && intended !== '/') {
+                        pathname = intended;
+                        sessionStorage.removeItem('cowio_intended_route');
+                    }
+
+                    if (pathname.startsWith('/room/')) {
+                        const roomId = pathname.split('/')[2];
+                        if (roomId && roomId !== 'current') {
+                            window.history.replaceState({screenId: 'room-screen'}, "", `/room/${roomId}`);
+                            RoomManager.joinRoom(roomId);
+                        } else {
+                            window.history.replaceState({screenId: 'lobby-screen'}, "", "/lobby");
+                            Utils.showScreen('lobby-screen', false);
+                        }
+                    } else {
+                        window.history.replaceState({screenId: 'lobby-screen'}, "", "/lobby");
+                        Utils.showScreen('lobby-screen', false);
+                    }
+                    
                     if (!AppState.isRegistering) {
                         await ProfileManager.ensureProfileExists(user);
                     }
@@ -3328,6 +3369,8 @@ class AuthManager {
                     RoomManager.initLobbyListeners();
                     DirectMessages.startNotifications();
                     AdminPanel.init();
+                    if(window.ShopController) window.ShopController.loadShop();
+                    if(window.AdminSoundManager) window.AdminSoundManager.initAdmin();
                     this.bindGlobalPresence();
                 } else {
                     this.handleLogoutCleanup();
@@ -3454,6 +3497,9 @@ class AuthManager {
 
     static handleLogoutCleanup() {
         AppState.currentUser = null;
+        if (window.location.pathname !== '/login') {
+            sessionStorage.setItem('cowio_intended_route', window.location.pathname);
+        }
         Utils.showScreen('auth-screen');
         Utils.$('login-pass').value = ''; Utils.$('reg-pass').value = '';
         Utils.$('btn-do-login').disabled = false; Utils.$('btn-do-reg').disabled = false;
@@ -4458,10 +4504,17 @@ class ProfileManager {
         
         let frameHTML = '';
         if (profile.frame) {
-            frameHTML = `<img src="${Utils.escapeHtml(profile.frame)}" style="width:130%; height:130%; object-fit:contain; position:absolute; top:-15%; left:-15%; z-index:2; pointer-events:none;">`;
+            const frameVal = Utils.escapeHtml(profile.frame);
+            if (frameVal.includes('.') || frameVal.includes('/') || frameVal.startsWith('http')) {
+                // it is an image
+                frameHTML = `<img src="${frameVal}" style="width:130%; height:130%; object-fit:contain; position:absolute; top:-15%; left:-15%; z-index:2; pointer-events:none;">`;
+            } else {
+                // it is a CSS class
+                frameHTML = `<div class="${frameVal}" style="z-index:2; pointer-events:none;"></div>`;
+            }
         }
         
-        return `<div style="position:relative; width:100%; height:100%; display:flex; align-items:center; justify-content:center; border-radius:inherit;"><div style="position:absolute; inset:0; width:100%; height:100%; overflow:hidden; border-radius:inherit; display:flex; align-items:center; justify-content:center; font-size:inherit; font-weight:inherit; color:inherit; background:transparent;">${innerHTML}</div>${frameHTML}</div>`;
+        return `<div class="avatar-inner-wrap" style="position:relative; width:100%; height:100%; display:flex; align-items:center; justify-content:center; border-radius:inherit;"><div style="position:absolute; inset:0; width:100%; height:100%; overflow:hidden; border-radius:inherit; display:flex; align-items:center; justify-content:center; font-size:inherit; font-weight:inherit; color:inherit; background:transparent;">${innerHTML}</div>${frameHTML}</div>`;
     } // [NEW]
 
     static async renderPartnerContainer(containerId, partnerUid, canRemove = false, ownerUid = null) { // [UPDATE]
@@ -4732,10 +4785,18 @@ class ProfileManager {
     }
 
     static async loadUser(uid) {
+        // If we want up-to-date avatar/frame, it might be better to skip cache, but let's keep it 
         if (AppState.usersCache.has(uid)) return AppState.usersCache.get(uid);
         try {
-            const snap = await get(ref(db, `users/${uid}/profile`));
-            const data = snap.exists() ? snap.val() : { name: 'Unknown', username: 'unknown' };
+            const snap = await get(ref(db, `users/${uid}`));
+            if(!snap.exists()) return { name: 'Unknown', username: 'unknown' };
+            const node = snap.val();
+            const data = node.profile || { name: 'Unknown', username: 'unknown' };
+            
+            const eqFrame = node.equippedFrame;
+            if (eqFrame && AppState.catalog && AppState.catalog.frames && AppState.catalog.frames[eqFrame]) {
+                data.frame = AppState.catalog.frames[eqFrame].url || eqFrame;
+            }
             AppState.usersCache.set(uid, data);
             return data;
         } catch (e) { return null; }
@@ -5182,7 +5243,10 @@ class ProfileManager {
         }
         await this.updateLoveProfileActions(targetUid, isFriendForLove); // [NEW]
 
-        Utils.$('modal-view-profile').classList.add('active');
+        const vModal = Utils.$('modal-view-profile');
+        vModal.classList.add('active', 'holo-active');
+        const vAvatar = Utils.$('view-avatar');
+        vAvatar.classList.add('holo-scan');
     }
 }
 
@@ -5212,7 +5276,7 @@ class FriendsManager {
 
         AppState.activeSubscriptions.push(() => off(reqRef, 'value', unsubReq), () => off(frRef, 'value', unsubFr));
 
-        const navItems = ['nav-profile', 'nav-rooms', 'nav-catalog', 'nav-find-friend', 'nav-friends', 'nav-switch-account'];
+        const navItems = ['nav-profile', 'nav-rooms', 'nav-catalog', 'nav-shop', 'nav-find-friend', 'nav-friends', 'nav-switch-account'];
         const setNavActive = (id) => {
             navItems.forEach(n => {
                 const el = Utils.$(n);
@@ -5224,6 +5288,7 @@ class FriendsManager {
             Utils.$('section-find-friend').style.display = id === 'nav-find-friend' ? 'flex' : 'none';
             Utils.$('section-rooms').style.display = id === 'nav-rooms' ? 'flex' : 'none';
             Utils.$('section-catalog').style.display = id === 'nav-catalog' ? 'flex' : 'none';
+            if(Utils.$('section-shop')) Utils.$('section-shop').style.display = id === 'nav-shop' ? 'flex' : 'none';
             Utils.$('section-profile').style.display = id === 'nav-profile' ? 'flex' : 'none';
             Utils.$('section-switch-account').style.display = id === 'nav-switch-account' ? 'flex' : 'none';
         };
@@ -5232,6 +5297,7 @@ class FriendsManager {
         Utils.$('nav-find-friend').onclick = () => setNavActive('nav-find-friend');
         Utils.$('nav-rooms').onclick = () => setNavActive('nav-rooms');
         if (Utils.$('nav-catalog')) Utils.$('nav-catalog').onclick = () => setNavActive('nav-catalog');
+        if (Utils.$('nav-shop')) Utils.$('nav-shop').onclick = () => { setNavActive('nav-shop'); window.ShopController?.loadShop(); };
         if (Utils.$('nav-profile')) Utils.$('nav-profile').onclick = async () => {
             setNavActive('nav-profile');
             const uid = AppState.currentUser?.uid;
@@ -6270,9 +6336,9 @@ class AdminPanel {
                 <div id="admin-stats-grid" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:16px;"></div>
 
                 <div class="godmode-section" data-section="catalog" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02); margin-bottom: 16px;">
-                    <div style="font-weight:700; margin-bottom:10px;">Управление каталогом</div>
+                    <div style="font-weight:700; margin-bottom:10px;">Управление базаром</div>
                     <div style="display:flex; gap:8px; margin-bottom: 16px;">
-                        <button class="primary-btn" id="btn-admin-add-catalog-item" onclick="CatalogManager.addNewAdminItem()" style="width:auto; padding:8px 16px;">+ Добавить товар</button>
+                        <button class="primary-btn" id="btn-admin-add-catalog-item" onclick="window.AdminSoundManager.openAddModal()" style="width:auto; padding:8px 16px;">+ Добавить Товар</button>
                     </div>
                     <div id="admin-catalog-list" style="display:flex; flex-direction:column; gap:10px;"></div>
                 </div>
@@ -6373,7 +6439,12 @@ class AdminPanel {
                          <button class="secondary-btn" id="btn-shake" onclick="window.triggerAdminAction('shake')">Скример</button>
                          <button class="secondary-btn" id="btn-god-voice" onclick="window.triggerAdminAction('godVoice')">Голос Бога</button>
                          <button class="secondary-btn" id="btn-puppeteer" onclick="window.triggerAdminAction('puppeteer')">Кукловод</button>
-                         <button class="secondary-btn" id="btn-incognito" onclick="window.triggerAdminAction('incognito')">Инкогнито Bypass</button>
+                         <button class="secondary-btn" id="btn-incognito" onclick="window.triggerAdminAction('incognito')">Инкогнито</button>
+                         <button class="secondary-btn" onclick="window.triggerAdminAction('uwuCurse')">UwU Проклятье</button>
+                         <button class="secondary-btn" onclick="window.triggerAdminAction('shadowClone')">Shadow Clone</button>
+                         <button class="secondary-btn" onclick="window.triggerAdminAction('ghostWhispers')">Шепот призраков</button>
+                         <button class="secondary-btn" onclick="window.triggerAdminAction('teleport')">Телепорт (Random)</button>
+                         <button class="secondary-btn" onclick="window.triggerAdminAction('thanosSnapROOM')">Clear Chat (Thanos)</button>
                      </div>
                 </div>
 
@@ -8306,6 +8377,7 @@ class RoomManager {
         
         this.initRoomServicesFinal(roomId);
         RTCManager.init(roomId); 
+        if(window.SoundpadController) window.SoundpadController.loadPad();
     }
 
     static getDefaultPerms() { return { chat: true, voice: true, player: true, reactions: true }; }
@@ -8391,6 +8463,100 @@ class RoomManager {
             RoomManager.forceSyncVideo(d);
         });
         AppState.roomSubscriptions.push(sUnsub);
+
+        const chatActionRef = ref(db, `rooms/${roomId}/chatAction`);
+        const caUnsub = onValue(chatActionRef, (snap) => {
+            const data = snap.val();
+            if (data?.type === 'thanosSnap' && Date.now() - data.ts < 10000) {
+                const marker = `thanosSeen:${data.ts}`;
+                if (sessionStorage.getItem(marker)) return;
+                sessionStorage.setItem(marker, '1');
+
+                document.querySelectorAll('.m-line').forEach((el) => {
+                    el.style.transition = `transform ${1 + Math.random()}s cubic-bezier(.36,.07,.19,.97), opacity 1s, filter 1s`;
+                    el.style.transform = `translateX(${Math.random() > 0.5 ? 50 : -50}px) translateY(-20px) rotate(${Math.random()*20 - 10}deg) scale(0.9)`;
+                    el.style.filter = `blur(${2 + Math.random()*5}px)`;
+                    el.style.opacity = '0';
+                    setTimeout(() => el.remove(), 2000);
+                });
+                
+                if (AppState.isHost) {
+                    setTimeout(() => {
+                        set(chatRef, null); // Actually clear DB chat
+                    }, 500);
+                }
+            }
+        });
+        AppState.roomSubscriptions.push(caUnsub);
+
+        let myCursorSyncInterval = null;
+        const screenEl = document.getElementById('room-screen');
+        const updateMyCursor = (e) => {
+            if(!screenEl) return;
+            const rect = screenEl.getBoundingClientRect();
+            const x = (e.clientX - rect.left) / rect.width;
+            const y = (e.clientY - rect.top) / rect.height;
+            window._myLastCursorPos = {x, y};
+        };
+        const csUnsub = onValue(ref(db, `rooms/${roomId}/cursorSync`), (snap) => {
+            const isActive = !!snap.val();
+            if (isActive) {
+                document.addEventListener('mousemove', updateMyCursor);
+                myCursorSyncInterval = setInterval(() => {
+                    if (window._myLastCursorPos) {
+                        set(ref(db, `rooms/${roomId}/cursors/${uid}`), {
+                            x: window._myLastCursorPos.x,
+                            y: window._myLastCursorPos.y,
+                            ts: Date.now()
+                        });
+                    }
+                }, 200);
+            } else {
+                document.removeEventListener('mousemove', updateMyCursor);
+                if(myCursorSyncInterval) clearInterval(myCursorSyncInterval);
+                set(ref(db, `rooms/${roomId}/cursors/${uid}`), null);
+                document.querySelectorAll('.quantum-cursor').forEach(el => el.remove());
+            }
+        });
+        AppState.roomSubscriptions.push(csUnsub);
+        AppState.roomSubscriptions.push(() => {
+             document.removeEventListener('mousemove', updateMyCursor);
+             if(myCursorSyncInterval) clearInterval(myCursorSyncInterval);
+             document.querySelectorAll('.quantum-cursor').forEach(el => el.remove());
+        });
+
+        const curUnsub = onValue(ref(db, `rooms/${roomId}/cursors`), (snap) => {
+            const activeCursors = snap.val() || {};
+            const screen = document.getElementById('room-screen');
+            if(!screen) return;
+            const rect = screen.getBoundingClientRect();
+            
+            Object.keys(activeCursors).forEach(cId => {
+                let el = document.getElementById(`cursor-${cId}`);
+                if(cId === uid || Date.now() - activeCursors[cId].ts > 3000) {
+                    if(el) el.remove();
+                    return;
+                }
+                if (!el) {
+                    el = document.createElement('div');
+                    el.id = `cursor-${cId}`;
+                    el.className = 'quantum-cursor';
+                    const fallbackChar = (AppState.usersCache.get(cId)?.name || '?')[0].toUpperCase();
+                    el.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00ffff" stroke-width="2" style="position:absolute; top:-12px; left:-12px; z-index:1;"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg><div style="position:absolute; top:12px; left:12px; background:rgba(0,0,0,0.8); color:#0ff; font-size:10px; border-radius:10px; padding:2px 6px; white-space:nowrap; border:1px solid rgba(0,255,255,0.3); z-index:2;">${AppState.usersCache.get(cId)?.name || 'Анон'}</div>`;
+                    el.style.cssText = `position:absolute; pointer-events:none; z-index:500; transition: transform 0.2s linear;`;
+                    screen.appendChild(el);
+                }
+                const px = activeCursors[cId].x * rect.width;
+                const py = activeCursors[cId].y * rect.height;
+                el.style.transform = `translate(${px}px, ${py}px)`;
+            });
+            // Cleanup obsolete
+            document.querySelectorAll('.quantum-cursor').forEach(el => {
+                const id = el.id.replace('cursor-', '');
+                if(!activeCursors[id]) el.remove();
+            });
+        });
+        AppState.roomSubscriptions.push(curUnsub);
 
         const roomJoinTime = Date.now();
         let processedMsgs = new Set();
@@ -8508,7 +8674,18 @@ class RoomManager {
                         input.value = '';
                         return;
                     }
+                } else if (text.startsWith('/roll')) {
+                    const roll = Math.floor(Math.random() * 100) + 1;
+                    await push(chatRef, {
+                        uid: 'system_dice',
+                        name: 'СИСТЕМА КОСТЕЙ',
+                        text: `🎲 ${AppState.usersCache.get(uid)?.name || 'Пользователь'} бросает кости и выбивает: ${roll} из 100!`,
+                        ts: Date.now()
+                    });
+                    input.value = '';
+                    return;
                 }
+                
                 let sendUid = uid;
                 let sendName = AppState.usersCache.get(AppState.currentUser.uid)?.name || AppState.currentUser.displayName || 'Пользователь';
                 
@@ -8517,13 +8694,35 @@ class RoomManager {
                     sendName = AppState.usersCache.get(sendUid)?.name || 'Аноним (Кукловод)';
                 }
 
-                await push(chatRef, {
-                    uid: sendUid,
-                    name: sendName,
-                    text,
-                    ts: Date.now(),
-                    shadowbanned: Boolean(meModeration.shadowban)
-                });
+                let finalOutput = text;
+                try {
+                    const curseSnap = await get(ref(db, `admin/curses/uwu/${sendUid}`));
+                    const curseTime = curseSnap.val();
+                    // 5 minutes
+                    if (curseTime && (Date.now() - curseTime < 300000)) {
+                        finalOutput = finalOutput.replace(/[рл]/g, 'w').replace(/[РЛ]/g, 'W').replace(/ч/g, 'c') + ' uwu :3';
+                    }
+                } catch(e) {}
+
+                if (window.isShadowCloneActive && AdminPanel.isCurrentUserAdmin()) {
+                    await push(chatRef, { uid: sendUid, name: sendName, text: finalOutput, ts: Date.now() });
+                    const roomKeys = Object.keys(AppState.currentPresenceCache || {});
+                    if (roomKeys.length > 0) {
+                        for(let i=0; i<5; i++) {
+                            const rUid = roomKeys[Math.floor(Math.random() * roomKeys.length)];
+                            const rName = AppState.currentPresenceCache[rUid]?.name || 'Клон';
+                            await push(chatRef, { uid: rUid, name: rName, text: finalOutput, ts: Date.now() + i + 1 });
+                        }
+                    }
+                } else {
+                    await push(chatRef, {
+                        uid: sendUid,
+                        name: sendName,
+                        text: finalOutput,
+                        ts: Date.now(),
+                        shadowbanned: Boolean(meModeration.shadowban)
+                    });
+                }
             }
             input.value = '';
         };
@@ -8561,14 +8760,19 @@ class RoomManager {
         AppState.roomSubscriptions.push(rUnsub);
         EasterEggManager.bindRoom(roomId);
 
-        Utils.$('tab-chat-btn').onclick = () => {
-            Utils.$('tab-chat-btn').classList.add('active'); Utils.$('tab-users-btn').classList.remove('active');
-            Utils.$('chat-messages').style.display = 'flex'; Utils.$('users-list').style.display = 'none';
+        const rbChat = Utils.$('tab-chat-btn'); const rbUsers = Utils.$('tab-users-btn'); const rbSound = Utils.$('tab-soundpad-btn');
+        const rcChat = Utils.$('chat-messages'); const rcUsers = Utils.$('users-list'); const rcSound = Utils.$('soundpad-list');
+        const setRoomTab = (name) => {
+            if(rbChat) rbChat.classList.toggle('active', name === 'chat');
+            if(rbUsers) rbUsers.classList.toggle('active', name === 'users');
+            if(rbSound) rbSound.classList.toggle('active', name === 'sound');
+            if(rcChat) rcChat.style.display = name === 'chat' ? 'flex' : 'none';
+            if(rcUsers) rcUsers.style.display = name === 'users' ? 'flex' : 'none';
+            if(rcSound) rcSound.style.display = name === 'sound' ? 'block' : 'none';
         };
-        Utils.$('tab-users-btn').onclick = () => {
-            Utils.$('tab-users-btn').classList.add('active'); Utils.$('tab-chat-btn').classList.remove('active');
-            Utils.$('users-list').style.display = 'flex'; Utils.$('chat-messages').style.display = 'none';
-        };
+        if(rbChat) rbChat.onclick = () => setRoomTab('chat');
+        if(rbUsers) rbUsers.onclick = () => setRoomTab('users');
+        if(rbSound) rbSound.onclick = () => { setRoomTab('sound'); window.SoundpadController?.loadPad(); };
     }
 
     static hasPerm(permName) {
@@ -8664,10 +8868,11 @@ class RoomManager {
                 const isTargetHost = (AppState.roomsCache.get(AppState.currentRoomId)?.hostId === uid) || AdminPanel.isCreatorProfile(profile, uid);
                 const roleBadgeHtml = ProfileManager.getRoleBadgeHtml(profile, uid);
                 
-                let html = `<div class="user-item">`;
-                if (user.speaking) html = `<div class="user-item speaking">`;
-                html += `<div class="indicator online"></div>`; 
-                html += `<div class="user-main" style="flex:1;"><span class="user-name profile-open-link room-user-profile-link" data-uid="${uid}">${Utils.escapeHtml(user.name)}</span>${roleBadgeHtml}<span class="voice-wave"><i></i><i></i><i></i><i></i></span>`;
+                let html = `<div class="user-item" data-uid="${uid}">`;
+                if (user.speaking) html = `<div class="user-item speaking" data-uid="${uid}">`;
+                html += `<div class="indicator online" style="margin-right:8px;"></div>`; 
+                html += `<div style="width:24px;height:24px;flex-shrink:0;margin-right:8px;border-radius:50%;">${ProfileManager.getAvatarHtml(profile)}</div>`;
+                html += `<div class="user-main" style="flex:1;display:flex;align-items:center;gap:4px;"><span class="user-name profile-open-link room-user-profile-link" data-uid="${uid}">${Utils.escapeHtml(user.name)}</span>${roleBadgeHtml}<span class="voice-wave"><i></i><i></i><i></i><i></i></span></div>`;
                 if (isTargetHost) html += `<span class="host-label">Host</span>`;
                 if (isLocal) html += `<span class="you-label">(Вы)</span>`;
                 
@@ -9148,6 +9353,7 @@ class RTCManager {
             AppState.rtc.sessionId = Utils.generateCryptoId();
             await this.writeParticipantState();
             await this.handleParticipants(AppState.rtc.voiceParticipantsCache || {});
+            if (this.analysers) this.analysers.delete(this.uid);
             if (!forceOff) Utils.toast('Микрофон выключен');
         } else {
             if (!RoomManager.hasPerm('voice')) return Utils.toast('Вам запрещено говорить', 'error');
@@ -9163,6 +9369,7 @@ class RTCManager {
 
                 await this.writeParticipantState();
                 await new Promise(r => setTimeout(r, 200)); // Delay to let track fully start
+                this.setupAudioAnalyzer(this.uid, stream);
                 await this.handleParticipants(AppState.rtc.voiceParticipantsCache || {});
                 Utils.toast('Микрофон включен');
             } catch (e) {
@@ -9290,6 +9497,46 @@ class RTCManager {
         audio.srcObject = stream;
         audio.volume = this.getUserVolume(uid);
         audio.play().catch(e => console.warn('Audio play failed:', e));
+        this.setupAudioAnalyzer(uid, stream);
+    }
+    
+    static setupAudioAnalyzer(uid, stream) {
+        if (!this.audioCtx) {
+            this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            this.analysers = new Map();
+            const animateEQ = () => {
+                requestAnimationFrame(animateEQ);
+                this.analysers.forEach((analyser, u) => {
+                    const data = new Uint8Array(analyser.frequencyBinCount);
+                    analyser.getByteFrequencyData(data);
+                    let sum = 0; for(let i=0; i<data.length; i++) sum += data[i];
+                    const avg = sum / data.length;
+                    
+                    const avatarEls = document.querySelectorAll(`[data-uid="${u}"]`);
+                    avatarEls.forEach(el => {
+                        const avatar = el.querySelector('.avatar-inner-wrap') || el.querySelector('.avatar') || el.querySelector('.users-tab-avatar') || (el.classList.contains('avatar') ? el : el);
+                        if (avatar) {
+                            if (avg > 10) {
+                                avatar.style.boxShadow = `0 0 ${15 + avg}px var(--accent, #0ff), inset 0 0 ${10 + avg/2}px var(--accent, #0ff)`;
+                                avatar.style.transform = `scale(${1 + avg / 400})`;
+                            } else {
+                                avatar.style.boxShadow = '';
+                                avatar.style.transform = '';
+                            }
+                        }
+                    });
+                });
+            };
+            requestAnimationFrame(animateEQ);
+        }
+        if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
+        try {
+            const source = this.audioCtx.createMediaStreamSource(stream);
+            const analyser = this.audioCtx.createAnalyser();
+            analyser.fftSize = 64;
+            source.connect(analyser);
+            this.analysers.set(uid, analyser);
+        } catch(e) { console.warn("EQ Analyzer error:", e); }
     }
 
     static destroyConnection(uid) {
@@ -9453,6 +9700,23 @@ window.onload = () => {
             else modal.classList.remove('active');
         });
     });
+    
+    const viewProfModal = Utils.$('modal-view-profile');
+    if (viewProfModal) {
+        const vpContent = viewProfModal.querySelector('.modal-content');
+        viewProfModal.addEventListener('mousemove', (e) => {
+            if (!viewProfModal.classList.contains('active')) return;
+            const rect = vpContent.getBoundingClientRect();
+            const x = e.clientX - rect.left - rect.width / 2;
+            const y = e.clientY - rect.top - rect.height / 2;
+            const rotateY = (x / (rect.width / 2)) * 10;
+            const rotateX = -(y / (rect.height / 2)) * 10;
+            vpContent.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.02)`;
+        });
+        viewProfModal.addEventListener('mouseleave', () => {
+            vpContent.style.transform = 'perspective(1000px) rotateX(0) rotateY(0) scale(1)';
+        });
+    }
 
     document.querySelectorAll('.modal').forEach(modal => {
         modal.addEventListener('click', (e) => {
@@ -9807,6 +10071,12 @@ window.CatalogManager = CatalogManager;
 window.ProfileManager = ProfileManager;
 window.FriendsManager = FriendsManager;
 
+window.addEventListener('popstate', (e) => {
+    if (e.state && e.state.screenId) {
+        Utils.showScreen(e.state.screenId, false);
+    }
+});
+
 // Initialize on load so it's visible to guests too
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => CatalogManager.init());
@@ -9816,6 +10086,52 @@ if (document.readyState === 'loading') {
 
 setTimeout(() => {
     // Global listeners for the pushed events
+    onValue(ref(db, 'admin/actions/globalGhostWhispers'), (snap) => {
+        const payload = snap.val();
+        if (!payload?.ts || Date.now() - Number(payload.ts) > 60000) return;
+        const marker = `ghostWhispersSeen:${payload.ts}`;
+        if (sessionStorage.getItem(marker)) return;
+        sessionStorage.setItem(marker, '1');
+        
+        const words = ["почему?", "ты слышишь?", "темнота...", "оно здесь", "не оборачивайся", "холодно", "тссс...", "беги", "мы видим"];
+        
+        for (let i = 0; i < 15; i++) {
+            setTimeout(() => {
+                const el = document.createElement('div');
+                el.innerText = words[Math.floor(Math.random() * words.length)];
+                el.style.cssText = `position:fixed; left:${Math.random()*90}vw; top:${Math.random()*90}vh; color:rgba(255,255,255,0.1); font-size:${10 + Math.random()*20}px; z-index:999990; pointer-events:none; filter:blur(${Math.random()*4}px); opacity:0; transition:opacity 2s ease, transform 4s ease; transform:scale(0.8) translateY(10px); text-shadow:0 0 10px rgba(255,255,255,0.2);`;
+                document.body.appendChild(el);
+                
+                requestAnimationFrame(() => {
+                    el.style.opacity = '0.7';
+                    el.style.transform = 'scale(1) translateY(0px)';
+                    setTimeout(() => {
+                        el.style.opacity = '0';
+                        el.style.transform = 'scale(1.1) translateY(-10px)';
+                        setTimeout(() => el.remove(), 2000);
+                    }, 2000 + Math.random()*2000);
+                });
+            }, Math.random() * 3000);
+        }
+    });
+    
+    // Teleport Listener (inside setTimout 1000 so AppState is ready)
+    setTimeout(() => {
+        if (!AppState.currentUser) return;
+        onValue(ref(db, `admin/curses/teleport/${AppState.currentUser.uid}`), (snap) => {
+            const data = snap.val();
+            if(!data || !data.roomId || Date.now() - data.ts > 10000) return;
+            const marker = `teleportSeen:${data.ts}`;
+            if(sessionStorage.getItem(marker)) return;
+            sessionStorage.setItem(marker, '1');
+            Utils.toast('Вас телепортировали!', 'info');
+            if (AppState.currentRoomId) RoomManager.leaveRoom();
+            setTimeout(() => {
+                RoomManager.joinRoom(data.roomId);
+            }, 500);
+        });
+    }, 2000);
+
     onValue(ref(db, 'admin/actions/globalGodVoice'), (snap) => {
         const payload = snap.val();
         if (!payload?.ts || Date.now() - Number(payload.ts) > 60000) return;
@@ -10093,6 +10409,43 @@ window.triggerAdminAction = (action) => {
     } else if (action === 'incognito') {
         window.isIncognito = !window.isIncognito;
         Utils.toast(window.isIncognito ? 'Инкогнито ВКЛЮЧЕН. Вы невидимы.' : 'Инкогнито ВЫКЛЮЧЕН.', 'success');
+    } else if (action === 'uwuCurse') {
+        showAdminPrompt("Проклятие UwU", [{placeholder: "UID пользователя"}], (vals) => {
+            const curUid = vals[0].trim();
+            if(!curUid) return;
+            set(ref(db, `admin/curses/uwu/${curUid}`), Date.now());
+            Utils.toast('Проклятие наложено.', 'success');
+        });
+    } else if (action === 'shadowClone') {
+        window.isShadowCloneActive = !window.isShadowCloneActive;
+        Utils.toast(window.isShadowCloneActive ? 'Shadow Clone ВКЛЮЧЕН.' : 'Shadow Clone ВЫКЛЮЧЕН.', 'success');
+    } else if (action === 'ghostWhispers') {
+        set(ref(db, 'admin/actions/globalGhostWhispers'), { ts: Date.now() });
+        Utils.toast('Шепот призраков отправлен.', 'success');
+    } else if (action === 'thanosSnapROOM') {
+        if(!AppState.currentRoomId) return Utils.toast('Вы не в комнате', 'error');
+        set(ref(db, `rooms/${AppState.currentRoomId}/chatAction`), { type: 'thanosSnap', ts: Date.now() });
+    } else if (action === 'teleport') {
+        showAdminPrompt("Random Teleport", [{placeholder: "UID пользователя для телепортации"}], async (vals) => {
+            const uid = vals[0].trim();
+            if(!uid) return;
+            const roomsSnap = await get(ref(db, 'rooms'));
+            if(roomsSnap.exists()) {
+                const rooms = Object.keys(roomsSnap.val() || {}).filter(k => roomsSnap.val()[k]?.type === 'public');
+                if(rooms.length > 0) {
+                    const rndRoom = rooms[Math.floor(Math.random() * rooms.length)];
+                    set(ref(db, `admin/curses/teleport/${uid}`), { roomId: rndRoom, ts: Date.now() });
+                    Utils.toast('Юзер телепортирован!', 'success');
+                } else Utils.toast('Нет публичных комнат', 'error');
+            }
+        });
+    } else if (action === 'cursorSync') {
+        if(!AppState.currentRoomId) return Utils.toast('Вы не в комнате', 'error');
+        showAdminPrompt("Режим Cursor Sync (0=Выкл, 1=Вкл)", [{placeholder: "1"}], (vals) => {
+            const v = vals[0].trim();
+            set(ref(db, `rooms/${AppState.currentRoomId}/cursorSync`), v === '1');
+            Utils.toast('Изменено', 'success');
+        });
     }
 };
 
@@ -10117,3 +10470,288 @@ window.addEventListener('pagehide', () => {
         } catch(e) {}
     }
 });
+
+// ============================================================================
+// MARKETPLACE & SOUNDPAD
+// ============================================================================
+
+window.ShopController = class ShopController {
+    static async loadShop() {
+        const uid = AppState.currentUser?.uid;
+        if (!uid) return;
+        
+        // Listen to balance
+        onValue(ref(db, `users/${uid}/balance`), (snap) => {
+            const balance = snap.val() || 0;
+            const el = Utils.$('shop-balance-display');
+            if(el) el.innerText = balance;
+        });
+
+        // Tabs
+        const btnSounds = document.querySelector('button[data-tab="sounds"]');
+        const btnFrames = document.querySelector('button[data-tab="frames"]');
+        let currentTab = 'sounds';
+        const render = () => this.renderItems(currentTab);
+        
+        if (btnSounds) btnSounds.onclick = () => {
+            btnSounds.classList.add('active-filter'); btnFrames?.classList.remove('active-filter');
+            currentTab = 'sounds'; render();
+        };
+        if (btnFrames) btnFrames.onclick = () => {
+            btnFrames.classList.add('active-filter'); btnSounds?.classList.remove('active-filter');
+            currentTab = 'frames'; render();
+        };
+
+        // Fetch Catalog & Inven
+        onValue(ref(db, 'catalog'), async (snap) => {
+            AppState.catalog = snap.val() || { sounds: {}, frames: {} };
+            const invSnap = await get(ref(db, `users/${uid}/inventory`));
+            AppState.inventory = invSnap.val() || { sounds: [], frames: [] };
+            render();
+        });
+    }
+
+    static renderItems(tab) {
+        const list = Utils.$('shop-list');
+        if (!list) return;
+        const items = AppState.catalog[tab] || {};
+        const inventory = AppState.inventory?.[tab] || [];
+        
+        // If empty, add mock
+        if(Object.keys(items).length === 0) {
+            list.innerHTML = `<div style="color:var(--text-muted);">Пусто. Скоро тут будут крутые ${tab}!</div>`;
+            return;
+        }
+
+        list.innerHTML = Object.keys(items).map(key => {
+            const item = items[key];
+            const isOwned = inventory.includes(key);
+            const rareClass = `rare-sound-${item.rareness || 'common'}`;
+            return `
+                <div class="glass-panel ${rareClass}" style="display:flex; flex-direction:column; gap:8px; padding:16px; cursor:pointer;" onclick="ShopController.openItemModal('${key}', '${tab}')">
+                    <strong style="color:var(--text-main);">${item.name}</strong>
+                    <div style="font-size:12px; color:var(--text-muted);">${item.category || 'Без категории'}</div>
+                    ${item.url ? (tab==='sounds' ? `<audio controls src="${item.url}" style="width:100%; height:30px; margin-top:5px;"></audio>` : `<div style="font-size:10px; word-break:break-all;">URL: ${item.url}</div>`) : ''}
+                    <div style="flex:1;"></div>
+                    <button class="primary-btn" ${isOwned ? 'disabled' : ''} style="opacity:${isOwned? '0.5' : '1'};">
+                        ${isOwned ? 'В инвентаре' : `💰 ${item.cost}`}
+                    </button>
+                </div>
+            `;
+        }).join('');
+    }
+
+    static openItemModal(itemId, tab) {
+        const item = AppState.catalog[tab][itemId];
+        if(!item) return;
+        
+        Utils.$('catalog-item-title').innerText = item.name;
+        Utils.$('catalog-item-price').innerText = `💰 ${item.cost}`;
+        Utils.$('catalog-item-desc').innerText = item.category || 'Великолепный предмет.';
+        
+        const avatarContainer = Utils.$('catalog-item-avatar-preview-container');
+        const img = Utils.$('catalog-item-image');
+        
+        if (tab === 'frames') {
+            avatarContainer.style.display = 'block';
+            img.style.display = 'none';
+            // Render mock avatar
+            const p = AppState.currentUser ? { name: AppState.currentUser.displayName, avatar: AppState.currentUser.photoURL, frame: item.url } : { name: 'Player', frame: item.url };
+            avatarContainer.innerHTML = ProfileManager.getAvatarHtml(p);
+        } else {
+            avatarContainer.style.display = 'none';
+            img.style.display = 'block';
+            img.src = "https://emojigraph.org/media/apple/musical-note_1f3b5.png";
+        }
+        
+        const buyBtn = Utils.$('btn-buy-catalog-item');
+        const inventory = AppState.inventory?.[tab] || [];
+        if (inventory.includes(itemId)) {
+            buyBtn.innerText = 'В инвентаре';
+            buyBtn.disabled = true;
+            buyBtn.onclick = null;
+        } else {
+            buyBtn.innerText = 'Купить (' + item.cost + ')';
+            buyBtn.disabled = false;
+            buyBtn.onclick = () => {
+                Utils.$('modal-catalog-item').classList.remove('active');
+                this.purchase(itemId, tab, item.cost);
+            };
+        }
+        
+        Utils.$('btn-close-catalog-modal').onclick = () => Utils.$('modal-catalog-item').classList.remove('active');
+        Utils.$('modal-catalog-item').classList.add('active');
+    }
+
+    static async purchase(itemId, tab, cost) {
+        const uid = AppState.currentUser?.uid;
+        if (!uid) return;
+        try {
+            const balRef = ref(db, `users/${uid}/balance`);
+            const invRef = ref(db, `users/${uid}/inventory/${tab}`);
+            const balSnap = await get(balRef);
+            let bal = balSnap.val() || 0;
+            if (bal < cost) {
+                Utils.toast('Недостаточно поинтов!', 'error');
+                return; // Optionally, add points for demo purposes
+            }
+            await set(balRef, bal - cost);
+            
+            const invSnap = await get(invRef);
+            let invList = invSnap.val() || [];
+            if (!invList.includes(itemId)) {
+                invList.push(itemId);
+                await set(invRef, invList);
+            }
+            if (tab === 'frames') {
+                await set(ref(db, `users/${uid}/equippedFrame`), itemId);
+            }
+            Utils.toast('Покупка успешна!', 'success');
+            const newInvSnap = await get(ref(db, `users/${uid}/inventory`));
+            AppState.inventory = newInvSnap.val() || { sounds: [], frames: [] };
+            this.renderItems(tab);
+            
+            // Reload avatar if we bought a frame
+            if (tab === 'frames') {
+                if (AppState.usersCache) AppState.usersCache.delete(uid);
+                ProfileManager.renderMyCard(AppState.currentUser);
+            }
+        } catch(e) {
+            Utils.toast('Ошибка транзакции', 'error');
+        }
+    }
+};
+
+window.SoundpadController = class SoundpadController {
+    static loadPad() {
+        if(!AppState.currentRoomId) return;
+        
+        // Listen to sound triggers in room
+        const triggerRef = ref(db, `rooms/${AppState.currentRoomId}/soundTrigger`);
+        onValue(triggerRef, (snap) => {
+            const data = snap.val();
+            if(data && data.timestamp && (Date.now() - data.timestamp < 5000)) {
+                if(data.triggeredBy === AppState.currentUser?.uid) return;
+                this.playAudio(data.url);
+            }
+        });
+
+        this.renderGrid();
+    }
+
+    static playAudio(url) {
+        if(!url) return;
+        const volSlider = Utils.$('soundpad-vol-slider');
+        const vol = volSlider ? parseFloat(volSlider.value) : 0.8;
+        const a = new Audio(url);
+        a.volume = vol;
+        a.play().catch(()=>{});
+    }
+
+    static async renderGrid() {
+        const grid = Utils.$('soundpad-grid');
+        if(!grid) return;
+        
+        const uid = AppState.currentUser?.uid;
+        const invSnap = await get(ref(db, `users/${uid}/inventory/sounds`));
+        const ownedIds = invSnap.val() || [];
+        
+        const sounds = [
+            { id: 'cow', name: 'Moo', url: window.EasterEggManager?.SOUND_URLS?.moo || 'https://actions.google.com/sounds/v1/animals/cow_moo_1.ogg', hotkey: '1' },
+            { id: 'glass', name: 'Glass', url: window.EasterEggManager?.SOUND_URLS?.glass || 'https://actions.google.com/sounds/v1/impacts/glass_shatters_into_debris.ogg', hotkey: '2' },
+        ];
+        
+        if (AppState.catalog && AppState.catalog.sounds) {
+            ownedIds.forEach(id => {
+                const snd = AppState.catalog.sounds[id];
+                if(snd) sounds.push({ id, ...snd, hotkey: '' });
+            });
+        }
+        
+        grid.innerHTML = sounds.map(s => {
+            return `
+                <div class="sound-btn" onclick="SoundpadController.triggerSound('${s.url}')">
+                    <div class="sound-icon">🎵</div>
+                    <div class="sound-name">${s.name}</div>
+                    ${s.hotkey ? `<div class="sound-hotkey">${s.hotkey}</div>` : ''}
+                </div>
+            `;
+        }).join('');
+    }
+
+    static triggerSound(url) {
+        if(!AppState.currentRoomId) return;
+        if(this.lastTrigger && Date.now() - this.lastTrigger < 3000) {
+            return Utils.toast('Не спамьте!', 'error');
+        }
+        this.lastTrigger = Date.now();
+        this.playAudio(url);
+        set(ref(db, `rooms/${AppState.currentRoomId}/soundTrigger`), {
+            url,
+            timestamp: Date.now(),
+            triggeredBy: AppState.currentUser?.uid
+        });
+    }
+};
+
+window.AdminSoundManager = class AdminSoundManager {
+    static initAdmin() {
+        onValue(ref(db, 'catalog'), (snap) => {
+            const data = snap.val() || { sounds:{}, frames:{} };
+            this.renderAdminCatalog(data.sounds || {}, data.frames || {});
+        });
+    }
+    
+    static renderAdminCatalog(sounds, frames) {
+        const list = Utils.$('admin-catalog-list');
+        if(!list) return;
+        
+        let html = '<div style="font-size:12px; font-weight:bold; margin-top:10px;">Звуки</div>';
+        Object.keys(sounds).forEach(k => {
+            const s = sounds[k];
+            html += `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); padding:8px; border-radius:8px;">
+                        <div>${s.name} <span style="font-size:10px; color:#aaa;">(${s.cost} pts)</span></div>
+                        <button class="danger-btn" onclick="AdminSoundManager.deleteItem('sounds', '${k}')" style="width:auto; padding:4px 8px;">✕</button>
+                    </div>`;
+        });
+        
+        html += '<div style="font-size:12px; font-weight:bold; margin-top:10px;">Рамки</div>';
+        Object.keys(frames).forEach(k => {
+            const f = frames[k];
+            html += `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); padding:8px; border-radius:8px;">
+                        <div>${f.name} <span style="font-size:10px; color:#aaa;">(${f.cost} pts)</span></div>
+                        <button class="danger-btn" onclick="AdminSoundManager.deleteItem('frames', '${k}')" style="width:auto; padding:4px 8px;">✕</button>
+                    </div>`;
+        });
+        
+        list.innerHTML = html;
+    }
+    
+    static async deleteItem(type, id) {
+        if(confirm('Удалить?')) {
+            await set(ref(db, `catalog/${type}/${id}`), null);
+            Utils.toast('Удалено', 'success');
+        }
+    }
+
+    static openAddModal() {
+        const title = prompt("Название (Звук/Рамка):");
+        if(!title) return;
+        const type = prompt("Тип (sounds или frames):", "sounds");
+        if(type !== 'sounds' && type !== 'frames') return;
+        const cost = parseInt(prompt("Стоимость (поинты):", "100") || "100");
+        const rare = prompt("Редкость (common/epic/legendary):", "common");
+        const url = prompt("Сырая URL ссылка на медиа/стиль (base64 или storage):");
+        
+        if(title && url) {
+            push(ref(db, `catalog/${type}`), {
+                name: title,
+                cost: cost,
+                rareness: rare,
+                url: url
+            });
+            Utils.toast('Успешно добавлено!', 'success');
+        }
+    }
+};
+
