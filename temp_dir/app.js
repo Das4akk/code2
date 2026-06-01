@@ -99,7 +99,7 @@ const AppState = {
 class Utils {
     static getAppleEmojiHtml(char) {
         const appleMap = {
-            '💋': '1f48b', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '2728', '💞': '1f49e', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f525', '🐄': '1f404', '🍿': '1f37f', '🐱': '1f431', '🌈': '1f308', '🥛': '1f95b', '📀': '1f4c0', '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f504.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f504', '💻': '1f4bb', '🤫': '1f92b', '⚔️': '2694-fe0f', '🔒': '1f512', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f465', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Television.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f4fa', '📎': '1f4ce', '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4cc.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f4cc', '📍': '1f4cd', '💗': '1f497', '💘': '1f498', '💕': '1f495', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Heart.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '2764-fe0f', '🔴': '1f534', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Tears%20Of%20Joy.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f602', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20Screaming%20In%20Fear.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f631', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Clapping%20Hands.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f44f', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Musical%20Note.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f3b5', '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4cc.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f4cc', '📍': '1f4cd', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f451', '✅': '2705', '❌': '274c', '⚠️': '26a0-fe0f', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Speech%20Balloon.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f4ac', '💎': '1f48e', '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/2699.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '2699-fe0f', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '2b50', '🌟': '1f31f', '🎮': '1f3ae', '🎧': '1f3a7', '🎉': '1f389', '💰': '1f4b0'
+            '💋': '1f48b', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Sparkles.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '2728', '💞': '1f49e', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f525', '🐄': '1f404', '🍿': '1f37f', '🐱': '1f431', '🌈': '1f308', '🥛': '1f95b', '📀': '1f4c0', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Counterclockwise%20Arrows%20Button.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f504', '💻': '1f4bb', '🤫': '1f92b', '⚔️': '2694-fe0f', '🔒': '1f512', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f465', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Television.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f4fa', '📎': '1f4ce', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Pushpin.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f4cc', '📍': '1f4cd', '💗': '1f497', '💘': '1f498', '💕': '1f495', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Heart.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '2764-fe0f', '🔴': '1f534', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Tears%20Of%20Joy.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f602', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20Screaming%20In%20Fear.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f631', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Clapping%20Hands.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f44f', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Musical%20Note.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f3b5', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Pushpin.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f4cc', '📍': '1f4cd', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f451', '✅': '2705', '❌': '274c', '⚠️': '26a0-fe0f', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Speech%20Balloon.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '1f4ac', '💎': '1f48e', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Gear.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '2699-fe0f', '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">': '2b50', '🌟': '1f31f', '🎮': '1f3ae', '🎧': '1f3a7', '🎉': '1f389', '💰': '1f4b0'
         };
         const codepoint = appleMap[char] || char.codePointAt(0).toString(16);
         return `<img src="https://emojigraph.org/media/144/apple/${codepoint}.png" style="width: 1.25em; height: 1.25em; vertical-align: middle; display: inline-block; object-fit: contain;" alt="${char}" onerror="this.onerror=null; this.src=''; this.alt='${char}';"/>`;
@@ -1621,7 +1621,7 @@ class PartnerBondEngine {
         if (bond.checkins?.[checkinKey]) return { ok: false, reason: 'already' };
         await this.recordMoment(uid, partnerUid, 'checkin', {
             fromUid: uid,
-            label: 'Отметили день вместе <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">',
+            label: 'Отметили день вместе <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Sparkles.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">',
             warmth: 14,
             checkinKey
         });
@@ -1742,7 +1742,7 @@ class PartnerRelationshipPanel {
                 </section>
                 <footer class="partner-ambilight-footer">
                     <button type="button" class="partner-kiss-btn" id="btn-partner-modal-kiss">Поцелуй 💋</button>
-                    <button type="button" class="partner-checkin-btn" id="btn-partner-checkin" ${canCheckin ? '' : 'disabled'}>${canCheckin ? 'Отметить день <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">' : 'День отмечен'}</button>
+                    <button type="button" class="partner-checkin-btn" id="btn-partner-checkin" ${canCheckin ? '' : 'disabled'}>${canCheckin ? 'Отметить день <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Sparkles.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">' : 'День отмечен'}</button>
                     <button type="button" class="secondary-btn btn-close-modal">Закрыть</button>
                 </footer>
             </div>
@@ -2124,7 +2124,7 @@ class EasterEggManager {
             }
             body.easter-cow-cursor,
             body.easter-cow-cursor * {
-                cursor: url("https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f42e.png") 16 16, auto !important;
+                cursor: url("https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Cow%20Face.webp") 16 16, auto !important;
             }
             #easter-egg-root {
                 position: fixed;
@@ -4941,9 +4941,9 @@ class ProfileManager {
         
         let genderString = '';
         if (profile.gender === 'female') {
-            genderString = 'Пол: Женский <img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f469.png" style="width:1.2em;height:1.2em;vertical-align:bottom;" alt="Женщина"><br>';
+            genderString = 'Пол: Женский <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Woman.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;" alt="Женщина"><br>';
         } else if (profile.gender === 'male') {
-            genderString = 'Пол: Мужской <img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f468.png" style="width:1.2em;height:1.2em;vertical-align:bottom;" alt="Мужчина"><br>';
+            genderString = 'Пол: Мужской <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Man.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;" alt="Мужчина"><br>';
         }
 
         Utils.$('view-name').innerHTML = `${Utils.escapeHtml(profile.name)} ${badgeHtml}`;
@@ -5806,7 +5806,7 @@ class DirectMessages {
                     <div class="dm-chat-name">${Utils.escapeHtml(item.name)}</div>
                     <div class="dm-chat-last-msg">${Utils.escapeHtml(item.lastText) || '<i>Нет сообщений</i>'}</div>
                 </div>
-                <button class="dm-pin-btn" title="Закрепить">${item.isPinned ? '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4cc.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">' : '📍'}</button>
+                <button class="dm-pin-btn" title="Закрепить">${item.isPinned ? '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Pushpin.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">' : '📍'}</button>
             `;
             
             el.onclick = (e) => {
@@ -6933,7 +6933,7 @@ class AdminPanel {
                     'milk': 'кто-нибудь желает молока? 🥛',
                     'popcorn': 'Запасаемся попкорном, сейчас начнется кино! 🍿',
                     'dvd': 'Ждем, когда логотип ударится в угол... 📀',
-                    'roll': 'Делаем бочку! Уууииии! <img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f504.png" style="width:1.2em;height:1.2em;vertical-align:bottom;">',
+                    'roll': 'Делаем бочку! Уууииии! <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Counterclockwise%20Arrows%20Button.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">',
                     'matrix': 'Тук-тук, Нео. Матрица имеет тебя... 💻',
                     'shh': 'Тссс... Режим тишины активирован 🤫',
                     'vader': 'Люк, я твой отец... *тяжелое дыхание* ⚔️',
