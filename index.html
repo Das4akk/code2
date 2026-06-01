@@ -891,6 +891,8 @@
                     <div class="nav-item active" id="nav-rooms"><span><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Television.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Комнаты</span></div>
                     <div class="nav-item" id="nav-catalog"><span><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Shopping%20Bags.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Каталог</span></div>
                     <div class="nav-item" id="nav-find-friend"><span><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Magnifying%20Glass%20Tilted%20Left.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Найти друга</span></div>
+                    <div class="nav-item" id="nav-support" style="display:none;"><span><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Woman%20Technologist.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Поддержка</span></div>
+                    <div class="nav-item" id="nav-support-staff" style="display:none; color: var(--accent);"><span><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Briefcase.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Поддержка (Оператор)</span></div>
 
                     <div class="nav-item" id="nav-friends">
                         <span><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Друзья</span>
@@ -945,6 +947,25 @@
                     </div>
                     <div id="find-friend-results" style="display: flex; flex-direction: column; gap: 12px; overflow-y: auto;">
                         <div style="font-size: 14px; color: var(--text-muted); text-align: center; padding: 40px;">Введите username для поиска друзей</div>
+                    </div>
+                </div>
+            </main>
+
+            <main class="rooms-main" id="section-support" style="display: none;">
+                <div class="friends-container" style="max-width: 800px; width: 100%; margin: 0 auto; padding-top: 20px;">
+                    <div class="section-title" style="font-size: 24px; margin-bottom: 20px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Woman%20Technologist.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Центр поддержки</div>
+                    <div id="support-tickets-list" style="display: flex; flex-direction: column; gap: 12px; overflow-y: auto; max-height: 400px; margin-bottom: 20px;">
+                        <!-- Tickets -->
+                    </div>
+                    <button class="primary-btn" id="btn-new-ticket" style="margin-bottom: 20px;">Создать тикет</button>
+                    <div id="support-active-ticket" style="display:none; flex-direction: column; gap: 10px; background: rgba(0,0,0,0.3); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
+                        <h3 id="support-ticket-title" style="margin: 0; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.1);">Тикет</h3>
+                        <div id="support-ticket-chat" style="flex:1; max-height: 300px; overflow-y: auto; display:flex; flex-direction:column; gap:10px; padding: 10px 0;"></div>
+                        <div style="display:flex; gap: 8px;">
+                            <button id="btn-support-attach" title="Прикрепить скриншот" class="secondary-btn" style="padding: 0 16px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Paperclip.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"></button>
+                            <input type="text" id="support-msg-input" placeholder="Сообщение..." style="flex:1; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.4); color: #fff; padding: 10px;">
+                            <button id="btn-support-send" class="primary-btn" style="padding: 0 20px;">Отправить</button>
+                        </div>
                     </div>
                 </div>
             </main>
@@ -1009,7 +1030,7 @@
                 </div>
                 
                 <div class="video-container glass-panel" style="position: relative;">
-                    <video id="native-player" playsinline controls></video>
+                    <video id="native-player" playsinline webkit-playsinline preload="auto" x5-video-player-type="h5" x5-video-player-fullscreen="true" controls style="object-fit: contain; width: 100%; height: 100%;"></video>
                     <div id="yt-player-container" style="display:none; position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 16px; overflow: hidden; pointer-events: auto; z-index: 5;">
                         <div id="yt-player"></div>
                     </div>
@@ -1506,6 +1527,7 @@
     <script>
         window.COWIO_MEDIA_API = window.COWIO_MEDIA_API || '';
     </script>
+    <script src="emojis_registry.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.7/dist/hls.min.js"></script>
     <script type="module" src="app.js"></script>
 </body>

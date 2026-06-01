@@ -1301,7 +1301,16 @@ class VideoPlaybackManager {
         if (useHls && window.Hls && window.Hls.isSupported()) {
             this.hlsInstance = new window.Hls({
                 enableWorker: true,
-                lowLatencyMode: false
+                lowLatencyMode: true,
+                maxBufferLength: 300,
+                maxMaxBufferLength: 1200,
+                maxBufferSize: 300 * 1024 * 1024,
+                backBufferLength: 120,
+                autoStartLoad: true,
+                startFragPrefetch: true,
+                fragLoadingTimeOut: 30000,
+                manifestLoadingTimeOut: 30000,
+                levelLoadingTimeOut: 30000
             });
             this.hlsInstance.loadSource(source);
             this.hlsInstance.attachMedia(vid);
@@ -5293,7 +5302,7 @@ class FriendsManager {
 
         AppState.activeSubscriptions.push(() => off(reqRef, 'value', unsubReq), () => off(frRef, 'value', unsubFr));
 
-        const navItems = ['nav-profile', 'nav-rooms', 'nav-catalog', 'nav-shop', 'nav-find-friend', 'nav-friends', 'nav-switch-account'];
+        const navItems = ['nav-profile', 'nav-rooms', 'nav-catalog', 'nav-shop', 'nav-find-friend', 'nav-friends', 'nav-switch-account', 'nav-support', 'nav-support-staff'];
         const setNavActive = (id) => {
             navItems.forEach(n => {
                 const el = Utils.$(n);
@@ -5306,6 +5315,7 @@ class FriendsManager {
             Utils.$('section-rooms').style.display = id === 'nav-rooms' ? 'flex' : 'none';
             Utils.$('section-catalog').style.display = id === 'nav-catalog' ? 'flex' : 'none';
             if(Utils.$('section-shop')) Utils.$('section-shop').style.display = id === 'nav-shop' ? 'flex' : 'none';
+            if(Utils.$('section-support')) Utils.$('section-support').style.display = (id === 'nav-support' || id === 'nav-support-staff') ? 'flex' : 'none';
             Utils.$('section-profile').style.display = id === 'nav-profile' ? 'flex' : 'none';
             Utils.$('section-switch-account').style.display = id === 'nav-switch-account' ? 'flex' : 'none';
         };
@@ -5315,6 +5325,8 @@ class FriendsManager {
         Utils.$('nav-rooms').onclick = () => setNavActive('nav-rooms');
         if (Utils.$('nav-catalog')) Utils.$('nav-catalog').onclick = () => setNavActive('nav-catalog');
         if (Utils.$('nav-shop')) Utils.$('nav-shop').onclick = () => { setNavActive('nav-shop'); window.ShopController?.loadShop(); };
+        if (Utils.$('nav-support')) Utils.$('nav-support').onclick = () => { setNavActive('nav-support'); if (window.SupportSystem) SupportSystem.renderTickets(); };
+        if (Utils.$('nav-support-staff')) Utils.$('nav-support-staff').onclick = () => { setNavActive('nav-support-staff'); if (window.SupportSystem) SupportSystem.renderTickets(); };
         if (Utils.$('nav-profile')) Utils.$('nav-profile').onclick = async () => {
             setNavActive('nav-profile');
             const uid = AppState.currentUser?.uid;
@@ -6167,6 +6179,124 @@ window.acceptRoomInvite = async (roomId) => {
 // 5. АДМИН-ПАНЕЛЬ И ГЛОБАЛЬНОЕ УПРАВЛЕНИЕ (С РОЛЯМИ)
 // ============================================================================
 
+class SupportSystem {
+    static async renderTickets() {
+        const uid = AppState.currentUser?.uid;
+        if (!uid) return;
+        const isAdmin = AdminPanel.isAdminProfile(AppState.currentUserProfile || {}, uid);
+        const list = Utils.$('support-tickets-list');
+        const isOperator = AdminPanel.isOperatorProfile(AppState.currentUserProfile || {}, uid);
+        list.innerHTML = `<div style="text-align:center; padding: 20px; color: var(--text-muted);">Загрузка...</div>`;
+
+        const dbRef = (isAdmin || isOperator) ? window.firebaseRef(db, 'support_tickets') : window.firebaseRef(db, `support_tickets`);
+        window.firebaseGet(dbRef).then(snap => {
+            const val = snap.val() || {};
+            let tickets = Object.entries(val).map(([id, t]) => ({ id, ...t }));
+            if (!isAdmin && !isOperator) {
+                tickets = tickets.filter(t => t.creatorUid === uid);
+            }
+            if (tickets.length === 0) {
+                list.innerHTML = `<div style="text-align:center; padding: 20px; color: var(--text-muted);">Тикетов нет</div>`;
+                return;
+            }
+            list.innerHTML = tickets.map(t => `
+                <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px; cursor: pointer;" onclick="SupportSystem.openTicket('${t.id}')">
+                    <div style="font-weight: bold;">${Utils.escapeHtml(t.title || 'Без темы')}</div>
+                    <div style="font-size: 12px; color: var(--text-muted);">Статус: ${t.status === 'open' ? 'Открыт' : 'Закрыт'} | Сообщений: ${Object.keys(t.messages || {}).length}</div>
+                </div>
+            `).join('');
+        });
+
+        Utils.$('btn-new-ticket').onclick = async () => {
+            const title = prompt('Введите тему проблемы:');
+            if (!title) return;
+            const newRef = window.firebasePush(window.firebaseRef(db, 'support_tickets'));
+            await window.firebaseSet(newRef, {
+                title,
+                creatorUid: uid,
+                status: 'open',
+                createdAt: Date.now()
+            });
+            this.renderTickets();
+        };
+    }
+
+    static async openTicket(id) {
+        const uid = AppState.currentUser?.uid;
+        this.activeTicketId = id;
+        Utils.$('btn-new-ticket').style.display = 'none';
+        Utils.$('support-tickets-list').style.display = 'none';
+        Utils.$('support-active-ticket').style.display = 'flex';
+        
+        const closeBtnHtml = (AdminPanel.isAdminProfile(AppState.currentUserProfile || {}, uid) || AdminPanel.isOperatorProfile(AppState.currentUserProfile || {}, uid)) ? `<button class="danger-btn" onclick="SupportSystem.closeTicket('${id}')" style="width:auto; padding: 4px 12px; font-size:12px;">Закрыть тикет</button>` : '';
+        Utils.$('support-ticket-title').innerHTML = `Тикет ${id} <button class="secondary-btn" onclick="SupportSystem.renderList()" style="width:auto; padding: 4px 12px; font-size: 12px; float: right;">Назад</button> ${closeBtnHtml}`;
+        
+        const chat = Utils.$('support-ticket-chat');
+        if (this.unsub) this.unsub();
+        this.unsub = window.firebaseOnValue(window.firebaseRef(db, `support_tickets/${id}/messages`), (snap) => {
+            const val = snap.val() || {};
+            chat.innerHTML = Object.values(val).sort((a,b) => a.timestamp - b.timestamp).map(m => `
+                <div style="align-self: ${m.uid === uid ? 'flex-end' : 'flex-start'}; background: ${m.uid === uid ? 'var(--accent)' : 'rgba(255,255,255,0.1)'}; color: ${m.uid === uid ? '#000': '#fff'}; padding: 8px 14px; border-radius: 12px; max-width: 80%;">
+                    <div style="font-size: 10px; opacity: 0.6; margin-bottom: 4px;">${m.uid === uid ? 'Вы' : (m.isAdmin ? 'Поддержка' : m.name)}</div>
+                    ${m.image ? `<img src="${Utils.escapeHtml(m.image)}" style="max-width: 100%; border-radius: 8px; margin-bottom: 5px;">` : ''}
+                    <div>${Utils.escapeHtml(m.text || '')}</div>
+                </div>
+            `).join('');
+            chat.scrollTop = chat.scrollHeight;
+        });
+
+        Utils.$('btn-support-send').onclick = () => this.sendMessage(id);
+        Utils.$('btn-support-attach').onclick = () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                Utils.toast('Загрузка картинки...', 'info');
+                // Upload via FileReader to string
+                const reader = new FileReader();
+                reader.onload = async (re) => {
+                    await this.sendMessage(id, '', re.target.result);
+                };
+                reader.readAsDataURL(file);
+            };
+            input.click();
+        };
+    }
+
+    static async sendMessage(ticketId, textOverride = '', imageBase64 = null) {
+        const msg = textOverride || Utils.$('support-msg-input').value.trim();
+        if (!msg && !imageBase64) return;
+        const uid = AppState.currentUser?.uid;
+        const profile = AppState.currentUserProfile;
+        const isAdmin = AdminPanel.isAdminProfile(AppState.currentUserProfile || {}, uid);
+        await window.firebasePush(window.firebaseRef(db, `support_tickets/${ticketId}/messages`), {
+            text: msg,
+            image: imageBase64 || null,
+            uid,
+            name: profile?.name || 'Пользователь',
+            isAdmin: AdminPanel.isOperatorProfile(profile, uid) || AdminPanel.isCreatorProfile(profile, uid),
+            timestamp: Date.now()
+        });
+        Utils.$('support-msg-input').value = '';
+    }
+
+    static async closeTicket(id) {
+        await window.firebaseUpdate(window.firebaseRef(db, `support_tickets/${id}`), { status: 'closed' });
+        this.renderList();
+    }
+
+    static renderList() {
+        if (this.unsub) { this.unsub(); this.unsub = null; }
+        Utils.$('btn-new-ticket').style.display = 'block';
+        Utils.$('support-tickets-list').style.display = 'flex';
+        Utils.$('support-active-ticket').style.display = 'none';
+        this.renderTickets();
+    }
+}
+window.SupportSystem = SupportSystem;
+
 class AdminPanel {
     static developerUidCache = null;
 
@@ -6258,8 +6388,12 @@ class AdminPanel {
         return profile?.role === 'moderator' && !this.isCreatorProfile(profile, uid);
     }
 
+    static isOperatorProfile(profile = {}, uid = null) {
+        return profile?.role === 'operator' && !this.isCreatorProfile(profile, uid);
+    }
+
     static isAdminProfile(profile = {}, uid = null) {
-        return this.isCreatorProfile(profile, uid) || this.isModeratorProfile(profile, uid);
+        return this.isCreatorProfile(profile, uid) || this.isModeratorProfile(profile, uid) || this.isOperatorProfile(profile, uid);
     }
 
     static isCurrentUserCreator() {
@@ -7050,10 +7184,15 @@ class AdminPanel {
 
     static syncSidebarButton(profile = {}) {
         const footer = Utils.$('btn-logout')?.parentNode;
+        
+        let hasAdminAccess = this.isAdminProfile(profile, AppState.currentUser?.uid || null);
+        
+        if (Utils.$('nav-support-staff')) Utils.$('nav-support-staff').style.display = hasAdminAccess ? 'flex' : 'none';
+        if (Utils.$('nav-support')) Utils.$('nav-support').style.display = hasAdminAccess ? 'none' : 'flex';
+
         if (!footer) return;
 
         let btn = Utils.$('btn-admin-panel');
-        const hasAdminAccess = this.isAdminProfile(profile, AppState.currentUser?.uid || null);
 
         if (!hasAdminAccess) {
             if (btn) btn.remove();
@@ -7359,6 +7498,15 @@ class AdminPanel {
             </div>
 
             <div style="font-size:12px; color:var(--text-muted); margin-top: 10px;">Email: ${Utils.escapeHtml(profile.email || 'не указан')}</div>
+
+            <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
+                <div style="font-weight:700; margin-bottom:6px;">Роль</div>
+                <select id="admin-owner-target-role" style="padding:8px; border-radius:8px; background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.1); width:100%;">
+                    <option value="user" ${profile.role === 'user' || !profile.role ? 'selected' : ''}>Пользователь</option>
+                    <option value="moderator" ${profile.role === 'moderator' ? 'selected' : ''}>Модератор</option>
+                    <option value="operator" ${profile.role === 'operator' ? 'selected' : ''}>Оператор Поддержки</option>
+                </select>
+            </div>
             
             <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
                 <div style="font-weight:700; margin-bottom:6px;">Управление второй половинкой</div>
@@ -7651,6 +7799,12 @@ class AdminPanel {
         const bgDim = Number(Utils.$('admin-edit-bg-dim')?.value || 0.5);
         let xp = Number(Utils.$('admin-edit-xp')?.value || 0);
         let level = ProfileManager.getExpMath(xp).level;
+        
+        let newRole = undefined;
+        const roleSelect = Utils.$('admin-owner-target-role');
+        if (roleSelect && this.isCurrentUserCreator()) {
+             newRole = roleSelect.value;
+        }
 
         if (streak !== (oldProfile.streak || 0) || xp !== (oldProfile.xp || 0)) {
             if (!this.isCurrentUserCreator()) {
@@ -7694,6 +7848,11 @@ class AdminPanel {
                 dim: Math.max(0, Math.min(1, bgDim))
             })
         };
+        if (newRole !== undefined && newRole !== 'user') {
+            nextProfile.role = newRole;
+        } else if (newRole === 'user') {
+            nextProfile.role = null;
+        }
         updates[`users/${uid}/profile`] = nextProfile;
 
         await update(ref(db), updates);
