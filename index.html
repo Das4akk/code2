@@ -1004,6 +1004,7 @@
                         <span>VOL</span>
                         <input type="range" id="video-volume-slider" min="0" max="1" step="0.05" value="1" style="width: 70px; cursor: pointer; accent-color: var(--brand);">
                     </div>
+                    <button class="secondary-btn" title="На весь экран" id="btn-fullscreen-toggle" style="width: auto; padding: 10px; margin-right: 8px;">⛶</button>
                     <button class="secondary-btn" id="btn-room-settings" style="width: auto; padding: 10px 16px; display: none;">Настройки</button>
                 </div>
                 
@@ -1365,9 +1366,10 @@
                 <div style="position:absolute; inset:0; pointer-events:none; background: url('https://em-content.zobj.net/source/apple/391/sparkles_2728.png') repeat center/120px; opacity: 0.05; animation: panBg 40s linear infinite;"></div>
                 <style>@keyframes panBg { 0% { background-position: 0 0; } 100% { background-position: 1000px 1000px; } }</style>
                 
-                <div style="width: 140px; height: 140px; position:relative; z-index:10;">
+                <div id="catalog-item-preview-wrapper" style="width: 140px; height: 140px; position:relative; z-index:10; display:flex; align-items:center; justify-content:center;">
                      <div style="width:100%; height:100%; border-radius:50%; background:#111; position:absolute; top:0; left:0; z-index:1; overflow: hidden; box-shadow: inset 0 0 20px rgba(0,0,0,0.8), 0 10px 30px rgba(0,0,0,0.5);" id="catalog-item-avatar-preview-container"></div>
                      <img id="catalog-item-image" src="" style="width:180px;height:180px;object-fit:cover; position:absolute; top:-20px; left:-20px; z-index:2; pointer-events:none; filter:drop-shadow(0 10px 20px rgba(0,0,0,0.6));"/>
+                     <audio id="catalog-item-audio" controls style="display:none; width: 280px; z-index:5;"></audio>
                 </div>
             </div>
 

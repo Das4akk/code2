@@ -4806,14 +4806,32 @@ class ProfileManager {
         return this.openViewProfileModal(uid);
     }
 
+    static getActiveStreak(profile) {
+        if (!profile || !profile.lastLoginDate) return 0;
+        let streak = Number(profile.streak || 0);
+        if (streak <= 0) return 0;
+        
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
+        const yesterday = new Date(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = `${yesterday.getFullYear()}-${yesterday.getMonth() + 1}-${yesterday.getDate()}`;
+        
+        if (profile.lastLoginDate !== todayStr && profile.lastLoginDate !== yesterdayStr) {
+            return 0; // Streak broken!
+        }
+        return streak;
+    }
+
     static async openViewProfileModal(targetUid) {
         const profile = await this.loadUser(targetUid);
         if (!profile) return Utils.toast('Пользователь не найден', 'error');
 
+        const activeStreak = this.getActiveStreak(profile);
         const streakEl = Utils.$('view-streak');
-        if (profile.streak && Number(profile.streak) > 0) {
+        if (activeStreak > 0) {
             streakEl.style.display = 'flex';
-            Utils.$('view-streak-count').innerText = profile.streak;
+            Utils.$('view-streak-count').innerText = activeStreak;
         } else {
             streakEl.style.display = 'none';
         }
@@ -5357,18 +5375,41 @@ class FriendsManager {
                     const avatarStr = profile ? `<div style=\"width:40px;height:40px;\">${ProfileManager.getAvatarHtml(profile)}</div>` : `<div style=\"width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:18px;\">${(nameStr||'?')[0]}</div>`;
                     
                     const item = document.createElement('div');
-                    item.style.cssText = `display:flex; align-items:center; gap:12px; background:rgba(0,0,0,0.3); padding:10px; border-radius:12px; cursor:${isCurrent?'default':'pointer'}; border:1px solid ${isCurrent?'var(--brand)':'rgba(255,255,255,0.1)'};`;
+                    item.style.cssText = `display:flex; align-items:center; gap:12px; background:rgba(0,0,0,0.3); padding:10px; border-radius:12px; cursor:${isCurrent?'default':'pointer'}; border:1px solid ${isCurrent?'var(--brand)':'rgba(255,255,255,0.1)'}; position: relative;`;
                     item.innerHTML = `
                         ${avatarStr}
                         <div style="flex:1; text-align:left;">
                             <div style="font-weight:bold; font-size:16px;">${Utils.escapeHtml(nameStr)}</div>
                             <div style="color:var(--text-muted); font-size:12px;">${Utils.escapeHtml(acc.email)}</div>
                         </div>
-                        ${isCurrent ? '<span style="font-size:12px; color:var(--brand); background:rgba(0,255,136,0.1); padding:4px 8px; border-radius:6px;">Текущий</span>' : '<button class="secondary-btn" style="padding:4px 12px; font-size:12px; width:auto;">Войти</button>'}
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            ${isCurrent ? '<span style="font-size:12px; color:var(--brand); background:rgba(0,255,136,0.1); padding:4px 8px; border-radius:6px;">Текущий</span>' : '<button class="secondary-btn" style="padding:4px 12px; font-size:12px; width:auto; border-radius:6px;">Войти</button>'}
+                            <button class="danger-btn rm-acc-btn" data-email="${Utils.escapeHtml(acc.email)}" style="width: auto; padding: 4px; font-size: 14px; border-radius: 6px; background: transparent; border: 1px solid rgba(255,0,0,0.4); color: rgba(255,0,0,0.8);" title="Удалить аккаунт из списка">✕</button>
+                        </div>
                     `;
                     
+                    const rmBtn = item.querySelector('.rm-acc-btn');
+                    if (rmBtn) {
+                        rmBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            const newSaved = saved.filter(a => a.email !== acc.email);
+                            localStorage.setItem('cowio_saved_accounts', JSON.stringify(newSaved));
+                            Utils.toast('Аккаунт удален из списка');
+                            if (isCurrent && newSaved.length === 0) {
+                                localStorage.removeItem('cowio_saved_accounts');
+                                import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js").then(({ signOut, getAuth }) => { signOut(getAuth()); });
+                            } else {
+                                this.initNavActions(); // Trigger re-render by calling the button simulate maybe?
+                                // Better: just re-click the switch account button
+                                const switchBtn = Utils.$('nav-switch-account');
+                                if (switchBtn) switchBtn.click();
+                            }
+                        };
+                    }
+
                     if (!isCurrent) {
-                        item.onclick = () => {
+                        item.onclick = (e) => {
+                            if (e.target.tagName === 'BUTTON') return;
                             if (!acc.pass) {
                                 Utils.toast('Пароль не сохранен. Войдите вручную.');
                                 import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js").then(({ signOut, getAuth }) => signOut(getAuth()));
@@ -5614,7 +5655,8 @@ class FriendsManager {
                 }
 
                 const relData = friendsMap[uid];
-                const streakHTML = (relData && relData.streak && relData.streak > 0) ? `<div style="position: absolute; bottom: -4px; right: -4px; background: rgba(0,0,0,0.8); border-radius: 50%; padding: 2px 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; border: none;" title="Стрик общения: ${relData.streak} дней"><img src="https://em-content.zobj.net/source/telegram/386/fire_1f525.webp" style="width:14px; height:14px; margin-right:2px;">${relData.streak}</div>` : '';
+                const activeStreak = ProfileManager.getActiveStreak ? ProfileManager.getActiveStreak(profile) : profile.streak;
+                const streakHTML = (activeStreak && activeStreak > 0) ? `<div style="position: absolute; bottom: -4px; right: -4px; background: rgba(0,0,0,0.8); border-radius: 50%; padding: 2px 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; border: none;" title="Стрик захода: ${activeStreak} дней"><img src="https://em-content.zobj.net/source/telegram/386/fire_1f525.webp" style="width:14px; height:14px; margin-right:2px;">${activeStreak}</div>` : '';
                 
                 const roleBadgeHtml = ProfileManager.getRoleBadgeHtml(profile, uid);
                 div.innerHTML = `
@@ -6954,9 +6996,11 @@ class AdminPanel {
             if (sessionStorage.getItem(marker)) return;
             sessionStorage.setItem(marker, '1');
 
-            if (!this.isCurrentUserAdmin() && AppState.currentRoomId && (!payload.roomId || payload.roomId === AppState.currentRoomId)) {
-                Utils.toast('Администратор удалил вас из комнаты', 'error');
-                RoomManager.leaveRoom();
+            if (AppState.currentRoomId && (!payload.roomId || payload.roomId === AppState.currentRoomId)) {
+                if (payload.reason === 'kicked-by-host' || !this.isCurrentUserAdmin()) {
+                    Utils.toast(payload.reason === 'kicked-by-host' ? 'Хост удалил вас из комнаты' : 'Администратор удалил вас из комнаты', 'error');
+                    RoomManager.leaveRoom();
+                }
             }
         });
 
@@ -7971,6 +8015,17 @@ class RoomManager {
         
         Utils.$('room-input-private').onchange = (e) => { Utils.$('room-input-password').style.display = e.target.checked ? 'block' : 'none'; };
         Utils.$('btn-leave-room').onclick = () => this.leaveRoom();
+        if (Utils.$('btn-fullscreen-toggle')) {
+            Utils.$('btn-fullscreen-toggle').onclick = () => {
+                const vidContainer = Utils.$('native-player')?.parentElement;
+                if (!vidContainer) return;
+                if (!document.fullscreenElement) {
+                    vidContainer.requestFullscreen().catch(() => Utils.toast('Не удалось открыть полный экран', 'error'));
+                } else {
+                    document.exitFullscreen();
+                }
+            };
+        }
         this.initThemes();
         MediaResolverClient.bindRoomUrlInput();
         this.applyCreateRoomAvailability();
@@ -9900,13 +9955,13 @@ class CatalogManager {
             const isHot = item.isHot === true || item.isHot === 'true';
             return `
             <div class="catalog-card-item ${isHot ? 'is-hot' : ''} ${isOwned ? 'is-owned' : ''}" style="animation-delay: ${i * 0.05}s;" onclick="if(typeof openCatalogItemModal === 'function') openCatalogItemModal('${item.id}')">
-                ${isHot ? `<img src="https://em-content.zobj.net/source/telegram/386/fire_1f525.webp" style="position:absolute; top:-5%; left:-5%; width:110%; height:110%; object-fit:contain; z-index:0; pointer-events:none; animation: firePulseAnim 3s infinite ease-in-out; filter:drop-shadow(0 10px 20px rgba(255,100,0,0.5));">` : ''}
-                
                 ${item.type === 'sound' ? `
                     <div style="width: 100%; display:flex; align-items:center; justify-content:center; flex-shrink: 0; position:relative; z-index:2; margin: 0 auto 16px;">
+                        ${isHot ? `<img src="https://em-content.zobj.net/source/telegram/386/fire_1f525.webp" style="position:absolute; top:-25px; left:5px; height:60px; object-fit:contain; z-index:-1; pointer-events:none; animation: firePulseAnim 3s infinite ease-in-out; filter:drop-shadow(0 5px 10px rgba(255,100,0,0.5));">` : ''}
                         <audio controls src="${item.image}" style="width:100%; height: 35px; border-radius: 8px; outline:none;" onclick="event.stopPropagation();"></audio>
                     </div>
                 ` : `
+                    ${isHot ? `<img src="https://em-content.zobj.net/source/telegram/386/fire_1f525.webp" style="position:absolute; top:-5%; left:-5%; width:110%; height:110%; object-fit:contain; z-index:0; pointer-events:none; animation: firePulseAnim 3s infinite ease-in-out; filter:drop-shadow(0 10px 20px rgba(255,100,0,0.5));">` : ''}
                     <div style="width: 100px; height: 100px; display:flex; align-items:center; justify-content:center; flex-shrink: 0; position:relative; z-index:2; margin: 0 auto 16px;">
                         <div style="width:100px; height:100px; border-radius:50%; background:#1f1f23; position:absolute; top:0; left:0; z-index:1; box-shadow: inset 0 0 10px rgba(0,0,0,0.6);"></div>
                         <img src="${item.image}" style="width:140px;height:140px;object-fit:contain; position:absolute; top:-20px; left:-20px; z-index:2; pointer-events:none;"/>
@@ -9916,7 +9971,7 @@ class CatalogManager {
                 <div style="flex: 1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; z-index:2; width: 100%;">
                     <div style="color: #ffffff; font-weight: 800; font-size: 18px; line-height: 1.2; margin-bottom: 6px; text-shadow: 0 1px 4px rgba(0,0,0,0.8);">${item.title}</div>
                     <div style="font-size: 13px; color: rgba(255,255,255,0.7); margin-bottom: 20px; line-height: 1.4; text-shadow: 0 1px 3px rgba(0,0,0,0.8);">${item.desc}</div>
-                    <div style="font-size: 14px; font-weight:bold; letter-spacing: 0.5px; padding: 6px 16px; border-radius: 20px; background: rgba(0,0,0,0.4); backdrop-filter: blur(8px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); ${isOwned ? 'color: rgba(255,255,255,0.9);' : 'color: var(--accent);'} ">${isOwned ? '✓ В ИНВЕНТАРЕ' : item.price}</div>
+                    <div style="font-size: 14px; font-weight:bold; letter-spacing: 0.5px; padding: 6px 16px; border-radius: 20px; background: rgba(0,0,0,0.4); backdrop-filter: blur(8px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); ${isOwned ? 'color: rgba(255,255,255,0.9);' : 'color: var(--accent);'} ">${isOwned ? '✓ В ИНВЕНТАРЕ' : (item.priceType === 'free' ? 'БЕСПЛАТНО' : (item.price + ' ур.'))}</div>
                 </div>
             </div>
             `;
@@ -9932,11 +9987,11 @@ class CatalogManager {
                 <input type="text" id="admin-cat-title-${item.id}" value="${item.title}" class="admin-form-input" placeholder="Название" style="margin-bottom: 4px;"/>
                 <input type="text" id="admin-cat-desc-${item.id}" value="${item.desc}" class="admin-form-input" placeholder="Описание" style="margin-bottom: 4px;"/>
                 <div style="display:flex; gap: 4px; margin-bottom: 4px;">
-                    <input type="text" id="admin-cat-price-${item.id}" value="${item.price}" class="admin-form-input" placeholder="Цена" style="flex:1;"/>
-                    <select id="admin-cat-pricetype-${item.id}" class="admin-form-input" style="flex:1;">
-                        <option value="free" ${item.priceType==='free'?'selected':''}>Free</option>
-                        <option value="paid" ${item.priceType==='paid'?'selected':''}>Paid</option>
+                    <select id="admin-cat-pricetype-${item.id}" class="admin-form-input" style="flex:1;" onchange="document.getElementById('admin-cat-price-${item.id}').style.display = this.value === 'free' ? 'none' : 'block';">
+                        <option value="free" ${item.priceType==='free'?'selected':''}>Бесплатно</option>
+                        <option value="paid" ${item.priceType==='paid'?'selected':''}>Уровень</option>
                     </select>
+                    <input type="text" id="admin-cat-price-${item.id}" value="${item.price}" class="admin-form-input" placeholder="Уровень" style="flex:1; display: ${item.priceType==='free'?'none':'block'};"/>
                 </div>
                 <input type="text" id="admin-cat-img-${item.id}" value="${item.image}" class="admin-form-input" placeholder="URL Картинки/Рамки/Звука" style="margin-bottom: 4px;"/>
                 <select id="admin-cat-type-${item.id}" class="admin-form-input" style="margin-bottom: 4px;">
@@ -9985,15 +10040,44 @@ window.openCatalogItemModal = function(itemId) {
 
     Utils.$('catalog-item-title').innerText = item.title;
     Utils.$('catalog-item-desc').innerText = item.desc;
-    Utils.$('catalog-item-price').innerText = item.price;
-    Utils.$('catalog-item-image').src = item.image;
+    Utils.$('catalog-item-price').innerText = item.priceType === 'free' ? 'БЕСПЛАТНО' : (item.price + ' ур.');
 
     const previewContainer = Utils.$('catalog-item-avatar-preview-container');
-    
-    // Default hiding
-    if (previewContainer) {
-        previewContainer.innerHTML = '';
-        previewContainer.style.background = '#1f1f23';
+    const catalogImage = Utils.$('catalog-item-image');
+    const catalogAudio = Utils.$('catalog-item-audio');
+    const previewWrapper = Utils.$('catalog-item-preview-wrapper');
+
+    if (item.type === 'sound') {
+        if(previewContainer) previewContainer.style.display = 'none';
+        if(catalogImage) catalogImage.style.display = 'none';
+        if(catalogAudio) {
+            catalogAudio.style.display = 'block';
+            catalogAudio.src = item.image;
+        }
+        if(previewWrapper) {
+            previewWrapper.style.width = '280px';
+            previewWrapper.style.height = '60px';
+        }
+        Utils.$('btn-preview-catalog-item').style.display = 'none';
+    } else {
+        if(previewContainer) {
+            previewContainer.style.display = 'block';
+            previewContainer.innerHTML = '';
+            previewContainer.style.background = '#1f1f23';
+        }
+        if(catalogImage) {
+            catalogImage.style.display = 'block';
+            catalogImage.src = item.image;
+        }
+        if(catalogAudio) {
+            catalogAudio.style.display = 'none';
+            catalogAudio.src = '';
+        }
+        if(previewWrapper) {
+            previewWrapper.style.width = '140px';
+            previewWrapper.style.height = '140px';
+        }
+        Utils.$('btn-preview-catalog-item').style.display = 'block';
     }
 
     modal.classList.add('active');
@@ -10490,7 +10574,15 @@ window.SoundpadController = class SoundpadController {
             const data = snap.val();
             if(data && data.timestamp && (Date.now() - data.timestamp < 5000)) {
                 if(data.triggeredBy === AppState.currentUser?.uid) return;
+                
+                // prevent re-playing the same event
+                const marker = `sound:${data.timestamp}:${data.triggeredBy}`;
+                if (sessionStorage.getItem(marker)) return;
+                sessionStorage.setItem(marker, '1');
+                
                 this.playAudio(data.url);
+                const senderName = AppState.currentPresenceCache?.[data.triggeredBy]?.name || 'Хост';
+                Utils.toast(`${senderName} запустил звук`, 'info');
             }
         });
         this.renderGrid();
@@ -10510,21 +10602,25 @@ window.SoundpadController = class SoundpadController {
         if (!uid) return;
         const currentProf = AppState.usersCache.get(uid);
         const ownedIds = currentProf?.inventory || [];
-        const sounds = [
-            { id: 'cow', name: 'Moo', url: window.EasterEggManager?.SOUND_URLS?.moo || 'https://actions.google.com/sounds/v1/animals/cow_moo_1.ogg', hotkey: '1' },
-            { id: 'glass', name: 'Glass', url: window.EasterEggManager?.SOUND_URLS?.glass || 'https://actions.google.com/sounds/v1/impacts/glass_shatters_into_debris.ogg', hotkey: '2' },
-        ];
+        const sounds = [];
         if (window.CatalogManager && CatalogManager.items) {
             ownedIds.forEach(id => {
                 const snd = CatalogManager.items.find(i => i.id === id && i.type === 'sound');
                 if (snd) sounds.push({ id: snd.id, name: snd.title, url: snd.image, hotkey: '' });
             });
         }
+        
+        if (sounds.length === 0) {
+            grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); font-size: 14px; padding: 20px;">Нет звуков.<br>Приобретайте их в Каталоге!</div>';
+            return;
+        }
+
         grid.innerHTML = sounds.map(s => `
-            <div class="sound-btn" onclick="SoundpadController.triggerSound('${s.url}')">
-                <div class="sound-icon">🎵</div>
-                <div class="sound-name">${s.name}</div>
-                ${s.hotkey ? `<div class="sound-hotkey">${s.hotkey}</div>` : ''}
+            <div class="sound-btn" onclick="SoundpadController.triggerSound('${s.url}')" style="background: linear-gradient(145deg, rgba(30,30,40,0.8), rgba(15,15,20,0.8)); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 15px 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; position: relative; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                <div class="sound-icon" style="font-size: 28px; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.5)); transition: transform 0.2s;">🎵</div>
+                <div class="sound-name" style="font-size: 12px; font-weight: 700; color: #fff; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; max-width: 100%;">
+                    ${s.name}
+                </div>
             </div>
         `).join('');
     }
