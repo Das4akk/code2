@@ -6202,7 +6202,7 @@ class SupportSystem {
     static initGlobalListener() {
         const uid = AppState.currentUser?.uid;
         if (!uid) return;
-        const profile = AppState.currentUserProfile || {};
+        const profile = AppState.usersCache.get(uid) || {};
         const isAdmin = AdminPanel.isCreatorProfile(profile, uid) || AdminPanel.isOperatorProfile(profile, uid);
         
         // Use implicit import for onValue/ref
@@ -6274,7 +6274,7 @@ class SupportSystem {
     static async renderTickets() {
         const uid = AppState.currentUser?.uid;
         if (!uid) return;
-        const profile = AppState.currentUserProfile || {};
+        const profile = (AppState.usersCache.get(AppState.currentUser?.uid) || {}) || {};
         const isAdmin = AdminPanel.isCreatorProfile(profile, uid) || AdminPanel.isOperatorProfile(profile, uid);
         const isCreator = AdminPanel.isCreatorProfile(profile, uid);
         const list = Utils.$('support-tickets-list');
@@ -6374,7 +6374,7 @@ class SupportSystem {
         const uid = AppState.currentUser?.uid;
         this.activeTicketId = id;
         
-        await set(ref(db, `support_tickets/${id}/readReceipts/${uid}`), Date.now());
+        set(ref(db, `support_tickets/${id}/readReceipts/${uid}`), Date.now());
 
         const items = document.querySelectorAll('#support-tickets-list .dm-chat-item');
         items.forEach(el => el.classList.remove('active'));
@@ -6393,7 +6393,7 @@ class SupportSystem {
         Utils.$('support-no-ticket').style.display = 'none';
         Utils.$('support-active-ticket').style.display = 'flex';
         
-        const profile = AppState.currentUserProfile || {};
+        const profile = (AppState.usersCache.get(AppState.currentUser?.uid) || {}) || {};
         const isAdmin = AdminPanel.isCreatorProfile(profile, uid) || AdminPanel.isOperatorProfile(profile, uid);
         
         if (this.unsub) this.unsub();
@@ -6459,6 +6459,17 @@ class SupportSystem {
              
              const chat = Utils.$('support-ticket-chat');
              const msgs = t.messages || {};
+             
+             const uidsToLoad = new Set();
+             if (t.creatorUid) uidsToLoad.add(t.creatorUid);
+             Object.values(msgs).forEach(m => m.uid && uidsToLoad.add(m.uid));
+             
+             await Promise.all(
+                 Array.from(uidsToLoad)
+                     .filter(uUid => !AppState.usersCache.has(uUid))
+                     .map(uUid => ProfileManager.loadUser(uUid))
+             );
+             
              chat.innerHTML = Object.values(msgs).sort((a,b) => a.timestamp - b.timestamp).map(m => {
                  const mUid = m.uid;
                  const cachedUser = AppState.usersCache ? AppState.usersCache.get(mUid) : null;
@@ -6548,7 +6559,7 @@ class SupportSystem {
         const msg = textOverride || (input ? input.value.trim() : '');
         if (!msg && !imageBase64) return;
         const uid = AppState.currentUser?.uid;
-        const profile = AppState.currentUserProfile;
+        const profile = (AppState.usersCache.get(AppState.currentUser?.uid) || {});
         const isAdmin = AdminPanel.isOperatorProfile(profile, uid) || AdminPanel.isCreatorProfile(profile, uid);
         const ts = Date.now();
         await push(ref(db, `support_tickets/${ticketId}/messages`), {
@@ -6742,7 +6753,79 @@ class SupportSystem {
             });
         }
     }
-}
+
+    static async exportArchiveTickets() {
+        const { get } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
+        const snap = await get(ref(window.db, 'support_tickets'));
+        const val = snap.val() || {};
+        let str = '=== ЭКСПОРТ АРХИВНЫХ (ЗАКРЫТЫХ) ТИКЕТОВ ===\n\n';
+        Object.values(val).forEach(t => {
+            if(t.status === 'open') return;
+            str += `[ID: ${t.id}] ${t.title} (от ${t.creatorUid})\n`;
+            Object.values(t.messages || {}).forEach(m => {
+                str += `  - ${m.name}: ${m.text}\n`;
+            });
+            str += '\n';
+        });
+        const blob = new Blob([str], { type: 'text/plain' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `archived_tickets_${Date.now()}.txt`;
+        a.click();
+    }
+    
+    static async exportBansList() {
+        let str = '=== СПИСОК ЗАБЛОКИРОВАННЫХ ПОЛЬЗОВАТЕЛЕЙ (ПОДДЕРЖКА) ===\n\n';
+        this.BANNED_USERS.forEach(uid => str += `- ${uid}\n`);
+        const blob = new Blob([str], { type: 'text/plain' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `support_bans_${Date.now()}.txt`;
+        a.click();
+    }
+    
+    static refreshCreatorStats() {
+        this.openCreatorPanel(); // Just calls the opening which refreshes stats
+        Utils.toast('Данные обновлены', 'success');
+    }
+    
+    static async closeAllActiveTickets() {
+        if(!confirm('Закрыть все открытые тикеты? Это действие нельзя отменить.')) return;
+        const { get, update } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
+        const snap = await get(ref(window.db, 'support_tickets'));
+        const val = snap.val() || {};
+        let c = 0;
+        Object.keys(val).forEach(k => {
+            if (val[k].status === 'open') {
+                update(ref(window.db, `support_tickets/${k}`), { status: 'closed' });
+                c++;
+            }
+        });
+        Utils.toast(`Закрыто тикетов: ${c}`);
+        this.openCreatorPanel();
+    }
+    
+    static async unbanUidFromInput() {
+        const el = Utils.$('admin-ban-uid');
+        if (!el || !el.value.trim()) return;
+        const tUid = el.value.trim();
+        const { remove } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
+        await remove(ref(window.db, `support_bans/${tUid}`));
+        el.value = '';
+        Utils.toast('Пользователь разблокирован', 'success');
+        this.openCreatorPanel();
+    }
+    
+    static checkStatusUidFromInput() {
+        const el = Utils.$('admin-ban-uid');
+        if (!el || !el.value.trim()) return;
+        const tUid = el.value.trim();
+        if (this.BANNED_USERS.has(tUid)) {
+            Utils.toast('Пользователь ЗАБЛОКИРОВАН', 'error');
+        } else {
+            Utils.toast('Пользователь НЕ ЗАБЛОКИРОВАН', 'success');
+        }
+    }
 }
 window.SupportSystem = SupportSystem;
 
@@ -6849,13 +6932,13 @@ class AdminPanel {
 
     static isCurrentUserCreator() {
         const uid = AppState.currentUser?.uid || null;
-        const profile = AppState.currentUserProfile || AppState.usersCache.get(uid) || {};
+        const profile = (AppState.usersCache.get(AppState.currentUser?.uid) || {}) || AppState.usersCache.get(uid) || {};
         return this.isCreatorProfile(profile, uid);
     }
 
     static isCurrentUserAdmin() {
         const uid = AppState.currentUser?.uid || null;
-        const profile = AppState.currentUserProfile || AppState.usersCache.get(uid) || {};
+        const profile = (AppState.usersCache.get(AppState.currentUser?.uid) || {}) || AppState.usersCache.get(uid) || {};
         return this.isAdminProfile(profile, uid);
     }
 
