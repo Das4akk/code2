@@ -6397,7 +6397,7 @@ class SupportSystem {
         const isAdmin = AdminPanel.isCreatorProfile(profile, uid) || AdminPanel.isOperatorProfile(profile, uid);
         
         if (this.unsub) this.unsub();
-        this.unsub = onValue(ref(db, `support_tickets/${id}`), (snap) => {
+        this.unsub = onValue(ref(db, `support_tickets/${id}`), async (snap) => {
              const t = snap.val();
              if (!t) return;
              if (this.activeTicketId !== id) return;
