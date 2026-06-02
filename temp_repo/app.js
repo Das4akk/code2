@@ -167,7 +167,7 @@ class TutorialManager {
 
     static showWelcome() {
         this.renderModal(
-            'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Waving%20Hand.webp',
+            'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smilies/Waving%20Hand.webp',
             'Добро пожаловать!',
             'Хей, добро пожаловать! Спасибо, что решил(а) присоединиться к нашей платформе. Мы тут постарались создать уютное место для общения, поиска друзей и просто хорошего времяпровождения. Давай я быстро покажу тебе, что к чему? Это не займёт много времени!',
             'Поехали!',
@@ -192,9 +192,6 @@ class TutorialManager {
         if(navPanel) {
             navPanel.style.position = 'relative';
             navPanel.style.zIndex = '9999';
-            navPanel.style.transition = 'background 0.4s ease';
-            navPanel.style.background = 'rgba(0,0,0,0.9)';
-            navPanel.style.borderRadius = '16px';
         }
     }
     
@@ -213,8 +210,6 @@ class TutorialManager {
         if(navPanel) {
             navPanel.style.zIndex = '';
             navPanel.style.position = '';
-            navPanel.style.background = '';
-            navPanel.style.borderRadius = '';
         }
     }
 
@@ -240,15 +235,12 @@ class TutorialManager {
         
         // Lock other nav items
         document.querySelectorAll('.nav-item').forEach(item => {
-            item.style.transition = 'all 0.3s ease';
             if (item.id !== data.id) {
                 item.style.pointerEvents = 'none';
-                item.style.opacity = '0.15';
-                item.style.filter = 'brightness(0.3)';
+                item.style.opacity = '0.5';
             } else {
                 item.style.pointerEvents = 'auto';
                 item.style.opacity = '1';
-                item.style.filter = 'brightness(1.5) drop-shadow(0 0 10px rgba(255,255,255,0.4))';
             }
         });
 
@@ -296,7 +288,6 @@ class TutorialManager {
         document.querySelectorAll('.nav-item').forEach(item => {
             item.style.pointerEvents = '';
             item.style.opacity = '';
-            item.style.filter = '';
         });
 
         if (this.currentHole) this.currentHole.classList.remove('tutorial-highlightpulse');
@@ -8578,58 +8569,51 @@ class SupportSystem {
       chat.innerHTML = Object.values(msgs)
         .sort((a, b) => a.timestamp - b.timestamp)
         .map((m) => {
-          try {
-            const mUid = m.uid || 'unknown';
-            const cachedUser = AppState.usersCache
-              ? AppState.usersCache.get(mUid)
-              : null;
-            const mName = Utils.escapeHtml(cachedUser
-              ? cachedUser.name || "Пользователь"
-              : m.name || "Пользователь");
-            const mUsername = Utils.escapeHtml(cachedUser
-              ? cachedUser.username || mUid
-              : m.username || mUid);
-            const mAvatar = Utils.escapeHtml(cachedUser ? cachedUser.avatar || "" : m.avatar || "");
-            const isMe = mUid === uid;
-            const bg = isMe
-              ? "rgba(255,255,255,0.15)"
-              : (m.isInternal ? "rgba(255,165,0,0.15)" : "rgba(255,255,255,0.06)");
-            const avatarHtml = !isMe
-              ? `<div style="width:32px;height:32px;border-radius:50%;background-image:url('${mAvatar}');background-size:cover;background-color:#333;flex-shrink:0;cursor:pointer;border:1px solid rgba(255,255,255,0.1);" onclick="ProfileManager.openProfileModal('${Utils.escapeHtml(mUid)}')"></div>`
-              : "";
-            const internalTag = m.isInternal
-              ? '<span style="color:orange; font-size:10px; font-weight:bold; letter-spacing:0.5px;">[Внутренняя заметка]</span><br>'
-              : "";
-            if (m.isInternal && !isAdmin) return "";
+          const mUid = m.uid;
+          const cachedUser = AppState.usersCache
+            ? AppState.usersCache.get(mUid)
+            : null;
+          const mName = cachedUser
+            ? cachedUser.name || "Пользователь"
+            : m.name || "Пользователь";
+          const mUsername = cachedUser
+            ? cachedUser.username || mUid
+            : m.username || mUid;
+          const mAvatar = cachedUser ? cachedUser.avatar || "" : m.avatar || "";
+          const isMe = mUid === uid;
+          const bg = isMe
+            ? "rgba(255,255,255,0.15)"
+            : m.isInternal
+              ? "rgba(255,165,0,0.15)"
+              : "rgba(255,255,255,0.06)";
+          const avatarHtml = !isMe
+            ? `<div style="width:32px;height:32px;border-radius:50%;background-image:url('${mAvatar}');background-size:cover;background-color:#333;flex-shrink:0;cursor:pointer;border:1px solid rgba(255,255,255,0.1);" onclick="ProfileManager.openProfileModal('${mUid}')"></div>`
+            : "";
+          const internalTag = m.isInternal
+            ? '<span style="color:orange; font-size:10px; font-weight:bold; letter-spacing:0.5px;">[Внутренняя заметка]</span><br>'
+            : "";
+          if (m.isInternal && !isAdmin) return "";
 
-            const sentDate = new Date(m.timestamp || Date.now());
-            const timeStr =
-              sentDate.getHours().toString().padStart(2, "0") +
-              ":" +
-              sentDate.getMinutes().toString().padStart(2, "0");
-              
-            const senderIdentity = m.isAdmin
-                ? `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Briefcase.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> ` + (isMe ? `Вы (Поддержка) (${mName})` : `Поддержка (${mName})`)
-                : `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Bust%20In%20Silhouette.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> ` + (isMe ? `Вы` : `${mName} @${mUsername}`);
+          const sentDate = new Date(m.timestamp);
+          const timeStr =
+            sentDate.getHours().toString().padStart(2, "0") +
+            ":" +
+            sentDate.getMinutes().toString().padStart(2, "0");
 
-            return `
-                   <div style="display:flex; gap:10px; align-self: ${isMe ? 'flex-end' : 'flex-start'}; max-width: 85%;">
-                       ${avatarHtml}
-                       <div style="background: ${bg}; padding: 10px 16px; border-radius: 16px; border-bottom-${isMe ? 'right' : 'left'}-radius: 4px; border: 1px solid rgba(255,255,255,0.05); position:relative; min-width: 120px;">
-                           <div style="font-size: 11px; opacity: 0.6; margin-bottom: 4px; font-weight: 600; cursor:pointer;" onclick="ProfileManager.openProfileModal('${Utils.escapeHtml(mUid)}')">
-                               ${senderIdentity}
-                           </div>
-                           <div style="line-height: 1.5; font-size:14px; word-wrap: break-word; margin-bottom:12px;">${internalTag}${Utils.escapeHtml(m.text || "")}</div>
-                           ${m.image ? `<img src="${Utils.escapeHtml(m.image)}" style="max-width: 100%; border-radius: 8px; margin-top: 5px; margin-bottom: 12px; cursor:pointer;" onclick="window.open(this.src)">` : ""}
-                           <div style="position:absolute; bottom:6px; right:12px; font-size:10px; color:rgba(255,255,255,0.4);">
-                              ${timeStr}
-                           </div>
-                       </div>
-                   </div>`;
-          } catch (e) {
-            console.error('Error rendering message:', e);
-            return '<div style="color:red; font-size:12px;">Ошибка загрузки сообщения</div>';
-          }
+          return `
+                 <div style="display:flex; gap:10px; align-self: ${isMe ? "flex-end" : "flex-start"}; max-width: 85%;">
+                     ${avatarHtml}
+                     <div style="background: ${bg}; padding: 10px 16px; border-radius: 16px; border-bottom-${isMe ? "right" : "left"}-radius: 4px; border: 1px solid rgba(255,255,255,0.05); position:relative; min-width: 120px;">
+                         <div style="font-size: 11px; opacity: 0.6; margin-bottom: 4px; font-weight: 600; cursor:pointer;" onclick="ProfileManager.openProfileModal('${mUid}')">
+                             ${m.isAdmin ? `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Briefcase.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> ${isMe ? "Вы (Поддержка)" : "Поддержка"} (${mName})` : `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Bust%20In%20Silhouette.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> ${isMe ? "Вы" : `${mName} @${mUsername}`}`}
+                         </div>
+                         <div style="line-height: 1.5; font-size:14px; word-wrap: break-word; margin-bottom:12px;">${internalTag}${Utils.escapeHtml(m.text || "")}</div>
+                         ${m.image ? `<img src="${Utils.escapeHtml(m.image)}" style="max-width: 100%; border-radius: 8px; margin-top: 5px; margin-bottom: 12px; cursor:pointer;" onclick="window.open(this.src)">` : ""}
+                         <div style="position:absolute; bottom:6px; right:12px; font-size:10px; color:rgba(255,255,255,0.4);">
+                            ${timeStr}
+                         </div>
+                     </div>
+                 </div>`;
         })
         .join("");
       setTimeout(() => {
