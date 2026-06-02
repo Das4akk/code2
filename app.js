@@ -6206,12 +6206,11 @@ class SupportSystem {
         const isAdmin = AdminPanel.isCreatorProfile(profile, uid) || AdminPanel.isOperatorProfile(profile, uid);
         
         // Use implicit import for onValue/ref
-        const dbLocal = window.db || (typeof db !== 'undefined' ? db : null);
-        if (dbLocal && typeof onValue !== 'undefined') {
-            onValue(ref(dbLocal, 'support_bans'), snap => {
+        if (typeof onValue !== 'undefined') {
+            onValue(ref(db, 'support_bans'), snap => {
                 this.BANNED_USERS = new Set(Object.keys(snap.val() || {}));
             });
-            onValue(ref(dbLocal, 'support_templates'), snap => {
+            onValue(ref(db, 'support_templates'), snap => {
                 if (snap.exists()) this.TEMPLATES = {
                     'Приветствие': 'Здравствуйте! Чем я могу вам помочь?',
                     'Ожидание': 'Пожалуйста, подождите, мы уточняем информацию.',
@@ -6275,23 +6274,26 @@ class SupportSystem {
         const modal = Utils.$('modal-support-creator-panel');
         if (modal) modal.classList.add('active');
         
-        let total = 0, open = 0, closed = 0;
-        const dbLocal = typeof db !== 'undefined' ? db : null;
-        if (dbLocal && typeof get !== 'undefined' && typeof ref !== 'undefined') {
-            const snap = await get(ref(dbLocal, 'support_tickets'));
-            const val = snap.val() || {};
-            Object.values(val).forEach(t => {
-                total++;
-                if (t.status === 'closed') closed++;
-                else open++;
-            });
+        try {
+            let total = 0, open = 0, closed = 0;
+            if (typeof get !== 'undefined' && typeof ref !== 'undefined') {
+                const snap = await get(ref(db, 'support_tickets'));
+                const val = snap.val() || {};
+                Object.values(val).forEach(t => {
+                    total++;
+                    if (t.status === 'closed') closed++;
+                    else open++;
+                });
+            }
+            
+            const elTotal = Utils.$('stat-total-tickets'); if (elTotal) elTotal.innerText = total;
+            const elOpen = Utils.$('stat-open-tickets'); if (elOpen) elOpen.innerText = open;
+            const elClosed = Utils.$('stat-closed-tickets'); if (elClosed) elClosed.innerText = closed;
+            
+            this.renderCreatorTemplates();
+        } catch (e) {
+            console.error("Error in openCreatorPanel:", e);
         }
-        
-        const elTotal = Utils.$('stat-total-tickets'); if (elTotal) elTotal.innerText = total;
-        const elOpen = Utils.$('stat-open-tickets'); if (elOpen) elOpen.innerText = open;
-        const elClosed = Utils.$('stat-closed-tickets'); if (elClosed) elClosed.innerText = closed;
-        
-        this.renderCreatorTemplates();
     }
 
     static renderCreatorTemplates() {
@@ -6320,7 +6322,7 @@ class SupportSystem {
         const text = tInput.value.trim();
         if (!name || !text) return Utils.toast('Заполните все поля', 'error');
         if (typeof update !== 'undefined' && typeof ref !== 'undefined') {
-             await update(ref(typeof db !== 'undefined' ? db : null, 'support_templates'), { [name]: text });
+             await update(ref(db, 'support_templates'), { [name]: text });
              Utils.toast('Шаблон добавлен', 'success');
              nInput.value = ''; tInput.value = '';
              this.TEMPLATES[name] = text;
@@ -6335,7 +6337,7 @@ class SupportSystem {
     static async removeGlobalTemplate(name) {
         if (!confirm('Удалить шаблон "' + name + '"?')) return;
         if (typeof update !== 'undefined' && typeof ref !== 'undefined') {
-             await update(ref(typeof db !== 'undefined' ? db : null, 'support_templates'), { [name]: null });
+             await update(ref(db, 'support_templates'), { [name]: null });
              delete this.TEMPLATES[name];
              this.renderCreatorTemplates();
              const tContainer = Utils.$('support-inline-templates'); 
@@ -6494,7 +6496,7 @@ class SupportSystem {
             if (isAdmin) {
                 templateContainer.style.display = 'flex';
                 templateContainer.innerHTML = Object.keys(this.TEMPLATES).map(k => 
-                    `<button class="secondary-btn" style="padding:4px 10px; font-size:11px; border-radius:12px;" onclick="SupportSystem.useTemplate('${k}', '${id}')">${k}</button>`
+                    `<button class="secondary-btn" style="padding:4px 10px; flex-shrink:0; font-size:11px; border-radius:12px;" onclick="SupportSystem.useTemplate('${k}', '${id}')">${k}</button>`
                 ).join('');
             } else {
                 templateContainer.style.display = 'none';
@@ -6716,7 +6718,7 @@ Utils.$('btn-support-close-ticket').style.display = isClosed ? 'none' : 'block';
     }
     
     static async exportArchiveTickets() {
-        const snap = await get(ref(window.db, 'support_tickets'));
+        const snap = await get(ref(db, 'support_tickets'));
         const val = snap.val() || {};
         let str = '=== ЭКСПОРТ АРХИВНЫХ (ЗАКРЫТЫХ) ТИКЕТОВ ===\n\n';
         Object.values(val).forEach(t => {
@@ -6751,19 +6753,19 @@ Utils.$('btn-support-close-ticket').style.display = isClosed ? 'none' : 'block';
         Utils.$('support-no-ticket').style.display = 'flex';
         
         if (typeof remove !== 'undefined' && typeof ref !== 'undefined') {
-            await remove(ref(typeof db !== 'undefined' ? db : null, `support_tickets/${id}`));
+            await remove(ref(db, `support_tickets/${id}`));
             Utils.toast('Тикет удален', 'success');
         }
     }
 
     static async closeAllActiveTickets() {
         if(!confirm('Закрыть все открытые тикеты? Это действие нельзя отменить.')) return;
-        const snap = await get(ref(window.db, 'support_tickets'));
+        const snap = await get(ref(db, 'support_tickets'));
         const val = snap.val() || {};
         let c = 0;
         Object.keys(val).forEach(k => {
             if (val[k].status === 'open') {
-                update(ref(window.db, `support_tickets/${k}`), { status: 'closed' });
+                update(ref(db, `support_tickets/${k}`), { status: 'closed' });
                 c++;
             }
         });
