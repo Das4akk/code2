@@ -978,7 +978,7 @@
 
                     <!-- Right Main (Active Ticket) -->
                     <div class="support-main-area" style="flex: 1; display: flex; flex-direction: column; height: 100%; position: relative; overflow: hidden;">
-                        <div id="support-active-ticket" style="display: none; flex-direction: column; height: 100%; overflow: hidden;">
+                        <div id="support-active-ticket" style="display: none; flex-direction: column; height: 100%; overflow: hidden; position: relative;">
                             <div style="flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding: 15px 20px; background: rgba(0,0,0,0.2);">
                                 <div style="display: flex; align-items: center; gap: 12px;">
                                     <button class="secondary-btn" id="btn-support-back" style="width: auto; padding: 6px 10px; font-size: 12px; display: none; border-radius: 8px;">◀ Назад</button>
@@ -991,7 +991,8 @@
                                     </div>
                                 </div>
                                 <div style="display: flex; gap: 8px; position:relative;">
-                                    <button class="secondary-btn" id="btn-support-quick-actions" style="display: none; width: auto; padding: 6px 10px; font-size: 12px; border-radius: 8px;" title="Действия оператора">Действия ⚙</button>
+                                    <button class="danger-btn" id="btn-support-delete-ticket" style="padding:4px 10px; font-size:12px; height:auto; width:auto; border-radius:12px;" onclick="SupportSystem.deleteTicketLocally()"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Wastebasket.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Удалить</button>
+<button class="secondary-btn" id="btn-support-quick-actions" style="display: none; width: auto; padding: 6px 10px; font-size: 12px; border-radius: 8px;" title="Действия оператора">Действия ⚙</button>
                                     <div id="support-quick-actions-menu" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 8px; width: 220px; background: rgba(7, 7, 7, 0.95); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px; flex-direction: column; gap: 4px; z-index: 100; box-shadow: 0 10px 40px rgba(0,0,0,0.8); backdrop-filter: blur(10px);"></div>
                                     
                                     <button class="secondary-btn" id="btn-support-reopen-ticket" style="width: auto; padding: 6px 12px; font-size: 12px; border-radius: 8px; display: none;">Открыть снова</button>
@@ -1005,7 +1006,11 @@
 
                             <div id="support-typing-indicator" style="display: none; padding: 0 20px 10px; font-size: 11px; color: var(--text-muted); animation: pulse 1s infinite alternate;">Кто-то печатает...</div>
 
-                            <div class="dm-compose" style="flex-shrink: 0; background: rgba(0,0,0,0.28); border-top: 1px solid var(--border-light); padding: 15px 20px; display: flex; gap: 10px; align-items: center;">
+                            
+                            <div id="support-inline-templates" style="display:none; flex-wrap:wrap; gap:8px; padding:10px 20px; background:rgba(0,0,0,0.15); border-top:1px solid var(--border-light);">
+                                <!-- Template buttons will be inserted here dynamically -->
+                            </div>
+<div class="dm-compose" style="flex-shrink: 0; background: rgba(0,0,0,0.28); border-top: 1px solid var(--border-light); padding: 15px 20px; display: flex; gap: 10px; align-items: center;">
                                 <button id="btn-support-attach" class="dm-compose-btn" title="Прикрепить скриншот"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Paperclip.webp" style="width:1.2em;height:1.2em;"></button>
                                 <input type="text" id="support-msg-input" placeholder="Сообщение..." style="flex: 1; border-radius: 20px; border: 1px solid var(--border-light); background: rgba(0,0,0,0.2); padding: 12px 16px; color: #fff; transition: 0.2s; outline: none;">
                                 <button id="btn-support-send" class="primary-btn" style="width: auto; padding: 0 20px; border-radius: 20px; height: 44px;">Отправить</button>
@@ -1616,7 +1621,7 @@
             <h2 style="font-size:24px; margin:0; display:flex; align-items:center; gap:10px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Панель Создателя (Поддержка)</h2>
             <div style="color:var(--text-muted); font-size:14px; margin-top:-10px;">Проверенная статистика, управление доступом и шаблонами ответов</div>
             
-            <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px;">
+            <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px;">
                 <div style="background:rgba(255,255,255,0.03); padding:16px; border-radius:16px; border:1px solid rgba(255,255,255,0.1); text-align:center;">
                     <div style="font-size:24px; font-weight:800; color:#fff;" id="stat-total-tickets">0</div>
                     <div style="font-size:11px; color:var(--text-muted);">Всего тикетов</div>
@@ -1628,10 +1633,6 @@
                 <div style="background:rgba(255,255,255,0.03); padding:16px; border-radius:16px; border:1px solid rgba(255,255,255,0.1); text-align:center;">
                     <div style="font-size:24px; font-weight:800; color:#ff4757;" id="stat-closed-tickets">0</div>
                     <div style="font-size:11px; color:var(--text-muted);">Закрытых</div>
-                </div>
-                <div style="background:rgba(255,255,255,0.03); padding:16px; border-radius:16px; border:1px solid rgba(255,255,255,0.1); text-align:center;">
-                    <div style="font-size:24px; font-weight:800; color:#ffa502;" id="stat-banned-count">0</div>
-                    <div style="font-size:11px; color:var(--text-muted);">Забанено</div>
                 </div>
             </div>
 
@@ -1649,7 +1650,7 @@
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
                         <button class="secondary-btn" style="font-size:11px; padding:8px;" onclick="SupportSystem.exportAllTickets()">📥 Экспорт активных</button>
                         <button class="secondary-btn" style="font-size:11px; padding:8px;" onclick="SupportSystem.exportArchiveTickets()">📥 Экспорт архива (Все)</button>
-                        <button class="secondary-btn" style="font-size:11px; padding:8px;" onclick="SupportSystem.exportBansList()">📥 Экспорт списка банов</button>
+                        
                         <button class="secondary-btn" style="font-size:11px; padding:8px;" onclick="SupportSystem.refreshCreatorStats()">🔄 Обновить графики</button>
                     </div>
                 </div>
@@ -1660,19 +1661,9 @@
                         <button class="secondary-btn" style="font-size:11px; padding:8px;" onclick="SupportSystem.forceSyncAllTickets('all')">Удалить все закрытые</button>
                         <button class="secondary-btn" style="font-size:11px; padding:8px;" onclick="SupportSystem.forceSyncAllTickets('old')">Удалить старше 7 дней</button>
                         <button class="secondary-btn" style="font-size:11px; padding:8px;" onclick="SupportSystem.closeAllActiveTickets()">Закрыть все активные</button>
-                        <button class="danger-btn" style="font-size:11px; padding:8px;" onclick="SupportSystem.clearAllBans()">Снять все блокировки</button>
+                        
                     </div>
                     
-                    <div style="margin-top:20px; padding-top:15px; border-top:1px solid rgba(255,255,255,0.1);">
-                        <h4 style="margin:0 0 8px 0; font-size:12px; color:var(--text-muted)">Точечное управление доступом UID:</h4>
-                        <div style="display:flex; flex-direction:column; gap:8px;">
-                            <input type="text" id="admin-ban-uid" placeholder="Введите UID / ID пользователя" style="width:100%; padding:8px; border-radius:8px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); color:#fff; font-size:12px;">
-                            <div style="display:flex; gap:8px;">
-                                <button class="danger-btn" style="flex:1; padding:8px; font-size:12px;" onclick="SupportSystem.banUidFromInput()">Забанить</button>
-                                <button class="primary-btn" style="flex:1; padding:8px; font-size:12px; background:#2ed573;" onclick="SupportSystem.unbanUidFromInput()">Разбанить</button>
-                            </div>
-                            <button class="secondary-btn" style="width:100%; padding:8px; font-size:12px;" onclick="SupportSystem.checkStatusUidFromInput()">Проверить статус</button>
-                        </div>
                     </div>
                 </div>
             </div>
