@@ -6192,7 +6192,7 @@ class SupportSystem {
         const uid = AppState.currentUser?.uid;
         if (!uid) return;
         const profile = AppState.currentUserProfile || {};
-        const isAdmin = profile.role === 'creator' || profile.role === 'moderator' || profile.role === 'operator' || AdminPanel.isCreatorProfile(profile, uid) || AdminPanel.isOperatorProfile(profile, uid);
+        const isAdmin = AdminPanel.isCreatorProfile(profile, uid) || AdminPanel.isOperatorProfile(profile, uid);
         
         if (this.globalUnsub) this.globalUnsub();
         
@@ -6254,7 +6254,7 @@ class SupportSystem {
         const uid = AppState.currentUser?.uid;
         if (!uid) return;
         const profile = AppState.currentUserProfile || {};
-        const hasAccess = profile.role === 'creator' || profile.role === 'moderator' || profile.role === 'operator' || AdminPanel.isCreatorProfile(profile, uid) || AdminPanel.isOperatorProfile(profile, uid);
+        const hasAccess = AdminPanel.isCreatorProfile(profile, uid) || AdminPanel.isOperatorProfile(profile, uid);
         const list = Utils.$('support-tickets-list');
 
         const btnOpenCreate = Utils.$('btn-open-create-ticket-modal');
@@ -6395,7 +6395,7 @@ class SupportSystem {
             const val = snap.val() || {};
             chat.innerHTML = Object.values(val).sort((a,b) => a.timestamp - b.timestamp).map(m => `
                 <div style="align-self: ${m.uid === uid ? 'flex-end' : 'flex-start'}; background: ${m.uid === uid ? 'var(--accent)' : 'rgba(255,255,255,0.06)'}; color: ${m.uid === uid ? '#000': '#fff'}; padding: 10px 16px; border-radius: 16px; border-bottom-${m.uid === uid ? 'right' : 'left'}-radius: 4px; max-width: 80%; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-                    <div style="font-size: 11px; opacity: 0.6; margin-bottom: 4px; font-weight: 600;">${m.uid === uid ? 'Вы' : (m.isAdmin ? '🔹 Поддержка' : m.name)}</div>
+                    <div style="font-size: 11px; opacity: 0.6; margin-bottom: 4px; font-weight: 600;">${m.isAdmin ? (m.uid === uid ? 'Вы (Поддержка)' : '🔹 Поддержка') : (m.uid === uid ? 'Вы' : m.name)}</div>
                     ${m.image ? `<img src="${Utils.escapeHtml(m.image)}" style="max-width: 100%; border-radius: 8px; margin-bottom: 5px;">` : ''}
                     <div style="line-height: 1.4; word-wrap: break-word;">${Utils.escapeHtml(m.text || '')}</div>
                 </div>
@@ -6576,11 +6576,12 @@ class AdminPanel {
     }
 
     static isCreatorProfile(profile = {}, uid = null) {
+        if (uid && AdminPanel.developerUidCache === uid) return true;
         return this.isValidCreatorProfile(profile);
     }
 
     static isModeratorProfile(profile = {}, uid = null) {
-        return (profile?.role === 'moderator' || profile?.role === 'operator') && !this.isCreatorProfile(profile, uid);
+        return profile?.role === 'moderator' && !this.isCreatorProfile(profile, uid);
     }
 
     static isOperatorProfile(profile = {}, uid = null) {
@@ -6588,7 +6589,7 @@ class AdminPanel {
     }
 
     static isAdminProfile(profile = {}, uid = null) {
-        return this.isCreatorProfile(profile, uid) || this.isModeratorProfile(profile, uid) || this.isOperatorProfile(profile, uid);
+        return this.isCreatorProfile(profile, uid) || this.isModeratorProfile(profile, uid);
     }
 
     static isCurrentUserCreator() {
