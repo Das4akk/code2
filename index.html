@@ -1609,9 +1609,9 @@
 
 
     <!-- Creator Support Panel Modal -->
-    <div id="modal-support-creator-panel" class="modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:9000; align-items:center; justify-content:center; backdrop-filter:blur(8px);">
+    <div id="modal-support-creator-panel" class="modal" style="z-index:9000;">
         <div class="modal-content glass-panel" style="width:100%; max-width:700px; padding:30px; border-radius:24px; position:relative; display:flex; flex-direction:column; gap:20px; animation: modalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
-            <button class="secondary-btn" style="position:absolute; top:20px; right:20px; width:40px; height:40px; padding:0; border-radius:12px; font-size:20px;" onclick="document.getElementById('modal-support-creator-panel').style.display='none'">×</button>
+            <button class="secondary-btn" style="position:absolute; top:20px; right:20px; width:40px; height:40px; padding:0; border-radius:12px; font-size:20px;" onclick="document.getElementById('modal-support-creator-panel').classList.remove('active')">×</button>
             <h2 style="font-size:24px; margin:0; display:flex; align-items:center; gap:10px;">👑 Панель Создателя (Поддержка)</h2>
             <div style="color:var(--text-muted); font-size:14px; margin-top:-10px;">Глобальная статистика и управление поддержкой</div>
             

@@ -6301,14 +6301,16 @@ class SupportSystem {
                 const titleStr = Utils.escapeHtml(t.title || 'Без темы');
                 const titleEscaped = titleStr.replace(/'/g, "\\'").replace(/"/g, '&quot;'); // escape to insert to onclick
                 const isOpen = t.status === 'open';
-                const statusText = isOpen ? '⚪ В работе' : '🔴 Закрыт';
+                const statusText = isOpen ? '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/White%20Circle.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> В работе' : '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Circle.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Закрыт';
                 const priority = t.priority ? `<span style="margin-left:8px;font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.1);color:#fff;">${t.priority}</span>` : '';
                 const unreadDot = (t.lastActivity && t.lastActivity > (t.readReceipts?.[uid] || 0) && t.lastSender !== uid && (isAdmin || t.lastSenderIsAdmin)) ? `<div style="width:8px;height:8px;border-radius:50%;background:#ff4757;margin-left:8px;flex-shrink:0;box-shadow:0 0 8px #ff4757;" title="Новые сообщения"></div>` : '';
+                
+                const categoryEmoji = t.category === 'Баг' ? '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Bug.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">' : t.category === 'Вопрос' ? '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Question%20Mark.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">' : '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">';
                 
                 return `
                 <div class="dm-chat-item ${this.activeTicketId === t.id ? 'active' : ''}" onclick="SupportSystem.openTicket('${t.id}')">
                     <div class="dm-chat-avatar" style="background:${isOpen ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 0, 0, 0.1)'}; color:${isOpen ? '#ffffff' : '#ff4444'}; font-size:20px;">
-                        ${t.category === 'Баг' ? '🐛' : t.category === 'Вопрос' ? '❔' : '📝'}
+                        ${categoryEmoji}
                     </div>
                     <div class="dm-chat-info">
                         <div class="dm-chat-name" style="display:flex;align-items:center;justify-content:space-between;width:100%;">
@@ -6364,7 +6366,7 @@ class SupportSystem {
         const uid = AppState.currentUser?.uid;
         this.activeTicketId = id;
         
-        await update(ref(db, `support_tickets/${id}/readReceipts/${uid}`), Date.now());
+        await set(ref(db, `support_tickets/${id}/readReceipts/${uid}`), Date.now());
 
         const items = document.querySelectorAll('#support-tickets-list .dm-chat-item');
         items.forEach(el => el.classList.remove('active'));
@@ -6393,14 +6395,14 @@ class SupportSystem {
              if (this.activeTicketId !== id) return;
              
              // Setup auto-read if we are watching this chat
-             update(ref(db, `support_tickets/${id}/readReceipts/${uid}`), Date.now());
+             set(ref(db, `support_tickets/${id}/readReceipts/${uid}`), Date.now());
              
              Utils.$('support-ticket-title-text').innerText = t.title || 'Без темы';
              const isClosed = t.status === 'closed';
              const openTimeStr = Math.floor((Date.now() - (t.createdAt || Date.now())) / 3600000);
              Utils.$('st-status').innerHTML = isClosed 
-                  ? '<span style="color:#ff4444;font-weight:bold;">🔴 Закрыт</span>' 
-                  : `<span style="color:#ffffff;font-weight:bold;">⚪ В работе</span> ${isAdmin ? `<span style="opacity:0.5;font-weight:normal;font-size:11px;">(Открыт ${openTimeStr} ч. назад)</span>` : ''}`;
+                  ? '<span style="color:#ff4444;font-weight:bold;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Circle.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Закрыт</span>' 
+                  : `<span style="color:#ffffff;font-weight:bold;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/White%20Circle.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> В работе</span> ${isAdmin ? `<span style="opacity:0.5;font-weight:normal;font-size:11px;">(Открыт ${openTimeStr} ч. назад)</span>` : ''}`;
                   
              if (t.category) {
                  Utils.$('st-tag').style.display = 'block';
@@ -6462,7 +6464,7 @@ class SupportSystem {
                      ${avatarHtml}
                      <div style="background: ${bg}; padding: 10px 16px; border-radius: 16px; border-bottom-${isMe ? 'right' : 'left'}-radius: 4px; border: 1px solid rgba(255,255,255,0.05); position:relative; min-width: 120px;">
                          <div style="font-size: 11px; opacity: 0.6; margin-bottom: 4px; font-weight: 600; cursor:pointer;" onclick="ProfileManager.openProfile('${m.uid}')">
-                             ${m.isAdmin ? `🔹 ${isMe ? 'Вы (Поддержка)' : 'Поддержка'} (${m.name})` : (isMe ? 'Вы' : `${m.name} @${m.username||'user'}`)}
+                             ${m.isAdmin ? `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Briefcase.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> ${isMe ? 'Вы (Поддержка)' : 'Поддержка'} (${m.name})` : `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Bust%20In%20Silhouette.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> ${isMe ? 'Вы' : `${m.name} @${m.username||'user'}`}`}
                          </div>
                          <div style="line-height: 1.5; font-size:14px; word-wrap: break-word; margin-bottom:12px;">${internalTag}${Utils.escapeHtml(m.text || '')}</div>
                          ${m.image ? `<img src="${Utils.escapeHtml(m.image)}" style="max-width: 100%; border-radius: 8px; margin-top: 5px; margin-bottom: 12px; cursor:pointer;" onclick="window.open(this.src)">` : ''}
@@ -6611,7 +6613,7 @@ class SupportSystem {
     }
     
     static openCreatorPanel() {
-        Utils.$('modal-support-creator-panel').style.display = 'flex';
+        Utils.$('modal-support-creator-panel').classList.add('active');
         Utils.$('stat-banned-count').innerText = this.BANNED_USERS.size;
         this.renderCreatorTemplates();
     }
