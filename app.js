@@ -6271,6 +6271,86 @@ class SupportSystem {
         });
     }
 
+    static async openCreatorPanel() {
+        const modal = Utils.$('modal-support-creator-panel');
+        if (modal) modal.classList.add('active');
+        
+        let total = 0, open = 0, closed = 0;
+        const dbLocal = typeof db !== 'undefined' ? db : null;
+        if (dbLocal && typeof get !== 'undefined' && typeof ref !== 'undefined') {
+            const snap = await get(ref(dbLocal, 'support_tickets'));
+            const val = snap.val() || {};
+            Object.values(val).forEach(t => {
+                total++;
+                if (t.status === 'closed') closed++;
+                else open++;
+            });
+        }
+        
+        const elTotal = Utils.$('stat-total-tickets'); if (elTotal) elTotal.innerText = total;
+        const elOpen = Utils.$('stat-open-tickets'); if (elOpen) elOpen.innerText = open;
+        const elClosed = Utils.$('stat-closed-tickets'); if (elClosed) elClosed.innerText = closed;
+        
+        this.renderCreatorTemplates();
+    }
+
+    static renderCreatorTemplates() {
+        const list = Utils.$('support-creator-templates-list');
+        if (!list) return;
+        if (Object.keys(this.TEMPLATES).length === 0) {
+            list.innerHTML = `<div style="color:var(--text-muted); font-size:12px; text-align:center;">Нет шаблонов</div>`;
+            return;
+        }
+        list.innerHTML = Object.entries(this.TEMPLATES).map(([name, text]) => `
+            <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); padding:8px 12px; border-radius:8px;">
+                <div style="display:flex; flex-direction:column; gap:4px; overflow:hidden;">
+                    <div style="font-size:12px; font-weight:bold; color:var(--accent);">${name}</div>
+                    <div style="font-size:11px; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${text}</div>
+                </div>
+                <button class="danger-btn" style="width:auto; padding:4px 8px; font-size:11px;" onclick="SupportSystem.removeGlobalTemplate('${name}')">Удалить</button>
+            </div>
+        `).join('');
+    }
+
+    static async addGlobalTemplate() {
+        const nInput = Utils.$('new-template-name');
+        const tInput = Utils.$('new-template-text');
+        if (!nInput || !tInput) return;
+        const name = nInput.value.trim();
+        const text = tInput.value.trim();
+        if (!name || !text) return Utils.toast('Заполните все поля', 'error');
+        if (typeof update !== 'undefined' && typeof ref !== 'undefined') {
+             await update(ref(typeof db !== 'undefined' ? db : null, 'support_templates'), { [name]: text });
+             Utils.toast('Шаблон добавлен', 'success');
+             nInput.value = ''; tInput.value = '';
+             this.TEMPLATES[name] = text;
+             this.renderCreatorTemplates();
+             const tContainer = Utils.$('support-inline-templates'); 
+             if(tContainer && tContainer.style.display !== 'none' && this.activeTicketId) {
+                 SupportSystem.openTicket(this.activeTicketId);
+             }
+        }
+    }
+
+    static async removeGlobalTemplate(name) {
+        if (!confirm('Удалить шаблон "' + name + '"?')) return;
+        if (typeof update !== 'undefined' && typeof ref !== 'undefined') {
+             await update(ref(typeof db !== 'undefined' ? db : null, 'support_templates'), { [name]: null });
+             delete this.TEMPLATES[name];
+             this.renderCreatorTemplates();
+             const tContainer = Utils.$('support-inline-templates'); 
+             if(tContainer && tContainer.style.display !== 'none' && this.activeTicketId) {
+                 SupportSystem.openTicket(this.activeTicketId);
+             }
+        }
+    }
+
+    static async useTemplate(name, id) {
+         if (!this.TEMPLATES[name]) return;
+         const text = this.TEMPLATES[name];
+         await this.sendMessage(id, false, text);
+    }
+
     static async renderTickets() {
         const uid = AppState.currentUser?.uid;
         if (!uid) return;
@@ -6435,24 +6515,25 @@ Utils.$('support-ticket-title-text').innerText = t.title || 'Без темы';
                  Utils.$('st-tag').style.display = 'none';
              }
 
-             if (isAdmin) {
-                 
              // handle blur and lock for closed
              const overlay = Utils.$('support-closed-overlay');
              const dmCompose = Utils.$('support-active-ticket').querySelector('.dm-compose');
              const inlineTmplate = Utils.$('support-inline-templates');
+             const closedBanner = Utils.$('support-closed-banner');
              if (isClosed) {
                  if (overlay) overlay.style.display = 'flex';
-                 if (dmCompose) dmCompose.style.opacity = '0.3';
-                 if (dmCompose) dmCompose.style.pointerEvents = 'none';
+                 if (dmCompose) dmCompose.style.display = 'none';
+                 if (closedBanner) closedBanner.style.display = 'block';
                  if (inlineTmplate) inlineTmplate.style.display = 'none';
              } else {
                  if (overlay) overlay.style.display = 'none';
-                 if (dmCompose) dmCompose.style.opacity = '1';
-                 if (dmCompose) dmCompose.style.pointerEvents = 'auto';
+                 if (dmCompose) dmCompose.style.display = 'flex';
+                 if (closedBanner) closedBanner.style.display = 'none';
                  if (isAdmin && inlineTmplate) inlineTmplate.style.display = 'flex';
              }
 
+             if (isAdmin) {
+                 
              const btnReopenOverlay = Utils.$('btn-support-reopen-overlay');
              if (btnReopenOverlay) {
                  btnReopenOverlay.style.display = isAdmin ? 'block' : 'none';
@@ -6670,7 +6751,7 @@ Utils.$('btn-support-close-ticket').style.display = isClosed ? 'none' : 'block';
         Utils.$('support-no-ticket').style.display = 'flex';
         
         if (typeof remove !== 'undefined' && typeof ref !== 'undefined') {
-            await remove(ref(window.db, `support_tickets/${id}`));
+            await remove(ref(typeof db !== 'undefined' ? db : null, `support_tickets/${id}`));
             Utils.toast('Тикет удален', 'success');
         }
     }
