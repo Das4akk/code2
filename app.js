@@ -3378,6 +3378,7 @@ class AuthManager {
                     RoomManager.initLobbyListeners();
                     DirectMessages.startNotifications();
                     AdminPanel.init();
+                    if(window.SupportSystem) window.SupportSystem.initGlobalListener();
                     if(window.ShopController) window.ShopController.loadShop();
                     if(window.AdminSoundManager) window.AdminSoundManager.initAdmin();
                     this.bindGlobalPresence();
@@ -6183,13 +6184,77 @@ class SupportSystem {
     static activeTicketId = null;
     static unsubList = null;
     static unsub = null;
+    static globalUnsub = null;
+    static lastMessageDates = {};
+    static lastStatuses = {};
+
+    static initGlobalListener() {
+        const uid = AppState.currentUser?.uid;
+        if (!uid) return;
+        const profile = AppState.currentUserProfile || {};
+        const isAdmin = profile.role === 'creator' || profile.role === 'moderator' || profile.role === 'operator' || AdminPanel.isCreatorProfile(profile, uid) || AdminPanel.isOperatorProfile(profile, uid);
+        
+        if (this.globalUnsub) this.globalUnsub();
+        
+        this.globalUnsub = onValue(ref(db, 'support_tickets'), snap => {
+            const val = snap.val() || {};
+            let hasUnread = false;
+            
+            Object.entries(val).forEach(([id, t]) => {
+                if (!isAdmin && t.creatorUid !== uid) return;
+                
+                // Check if status changed for users
+                if (!isAdmin && this.lastStatuses[id] && this.lastStatuses[id] !== t.status) {
+                    if (t.status === 'open') Utils.toast(`Ваш тикет "${t.title}" был открыт`, 'info');
+                    if (t.status === 'closed') Utils.toast(`Ваш тикет "${t.title}" был закрыт`, 'info');
+                }
+                this.lastStatuses[id] = t.status;
+
+                // Check for new messages
+                const msgs = t.messages || {};
+                const msgKeys = Object.keys(msgs);
+                if (msgKeys.length > 0) {
+                    const lastMsg = msgs[msgKeys[msgKeys.length - 1]];
+                    
+                    // If message is new and we've seen this ticket before
+                    if (this.lastMessageDates[id] && lastMsg.timestamp > this.lastMessageDates[id]) {
+                        // User receives badge/toast if message is from admin, Admin receives if message is from user
+                        if ((!isAdmin && lastMsg.isAdmin) || (isAdmin && !lastMsg.isAdmin)) {
+                            // Only notify if not actively watching it
+                            if (this.activeTicketId !== id) {
+                                hasUnread = true;
+                                Utils.toast(`Новое сообщение в тикете "${t.title}"`, 'info');
+                            }
+                        }
+                    }
+                    this.lastMessageDates[id] = lastMsg.timestamp;
+                }
+            });
+
+            // Update badge on navbar
+            const navIcon = Utils.$('nav-support') || Utils.$('nav-support-staff');
+            if (navIcon) {
+                let badge = navIcon.querySelector('.support-badge');
+                if (hasUnread) {
+                    if (!badge) {
+                        badge = document.createElement('div');
+                        badge.className = 'support-badge';
+                        badge.style.cssText = 'position: absolute; top: 10px; right: 10px; width: 10px; height: 10px; background: red; border-radius: 50%;';
+                        navIcon.style.position = 'relative';
+                        navIcon.appendChild(badge);
+                    }
+                } else if (badge) {
+                    badge.remove();
+                }
+            }
+        });
+    }
 
     static async renderTickets() {
         const uid = AppState.currentUser?.uid;
         if (!uid) return;
-        const isCreator = AdminPanel.isCreatorProfile(AppState.currentUserProfile || {}, uid);
-        const isOperator = AdminPanel.isOperatorProfile(AppState.currentUserProfile || {}, uid);
-        const hasAccess = isCreator || isOperator;
+        const profile = AppState.currentUserProfile || {};
+        const hasAccess = profile.role === 'creator' || profile.role === 'moderator' || profile.role === 'operator' || AdminPanel.isCreatorProfile(profile, uid) || AdminPanel.isOperatorProfile(profile, uid);
         const list = Utils.$('support-tickets-list');
 
         const btnOpenCreate = Utils.$('btn-open-create-ticket-modal');
@@ -6199,7 +6264,7 @@ class SupportSystem {
         };
 
         if (this.unsubList) this.unsubList();
-        const dbRef = hasAccess ? ref(db, 'support_tickets') : ref(db, `support_tickets`);
+        const dbRef = ref(db, 'support_tickets');
         this.unsubList = onValue(dbRef, snap => {
             const val = snap.val() || {};
             let tickets = Object.entries(val).map(([id, t]) => ({ id, ...t }));
@@ -6215,14 +6280,16 @@ class SupportSystem {
                 const titleStr = Utils.escapeHtml(t.title || 'Без темы');
                 const titleEscaped = titleStr.replace(/'/g, "\\'"); // escape to insert to onclick
                 const isOpen = t.status === 'open';
+                const statusText = isOpen ? '⚪ В работе' : '🔴 Закрыт';
+                const priority = t.priority ? `<span style="margin-left: 8px; font-size: 10px; padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.1); color: #fff;">Приоритет: ${t.priority}</span>` : '';
                 return `
                 <div class="dm-chat-item ${this.activeTicketId === t.id ? 'active' : ''}" onclick="SupportSystem.openTicket('${t.id}', '${titleEscaped}', '${t.status}')">
-                    <div class="dm-chat-avatar" style="background:${isOpen ? 'rgba(0, 255, 128, 0.1)' : 'rgba(255, 0, 0, 0.1)'}; color:${isOpen ? '#00ff80' : '#ff4444'}">
+                    <div class="dm-chat-avatar" style="background:${isOpen ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 0, 0, 0.1)'}; color:${isOpen ? '#ffffff' : '#ff4444'}">
                         <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp" style="width:24px;">
                     </div>
                     <div class="dm-chat-info">
                         <div class="dm-chat-name">${titleStr}</div>
-                        <div class="dm-chat-last-msg">${isOpen ? '🟢 Открыт' : '🔴 Закрыт'}</div>
+                        <div class="dm-chat-last-msg">${statusText}${hasAccess ? priority : ''}</div>
                     </div>
                 </div>`;
             }).join('');
@@ -6230,8 +6297,10 @@ class SupportSystem {
 
         Utils.$('btn-new-ticket').onclick = async () => {
             const inputEl = Utils.$('support-new-ticket-title');
+            const priorityEl = Utils.$('support-new-ticket-priority');
             const textEl = Utils.$('support-new-ticket-text');
             const title = inputEl ? inputEl.value.trim() : '';
+            const priority = priorityEl ? priorityEl.value : 'Средний';
             const text = textEl ? textEl.value.trim() : '';
             if (!title || !text) {
                 if (!title && inputEl) {
@@ -6247,6 +6316,7 @@ class SupportSystem {
             const newRef = push(ref(db, 'support_tickets'));
             await set(newRef, {
                 title,
+                priority,
                 creatorUid: uid,
                 status: 'open',
                 createdAt: Date.now()
@@ -6317,7 +6387,7 @@ class SupportSystem {
         }
 
         Utils.$('support-ticket-title-text').innerText = title || 'Без темы';
-        Utils.$('support-ticket-status-text').innerHTML = status === 'open' ? '<span style="color:#00ff80">🟢 Открыт</span>' : '<span style="color:#ff4444">🔴 Закрыт</span>';
+        Utils.$('support-ticket-status-text').innerHTML = status === 'open' ? '<span style="color:#ffffff">⚪ В работе</span>' : '<span style="color:#ff4444">🔴 Закрыт</span>';
         
         const chat = Utils.$('support-ticket-chat');
         if (this.unsub) this.unsub();
@@ -6344,10 +6414,30 @@ class SupportSystem {
             inputImg.onchange = async (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
-                Utils.toast('Загрузка картинки...', 'info');
+                Utils.toast('Обработка картинки...', 'info');
                 const reader = new FileReader();
-                reader.onload = async (re) => {
-                    await this.sendMessage(id, '', re.target.result);
+                reader.onload = (re) => {
+                    const img = new Image();
+                    img.onload = async () => {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 1000;
+                        const MAX_HEIGHT = 1000;
+                        let width = img.width;
+                        let height = img.height;
+                        if (width > height) {
+                            if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+                        } else {
+                            if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
+                        }
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+                        Utils.toast('Отправка...', 'info');
+                        await this.sendMessage(id, '', compressedBase64);
+                    };
+                    img.src = re.target.result;
                 };
                 reader.readAsDataURL(file);
             };
@@ -6390,7 +6480,7 @@ class SupportSystem {
         if (!confirm('Вы уверены, что хотите снова открыть этот тикет?')) return;
         await update(ref(db, `support_tickets/${id}`), { status: 'open' });
         if (this.activeTicketId === id) {
-             Utils.$('support-ticket-status-text').innerHTML = '<span style="color:#00ff80">🟢 Открыт</span>';
+             Utils.$('support-ticket-status-text').innerHTML = '<span style="color:#ffffff">⚪ В работе</span>';
              Utils.$('btn-support-reopen-ticket').style.display = 'none';
              const closeBtn = Utils.$('btn-support-close-ticket');
              if (closeBtn) {

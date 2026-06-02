@@ -974,9 +974,9 @@
                     </div>
 
                     <!-- Right Main (Active Ticket) -->
-                    <div class="support-main-area" style="flex: 1; display: flex; flex-direction: column; height: 100%; position: relative;">
-                        <div id="support-active-ticket" style="display: none; flex-direction: column; height: 100%;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding: 15px 20px; background: rgba(0,0,0,0.2);">
+                    <div class="support-main-area" style="flex: 1; display: flex; flex-direction: column; height: 100%; position: relative; overflow: hidden;">
+                        <div id="support-active-ticket" style="display: none; flex-direction: column; height: 100%; overflow: hidden;">
+                            <div style="flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding: 15px 20px; background: rgba(0,0,0,0.2);">
                                 <div style="display: flex; align-items: center; gap: 12px;">
                                     <button class="secondary-btn" id="btn-support-back" style="width: auto; padding: 6px 10px; font-size: 12px; display: none; border-radius: 8px;">◀ Назад</button>
                                     <div>
@@ -994,7 +994,7 @@
                                 <!-- MSGs -->
                             </div>
 
-                            <div class="dm-compose" style="background: rgba(0,0,0,0.28); border-top: 1px solid var(--border-light); padding: 15px 20px; display: flex; gap: 10px; align-items: center;">
+                            <div class="dm-compose" style="flex-shrink: 0; background: rgba(0,0,0,0.28); border-top: 1px solid var(--border-light); padding: 15px 20px; display: flex; gap: 10px; align-items: center;">
                                 <button id="btn-support-attach" class="dm-compose-btn" title="Прикрепить скриншот"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Paperclip.webp" style="width:1.2em;height:1.2em;"></button>
                                 <input type="text" id="support-msg-input" placeholder="Сообщение..." style="flex: 1; border-radius: 20px; border: 1px solid var(--border-light); background: rgba(0,0,0,0.2); padding: 12px 16px; color: #fff; transition: 0.2s; outline: none;">
                                 <button id="btn-support-send" class="primary-btn" style="width: auto; padding: 0 20px; border-radius: 20px; height: 44px;">Отправить</button>
@@ -1579,6 +1579,13 @@
                 <label style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">Краткая суть проблемы (Тема)</label>
                 <input type="text" id="support-new-ticket-title" placeholder="Тема тикета..." style="width: 100%; padding: 12px; border-radius: 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 14px; box-sizing: border-box; margin-bottom: 12px;">
                 
+                <label style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">Приоритет</label>
+                <select id="support-new-ticket-priority" style="width: 100%; padding: 12px; border-radius: 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 14px; box-sizing: border-box; margin-bottom: 12px;">
+                    <option value="Низкий">Низкий (Несрочно)</option>
+                    <option value="Средний" selected>Средний (Обычный)</option>
+                    <option value="Высокий">Высокий (Критично)</option>
+                </select>
+
                 <label style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">Подробное описание</label>
                 <textarea id="support-new-ticket-text" placeholder="Опишите вашу проблему, это будет отправлено как ваше первое сообщение..." style="width: 100%; height: 100px; padding: 12px; border-radius: 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 14px; box-sizing: border-box; resize: none;"></textarea>
             </div>
