@@ -6211,6 +6211,14 @@ class SupportSystem {
             onValue(ref(dbLocal, 'support_bans'), snap => {
                 this.BANNED_USERS = new Set(Object.keys(snap.val() || {}));
             });
+            onValue(ref(dbLocal, 'support_templates'), snap => {
+                if (snap.exists()) this.TEMPLATES = {
+                    'Приветствие': 'Здравствуйте! Чем я могу вам помочь?',
+                    'Ожидание': 'Пожалуйста, подождите, мы уточняем информацию.',
+                    'Закрытие': 'Рады были помочь! Тикет закрывается.',
+                    ...snap.val()
+                };
+            });
         }
         
         if (this.globalUnsub) this.globalUnsub();
@@ -6395,7 +6403,9 @@ class SupportSystem {
              if (this.activeTicketId !== id) return;
              
              // Setup auto-read if we are watching this chat
-             set(ref(db, `support_tickets/${id}/readReceipts/${uid}`), Date.now());
+             if (!t.readReceipts || t.readReceipts[uid] < (t.lastActivity || 0)) {
+                 set(ref(db, `support_tickets/${id}/readReceipts/${uid}`), Date.now());
+             }
              
              Utils.$('support-ticket-title-text').innerText = t.title || 'Без темы';
              const isClosed = t.status === 'closed';
@@ -6450,9 +6460,14 @@ class SupportSystem {
              const chat = Utils.$('support-ticket-chat');
              const msgs = t.messages || {};
              chat.innerHTML = Object.values(msgs).sort((a,b) => a.timestamp - b.timestamp).map(m => {
-                 const isMe = m.uid === uid;
+                 const mUid = m.uid;
+                 const cachedUser = AppState.usersCache ? AppState.usersCache.get(mUid) : null;
+                 const mName = cachedUser ? (cachedUser.name || 'Пользователь') : (m.name || 'Пользователь');
+                 const mUsername = cachedUser ? (cachedUser.username || mUid) : (m.username || mUid);
+                 const mAvatar = cachedUser ? (cachedUser.avatar || '') : (m.avatar || '');
+                 const isMe = mUid === uid;
                  const bg = isMe ? 'rgba(255,255,255,0.15)' : (m.isInternal ? 'rgba(255,165,0,0.15)' : 'rgba(255,255,255,0.06)');
-                 const avatarHtml = !isMe ? `<div style="width:32px;height:32px;border-radius:50%;background-image:url('${m.avatar || ''}');background-size:cover;background-color:#333;flex-shrink:0;cursor:pointer;border:1px solid rgba(255,255,255,0.1);" onclick="ProfileManager.openProfile('${m.uid}')"></div>` : '';
+                 const avatarHtml = !isMe ? `<div style="width:32px;height:32px;border-radius:50%;background-image:url('${mAvatar}');background-size:cover;background-color:#333;flex-shrink:0;cursor:pointer;border:1px solid rgba(255,255,255,0.1);" onclick="ProfileManager.openProfile('${mUid}')"></div>` : '';
                  const internalTag = m.isInternal ? '<span style="color:orange; font-size:10px; font-weight:bold; letter-spacing:0.5px;">[Внутренняя заметка]</span><br>' : '';
                  if (m.isInternal && !isAdmin) return '';
                  
@@ -6463,8 +6478,8 @@ class SupportSystem {
                  <div style="display:flex; gap:10px; align-self: ${isMe ? 'flex-end' : 'flex-start'}; max-width: 85%;">
                      ${avatarHtml}
                      <div style="background: ${bg}; padding: 10px 16px; border-radius: 16px; border-bottom-${isMe ? 'right' : 'left'}-radius: 4px; border: 1px solid rgba(255,255,255,0.05); position:relative; min-width: 120px;">
-                         <div style="font-size: 11px; opacity: 0.6; margin-bottom: 4px; font-weight: 600; cursor:pointer;" onclick="ProfileManager.openProfile('${m.uid}')">
-                             ${m.isAdmin ? `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Briefcase.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> ${isMe ? 'Вы (Поддержка)' : 'Поддержка'} (${m.name})` : `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Bust%20In%20Silhouette.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> ${isMe ? 'Вы' : `${m.name} @${m.username||'user'}`}`}
+                         <div style="font-size: 11px; opacity: 0.6; margin-bottom: 4px; font-weight: 600; cursor:pointer;" onclick="ProfileManager.openProfile('${mUid}')">
+                             ${m.isAdmin ? `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Briefcase.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> ${isMe ? 'Вы (Поддержка)' : 'Поддержка'} (${mName})` : `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Bust%20In%20Silhouette.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> ${isMe ? 'Вы' : `${mName} @${mUsername}`}`}
                          </div>
                          <div style="line-height: 1.5; font-size:14px; word-wrap: break-word; margin-bottom:12px;">${internalTag}${Utils.escapeHtml(m.text || '')}</div>
                          ${m.image ? `<img src="${Utils.escapeHtml(m.image)}" style="max-width: 100%; border-radius: 8px; margin-top: 5px; margin-bottom: 12px; cursor:pointer;" onclick="window.open(this.src)">` : ''}
@@ -6612,49 +6627,122 @@ class SupportSystem {
         Utils.$('support-quick-actions-menu').style.display='none';
     }
     
-    static openCreatorPanel() {
+    static async openCreatorPanel() {
         Utils.$('modal-support-creator-panel').classList.add('active');
         Utils.$('stat-banned-count').innerText = this.BANNED_USERS.size;
+        
+        let total = 0, open = 0, closed = 0;
+        const dbLocal = window.db;
+        const snap = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(({get}) => get(ref(dbLocal, 'support_tickets')));
+        const val = snap.val() || {};
+        Object.values(val).forEach(t => {
+            total++;
+            if (t.status === 'closed') closed++;
+            else open++;
+        });
+        
+        const elTotal = Utils.$('stat-total-tickets'); if (elTotal) elTotal.innerText = total;
+        const elOpen = Utils.$('stat-open-tickets'); if (elOpen) elOpen.innerText = open;
+        const elClosed = Utils.$('stat-closed-tickets'); if (elClosed) elClosed.innerText = closed;
+        
         this.renderCreatorTemplates();
     }
     
-    static forceSyncAllTickets() {
-        if(confirm('Удалить все закрытые тикеты?')) {
+    static forceSyncAllTickets(type = 'all') {
+        if(confirm(type === 'all' ? 'Удалить все закрытые тикеты?' : 'Удалить тикеты старше 7 дней?')) {
             import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(({get, remove}) => {
                 const dbLocal = window.db;
                 get(ref(dbLocal, 'support_tickets')).then(snap => {
                      const val = snap.val() || {};
+                     const now = Date.now();
+                     let c = 0;
                      Object.keys(val).forEach(k => {
-                         if (val[k].status === 'closed') {
+                         const time = val[k].createdAt || 0;
+                         if (type === 'all' && val[k].status === 'closed') {
                              remove(ref(dbLocal, `support_tickets/${k}`));
+                             c++;
+                         } else if (type === 'old' && (now - time > 7 * 24 * 3600000)) {
+                             remove(ref(dbLocal, `support_tickets/${k}`));
+                             c++;
                          }
                      });
-                     Utils.toast('Закрытые тикеты очищены');
+                     Utils.toast(`Очищено тикетов: ${c}`);
+                     this.openCreatorPanel(); // refresh stats
                 });
             });
         }
     }
-
+    
     static renderCreatorTemplates() {
         const list = Utils.$('support-creator-templates-list');
         if (!list) return;
         list.innerHTML = Object.entries(this.TEMPLATES).map(([k, v]) => `
-            <div style="display:flex; gap:10px; align-items:center; background:rgba(0,0,0,0.3); padding:8px 12px; border-radius:8px;">
-                <b style="color:#fff; min-width:100px; font-size:12px;">${k}</b>
+            <div style="display:flex; gap:10px; align-items:center; background:rgba(255,255,255,0.05); padding:8px 12px; border-radius:8px;">
+                <b style="color:#fff; min-width:80px; font-size:12px;">${k}</b>
                 <span style="flex:1; color:var(--text-muted); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${Utils.escapeHtml(v)}</span>
+                <button class="danger-btn" style="padding:4px 8px; font-size:10px;" onclick="SupportSystem.removeGlobalTemplate('${k}')">Удалить</button>
             </div>
-        `).join('');
+        `).join('') || '<div style="color:var(--text-muted); font-size:12px; padding:10px;">Нет шаблонов</div>';
     }
 
-    static addGlobalTemplate() {
-        Utils.toast('Настройка глобальных шаблонов пока в разработке', 'info');
+    static async addGlobalTemplate() {
+        const titleEl = Utils.$('new-template-name');
+        const textEl = Utils.$('new-template-text');
+        const title = titleEl ? titleEl.value.trim() : '';
+        const text = textEl ? textEl.value.trim() : '';
+        if(!title || !text) return Utils.toast('Заполните все поля');
+        
+        const { update } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
+        await update(ref(window.db, 'support_templates'), { [title]: text });
+        titleEl.value = ''; textEl.value = '';
+        Utils.toast('Шаблон добавлен');
+    }
+
+    static async removeGlobalTemplate(key) {
+        if(!confirm('Удалить шаблон?')) return;
+        const { remove } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
+        await remove(ref(window.db, `support_templates/${key}`));
+        Utils.toast('Шаблон удален');
+    }
+    
+    static async exportAllTickets() {
+        const dbLocal = window.db;
+        const { get } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
+        const snap = await get(ref(dbLocal, 'support_tickets'));
+        const val = snap.val() || {};
+        let str = '=== ЭКСПОРТ ОТКРЫТЫХ ТИКЕТОВ ===\n\n';
+        Object.values(val).forEach(t => {
+            if(t.status === 'closed') return;
+            str += `[ID: ${t.id}] ${t.title} (от ${t.creatorUid})\n`;
+            Object.values(t.messages || {}).forEach(m => {
+                str += `  - ${m.name}: ${m.text}\n`;
+            });
+            str += '\n';
+        });
+        const blob = new Blob([str], { type: 'text/plain' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `active_tickets_${Date.now()}.txt`;
+        a.click();
+    }
+    
+    static async banUidFromInput() {
+        const el = Utils.$('admin-ban-uid');
+        if (!el || !el.value.trim()) return;
+        const tUid = el.value.trim();
+        await this.adminBan(tUid);
+        el.value = '';
+        this.openCreatorPanel(); // refresh stats
     }
 
     static clearAllBans() {
         if(confirm('Точно снять все баны?')) {
-            remove(ref(db, 'support_bans')).then(() => Utils.toast('Баны очищены'));
+            import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(({remove}) => {
+                remove(ref(window.db, 'support_bans')).then(() => Utils.toast('Баны очищены'));
+            });
         }
     }
+}
 }
 window.SupportSystem = SupportSystem;
 
