@@ -111,6 +111,287 @@ const AppState = {
 // 2. УТИЛИТЫ И GUI ФИКСЫ (Инъекция стилей, Анимации, Нейрофон)
 // ============================================================================
 
+class TutorialManager {
+    static init() {
+        if (!localStorage.getItem('device_account_created')) {
+            // Not created yet, do nothing on init
+        }
+        if (localStorage.getItem('tutorial_active') === 'true') {
+            const step = localStorage.getItem('tutorial_step');
+            if (step && step !== '0') {
+               // To avoid immediately blurring before UI load, we wait
+               setTimeout(() => {
+                   this.applyBlur();
+                   this.highlightNav(step);
+               }, 1500);
+            }
+        }
+    }
+
+    static markDeviceUsed() {
+        localStorage.setItem('device_account_created', 'true');
+    }
+
+    static async startTutorial() {
+        if (localStorage.getItem('device_account_created') === 'true') return; // Prevent 2nd account
+        
+        try {
+            const res = await fetch('https://api64.ipify.org?format=json');
+            const data = await res.json();
+            if (data && data.ip) {
+                const ipKey = data.ip.replace(/\./g, '_').replace(/:/g, '_');
+                
+                // Assuming db, get, ref, set are available globally from module scope
+                // Because TutorialManager is physically lower than the imports in app.js
+                const ipRef = ref(db, `tutorial_ips/${ipKey}`);
+                const snap = await get(ipRef);
+                if (snap.exists()) {
+                    // Already registered from this IP!
+                    localStorage.setItem('device_account_created', 'true');
+                    return;
+                } else {
+                    // Save for this IP
+                    await set(ipRef, true);
+                }
+            }
+        } catch (e) {
+            console.warn("Could not check IP for tutorial", e);
+        }
+
+        localStorage.setItem('device_account_created', 'true');
+        localStorage.setItem('tutorial_active', 'true');
+        localStorage.setItem('tutorial_step', '0');
+        
+        setTimeout(() => this.showWelcome(), 1500);
+    }
+
+    static showWelcome() {
+        this.renderModal(
+            'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smilies/Waving%20Hand.webp',
+            'Добро пожаловать!',
+            'Хей, добро пожаловать! Спасибо, что решил(а) присоединиться к нашей платформе. Мы тут постарались создать уютное место для общения, поиска друзей и просто хорошего времяпровождения. Давай я быстро покажу тебе, что к чему? Это не займёт много времени!',
+            'Поехали!',
+            () => this.startNavigationTour()
+        );
+    }
+
+    static applyBlur() {
+        const els = Array.from(document.querySelectorAll('.lobby-layout > *'));
+        const mobileHeader = document.querySelector('.mobile-header');
+        if (mobileHeader) els.push(mobileHeader);
+
+        els.forEach(el => {
+            if (el && el.id !== 'main-sidebar' && el.id !== 'tutorial-modal-overlay') { 
+                el.style.filter = 'blur(6px)';
+                el.style.pointerEvents = 'none';
+                el.style.transition = 'filter 0.3s ease';
+            }
+        });
+        
+        const navPanel = document.getElementById('main-sidebar');
+        if(navPanel) {
+            navPanel.style.position = 'relative';
+            navPanel.style.zIndex = '9999';
+        }
+    }
+    
+    static removeBlur() {
+        const els = Array.from(document.querySelectorAll('.lobby-layout > *'));
+        const mobileHeader = document.querySelector('.mobile-header');
+        if (mobileHeader) els.push(mobileHeader);
+
+        els.forEach(el => {
+            if (el) {
+                el.style.filter = '';
+                el.style.pointerEvents = '';
+            }
+        });
+        const navPanel = document.getElementById('main-sidebar');
+        if(navPanel) {
+            navPanel.style.zIndex = '';
+            navPanel.style.position = '';
+        }
+    }
+
+    static navPointers = {
+        'profile': { id: 'nav-profile', emoji: 'Bust%20in%20Silhouette.webp', title: 'Твой профиль', text: 'Твоя личная крепость! Здесь ты можешь красиво оформить свою страничку — поставить крутую аватарку, написать пару слов о себе и даже поменять фон. Люди любят, когда профиль заполнен с душой, так проще найти общие интересы.', next: 'friends' },
+        'friends': { id: 'nav-friends', emoji: 'Handshake.webp', title: 'Друзья', text: 'Твой круг общения. Тут будут отображаться все, с кем ты подружился. Отсюда удобно сразу переходить к переписке, смотреть кто онлайн и управлять запросами в друзья. Не стесняйся заводить новые знакомства!', next: 'search' },
+        'search': { id: 'nav-find-friend', emoji: 'Magnifying%20Glass%20Tilted%20Right.webp', title: 'Найти друга', text: 'Не с кем поболтать? Загляни сюда. Здесь можно найти других ребят, посмотреть их профили и отправить запрос в друзья. Если кто-то показался интересным — смело пиши, тут все рады новому общению.', next: 'catalog' },
+        'catalog': { id: 'nav-catalog', emoji: 'Star.webp', title: 'Каталог', text: 'Местная сокровищница! В каталоге мы собираем классные темы оформления, рамки, значки и другие штуки для кастомизации. Заглядывай сюда периодически, чтобы обновить свой стиль и выделиться из толпы.', next: null }
+    };
+
+    static currentHole = null;
+
+    static startNavigationTour() {
+        localStorage.setItem('tutorial_step', 'profile');
+        this.applyBlur();
+        this.highlightNav('profile');
+    }
+
+    static highlightNav(step) {
+        if (this.currentHole) this.currentHole.classList.remove('tutorial-highlightpulse');
+        const data = this.navPointers[step];
+        if (!data) return this.endTutorial();
+        
+        // Lock other nav items
+        document.querySelectorAll('.nav-item').forEach(item => {
+            if (item.id !== data.id) {
+                item.style.pointerEvents = 'none';
+                item.style.opacity = '0.5';
+            } else {
+                item.style.pointerEvents = 'auto';
+                item.style.opacity = '1';
+            }
+        });
+
+        const btn = document.getElementById(data.id);
+        if (btn) {
+             btn.classList.add('tutorial-highlightpulse');
+             this.currentHole = btn;
+             
+             const handler = (e) => {
+                 if (!e.isTrusted) return;
+                 btn.classList.remove('tutorial-highlightpulse');
+                 btn.removeEventListener('click', handler);
+                 setTimeout(() => this.showStepModal(step), 300);
+             };
+             btn.addEventListener('click', handler);
+        } else {
+             this.highlightNav(data.next);
+        }
+    }
+
+    static showStepModal(step) {
+        const data = this.navPointers[step];
+        this.renderModal(
+            `https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/${data.emoji}`,
+            data.title,
+            data.text,
+            'Понял(а)',
+            () => {
+                if (data.next) {
+                    localStorage.setItem('tutorial_step', data.next);
+                    this.highlightNav(data.next);
+                } else {
+                    this.endTutorial();
+                }
+            }
+        );
+    }
+
+    static endTutorial() {
+        localStorage.removeItem('tutorial_active');
+        localStorage.removeItem('tutorial_step');
+        this.removeBlur();
+
+        // Unlock all nav items
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.style.pointerEvents = '';
+            item.style.opacity = '';
+        });
+
+        if (this.currentHole) this.currentHole.classList.remove('tutorial-highlightpulse');
+        
+        this.renderModal(
+            'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smilies/Party%20Popper.webp',
+            'Готово!',
+            'Вот и всё! Теперь ты знаешь самое важное. Желаем отличного настроения и классного общения на нашей платформе!',
+            'Завершить',
+            () => {}
+        );
+    }
+
+    static renderModal(emojiSrc, title, text, btnText, onConfirm) {
+        const existing = document.getElementById('tutorial-modal-overlay');
+        if (existing) existing.remove();
+
+        const overlay = document.createElement('div');
+        overlay.id = 'tutorial-modal-overlay';
+        overlay.style.position = 'fixed';
+        overlay.style.inset = '0';
+        overlay.style.backgroundColor = 'rgba(0,0,0,0.6)';
+        overlay.style.backdropFilter = 'blur(10px)';
+        overlay.style.zIndex = '100000';
+        overlay.style.display = 'flex';
+        overlay.style.alignItems = 'center';
+        overlay.style.justifyContent = 'center';
+        overlay.style.padding = '20px';
+        overlay.style.opacity = '0';
+        overlay.style.transition = 'opacity 0.3s ease';
+
+        const modal = document.createElement('div');
+        modal.style.background = 'linear-gradient(145deg, #2a2a2a 0%, #151515 100%)';
+        modal.style.border = '1px solid rgba(255,255,255,0.1)';
+        modal.style.borderRadius = '24px';
+        modal.style.padding = '35px 30px';
+        modal.style.maxWidth = '380px';
+        modal.style.width = '100%';
+        modal.style.display = 'flex';
+        modal.style.flexDirection = 'column';
+        modal.style.alignItems = 'center';
+        modal.style.textAlign = 'center';
+        modal.style.boxShadow = '0 25px 60px rgba(0,0,0,0.6)';
+        modal.style.transform = 'translateY(20px) scale(0.95)';
+        modal.style.transition = 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+
+        const emoji = document.createElement('img');
+        emoji.src = emojiSrc;
+        emoji.style.width = '72px';
+        emoji.style.height = '72px';
+        emoji.style.marginBottom = '20px';
+        emoji.style.animation = 'pulse 2s infinite alternate';
+
+        const h2 = document.createElement('h2');
+        h2.textContent = title;
+        h2.style.margin = '0 0 10px 0';
+        h2.style.fontSize = '22px';
+        h2.style.color = '#ffffff';
+
+        const p = document.createElement('p');
+        p.textContent = text;
+        p.style.margin = '0 0 25px 0';
+        p.style.fontSize = '14px';
+        p.style.lineHeight = '1.5';
+        p.style.color = 'rgba(255,255,255,0.7)';
+
+        const btn = document.createElement('button');
+        btn.textContent = btnText;
+        btn.style.width = '100%';
+        btn.style.padding = '12px 20px';
+        btn.style.borderRadius = '12px';
+        btn.style.fontSize = '14px';
+        btn.style.fontWeight = 'bold';
+        btn.style.background = 'linear-gradient(90deg, #ffffff, #e0e0e0)';
+        btn.style.color = '#000000';
+        btn.style.border = 'none';
+        btn.style.cursor = 'pointer';
+        
+        btn.onmouseover = () => btn.style.background = '#ffffff';
+        btn.onmouseout = () => btn.style.background = 'linear-gradient(90deg, #ffffff, #e0e0e0)';
+        
+        btn.onclick = () => {
+            overlay.style.opacity = '0';
+            modal.style.transform = 'translateY(20px) scale(0.95)';
+            setTimeout(() => {
+                overlay.remove();
+                if (onConfirm) onConfirm();
+            }, 300);
+        };
+
+        modal.appendChild(emoji);
+        modal.appendChild(h2);
+        modal.appendChild(p);
+        modal.appendChild(btn);
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+
+        requestAnimationFrame(() => {
+            overlay.style.opacity = '1';
+            modal.style.transform = 'translateY(0) scale(1)';
+        });
+    }
+}
+
 class Utils {
   static getAppleEmojiHtml(char) {
     const appleMap = {
@@ -4030,6 +4311,9 @@ class AuthManager {
     onAuthStateChanged(auth, async (user) => {
       try {
         if (user) {
+          if (!AppState.isRegistering) {
+             TutorialManager.markDeviceUsed();
+          }
           AppState.currentUser = user;
           const savedAccounts = JSON.parse(
             localStorage.getItem("cowio_saved_accounts") || "[]",
@@ -4213,6 +4497,7 @@ class AuthManager {
           },
           gender,
         );
+        TutorialManager.startTutorial();
         AppState.isRegistering = false;
       } catch (e) {
         AppState.isRegistering = false;
@@ -4239,6 +4524,7 @@ class AuthManager {
               emailVerified: Boolean(result.user.emailVerified),
             },
           );
+          TutorialManager.startTutorial();
           AppState.isRegistering = false;
         }
       } catch (e) {
@@ -13001,6 +13287,7 @@ class MobileSwipeManager {
 // ============================================================================
 
 window.onload = () => {
+  TutorialManager.init();
   BadgeManager.init();
   GlobalThemeManager.init(); // [NEW]
   AuthManager.init();

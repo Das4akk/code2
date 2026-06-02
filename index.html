@@ -3708,6 +3708,16 @@
           transform 0.1s linear,
           box-shadow 0.1s linear;
       }
+      .tutorial-highlightpulse {
+        position: relative;
+        z-index: 100000 !important;
+        animation: tutorialPulse 1.5s infinite alternate !important;
+        pointer-events: auto !important;
+      }
+      @keyframes tutorialPulse {
+        0% { box-shadow: 0 0 0 0 rgba(255,255,255,0.7); transform: scale(1); }
+        100% { box-shadow: 0 0 15px 10px rgba(255,255,255,0); transform: scale(1.05); }
+      }
     </style>
   </head>
   <body class="auth-loading">
