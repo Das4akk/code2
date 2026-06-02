@@ -132,37 +132,27 @@ class TutorialManager {
         localStorage.setItem('device_account_created', 'true');
     }
 
-    static async startTutorial() {
-        if (localStorage.getItem('device_account_created') === 'true') return; // Prevent 2nd account
-        
-        try {
-            const res = await fetch('https://api64.ipify.org?format=json');
-            const data = await res.json();
-            if (data && data.ip) {
-                const ipKey = data.ip.replace(/\./g, '_').replace(/:/g, '_');
-                
-                // Assuming db, get, ref, set are available globally from module scope
-                // Because TutorialManager is physically lower than the imports in app.js
-                const ipRef = ref(db, `tutorial_ips/${ipKey}`);
-                const snap = await get(ipRef);
-                if (snap.exists()) {
-                    // Already registered from this IP!
-                    localStorage.setItem('device_account_created', 'true');
-                    return;
-                } else {
-                    // Save for this IP
-                    await set(ipRef, true);
-                }
-            }
-        } catch (e) {
-            console.warn("Could not check IP for tutorial", e);
-        }
+    static startTutorial() {
+        if (localStorage.getItem('device_account_created') === 'true') return;
 
         localStorage.setItem('device_account_created', 'true');
         localStorage.setItem('tutorial_active', 'true');
         localStorage.setItem('tutorial_step', '0');
         
-        setTimeout(() => this.showWelcome(), 1500);
+        setTimeout(() => this.showWelcome(), 100);
+        
+        // Check IP in the background to prevent abuse later, without blocking UI
+        fetch('https://api64.ipify.org?format=json')
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.ip) {
+                    const ipKey = data.ip.replace(/\./g, '_').replace(/:/g, '_');
+                    const ipRef = ref(db, `tutorial_ips/${ipKey}`);
+                    get(ipRef).then(snap => {
+                        if (!snap.exists()) set(ipRef, true);
+                    });
+                }
+            }).catch(e => console.warn("Could not check IP for tutorial", e));
     }
 
     static showWelcome() {
@@ -13594,6 +13584,7 @@ class CatalogManager {
           const inv = currentProf?.inventory || [];
           const isOwned = inv.includes(item.id);
           const isHot = item.isHot === true || item.isHot === "true";
+          const userAvatar = currentProf?.avatar || "https://telegra.ph/file/0c9e88d184cf43b448f21.png";
           return `
             <div class="catalog-card-wrapper ${isHot ? "is-hot" : ""} ${isOwned ? "is-owned" : ""}" style="animation-delay: ${i * 0.05}s;">
                 <div class="catalog-card-inner" onclick="if(typeof openCatalogItemModal === 'function') openCatalogItemModal('${item.id}')">
@@ -13609,7 +13600,7 @@ class CatalogManager {
                         `
                             : `
                             <div style="width: 90px; height: 90px; display:flex; align-items:center; justify-content:center; position:relative; z-index:2;">
-                                <div style="width:90px; height:90px; border-radius:50%; background:#111214; position:absolute; top:0; left:0; z-index:1; box-shadow: inset 0 0 10px rgba(0,0,0,0.8);"></div>
+                                <div style="width:90px; height:90px; border-radius:50%; background-image:url('${userAvatar}'); background-size:cover; background-position:center; position:absolute; top:0; left:0; z-index:1; box-shadow: inset 0 0 10px rgba(0,0,0,0.4);"></div>
                                 <img src="${item.image}" style="width:125px;height:125px;object-fit:contain; position:absolute; top:-17.5px; left:-17.5px; z-index:2; pointer-events:none;"/>
                             </div>
                         `
@@ -13708,6 +13699,7 @@ window.openCatalogItemModal = function (itemId) {
     item.type === "sound" ? "ЗВУК" : "УКРАШЕНИЕ АВАТАРА";
 
   const imageSolo = Utils.$("catalog-item-image-solo");
+  const avatarBg = Utils.$("catalog-item-avatar-bg");
   const audioSolo = Utils.$("catalog-item-audio-solo");
   const rightBg = Utils.$("catalog-item-right-bg");
   const blurObj = Utils.$("catalog-item-bg-blur");
@@ -13717,9 +13709,11 @@ window.openCatalogItemModal = function (itemId) {
       ? AppState.usersCache.get(AppState.currentUser.uid)
       : null;
   let fallbackAvatar = "https://telegra.ph/file/0c9e88d184cf43b448f21.png";
+  let userAvatar = currentProf?.avatar || fallbackAvatar;
 
   if (item.type === "sound") {
     if (imageSolo) imageSolo.style.display = "none";
+    if (avatarBg) avatarBg.style.display = "none";
     if (audioSolo) {
       audioSolo.style.display = "block";
       audioSolo.src = item.image;
@@ -13730,17 +13724,25 @@ window.openCatalogItemModal = function (itemId) {
     if (contentPanel) {
       contentPanel.style.width = "400px";
       contentPanel.style.flexDirection = "column";
+      contentPanel.style.borderRadius = "20px";
     }
 
     const leftPanel = Utils.$("catalog-item-left-panel");
     if (leftPanel) {
       leftPanel.style.width = "100%";
       leftPanel.style.borderRight = "none";
+      leftPanel.style.borderRadius = "20px";
     }
   } else {
     if (imageSolo) {
       imageSolo.style.display = "block";
       imageSolo.src = item.image;
+    }
+    if (avatarBg) {
+      avatarBg.style.display = "block";
+      avatarBg.style.backgroundImage = `url('${userAvatar}')`;
+      avatarBg.style.backgroundSize = "cover";
+      avatarBg.style.backgroundPosition = "center";
     }
     if (audioSolo) {
       audioSolo.style.display = "none";
@@ -13750,15 +13752,24 @@ window.openCatalogItemModal = function (itemId) {
 
     const contentPanel = Utils.$("modal-catalog-content-panel");
     if (contentPanel) {
-      contentPanel.style.width = "800px";
+      contentPanel.style.width = "750px";
       contentPanel.style.flexDirection = "row";
+      contentPanel.style.borderRadius = "24px";
+      contentPanel.style.overflow = "hidden";
+      contentPanel.style.boxShadow = "0 20px 40px rgba(0,0,0,0.4)";
     }
 
     const leftPanel = Utils.$("catalog-item-left-panel");
     if (leftPanel) {
-      leftPanel.style.width = "40%";
-      leftPanel.style.borderRight = "1px solid var(--border-light)";
+      leftPanel.style.width = "45%";
+      leftPanel.style.borderRight = "1px solid rgba(255,255,255,0.08)";
+      leftPanel.style.background = "linear-gradient(180deg, rgba(30,31,34,0.9), rgba(17,18,20,0.95))";
     }
+
+    if (rightBg) {
+      rightBg.style.width = "55%";
+    }
+  }
 
     if (blurObj) {
       blurObj.style.backgroundImage = `url('${item.image}')`;

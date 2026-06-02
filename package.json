@@ -2,12 +2,11 @@
   "name": "ai-studio-applet",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint .",
-    "clean": "next clean"
+    "dev": "node server.js",
+    "build": "echo 'No build step required'",
+    "start": "node server.js"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
