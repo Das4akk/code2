@@ -734,6 +734,14 @@
         .sidebar-overlay { display: none; }
 
         @media (max-width: 1024px) {
+            .dm-modal-content { grid-template-columns: 1fr !important; }
+            .dm-modal-content.chat-active .dm-sidebar { display: none !important; }
+            .dm-modal-content:not(.chat-active) .dm-main { display: none !important; }
+            
+            .support-grid-layout { grid-template-columns: 1fr !important; }
+            .support-grid-layout.chat-active .support-sidebar { display: none !important; }
+            .support-grid-layout:not(.chat-active) .support-main-area { display: none !important; }
+            
             .lobby-layout { grid-template-columns: 1fr; padding: 0; }
             .sidebar-overlay { display: block; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(2px); z-index: 499; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
             .sidebar-overlay.open { opacity: 1; pointer-events: auto; }
@@ -952,10 +960,10 @@
             </main>
 
             <main class="rooms-main" id="section-support" style="display: none; padding: 0;">
-                <div style="width: 100%; height: 100%; display: grid; grid-template-columns: 320px 1fr; overflow: hidden; background: radial-gradient(circle at top right, rgba(255,255,255,0.06), #070707 100%);">
+                <div id="support-grid-container" class="support-grid-layout" style="width: 100%; height: 100%; display: grid; grid-template-columns: 320px 1fr; overflow: hidden; background: radial-gradient(circle at top right, rgba(255,255,255,0.06), #070707 100%);">
                     
                     <!-- Left Sidebar (Ticket List) -->
-                    <div style="border-right: 1px solid rgba(255,255,255,0.15); display: flex; flex-direction: column; background: rgba(7, 7, 7, 0.92); height: 100%;">
+                    <div class="support-sidebar" style="border-right: 1px solid rgba(255,255,255,0.15); display: flex; flex-direction: column; background: rgba(7, 7, 7, 0.92); height: 100%;">
                         <div style="padding: 15px 20px; font-weight: bold; font-size: 18px; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: space-between;">
                             <span>Тикеты</span>
                             <button class="primary-btn" id="btn-open-create-ticket-modal" style="width: auto; padding: 6px 12px; font-size: 12px; border-radius: 8px;">Создать</button>
@@ -966,14 +974,20 @@
                     </div>
 
                     <!-- Right Main (Active Ticket) -->
-                    <div style="flex: 1; display: flex; flex-direction: column; height: 100%; position: relative;">
+                    <div class="support-main-area" style="flex: 1; display: flex; flex-direction: column; height: 100%; position: relative;">
                         <div id="support-active-ticket" style="display: none; flex-direction: column; height: 100%;">
                             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding: 15px 20px; background: rgba(0,0,0,0.2);">
-                                <div>
-                                    <h2 id="support-ticket-title-text" style="font-size: 16px; margin: 0; margin-bottom: 4px;">Тикет</h2>
-                                    <div id="support-ticket-status-text" style="font-size: 12px; color: var(--text-muted);">Без статуса</div>
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <button class="secondary-btn" id="btn-support-back" style="width: auto; padding: 6px 10px; font-size: 12px; display: none; border-radius: 8px;">◀ Назад</button>
+                                    <div>
+                                        <h2 id="support-ticket-title-text" style="font-size: 16px; margin: 0; margin-bottom: 4px;">Тикет</h2>
+                                        <div id="support-ticket-status-text" style="font-size: 12px; color: var(--text-muted);">Без статуса</div>
+                                    </div>
                                 </div>
-                                <button class="danger-btn" id="btn-support-close-ticket" style="width: auto; padding: 6px 12px; font-size: 12px; border-radius: 8px; display: none;">Закрыть</button>
+                                <div style="display: flex; gap: 8px;">
+                                    <button class="secondary-btn" id="btn-support-reopen-ticket" style="width: auto; padding: 6px 12px; font-size: 12px; border-radius: 8px; display: none;">Открыть снова</button>
+                                    <button class="danger-btn" id="btn-support-close-ticket" style="width: auto; padding: 6px 12px; font-size: 12px; border-radius: 8px; display: none;">Закрыть</button>
+                                </div>
                             </div>
                             
                             <div id="support-ticket-chat" class="dm-messages" style="flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 8px;">
@@ -1562,8 +1576,11 @@
             <div style="font-size: 24px; margin-bottom: 5px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp" style="width:1.5em;height:1.5em;vertical-align:bottom;"></div>
             <h2 style="font-size: 20px; margin-bottom: 20px;">Новое обращение</h2>
             <div style="text-align: left; margin-bottom: 20px;">
-                <label style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">Кратко опишите проблему</label>
-                <input type="text" id="support-new-ticket-title" placeholder="Тема тикета..." style="width: 100%; padding: 12px; border-radius: 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 14px; box-sizing: border-box;">
+                <label style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">Краткая суть проблемы (Тема)</label>
+                <input type="text" id="support-new-ticket-title" placeholder="Тема тикета..." style="width: 100%; padding: 12px; border-radius: 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 14px; box-sizing: border-box; margin-bottom: 12px;">
+                
+                <label style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">Подробное описание</label>
+                <textarea id="support-new-ticket-text" placeholder="Опишите вашу проблему, это будет отправлено как ваше первое сообщение..." style="width: 100%; height: 100px; padding: 12px; border-radius: 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 14px; box-sizing: border-box; resize: none;"></textarea>
             </div>
             <div style="display: flex; gap: 10px;">
                 <button class="secondary-btn btn-close-modal" style="flex: 1;" onclick="document.getElementById('modal-create-ticket').classList.remove('active')">Отмена</button>

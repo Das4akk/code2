@@ -6230,11 +6230,17 @@ class SupportSystem {
 
         Utils.$('btn-new-ticket').onclick = async () => {
             const inputEl = Utils.$('support-new-ticket-title');
+            const textEl = Utils.$('support-new-ticket-text');
             const title = inputEl ? inputEl.value.trim() : '';
-            if (!title) {
-                if (inputEl) {
+            const text = textEl ? textEl.value.trim() : '';
+            if (!title || !text) {
+                if (!title && inputEl) {
                     inputEl.style.borderColor = 'var(--accent)';
                     setTimeout(() => inputEl.style.borderColor = '', 1000);
+                }
+                if (!text && textEl) {
+                    textEl.style.borderColor = 'var(--accent)';
+                    setTimeout(() => textEl.style.borderColor = '', 1000);
                 }
                 return;
             }
@@ -6245,7 +6251,17 @@ class SupportSystem {
                 status: 'open',
                 createdAt: Date.now()
             });
+            const profile = AppState.currentUserProfile;
+            await push(ref(db, `support_tickets/${newRef.key}/messages`), {
+                text: text,
+                uid,
+                name: profile?.name || 'Пользователь',
+                isAdmin: AdminPanel.isOperatorProfile(profile, uid) || AdminPanel.isCreatorProfile(profile, uid),
+                timestamp: Date.now()
+            });
+
             if (inputEl) inputEl.value = '';
+            if (textEl) textEl.value = '';
             document.getElementById('modal-create-ticket')?.classList.remove('active');
             SupportSystem.openTicket(newRef.key, title, 'open');
         };
@@ -6268,16 +6284,36 @@ class SupportSystem {
         const clickedItem = Array.from(items).find(el => el.getAttribute('onclick').includes(id));
         if (clickedItem) clickedItem.classList.add('active');
         
+        const layoutContainer = Utils.$('support-grid-container');
+        if (layoutContainer) layoutContainer.classList.add('chat-active');
+        
+        const btnBack = Utils.$('btn-support-back');
+        if (btnBack) {
+            btnBack.style.display = window.innerWidth <= 1024 ? 'block' : 'none';
+            btnBack.onclick = () => {
+                layoutContainer.classList.remove('chat-active');
+            };
+        }
+
         Utils.$('support-no-ticket').style.display = 'none';
         Utils.$('support-active-ticket').style.display = 'flex';
         
         const isSupportStaff = AdminPanel.isCreatorProfile(AppState.currentUserProfile || {}, uid) || AdminPanel.isOperatorProfile(AppState.currentUserProfile || {}, uid);
         const closeBtn = Utils.$('btn-support-close-ticket');
-        if (isSupportStaff && status === 'open') {
-            closeBtn.style.display = 'block';
-            closeBtn.onclick = () => SupportSystem.closeTicket(id);
+        const reopenBtn = Utils.$('btn-support-reopen-ticket');
+        if (isSupportStaff) {
+            if (status === 'open') {
+                closeBtn.style.display = 'block';
+                reopenBtn.style.display = 'none';
+                closeBtn.onclick = () => SupportSystem.closeTicket(id);
+            } else {
+                closeBtn.style.display = 'none';
+                reopenBtn.style.display = 'block';
+                reopenBtn.onclick = () => SupportSystem.reopenTicket(id);
+            }
         } else {
             closeBtn.style.display = 'none';
+            reopenBtn.style.display = 'none';
         }
 
         Utils.$('support-ticket-title-text').innerText = title || 'Без темы';
@@ -6336,11 +6372,31 @@ class SupportSystem {
     }
 
     static async closeTicket(id) {
+        if (!confirm('Вы уверены, что хотите закрыть этот тикет?')) return;
         await update(ref(db, `support_tickets/${id}`), { status: 'closed' });
         // Local active update if the current is closed
         if (this.activeTicketId === id) {
              Utils.$('support-ticket-status-text').innerHTML = '<span style="color:#ff4444">🔴 Закрыт</span>';
              Utils.$('btn-support-close-ticket').style.display = 'none';
+             const reopenBtn = Utils.$('btn-support-reopen-ticket');
+             if (reopenBtn) {
+                 reopenBtn.style.display = 'block';
+                 reopenBtn.onclick = () => this.reopenTicket(id);
+             }
+        }
+    }
+
+    static async reopenTicket(id) {
+        if (!confirm('Вы уверены, что хотите снова открыть этот тикет?')) return;
+        await update(ref(db, `support_tickets/${id}`), { status: 'open' });
+        if (this.activeTicketId === id) {
+             Utils.$('support-ticket-status-text').innerHTML = '<span style="color:#00ff80">🟢 Открыт</span>';
+             Utils.$('btn-support-reopen-ticket').style.display = 'none';
+             const closeBtn = Utils.$('btn-support-close-ticket');
+             if (closeBtn) {
+                 closeBtn.style.display = 'block';
+                 closeBtn.onclick = () => this.closeTicket(id);
+             }
         }
     }
 }
