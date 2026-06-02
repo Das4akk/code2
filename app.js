@@ -222,7 +222,7 @@ class TutorialManager {
         'profile': { id: 'nav-profile', emoji: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Bust%20In%20Silhouette.webp', title: 'Твой профиль', text: 'Твоя личная крепость! Здесь ты можешь красиво оформить свою страничку - поставить крутую аватарку, написать пару слов о себе и даже поменять фон. Люди любят, когда профиль заполнен с душой, так проще найти общие интересы.', next: 'friends' },
         'friends': { id: 'nav-friends', emoji: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Handshake.webp', title: 'Друзья', text: 'Твой круг общения. Тут будут отображаться все, с кем ты подружился. Отсюда удобно сразу переходить к переписке, смотреть кто онлайн и управлять запросами в друзья. Не стесняйся заводить новые знакомства!', next: 'search' },
         'search': { id: 'nav-find-friend', emoji: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Magnifying%20Glass%20Tilted%20Left.webp', title: 'Найти друга', text: 'Не с кем поболтать? Загляни сюда. Здесь можно найти других ребят, посмотреть их профили и отправить запрос в друзья. Если кто-то показался интересным - смело пиши, тут все рады новому общению.', next: 'catalog' },
-        'catalog': { id: 'nav-catalog', emoji: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Star.webp', title: 'Каталог', text: 'Местная сокровищница! В каталоге мы собираем классные темы оформления, рамки, значки и другие штуки для кастомизации. Заглядывай сюда периодически, чтобы обновить свой стиль и выделиться из толпы.', next: null }
+        'catalog': { id: 'nav-catalog', emoji: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp', title: 'Каталог', text: 'Местная сокровищница! В каталоге мы собираем классные темы оформления, рамки, значки и другие штуки для кастомизации. Заглядывай сюда периодически, чтобы обновить свой стиль и выделиться из толпы.', next: null }
     };
 
     static currentHole = null;
@@ -302,7 +302,7 @@ class TutorialManager {
         if (this.currentHole) this.currentHole.classList.remove('tutorial-highlightpulse');
         
         this.renderModal(
-            'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smilies/Party%20Popper.webp',
+            'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Party%20Popper.webp',
             'Готово!',
             'Вот и всё! Теперь ты знаешь самое важное. Желаем отличного настроения и классного общения на нашей платформе!',
             'Завершить',
@@ -8464,8 +8464,8 @@ class SupportSystem {
         (Date.now() - (t.createdAt || Date.now())) / 3600000,
       );
       Utils.$("st-status").innerHTML = isClosed
-        ? '<span style="color:#ff4444;font-weight:bold;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Circle.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Закрыт</span>'
-        : `<span style="color:#ffffff;font-weight:bold;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/White%20Circle.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> В работе</span> ${isAdmin ? `<span style="opacity:0.5;font-weight:normal;font-size:11px;">(Открыт ${openTimeStr} ч. назад)</span>` : ""}`;
+        ? '<span style="color:#ff4444;font-weight:bold;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Cross%20Mark.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Закрыт</span>'
+        : `<span style="color:#ffffff;font-weight:bold;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Check%20Mark%20Button.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> В работе</span> ${isAdmin ? `<span style="opacity:0.5;font-weight:normal;font-size:11px;">(Открыт ${openTimeStr} ч. назад)</span>` : ""}`;
 
       if (t.category) {
         Utils.$("st-tag").style.display = "block";
@@ -8532,24 +8532,28 @@ class SupportSystem {
 
         const quickActionsBtn = Utils.$("btn-support-quick-actions");
         const quickMenu = Utils.$("support-quick-actions-menu");
-        quickActionsBtn.style.display = "block";
-        quickActionsBtn.onclick = (e) => {
-          e.stopPropagation();
-          if (quickMenu.style.display === "flex") {
-            quickMenu.style.display = "none";
-          } else {
-            quickMenu.style.display = "flex";
-            quickMenu.innerHTML = `
-                             
-                             <div style="font-size:11px; color:var(--text-muted); margin-bottom:4px; font-weight:bold;">ТЕГИ:</div>
-                             <button class="secondary-btn" style="text-align:left; padding:6px 8px; font-size:12px; background:rgba(255,255,255,0.05); border:none;" onclick="SupportSystem.setCategory('${id}', 'Баг')">🐛 Баг</button>
-                             <button class="secondary-btn" style="text-align:left; padding:6px 8px; font-size:12px; background:rgba(255,255,255,0.05); border:none;" onclick="SupportSystem.setCategory('${id}', 'Вопрос')">❔ Вопрос</button>
-                             <div style="border-top:1px solid rgba(255,255,255,0.05); margin: 6px 0;"></div>
-                             <button class="secondary-btn" style="text-align:left; padding:6px 8px; font-size:12px; background:rgba(255,255,255,0.05); border:none;" onclick="SupportSystem.exportTicket('${id}')">📥 Экспорт как .txt</button>
-                             <button class="danger-btn" style="text-align:left; padding:6px 8px; font-size:12px; margin-top:4px;" onclick="SupportSystem.adminBan('${t.creatorUid}')">🚫 Заблокировать автора</button>
-                          `;
-          }
-        };
+        if (quickActionsBtn) {
+          quickActionsBtn.style.display = "block";
+          quickActionsBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (quickMenu) {
+              if (quickMenu.style.display === "flex") {
+                quickMenu.style.display = "none";
+              } else {
+                quickMenu.style.display = "flex";
+                quickMenu.innerHTML = `
+                                 
+                                 <div style="font-size:11px; color:var(--text-muted); margin-bottom:4px; font-weight:bold;">ТЕГИ:</div>
+                                 <button class="secondary-btn" style="text-align:left; padding:6px 8px; font-size:12px; background:rgba(255,255,255,0.05); border:none;" onclick="SupportSystem.setCategory('${id}', 'Баг')">🐛 Баг</button>
+                                 <button class="secondary-btn" style="text-align:left; padding:6px 8px; font-size:12px; background:rgba(255,255,255,0.05); border:none;" onclick="SupportSystem.setCategory('${id}', 'Вопрос')">❔ Вопрос</button>
+                                 <div style="border-top:1px solid rgba(255,255,255,0.05); margin: 6px 0;"></div>
+                                 <button class="secondary-btn" style="text-align:left; padding:6px 8px; font-size:12px; background:rgba(255,255,255,0.05); border:none;" onclick="SupportSystem.exportTicket('${id}')">📥 Экспорт как .txt</button>
+                                 <button class="danger-btn" style="text-align:left; padding:6px 8px; font-size:12px; margin-top:4px;" onclick="SupportSystem.adminBan('${t.creatorUid}')">🚫 Заблокировать автора</button>
+                              `;
+              }
+            }
+          };
+        }
         // Ensure we remove previous event listeners or avoid duplicate globals, using onmousedown instead of addEventListener for simplicity
         document.onmousedown = (ev) => {
           if (
