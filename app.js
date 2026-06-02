@@ -214,10 +214,10 @@ class TutorialManager {
     }
 
     static navPointers = {
-        'profile': { id: 'nav-profile', emoji: 'Bust%20in%20Silhouette.webp', title: 'Твой профиль', text: 'Твоя личная крепость! Здесь ты можешь красиво оформить свою страничку — поставить крутую аватарку, написать пару слов о себе и даже поменять фон. Люди любят, когда профиль заполнен с душой, так проще найти общие интересы.', next: 'friends' },
-        'friends': { id: 'nav-friends', emoji: 'Handshake.webp', title: 'Друзья', text: 'Твой круг общения. Тут будут отображаться все, с кем ты подружился. Отсюда удобно сразу переходить к переписке, смотреть кто онлайн и управлять запросами в друзья. Не стесняйся заводить новые знакомства!', next: 'search' },
-        'search': { id: 'nav-find-friend', emoji: 'Magnifying%20Glass%20Tilted%20Right.webp', title: 'Найти друга', text: 'Не с кем поболтать? Загляни сюда. Здесь можно найти других ребят, посмотреть их профили и отправить запрос в друзья. Если кто-то показался интересным — смело пиши, тут все рады новому общению.', next: 'catalog' },
-        'catalog': { id: 'nav-catalog', emoji: 'Star.webp', title: 'Каталог', text: 'Местная сокровищница! В каталоге мы собираем классные темы оформления, рамки, значки и другие штуки для кастомизации. Заглядывай сюда периодически, чтобы обновить свой стиль и выделиться из толпы.', next: null }
+        'profile': { id: 'nav-profile', emoji: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Bust%20In%20Silhouette.webp', title: 'Твой профиль', text: 'Твоя личная крепость! Здесь ты можешь красиво оформить свою страничку - поставить крутую аватарку, написать пару слов о себе и даже поменять фон. Люди любят, когда профиль заполнен с душой, так проще найти общие интересы.', next: 'friends' },
+        'friends': { id: 'nav-friends', emoji: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Handshake.webp', title: 'Друзья', text: 'Твой круг общения. Тут будут отображаться все, с кем ты подружился. Отсюда удобно сразу переходить к переписке, смотреть кто онлайн и управлять запросами в друзья. Не стесняйся заводить новые знакомства!', next: 'search' },
+        'search': { id: 'nav-find-friend', emoji: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Magnifying%20Glass%20Tilted%20Left.webp', title: 'Найти друга', text: 'Не с кем поболтать? Загляни сюда. Здесь можно найти других ребят, посмотреть их профили и отправить запрос в друзья. Если кто-то показался интересным - смело пиши, тут все рады новому общению.', next: 'catalog' },
+        'catalog': { id: 'nav-catalog', emoji: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Star.webp', title: 'Каталог', text: 'Местная сокровищница! В каталоге мы собираем классные темы оформления, рамки, значки и другие штуки для кастомизации. Заглядывай сюда периодически, чтобы обновить свой стиль и выделиться из толпы.', next: null }
     };
 
     static currentHole = null;
@@ -264,7 +264,7 @@ class TutorialManager {
     static showStepModal(step) {
         const data = this.navPointers[step];
         this.renderModal(
-            `https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/${data.emoji}`,
+            data.emoji,
             data.title,
             data.text,
             'Понял(а)',
@@ -8441,7 +8441,7 @@ class SupportSystem {
           templateContainer.innerHTML = Object.keys(this.TEMPLATES)
             .map(
               (k) =>
-                `<button class="secondary-btn" style="padding:4px 10px; flex-shrink:0; font-size:11px; border-radius:12px;" onclick="SupportSystem.useTemplate('${k}', '${id}')">${k}</button>`,
+                `<button class="secondary-btn" style="padding:4px 10px; width:auto; flex-shrink:0; font-size:11px; border-radius:12px;" onclick="SupportSystem.useTemplate('${k}', '${id}')">${k}</button>`,
             )
             .join("");
         } else {

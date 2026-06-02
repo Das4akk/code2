@@ -1431,9 +1431,9 @@
         color: var(--accent);
         border: 1px solid var(--accent);
         box-shadow: 0 0 15px rgba(46, 213, 115, 0.2);
-        animation: pulse 2s infinite;
+        animation: itemPulse 2s infinite;
       }
-      @keyframes pulse {
+      @keyframes itemPulse {
         0% {
           box-shadow: 0 0 0 0 rgba(46, 213, 115, 0.4);
         }
@@ -1443,6 +1443,10 @@
         100% {
           box-shadow: 0 0 0 0 rgba(46, 213, 115, 0);
         }
+      }
+      @keyframes pulseOpacity {
+        0% { opacity: 0.5; }
+        100% { opacity: 1; }
       }
 
       .send-btn {
@@ -3711,12 +3715,12 @@
       .tutorial-highlightpulse {
         position: relative;
         z-index: 100000 !important;
-        animation: tutorialPulse 1.5s infinite alternate !important;
+        animation: tutorialPulse 2s infinite alternate !important;
         pointer-events: auto !important;
       }
       @keyframes tutorialPulse {
-        0% { box-shadow: 0 0 0 0 rgba(255,255,255,0.7); transform: scale(1); }
-        100% { box-shadow: 0 0 15px 10px rgba(255,255,255,0); transform: scale(1.05); }
+        0% { opacity: 1; }
+        100% { opacity: 0.7; }
       }
     </style>
   </head>
@@ -4359,6 +4363,8 @@
                   style="
                     flex-shrink: 0;
                     display: flex;
+                    flex-wrap: wrap;
+                    gap: 12px;
                     justify-content: space-between;
                     align-items: center;
                     border-bottom: 1px solid var(--border);
@@ -4424,7 +4430,7 @@
                       onclick="SupportSystem.deleteTicketLocally()"
                     >
                       <img
-                        src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Wastebasket.webp"
+                        src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Cross%20Mark.webp"
                         style="
                           width: 1.2em;
                           height: 1.2em;
@@ -4533,7 +4539,7 @@
                       display: none;
                       position: absolute;
                       inset: 0;
-                      background: rgba(0, 0, 0, 0.6);
+                      background: rgba(0, 0, 0, 0.2);
                       backdrop-filter: blur(8px);
                       z-index: 100;
                       flex-direction: column;
@@ -4544,12 +4550,11 @@
                     "
                   >
                     <img
-                      src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked.webp"
+                      src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp"
                       style="
                         width: 64px;
                         height: 64px;
                         margin-bottom: 15px;
-                        animation: pulse 2s infinite;
                       "
                     />
                     <h3
@@ -4604,7 +4609,7 @@
                     padding: 0 20px 10px;
                     font-size: 11px;
                     color: var(--text-muted);
-                    animation: pulse 1s infinite alternate;
+                    animation: pulseOpacity 1s infinite alternate;
                   "
                 >
                   Кто-то печатает...
@@ -6882,7 +6887,7 @@
           "
         >
           <img
-            src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp"
+            src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Clothing/Crown.webp"
             style="width: 1.2em; height: 1.2em; vertical-align: bottom"
           />
           Панель Создателя (Поддержка)
@@ -7082,7 +7087,7 @@
           >
             <h4 style="margin: 0; font-size: 14px">
               <img
-                src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Hammer.webp"
+                src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Man%20Technologist.webp"
                 style="width: 1.2em; height: 1.2em; vertical-align: bottom"
               />
               Управление системой
