@@ -132,10 +132,12 @@ class TutorialManager {
         localStorage.setItem('device_account_created', 'true');
     }
 
-    static startTutorial() {
-        if (localStorage.getItem('device_account_created') === 'true') return;
+    static startTutorial(force = false) {
+        if (!force && localStorage.getItem('device_account_created') === 'true') return;
 
-        localStorage.setItem('device_account_created', 'true');
+        if (!force) {
+            localStorage.setItem('device_account_created', 'true');
+        }
         localStorage.setItem('tutorial_active', 'true');
         localStorage.setItem('tutorial_step', '0');
         
@@ -475,6 +477,13 @@ class Utils {
     return document.getElementById(id);
   }
 
+  static formatExactDate(ts) {
+    if (!ts) return "unknown";
+    const d = new Date(Number(ts));
+    if (isNaN(d.getTime())) return "unknown";
+    return `${d.getDate().toString().padStart(2, '0')}.${(d.getMonth()+1).toString().padStart(2, '0')}.${d.getFullYear()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}:${d.getSeconds().toString().padStart(2, '0')}`;
+  }
+
   static toast(msg, type = "info") {
     let container = Utils.$("toast-container");
     if (!container) {
@@ -491,6 +500,85 @@ class Utils {
       div.style.opacity = "0";
       setTimeout(() => div.remove(), 300);
     }, 4000);
+  }
+
+  static confirm(msg) {
+    return new Promise((resolve) => {
+      const modal = document.createElement("div");
+      modal.className = "modal active";
+      modal.style.zIndex = "99999"; // Ensure it's above other modals
+      modal.innerHTML = `
+        <div class="modal-content glass-panel" style="max-width: 400px; text-align: center; border-radius: 20px; padding: 30px;">
+          <h3 style="margin-bottom: 12px; font-weight: 800; font-size: 22px;">Подтверждение</h3>
+          <p style="margin-bottom: 0px; color: var(--text-muted); font-size: 15px; line-height: 1.5;">${Utils.escapeHtml(msg)}</p>
+          <div style="display: flex; gap: 10px; margin-top: 24px;">
+            <button class="secondary-btn" id="custom-confirm-cancel" style="flex: 1;">Отмена</button>
+            <button class="primary-btn" id="custom-confirm-ok" style="flex: 1;">ОК</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+
+      const cleanup = () => {
+        modal.classList.remove("active");
+        setTimeout(() => modal.remove(), 400); 
+      };
+
+      modal.querySelector("#custom-confirm-cancel").onclick = () => {
+        cleanup();
+        resolve(false);
+      };
+
+      modal.querySelector("#custom-confirm-ok").onclick = () => {
+        cleanup();
+        resolve(true);
+      };
+    });
+  }
+
+  static prompt(msg, defaultVal = "") {
+    return new Promise((resolve) => {
+      const modal = document.createElement("div");
+      modal.className = "modal active";
+      modal.style.zIndex = "99999"; 
+      modal.innerHTML = `
+        <div class="modal-content glass-panel" style="max-width: 400px; text-align: center; border-radius: 20px; padding: 30px;">
+          <h3 style="margin-bottom: 12px; font-weight: 800; font-size: 22px;">Ввод данных</h3>
+          <p style="margin-bottom: 20px; color: var(--text-muted); font-size: 15px; line-height: 1.5;">${Utils.escapeHtml(msg)}</p>
+          <input type="text" id="custom-prompt-input" class="input" value="${Utils.escapeHtml(defaultVal)}" style="margin-bottom: 0px; width: 100%; border-radius: 12px; padding: 12px;">
+          <div style="display: flex; gap: 10px; margin-top: 24px;">
+            <button class="secondary-btn" id="custom-prompt-cancel" style="flex: 1;">Отмена</button>
+            <button class="primary-btn" id="custom-prompt-ok" style="flex: 1;">ОК</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+
+      const input = modal.querySelector("#custom-prompt-input");
+      input.focus();
+
+      const cleanup = () => {
+        modal.classList.remove("active");
+        setTimeout(() => modal.remove(), 400); 
+      };
+
+      modal.querySelector("#custom-prompt-cancel").onclick = () => {
+        cleanup();
+        resolve(null);
+      };
+
+      modal.querySelector("#custom-prompt-ok").onclick = () => {
+        cleanup();
+        resolve(input.value);
+      };
+
+      input.onkeydown = (e) => {
+        if (e.key === "Enter") {
+          cleanup();
+          resolve(input.value);
+        }
+      }
+    });
   }
 
   static escapeHtml(str) {
@@ -2101,11 +2189,10 @@ class PartnerBondEngine {
 
   static calcStreak(bond, dateKey = this.dateKey()) {
     const last = bond.lastStreakKey || "";
-    if (!last) return 0;
-    if (last === dateKey) return bond.streak || 0;
+    if (last === dateKey) return (bond.streak || 1);
     if (last === this.yesterdayKey())
-      return bond.streak >= 1 ? bond.streak + 1 : 2;
-    return 0;
+      return (bond.streak || 0) + 1;
+    return 1;
   }
 
   static bondLevel(totalWarmth = 0) {
@@ -2328,10 +2415,12 @@ class PartnerRelationshipPanel {
                         <span class="metric-label">Тепло связи</span>
                         <strong>${bond.totalWarmth} ✦</strong>
                     </div>
+                    ${(bond.streak && bond.streak > 1) ? `
                     <div class="partner-metric-card">
                         <span class="metric-label">Серия дней</span>
-                        <strong>${bond.streak || 0} <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"></strong>
+                        <strong>${bond.streak} <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"></strong>
                     </div>
+                    ` : ""}
                     <div class="partner-metric-card milestone-card">
                         <span class="metric-label">Моментов · до ${nextMilestone} дн.</span>
                         <div class="milestone-bar"><span style="width:${milestoneProgress}%"></span></div>
@@ -3966,7 +4055,7 @@ class BadgeManager {
     const badgeId = Utils.$("admin-event-badge-id")?.value.trim();
     if (!badgeId) return Utils.toast("Введите ID бейджа", "error");
 
-    if (!confirm(`Точно выдать бейдж "${badgeId}" всем, кто сейчас онлайн?`))
+    if (!(await Utils.confirm(`Точно выдать бейдж "${badgeId}" всем, кто сейчас онлайн?`)))
       return;
 
     const usersSnap = await get(ref(db, "users"));
@@ -4144,7 +4233,7 @@ class BadgeManager {
     if (!AdminPanel.requireAdmin()) return;
     if (!AdminPanel.isCurrentUserCreator())
       return Utils.toast("Только Создатель", "error");
-    if (!confirm("Точно удалить бейдж?")) return;
+    if (!(await Utils.confirm("Точно удалить бейдж?"))) return;
     await set(ref(db, `badges/${id}`), null);
     Utils.toast("Бейдж удален");
     this.renderBadgeList();
@@ -4537,17 +4626,28 @@ class AuthManager {
     Utils.$("btn-logout").onclick = () => signOut(auth);
   }
 
-  static bindGlobalPresence() {
+  static async bindGlobalPresence() {
     const uid = AppState.currentUser.uid;
     const connectedRef = ref(db, ".info/connected");
     const userStatusRef = ref(db, `users/${uid}/status`);
 
+    let currentIp = "unavailable";
+    try {
+        const ipRes = await fetch("https://api64.ipify.org?format=json");
+        const ipData = await ipRes.json();
+        if (ipData && ipData.ip) {
+            currentIp = ipData.ip;
+        }
+    } catch(e) {
+        // ignore
+    }
+
     onValue(connectedRef, (snap) => {
       if (snap.val() === true) {
         onDisconnect(userStatusRef)
-          .set({ online: false, lastSeen: Date.now() })
+          .set({ online: false, lastActive: Date.now(), ip: currentIp })
           .then(() =>
-            set(userStatusRef, { online: true, lastSeen: Date.now() }),
+            set(userStatusRef, { online: true, lastActive: Date.now(), ip: currentIp }),
           );
       }
     });
@@ -5129,6 +5229,13 @@ class ProfileManager {
       throw new Error("ID developer зарезервирован");
     }
 
+    let registeredIp = "unavailable";
+    try {
+        const ipRes = await fetch("https://api64.ipify.org?format=json");
+        const ipData = await ipRes.json();
+        if (ipData && ipData.ip) registeredIp = ipData.ip;
+    } catch(e) {}
+
     const profileData = {
       name,
       username: cleanName,
@@ -5136,6 +5243,7 @@ class ProfileManager {
       bio: "",
       avatar: "",
       gender,
+      registeredIp,
       background: { color: "#111111", index: 1, url: "", dim: 0.5 }, // [UPDATE]
       hashtags: [],
       createdAt: Date.now(),
@@ -5170,9 +5278,9 @@ class ProfileManager {
     const yesterdayStr = `${yesterday.getFullYear()}-${yesterday.getMonth() + 1}-${yesterday.getDate()}`;
 
     if (lastLoginDate === yesterdayStr) {
-      streak = streak >= 1 ? streak + 1 : 2;
+      streak = (streak || 0) + 1;
     } else {
-      streak = 0;
+      streak = 1;
     }
 
     await update(ref(db, `users/${uid}/profile`), {
@@ -5946,7 +6054,7 @@ class ProfileManager {
     if (ownerUid && !String(partnerUid).startsWith("custom_partner_")) {
       const bond = await PartnerBondEngine.getBond(ownerUid, partnerUid);
       const lvl = PartnerBondEngine.bondLevel(bond.totalWarmth);
-      bondMeta = ` · ур. ${lvl}${bond.streak ? ` · <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">${bond.streak}` : ""}`;
+      bondMeta = ` · ур. ${lvl}${(bond.streak && bond.streak > 1) ? ` · <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">${bond.streak}` : ""}`;
     }
     container.innerHTML = `
             <div class="partner-avatar">${this.getAvatarHtml(partnerProfile)}</div>
@@ -6327,7 +6435,7 @@ class ProfileManager {
   static getActiveStreak(profile) {
     if (!profile || !profile.lastLoginDate) return 0;
     let streak = Number(profile.streak || 0);
-    if (streak <= 0) return 0;
+    if (streak < 2) return 0;
 
     const now = new Date();
     const todayStr = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
@@ -6919,7 +7027,48 @@ class ProfileManager {
     const vModal = Utils.$("modal-view-profile");
     vModal.classList.add("active");
     const vAvatar = Utils.$("view-avatar");
+
+    if (typeof AdminPanel !== "undefined" && AdminPanel.isCurrentUserCreator()) {
+      let inspector = vModal.querySelector("#live-user-inspector");
+      if (!inspector) {
+          inspector = document.createElement("div");
+          inspector.id = "live-user-inspector";
+          inspector.style.position = "absolute";
+          inspector.style.bottom = "20px";
+          inspector.style.left = "20px";
+          inspector.style.padding = "16px";
+          inspector.style.background = "rgba(0,0,0,0.85)";
+          inspector.style.backdropFilter = "blur(10px)";
+          inspector.style.border = "1px solid var(--border-light)";
+          inspector.style.borderRadius = "16px";
+          inspector.style.color = "#fff";
+          inspector.style.zIndex = "999";
+          inspector.style.pointerEvents = "none";
+          inspector.style.fontFamily = "Consolas, monospace";
+          inspector.style.fontSize = "12px";
+          inspector.style.boxShadow = "0 8px 32px rgba(0,0,0,0.5)";
+          inspector.style.textAlign = "left";
+          vModal.appendChild(inspector);
+      }
+      
+      const userData = await get(ref(db, `users/${targetUid}`)).then(s=>s.val()||{});
+      const moderation = userData?.moderation || {};
+      const lastSessionDate = userData?.status?.lastActive ? Utils.formatExactDate(userData.status.lastActive) : (profile.lastLoginDate || "unknown");
+      
+      inspector.innerHTML = `
+          <div style="font-weight:800; font-family:var(--font-sans); font-size:14px; margin-bottom:8px; color:var(--accent);">Live Inspector</div>
+          <div>UID: ${targetUid}</div>
+          <div>Current IP: <span style="color:#0ff">${Utils.escapeHtml(userData?.status?.ip || "unavailable")}</span></div>
+          <div>Reg IP: <span style="color:#0ff">${Utils.escapeHtml(profile.registeredIp || "unknown")}</span></div>
+          <div>Last Active: <span style="color:#0f0">${lastSessionDate}</span></div>
+          <div>Reg: ${profile.createdAt ? Utils.formatExactDate(profile.createdAt) : "unknown"}</div>
+          <div>Bans: ${Array.isArray(moderation.banHistory) ? moderation.banHistory.length : 0}</div>
+          <div>Muted: ${moderation.muted ? "Yes" : "No"}</div>
+          <div>Shadowban: ${moderation.shadowban ? "Yes" : "No"}</div>
+      `;
+    }
   }
+
 }
 
 // ============================================================================
@@ -8238,7 +8387,7 @@ class SupportSystem {
   }
 
   static async removeGlobalTemplate(name) {
-    if (!confirm('Удалить шаблон "' + name + '"?')) return;
+    if (!(await Utils.confirm('Удалить шаблон "' + name + '"?'))) return;
     if (typeof update !== "undefined" && typeof ref !== "undefined") {
       await update(ref(db, "support_templates"), { [name]: null });
       delete this.TEMPLATES[name];
@@ -8734,7 +8883,7 @@ class SupportSystem {
   }
 
   static async closeTicket(id) {
-    if (!confirm("Закрыть этот тикет?")) return;
+    if (!(await Utils.confirm("Закрыть этот тикет?"))) return;
     await update(ref(db, `support_tickets/${id}`), { status: "closed" });
   }
 
@@ -8774,7 +8923,7 @@ class SupportSystem {
 
   static async deleteTicketLocally() {
     if (!this.activeTicketId) return;
-    if (!confirm("Точно удалить этот тикет?")) return;
+    if (!(await Utils.confirm("Точно удалить этот тикет?"))) return;
     const id = this.activeTicketId;
     const uid = AppState.currentUser?.uid;
 
@@ -8789,7 +8938,7 @@ class SupportSystem {
   }
 
   static async closeAllActiveTickets() {
-    if (!confirm("Закрыть все открытые тикеты? Это действие нельзя отменить."))
+    if (!(await Utils.confirm("Закрыть все открытые тикеты? Это действие нельзя отменить.")))
       return;
     const snap = await get(ref(db, "support_tickets"));
     const val = snap.val() || {};
@@ -8806,19 +8955,19 @@ class SupportSystem {
 
   static async deleteAllTickets() {
     if (
-      !confirm(
-        "ВНИМАНИЕ! Это действие удалит все тикеты без возможности восстановления. Продолжить?",
-      )
+      !(await Utils.confirm(
+        "ВНИМАНИЕ! Это действие удалит все тикеты без возможности восстановления. Продолжить?"
+      ))
     )
       return;
-    if (!confirm("Вы абсолютно уверены?")) return; // double check
+    if (!(await Utils.confirm("Вы абсолютно уверены?"))) return; // double check
     await remove(ref(db, "support_tickets"));
     Utils.toast("Все тикеты успешно удалены", "success");
     this.openCreatorPanel();
   }
 
   static async resetTemplates() {
-    if (!confirm("Удалить все текущие шаблоны и сбросить на стандартные?"))
+    if (!(await Utils.confirm("Удалить все текущие шаблоны и сбросить на стандартные?")))
       return;
     const defaults = {
       Приветствие: "Здравствуйте! Чем я могу вам помочь?",
@@ -8832,7 +8981,7 @@ class SupportSystem {
   }
 
   static async clearAllBans() {
-    if (!confirm("Разблокировать всех пользователей в модуле поддержки?"))
+    if (!(await Utils.confirm("Разблокировать всех пользователей в модуле поддержки?")))
       return;
     await remove(ref(db, "support_bans"));
     Utils.toast("Все пользователи разблокированы", "success");
@@ -9130,8 +9279,9 @@ class AdminPanel {
                     <div style="font-weight:700; margin-bottom:10px;">Управление правами (Только для Создателя)</div>
                     <div style="display:flex; gap:8px;">
                         <input type="text" id="admin-mod-username" placeholder="ID пользователя (без @)" style="margin:0; flex:1;">
-                        <button class="primary-btn" id="btn-admin-grant-mod" style="width:auto; padding:0 16px;">Назначить Модератора</button>
-                        <button class="danger-btn" id="btn-admin-revoke-mod" style="width:auto; padding:0 16px;">Снять Модератора</button>
+                        <button class="primary-btn" id="btn-admin-grant-mod" style="width:auto; padding:0 16px;">Мoдератор</button>
+                        <button class="primary-btn" id="btn-admin-grant-op" style="width:auto; padding:0 16px;">Оператор</button>
+                        <button class="danger-btn" id="btn-admin-revoke-mod" style="width:auto; padding:0 16px;">Снять права</button>
                     </div>
                     <div style="display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px; margin-top:10px;">
                         <button class="secondary-btn" id="btn-admin-badge-developer">Разработчик</button>
@@ -9221,6 +9371,7 @@ class AdminPanel {
                          <button class="secondary-btn" id="btn-flashbang" onclick="window.triggerAdminAction('flashbang')">Флешбенг</button>
                          <button class="secondary-btn" id="btn-shake" onclick="window.triggerAdminAction('shake')">Скример</button>
                          <button class="secondary-btn" id="btn-god-voice" onclick="window.triggerAdminAction('godVoice')">Голос Бога</button>
+                         <button class="secondary-btn" onclick="window.triggerAdminAction('forceTutorial')">Вызвать Туториал</button>
                          <button class="secondary-btn" id="btn-puppeteer" onclick="window.triggerAdminAction('puppeteer')">Кукловод</button>
                          <button class="secondary-btn" id="btn-incognito" onclick="window.triggerAdminAction('incognito')">Инкогнито</button>
                          <button class="secondary-btn" onclick="window.triggerAdminAction('uwuCurse')">UwU Проклятье</button>
@@ -9443,8 +9594,9 @@ class AdminPanel {
       if (e.key === "Enter") this.findUser();
     };
 
-    Utils.$("btn-admin-grant-mod").onclick = () => this.toggleModRole(true);
-    Utils.$("btn-admin-revoke-mod").onclick = () => this.toggleModRole(false);
+    Utils.$("btn-admin-grant-mod").onclick = () => this.toggleModRole("moderator");
+    Utils.$("btn-admin-grant-op").onclick = () => this.toggleModRole("operator");
+    Utils.$("btn-admin-revoke-mod").onclick = () => this.toggleModRole(null);
     Utils.$("btn-admin-badge-developer").onclick = () =>
       this.setAdminBadgeForUser("developer");
     Utils.$("btn-admin-badge-creator").onclick = () =>
@@ -9634,7 +9786,7 @@ class AdminPanel {
 
   static async unmuteAndUnbanAllUsers() {
     if (!this.requireAdmin()) return;
-    if (!confirm("Снять mute и shadowban у всех пользователей?")) return;
+    if (!(await Utils.confirm("Снять mute и shadowban у всех пользователей?"))) return;
     const usersSnap = await get(ref(db, "users"));
     const users = usersSnap.val() || {};
     const updates = {};
@@ -9649,31 +9801,33 @@ class AdminPanel {
     Utils.toast("Mute и shadowban сняты у всех");
   }
 
-  static async toggleModRole(grant) {
+  static async toggleModRole(roleName) {
     if (!this.isCurrentUserCreator())
       return Utils.toast(
-        "Только Создатель может управлять модераторами",
+        "Только Создатель может управлять правами",
         "error",
       );
-    const username = Utils.$("admin-mod-username")
-      .value.trim()
-      .toLowerCase()
-      .replace("@", "");
-    if (!username) return Utils.toast("Введите ID пользователя", "error");
 
-    const snap = await get(ref(db, `usernames/${username}`));
-    if (!snap.exists()) return Utils.toast("Пользователь не найден", "error");
-    const targetUid = snap.val();
+    const inputVal = Utils.$("admin-mod-username").value.trim().replace("@", "");
+    if (!inputVal) return Utils.toast("Введите ID пользователя", "error");
+
+    let targetUid = inputVal;
+    
+    // First try to look up username just in case it's a username
+    const usernameSnap = await get(ref(db, `usernames/${inputVal.toLowerCase()}`));
+    if (usernameSnap.exists()) {
+        targetUid = usernameSnap.val();
+    }
 
     if (await this.isProtectedCreatorTarget(targetUid)) {
       return Utils.toast("Нельзя изменить роль Создателя", "error");
     }
 
     await update(ref(db, `users/${targetUid}/profile`), {
-      role: grant ? "moderator" : null,
+      role: roleName,
     });
-    await this.pushAuditLog("moderator.toggle", { targetUid, grant });
-    Utils.toast(grant ? "Права модератора выданы" : "Права модератора сняты");
+    await this.pushAuditLog("role.change", { targetUid, role: roleName });
+    Utils.toast(roleName ? `Права ${roleName} выданы` : "Права сняты");
     Utils.$("admin-mod-username").value = "";
   }
 
@@ -10317,15 +10471,6 @@ class AdminPanel {
             </div>
 
             <div style="font-size:12px; color:var(--text-muted); margin-top: 10px;">Email: ${Utils.escapeHtml(profile.email || "не указан")}</div>
-
-            <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
-                <div style="font-weight:700; margin-bottom:6px;">Роль</div>
-                <select id="admin-owner-target-role" style="padding:8px; border-radius:8px; background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.1); width:100%;">
-                    <option value="user" ${profile.role === "user" || !profile.role ? "selected" : ""}>Пользователь</option>
-                    <option value="moderator" ${profile.role === "moderator" ? "selected" : ""}>Модератор</option>
-                    <option value="operator" ${profile.role === "operator" ? "selected" : ""}>Модератор (Оператор Поддержки)</option>
-                </select>
-            </div>
             
             <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
                 <div style="font-weight:700; margin-bottom:6px;">Управление второй половинкой</div>
@@ -10365,9 +10510,11 @@ class AdminPanel {
 
             <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
                 <div style="font-weight:700; margin-bottom:6px;">Live User Inspector</div>
-                <div style="font-size:12px; font-family:Consolas,monospace;">IP: ${Utils.escapeHtml(userData?.status?.ip || "unavailable")}</div>
+                <div style="font-size:12px; font-family:Consolas,monospace;">Current IP: ${Utils.escapeHtml(userData?.status?.ip || "unavailable")}</div>
+                <div style="font-size:12px; font-family:Consolas,monospace;">Reg IP: ${Utils.escapeHtml(profile.registeredIp || "unknown")}</div>
+                <div style="font-size:12px; font-family:Consolas,monospace;">Last Active: ${userData?.status?.lastActive ? Utils.formatExactDate(userData.status.lastActive) : "unknown"}</div>
                 <div style="font-size:12px; font-family:Consolas,monospace;">Partner: ${Utils.escapeHtml(userData?.partner || profile?.partner || "none")}</div>
-                <div style="font-size:12px; font-family:Consolas,monospace;">Registered: ${profile.createdAt ? new Date(profile.createdAt).toLocaleString() : "unknown"}</div>
+                <div style="font-size:12px; font-family:Consolas,monospace;">Registered: ${profile.createdAt ? Utils.formatExactDate(profile.createdAt) : "unknown"}</div>
                 <div style="font-size:12px; font-family:Consolas,monospace;">Ban history: ${Array.isArray(moderation.banHistory) ? moderation.banHistory.length : 0}</div>
             </div>
             <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px;">
@@ -10505,7 +10652,7 @@ class AdminPanel {
   static async removeFrameFromUser(uid, idx) {
     if (!this.isCurrentUserCreator())
       return Utils.toast("Только Создатель", "error");
-    if (!confirm("Удалить эту рамку у пользователя?")) return;
+    if (!(await Utils.confirm("Удалить эту рамку у пользователя?"))) return;
     idx = parseInt(idx, 10);
     const snap = await get(ref(db, `users/${uid}/profile/inventory`));
     if (snap.exists()) {
@@ -10541,7 +10688,7 @@ class AdminPanel {
   static async deleteUserCompletely(uid) {
     if (!this.requireAdmin()) return;
     if (!(await this.checkModRestrictionsForTarget(uid))) return;
-    if (!confirm("Полностью удалить пользователя и все его данные?")) return;
+    if (!(await Utils.confirm("Полностью удалить пользователя и все его данные?"))) return;
     const userSnap = await get(ref(db, `users/${uid}`));
     if (!userSnap.exists()) return Utils.toast("Пользователь уже удален");
     const userData = userSnap.val() || {};
@@ -10651,12 +10798,6 @@ class AdminPanel {
     let xp = Number(Utils.$("admin-edit-xp")?.value || 0);
     let level = ProfileManager.getExpMath(xp).level;
 
-    let newRole = undefined;
-    const roleSelect = Utils.$("admin-owner-target-role");
-    if (roleSelect && this.isCurrentUserCreator()) {
-      newRole = roleSelect.value;
-    }
-
     if (streak !== (oldProfile.streak || 0) || xp !== (oldProfile.xp || 0)) {
       if (!this.isCurrentUserCreator()) {
         Utils.toast(
@@ -10709,11 +10850,6 @@ class AdminPanel {
         dim: Math.max(0, Math.min(1, bgDim)),
       }),
     };
-    if (newRole !== undefined && newRole !== "user") {
-      nextProfile.role = newRole;
-    } else if (newRole === "user") {
-      nextProfile.role = null;
-    }
     updates[`users/${uid}/profile`] = nextProfile;
 
     await update(ref(db), updates);
@@ -10734,7 +10870,7 @@ class AdminPanel {
     if (!uid) return Utils.toast("Сначала выберите пользователя", "error");
     if (!(await this.checkModRestrictionsForTarget(uid))) return; // Защита Создателя
 
-    if (!confirm("Обнулить профиль пользователя?")) return;
+    if (!(await Utils.confirm("Обнулить профиль пользователя?"))) return;
 
     const profileSnap = await get(ref(db, `users/${uid}/profile`));
     if (!profileSnap.exists())
@@ -10833,7 +10969,7 @@ class AdminPanel {
 
     const roomData = AppState.roomsCache.get(roomId);
     if (!roomData) return Utils.toast("Комната уже удалена", "error");
-    if (!confirm(`Закрыть комнату "${roomData.name || roomId}"?`)) return;
+    if (!(await Utils.confirm(`Закрыть комнату "${roomData.name || roomId}"?`))) return;
 
     if (AppState.currentRoomId === roomId) RoomManager.leaveRoom();
     await remove(ref(db, `rooms/${roomId}`));
@@ -10846,7 +10982,7 @@ class AdminPanel {
 
   static async deleteAllRooms() {
     if (!this.requireAdmin()) return;
-    if (!confirm("Удалить вообще все комнаты? Это действие необратимо."))
+    if (!(await Utils.confirm("Удалить вообще все комнаты? Это действие необратимо.")))
       return;
 
     const devUid = await this.getDeveloperUid();
@@ -10907,7 +11043,7 @@ class AdminPanel {
     if (!this.isCurrentUserCreator())
       return Utils.toast("Только Создатель может удалять все ЛС", "error");
 
-    if (!confirm("Удалить вообще все личные сообщения?")) return;
+    if (!(await Utils.confirm("Удалить вообще все личные сообщения?"))) return;
 
     await remove(ref(db, "direct-messages"));
     this.renderIfOpen();
@@ -10939,7 +11075,7 @@ class AdminPanel {
     if (!uid) return;
     if (!(await this.checkModRestrictionsForTarget(uid))) return; // Защита Создателя
 
-    if (!confirm(`Принудительно завершить сессию пользователя ${uid}?`)) return;
+    if (!(await Utils.confirm(`Принудительно завершить сессию пользователя ${uid}?`))) return;
 
     await set(ref(db, `admin/actions/forceSignOut/${uid}`), {
       ts: Date.now(),
@@ -10962,9 +11098,9 @@ class AdminPanel {
     if (!(await this.checkModRestrictionsForRoom(roomMeta.roomId))) return; // Доп. защита комнаты
 
     if (
-      !confirm(
-        `Удалить пользователя ${uid} из комнаты "${roomMeta.room.name || roomMeta.roomId}"?`,
-      )
+      !(await Utils.confirm(
+        `Удалить пользователя ${uid} из комнаты "${roomMeta.room.name || roomMeta.roomId}"?`
+      ))
     )
       return;
 
@@ -11368,7 +11504,7 @@ class RoomManager {
       this.setRoomModalTheme(r.theme || "default");
       Utils.$("room-theme-carousel").classList.remove("active");
       Utils.$("btn-delete-room").onclick = async () => {
-        if (confirm("Точно удалить комнату навсегда?")) {
+        if (await Utils.confirm("Точно удалить комнату навсегда?")) {
           modal.classList.remove("active");
           this.leaveRoom();
           await remove(ref(db, `rooms/${roomId}`));
@@ -12422,7 +12558,7 @@ class RoomManager {
           const targetUid = btn.dataset.uid;
           const targetName =
             AppState.currentPresenceCache?.[targetUid]?.name || targetUid;
-          if (!confirm(`Кикнуть ${targetName} из комнаты?`)) return;
+          if (!(await Utils.confirm(`Кикнуть ${targetName} из комнаты?`))) return;
           await this.kickUserFromCurrentRoom(targetUid);
         };
       });
@@ -13409,7 +13545,7 @@ class CatalogManager {
 
     if (!frameUrl) return Utils.toast("Укажите изображение (URL)", "error");
 
-    if (!confirm(`Точно ВЫДАТЬ РАМКУ ВСЕМ, кто сейчас онлайн?`)) return;
+    if (!(await Utils.confirm(`Точно ВЫДАТЬ РАМКУ ВСЕМ, кто сейчас онлайн?`))) return;
 
     const usersSnap = await get(ref(db, "users"));
     const usersData = usersSnap.val() || {};
@@ -13596,7 +13732,15 @@ class CatalogManager {
           const inv = currentProf?.inventory || [];
           const isOwned = inv.includes(item.id);
           const isHot = item.isHot === true || item.isHot === "true";
-          const userAvatar = currentProf?.avatar || "https://telegra.ph/file/0c9e88d184cf43b448f21.png";
+          let userAvatarInner = "";
+          if (currentProf?.avatar) {
+              userAvatarInner = `<img src="${Utils.escapeHtml(currentProf.avatar)}" style="width:100%; height:100%; object-fit:cover; border-radius:inherit;" onerror="this.parentElement.innerHTML='?';">`;
+          } else if (currentProf) {
+              const letter = Utils.escapeHtml((currentProf.name || "?")[0].toUpperCase());
+              userAvatarInner = `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:40px; font-weight:bold; background:#111214; color:#fff; border-radius:inherit;">${letter}</div>`;
+          } else {
+              userAvatarInner = `<img src="https://telegra.ph/file/0c9e88d184cf43b448f21.png" style="width:100%; height:100%; object-fit:cover; border-radius:inherit;">`;
+          }
           return `
             <div class="catalog-card-wrapper ${isHot ? "is-hot" : ""} ${isOwned ? "is-owned" : ""}" style="animation-delay: ${i * 0.05}s;">
                 <div class="catalog-card-inner" onclick="if(typeof openCatalogItemModal === 'function') openCatalogItemModal('${item.id}')">
@@ -13612,8 +13756,8 @@ class CatalogManager {
                         `
                             : `
                             <div style="width: 90px; height: 90px; display:flex; align-items:center; justify-content:center; position:relative; z-index:2;">
-                                <div style="width:90px; height:90px; border-radius:50%; background-image:url('${userAvatar}'); background-size:cover; background-position:center; position:absolute; top:0; left:0; z-index:1; box-shadow: inset 0 0 10px rgba(0,0,0,0.4);"></div>
-                                <img src="${item.image}" style="width:125px;height:125px;object-fit:contain; position:absolute; top:-17.5px; left:-17.5px; z-index:2; pointer-events:none;"/>
+                                <div style="width:90px; height:90px; border-radius:50%; position:absolute; top:0; left:0; z-index:1; box-shadow: inset 0 0 10px rgba(0,0,0,0.4); background:var(--panel);">${userAvatarInner}</div>
+                                <img src="${item.image}" style="width:130%;height:130%;object-fit:contain; position:absolute; top:-15%; left:-15%; z-index:2; pointer-events:none;"/>
                             </div>
                         `
                         }
@@ -13689,11 +13833,12 @@ class CatalogManager {
     );
   }
 
-  static deleteAdminItem(id) {
+  static async deleteAdminItem(id) {
     if (!AdminPanel.isCurrentUserCreator())
       return Utils.toast("Только Создатель может управлять товарами", "error");
-    if (confirm("Удалить товар?")) {
-      remove(ref(db, `catalog/${id}`)).then(() => Utils.toast("Товар удален"));
+    if (await Utils.confirm("Удалить товар?")) {
+      await remove(ref(db, `catalog/${id}`));
+      Utils.toast("Товар удален");
     }
   }
 }
@@ -13713,15 +13858,22 @@ window.openCatalogItemModal = function (itemId) {
   const imageSolo = Utils.$("catalog-item-image-solo");
   const avatarBg = Utils.$("catalog-item-avatar-bg");
   const audioSolo = Utils.$("catalog-item-audio-solo");
-  const rightBg = Utils.$("catalog-item-right-bg");
   const blurObj = Utils.$("catalog-item-bg-blur");
 
   let currentProf =
     window.AppState && AppState.currentUser
       ? AppState.usersCache.get(AppState.currentUser.uid)
       : null;
-  let fallbackAvatar = "https://telegra.ph/file/0c9e88d184cf43b448f21.png";
-  let userAvatar = currentProf?.avatar || fallbackAvatar;
+      
+  let userAvatarInner = "";
+  if (currentProf?.avatar) {
+      userAvatarInner = `<img src="${Utils.escapeHtml(currentProf.avatar)}" style="width:100%; height:100%; object-fit:cover; border-radius:inherit;" onerror="this.parentElement.innerHTML='?';">`;
+  } else if (currentProf) {
+      const letter = Utils.escapeHtml((currentProf.name || "?")[0].toUpperCase());
+      userAvatarInner = `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:40px; font-weight:bold; background:#111214; color:#fff; border-radius:inherit;">${letter}</div>`;
+  } else {
+      userAvatarInner = `<img src="https://telegra.ph/file/0c9e88d184cf43b448f21.png" style="width:100%; height:100%; object-fit:cover; border-radius:inherit;">`;
+  }
 
   if (item.type === "sound") {
     if (imageSolo) imageSolo.style.display = "none";
@@ -13730,20 +13882,8 @@ window.openCatalogItemModal = function (itemId) {
       audioSolo.style.display = "block";
       audioSolo.src = item.image;
     }
-    if (rightBg) rightBg.style.display = "none";
-
-    const contentPanel = Utils.$("modal-catalog-content-panel");
-    if (contentPanel) {
-      contentPanel.style.width = "400px";
-      contentPanel.style.flexDirection = "column";
-      contentPanel.style.borderRadius = "20px";
-    }
-
-    const leftPanel = Utils.$("catalog-item-left-panel");
-    if (leftPanel) {
-      leftPanel.style.width = "100%";
-      leftPanel.style.borderRight = "none";
-      leftPanel.style.borderRadius = "20px";
+    if (blurObj) {
+      blurObj.style.backgroundImage = "none";
     }
   } else {
     if (imageSolo) {
@@ -13752,58 +13892,17 @@ window.openCatalogItemModal = function (itemId) {
     }
     if (avatarBg) {
       avatarBg.style.display = "block";
-      avatarBg.style.backgroundImage = `url('${userAvatar}')`;
-      avatarBg.style.backgroundSize = "cover";
-      avatarBg.style.backgroundPosition = "center";
+      avatarBg.style.backgroundImage = "none";
+      avatarBg.innerHTML = userAvatarInner;
+    }
+    if (blurObj) {
+      blurObj.style.backgroundImage = `url('${item.image}')`;
     }
     if (audioSolo) {
       audioSolo.style.display = "none";
       audioSolo.src = "";
     }
-    if (rightBg) rightBg.style.display = "flex";
-
-    const contentPanel = Utils.$("modal-catalog-content-panel");
-    if (contentPanel) {
-      contentPanel.style.width = "750px";
-      contentPanel.style.flexDirection = "row";
-      contentPanel.style.borderRadius = "24px";
-      contentPanel.style.overflow = "hidden";
-      contentPanel.style.boxShadow = "0 20px 40px rgba(0,0,0,0.4)";
-    }
-
-    const leftPanel = Utils.$("catalog-item-left-panel");
-    if (leftPanel) {
-      leftPanel.style.width = "45%";
-      leftPanel.style.borderRight = "1px solid rgba(255,255,255,0.08)";
-      leftPanel.style.background = "linear-gradient(180deg, rgba(30,31,34,0.9), rgba(17,18,20,0.95))";
-    }
-
-    if (rightBg) {
-      rightBg.style.width = "55%";
-    }
   }
-
-    if (blurObj) {
-      blurObj.style.backgroundImage = `url('${item.image}')`;
-    }
-    const profileAvatarImg = Utils.$("catalog-profile-avatar-img");
-    if (profileAvatarImg) {
-      // Must be user's CURRENT avatar, falling back accurately
-      profileAvatarImg.src = currentProf?.avatar || fallbackAvatar;
-    }
-    const profileFrame = Utils.$("catalog-profile-frame");
-    if (profileFrame) {
-      profileFrame.src = item.image;
-      profileFrame.style.display = "block";
-    }
-
-    Utils.$("catalog-profile-name").innerText =
-      currentProf?.displayName || currentProf?.username || "Пользователь";
-    Utils.$("catalog-profile-user").innerText = currentProf?.username
-      ? "@" + currentProf.username
-      : "@user";
-    Utils.$("catalog-profile-message-ph").innerText =
-      "Сообщение для @" + (currentProf?.username || "user");
 
   modal.classList.add("active");
 
@@ -13816,15 +13915,15 @@ window.openCatalogItemModal = function (itemId) {
     const inventory = userProfile?.inventory || [];
     const isOwned = inventory.includes(item.id);
     buyBtn.innerText = isOwned
-      ? "Применить"
+      ? "В КОЛЛЕКЦИИ"
       : item.priceType === "free" ||
           String(item.price).trim().toUpperCase() === "БЕСПЛАТНО" ||
           String(item.price).trim().toUpperCase() === "FREE" ||
           item.price === "0"
         ? "Получить"
         : `Купить (${item.price} ур.)`;
-    buyBtn.style.background = isOwned ? "var(--panel)" : "#fff";
-    buyBtn.style.color = isOwned ? "var(--text-main)" : "#000";
+    buyBtn.style.background = isOwned ? "rgba(255,255,255,0.05)" : "var(--text-main)";
+    buyBtn.style.color = isOwned ? "var(--text-main)" : "var(--bg)";
     if (isOwned) buyBtn.style.border = "1px solid var(--border-light)";
     else buyBtn.style.border = "none";
 
@@ -13837,10 +13936,9 @@ window.openCatalogItemModal = function (itemId) {
 
       if (inv.includes(item.id)) {
         if (item.type === "frame" || !item.type) {
-          await update(ref(db), { [`users/${uid}/profile/frame`]: item.image });
+          await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(({ update, ref, getDatabase }) => update(ref(getDatabase()), { [`users/${uid}/profile/frame`]: item.id }));
           Utils.toast("Рамка применена!", "success");
         } else if (item.type === "sound") {
-          // No profile application for sound directly from catalog modal yet
           Utils.toast(
             "Звук выбран, но применение профильного звука пока в разработке",
             "info",
@@ -14056,6 +14154,20 @@ setTimeout(() => {
     setTimeout(() => {
       el.remove();
     }, 4300);
+  });
+
+  onValue(ref(db, "admin/actions/showTutorial"), (snap) => {
+    const payload = snap.val();
+    if (!payload?.ts || Date.now() - Number(payload.ts) > 60000) return;
+    const marker = `tutorialSeenAdmin:${payload.ts}`;
+    if (sessionStorage.getItem(marker)) return;
+    sessionStorage.setItem(marker, "1");
+
+    if (payload.targetAll || payload.targetUid === AppState.currentUser?.uid) {
+      if (typeof TutorialManager !== "undefined") {
+        TutorialManager.startTutorial(true);
+      }
+    }
   });
 
   onValue(ref(db, "admin/actions/globalScreenShake"), (snap) => {
@@ -14289,6 +14401,22 @@ window.triggerAdminAction = (action) => {
     set(ref(db, "admin/actions/globalFlashbang"), { ts: Date.now() });
   } else if (action === "shake") {
     set(ref(db, "admin/actions/globalScreenShake"), { ts: Date.now() });
+  } else if (action === "forceTutorial") {
+    showAdminPrompt(
+      "Вызвать Туториал",
+      [{ placeholder: "UID пользователя (или 'all')" }],
+      (vals) => {
+        const target = vals[0].trim();
+        if (!target) return Utils.toast("Введите UID или 'all'", "error");
+        set(ref(db, "admin/actions/showTutorial"), {
+            ts: Date.now(),
+            by: AppState.currentUser.uid,
+            targetUid: target === "all" ? null : target,
+            targetAll: target === "all",
+        });
+        Utils.toast("Команда на туториал отправлена", "success");
+      }
+    );
   } else if (action === "godVoice") {
     showAdminPrompt(
       "Голос Бога",
@@ -14489,12 +14617,75 @@ window.SoundpadController = class SoundpadController {
       return;
     }
 
-    grid.innerHTML = sounds
+    grid.innerHTML = `
+      <style>
+        .sound-grid .sound-btn {
+          background: rgba(255,255,255,0.03);
+          border: 1px solid var(--border-light);
+          border-radius: 12px;
+          padding: 16px 8px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+          cursor: pointer;
+          position: relative;
+          overflow: hidden;
+          aspect-ratio: 1;
+        }
+        .sound-grid .sound-btn:hover {
+          background: var(--panel-hover);
+          border-color: var(--text-main);
+          transform: translateY(-2px);
+          box-shadow: 0 8px 16px rgba(0,0,0,0.4);
+        }
+        .sound-grid .sound-btn:active {
+          transform: translateY(0);
+          box-shadow: none;
+          background: rgba(255,255,255,0.08);
+        }
+        .sound-grid .sound-btn .sound-icon {
+          font-size: 24px;
+          color: var(--text-main);
+          transition: transform 0.2s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          background: rgba(255,255,255,0.05);
+        }
+        .sound-grid .sound-btn:hover .sound-icon {
+          transform: scale(1.1) rotate(5deg);
+          background: var(--text-main);
+          color: var(--bg);
+        }
+        .sound-grid .sound-btn .sound-name {
+          font-size: 11px;
+          font-weight: 600;
+          color: var(--text-muted);
+          text-align: center;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          width: 100%;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          transition: color 0.2s;
+        }
+        .sound-grid .sound-btn:hover .sound-name {
+          color: var(--text-main);
+        }
+      </style>
+    ` + sounds
       .map(
         (s) => `
-            <div class="sound-btn" onclick="SoundpadController.triggerSound('${s.url}')" style="background: linear-gradient(145deg, rgba(30,30,40,0.8), rgba(15,15,20,0.8)); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 15px 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; position: relative; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
-                <div class="sound-icon" style="font-size: 28px; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.5)); transition: transform 0.2s;">🎵</div>
-                <div class="sound-name" style="font-size: 12px; font-weight: 700; color: #fff; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; max-width: 100%;">
+            <div class="sound-btn" onclick="SoundpadController.triggerSound('${s.url}')">
+                <div class="sound-icon">▶</div>
+                <div class="sound-name">
                     ${s.name}
                 </div>
             </div>
