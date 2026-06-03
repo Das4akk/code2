@@ -13297,14 +13297,26 @@ class MobileSwipeManager {
 // ============================================================================
 
 window.onload = () => {
-  TutorialManager.init();
-  BadgeManager.init();
-  GlobalThemeManager.init(); // [NEW]
-  AuthManager.init();
-  BackgroundFX.init();
-  EasterEggManager.init();
-  HashtagManager.initHashtags();
-  MobileSwipeManager.init(); // [NEW] Mobile Swipes initialization
+  const initSystem = (name, initFn) => {
+    try {
+      if (initFn) initFn();
+      console.log(`[System: ${name}] Initialized gracefully.`);
+    } catch (e) {
+      console.error(`[System: ${name}] Failed to initialize:`, e);
+      if (window.Utils && window.Utils.toast) {
+        window.Utils.toast(`Ошибка подсистемы ${name}! Остальной сайт продолжает работу.`, "error");
+      }
+    }
+  };
+
+  initSystem("TutorialManager", () => TutorialManager.init());
+  initSystem("BadgeManager", () => BadgeManager.init());
+  initSystem("GlobalThemeManager", () => GlobalThemeManager.init()); // [NEW]
+  initSystem("AuthManager", () => AuthManager.init());
+  initSystem("BackgroundFX", () => BackgroundFX.init());
+  initSystem("EasterEggManager", () => EasterEggManager.init());
+  initSystem("HashtagManager", () => HashtagManager.initHashtags());
+  initSystem("MobileSwipeManager", () => MobileSwipeManager.init()); // [NEW] Mobile Swipes initialization
 
   // Добавляем мини-контейнер с ссылками (изначально скрыт, покажется только в lobby-screen)
   const footerLinks = document.createElement("div");
@@ -13792,7 +13804,6 @@ window.openCatalogItemModal = function (itemId) {
       : "@user";
     Utils.$("catalog-profile-message-ph").innerText =
       "Сообщение для @" + (currentProf?.username || "user");
-  }
 
   modal.classList.add("active");
 
