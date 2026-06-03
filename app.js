@@ -1083,7 +1083,7 @@ class Utils {
                 50% { transform: scaleY(1.6); }
             }
 
-            #modal-admin-panel.godmode-modal .modal-content {
+            .godmode-modal .modal-content {
                 width: 100vw !important;
                 height: 100dvh !important;
                 max-width: none !important;
@@ -1095,7 +1095,7 @@ class Utils {
                 background: radial-gradient(circle at top, rgba(255, 255, 255, 0.09), rgba(9, 9, 9, 0.98));
             }
             @media (max-width: 1024px) {
-                #modal-admin-panel.godmode-modal .modal-content {
+                .godmode-modal .modal-content {
                     grid-template-columns: 1fr;
                     grid-template-rows: auto 1fr;
                 }
@@ -7158,7 +7158,10 @@ class FriendsManager {
     Utils.$("nav-find-friend").onclick = () => setNavActive("nav-find-friend");
     Utils.$("nav-rooms").onclick = () => setNavActive("nav-rooms");
     if (Utils.$("nav-catalog"))
-      Utils.$("nav-catalog").onclick = () => setNavActive("nav-catalog");
+      Utils.$("nav-catalog").onclick = () => {
+        setNavActive("nav-catalog");
+        if (window.CatalogManager) CatalogManager.renderCatalog();
+      };
     if (Utils.$("nav-shop"))
       Utils.$("nav-shop").onclick = () => {
         setNavActive("nav-shop");
@@ -13853,12 +13856,24 @@ class CatalogManager {
           const inv = currentProf?.inventory || [];
           const isOwned = inv.includes(item.id);
           const isHot = item.isHot === true || item.isHot === "true";
+          
           let userAvatarInner = "";
-          if (currentProf && currentProf.avatar) {
-              userAvatarInner = `<img src="${Utils.escapeHtml(currentProf.avatar)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.outerHTML='?';">`;
+          const myAvatarDisplay = document.getElementById("my-avatar-display");
+          if (myAvatarDisplay && myAvatarDisplay.innerHTML && myAvatarDisplay.innerHTML !== "?") {
+            // Strip any frame from it because in catalog we only want the bare avatar
+            let tmpNode = document.createElement("div");
+            tmpNode.innerHTML = myAvatarDisplay.innerHTML;
+            let images = tmpNode.querySelectorAll("img");
+            if (images.length > 0) {
+              userAvatarInner = `<img src="${images[0].src}" onerror="this.parentElement.innerHTML='?';" style="width:100%; height:100%; object-fit:cover; border-radius:inherit;" />`;
+            } else {
+               userAvatarInner = tmpNode.innerText || "?";
+            }
           } else {
-              userAvatarInner = Utils.escapeHtml((currentProf?.name || "?")[0].toUpperCase());
+            let fakeProf = currentProf ? { ...currentProf, frame: null } : { name: "User", avatar: "https://telegra.ph/file/0c9e88d184cf43b448f21.png" };
+            userAvatarInner = ProfileManager.getAvatarHtml(fakeProf);
           }
+          
           return `
             <div class="catalog-card-wrapper ${isHot ? "is-hot" : ""} ${isOwned ? "is-owned" : ""}" style="animation-delay: ${i * 0.05}s;">
                 <div class="catalog-card-inner" onclick="if(typeof openCatalogItemModal === 'function') openCatalogItemModal('${item.id}')">
@@ -13984,10 +13999,19 @@ window.openCatalogItemModal = function (itemId) {
       : null;
       
   let userAvatarInner = "";
-  if (currentProf && currentProf.avatar) {
-      userAvatarInner = `<img src="${Utils.escapeHtml(currentProf.avatar)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.outerHTML='?';">`;
+  const myAvatarDisplay = document.getElementById("my-avatar-display");
+  if (myAvatarDisplay && myAvatarDisplay.innerHTML && myAvatarDisplay.innerHTML !== "?") {
+    let tmpNode = document.createElement("div");
+    tmpNode.innerHTML = myAvatarDisplay.innerHTML;
+    let images = tmpNode.querySelectorAll("img");
+    if (images.length > 0) {
+      userAvatarInner = `<img src="${images[0].src}" onerror="this.parentElement.innerHTML='?';" style="width:100%; height:100%; object-fit:cover; border-radius:inherit;" />`;
+    } else {
+       userAvatarInner = tmpNode.innerText || "?";
+    }
   } else {
-      userAvatarInner = Utils.escapeHtml((currentProf?.name || "?")[0].toUpperCase());
+    let fakeProf = currentProf ? { ...currentProf, frame: null } : { name: "User", avatar: "https://telegra.ph/file/0c9e88d184cf43b448f21.png" };
+    userAvatarInner = ProfileManager.getAvatarHtml(fakeProf);
   }
 
   if (item.type === "sound") {

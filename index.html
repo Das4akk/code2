@@ -4045,7 +4045,7 @@
               >
               <div class="nav-badge" id="friend-req-badge">0</div>
             </div>
-            <div class="nav-item" id="nav-settings" onclick="if(window.ProfileManager) ProfileManager.openEditProfileModal()">
+            <div class="nav-item" id="nav-settings" onclick="openSiteSettings()">
               <span
                 ><img
                   src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Gear.webp"
@@ -5140,6 +5140,113 @@
     <!-- ========================================================================= -->
     <!-- MODALS -->
     <!-- ========================================================================= -->
+
+    <div class="modal godmode-modal" id="modal-site-settings" style="z-index: 8000">
+      <div class="modal-content glass-panel" style="width:min(1180px,100%); padding:22px; margin:auto; display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 0; background: radial-gradient(circle at top, rgba(255, 255, 255, 0.09), rgba(9, 9, 9, 0.98)); height:100dvh; max-width:none; width:100vw; border-radius:0;">
+        <div class="godmode-sidebar" style="display:flex; flex-direction:column; gap:8px; border-right:1px solid var(--border-light); padding-right:16px;">
+          <button class="secondary-btn godmode-nav-btn active" data-settings-section="general" onclick="switchSiteSettingsSection('general')">
+            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Gear.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom" /> Основные
+          </button>
+          <button class="secondary-btn godmode-nav-btn" data-settings-section="profile" onclick="document.getElementById('modal-site-settings').classList.remove('active'); ProfileManager.openEditProfileModal()">
+            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Bust%20In%20Silhouette.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom" /> Редактировать профиль
+          </button>
+          <button class="secondary-btn godmode-nav-btn" data-settings-section="security" onclick="document.getElementById('modal-site-settings').classList.remove('active'); ProfileManager.openSecurityModal()">
+            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Shield.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom" /> Безопасность
+          </button>
+        </div>
+        <div class="godmode-main" style="padding-left:22px; display:flex; flex-direction:column; overflow-y:auto; overflow-x:hidden;">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:16px;">
+              <div>
+                  <h2 style="margin:0;">
+                    <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Gear.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom" /> Настройки
+                  </h2>
+                  <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">Пользовательские настройки сайта</div>
+              </div>
+              <button class="secondary-btn" onclick="document.getElementById('modal-site-settings').classList.remove('active')" style="width:auto; padding:8px 12px;">✕</button>
+          </div>
+
+          <div class="godmode-section active" data-settings-section="general" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02); margin-bottom: 16px;">
+              <div style="font-weight:700; margin-bottom:10px;">Внешний вид и анимации</div>
+              <div style="display:flex; flex-direction:column; gap:12px;">
+                  <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+                      <input type="checkbox" id="site-settings-theme" onchange="toggleGlobalThemeSetting(this.checked)" style="width:20px;height:20px;">
+                      <span>Светлая тема (Лобби)</span>
+                  </label>
+                  <label style="display:flex; align-items:center; gap:10px; cursor:pointer;" title="Отключите для повышения производительности">
+                      <input type="checkbox" id="site-settings-particle" checked onchange="toggleSiteParticlesSetting(this.checked)" style="width:20px;height:20px;">
+                      <span>Включить анимации частиц фона</span>
+                  </label>
+                  <label style="display:flex; align-items:center; gap:10px; cursor:pointer;" title="Премиальный черный фон">
+                      <input type="checkbox" id="site-settings-neuro" checked onchange="toggleSiteNeuroSetting(this.checked)" style="width:20px;height:20px;">
+                      <span>Премиальный черный фон (neuro-bg)</span>
+                  </label>
+              </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <script>
+      function openSiteSettings() {
+        document.getElementById("modal-site-settings").classList.add("active");
+        syncSettingsToggles();
+      }
+      function switchSiteSettingsSection(section) {
+        document.querySelectorAll('#modal-site-settings .godmode-nav-btn').forEach(b => {
+          b.classList.toggle('active', b.dataset.settingsSection === section);
+        });
+        document.querySelectorAll('#modal-site-settings .godmode-section').forEach(s => {
+          s.classList.toggle('active', s.dataset.settingsSection === section);
+        });
+      }
+      function toggleGlobalThemeSetting(enabled) {
+        if(enabled) {
+          document.documentElement.classList.add("theme-light-global");
+          localStorage.setItem("lobbyTheme", "light");
+        } else {
+          document.documentElement.classList.remove("theme-light-global");
+          localStorage.setItem("lobbyTheme", "dark");
+        }
+        
+        let cbX = document.getElementById("global-theme-toggle");
+        if (cbX) cbX.checked = enabled;
+      }
+      function toggleSiteParticlesSetting(enabled) {
+        const can = document.getElementById("particle-canvas");
+        if(can) can.style.display = enabled ? "block" : "none";
+        localStorage.setItem("siteParticles", enabled ? "true" : "false");
+      }
+      function toggleSiteNeuroSetting(enabled) {
+        const bg = document.getElementById("premium-black-bg");
+        if(bg) bg.style.display = enabled ? "block" : "none";
+        localStorage.setItem("siteNeuro", enabled ? "true" : "false");
+      }
+      function syncSettingsToggles() {
+        if (document.documentElement.classList.contains("theme-light-global")) {
+           document.getElementById("site-settings-theme").checked = true;
+        } else {
+           document.getElementById("site-settings-theme").checked = false;
+        }
+        if (localStorage.getItem("siteParticles") === "false") {
+           document.getElementById("site-settings-particle").checked = false;
+        }
+        if (localStorage.getItem("siteNeuro") === "false") {
+           document.getElementById("site-settings-neuro").checked = false;
+        }
+      }
+      
+      // Load saved states on boot dynamically
+      document.addEventListener("DOMContentLoaded", () => {
+        if (localStorage.getItem("siteParticles") === "false") {
+          const can = document.getElementById("particle-canvas");
+          if(can) can.style.display = "none";
+        }
+        if (localStorage.getItem("siteNeuro") === "false") {
+          const bg = document.getElementById("premium-black-bg");
+          if(bg) bg.style.display = "none";
+        }
+      });
+    </script>
 
     <div class="modal" id="modal-edit-profile">
       <div class="modal-content glass-panel">
