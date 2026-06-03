@@ -7122,6 +7122,7 @@ class FriendsManager {
       "nav-switch-account",
       "nav-support",
       "nav-support-staff",
+      "nav-settings"
     ];
     const setNavActive = (id) => {
       navItems.forEach((n) => {
@@ -7167,6 +7168,8 @@ class FriendsManager {
         setNavActive("nav-shop");
         window.ShopController?.loadShop();
       };
+    if (Utils.$("nav-settings"))
+      Utils.$("nav-settings").onclick = () => setNavActive("nav-settings");
     if (Utils.$("nav-support"))
       Utils.$("nav-support").onclick = () => {
         setNavActive("nav-support");
@@ -7178,8 +7181,54 @@ class FriendsManager {
         if (window.SupportSystem) SupportSystem.renderTickets();
       };
     if (Utils.$("nav-profile"))
-      Utils.$("nav-profile").onclick = () => {
-        ProfileManager.openEditProfileModal();
+      Utils.$("nav-profile").onclick = async () => {
+        setNavActive("nav-profile");
+        const uid = AppState.currentUser?.uid;
+        const profile = await ProfileManager.loadUser(uid);
+        const c = Utils.$("my-profile-container");
+        if (c && profile) {
+          const friendsSnap =
+            await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(
+              ({ get, ref }) => get(ref(db, `users/${uid}/friends`)),
+            );
+          const friendsCount = friendsSnap.exists()
+            ? Object.values(friendsSnap.val()).filter(
+                (f) => f.status === "accepted",
+              ).length
+            : 0;
+          const joinDate = profile.createdAt
+            ? new Date(profile.createdAt).toLocaleDateString()
+            : "Неизвестно";
+
+          let avatarStrStr = ProfileManager.getAvatarHtml(profile);
+          c.innerHTML = `
+                    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 40px; text-align: center; position: relative;">
+                        <div style="width: 120px; height: 120px; font-size: 48px; margin: 0 auto 20px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow: 0 10px 20px rgba(0,0,0,0.5);">
+                            ${avatarStrStr}
+                        </div>
+                        <h3 style="font-size:28px; margin-bottom:5px;">${Utils.escapeHtml(profile.name)} ${ProfileManager.getRoleBadgeHtml(profile, uid)}</h3>
+                        <div style="color:var(--accent); font-weight:600; font-size:16px; margin-bottom:20px;">@${Utils.escapeHtml(profile.username)}</div>
+                        <p style="color:var(--text-muted); font-size:15px; margin-bottom:20px;">Для просмотра полной статистики, отношений и ачивок, откройте карточку профиля.</p>
+                        <div style="display:flex; justify-content:center; gap: 15px;">
+                            <button class="primary-btn" id="btn-open-full-profile-inline" style="width:auto; padding: 12px 24px;">Посмотреть в полном виде</button>
+                            <button class="secondary-btn" id="btn-edit-my-profile-inline" style="width:auto; padding: 12px 24px;">Редактировать</button>
+                        </div>
+                    </div>
+                `;
+
+          Utils.$("btn-open-full-profile-inline").onclick = async () => {
+            try {
+              await ProfileManager.openViewProfileModal(uid);
+            } catch (e) {
+              Utils.toast("Ошибка: " + (e.message || e), "error");
+              console.error("Profile Modal error:", e);
+            }
+          };
+
+          Utils.$("btn-edit-my-profile-inline").onclick = () => {
+            ProfileManager.openEditProfileModal();
+          };
+        }
       };
     if (Utils.$("btn-switch-account")) {
       Utils.$("btn-switch-account").onclick = async () => {

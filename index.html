@@ -19,7 +19,7 @@
          if (localStorage.getItem("staticEmojis") !== "true") return;
          if (img.dataset.staticApplied) return;
          const urlOriginal = img.src.replace('.png', '.webp');
-         const emojiStr = emojiMap[urlOriginal] || '⏺️';
+         const emojiStr = emojiMap[urlOriginal] || '✨';
          
          const span = document.createElement('span');
          span.textContent = emojiStr;
@@ -54,13 +54,13 @@
       window.toggleSiteParticlesSetting = function(enabled) {
          localStorage.setItem('siteParticles', enabled ? 'true' : 'false');
          const canvas = document.getElementById('particle-canvas');
-         if (canvas) canvas.style.display = enabled ? 'block' : 'none';
+         if (canvas) canvas.style.setProperty('display', enabled ? 'block' : 'none', 'important');
       };
 
       window.toggleSiteNeuroSetting = function(enabled) {
          localStorage.setItem('siteNeuro', enabled ? 'true' : 'false');
          const bg = document.getElementById('premium-black-bg');
-         if (bg) bg.style.display = enabled ? 'block' : 'none';
+         if (bg) bg.style.setProperty('display', enabled ? 'block' : 'none', 'important');
       };
 
       document.addEventListener("DOMContentLoaded", () => {
@@ -74,7 +74,7 @@
              const cb = document.getElementById('site-settings-particle');
              if (cb) cb.checked = false;
              const canvas = document.getElementById('particle-canvas');
-             if (canvas) canvas.style.display = 'none';
+             if (canvas) canvas.style.setProperty('display', 'none', 'important');
          }
 
          const nVal = localStorage.getItem('siteNeuro');
@@ -82,7 +82,7 @@
              const cb = document.getElementById('site-settings-neuro');
              if (cb) cb.checked = false;
              const bg = document.getElementById('premium-black-bg');
-             if (bg) bg.style.display = 'none';
+             if (bg) bg.style.setProperty('display', 'none', 'important');
          }
          
          const observer = new MutationObserver(mutations => {
@@ -4837,6 +4837,18 @@
                   <div>Выберите тикет или создайте новый</div>
                 </div>
               </div>
+            </div>
+          </div>
+        </main>
+
+        <main class="rooms-main" id="section-profile" style="display: none">
+          <div class="friends-container" style="max-width: 800px; width: 100%; margin: 0 auto; padding-top: 20px;">
+            <div class="section-title" style="font-size: 24px; margin-bottom: 20px">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Bust%20In%20Silhouette.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom" />
+              Мой профиль
+            </div>
+            <div id="my-profile-container" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 20px; padding: 30px; text-align: center;">
+              <button class="primary-btn" id="btn-open-my-profile-modal" style="margin: 20px auto">Открыть редактор профиля</button>
             </div>
           </div>
         </main>
