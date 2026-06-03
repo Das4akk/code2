@@ -1,0 +1,9 @@
+main/Activity
+main/Animals%20and%20Nature
+main/Flags
+main/Food%20and%20Drink
+main/Objects
+main/People
+main/Smileys
+main/Symbols
+main/Travel%20and%20Places

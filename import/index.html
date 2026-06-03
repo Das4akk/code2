@@ -3453,7 +3453,6 @@
 
         .support-grid-layout {
           grid-template-columns: 1fr !important;
-          height: calc(100dvh - 70px) !important;
         }
         .support-grid-layout.chat-active .support-sidebar {
           display: none !important;
@@ -4044,15 +4043,6 @@
                 Друзья</span
               >
               <div class="nav-badge" id="friend-req-badge">0</div>
-            </div>
-            <div class="nav-item" id="nav-settings" onclick="if(window.ProfileManager) ProfileManager.openEditProfileModal()">
-              <span
-                ><img
-                  src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Gear.webp"
-                  style="width: 1.2em; height: 1.2em; vertical-align: bottom"
-                />
-                Настройки</span
-              >
             </div>
           </nav>
 
@@ -5110,24 +5100,21 @@
               id="soundpad-grid"
               style="
                 display: grid;
-                grid-template-columns: 1fr;
-                gap: 12px;
+                grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+                gap: 10px;
               "
             ></div>
           </div>
 
           <div class="chat-input-area" id="chat-input-container">
             <div class="input-wrapper">
-              <button class="mic-icon-btn" id="btn-room-attach" title="Прикрепить фото">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/File%20Folder.webp" style="width:1.2em;height:1.2em;">
-              </button>
               <button class="mic-icon-btn" id="mic-btn" title="Микрофон">
                 🎤
               </button>
               <input
                 type="text"
                 id="chat-input"
-                placeholder="Написать..."
+                placeholder="Написать или :00 таймкод..."
                 autocomplete="off"
               />
               <button class="send-btn" id="send-btn">↑</button>
@@ -5951,18 +5938,8 @@
           <div class="dm-compose">
             <button
               class="dm-compose-btn"
-              id="btn-dm-attach-file"
-              title="Прикрепить фото"
-            >
-              <img
-                src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/File%20Folder.webp"
-                style="width: 20px; height: 20px"
-              />
-            </button>
-            <button
-              class="dm-compose-btn"
               id="btn-dm-attach"
-              title="Прикрепить URL"
+              title="Прикрепить файл"
             >
               <img
                 src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Briefcase.webp"

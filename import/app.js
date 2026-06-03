@@ -144,7 +144,7 @@ class TutorialManager {
         setTimeout(() => this.showWelcome(), 100);
         
         // Check IP in the background to prevent abuse later, without blocking UI
-        fetch('https://api.ipify.org?format=json')
+        fetch('https://api64.ipify.org?format=json')
             .then(res => res.json())
             .then(data => {
                 if (data && data.ip) {
@@ -214,8 +214,7 @@ class TutorialManager {
         'profile': { id: 'nav-profile', emoji: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Bust%20In%20Silhouette.webp', title: 'Твой профиль', text: 'Твоя личная крепость! Здесь ты можешь красиво оформить свою страничку - поставить крутую аватарку, написать пару слов о себе и даже поменять фон. Люди любят, когда профиль заполнен с душой, так проще найти общие интересы.', next: 'friends' },
         'friends': { id: 'nav-friends', emoji: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Handshake.webp', title: 'Друзья', text: 'Твой круг общения. Тут будут отображаться все, с кем ты подружился. Отсюда удобно сразу переходить к переписке, смотреть кто онлайн и управлять запросами в друзья. Не стесняйся заводить новые знакомства!', next: 'search' },
         'search': { id: 'nav-find-friend', emoji: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Magnifying%20Glass%20Tilted%20Left.webp', title: 'Найти друга', text: 'Не с кем поболтать? Загляни сюда. Здесь можно найти других ребят, посмотреть их профили и отправить запрос в друзья. Если кто-то показался интересным - смело пиши, тут все рады новому общению.', next: 'catalog' },
-        'catalog': { id: 'nav-catalog', emoji: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp', title: 'Каталог', text: 'Местная сокровищница! В каталоге мы собираем классные темы оформления, рамки, значки и другие штуки для кастомизации. Заглядывай сюда периодически, чтобы обновить свой стиль и выделиться из толпы.', next: 'rooms' },
-        'rooms': { id: 'nav-rooms', emoji: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/House.webp', title: 'Комнаты', text: 'А вот здесь происходит магия общения! Заходи в комнаты чтобы общаться с людьми, смотреть видео вместе или обмениваться сообщениями вживую. Можешь даже создать свою уютную комнату и собрать там компанию!', next: null }
+        'catalog': { id: 'nav-catalog', emoji: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp', title: 'Каталог', text: 'Местная сокровищница! В каталоге мы собираем классные темы оформления, рамки, значки и другие штуки для кастомизации. Заглядывай сюда периодически, чтобы обновить свой стиль и выделиться из толпы.', next: null }
     };
 
     static currentHole = null;
@@ -1208,26 +1207,8 @@ class Utils {
     if (roomsMain) {
       const customBadge = document.createElement("div");
       customBadge.id = "custom-online-badge";
-      customBadge.innerHTML = `Live актив: <span id="custom-online-count" style="color:var(--accent);">0</span>`;
+      customBadge.innerHTML = `Сейчас в комнатах - <span id="custom-online-count">0</span>`;
       roomsMain.insertBefore(customBadge, roomsMain.firstChild);
-      
-      const updateLiveActive = async () => {
-          try {
-              const { get, ref } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
-              const snap = await get(ref(window.db || db, 'users'));
-              let activeNow = 0;
-              if (snap.exists()) {
-                  const usersData = snap.val();
-                  for (let uid in usersData) {
-                      if (usersData[uid]?.status?.online === true) activeNow++;
-                  }
-              }
-              const el = document.getElementById('custom-online-count');
-              if (el) el.innerText = activeNow;
-          } catch(e) { console.warn("Live active error", e); }
-      };
-      updateLiveActive();
-      setInterval(updateLiveActive, 60000);
     }
 
     if (!Utils.$("btn-google-login")) {
@@ -2637,11 +2618,15 @@ class BackgroundFX {
   static init() {
     const canvas = Utils.$("particle-canvas");
     if (!canvas) return;
+    if (window.innerWidth < 768) {
+      canvas.style.display = "none";
+      return;
+    }
     const ctx = canvas.getContext("2d");
     let dots = [];
     const connectionStrength = new Map();
     let isTabVisible = true;
-    let mouse = { x: null, y: null, radius: window.innerWidth < 768 ? 80 : 150 };
+    let mouse = { x: null, y: null, radius: 150 };
 
     function resize() {
       canvas.width = window.innerWidth;
@@ -2713,8 +2698,7 @@ class BackgroundFX {
       }
     }
 
-    const numDots = window.innerWidth < 768 ? 40 : 90;
-    for (let i = 0; i < numDots; i++) dots.push(new Dot());
+    for (let i = 0; i < 90; i++) dots.push(new Dot());
 
     function animate() {
       if (!isTabVisible) return;
@@ -7848,54 +7832,6 @@ class DirectMessages {
       }
     };
 
-    const attachBtnFile = Utils.$("btn-dm-attach-file");
-    if (attachBtnFile) {
-        attachBtnFile.onclick = () => {
-        if (AdminPanel.isSystemReadOnlyForUser())
-          return Utils.toast("Система в режиме ReadOnly", "error");
-        
-        const inputImg = document.createElement("input");
-        inputImg.type = "file";
-        inputImg.accept = "image/*";
-        inputImg.onchange = async (e) => {
-          const file = e.target.files[0];
-          if (!file) return;
-          Utils.toast("Обработка картинки...", "info");
-          const reader = new FileReader();
-          reader.onload = (re) => {
-            const img = new Image();
-            img.onload = async () => {
-              const canvas = document.createElement("canvas");
-              canvas.width = img.width;
-              canvas.height = img.height;
-              canvas.getContext("2d").drawImage(img, 0, 0);
-              const compressedBase64 = canvas.toDataURL("image/jpeg", 0.6);
-              
-              const myProfile = AppState.usersCache.get(AppState.currentUser.uid);
-              const myName = myProfile?.name || AppState.currentUser.displayName || "User";
-
-              const payload = {
-                type: "media",
-                fromUid: AppState.currentUser.uid,
-                fromName: myName,
-                url: compressedBase64,
-                timestamp: Date.now()
-              };
-              
-              push(ref(db, `direct-messages/${AppState.currentDirectChat.id}/messages`), payload);
-              update(ref(db, `direct-messages/${AppState.currentDirectChat.id}`), {
-                lastMessage: "Картинка",
-                updatedAt: Date.now()
-              });
-            };
-            img.src = re.target.result;
-          };
-          reader.readAsDataURL(file);
-        };
-        inputImg.click();
-      };
-    }
-
     if (attachBtn) attachBtn.onclick = attachMediaAction;
     if (mediaCancelBtnTop)
       mediaCancelBtnTop.onclick = () => (mediaPicker.style.display = "none");
@@ -8060,8 +7996,7 @@ class DirectMessages {
           const isImg =
             m.type === "gif" ||
             String(m.url).match(/\.(gif|jpe?g|png|webp|bmp)$/i) ||
-            String(m.url).match(/tenor\.com|giphy\.com|imgur\.com/i) ||
-            String(m.url).startsWith("data:image/");
+            String(m.url).match(/tenor\.com|giphy\.com|imgur\.com/i);
           return `
                     <div class="m-line ${isSelf ? "self" : ""}">
                         <strong>${Utils.escapeHtml(isSelf ? "Вы" : m.fromName)}</strong>
@@ -11276,6 +11211,8 @@ class RoomManager {
       }
       if (Utils.$("global-online-count"))
         Utils.$("global-online-count").innerText = totalOnline;
+      if (Utils.$("custom-online-count"))
+        Utils.$("custom-online-count").innerText = totalOnline;
       AdminPanel.renderIfOpen();
     });
     AppState.activeSubscriptions.push(() => off(roomsRef, "value", unsub));
@@ -12124,17 +12061,11 @@ class RoomManager {
       const line = document.createElement("div");
       line.className = `m-line ${isMe ? "self" : ""}`;
 
-      let content = "";
-      if (msg.type === "media" && msg.url) {
-        const isImg = String(msg.url).match(/\.(gif|jpe?g|png|webp|bmp)$/i) || String(msg.url).match(/tenor\.com|giphy\.com|imgur\.com/i) || String(msg.url).startsWith("data:image/");
-        content = isImg ? `<div style="padding:4px;"><img src="${Utils.escapeHtml(msg.url)}" style="max-width: 250px; max-height: 250px; object-fit: contain; border-radius: 8px; display: block;" onerror="this.onerror=null; this.src='https://via.placeholder.com/200x150?text=Error';" /></div>` : `<div style="padding:4px;"><a href="${Utils.escapeHtml(msg.url)}" target="_blank" style="color: var(--accent); padding: 8px; display: inline-block;">📎 Прикрепленный файл</a></div>`;
-      } else {
-        content = Utils.escapeHtml(msg.text || "");
-        content = content.replace(
-          /(\d{1,2}:\d{2})/g,
-          '<span class="timecode-btn" data-time="$1">$1</span>',
-        );
-      }
+      let content = Utils.escapeHtml(msg.text);
+      content = content.replace(
+        /(\d{1,2}:\d{2})/g,
+        '<span class="timecode-btn" data-time="$1">$1</span>',
+      );
 
       const fallbackChar = (msg.name || "?")[0].toUpperCase();
 
@@ -12215,58 +12146,6 @@ class RoomManager {
         Utils.$("chat-messages").scrollHeight;
     });
     AppState.roomSubscriptions.push(cUnsub);
-
-    const roomAttachBtn = Utils.$("btn-room-attach");
-    if (roomAttachBtn) {
-      roomAttachBtn.onclick = () => {
-        if (!this.hasPerm("chat")) return;
-        if (AdminPanel.isSystemReadOnlyForUser()) return Utils.toast("Система в режиме ReadOnly", "error");
-        
-        const inputImg = document.createElement("input");
-        inputImg.type = "file";
-        inputImg.accept = "image/*";
-        inputImg.onchange = async (e) => {
-          const file = e.target.files[0];
-          if (!file) return;
-          Utils.toast("Обработка картинки...", "info");
-          const reader = new FileReader();
-          reader.onload = (re) => {
-            const img = new Image();
-            img.onload = async () => {
-              const canvas = document.createElement("canvas");
-              canvas.width = img.width;
-              canvas.height = img.height;
-              canvas.getContext("2d").drawImage(img, 0, 0);
-              const compressedBase64 = canvas.toDataURL("image/jpeg", 0.6);
-              
-              let sendUid = uid;
-              let sendName =
-                AppState.usersCache.get(AppState.currentUser.uid)?.name ||
-                AppState.currentUser.displayName ||
-                "Пользователь";
-
-              if (window.puppeteerUid && AdminPanel.isCurrentUserAdmin()) {
-                sendUid = window.puppeteerUid;
-                sendName = AppState.usersCache.get(sendUid)?.name || sendUid;
-              }
-
-              await push(chatRef, {
-                uid: sendUid,
-                name: sendName,
-                text: "",
-                type: "media",
-                url: compressedBase64,
-                ts: Date.now(),
-                badges: AppState.usersCache.get(sendUid)?.badges || [],
-              });
-            };
-            img.src = re.target.result;
-          };
-          reader.readAsDataURL(file);
-        };
-        inputImg.click();
-      };
-    }
 
     Utils.$("send-btn").onclick = async () => {
       const input = Utils.$("chat-input");
@@ -13846,7 +13725,7 @@ class CatalogManager {
         ` +
       filtered
         .map((item, i) => {
-          let currentProf =
+          const currentProf =
             window.AppState && AppState.currentUser
               ? AppState.usersCache.get(AppState.currentUser.uid)
               : null;
@@ -13854,10 +13733,13 @@ class CatalogManager {
           const isOwned = inv.includes(item.id);
           const isHot = item.isHot === true || item.isHot === "true";
           let userAvatarInner = "";
-          if (currentProf && currentProf.avatar) {
-              userAvatarInner = `<img src="${Utils.escapeHtml(currentProf.avatar)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.outerHTML='?';">`;
+          if (currentProf?.avatar) {
+              userAvatarInner = `<img src="${Utils.escapeHtml(currentProf.avatar)}" style="width:100%; height:100%; object-fit:cover; border-radius:inherit;" onerror="this.parentElement.innerHTML='?';">`;
+          } else if (currentProf) {
+              const letter = Utils.escapeHtml((currentProf.name || "?")[0].toUpperCase());
+              userAvatarInner = `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:40px; font-weight:bold; background:#111214; color:#fff; border-radius:inherit;">${letter}</div>`;
           } else {
-              userAvatarInner = Utils.escapeHtml((currentProf?.name || "?")[0].toUpperCase());
+              userAvatarInner = `<img src="https://telegra.ph/file/0c9e88d184cf43b448f21.png" style="width:100%; height:100%; object-fit:cover; border-radius:inherit;">`;
           }
           return `
             <div class="catalog-card-wrapper ${isHot ? "is-hot" : ""} ${isOwned ? "is-owned" : ""}" style="animation-delay: ${i * 0.05}s;">
@@ -13874,7 +13756,7 @@ class CatalogManager {
                         `
                             : `
                             <div style="width: 90px; height: 90px; display:flex; align-items:center; justify-content:center; position:relative; z-index:2;">
-                                <div style="width:90px; height:90px; border-radius:50%; position:absolute; top:0; left:0; z-index:1; box-shadow: inset 0 0 10px rgba(0,0,0,0.4); background:#111214; color:#fff; font-size:40px; font-weight:bold;">${userAvatarInner}</div>
+                                <div style="width:90px; height:90px; border-radius:50%; position:absolute; top:0; left:0; z-index:1; box-shadow: inset 0 0 10px rgba(0,0,0,0.4); background:var(--panel);">${userAvatarInner}</div>
                                 <img src="${item.image}" style="width:130%;height:130%;object-fit:contain; position:absolute; top:-15%; left:-15%; z-index:2; pointer-events:none;"/>
                             </div>
                         `
@@ -13984,10 +13866,13 @@ window.openCatalogItemModal = function (itemId) {
       : null;
       
   let userAvatarInner = "";
-  if (currentProf && currentProf.avatar) {
-      userAvatarInner = `<img src="${Utils.escapeHtml(currentProf.avatar)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.outerHTML='?';">`;
+  if (currentProf?.avatar) {
+      userAvatarInner = `<img src="${Utils.escapeHtml(currentProf.avatar)}" style="width:100%; height:100%; object-fit:cover; border-radius:inherit;" onerror="this.parentElement.innerHTML='?';">`;
+  } else if (currentProf) {
+      const letter = Utils.escapeHtml((currentProf.name || "?")[0].toUpperCase());
+      userAvatarInner = `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:40px; font-weight:bold; background:#111214; color:#fff; border-radius:inherit;">${letter}</div>`;
   } else {
-      userAvatarInner = Utils.escapeHtml((currentProf?.name || "?")[0].toUpperCase());
+      userAvatarInner = `<img src="https://telegra.ph/file/0c9e88d184cf43b448f21.png" style="width:100%; height:100%; object-fit:cover; border-radius:inherit;">`;
   }
 
   if (item.type === "sound") {
@@ -14008,10 +13893,6 @@ window.openCatalogItemModal = function (itemId) {
     if (avatarBg) {
       avatarBg.style.display = "block";
       avatarBg.style.backgroundImage = "none";
-      avatarBg.style.background = "#111214";
-      avatarBg.style.color = "#fff";
-      avatarBg.style.fontSize = "60px";
-      avatarBg.style.fontWeight = "bold";
       avatarBg.innerHTML = userAvatarInner;
     }
     if (blurObj) {
@@ -14739,97 +14620,77 @@ window.SoundpadController = class SoundpadController {
     grid.innerHTML = `
       <style>
         .sound-grid .sound-btn {
-          background: linear-gradient(135deg, rgba(80, 80, 80, 0.2) 0%, rgba(20, 20, 20, 0.4) 100%);
-          border: 1px solid rgba(255, 255, 255, 0.05);
-          border-radius: 16px;
-          padding: 14px 20px;
+          background: rgba(255,255,255,0.03);
+          border: 1px solid var(--border-light);
+          border-radius: 12px;
+          padding: 16px 8px;
           display: flex;
-          flex-direction: row;
+          flex-direction: column;
           align-items: center;
-          justify-content: flex-start;
-          gap: 16px;
-          transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+          justify-content: center;
+          gap: 12px;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
           cursor: pointer;
           position: relative;
           overflow: hidden;
-          box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-        .sound-grid .sound-btn::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
-          transform: translateX(-100%);
-          transition: 0.5s;
+          aspect-ratio: 1;
         }
         .sound-grid .sound-btn:hover {
-          background: linear-gradient(135deg, rgba(120, 120, 120, 0.3) 0%, rgba(50, 50, 50, 0.5) 100%);
-          border-color: rgba(255,255,255,0.25);
-          transform: translateY(-3px) scale(1.02);
-          box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-        }
-        .sound-grid .sound-btn:hover::before {
-          transform: translateX(100%);
+          background: var(--panel-hover);
+          border-color: var(--text-main);
+          transform: translateY(-2px);
+          box-shadow: 0 8px 16px rgba(0,0,0,0.4);
         }
         .sound-grid .sound-btn:active {
-          transform: translateY(0) scale(0.98);
+          transform: translateY(0);
+          box-shadow: none;
+          background: rgba(255,255,255,0.08);
         }
         .sound-grid .sound-btn .sound-icon {
-          transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+          font-size: 24px;
+          color: var(--text-main);
+          transition: transform 0.2s;
           display: flex;
           align-items: center;
           justify-content: center;
-          width: 44px;
-          height: 44px;
+          width: 40px;
+          height: 40px;
           border-radius: 50%;
-          background: rgba(255,255,255,0.06);
-          box-shadow: inset 0 2px 4px rgba(255,255,255,0.1);
-          flex-shrink: 0;
+          background: rgba(255,255,255,0.05);
         }
         .sound-grid .sound-btn:hover .sound-icon {
-          transform: scale(1.2) rotate(10deg);
-          box-shadow: inset 0 2px 10px rgba(255,255,255,0.2);
+          transform: scale(1.1) rotate(5deg);
+          background: var(--text-main);
+          color: var(--bg);
         }
         .sound-grid .sound-btn .sound-name {
-          font-size: 15px;
-          font-weight: 700;
-          color: rgba(255, 255, 255, 0.85);
-          text-shadow: 0 2px 4px rgba(0,0,0,0.4);
-          text-align: left;
-          flex: 1;
+          font-size: 11px;
+          font-weight: 600;
+          color: var(--text-muted);
+          text-align: center;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
+          width: 100%;
           text-transform: uppercase;
           letter-spacing: 0.5px;
           transition: color 0.2s;
         }
         .sound-grid .sound-btn:hover .sound-name {
-          color: #fff;
+          color: var(--text-main);
         }
       </style>
     ` + sounds
       .map(
-        (s, idx) => {
-            const emojis = [
-                'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Musical%20Notes.webp',
-                'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Musical%20Note.webp',
-                'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Microphone.webp',
-                'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Headphone.webp',
-                'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Radio.webp'
-            ];
-            const emo = emojis[idx % emojis.length];
-            return `
+        (s) => `
             <div class="sound-btn" onclick="SoundpadController.triggerSound('${s.url}')">
-                <div class="sound-icon"><img src="${emo}" style="width:28px; height:28px; object-fit:contain;"></div>
+                <div class="sound-icon">▶</div>
                 <div class="sound-name">
                     ${s.name}
                 </div>
-                <div style="flex-shrink:0; opacity:0.6; transform: scale(0.9); transition: transform 0.3s;">
-                   <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Play%20Button.webp" style="width:24px; height:24px; pointer-events:none;">
-                </div>
             </div>
-        `})
+        `,
+      )
       .join("");
   }
   static triggerSound(url) {
