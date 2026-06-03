@@ -5377,7 +5377,7 @@ class ProfileManager {
       e.stopPropagation();
       this.toggleProfileMenu();
     };
-    Utils.$("btn-open-security").onclick = () => this.openSecurityModal();
+    Utils.$("btn-open-security").onclick = () => { Utils.$("modal-edit-profile").classList.remove("active"); document.getElementById("nav-settings").click(); };
     document.addEventListener("click", () => {
       Utils.$("profile-menu-dropdown")?.classList.remove("active");
     });
@@ -5583,11 +5583,7 @@ class ProfileManager {
     Utils.$("profile-menu-dropdown")?.classList.toggle("active");
   }
 
-  static openSecurityModal() {
-    Utils.$("profile-menu-dropdown")?.classList.remove("active");
-    this.renderSecurityModal();
-    Utils.$("modal-security").classList.add("active");
-  }
+  static openSecurityModal() { document.getElementById("nav-settings").click(); }
 
   static renderSecurityModal() {
     const p = AppState.usersCache.get(AppState.currentUser.uid) || {};
@@ -7145,6 +7141,9 @@ class FriendsManager {
       if (Utils.$("section-shop"))
         Utils.$("section-shop").style.display =
           id === "nav-shop" ? "flex" : "none";
+      if (Utils.$("section-settings"))
+        Utils.$("section-settings").style.display =
+          id === "nav-settings" ? "flex" : "none";
       if (Utils.$("section-support"))
         Utils.$("section-support").style.display =
           id === "nav-support" || id === "nav-support-staff" ? "flex" : "none";
@@ -13857,22 +13856,8 @@ class CatalogManager {
           const isOwned = inv.includes(item.id);
           const isHot = item.isHot === true || item.isHot === "true";
           
-          let userAvatarInner = "";
-          const myAvatarDisplay = document.getElementById("my-avatar-display");
-          if (myAvatarDisplay && myAvatarDisplay.innerHTML && myAvatarDisplay.innerHTML !== "?") {
-            // Strip any frame from it because in catalog we only want the bare avatar
-            let tmpNode = document.createElement("div");
-            tmpNode.innerHTML = myAvatarDisplay.innerHTML;
-            let images = tmpNode.querySelectorAll("img");
-            if (images.length > 0) {
-              userAvatarInner = `<img src="${images[0].src}" onerror="this.parentElement.innerHTML='?';" style="width:100%; height:100%; object-fit:cover; border-radius:inherit;" />`;
-            } else {
-               userAvatarInner = tmpNode.innerText || "?";
-            }
-          } else {
-            let fakeProf = currentProf ? { ...currentProf, frame: null } : { name: "User", avatar: "https://telegra.ph/file/0c9e88d184cf43b448f21.png" };
-            userAvatarInner = ProfileManager.getAvatarHtml(fakeProf);
-          }
+                    let fakeProf = currentProf ? { ...currentProf, frame: null } : { name: "User", avatar: "https://telegra.ph/file/0c9e88d184cf43b448f21.png" };
+          let userAvatarInner = ProfileManager.getAvatarHtml(fakeProf);
           
           return `
             <div class="catalog-card-wrapper ${isHot ? "is-hot" : ""} ${isOwned ? "is-owned" : ""}" style="animation-delay: ${i * 0.05}s;">
@@ -13998,21 +13983,8 @@ window.openCatalogItemModal = function (itemId) {
       ? AppState.usersCache.get(AppState.currentUser.uid)
       : null;
       
-  let userAvatarInner = "";
-  const myAvatarDisplay = document.getElementById("my-avatar-display");
-  if (myAvatarDisplay && myAvatarDisplay.innerHTML && myAvatarDisplay.innerHTML !== "?") {
-    let tmpNode = document.createElement("div");
-    tmpNode.innerHTML = myAvatarDisplay.innerHTML;
-    let images = tmpNode.querySelectorAll("img");
-    if (images.length > 0) {
-      userAvatarInner = `<img src="${images[0].src}" onerror="this.parentElement.innerHTML='?';" style="width:100%; height:100%; object-fit:cover; border-radius:inherit;" />`;
-    } else {
-       userAvatarInner = tmpNode.innerText || "?";
-    }
-  } else {
     let fakeProf = currentProf ? { ...currentProf, frame: null } : { name: "User", avatar: "https://telegra.ph/file/0c9e88d184cf43b448f21.png" };
-    userAvatarInner = ProfileManager.getAvatarHtml(fakeProf);
-  }
+  let userAvatarInner = ProfileManager.getAvatarHtml(fakeProf);
 
   if (item.type === "sound") {
     if (imageSolo) imageSolo.style.display = "none";
