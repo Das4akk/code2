@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @fileoverview COWIO Core Engine v4.0 - The Ultimate Edition
  * @description Интегрированы все фиксы: MPA-подобная стабильность, обход пароля по инвайтам,
  * улучшенный интерактивный нейрофон, левитация элементов, фикс мобильного скролла,
@@ -13769,10 +13769,10 @@ window.onload = () => {
   footerLinks.id = "bottom-footer-links";
   footerLinks.style.display = "none"; // Будет переключаться в Utils.showScreen
   footerLinks.innerHTML = `
-        <a href="mailto:support@cowio.com">Mail</a>
-        <a href="https://t.me/your_channel" target="_blank">Telegram</a>
-        <a href="#" target="_blank">Сайт</a>
-        <a href="#" onclick="event.preventDefault()">позже добавлю</a>
+        <a href="mailto:das4akk@gmail.com">Mail</a>
+        <a href="https://t.me/Das4akk" target="_blank">Telegram</a>
+        <a href="https://cowio-privacy-accept.vercel.app" target="_blank"Политика</a>
+        <a href="https://t.me/EzKid" target="_blank">Предложка</a>
     `;
   document.body.appendChild(footerLinks);
 
