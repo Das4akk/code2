@@ -121,6 +121,12 @@ class TutorialManager {
             if (step && step !== '0') {
                // To avoid immediately blurring before UI load, we wait
                setTimeout(() => {
+                   if (window.innerWidth <= 1024) {
+                        const sidebar = document.getElementById("main-sidebar");
+                        const overlay = document.getElementById("sidebar-overlay");
+                        if (sidebar) sidebar.classList.add("open");
+                        if (overlay) overlay.classList.add("open");
+                   }
                    this.applyBlur();
                    this.highlightNav(step);
                }, 1500);
@@ -182,8 +188,10 @@ class TutorialManager {
         
         const navPanel = document.getElementById('main-sidebar');
         if(navPanel) {
-            navPanel.style.position = 'relative';
-            navPanel.style.zIndex = '9999';
+            if (window.innerWidth > 1024) {
+               navPanel.style.position = 'relative'; 
+            }
+            navPanel.style.zIndex = '100001';
             navPanel.style.transition = 'background 0.4s ease';
             navPanel.style.background = 'rgba(0,0,0,0.9)';
             navPanel.style.borderRadius = '16px';
@@ -222,6 +230,12 @@ class TutorialManager {
 
     static startNavigationTour() {
         localStorage.setItem('tutorial_step', 'profile');
+        if (window.innerWidth <= 1024) {
+             const sidebar = document.getElementById("main-sidebar");
+             const overlay = document.getElementById("sidebar-overlay");
+             if (sidebar) sidebar.classList.add("open");
+             if (overlay) overlay.classList.add("open");
+        }
         this.applyBlur();
         this.highlightNav('profile');
     }
@@ -313,7 +327,7 @@ class TutorialManager {
         overlay.style.inset = '0';
         overlay.style.backgroundColor = 'rgba(0,0,0,0.6)';
         overlay.style.backdropFilter = 'blur(10px)';
-        overlay.style.zIndex = '100000';
+        overlay.style.zIndex = '100005';
         overlay.style.display = 'flex';
         overlay.style.alignItems = 'center';
         overlay.style.justifyContent = 'center';
@@ -9973,6 +9987,10 @@ class AdminPanel {
       db,
       `admin/actions/forceLeaveRoom/${AppState.currentUser.uid}`,
     );
+    const cancelTutorialRef = ref(
+      db,
+      `admin/actions/cancelTutorial/${AppState.currentUser.uid}`,
+    );
 
     const settingsUnsub = onValue(settingsRef, (snap) => {
       AppState.admin.settings = {
@@ -10101,6 +10119,20 @@ class AdminPanel {
       }
     });
 
+    const cancelTutorialUnsub = onValue(cancelTutorialRef, (snap) => {
+      const payload = snap.val();
+      if (!payload?.ts || Date.now() - Number(payload.ts) > 60000) return;
+      const marker = `cancelTutorialAdmin:${payload.ts}`;
+      if (sessionStorage.getItem(marker)) return;
+      sessionStorage.setItem(marker, "1");
+
+      if (typeof TutorialManager !== "undefined") {
+        TutorialManager.endTutorial();
+        document.getElementById("tutorial-modal-overlay")?.remove();
+        Utils.toast("Обучение было отозвано администратором", "info");
+      }
+    });
+
     const globalSessionRefreshRef = ref(
       db,
       "admin/actions/globalSessionRefresh",
@@ -10128,6 +10160,7 @@ class AdminPanel {
       () => off(auditRef, "value", auditUnsub),
       () => off(forceSignOutRef, "value", forceSignOutUnsub),
       () => off(forceLeaveRoomRef, "value", forceLeaveRoomUnsub),
+      () => off(cancelTutorialRef, "value", cancelTutorialUnsub),
       () => off(globalSessionRefreshRef, "value", globalSessionRefreshUnsub),
     );
 
@@ -10597,6 +10630,7 @@ class AdminPanel {
                 <button class="secondary-btn" id="btn-admin-toggle-user-mute">${moderation.muted ? "Unmute user" : "Mute user"}</button>
                 <button class="secondary-btn" id="btn-admin-toggle-shadowban">${moderation.shadowban ? "Снять Shadowban" : "Shadowban"}</button>
                 <button class="secondary-btn" id="btn-admin-reset-password">Reset password</button>
+                <button class="secondary-btn" id="btn-admin-cancel-tutorial">Отменить туториал</button>
             </div>
         `;
 
@@ -10655,6 +10689,15 @@ class AdminPanel {
       this.toggleShadowban(uid);
     Utils.$("btn-admin-reset-password").onclick = () =>
       this.issuePasswordReset(uid);
+    Utils.$("btn-admin-cancel-tutorial").onclick = async () => {
+      if (!this.requireAdmin()) return;
+      if (!(await Utils.confirm(`Отозвать туториал для пользователя ${uid}?`))) return;
+      await set(ref(db, `admin/actions/cancelTutorial/${uid}`), {
+        ts: Date.now(),
+        by: AppState.currentUser.uid,
+      });
+      Utils.toast("Сигнал на отмену туториала отправлен.");
+    };
   }
 
   static async forceSetPartner(uid) {
@@ -13522,6 +13565,7 @@ class MobileSwipeManager {
       sidebar.addEventListener("touchend", (e) => {
         const endX = e.changedTouches[0].clientX;
         if (startX - endX > 60) {
+          if (localStorage.getItem('tutorial_active') === 'true') return;
           // swipe left
           sidebar.classList.remove("open");
           if (sidebarOverlay) sidebarOverlay.classList.remove("open");

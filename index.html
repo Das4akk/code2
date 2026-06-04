@@ -623,7 +623,7 @@
       /* ========================================================= */
       .screen {
         display: none;
-        height: 100vh;
+        height: 100dvh;
         width: 100vw;
         flex-direction: column;
         overflow: hidden;
@@ -3617,7 +3617,9 @@
           flex-direction: column;
         }
         .video-container {
-          height: 32vh;
+          height: auto;
+          aspect-ratio: 16 / 9;
+          max-height: 40vh;
           flex: none;
         }
         .chat-section {
@@ -6414,14 +6416,16 @@
           else openSidebar();
         });
         if (sidebarOverlay) {
-          sidebarOverlay.addEventListener("click", closeSidebar);
+          sidebarOverlay.addEventListener("click", () => {
+             if (localStorage.getItem('tutorial_active') !== 'true') closeSidebar();
+          });
         }
 
         // Close sidebar when clicking a nav menu item on mobile
         const navItems = sidebar.querySelectorAll(".nav-item");
         navItems.forEach((item) => {
           item.addEventListener("click", () => {
-            if (window.innerWidth <= 1024) closeSidebar();
+            if (window.innerWidth <= 1024 && localStorage.getItem('tutorial_active') !== 'true') closeSidebar();
           });
         });
         // Also close when opening profile
