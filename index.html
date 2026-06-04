@@ -56,6 +56,12 @@
          const canvas = document.getElementById('particle-canvas');
          if (canvas) canvas.style.setProperty('display', enabled ? 'block' : 'none', 'important');
       };
+      
+      window.updateParticleBrightness = function(value) {
+         localStorage.setItem('siteParticleBrightness', value);
+         const canvas = document.getElementById('particle-canvas');
+         if (canvas) canvas.style.setProperty('opacity', value);
+      };
 
       window.toggleSiteNeuroSetting = function(enabled) {
          localStorage.setItem('siteNeuro', enabled ? 'true' : 'false');
@@ -75,6 +81,16 @@
              if (cb) cb.checked = false;
              const canvas = document.getElementById('particle-canvas');
              if (canvas) canvas.style.setProperty('display', 'none', 'important');
+         }
+
+         const pBright = localStorage.getItem('siteParticleBrightness');
+         if (pBright !== null) {
+            const cbBright = document.getElementById('site-settings-particle-brightness');
+            if (cbBright) cbBright.value = pBright;
+            const cbBrightVal = document.getElementById('particle-brightness-val');
+            if (cbBrightVal) cbBrightVal.innerText = Math.round(Number(pBright) * 100) + '%';
+            const canvas = document.getElementById('particle-canvas');
+            if (canvas) canvas.style.setProperty('opacity', pBright);
          }
 
          const nVal = localStorage.getItem('siteNeuro');
@@ -4992,6 +5008,10 @@
                   <label style="display:flex; align-items:center; gap:10px; cursor:pointer;" title="Отключите для повышения производительности">
                       <input type="checkbox" id="site-settings-particle" checked onchange="toggleSiteParticlesSetting(this.checked)" style="width:20px;height:20px;">
                       <span>Включить анимации частиц фона</span>
+                  </label>
+                  <label style="display:flex; flex-direction:column; gap:5px; margin-left: 30px; margin-bottom: 5px;" id="particle-brightness-container" title="Яркость/непрозрачность частиц">
+                      <span style="font-size: 13px; color: var(--text-muted);">Яркость: <span id="particle-brightness-val">100%</span></span>
+                      <input type="range" id="site-settings-particle-brightness" min="0" max="1" step="0.05" value="1" onchange="updateParticleBrightness(this.value)" oninput="document.getElementById('particle-brightness-val').innerText = Math.round(this.value * 100) + '%'" style="width: 150px;">
                   </label>
                   <label style="display:flex; align-items:center; gap:10px; cursor:pointer;" title="Премиальный черный фон">
                       <input type="checkbox" id="site-settings-neuro" checked onchange="toggleSiteNeuroSetting(this.checked)" style="width:20px;height:20px;">

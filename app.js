@@ -111,6 +111,87 @@ const AppState = {
 // 2. УТИЛИТЫ И GUI ФИКСЫ (Инъекция стилей, Анимации, Нейрофон)
 // ============================================================================
 
+class SecurityManager {
+  static requestLog = new Map();
+  static anomalyScore = 0;
+
+  static init() {
+    console.log("[SECURITY] Defense Subsystem Initialized");
+    this.monitorDOM();
+  }
+
+  static validateAction(actionName, limits = { count: 5, timeWindowMs: 10000 }) {
+    if (this.anomalyScore > 100) {
+      if (typeof Utils !== "undefined") Utils.toast("Система безопасности временно заблокировала ваши действия из-за подозрительной активности", "error");
+      return false;
+    }
+    const now = Date.now();
+    if (!this.requestLog.has(actionName)) {
+      this.requestLog.set(actionName, []);
+    }
+    let times = this.requestLog.get(actionName);
+    times = times.filter((t) => now - t < limits.timeWindowMs);
+
+    if (times.length >= limits.count) {
+      this.anomalyScore += 10;
+      console.warn(`[SECURITY] Action blocked: ${actionName} (Rate limit exceeded)`);
+      if (typeof Utils !== "undefined") Utils.toast(`Пожалуйста, помедленнее. Действие ${actionName} временно ограничено (DDoS защита).`, "error");
+      return false;
+    }
+
+    times.push(now);
+    this.requestLog.set(actionName, times);
+    
+    // Decrement anomaly score over time if it's healthy
+    if (this.anomalyScore > 0 && Math.random() > 0.8) {
+       this.anomalyScore = Math.max(0, this.anomalyScore - 5);
+    }
+    
+    return true;
+  }
+
+  static validateTextPayload(text, maxLength = 2000, context = "general") {
+    if (!text) return true;
+    if (text.length > maxLength) {
+      console.warn(`[SECURITY] Payload too large for context: ${context}`);
+      if (typeof Utils !== "undefined") Utils.toast("Текст слишком длинный", "error");
+      return false;
+    }
+    const xssPattern = /<(script|iframe|object|embed|svg|math|base|link|meta)/i;
+    if (xssPattern.test(text)) {
+      console.warn(`[SECURITY] Potential XSS detected in context: ${context}`);
+      this.anomalyScore += 50;
+      if (typeof Utils !== "undefined") Utils.toast("Недопустимое содержимое", "error");
+      return false;
+    }
+    return true;
+  }
+
+  static monitorDOM() {
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.addedNodes) {
+          mutation.addedNodes.forEach((node) => {
+            if (node.tagName === "SCRIPT" || node.tagName === "IFRAME") {
+              if (
+                node.src && 
+                node.src.includes("gstatic.com") === false && 
+                node.src.includes("youtube.com") === false &&
+                node.src.includes("hls.js") === false &&
+                node.src.includes("rutube.ru") === false
+              ) {
+                console.error(`[SECURITY] Blocked potentially unsafe DOM injection: ${node.tagName}`);
+                if (node.parentNode) node.parentNode.removeChild(node);
+              }
+            }
+          });
+        }
+      });
+    });
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+  }
+}
+
 class TutorialManager {
     static init() {
         if (!localStorage.getItem('device_account_created')) {
@@ -333,7 +414,7 @@ class TutorialManager {
         overlay.style.justifyContent = 'center';
         overlay.style.padding = '20px';
         overlay.style.opacity = '0';
-        overlay.style.transition = 'opacity 0.3s ease';
+        overlay.style.transition = 'opacity 0.6s ease';
 
         const modal = document.createElement('div');
         modal.style.background = 'linear-gradient(145deg, #2a2a2a 0%, #151515 100%)';
@@ -347,8 +428,9 @@ class TutorialManager {
         modal.style.alignItems = 'center';
         modal.style.textAlign = 'center';
         modal.style.boxShadow = '0 25px 60px rgba(0,0,0,0.6)';
-        modal.style.transform = 'translateY(20px) scale(0.95)';
-        modal.style.transition = 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+        modal.style.transform = 'translateY(30px) scale(0.9)';
+        modal.style.opacity = '0';
+        modal.style.transition = 'transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.6s ease';
 
         const emoji = document.createElement('img');
         emoji.src = emojiSrc;
@@ -364,11 +446,11 @@ class TutorialManager {
         h2.style.color = '#ffffff';
 
         const p = document.createElement('p');
-        p.textContent = text;
         p.style.margin = '0 0 25px 0';
         p.style.fontSize = '14px';
         p.style.lineHeight = '1.5';
         p.style.color = 'rgba(255,255,255,0.7)';
+        p.style.minHeight = '120px'; // enough space for longest tutorial text to avoid layout shift
 
         const btn = document.createElement('button');
         btn.textContent = btnText;
@@ -381,17 +463,30 @@ class TutorialManager {
         btn.style.color = '#000000';
         btn.style.border = 'none';
         btn.style.cursor = 'pointer';
+        btn.style.opacity = '0';
+        btn.style.transition = 'opacity 0.4s ease';
         
         btn.onmouseover = () => btn.style.background = '#ffffff';
         btn.onmouseout = () => btn.style.background = 'linear-gradient(90deg, #ffffff, #e0e0e0)';
         
+        let typingInterval;
+        let isTyping = false;
+        
         btn.onclick = () => {
+            if (isTyping) {
+                // If clicked while typing, skip to the end
+                clearInterval(typingInterval);
+                p.textContent = text;
+                isTyping = false;
+                return;
+            }
             overlay.style.opacity = '0';
-            modal.style.transform = 'translateY(20px) scale(0.95)';
+            modal.style.opacity = '0';
+            modal.style.transform = 'translateY(30px) scale(0.9)';
             setTimeout(() => {
                 overlay.remove();
                 if (onConfirm) onConfirm();
-            }, 300);
+            }, 600);
         };
 
         modal.appendChild(emoji);
@@ -404,6 +499,22 @@ class TutorialManager {
         requestAnimationFrame(() => {
             overlay.style.opacity = '1';
             modal.style.transform = 'translateY(0) scale(1)';
+            modal.style.opacity = '1';
+            
+            setTimeout(() => {
+                let i = 0;
+                isTyping = true;
+                typingInterval = setInterval(() => {
+                    if (i < text.length) {
+                        p.textContent += text.charAt(i);
+                        i++;
+                    } else {
+                        clearInterval(typingInterval);
+                        isTyping = false;
+                        btn.style.opacity = '1';
+                    }
+                }, 15);
+            }, 400); // Start typing after modal enters
         });
     }
 }
@@ -4533,6 +4644,7 @@ class AuthManager {
     };
 
     Utils.$("btn-do-login").onclick = async () => {
+      if (!SecurityManager.validateAction("auth_login", { count: 3, timeWindowMs: 30000 })) return;
       const email = Utils.$("login-email").value.trim();
       const pass = Utils.$("login-pass").value.trim();
       if (!email || !pass) return Utils.toast("Заполните все поля", "error");
@@ -4559,6 +4671,7 @@ class AuthManager {
     };
 
     Utils.$("btn-do-reg").onclick = async () => {
+      if (!SecurityManager.validateAction("auth_register", { count: 2, timeWindowMs: 60000 })) return;
       if (AppState.admin.settings.globalRegistrationsBlocked)
         return Utils.toast("Регистрация временно отключена", "error");
       const email = Utils.$("reg-email").value.trim();
@@ -6344,6 +6457,7 @@ class ProfileManager {
   }
 
   static async saveProfile() {
+    if (!SecurityManager.validateAction("profile_update", { count: 5, timeWindowMs: 60000 })) return;
     const uid = AppState.currentUser.uid;
     const oldProfile = AppState.usersCache.get(uid);
     const name = Utils.$("edit-name").value.trim();
@@ -7423,6 +7537,7 @@ class FriendsManager {
   }
 
   static async sendFriendRequest(targetUid) {
+    if (!SecurityManager.validateAction("friend_request", { count: 3, timeWindowMs: 60000 })) return;
     if (targetUid === AppState.currentUser.uid) return;
     try {
       await set(
@@ -7973,6 +8088,7 @@ class DirectMessages {
     }
 
     const performMediaSend = async (url) => {
+      if (!SecurityManager.validateAction("dm_message", { count: 10, timeWindowMs: 10000 })) return;
       if (!url) return;
       if (AdminPanel.isSystemReadOnlyForUser())
         return Utils.toast("Система в режиме ReadOnly", "error");
@@ -8005,8 +8121,10 @@ class DirectMessages {
     });
 
     const sendAction = async () => {
+      if (!SecurityManager.validateAction("dm_message", { count: 10, timeWindowMs: 10000 })) return;
       const text = input.value.trim();
       if (!text) return;
+      if (!SecurityManager.validateTextPayload(text, 2000, "dm")) return;
       if (AdminPanel.isSystemReadOnlyForUser())
         return Utils.toast("Система в режиме ReadOnly", "error");
       input.value = "";
@@ -11638,6 +11756,7 @@ class RoomManager {
   }
 
   static async saveRoom() {
+    if (!SecurityManager.validateAction("room_create", { count: 3, timeWindowMs: 60000 })) return;
     const name = Utils.$("room-input-name").value.trim();
     const videoInputUrl = Utils.$("room-input-url").value.trim();
     const isPrivate = Utils.$("room-input-private").checked;
@@ -11781,7 +11900,23 @@ class RoomManager {
     }
   }
 
+  static async joinRoom(roomId) {
+    if (!roomId) return;
+    try {
+      import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(({ getDatabase, ref, get }) => {
+          get(ref(getDatabase(), `rooms/${roomId}`)).then(snap => {
+              if (snap.exists()) {
+                  this.attemptJoinRoom(roomId, snap.val());
+              } else {
+                  Utils.toast("Комната не найдена", "error");
+              }
+          });
+      });
+    } catch(e) {}
+  }
+
   static async attemptJoinRoom(roomId, roomData) {
+    if (!SecurityManager.validateAction("room_join", { count: 10, timeWindowMs: 60000 })) return;
     if (
       AppState.admin.settings.maintenanceMode &&
       !AdminPanel.isCurrentUserAdmin()
@@ -12318,8 +12453,10 @@ class RoomManager {
     }
 
     Utils.$("send-btn").onclick = async () => {
+      if (!SecurityManager.validateAction("chat_message", { count: 10, timeWindowMs: 10000 })) return;
       const input = Utils.$("chat-input");
       if (!input.value.trim() || !this.hasPerm("chat")) return;
+      if (!SecurityManager.validateTextPayload(input.value.trim(), 2000, "chat")) return;
       if (AdminPanel.isSystemReadOnlyForUser())
         return Utils.toast("Система в режиме ReadOnly", "error");
       if (
@@ -12429,6 +12566,7 @@ class RoomManager {
 
     document.querySelectorAll(".react-btn").forEach((btn) => {
       btn.onclick = () => {
+        if (!SecurityManager.validateAction("react_message", { count: 12, timeWindowMs: 5000 })) return;
         if (!this.hasPerm("reactions")) return;
         if (AdminPanel.isSystemReadOnlyForUser())
           return Utils.toast("Система в режиме ReadOnly", "error");
@@ -13616,6 +13754,7 @@ window.onload = () => {
     }
   };
 
+  initSystem("SecurityManager", () => SecurityManager.init());
   initSystem("TutorialManager", () => TutorialManager.init());
   initSystem("BadgeManager", () => BadgeManager.init());
   initSystem("GlobalThemeManager", () => GlobalThemeManager.init()); // [NEW]
