@@ -1,46 +1,7 @@
-import 'dotenv/config';
-import express from 'express';
-import cors from 'cors';
-import rateLimit from 'express-rate-limit';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import fs from 'fs';
-import {
-    CORS_ORIGIN,
-    RATE_LIMIT_MAX,
-    RATE_LIMIT_WINDOW_MS,
-    MAX_BODY_BYTES
-} from './src/config.js';
+const fs = require('fs');
+let code = fs.readFileSync('server.js', 'utf8');
 
-const app = express();
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-app.set('trust proxy', 1);
-app.disable('x-powered-by');
-
-app.use(cors({
-    origin: CORS_ORIGIN === '*' ? true : CORS_ORIGIN.split(',').map(s => s.trim()),
-    methods: ['GET', 'POST', 'OPTIONS'],
-    allowedHeaders: ['Content-Type']
-}));
-
-app.use(express.json({
-    limit: MAX_BODY_BYTES,
-    strict: true
-}));
-
-app.use('/api', rateLimit({
-    windowMs: RATE_LIMIT_WINDOW_MS,
-    max: RATE_LIMIT_MAX,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: {
-        success: false,
-        error: 'Too many requests',
-        code: 'RATE_LIMITED'
-    }
-}));
-
+const authCode = `
 import nodemailer from 'nodemailer';
 import admin from 'firebase-admin';
 
@@ -93,16 +54,16 @@ app.post('/api/auth/send-code', async (req, res) => {
             from: process.env.SMTP_USER || 'ваша_почта@gmail.com',
             to: email,
             subject: 'Код подтверждения COWIO',
-            html: `
+            html: \`
                 <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; background: #111; color: #fff; padding: 20px; border-radius: 10px;">
                     <h2 style="color: #ff8fc6; text-align: center;">COWIO</h2>
                     <p style="font-size: 16px;">Ваш код подтверждения:</p>
                     <div style="font-size: 32px; font-weight: bold; padding: 15px; background: #222; text-align: center; border-radius: 10px; letter-spacing: 5px;">
-                        ${code}
+                        \${code}
                     </div>
                     <p style="font-size: 12px; color: #888; margin-top: 20px;">Код действителен 10 минут. Если вы не запрашивали код, проигнорируйте это письмо.</p>
                 </div>
-            `
+            \`
         };
 
         await mailTransporter.sendMail(mailOptions);
@@ -166,31 +127,9 @@ app.post('/api/auth/change-email', async (req, res) => {
         res.status(500).json({ error: 'Ошибка Firebase (сервер не настроен должным образом)' });
     }
 });
+`;
 
+code = code.replace(/import \{ fileURLToPath \} from 'url';/, "import { fileURLToPath } from 'url';\nimport fs from 'fs';");
+code = code.replace(/app\.use\('\/api', rateLimit\(\{[\s\S]*?\}\)\);/, "$&\n" + authCode);
 
-// API temporary disabled due to missing files in repo
-app.get('/api/resolve-media', (req, res) => {
-    res.status(500).json({ error: 'Backend media resolver not found' });
-});
-
-const publicPath = __dirname;
-app.use(express.static(publicPath, { index: false })); // avoid index.html auto serving first if we want specific rules, or just allow it
-app.get(/.*/, (req, res) => {
-    res.sendFile(path.join(publicPath, 'index.html'));
-});
-
-app.use((err, req, res, next) => {
-    if (req.path.startsWith('/api')) {
-        return res.status(err.status || 500).json({
-            success: false,
-            error: err.message || 'Internal Server Error',
-            code: 'INTERNAL_ERROR'
-        });
-    }
-    return next(err);
-});
-
-const finalPort = 3000;
-app.listen(finalPort, '0.0.0.0', () => {
-    console.log(`[COWIO] Server listening on http://0.0.0.0:${finalPort}`);
-});
+fs.writeFileSync('server.js', code);

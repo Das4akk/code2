@@ -4228,8 +4228,7 @@
               <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Peeking%20Eye.webp" class="auth-pass-eye" onclick="togglePasswordVisibility(this, 'login-pass')">
             </div>
           </div>
-          <button type="button" id="btn-forgot-password" style="background:none; border:none; color:var(--text-muted); font-size:12px; cursor:pointer; text-decoration:underline; width:100%; margin-top:0px; margin-bottom:10px;">Забыли пароль?</button>
-      <button class="submit-btn" id="btn-do-login" style="margin-top: 10px;">
+          <button class="submit-btn" id="btn-do-login" style="margin-top: 10px;">
             Войти в систему <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Rocket.webp" style="width: 16px; height: 16px;">
           </button>
           <button id="btn-google-login" class="google-btn">
@@ -5312,8 +5311,7 @@
             </div>
 
             <div style="background: rgba(255,255,255,0.02); padding: 20px; border-radius: 16px; border: 1px solid var(--border-light); margin-bottom: 20px;">
-              <div style="background: rgba(255,255,255,0.02); padding: 20px; border-radius: 16px; border: 1px solid var(--border-light); margin-bottom: 20px;"><h3 style="font-size: 16px; margin-bottom: 15px; font-weight: 700;">Безопасность (Подготовка)</h3><div style="display:flex; flex-direction:column; gap:12px;"><input type="email" id="settings-new-email" placeholder="Новая почта" style="margin-bottom:0; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); padding:10px; border-radius:8px; color:#fff;" /><button class="primary-btn" id="btn-settings-change-email" style="font-size: 14px;">Сменить почту</button><hr style="border:none; border-top:1px solid rgba(255,255,255,0.05); margin: 5px 0;"><input type="password" id="settings-new-password" placeholder="Новый пароль" style="margin-bottom:0; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); padding:10px; border-radius:8px; color:#fff;" /><button class="primary-btn" id="btn-settings-change-password" style="font-size: 14px;">Сменить пароль</button></div></div>
-<h3 style="font-size: 16px; margin-bottom: 15px; font-weight: 700;">🔊 Уведомления</h3>
+              <h3 style="font-size: 16px; margin-bottom: 15px; font-weight: 700;">🔊 Уведомления</h3>
               <div style="display:flex; flex-direction:column; gap:12px;">
                   <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
                       <input type="checkbox" checked style="width:20px;height:20px;">
@@ -5449,7 +5447,7 @@
                 z-index: 5;
               "
             >
-              <div id="yt-player" style="width: 100%; height: 100%;"></div>
+              <div id="yt-player"></div>
             </div>
             <div
               id="room-video-overlay"
@@ -5918,7 +5916,7 @@
             </div>
           </div>
           <!-- // [NEW] SECOND HALF SELF PROFILE UI -->
-          <div class="partner-container" id="edit-partner-container" style="display:none !important;"></div>
+          <div class="partner-container" id="edit-partner-container"></div>
           <div class="love-requests-box" id="my-love-requests"></div>
           <div class="hashtag-input-wrap">
             <div
@@ -6097,7 +6095,7 @@
           "
         ></div>
         <!-- // [NEW] SECOND HALF PROFILE CONTAINER -->
-        <div class="partner-container" id="view-partner-container" style="display:none !important;"></div>
+        <div class="partner-container" id="view-partner-container"></div>
         <div class="hashtags-list" id="view-hashtags"></div>
 
         <div
@@ -6117,7 +6115,7 @@
           </button>
           <button
             class="danger-btn"
-            id="btn-remove-partner" style="display:none !important;"
+            id="btn-remove-partner"
             style="display: none"
           >
             Убрать вторую половинку
@@ -6128,7 +6126,7 @@
     </div>
 
     <!-- Partner relationship ambilight panel -->
-    <div class="modal" id="modal-partner-view" style="display:none !important;">
+    <div class="modal" id="modal-partner-view">
       <div class="modal-content partner-ambilight-modal">
         <div class="modal-drag-handle"></div>
         <div id="partner-ambilight-root"></div>

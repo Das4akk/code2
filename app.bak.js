@@ -1440,29 +1440,6 @@ class MediaResolverClient {
     return null;
   }
 
-  static extractVkId(url) {
-    if (!url || typeof url !== "string") return null;
-    let match = url.match(/vk\.(?:com|ru)\/(?:video|video_ext\.php\?).*(?:oid=|video-?)(-?\d+)[_]([A-Za-z0-9]+)/i);
-    if (!match) match = url.match(/vkvideo\.ru\/video-?(\d+)_([A-Za-z0-9]+)/i);
-    if (!match) match = url.match(/vk\.com\/video-?(\d+)_([A-Za-z0-9]+)/i);
-    if (match) return match[1] + '_' + match[2];
-    return null;
-  }
-
-  static extractVimeoId(url) {
-    if (!url || typeof url !== "string") return null;
-    const match = url.match(/vimeo\.com\/(?:video\/)?(\d+)/i);
-    if (match) return match[1];
-    return null;
-  }
-
-  static extractTwitchId(url) {
-    if (!url || typeof url !== "string") return null;
-    const match = url.match(/twitch\.tv\/([^?]+)/i);
-    if (match && match[1] !== 'videos') return match[1];
-    return null;
-  }
-
   static extractRutubeId(url) {
     if (!url || typeof url !== "string") return null;
     const match = url.match(
@@ -1599,54 +1576,12 @@ class MediaResolverClient {
         source: normalized,
         title: "Rutube Video",
         duration: 0,
-        thumbnail: `https://rutube.ru/api/video/${rutubeId}/thumbnail/?format=json`, 
+        thumbnail: `https://rutube.ru/api/video/${rutubeId}/thumbnail/?format=json`, // Placeholder, real thumbnail requires API call we skip for now
         platform: "rutube",
         isHls: false,
         ext: "rutube",
         resolvedAt: Date.now(),
       };
-    }
-
-    const vkId = this.extractVkId(normalized);
-    if (vkId) {
-      return {
-        source: `https://vk.com/video_ext.php?oid=${vkId.split('_')[0]}&id=${vkId.split('_')[1]}&hd=2&js_api=1`,
-        title: "VK Video",
-        duration: 0,
-        thumbnail: "",
-        platform: "vk",
-        isHls: false,
-        ext: "vk",
-        resolvedAt: Date.now()
-      }
-    }
-
-    const vimeoId = this.extractVimeoId(normalized);
-    if (vimeoId) {
-       return {
-         source: `https://player.vimeo.com/video/${vimeoId}?api=1`,
-         title: "Vimeo Video",
-         duration: 0,
-         thumbnail: "",
-         platform: "vimeo",
-         isHls: false,
-         ext: "vimeo",
-         resolvedAt: Date.now()
-       };
-    }
-
-    const twitchId = this.extractTwitchId(normalized);
-    if (twitchId) {
-       return {
-          source: `https://player.twitch.tv/?channel=${twitchId}&parent=localhost`,
-          title: "Twitch Stream",
-          duration: 0,
-          thumbnail: "",
-          platform: "twitch",
-          isHls: false,
-          ext: "twitch",
-          resolvedAt: Date.now()
-       };
     }
 
     const task = (async () => {
@@ -1749,115 +1684,6 @@ class MediaResolverClient {
     const resolvedAt = Number(room.videoResolvedAt || 0);
     if (!resolvedAt) return true;
     return Date.now() - resolvedAt > this.RESOLVE_STALE_MS;
-  }
-}
-
-class VkPlayerManager {
-  static player = null;
-  static iframe = null;
-
-  static destroy() {
-    if (this.iframe) { this.iframe.remove(); this.iframe = null; }
-    this.player = null;
-    window.removeEventListener("message", this.handleMessage);
-  }
-
-  static handleMessage = (e) => {
-    try {
-      const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
-      if (data.event === "timeupdate") this.currentTime = data.time;
-      if (data.event === "onStateChange" && this.onStateChange) this.onStateChange(data.state);
-    } catch {}
-  };
-
-  static initPlayer(src, onStateChangeCallback) {
-    this.destroy();
-    this.onStateChange = onStateChangeCallback;
-    const container = Utils.$("yt-player");
-    container.innerHTML = "";
-    this.iframe = document.createElement("iframe");
-    this.iframe.src = src;
-    this.iframe.frameBorder = "0";
-    this.iframe.allow = "autoplay; encrypted-media; fullscreen; picture-in-picture;";
-    this.iframe.style.width = "100%";
-    this.iframe.style.height = "100%";
-    container.appendChild(this.iframe);
-    window.addEventListener("message", this.handleMessage);
-
-    this.player = {
-      postMessage: (method, args) => {
-        if (this.iframe && this.iframe.contentWindow) {
-          this.iframe.contentWindow.postMessage(JSON.stringify({method}), "*");
-        }
-      }
-    };
-    return Promise.resolve(this.player);
-  }
-  static play() { if (this.player) this.player.postMessage("play"); }
-  static pause() { if (this.player) this.player.postMessage("pause"); }
-  static seek(time) { if(this.player) this.player.postMessage("seek", {time}); }
-  static getCurrentTime() { return this.currentTime || 0; }
-  static getState() { return 'unknown'; }
-}
-
-class VimeoPlayerManager {
-  static player = null;
-  static iframe = null;
-
-  static destroy() {
-    if (this.iframe) { this.iframe.remove(); this.iframe = null; }
-    this.player = null;
-    window.removeEventListener("message", this.handleMessage);
-  }
-
-  static handleMessage = (e) => {
-    try {
-      let data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
-      if (data.event === "playProgress") this.currentTime = data.data.seconds;
-    } catch {}
-  };
-
-  static initPlayer(src, onStateChangeCallback) {
-    this.destroy();
-    this.onStateChange = onStateChangeCallback;
-    const container = Utils.$("yt-player");
-    container.innerHTML = "";
-    this.iframe = document.createElement("iframe");
-    this.iframe.src = src;
-    this.iframe.frameBorder = "0";
-    this.iframe.allow = "autoplay; fullscreen; picture-in-picture";
-    this.iframe.style.width = "100%";
-    this.iframe.style.height = "100%";
-    container.appendChild(this.iframe);
-    window.addEventListener("message", this.handleMessage);
-
-    this.player = {
-      postMessage: (method, value) => {
-        if (this.iframe && this.iframe.contentWindow) {
-          this.iframe.contentWindow.postMessage(JSON.stringify({method, value}), "*");
-        }
-      }
-    };
-    return Promise.resolve(this.player);
-  }
-  static play() { if (this.player) this.player.postMessage("play"); }
-  static pause() { if (this.player) this.player.postMessage("pause"); }
-  static seek(time) { if(this.player) this.player.postMessage("seekTo", time); }
-  static getCurrentTime() { return this.currentTime || 0; }
-  static getState() { return 'unknown'; }
-}
-
-class TwitchPlayerManager {
-  static player = null;
-  static iframe = null;
-  static initPlayer(src) {
-    this.iframe = document.createElement("iframe");
-    this.iframe.src = src;
-    this.iframe.style.width = "100%"; this.iframe.style.height = "100%";
-    const container = Utils.$("yt-player"); container.innerHTML = "";
-    container.appendChild(this.iframe);
-    this.player = {};
-    return Promise.resolve(this.player);
   }
 }
 
@@ -2572,20 +2398,20 @@ class PartnerBondEngine {
     });
   }
 
-  static async sendKiss(fromUid, partnerUid) {
-    return this.recordMoment(fromUid, partnerUid, "kiss", {
+  static async sendKiss(fromUid, null) {
+    return this.recordMoment(fromUid, null, "kiss", {
       fromUid,
       label: "Воздушный поцелуй 💋",
       warmth: 10,
     });
   }
 
-  static async dailyCheckin(uid, partnerUid) {
+  static async dailyCheckin(uid, null) {
     const dateKey = this.dateKey();
     const checkinKey = `${dateKey}_${uid}`;
-    const bond = await this.getBond(uid, partnerUid);
+    const bond = await this.getBond(uid, null);
     if (bond.checkins?.[checkinKey]) return { ok: false, reason: "already" };
-    await this.recordMoment(uid, partnerUid, "checkin", {
+    await this.recordMoment(uid, null, "checkin", {
       fromUid: uid,
       label:
         'Отметили день вместе <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">',
@@ -2635,7 +2461,7 @@ class PartnerRelationshipPanel {
   static milestones = [7, 30, 100, 365];
   static lastContext = null;
 
-  static async open(ownerUid, partnerUid, myProf, theirProf, sinceTs) {
+  static async open(ownerUid, null, myProf, theirProf, sinceTs) {
     const root = Utils.$("partner-ambilight-root");
     const modal = Utils.$("modal-partner-view");
     if (!root || !modal) return;
@@ -2648,22 +2474,22 @@ class PartnerRelationshipPanel {
       ? new Date(sinceTs).toLocaleDateString("ru-RU")
       : "недавно";
 
-    let bond = await PartnerBondEngine.getBond(myUid, partnerUid);
+    let bond = 
     if (
       sinceTs &&
       daysTogether >= 7 &&
       Object.keys(bond.moments || {}).length === 0
     ) {
-      await PartnerBondEngine.onUnion(myUid, partnerUid, sinceTs);
-      bond = await PartnerBondEngine.getBond(myUid, partnerUid);
+      
+      bond = 
     }
 
     const trailDays = PartnerBondEngine.buildTrailDays(
       sinceTs || Date.now(),
       bond,
     );
-    const level = PartnerBondEngine.bondLevel(bond.totalWarmth);
-    const levelPct = PartnerBondEngine.levelProgress(bond.totalWarmth);
+    
+    
     const warmthFill = Math.min(
       100,
       Math.round((bond.totalWarmth % 120) / 1.2) ||
@@ -2678,11 +2504,11 @@ class PartnerRelationshipPanel {
       100,
       Math.round((daysTogether / nextMilestone) * 100),
     );
-    const canCheckin = PartnerBondEngine.canCheckinToday(bond, myUid);
+    
 
     this.lastContext = {
       ownerUid,
-      partnerUid,
+      null,
       myUid,
       myProf,
       theirProf,
@@ -2886,11 +2712,11 @@ class PartnerRelationshipPanel {
           }, 50);
           setTimeout(() => heart.remove(), 1600);
         }
-        await PartnerBondEngine.sendKiss(ctx.myUid, ctx.partnerUid);
+        
         Utils.toast("Поцелуй отправлен — связь стала теплее");
         await this.open(
           ctx.ownerUid,
-          ctx.partnerUid,
+          ctx.null,
           ctx.myProf,
           ctx.theirProf,
           ctx.sinceTs,
@@ -2903,14 +2729,14 @@ class PartnerRelationshipPanel {
       checkinBtn.onclick = async () => {
         const res = await PartnerBondEngine.dailyCheckin(
           ctx.myUid,
-          ctx.partnerUid,
+          ctx.null,
         );
         if (!res.ok)
           return Utils.toast("Вы уже отметили сегодняшний день", "info");
         Utils.toast("День отмечен — +тепло к связи");
         await this.open(
           ctx.ownerUid,
-          ctx.partnerUid,
+          ctx.null,
           ctx.myProf,
           ctx.theirProf,
           ctx.sinceTs,
@@ -4937,120 +4763,6 @@ class AuthManager {
       if (leftReg) leftReg.style.display = 'block';
     };
 
-    
-    if (Utils.$("btn-forgot-password")) {
-      Utils.$("btn-forgot-password").onclick = async () => {
-        const email = Utils.$("login-email").value.trim();
-        if(!email) return Utils.toast("Введите почту для сброса", "error");
-        
-        Utils.toast("Отправка кода...", "info");
-        try {
-            const apiBase = typeof window !== "undefined" && window.COWIO_MEDIA_API ? String(window.COWIO_MEDIA_API).replace(/\/$/, "") : "";
-            const res = await fetch(`${apiBase}/api/auth/send-code`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email })
-            });
-            const data = await res.json();
-            if (!data.success) throw new Error(data.error);
-
-            const code = await Utils.prompt("Код отправлен на " + email + ". Введите 6-значный код из письма:");
-            if (!code) return Utils.toast("Сброс отменен", "error");
-
-            const newPassword = await Utils.prompt("Введите новый пароль (минимум 6 символов):");
-            if (!newPassword || newPassword.length < 6) return Utils.toast("Пароль слишком короткий или сброс отменен", "error");
-
-            const resetRes = await fetch(`${apiBase}/api/auth/reset-password`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, code, newPassword })
-            });
-
-            const resetData = await resetRes.json();
-            if (!resetData.success) throw new Error(resetData.error);
-
-            Utils.toast("Пароль успешно изменен! Теперь вы можете войти.", "success");
-        } catch (e) {
-            Utils.toast(e.message || "Ошибка сброса", "error");
-        }
-      };
-    }
-
-    if (Utils.$("btn-settings-change-email")) {
-      Utils.$("btn-settings-change-email").onclick = async () => {
-        const newEmail = Utils.$("settings-new-email").value.trim();
-        if(!newEmail) return Utils.toast("Введите новую почту", "error");
-        if(!AppState.currentUser || !AppState.currentUser.email) return Utils.toast("Вы не авторизованы", "error");
-
-        Utils.toast("Отправка кода на " + newEmail + "...", "info");
-        try {
-            const apiBase = typeof window !== "undefined" && window.COWIO_MEDIA_API ? String(window.COWIO_MEDIA_API).replace(/\/$/, "") : "";
-            const res = await fetch(`${apiBase}/api/auth/send-code`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: newEmail })
-            });
-            const data = await res.json();
-            if (!data.success) throw new Error(data.error);
-
-            const code = await Utils.prompt("Введите 6-значный код из письма на " + newEmail + ":");
-            if (!code) return;
-
-            const changeRes = await fetch(`${apiBase}/api/auth/change-email`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ oldEmail: AppState.currentUser.email, newEmail, code })
-            });
-
-            const changeData = await changeRes.json();
-            if (!changeData.success) throw new Error(changeData.error);
-
-            Utils.$("settings-new-email").value = "";
-            Utils.toast("Почта успешно изменена! Рекомендуем перезайти в аккаунт.", "success");
-        } catch (e) {
-            Utils.toast(e.message || "Ошибка", "error");
-        }
-      }
-    }
-
-    if (Utils.$("btn-settings-change-password")) {
-      Utils.$("btn-settings-change-password").onclick = async () => {
-        const newPassword = Utils.$("settings-new-password").value.trim();
-        if(!newPassword || newPassword.length < 6) return Utils.toast("Введите новый пароль (не менее 6 символов)", "error");
-        if(!AppState.currentUser || !AppState.currentUser.email) return Utils.toast("Вы не авторизованы", "error");
-        const email = AppState.currentUser.email;
-
-        Utils.toast("Отправка кода на вашу текущую почту...", "info");
-        try {
-            const apiBase = typeof window !== "undefined" && window.COWIO_MEDIA_API ? String(window.COWIO_MEDIA_API).replace(/\/$/, "") : "";
-            const res = await fetch(`${apiBase}/api/auth/send-code`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email })
-            });
-            const data = await res.json();
-            if (!data.success) throw new Error(data.error);
-
-            const code = await Utils.prompt("Введите 6-значный код из письма (" + email + "):");
-            if (!code) return;
-
-            const resetRes = await fetch(`${apiBase}/api/auth/reset-password`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, code, newPassword })
-            });
-
-            const resetData = await resetRes.json();
-            if (!resetData.success) throw new Error(resetData.error);
-
-            Utils.$("settings-new-password").value = "";
-            Utils.toast("Пароль успешно изменен!", "success");
-        } catch (e) {
-            Utils.toast(e.message || "Ошибка", "error");
-        }
-      }
-    }
-
     Utils.$("btn-do-login").onclick = async () => {
       if (!SecurityManager.validateAction("auth_login", { count: 3, timeWindowMs: 30000 })) return;
       const email = Utils.$("login-email").value.trim();
@@ -5741,7 +5453,8 @@ class ProfileManager {
       );
     }
 
-     // [UPDATE]
+    if (profile?.partner)
+      badges.push(`<span class="partner-badge">Пара</span>`); // [UPDATE]
     return badges.join(" "); // [UPDATE]
   }
 
@@ -6570,7 +6283,7 @@ class ProfileManager {
 
   static async renderPartnerContainer(
     containerId,
-    partnerUid,
+    null,
     canRemove = false,
     ownerUid = null,
   ) {
@@ -6579,12 +6292,12 @@ class ProfileManager {
     if (!container) return; // [NEW]
     container.classList.remove("active"); // [NEW]
     container.innerHTML = ""; // [NEW]
-    if (!partnerUid) {
+    if (!null) {
       container.onclick = null; // [PATCH]
       container.style.cursor = "default";
       return;
     } // [NEW]
-    const partnerProfile = await this.loadUser(partnerUid); // [NEW]
+    const partnerProfile = await this.loadUser(null); // [NEW]
     if (!partnerProfile) return; // [NEW]
     const sinceSnap = ownerUid
       ? await get(ref(db, `users/${ownerUid}/partnerSince`))
@@ -6597,9 +6310,9 @@ class ProfileManager {
       ? Math.max(1, Math.ceil((Date.now() - sinceTs) / 86400000))
       : 0; // [NEW]
     let bondMeta = "";
-    if (ownerUid && !String(partnerUid).startsWith("custom_partner_")) {
-      const bond = await PartnerBondEngine.getBond(ownerUid, partnerUid);
-      const lvl = PartnerBondEngine.bondLevel(bond.totalWarmth);
+    if (ownerUid && !String(null).startsWith("custom_partner_")) {
+      const bond = 
+      
       bondMeta = ` · ур. ${lvl}${(bond.streak && bond.streak > 1) ? ` · <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">${bond.streak}` : ""}`;
     }
     container.innerHTML = `
@@ -6617,7 +6330,7 @@ class ProfileManager {
     container.style.cursor = "pointer";
     container.onclick = (e) => {
       if (!e.target.closest("button")) {
-        this.openPartnerModal(ownerUid || partnerUid, partnerUid);
+        this.openPartnerModal(ownerUid || null, null);
       }
     };
 
@@ -6625,20 +6338,20 @@ class ProfileManager {
     if (removeBtn)
       removeBtn.onclick = (e) => {
         e.stopPropagation();
-        this.removePartner(partnerUid);
+        this.removePartner(null);
       }; // [NEW]
   } // [NEW]
 
-  static async openPartnerModal(ownerUid, partnerUid) {
+  static async openPartnerModal(ownerUid, null) {
     const myProf = await this.loadUser(ownerUid);
-    const theirProf = await this.loadUser(partnerUid);
+    const theirProf = await this.loadUser(null);
     if (!myProf || !theirProf) return;
 
     const sinceSnap = await get(ref(db, `users/${ownerUid}/partnerSince`));
     const sinceTs = sinceSnap?.exists() ? Number(sinceSnap.val()) : 0;
     await PartnerRelationshipPanel.open(
       ownerUid,
-      partnerUid,
+      null,
       myProf,
       theirProf,
       sinceTs,
@@ -6647,10 +6360,10 @@ class ProfileManager {
 
   static async renderMyPartnerBox() {
     // [NEW]
-    const partnerUid = await this.getPartnerUid(AppState.currentUser?.uid); // [NEW]
+    const null = await this.getPartnerUid(AppState.currentUser?.uid); // [NEW]
     await this.renderPartnerContainer(
       "edit-partner-container",
-      partnerUid,
+      null,
       true,
       AppState.currentUser?.uid,
     ); // [UPDATE]
@@ -6740,40 +6453,40 @@ class ProfileManager {
     Utils.toast("Предложение отправлено"); // [NEW]
   } // [NEW]
 
-  static async handleLoveRequest(partnerUid, accept) {
+  static async handleLoveRequest(null, accept) {
     // [NEW]
     const myUid = AppState.currentUser?.uid; // [NEW]
-    if (!myUid || !partnerUid) return; // [NEW]
+    if (!myUid || !null) return; // [NEW]
     const updates = {}; // [NEW]
     let partnerSince = Date.now(); // [NEW]
     if (accept) {
       // [NEW]
       const friendSnap = await get(
-        ref(db, `users/${myUid}/friends/${partnerUid}`),
+        ref(db, `users/${myUid}/friends/${null}`),
       ); // [NEW]
       if (!friendSnap.exists() || friendSnap.val().status !== "accepted")
         return Utils.toast("Вторая половинка доступна только друзьям", "error"); // [NEW]
       const [myPartnerSnap, targetPartnerSnap] = await Promise.all([
         // [NEW]
         get(ref(db, `users/${myUid}/partner`)), // [NEW]
-        get(ref(db, `users/${partnerUid}/partner`)), // [NEW]
+        get(ref(db, `users/${null}/partner`)), // [NEW]
       ]); // [NEW]
       if (myPartnerSnap.exists() || targetPartnerSnap.exists()) {
         // [NEW]
-        await remove(ref(db, `users/${myUid}/loveRequests/${partnerUid}`)); // [NEW]
+        await remove(ref(db, `users/${myUid}/loveRequests/${null}`)); // [NEW]
         await this.renderLoveRequests(); // [NEW]
         return Utils.toast("У кого-то уже есть вторая половинка", "error"); // [NEW]
       } // [NEW]
       partnerSince = Date.now(); // [NEW]
-      updates[`users/${myUid}/partner`] = partnerUid; // [NEW]
-      updates[`users/${partnerUid}/partner`] = myUid; // [NEW]
+      updates[`users/${myUid}/partner`] = null; // [NEW]
+      updates[`users/${null}/partner`] = myUid; // [NEW]
       updates[`users/${myUid}/partnerSince`] = partnerSince; // [NEW]
-      updates[`users/${partnerUid}/partnerSince`] = partnerSince; // [NEW]
+      updates[`users/${null}/partnerSince`] = partnerSince; // [NEW]
     } // [NEW]
-    updates[`users/${myUid}/loveRequests/${partnerUid}`] = null; // [NEW]
+    updates[`users/${myUid}/loveRequests/${null}`] = null; // [NEW]
     await update(ref(db), updates); // [NEW]
     if (accept)
-      await PartnerBondEngine.onUnion(myUid, partnerUid, partnerSince); // [NEW]
+       // [NEW]
     Utils.toast(
       accept ? "Вторая половинка добавлена" : "Предложение отклонено",
     ); // [NEW]
@@ -6781,11 +6494,11 @@ class ProfileManager {
     await this.renderLoveRequests(); // [NEW]
   } // [NEW]
 
-  static async removePartner(partnerUid = null) {
+  static async removePartner(null = null) {
     // [NEW]
     const myUid = AppState.currentUser?.uid; // [NEW]
     if (!myUid) return; // [NEW]
-    const currentPartnerUid = partnerUid || (await this.getPartnerUid(myUid)); // [NEW]
+    const currentPartnerUid = null || (await this.getPartnerUid(myUid)); // [NEW]
     if (!currentPartnerUid) return; // [NEW]
     const updates = {}; // [NEW]
     updates[`users/${myUid}/partner`] = null; // [NEW]
@@ -6823,17 +6536,17 @@ class ProfileManager {
         get(ref(db, `users/${targetUid}/loveRequests/${myUid}`)), // [NEW]
         get(ref(db, `users/${myUid}/loveRequests/${targetUid}`)), // [NEW]
       ]); // [NEW]
-    const myPartnerUid = myPartnerSnap.exists() ? myPartnerSnap.val() : null; // [NEW]
-    const targetPartnerUid = targetPartnerSnap.exists()
+    const null = myPartnerSnap.exists() ? myPartnerSnap.val() : null; // [NEW]
+    const null = targetPartnerSnap.exists()
       ? targetPartnerSnap.val()
       : null; // [NEW]
-    if (myPartnerUid === targetUid) {
+    if (null === targetUid) {
       // [NEW]
       removeBtn.style.display = "block"; // [NEW]
       removeBtn.onclick = () => this.removePartner(targetUid); // [NEW]
       return; // [NEW]
     } // [NEW]
-    if (!isFriend || myPartnerUid || targetPartnerUid) return; // [NEW]
+    if (!isFriend || null || null) return; // [NEW]
     loveBtn.style.display = "block"; // [NEW]
     if (incomingSnap.exists()) {
       // [NEW]
@@ -7245,9 +6958,9 @@ class ProfileManager {
       }
 
       // Partner dynamic badges
-      const partnerUid = await this.getPartnerUid(targetUid);
-      if (partnerUid) {
-        const partnerProfile = await this.loadUser(partnerUid);
+      const null = await this.getPartnerUid(targetUid);
+      if (null) {
+        const partnerProfile = await this.loadUser(null);
         const partnerName = partnerProfile ? partnerProfile.name : "Неизвестно";
         const sinceSnap = await get(ref(db, `users/${targetUid}/partnerSince`));
         const sinceTs = sinceSnap.exists()
@@ -7526,10 +7239,10 @@ class ProfileManager {
       Utils.$("modal-view-profile")?.querySelector(".modal-content"),
       profile.background,
     ); // [NEW]
-    const targetPartnerUid = await this.getPartnerUid(targetUid); // [NEW]
+    const null = await this.getPartnerUid(targetUid); // [NEW]
     await this.renderPartnerContainer(
       "view-partner-container",
-      targetPartnerUid,
+      null,
       targetUid === AppState.currentUser.uid,
       targetUid,
     ); // [UPDATE]
@@ -8249,7 +7962,7 @@ class DirectMessages {
       .filter(([id, c]) => c.participants && c.participants[myUid])
       .map(([id, c]) => ({
         id,
-        partnerUid:
+        null:
           Object.keys(c.participants).find((x) => x !== myUid) || myUid,
         lastMsg: c.lastMessage || {},
         updatedAt: c.updatedAt || 0,
@@ -8260,7 +7973,7 @@ class DirectMessages {
     );
 
     const combinedUids = new Set([
-      ...activeChats.map((c) => c.partnerUid),
+      ...activeChats.map((c) => c.null),
       ...friendsKeys,
       activeTargetUid,
     ]);
@@ -8272,7 +7985,7 @@ class DirectMessages {
       const profile = await ProfileManager.loadUser(uid);
       if (!profile) continue;
 
-      const chatObj = activeChats.find((c) => c.partnerUid === uid);
+      const chatObj = activeChats.find((c) => c.null === uid);
       const ts = chatObj ? chatObj.updatedAt : 0;
       let lastText = "";
       if (chatObj && chatObj.lastMsg) {
@@ -11200,7 +10913,7 @@ class AdminPanel {
       };
     }
 
-    Utils.$("btn-admin-set-partner").onclick = () => this.forceSetPartner(uid);
+    Utils.$("btn-admin-set-partner").onclick = () => {};
     Utils.$("btn-admin-reset-user").onclick = () => this.resetUserProfile();
     Utils.$("btn-admin-delete-user").onclick = () =>
       this.deleteUserCompletely(uid);
@@ -11283,7 +10996,7 @@ class AdminPanel {
     }
 
     await update(ref(db), updates);
-    if (!fakeName) await PartnerBondEngine.onUnion(uid, companionUid, tsSince);
+    if (!fakeName) 
     Utils.toast("Пара успешно изменена (СОЗДАТЕЛЬ)");
     this.loadUserEditor(uid);
   }

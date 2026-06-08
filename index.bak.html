@@ -1969,398 +1969,7 @@
         vertical-align: middle;
         margin-left: 6px;
       } /* // [NEW] */
-      /* Partner ambilight relationship panel */
-      #modal-partner-view .partner-ambilight-modal {
-        width: min(520px, 96vw);
-        padding: 0;
-        background: transparent;
-        border: none;
-        box-shadow: none;
-        overflow: visible;
-      }
-      #modal-partner-view .partner-ambilight-panel {
-        position: relative;
-        padding: 22px 20px 18px;
-        border-radius: 22px;
-        border: 1px solid rgba(255, 255, 255, 0.22);
-        background: linear-gradient(
-          135deg,
-          rgba(255, 255, 255, 0.14) 0%,
-          rgba(255, 255, 255, 0.04) 42%,
-          rgba(120, 80, 160, 0.08) 100%
-        );
-        backdrop-filter: blur(22px) saturate(1.35);
-        -webkit-backdrop-filter: blur(22px) saturate(1.35);
-        box-shadow:
-          0 24px 60px rgba(8, 4, 18, 0.55),
-          inset 0 1px 0 rgba(255, 255, 255, 0.25);
-        color: #f8f4ff;
-        overflow: hidden;
-      }
-      .partner-ambilight-glow {
-        position: absolute;
-        inset: -30% -20%;
-        background:
-          radial-gradient(
-            circle at 20% 20%,
-            rgba(255, 120, 190, calc(0.22 + var(--together-pct) * 0.004)) 0%,
-            transparent 55%
-          ),
-          radial-gradient(
-            circle at 80% 70%,
-            rgba(130, 180, 255, 0.2) 0%,
-            transparent 50%
-          );
-        pointer-events: none;
-        animation: partnerGlowDrift 12s ease-in-out infinite;
-      }
-      .partner-ambilight-shine {
-        position: absolute;
-        top: 0;
-        left: -40%;
-        width: 45%;
-        height: 100%;
-        background: linear-gradient(
-          105deg,
-          transparent,
-          rgba(255, 255, 255, 0.12),
-          transparent
-        );
-        transform: skewX(-18deg);
-        animation: partnerShine 7s ease-in-out infinite;
-        pointer-events: none;
-      }
-      @keyframes partnerGlowDrift {
-        0%,
-        100% {
-          transform: translate(0, 0) scale(1);
-        }
-        50% {
-          transform: translate(3%, -2%) scale(1.04);
-        }
-      }
-      @keyframes partnerShine {
-        0%,
-        100% {
-          left: -50%;
-          opacity: 0;
-        }
-        45% {
-          opacity: 1;
-        }
-        55% {
-          left: 120%;
-          opacity: 0;
-        }
-      }
-      .partner-ambilight-header {
-        position: relative;
-        z-index: 2;
-        text-align: center;
-        margin-bottom: 16px;
-      }
-      .partner-ambilight-couple {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 14px;
-        margin-bottom: 12px;
-      }
-      .partner-ambilight-avatar {
-        width: 72px;
-        height: 72px;
-        border-radius: 50%;
-        border: 2px solid rgba(255, 180, 220, 0.55);
-        background: rgba(0, 0, 0, 0.35);
-        overflow: visible;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 26px;
-        font-weight: 800;
-        box-shadow: 0 8px 24px rgba(255, 100, 180, 0.25);
-      }
-      .partner-ambilight-link {
-        position: relative;
-        width: 42px;
-        height: 42px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      .partner-link-pulse {
-        position: absolute;
-        inset: 0;
-        border-radius: 50%;
-        border: 1px solid rgba(255, 150, 210, 0.5);
-        animation: pulseHeart 1.8s ease-in-out infinite;
-      }
-      .partner-link-icon {
-        font-size: 22px;
-        z-index: 1;
-        filter: drop-shadow(0 0 8px rgba(255, 120, 190, 0.8));
-      }
-      .partner-ambilight-titles h2 {
-        margin: 0 0 6px;
-        font-size: 20px;
-        font-weight: 900;
-        letter-spacing: -0.02em;
-        color: #fff;
-      }
-      .partner-ambilight-titles p {
-        margin: 0;
-        font-size: 13px;
-        color: rgba(255, 255, 255, 0.72);
-      }
-      .partner-ambilight-metrics {
-        position: relative;
-        z-index: 2;
-        display: grid;
-        grid-template-columns: 72px 1fr 1fr;
-        grid-template-rows: auto auto;
-        gap: 8px;
-        margin-bottom: 14px;
-      }
-      .partner-ambilight-metrics .milestone-card {
-        grid-column: 2 / span 2;
-      }
-      .partner-metric-ring {
-        position: relative;
-        width: 72px;
-        height: 72px;
-      }
-      .partner-metric-ring svg {
-        width: 72px;
-        height: 72px;
-        transform: rotate(-90deg);
-      }
-      .partner-metric-ring .ring-bg {
-        fill: none;
-        stroke: rgba(255, 255, 255, 0.12);
-        stroke-width: 6;
-      }
-      .partner-metric-ring .ring-val {
-        fill: none;
-        stroke: url(#partnerRingGrad);
-        stroke-width: 6;
-        stroke-linecap: round;
-        transition: stroke-dasharray 0.6s ease;
-      }
-      .partner-metric-ring .ring-label {
-        position: absolute;
-        inset: 0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        font-size: 10px;
-        color: rgba(255, 255, 255, 0.75);
-      }
-      .partner-metric-ring .ring-label strong {
-        font-size: 15px;
-        color: #fff;
-        line-height: 1;
-      }
-      .partner-metric-card {
-        padding: 10px 12px;
-        border-radius: 14px;
-        background: rgba(255, 255, 255, 0.07);
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        min-height: 72px;
-        justify-content: center;
-      }
-      .partner-metric-card .metric-label {
-        font-size: 10px;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        color: rgba(255, 255, 255, 0.55);
-        font-weight: 700;
-      }
-      .partner-metric-card strong {
-        font-size: 14px;
-        font-weight: 800;
-        color: #fff;
-      }
-      .milestone-card .milestone-bar {
-        height: 5px;
-        border-radius: 999px;
-        background: rgba(255, 255, 255, 0.1);
-        overflow: hidden;
-      }
-      .milestone-card .milestone-bar span {
-        display: block;
-        height: 100%;
-        border-radius: inherit;
-        background: linear-gradient(90deg, #ff8cc8, #b49cff);
-        transition: width 0.5s ease;
-      }
-      .partner-path-section {
-        position: relative;
-        z-index: 2;
-        padding: 12px;
-        border-radius: 16px;
-        background: rgba(0, 0, 0, 0.22);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        margin-bottom: 14px;
-      }
-      .partner-path-head {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 8px;
-        font-size: 12px;
-        font-weight: 800;
-        color: rgba(255, 255, 255, 0.88);
-      }
-      .partner-path-hint {
-        font-size: 11px;
-        color: rgba(255, 255, 255, 0.45);
-        font-weight: 600;
-      }
-      .partner-path-scroll {
-        max-height: 220px;
-        overflow-y: auto;
-        overflow-x: hidden;
-        padding: 4px 2px 8px;
-      }
-      .partner-zigzag-svg {
-        width: 100%;
-        height: auto;
-        display: block;
-      }
-      .partner-path-line {
-        filter: drop-shadow(0 0 6px rgba(255, 140, 200, 0.45));
-      }
-      .partner-path-node {
-        cursor: pointer;
-      }
-      .partner-path-node .node-halo {
-        fill: rgba(255, 150, 210, calc(0.15 * var(--node-glow)));
-        stroke: rgba(255, 180, 230, 0.35);
-        stroke-width: 1;
-        transition: all 0.25s ease;
-      }
-      .partner-path-node .node-core {
-        fill: rgba(255, 200, 230, calc(0.5 + 0.5 * var(--node-glow)));
-        stroke: #fff;
-        stroke-width: 1.5;
-        transition: all 0.25s ease;
-      }
-      .partner-path-node:hover .node-halo,
-      .partner-path-node.is-pinned .node-halo {
-        fill: rgba(255, 160, 220, 0.35);
-        r: 18;
-      }
-      .partner-path-node:hover .node-core,
-      .partner-path-node.is-pinned .node-core {
-        r: 9;
-        fill: #fff;
-      }
-      .partner-path-node.is-today .node-core {
-        fill: #ffe0f2;
-        filter: drop-shadow(0 0 8px rgba(255, 120, 200, 0.9));
-      }
-      .partner-path-node.is-milestone .node-star {
-        fill: #ffe9a8;
-        font-size: 11px;
-      }
-      .partner-path-tooltip {
-        position: absolute;
-        z-index: 5;
-        min-width: 160px;
-        padding: 10px 12px;
-        border-radius: 12px;
-        background: rgba(12, 8, 22, 0.92);
-        border: 1px solid rgba(255, 180, 230, 0.35);
-        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
-        font-size: 12px;
-        pointer-events: none;
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-      }
-      .partner-path-tooltip strong {
-        color: #fff;
-        font-size: 12px;
-      }
-      .partner-path-tooltip .tip-warmth {
-        color: #9dffd0;
-      }
-      .partner-path-tooltip .tip-moments {
-        color: #c4b5fd;
-      }
-      .partner-path-tooltip .tip-last {
-        color: rgba(255, 255, 255, 0.72);
-        font-size: 11px;
-      }
-      .partner-checkin-btn {
-        flex: 1;
-        padding: 12px 14px;
-        border-radius: 14px;
-        border: 1px solid rgba(180, 220, 255, 0.35);
-        background: linear-gradient(
-          135deg,
-          rgba(120, 180, 255, 0.22),
-          rgba(180, 130, 255, 0.18)
-        );
-        color: #fff;
-        font-weight: 800;
-        font-size: 13px;
-      }
-      .partner-checkin-btn:disabled {
-        opacity: 0.45;
-        cursor: default;
-      }
-      .partner-ambilight-footer {
-        flex-wrap: wrap;
-      }
-      .partner-path-node.has-warmth .node-core {
-        filter: drop-shadow(0 0 6px rgba(255, 150, 210, 0.55));
-      }
-      .partner-path-empty {
-        text-align: center;
-        padding: 24px 12px;
-        color: rgba(255, 255, 255, 0.55);
-        font-size: 13px;
-      }
-      .partner-ambilight-footer {
-        position: relative;
-        z-index: 2;
-        display: flex;
-        gap: 8px;
-      }
-      .partner-kiss-btn {
-        flex: 1;
-        padding: 12px 16px;
-        border-radius: 14px;
-        border: 1px solid rgba(255, 180, 220, 0.45);
-        background: linear-gradient(
-          135deg,
-          rgba(255, 120, 180, 0.35),
-          rgba(200, 100, 255, 0.28)
-        );
-        color: #fff;
-        font-weight: 800;
-        font-size: 14px;
-        box-shadow: 0 8px 24px rgba(255, 90, 160, 0.25);
-        transition:
-          transform 0.2s ease,
-          box-shadow 0.2s ease;
-      }
-      .partner-kiss-btn:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 12px 28px rgba(255, 90, 160, 0.38);
-      }
-      .partner-ambilight-footer .secondary-btn {
-        width: auto;
-        padding: 12px 16px;
-        background: rgba(255, 255, 255, 0.08);
-        border-color: rgba(255, 255, 255, 0.2);
-        color: #fff;
-      }
+      
       body.theme-light-room #particle-canvas {
         filter: brightness(0);
         opacity: 0.38;
@@ -4228,8 +3837,7 @@
               <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Peeking%20Eye.webp" class="auth-pass-eye" onclick="togglePasswordVisibility(this, 'login-pass')">
             </div>
           </div>
-          <button type="button" id="btn-forgot-password" style="background:none; border:none; color:var(--text-muted); font-size:12px; cursor:pointer; text-decoration:underline; width:100%; margin-top:0px; margin-bottom:10px;">Забыли пароль?</button>
-      <button class="submit-btn" id="btn-do-login" style="margin-top: 10px;">
+          <button class="submit-btn" id="btn-do-login" style="margin-top: 10px;">
             Войти в систему <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Rocket.webp" style="width: 16px; height: 16px;">
           </button>
           <button id="btn-google-login" class="google-btn">
@@ -5312,8 +4920,7 @@
             </div>
 
             <div style="background: rgba(255,255,255,0.02); padding: 20px; border-radius: 16px; border: 1px solid var(--border-light); margin-bottom: 20px;">
-              <div style="background: rgba(255,255,255,0.02); padding: 20px; border-radius: 16px; border: 1px solid var(--border-light); margin-bottom: 20px;"><h3 style="font-size: 16px; margin-bottom: 15px; font-weight: 700;">Безопасность (Подготовка)</h3><div style="display:flex; flex-direction:column; gap:12px;"><input type="email" id="settings-new-email" placeholder="Новая почта" style="margin-bottom:0; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); padding:10px; border-radius:8px; color:#fff;" /><button class="primary-btn" id="btn-settings-change-email" style="font-size: 14px;">Сменить почту</button><hr style="border:none; border-top:1px solid rgba(255,255,255,0.05); margin: 5px 0;"><input type="password" id="settings-new-password" placeholder="Новый пароль" style="margin-bottom:0; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); padding:10px; border-radius:8px; color:#fff;" /><button class="primary-btn" id="btn-settings-change-password" style="font-size: 14px;">Сменить пароль</button></div></div>
-<h3 style="font-size: 16px; margin-bottom: 15px; font-weight: 700;">🔊 Уведомления</h3>
+              <h3 style="font-size: 16px; margin-bottom: 15px; font-weight: 700;">🔊 Уведомления</h3>
               <div style="display:flex; flex-direction:column; gap:12px;">
                   <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
                       <input type="checkbox" checked style="width:20px;height:20px;">
@@ -5449,7 +5056,7 @@
                 z-index: 5;
               "
             >
-              <div id="yt-player" style="width: 100%; height: 100%;"></div>
+              <div id="yt-player"></div>
             </div>
             <div
               id="room-video-overlay"
@@ -5918,7 +5525,7 @@
             </div>
           </div>
           <!-- // [NEW] SECOND HALF SELF PROFILE UI -->
-          <div class="partner-container" id="edit-partner-container" style="display:none !important;"></div>
+          
           <div class="love-requests-box" id="my-love-requests"></div>
           <div class="hashtag-input-wrap">
             <div
@@ -6097,7 +5704,7 @@
           "
         ></div>
         <!-- // [NEW] SECOND HALF PROFILE CONTAINER -->
-        <div class="partner-container" id="view-partner-container" style="display:none !important;"></div>
+        
         <div class="hashtags-list" id="view-hashtags"></div>
 
         <div
@@ -6117,7 +5724,7 @@
           </button>
           <button
             class="danger-btn"
-            id="btn-remove-partner" style="display:none !important;"
+            id="btn-remove-partner"
             style="display: none"
           >
             Убрать вторую половинку
@@ -6128,12 +5735,7 @@
     </div>
 
     <!-- Partner relationship ambilight panel -->
-    <div class="modal" id="modal-partner-view" style="display:none !important;">
-      <div class="modal-content partner-ambilight-modal">
-        <div class="modal-drag-handle"></div>
-        <div id="partner-ambilight-root"></div>
-      </div>
-    </div>
+    
 
     <!-- Badge Details Modal -->
 

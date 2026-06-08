@@ -1440,29 +1440,6 @@ class MediaResolverClient {
     return null;
   }
 
-  static extractVkId(url) {
-    if (!url || typeof url !== "string") return null;
-    let match = url.match(/vk\.(?:com|ru)\/(?:video|video_ext\.php\?).*(?:oid=|video-?)(-?\d+)[_]([A-Za-z0-9]+)/i);
-    if (!match) match = url.match(/vkvideo\.ru\/video-?(\d+)_([A-Za-z0-9]+)/i);
-    if (!match) match = url.match(/vk\.com\/video-?(\d+)_([A-Za-z0-9]+)/i);
-    if (match) return match[1] + '_' + match[2];
-    return null;
-  }
-
-  static extractVimeoId(url) {
-    if (!url || typeof url !== "string") return null;
-    const match = url.match(/vimeo\.com\/(?:video\/)?(\d+)/i);
-    if (match) return match[1];
-    return null;
-  }
-
-  static extractTwitchId(url) {
-    if (!url || typeof url !== "string") return null;
-    const match = url.match(/twitch\.tv\/([^?]+)/i);
-    if (match && match[1] !== 'videos') return match[1];
-    return null;
-  }
-
   static extractRutubeId(url) {
     if (!url || typeof url !== "string") return null;
     const match = url.match(
@@ -1599,54 +1576,12 @@ class MediaResolverClient {
         source: normalized,
         title: "Rutube Video",
         duration: 0,
-        thumbnail: `https://rutube.ru/api/video/${rutubeId}/thumbnail/?format=json`, 
+        thumbnail: `https://rutube.ru/api/video/${rutubeId}/thumbnail/?format=json`, // Placeholder, real thumbnail requires API call we skip for now
         platform: "rutube",
         isHls: false,
         ext: "rutube",
         resolvedAt: Date.now(),
       };
-    }
-
-    const vkId = this.extractVkId(normalized);
-    if (vkId) {
-      return {
-        source: `https://vk.com/video_ext.php?oid=${vkId.split('_')[0]}&id=${vkId.split('_')[1]}&hd=2&js_api=1`,
-        title: "VK Video",
-        duration: 0,
-        thumbnail: "",
-        platform: "vk",
-        isHls: false,
-        ext: "vk",
-        resolvedAt: Date.now()
-      }
-    }
-
-    const vimeoId = this.extractVimeoId(normalized);
-    if (vimeoId) {
-       return {
-         source: `https://player.vimeo.com/video/${vimeoId}?api=1`,
-         title: "Vimeo Video",
-         duration: 0,
-         thumbnail: "",
-         platform: "vimeo",
-         isHls: false,
-         ext: "vimeo",
-         resolvedAt: Date.now()
-       };
-    }
-
-    const twitchId = this.extractTwitchId(normalized);
-    if (twitchId) {
-       return {
-          source: `https://player.twitch.tv/?channel=${twitchId}&parent=localhost`,
-          title: "Twitch Stream",
-          duration: 0,
-          thumbnail: "",
-          platform: "twitch",
-          isHls: false,
-          ext: "twitch",
-          resolvedAt: Date.now()
-       };
     }
 
     const task = (async () => {
@@ -1749,115 +1684,6 @@ class MediaResolverClient {
     const resolvedAt = Number(room.videoResolvedAt || 0);
     if (!resolvedAt) return true;
     return Date.now() - resolvedAt > this.RESOLVE_STALE_MS;
-  }
-}
-
-class VkPlayerManager {
-  static player = null;
-  static iframe = null;
-
-  static destroy() {
-    if (this.iframe) { this.iframe.remove(); this.iframe = null; }
-    this.player = null;
-    window.removeEventListener("message", this.handleMessage);
-  }
-
-  static handleMessage = (e) => {
-    try {
-      const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
-      if (data.event === "timeupdate") this.currentTime = data.time;
-      if (data.event === "onStateChange" && this.onStateChange) this.onStateChange(data.state);
-    } catch {}
-  };
-
-  static initPlayer(src, onStateChangeCallback) {
-    this.destroy();
-    this.onStateChange = onStateChangeCallback;
-    const container = Utils.$("yt-player");
-    container.innerHTML = "";
-    this.iframe = document.createElement("iframe");
-    this.iframe.src = src;
-    this.iframe.frameBorder = "0";
-    this.iframe.allow = "autoplay; encrypted-media; fullscreen; picture-in-picture;";
-    this.iframe.style.width = "100%";
-    this.iframe.style.height = "100%";
-    container.appendChild(this.iframe);
-    window.addEventListener("message", this.handleMessage);
-
-    this.player = {
-      postMessage: (method, args) => {
-        if (this.iframe && this.iframe.contentWindow) {
-          this.iframe.contentWindow.postMessage(JSON.stringify({method}), "*");
-        }
-      }
-    };
-    return Promise.resolve(this.player);
-  }
-  static play() { if (this.player) this.player.postMessage("play"); }
-  static pause() { if (this.player) this.player.postMessage("pause"); }
-  static seek(time) { if(this.player) this.player.postMessage("seek", {time}); }
-  static getCurrentTime() { return this.currentTime || 0; }
-  static getState() { return 'unknown'; }
-}
-
-class VimeoPlayerManager {
-  static player = null;
-  static iframe = null;
-
-  static destroy() {
-    if (this.iframe) { this.iframe.remove(); this.iframe = null; }
-    this.player = null;
-    window.removeEventListener("message", this.handleMessage);
-  }
-
-  static handleMessage = (e) => {
-    try {
-      let data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
-      if (data.event === "playProgress") this.currentTime = data.data.seconds;
-    } catch {}
-  };
-
-  static initPlayer(src, onStateChangeCallback) {
-    this.destroy();
-    this.onStateChange = onStateChangeCallback;
-    const container = Utils.$("yt-player");
-    container.innerHTML = "";
-    this.iframe = document.createElement("iframe");
-    this.iframe.src = src;
-    this.iframe.frameBorder = "0";
-    this.iframe.allow = "autoplay; fullscreen; picture-in-picture";
-    this.iframe.style.width = "100%";
-    this.iframe.style.height = "100%";
-    container.appendChild(this.iframe);
-    window.addEventListener("message", this.handleMessage);
-
-    this.player = {
-      postMessage: (method, value) => {
-        if (this.iframe && this.iframe.contentWindow) {
-          this.iframe.contentWindow.postMessage(JSON.stringify({method, value}), "*");
-        }
-      }
-    };
-    return Promise.resolve(this.player);
-  }
-  static play() { if (this.player) this.player.postMessage("play"); }
-  static pause() { if (this.player) this.player.postMessage("pause"); }
-  static seek(time) { if(this.player) this.player.postMessage("seekTo", time); }
-  static getCurrentTime() { return this.currentTime || 0; }
-  static getState() { return 'unknown'; }
-}
-
-class TwitchPlayerManager {
-  static player = null;
-  static iframe = null;
-  static initPlayer(src) {
-    this.iframe = document.createElement("iframe");
-    this.iframe.src = src;
-    this.iframe.style.width = "100%"; this.iframe.style.height = "100%";
-    const container = Utils.$("yt-player"); container.innerHTML = "";
-    container.appendChild(this.iframe);
-    this.player = {};
-    return Promise.resolve(this.player);
   }
 }
 
@@ -4937,120 +4763,6 @@ class AuthManager {
       if (leftReg) leftReg.style.display = 'block';
     };
 
-    
-    if (Utils.$("btn-forgot-password")) {
-      Utils.$("btn-forgot-password").onclick = async () => {
-        const email = Utils.$("login-email").value.trim();
-        if(!email) return Utils.toast("Введите почту для сброса", "error");
-        
-        Utils.toast("Отправка кода...", "info");
-        try {
-            const apiBase = typeof window !== "undefined" && window.COWIO_MEDIA_API ? String(window.COWIO_MEDIA_API).replace(/\/$/, "") : "";
-            const res = await fetch(`${apiBase}/api/auth/send-code`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email })
-            });
-            const data = await res.json();
-            if (!data.success) throw new Error(data.error);
-
-            const code = await Utils.prompt("Код отправлен на " + email + ". Введите 6-значный код из письма:");
-            if (!code) return Utils.toast("Сброс отменен", "error");
-
-            const newPassword = await Utils.prompt("Введите новый пароль (минимум 6 символов):");
-            if (!newPassword || newPassword.length < 6) return Utils.toast("Пароль слишком короткий или сброс отменен", "error");
-
-            const resetRes = await fetch(`${apiBase}/api/auth/reset-password`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, code, newPassword })
-            });
-
-            const resetData = await resetRes.json();
-            if (!resetData.success) throw new Error(resetData.error);
-
-            Utils.toast("Пароль успешно изменен! Теперь вы можете войти.", "success");
-        } catch (e) {
-            Utils.toast(e.message || "Ошибка сброса", "error");
-        }
-      };
-    }
-
-    if (Utils.$("btn-settings-change-email")) {
-      Utils.$("btn-settings-change-email").onclick = async () => {
-        const newEmail = Utils.$("settings-new-email").value.trim();
-        if(!newEmail) return Utils.toast("Введите новую почту", "error");
-        if(!AppState.currentUser || !AppState.currentUser.email) return Utils.toast("Вы не авторизованы", "error");
-
-        Utils.toast("Отправка кода на " + newEmail + "...", "info");
-        try {
-            const apiBase = typeof window !== "undefined" && window.COWIO_MEDIA_API ? String(window.COWIO_MEDIA_API).replace(/\/$/, "") : "";
-            const res = await fetch(`${apiBase}/api/auth/send-code`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: newEmail })
-            });
-            const data = await res.json();
-            if (!data.success) throw new Error(data.error);
-
-            const code = await Utils.prompt("Введите 6-значный код из письма на " + newEmail + ":");
-            if (!code) return;
-
-            const changeRes = await fetch(`${apiBase}/api/auth/change-email`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ oldEmail: AppState.currentUser.email, newEmail, code })
-            });
-
-            const changeData = await changeRes.json();
-            if (!changeData.success) throw new Error(changeData.error);
-
-            Utils.$("settings-new-email").value = "";
-            Utils.toast("Почта успешно изменена! Рекомендуем перезайти в аккаунт.", "success");
-        } catch (e) {
-            Utils.toast(e.message || "Ошибка", "error");
-        }
-      }
-    }
-
-    if (Utils.$("btn-settings-change-password")) {
-      Utils.$("btn-settings-change-password").onclick = async () => {
-        const newPassword = Utils.$("settings-new-password").value.trim();
-        if(!newPassword || newPassword.length < 6) return Utils.toast("Введите новый пароль (не менее 6 символов)", "error");
-        if(!AppState.currentUser || !AppState.currentUser.email) return Utils.toast("Вы не авторизованы", "error");
-        const email = AppState.currentUser.email;
-
-        Utils.toast("Отправка кода на вашу текущую почту...", "info");
-        try {
-            const apiBase = typeof window !== "undefined" && window.COWIO_MEDIA_API ? String(window.COWIO_MEDIA_API).replace(/\/$/, "") : "";
-            const res = await fetch(`${apiBase}/api/auth/send-code`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email })
-            });
-            const data = await res.json();
-            if (!data.success) throw new Error(data.error);
-
-            const code = await Utils.prompt("Введите 6-значный код из письма (" + email + "):");
-            if (!code) return;
-
-            const resetRes = await fetch(`${apiBase}/api/auth/reset-password`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, code, newPassword })
-            });
-
-            const resetData = await resetRes.json();
-            if (!resetData.success) throw new Error(resetData.error);
-
-            Utils.$("settings-new-password").value = "";
-            Utils.toast("Пароль успешно изменен!", "success");
-        } catch (e) {
-            Utils.toast(e.message || "Ошибка", "error");
-        }
-      }
-    }
-
     Utils.$("btn-do-login").onclick = async () => {
       if (!SecurityManager.validateAction("auth_login", { count: 3, timeWindowMs: 30000 })) return;
       const email = Utils.$("login-email").value.trim();
@@ -5741,7 +5453,8 @@ class ProfileManager {
       );
     }
 
-     // [UPDATE]
+    if (profile?.partner)
+      badges.push(`<span class="partner-badge">Пара</span>`); // [UPDATE]
     return badges.join(" "); // [UPDATE]
   }
 
