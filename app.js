@@ -4951,7 +4951,9 @@ class AuthManager {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email })
             });
-            const data = await res.json();
+            let text = await res.text();
+            let data;
+            try { data = JSON.parse(text); } catch(err) { throw new Error("API send-code failed (HTTP " + res.status + "): " + (text ? text : "Empty body")); }
             if (!data.success) throw new Error(data.error);
 
             const code = await Utils.prompt("Код отправлен на " + email + ". Введите 6-значный код из письма:");
@@ -4965,8 +4967,9 @@ class AuthManager {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, code, newPassword })
             });
-
-            const resetData = await resetRes.json();
+            let resetText = await resetRes.text();
+            let resetData;
+            try { resetData = JSON.parse(resetText); } catch(err) { throw new Error("API reset-password failed (HTTP " + resetRes.status + "): " + (resetText ? resetText : "Empty body")); }
             if (!resetData.success) throw new Error(resetData.error);
 
             Utils.toast("Пароль успешно изменен! Теперь вы можете войти.", "success");
@@ -4990,7 +4993,9 @@ class AuthManager {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: newEmail })
             });
-            const data = await res.json();
+            let text = await res.text();
+            let data;
+            try { data = JSON.parse(text); } catch(err) { throw new Error("API send-code failed (HTTP " + res.status + "): " + (text ? text : "Empty body")); }
             if (!data.success) throw new Error(data.error);
 
             const code = await Utils.prompt("Введите 6-значный код из письма на " + newEmail + ":");
@@ -5001,8 +5006,9 @@ class AuthManager {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ oldEmail: AppState.currentUser.email, newEmail, code })
             });
-
-            const changeData = await changeRes.json();
+            let changeText = await changeRes.text();
+            let changeData;
+            try { changeData = JSON.parse(changeText); } catch(err) { throw new Error("API change-email failed (HTTP " + changeRes.status + "): " + (changeText ? changeText : "Empty body")); }
             if (!changeData.success) throw new Error(changeData.error);
 
             Utils.$("settings-new-email").value = "";
@@ -5028,7 +5034,9 @@ class AuthManager {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email })
             });
-            const data = await res.json();
+            let text = await res.text();
+            let data;
+            try { data = JSON.parse(text); } catch(err) { throw new Error("API send-code failed (HTTP " + res.status + "): " + (text ? text : "Empty body")); }
             if (!data.success) throw new Error(data.error);
 
             const code = await Utils.prompt("Введите 6-значный код из письма (" + email + "):");
@@ -5039,8 +5047,9 @@ class AuthManager {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, code, newPassword })
             });
-
-            const resetData = await resetRes.json();
+            let resetText = await resetRes.text();
+            let resetData;
+            try { resetData = JSON.parse(resetText); } catch(err) { throw new Error("API reset-password failed (HTTP " + resetRes.status + "): " + (resetText ? resetText : "Empty body")); }
             if (!resetData.success) throw new Error(resetData.error);
 
             Utils.$("settings-new-password").value = "";
