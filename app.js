@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @fileoverview COWIO Core Engine v4.0 - The Ultimate Edition
  * @description Интегрированы все фиксы: MPA-подобная стабильность, обход пароля по инвайтам,
  * улучшенный интерактивный нейрофон, левитация элементов, фикс мобильного скролла,
@@ -1355,20 +1355,8 @@ class Utils {
       setInterval(updateLiveActive, 60000);
     }
 
-    if (!Utils.$("btn-google-login")) {
-      const btnLogin = document.createElement("button");
-      btnLogin.id = "btn-google-login";
-      btnLogin.className = "secondary-btn";
-      btnLogin.innerHTML = "🌐 Войти через Google";
-      btnLogin.style.marginTop = "10px";
-      Utils.$("login-form").appendChild(btnLogin);
-
-      const btnReg = document.createElement("button");
-      btnReg.id = "btn-google-reg";
-      btnReg.className = "secondary-btn";
-      btnReg.innerHTML = "🌐 Регистрация через Google";
-      btnReg.style.marginTop = "10px";
-      Utils.$("reg-form").appendChild(btnReg);
+    if (!Utils.hasInjectedAuthStyles) {
+      Utils.hasInjectedAuthStyles = true;
     }
   }
 }
@@ -2762,11 +2750,14 @@ class BackgroundFX {
   static init() {
     const canvas = Utils.$("particle-canvas");
     if (!canvas) return;
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
     let dots = [];
     const connectionStrength = new Map();
     let isTabVisible = true;
-    let mouse = { x: null, y: null, radius: window.innerWidth < 768 ? 80 : 150 };
+    let mouse = { x: null, y: null, radius: window.innerWidth < 768 ? 20 : 40, vx: 0, vy: 0 };
+    let lastMouse = { x: null, y: null };
+    let ripples = [];
+    let flashes = [];
 
     function resize() {
       canvas.width = window.innerWidth;
@@ -2776,121 +2767,242 @@ class BackgroundFX {
     resize();
 
     window.addEventListener("mousemove", (e) => {
-      mouse.x = e.x;
-      mouse.y = e.y;
+      lastMouse.x = mouse.x;
+      lastMouse.y = mouse.y;
+      mouse.x = e.clientX;
+      mouse.y = e.clientY;
+      if (lastMouse.x !== null) {
+        mouse.vx = mouse.x - lastMouse.x;
+        mouse.vy = mouse.y - lastMouse.y;
+      }
     });
+
     window.addEventListener("mouseout", () => {
-      mouse.x = undefined;
-      mouse.y = undefined;
+      mouse.x = null;
+      mouse.y = null;
+      mouse.vx = 0;
+      mouse.vy = 0;
+    });
+
+    window.addEventListener("mousedown", (e) => {
+      if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') {
+        ripples.push({ x: e.clientX, y: e.clientY, radius: 0, maxRadius: 300, alpha: 0.6 });
+      }
     });
 
     class Dot {
-      constructor() {
+      constructor(isDust = false) {
+        // Spawn from random positions but staggered
         this.x = Math.random() * canvas.width;
         this.y = Math.random() * canvas.height;
-        this.vx = (Math.random() - 0.5) * 0.4;
-        this.vy = (Math.random() - 0.5) * 0.4;
-        this.size = Math.random() * 2 + 1;
+        
+        let angle = Math.random() * Math.PI * 2;
+        let speed = Math.random() * 0.1 + (isDust ? 0.02 : 0.05);
+        
+        this.baseVx = Math.cos(angle) * speed;
+        this.baseVy = Math.sin(angle) * speed;
+        this.vx = this.baseVx;
+        this.vy = this.baseVy;
+        
+        this.z = isDust ? Math.random() * 0.4 + 0.2 : Math.random() * 0.6 + 0.4;
+        this.size = (Math.random() * 2 + 1) * this.z;
+        this.isDust = isDust;
+        this.history = [];
+        this.baseAlpha = isDust ? Math.random() * 0.3 + 0.1 : Math.random() * 0.5 + 0.2;
+        this.offset = Math.random() * 10000;
+        this.parallaxX = 0;
+        this.parallaxY = 0;
+        this.grayLevel = isDust ? 180 + Math.random() * 40 : 200 + Math.random() * 55; // Grayscale shade
+        this.isInteractive = !isDust || Math.random() > 0.4;
+        this.shapeType = isDust ? (Math.random() < 0.33 ? 'square' : Math.random() < 0.5 ? 'triangle' : 'circle') : 'circle';
       }
-      update() {
-        this.x += this.vx;
-        this.y += this.vy;
-        if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
-        if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
 
-        if (mouse.x != null) {
-          let dx = mouse.x - this.x;
-          let dy = mouse.y - this.y;
+      update(t) {
+        this.vx += (this.baseVx - this.vx) * 0.05;
+        this.vy += (this.baseVy - this.vy) * 0.05;
+        
+        this.x += this.vx * this.z;
+        this.y += this.vy * this.z;
+
+        if (this.x < 0) { this.x = 0; this.baseVx = Math.abs(this.baseVx); this.vx = Math.abs(this.vx); }
+        if (this.x > canvas.width) { this.x = canvas.width; this.baseVx = -Math.abs(this.baseVx); this.vx = -Math.abs(this.vx); }
+        if (this.y < 0) { this.y = 0; this.baseVy = Math.abs(this.baseVy); this.vy = Math.abs(this.vy); }
+        if (this.y > canvas.height) { this.y = canvas.height; this.baseVy = -Math.abs(this.baseVy); this.vy = -Math.abs(this.vy); }
+
+        if (mouse.x != null && this.isInteractive) {
+          let cx = canvas.width / 2;
+          let cy = canvas.height / 2;
+          let px = (mouse.x - cx) * 0.05 * this.z;
+          let py = (mouse.y - cy) * 0.05 * this.z;
+          this.parallaxX += (px - this.parallaxX) * 0.1;
+          this.parallaxY += (py - this.parallaxY) * 0.1;
+
+          let dx = mouse.x - (this.x + this.parallaxX);
+          let dy = mouse.y - (this.y + this.parallaxY);
           let distance = Math.sqrt(dx * dx + dy * dy);
           if (distance < mouse.radius) {
-            const forceDirectionX = dx / distance;
-            const forceDirectionY = dy / distance;
-            const force = (mouse.radius - distance) / mouse.radius;
-            this.x -= forceDirectionX * force * 2;
-            this.y -= forceDirectionY * force * 2;
+            let force = (mouse.radius - distance) / mouse.radius;
+            this.vx -= (dx / Math.max(distance, 1)) * force * 0.5 * this.z;
+            this.vy -= (dy / Math.max(distance, 1)) * force * 0.5 * this.z;
           }
         }
-      }
-      draw() {
-        const isLight = document.body.classList.contains("theme-light-global");
-        if (isLight) {
-          const glow = ctx.createRadialGradient(
-            this.x,
-            this.y,
-            0,
-            this.x,
-            this.y,
-            this.size * 2.8,
-          );
-          glow.addColorStop(0, "rgba(0, 0, 0, 0.16)");
-          glow.addColorStop(1, "rgba(0, 0, 0, 0)");
-          ctx.fillStyle = glow;
-          ctx.beginPath();
-          ctx.arc(this.x, this.y, this.size * 2.8, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = "rgba(0, 0, 0, 0.22)";
-        } else {
-          ctx.fillStyle = "rgba(255,255,255,0.39)";
+
+        if (!this.isDust) {
+          this.history.push({ x: this.x + this.parallaxX, y: this.y + this.parallaxY });
+          if (this.history.length > 10) this.history.shift();
         }
+      }
+
+      draw(ctx, t) {
+        let drawX = this.x + this.parallaxX;
+        let drawY = this.y + this.parallaxY;
+
+        let twink = this.isDust ? Math.sin(t * 0.005 + this.offset) * 0.5 + 0.5 : 1;
+        let pulse = this.isDust ? 1 : Math.sin(t * 0.003 + this.offset) * 0.5 + 0.5;
+        let alpha = this.baseAlpha * pulse * twink;
+
+        if (!this.isDust && this.history.length > 1) {
+          ctx.beginPath();
+          ctx.moveTo(this.history[0].x, this.history[0].y);
+          for (let i = 1; i < this.history.length; i++) {
+            ctx.lineTo(this.history[i].x, this.history[i].y);
+          }
+          ctx.strokeStyle = `rgba(${this.grayLevel}, ${this.grayLevel}, ${this.grayLevel}, ${alpha * 0.3})`;
+          ctx.lineWidth = this.size * 0.8;
+          ctx.lineCap = "round";
+          ctx.stroke();
+        }
+
+        ctx.fillStyle = `rgba(${this.grayLevel}, ${this.grayLevel}, ${this.grayLevel}, ${alpha})`;
         ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        if (this.shapeType === 'square') {
+          ctx.rect(drawX - this.size, drawY - this.size, this.size * 2, this.size * 2);
+        } else if (this.shapeType === 'triangle') {
+          ctx.moveTo(drawX, drawY - this.size);
+          ctx.lineTo(drawX + this.size, drawY + this.size * 0.8);
+          ctx.lineTo(drawX - this.size, drawY + this.size * 0.8);
+          ctx.closePath();
+        } else {
+          ctx.arc(drawX, drawY, this.size, 0, Math.PI * 2);
+        }
         ctx.fill();
       }
     }
 
-    const numDots = window.innerWidth < 768 ? 40 : 90;
-    for (let i = 0; i < numDots; i++) dots.push(new Dot());
+    const numDots = window.innerWidth < 768 ? 40 : 80;
+    for (let i = 0; i < numDots; i++) dots.push(new Dot(false)); // Nodes
+    for (let i = 0; i < numDots * 3; i++) dots.push(new Dot(true)); // Dust
 
-    function animate() {
-      if (!isTabVisible) return;
-      ctx.clearRect(0, 0, canvas.width, canvas.height); // [FIX] Made clearRect so premium background shines through beautifully
-      const t = performance.now() * 0.0016;
+    function animate(t) {
+      if (!isTabVisible) {
+        requestAnimationFrame(animate);
+        return;
+      }
+      
+      // Ghosting / Motion Blur Effect
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.globalCompositeOperation = 'source-over';
+
+      // Interactive Glowing Ripples
+      for (let i = ripples.length - 1; i >= 0; i--) {
+        let r = ripples[i];
+        r.radius += 4;
+        r.alpha -= 0.01;
+        if (r.alpha <= 0) {
+          ripples.splice(i, 1);
+          continue;
+        }
+        ctx.beginPath();
+        ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(255, 255, 255, ${r.alpha * 0.5})`;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+
+      // Spontaneous Flashes
+      if (Math.random() > 0.99 && dots.length > 2) {
+         let n1 = dots[Math.floor(Math.random() * numDots)];
+         let n2 = dots[Math.floor(Math.random() * numDots)];
+         if (n1 && n2) flashes.push({ start: n1, end: n2, life: 1, segments: Math.floor(Math.random() * 4 + 3) });
+      }
+
+      for (let i = flashes.length - 1; i >= 0; i--) {
+        let f = flashes[i];
+        f.life -= 0.03;
+        if (f.life <= 0) { flashes.splice(i, 1); continue; }
+        
+        ctx.beginPath();
+        let sx = f.start.x + f.start.parallaxX, sy = f.start.y + f.start.parallaxY;
+        let ex = f.end.x + f.end.parallaxX, ey = f.end.y + f.end.parallaxY;
+        ctx.moveTo(sx, sy);
+        
+        for (let s = 1; s < f.segments; s++) {
+           let pt = s / f.segments;
+           let nx = sx + (ex - sx) * pt + (Math.random() - 0.5) * (40 * f.life);
+           let ny = sy + (ey - sy) * pt + (Math.random() - 0.5) * (40 * f.life);
+           ctx.lineTo(nx, ny);
+        }
+        ctx.lineTo(ex, ey);
+        ctx.strokeStyle = `rgba(255, 255, 255, ${f.life * 0.6})`;
+        ctx.lineWidth = f.life * 2;
+        ctx.stroke();
+      }
+
+      const time = performance.now() * 0.0016;
 
       for (let i = 0; i < dots.length; i++) {
-        dots[i].update();
-        dots[i].draw();
-        for (let j = i + 1; j < dots.length; j++) {
-          let dx = dots[i].x - dots[j].x;
-          let dy = dots[i].y - dots[j].y;
+        dots[i].update(time);
+        dots[i].draw(ctx, time);
+        
+        if (dots[i].isDust) continue;
+
+        for (let j = i + 1; j < numDots; j++) {
+          let dx = (dots[i].x + dots[i].parallaxX) - (dots[j].x + dots[j].parallaxX);
+          let dy = (dots[i].y + dots[i].parallaxY) - (dots[j].y + dots[j].parallaxY);
           let dist = dx * dx + dy * dy;
           const key = `${i}:${j}`;
           const prevStrength = connectionStrength.get(key) || 0;
-          const targetStrength = dist < 25000 ? 1 : 0;
-          const nextStrength =
-            prevStrength + (targetStrength - prevStrength) * 0.12;
+          const targetStrength = dist < 35000 ? 1 : 0;
+          const nextStrength = prevStrength + (targetStrength - prevStrength) * 0.08;
+          
           if (nextStrength <= 0.01) {
             connectionStrength.delete(key);
             continue;
           }
           connectionStrength.set(key, nextStrength);
+          
           if (nextStrength > 0.02) {
-            const isLight =
-              document.body.classList.contains("theme-light-global");
             const distance = Math.sqrt(dist);
-            const proximity = Math.max(0, 1 - distance / 158);
-            const baseAlpha = Math.max(0.08, 0.39 - distance / 2000);
-            const pulse = 0.92 + Math.sin(t + i * 0.21 + j * 0.13) * 0.08;
-            const alpha = Math.min(
-              0.55,
-              (baseAlpha + proximity * 0.22) * nextStrength * pulse,
-            );
-            if (isLight) {
-              ctx.strokeStyle = `rgba(0, 0, 0, ${Math.min(0.38, alpha)})`;
-            } else {
-              ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
-            }
-            ctx.lineWidth =
-              (isLight ? 1.6 : 1.4) * (0.75 + nextStrength * 0.25);
+            const proximity = Math.max(0, 1 - distance / 180);
+            const baseAlpha = Math.max(0.04, 0.2 - distance / 2500); 
+            const pulse = 0.92 + Math.sin(time + i * 0.21 + j * 0.13) * 0.08;
+            const alpha = Math.min(0.4, (baseAlpha + proximity * 0.2) * nextStrength * pulse);
+            
+            ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+            ctx.lineWidth = Math.max(0.2, 1.2 * nextStrength);
             ctx.beginPath();
-            ctx.moveTo(dots[i].x, dots[i].y);
-            ctx.lineTo(dots[j].x, dots[j].y);
+            ctx.moveTo(dots[i].x + dots[i].parallaxX, dots[i].y + dots[i].parallaxY);
+            if ((i + j) % 2 === 0) {
+              let cx = (dots[i].x + dots[i].parallaxX + dots[j].x + dots[j].parallaxX) / 2;
+              let cy = (dots[i].y + dots[i].parallaxY + dots[j].y + dots[j].parallaxY) / 2;
+              let offset = Math.sin(time * 0.5 + i + j) * (distance * 0.2);
+              cx += offset;
+              cy -= offset;
+              ctx.quadraticCurveTo(cx, cy, dots[j].x + dots[j].parallaxX, dots[j].y + dots[j].parallaxY);
+            } else {
+              ctx.lineTo(dots[j].x + dots[j].parallaxX, dots[j].y + dots[j].parallaxY);
+            }
             ctx.stroke();
           }
         }
       }
+      mouse.vx *= 0.8;
+      mouse.vy *= 0.8;
       requestAnimationFrame(animate);
     }
-    animate();
+    requestAnimationFrame(animate);
 
     document.addEventListener("visibilitychange", () => {
       isTabVisible = !document.hidden;
@@ -4635,12 +4747,20 @@ class AuthManager {
       Utils.$("tab-reg-btn").classList.remove("active");
       Utils.$("login-form").classList.add("active-form");
       Utils.$("reg-form").classList.remove("active-form");
+      const leftLogin = Utils.$("auth-left-login");
+      const leftReg = Utils.$("auth-left-reg");
+      if (leftLogin) leftLogin.style.display = 'block';
+      if (leftReg) leftReg.style.display = 'none';
     };
     Utils.$("tab-reg-btn").onclick = () => {
       Utils.$("tab-reg-btn").classList.add("active");
       Utils.$("tab-login-btn").classList.remove("active");
       Utils.$("reg-form").classList.add("active-form");
       Utils.$("login-form").classList.remove("active-form");
+      const leftLogin = Utils.$("auth-left-login");
+      const leftReg = Utils.$("auth-left-reg");
+      if (leftLogin) leftLogin.style.display = 'none';
+      if (leftReg) leftReg.style.display = 'block';
     };
 
     Utils.$("btn-do-login").onclick = async () => {

@@ -596,6 +596,17 @@
         background: #0a0a0a;
         box-shadow: 0 0 0 2px rgba(46, 213, 115, 0.15);
       }
+      
+      input:-webkit-autofill,
+      input:-webkit-autofill:hover, 
+      input:-webkit-autofill:focus, 
+      textarea:-webkit-autofill,
+      textarea:-webkit-autofill:hover,
+      textarea:-webkit-autofill:focus {
+        -webkit-box-shadow: 0 0 0 30px #0a0a0a inset !important;
+        -webkit-text-fill-color: var(--text-main) !important;
+        transition: background-color 5000s ease-in-out 0s;
+      }
 
       .primary-btn {
         width: 100%;
@@ -657,10 +668,7 @@
         }
       }
 
-      #auth-screen {
-        align-items: center;
-        justify-content: center;
-      }
+      /* obsolete auth-screen alignment */
       .auth-wrapper {
         width: 420px;
         padding: 40px;
@@ -3853,165 +3861,443 @@
     <!-- AUTH SCREEN -->
     <!-- ========================================================================= -->
     <section id="auth-screen" class="screen active">
-      <div class="auth-wrapper glass-panel">
-        <div class="logo">COWIO</div>
-        <div class="auth-tabs">
-          <button id="tab-login-btn" class="active">
-            <img
-              src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp"
-              style="width: 1.2em; height: 1.2em; vertical-align: bottom"
-            />
-            Вход
+      <style>
+        #auth-screen.active {
+          display: flex !important;
+        }
+        #auth-screen:not(.active) {
+          display: none !important;
+        }
+        #auth-screen {
+          flex-direction: row;
+          align-items: stretch;
+          width: 100vw;
+          height: 100vh;
+          overflow: hidden;
+          background: transparent;
+          z-index: 2;
+        }
+        
+        @media (max-width: 768px) {
+          #auth-screen {
+            flex-direction: column;
+            overflow-y: hidden;
+            position: relative;
+          }
+          .auth-left {
+            display: none !important;
+          }
+          .auth-right {
+            border-left: none !important;
+            border-top: none !important;
+            max-width: 100% !important;
+            overflow-y: auto !important;
+            height: 100dvh;
+            padding: 20px !important;
+          }
+        }
+
+        .auth-left {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          padding: 0 80px;
+          position: relative;
+          z-index: 10;
+          pointer-events: none;
+        }
+
+        .auth-left h1 {
+          font-size: 3.5rem;
+          font-weight: 800;
+          margin-bottom: 20px;
+          color: white;
+          line-height: 1.1;
+          animation: slideUpFade 0.8s ease-out forwards;
+        }
+
+        .auth-left .subtitle {
+          font-size: 1.2rem;
+          color: rgba(255, 255, 255, 0.8);
+          line-height: 1.6;
+          max-width: 600px;
+          margin-bottom: 40px;
+          animation: slideUpFade 1s ease-out forwards;
+          animation-delay: 0.1s;
+          opacity: 0;
+        }
+
+        .auth-features {
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+        }
+
+        .auth-feature-item {
+          display: flex;
+          align-items: center;
+          gap: 15px;
+          font-size: 1.1rem;
+          color: #e0e0e0;
+          padding: 12px 20px;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          border-radius: 12px;
+          transition: all 0.3s ease;
+          animation: slideUpFade 1.2s ease-out forwards;
+          opacity: 0;
+          backdrop-filter: blur(10px);
+        }
+
+        .auth-feature-item:nth-child(1) { animation-delay: 0.2s; }
+        .auth-feature-item:nth-child(2) { animation-delay: 0.3s; }
+        .auth-feature-item:nth-child(3) { animation-delay: 0.4s; }
+
+        .auth-feature-item:hover {
+          background: rgba(255, 255, 255, 0.08);
+          border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .auth-feature-item img {
+          filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.1));
+        }
+
+        @keyframes slideUpFade {
+          from { opacity: 0; transform: translateY(30px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        .auth-right {
+          width: 100%;
+          max-width: 560px;
+          background: rgba(24, 24, 26, 0.05);
+          backdrop-filter: blur(4px);
+          -webkit-backdrop-filter: blur(4px);
+          display: flex;
+          flex-direction: column;
+          /* center form vertically but allow scrolling */
+          padding: 40px;
+          border-left: 1px solid rgba(255, 255, 255, 0.08);
+          z-index: 10;
+          pointer-events: auto;
+          overflow-y: auto;
+        }
+        
+        .auth-right::before, .auth-right::after {
+          content: '';
+          margin: auto;
+        }
+
+        /* Custom Scrollbar for auth-right */
+        .auth-right::-webkit-scrollbar {
+          width: 6px;
+        }
+        .auth-right::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .auth-right::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 4px;
+        }
+        .auth-right::-webkit-scrollbar-thumb:hover {
+          background: rgba(255, 255, 255, 0.2);
+        }
+
+        .auth-tabs-new {
+          display: flex;
+          gap: 10px;
+          margin-bottom: 30px;
+        }
+
+        .auth-tabs-new button {
+          flex: 1;
+          padding: 12px;
+          background: transparent;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          color: #999;
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: 600;
+          transition: all 0.2s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+        }
+
+        .auth-tabs-new button.active {
+          background: rgba(255, 255, 255, 0.05);
+          color: white;
+          border-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        .auth-form-new {
+          display: none;
+          flex-direction: column;
+          gap: 20px;
+        }
+        
+        .auth-form-new.active-form {
+          display: flex;
+        }
+        
+        .form-group-new {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .form-group-new label {
+          font-size: 13px;
+          color: #999;
+          font-weight: 500;
+        }
+        
+        .auth-input-wrapper {
+          position: relative;
+          display: flex;
+          align-items: center;
+        }
+
+        .auth-input-icon {
+          position: absolute;
+          left: 14px;
+          width: 20px;
+          height: 20px;
+          opacity: 0.4;
+          transition: opacity 0.2s;
+          pointer-events: none;
+          filter: grayscale(0.5);
+        }
+        
+        .auth-pass-eye {
+          position: absolute;
+          right: 14px;
+          width: 20px;
+          height: 20px;
+          opacity: 0.4;
+          transition: opacity 0.2s;
+          cursor: pointer;
+          pointer-events: auto;
+        }
+
+        .auth-pass-eye:hover {
+          opacity: 1;
+        }
+
+        .auth-input-wrapper:focus-within .auth-input-icon {
+          opacity: 1;
+          filter: grayscale(0);
+        }
+
+        .form-group-new input {
+          width: 100%;
+          background: #0f0f11;
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          padding: 14px 14px 14px 44px;
+          border-radius: 8px;
+          color: white;
+          font-size: 14px;
+          transition: border-color 0.2s;
+          box-sizing: border-box;
+        }
+        .form-group-new input[type="password"] {
+            padding-right: 44px;
+        }
+
+        .form-group-new input:focus {
+          border-color: rgba(255, 255, 255, 0.2);
+          outline: none;
+        }
+
+        .form-group-new input:-webkit-autofill,
+        .form-group-new input:-webkit-autofill:hover, 
+        .form-group-new input:-webkit-autofill:focus, 
+        .form-group-new input:-webkit-autofill:active{
+            -webkit-box-shadow: 0 0 0 30px #0f0f11 inset !important;
+            -webkit-text-fill-color: white !important;
+            transition: background-color 5000s ease-in-out 0s;
+        }
+
+        .google-btn {
+          margin-top: 10px;
+          background: transparent;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          color: white;
+          padding: 14px;
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: 600;
+          transition: background 0.2s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+        }
+        .google-btn:hover {
+          background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .submit-btn {
+          background: white;
+          color: black;
+          border: none;
+          padding: 14px;
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: 700;
+          transition: background 0.2s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+        }
+
+        .submit-btn:hover {
+          background: #e0e0e0;
+        }
+
+        input[type="radio"]:checked + .gender-btn-box {
+          background: rgba(255, 255, 255, 0.1) !important;
+          border-color: rgba(255, 255, 255, 0.3) !important;
+          color: white !important;
+        }
+      </style>
+
+      <div class="auth-left">
+        <div id="auth-left-reg">
+          <h1>Добро пожаловать</h1>
+          <p class="subtitle">Платформа нового поколения для общения, обмена идеями и создания уникальных сообществ. Присоединяйтесь к нам и откройте для себя мир безграничных возможностей.</p>
+          <div class="auth-features">
+            <div class="auth-feature-item">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 24px; height: 24px;"> Создавайте и управляйте своими комнатами
+            </div>
+            <div class="auth-feature-item">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width: 24px; height: 24px;"> Находите друзей и единомышленников
+            </div>
+            <div class="auth-feature-item">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width: 24px; height: 24px;"> Безопасная и приватная среда
+            </div>
+          </div>
+        </div>
+
+        <div id="auth-left-login" style="display: none;">
+          <h1>С возвращением!</h1>
+          <p class="subtitle">Рады видеть вас снова. Войдите, чтобы продолжить общение, находить новые идеи и делиться впечатлениями.</p>
+          <div class="auth-features">
+            <div class="auth-feature-item">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 24px; height: 24px;"> Продолжайте общение в любимых комнатах
+            </div>
+            <div class="auth-feature-item">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width: 24px; height: 24px;"> Узнавайте, что нового у друзей
+            </div>
+            <div class="auth-feature-item">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width: 24px; height: 24px;"> Приватность и защита сообщений
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="auth-right">
+        <div class="auth-tabs-new">
+          <button id="tab-login-btn">
+            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width: 16px; height: 16px;"> Вход
           </button>
-          <button id="tab-reg-btn">
-            <img
-              src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp"
-              style="width: 1.2em; height: 1.2em; vertical-align: bottom"
-            />
-            Регистрация
+          <button id="tab-reg-btn" class="active">
+            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp" style="width: 16px; height: 16px;"> Регистрация
           </button>
         </div>
 
-        <div id="login-form" class="auth-form active-form">
-          <input
-            type="email"
-            id="login-email"
-            placeholder="Электронная почта"
-          />
-          <input type="password" id="login-pass" placeholder="Пароль" />
-          <button
-            class="primary-btn"
-            id="btn-do-login"
-            style="margin-top: 10px"
-          >
-            <img
-              src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Rocket.webp"
-              style="
-                width: 1.2em;
-                height: 1.2em;
-                vertical-align: middle;
-                margin-right: 8px;
-              "
-            />Войти
+        <div id="login-form" class="auth-form-new">
+          <div class="form-group-new">
+            <label>Электронная почта</label>
+            <div class="auth-input-wrapper">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Incoming%20Envelope.webp" class="auth-input-icon">
+              <input type="email" id="login-email" placeholder="mail@example.com">
+            </div>
+          </div>
+          <div class="form-group-new">
+            <label>Пароль</label>
+            <div class="auth-input-wrapper">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Key.webp" class="auth-input-icon">
+              <input type="password" id="login-pass" placeholder="••••••••">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Peeking%20Eye.webp" class="auth-pass-eye" onclick="togglePasswordVisibility(this, 'login-pass')">
+            </div>
+          </div>
+          <button class="submit-btn" id="btn-do-login" style="margin-top: 10px;">
+            Войти в систему <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Rocket.webp" style="width: 16px; height: 16px;">
+          </button>
+          <button id="btn-google-login" class="google-btn">
+            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Globe%20With%20Meridians.webp" style="width: 16px; height: 16px;"> Войти через Google
           </button>
         </div>
 
-        <div id="reg-form" class="auth-form">
-          <input
-            type="text"
-            id="reg-name"
-            placeholder="Отображаемое имя (напр. Алексей)"
-          />
-          <input
-            type="text"
-            id="reg-username"
-            placeholder="Уникальный ID (напр. @alexey99)"
-          />
+        <div id="reg-form" class="auth-form-new active-form">
+          <div class="form-group-new">
+            <label>Отображаемое имя</label>
+            <div class="auth-input-wrapper">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Bust%20In%20Silhouette.webp" class="auth-input-icon">
+              <input type="text" id="reg-name" placeholder="Моё имя">
+            </div>
+          </div>
+          <div class="form-group-new">
+            <label>Уникальный ID</label>
+            <div class="auth-input-wrapper">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Identification%20Card.webp" class="auth-input-icon">
+              <input type="text" id="reg-username" placeholder="user123">
+            </div>
+          </div>
 
-          <style>
-            input[type="radio"]:checked + .gender-btn {
-              background: rgba(93, 63, 211, 0.4) !important;
-              border-color: var(--primary) !important;
-              color: white !important;
-            }
-            .gender-btn {
-              color: var(--text-muted);
-              transition: 0.2s;
-            }
-          </style>
-          <div
-            class="user-gender-select"
-            style="display: flex; gap: 10px; margin-bottom: 10px"
-          >
-            <label style="flex: 1; cursor: pointer">
-              <input
-                type="radio"
-                name="reg-gender"
-                value="male"
-                checked
-                style="display: none"
-              />
-              <div
-                class="gender-btn"
-                style="
-                  padding: 10px;
-                  border-radius: 8px;
-                  border: 1px solid var(--border-light);
-                  text-align: center;
-                  background: rgba(0, 0, 0, 0.2);
-                  font-size: 14px;
-                  font-weight: 600;
-                "
-              >
-                <img
-                  src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Man%20Technologist.webp"
-                  style="
-                    width: 20px;
-                    height: 20px;
-                    vertical-align: middle;
-                    margin-right: 5px;
-                  "
-                />
-                Мужчина
-              </div>
-            </label>
-            <label style="flex: 1; cursor: pointer">
-              <input
-                type="radio"
-                name="reg-gender"
-                value="female"
-                style="display: none"
-              />
-              <div
-                class="gender-btn"
-                style="
-                  padding: 10px;
-                  border-radius: 8px;
-                  border: 1px solid var(--border-light);
-                  text-align: center;
-                  background: rgba(0, 0, 0, 0.2);
-                  font-size: 14px;
-                  font-weight: 600;
-                "
-              >
-                <img
-                  src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Woman%20Technologist.webp"
-                  style="
-                    width: 20px;
-                    height: 20px;
-                    vertical-align: middle;
-                    margin-right: 5px;
-                  "
-                />
-                Женщина
-              </div>
+          <div class="form-group-new">
+            <label>Пол</label>
+            <div class="user-gender-select" style="display: flex; gap: 10px;">
+              <label style="flex: 1; cursor: pointer">
+                <input type="radio" name="reg-gender" value="male" checked style="display: none">
+                <div class="gender-btn-box" style="padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); text-align: center; background: #0f0f11; font-size: 14px; font-weight: 500; color: #999; transition: all 0.2s;">
+                  <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Man%20Technologist.webp" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 4px;"> Мужской
+                </div>
+              </label>
+              <label style="flex: 1; cursor: pointer">
+                <input type="radio" name="reg-gender" value="female" style="display: none">
+                <div class="gender-btn-box" style="padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); text-align: center; background: #0f0f11; font-size: 14px; font-weight: 500; color: #999; transition: all 0.2s;">
+                  <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Woman%20Technologist.webp" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 4px;"> Женский
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <div class="form-group-new">
+            <label>Электронная почта</label>
+            <div class="auth-input-wrapper">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Incoming%20Envelope.webp" class="auth-input-icon">
+              <input type="email" id="reg-email" placeholder="mail@example.com">
+            </div>
+          </div>
+          <div class="form-group-new">
+            <label>Пароль (мин. 6 символов)</label>
+            <div class="auth-input-wrapper">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Key.webp" class="auth-input-icon">
+              <input type="password" id="reg-pass" placeholder="••••••••">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Peeking%20Eye.webp" class="auth-pass-eye" onclick="togglePasswordVisibility(this, 'reg-pass')">
+            </div>
+          </div>
+
+          <div class="agreement-wrap" style="display: flex; align-items: center; gap: 10px; margin-top: 5px;">
+            <input type="checkbox" id="reg-agreement" style="width: 16px; height: 16px; accent-color: white;">
+            <label for="reg-agreement" style="font-size: 12px; color: #999;">
+              Я принимаю <a href="https://cowio-privacy-accept.vercel.app" target="_blank" style="color: white; text-decoration: underline;">пользовательское соглашение</a>
             </label>
           </div>
 
-          <input type="email" id="reg-email" placeholder="Электронная почта" />
-          <input
-            type="password"
-            id="reg-pass"
-            placeholder="Пароль (минимум 6 символов)"
-          />
-          <div class="agreement-wrap">
-            <input type="checkbox" id="reg-agreement" />
-            <label for="reg-agreement">
-              Я принимаю пользовательское соглашение
-              <a
-                href="https://cowio-privacy-accept.vercel.app"
-                target="_blank"
-                rel="noopener noreferrer"
-                >Ознакомиться</a
-              >
-            </label>
-          </div>
-          <button class="primary-btn" id="btn-do-reg" style="margin-top: 10px">
-            <img
-              src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp"
-              style="width: 1.2em; height: 1.2em; vertical-align: bottom"
-            />
-            Создать аккаунт
+          <button class="submit-btn" id="btn-do-reg" style="margin-top: 10px;">
+            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 16px; height: 16px; vertical-align: middle;"> Создать аккаунт
+          </button>
+          <button id="btn-google-reg" class="google-btn">
+            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Globe%20With%20Meridians.webp" style="width: 16px; height: 16px;"> Регистрация через Google
           </button>
         </div>
       </div>
@@ -7070,5 +7356,18 @@
         </div>
       </div>
     </div>
+    <script>
+      function togglePasswordVisibility(img, inputId) {
+        const input = document.getElementById(inputId);
+        if (!input) return;
+        if (input.type === 'password') {
+          input.type = 'text';
+          img.src = 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Eyes.webp';
+        } else {
+          input.type = 'password';
+          img.src = 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Peeking%20Eye.webp';
+        }
+      }
+    </script>
   </body>
 </html>
