@@ -41,7 +41,7 @@ app.use('/api', rateLimit({
         code: 'RATE_LIMITED'
     }
 }));
-        app.use('/custom-auth', rateLimit({
+        app.use('/api/custom-auth', rateLimit({
             windowMs: RATE_LIMIT_WINDOW_MS,
             max: RATE_LIMIT_MAX,
             standardHeaders: true,
@@ -89,7 +89,7 @@ const mailTransporter = nodemailer.createTransport({
 const verificationCodes = new Map();
 
 // Отправка 6-значного кода
-app.post('/custom-auth/send-code', async (req, res) => {
+app.post('/api/custom-auth/send-code', async (req, res) => {
     try {
         const { email } = req.body;
         if (!email) return res.status(400).json({ error: 'Email не указан' });
@@ -148,7 +148,7 @@ app.post('/custom-auth/send-code', async (req, res) => {
 });
 
 // Сброс пароля
-app.post('/custom-auth/reset-password', async (req, res) => {
+app.post('/api/custom-auth/reset-password', async (req, res) => {
     try {
         const { email, code, newPassword } = req.body;
 
@@ -175,7 +175,7 @@ app.post('/custom-auth/reset-password', async (req, res) => {
 });
 
 // Смена почты (здесь отправляем на новую)
-app.post('/custom-auth/change-email', async (req, res) => {
+app.post('/api/custom-auth/change-email', async (req, res) => {
     try {
         const { oldEmail, newEmail, code } = req.body;
 

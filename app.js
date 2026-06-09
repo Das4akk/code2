@@ -5103,7 +5103,7 @@ class AuthManager {
             const apiBase = typeof window !== "undefined" && window.COWIO_MEDIA_API ? String(window.COWIO_MEDIA_API).replace(/\/$/, "") : "";
             
             const reqCode = async () => {
-                const res = await fetch(`${apiBase}/custom-auth/send-code`, {
+                const res = await fetch(`${apiBase}/api/custom-auth/send-code`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email })
@@ -5124,7 +5124,7 @@ class AuthManager {
             const newPassword = await Utils.prompt("Введите новый пароль (минимум 6 символов):");
             if (!newPassword || newPassword.length < 6) return Utils.toast("Пароль слишком короткий или сброс отменен", "error");
 
-            const resetRes = await fetch(`${apiBase}/custom-auth/reset-password`, {
+            const resetRes = await fetch(`${apiBase}/api/custom-auth/reset-password`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, code, newPassword })
@@ -5160,7 +5160,7 @@ class AuthManager {
             const apiBase = typeof window !== "undefined" && window.COWIO_MEDIA_API ? String(window.COWIO_MEDIA_API).replace(/\/$/, "") : "";
             
             const reqCodeEmail = async () => {
-                const res = await fetch(`${apiBase}/custom-auth/send-code`, {
+                const res = await fetch(`${apiBase}/api/custom-auth/send-code`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email: newEmail })
@@ -5178,7 +5178,7 @@ class AuthManager {
             });
             if (!code) return;
 
-            const changeRes = await fetch(`${apiBase}/custom-auth/change-email`, {
+            const changeRes = await fetch(`${apiBase}/api/custom-auth/change-email`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ oldEmail: AppState.currentUser.email, newEmail, code })
@@ -5221,7 +5221,7 @@ class AuthManager {
             const apiBase = typeof window !== "undefined" && window.COWIO_MEDIA_API ? String(window.COWIO_MEDIA_API).replace(/\/$/, "") : "";
             
             const reqCodeReauth = async () => {
-                const res = await fetch(`${apiBase}/custom-auth/send-code`, {
+                const res = await fetch(`${apiBase}/api/custom-auth/send-code`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email })
@@ -5239,7 +5239,7 @@ class AuthManager {
             });
             if (!code) return;
 
-            const resetRes = await fetch(`${apiBase}/custom-auth/reset-password`, {
+            const resetRes = await fetch(`${apiBase}/api/custom-auth/reset-password`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, code, newPassword })
