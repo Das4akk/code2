@@ -1,8 +1,17 @@
 /**
- * Подсказки COWIO: компактные фишки в стиле Telegram / Discord / YouTube
+ * Подсказки COWIO (фишки): всплывающие уведомления сверху справа
  */
 class SiteTipsManager {
   static STORAGE_KEY = "cowio_dismissed_tips";
+  static SHOW_MS = 5000;
+  static RATE_LIMIT_MS = 4000;
+
+  static queue = [];
+  static isProcessing = false;
+  static lastShownAt = 0;
+  static activeTipId = null;
+  static activeTimer = null;
+  static shownThisSession = new Set();
 
   static TIPS = [
     { id: "rooms-watchparty", target: "#section-rooms", screen: "lobby-screen", text: "Создайте комнату и скиньте ссылку друзьям. Это наш аналог Watch Party из YouTube." },
@@ -39,12 +48,21 @@ class SiteTipsManager {
 
   static init() {
     this.injectStyles();
-    this.renderAll();
+    this.ensureContainer();
     this.hookScreenSwitch();
     document.querySelectorAll("#main-sidebar .nav-item").forEach((item) => {
-      item.addEventListener("click", () => setTimeout(() => this.renderAll(), 120));
+      item.addEventListener("click", () => setTimeout(() => this.scheduleTips(), 200));
     });
-    window.addEventListener("resize", () => this.renderAll());
+    window.addEventListener("resize", () => this.scheduleTips());
+    this.scheduleTips();
+  }
+
+  static ensureContainer() {
+    if (document.getElementById("cowio-tips-container")) return;
+    const el = document.createElement("div");
+    el.id = "cowio-tips-container";
+    el.setAttribute("aria-live", "polite");
+    document.body.appendChild(el);
   }
 
   static hookScreenSwitch() {
@@ -52,7 +70,7 @@ class SiteTipsManager {
     const original = Utils.showScreen.bind(Utils);
     Utils.showScreen = (screenId) => {
       original(screenId);
-      setTimeout(() => this.renderAll(), 150);
+      setTimeout(() => this.scheduleTips(), 200);
     };
     Utils.showScreen.__tipsHooked = true;
   }
@@ -62,34 +80,47 @@ class SiteTipsManager {
     const style = document.createElement("style");
     style.id = "cowio-tips-styles";
     style.textContent = `
-      .cowio-tip-bar {
+      #cowio-tips-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 999998;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 10px;
+        pointer-events: none;
+        max-width: min(360px, calc(100vw - 24px));
+      }
+      .cowio-tip-toast {
+        pointer-events: all;
         display: flex;
         align-items: flex-start;
         gap: 10px;
-        padding: 10px 14px;
-        margin: 0 0 14px;
-        border-radius: 12px;
+        padding: 12px 14px;
+        border-radius: 14px;
         border: 1px solid var(--border-light);
-        background: rgba(255,255,255,0.04);
+        background: rgba(12, 12, 16, 0.94);
+        backdrop-filter: blur(12px);
+        box-shadow: 0 12px 32px rgba(0,0,0,0.45);
         font-size: 13px;
         line-height: 1.5;
         color: var(--text-muted);
-        animation: cowioTipIn 0.35s ease;
+        animation: cowioTipSlideIn 0.35s ease;
       }
-      .cowio-tip-bar strong {
+      .cowio-tip-toast strong {
         color: var(--text-main);
-        font-weight: 700;
+        font-weight: 800;
         font-size: 11px;
         text-transform: uppercase;
         letter-spacing: 0.4px;
         display: block;
-        margin-bottom: 2px;
+        margin-bottom: 3px;
       }
-      .cowio-tip-bar img.cowio-tip-icon {
-        width: 20px;
-        height: 20px;
+      .cowio-tip-toast img.cowio-tip-icon {
+        width: 22px;
+        height: 22px;
         flex-shrink: 0;
-        margin-top: 1px;
       }
       .cowio-tip-text { flex: 1; min-width: 0; }
       .cowio-tip-dismiss {
@@ -103,29 +134,24 @@ class SiteTipsManager {
         padding: 2px 4px;
         border-radius: 6px;
         opacity: 0.7;
-        transition: opacity 0.15s;
       }
       .cowio-tip-dismiss:hover { opacity: 1; }
-      @keyframes cowioTipIn {
-        from { opacity: 0; transform: translateY(-6px); }
-        to { opacity: 1; transform: translateY(0); }
+      @keyframes cowioTipSlideIn {
+        from { opacity: 0; transform: translateX(16px); }
+        to { opacity: 1; transform: translateX(0); }
       }
-      .theme-light-global .cowio-tip-bar,
-      body.theme-light-global .cowio-tip-bar {
-        background: rgba(0,0,0,0.03);
-        border-color: rgba(0,0,0,0.12);
+      .theme-light-global .cowio-tip-toast,
+      body.theme-light-global .cowio-tip-toast {
+        background: rgba(255,255,255,0.96);
+        border-color: rgba(0,0,0,0.1);
       }
-      #bottom-footer-links .cowio-tip-bar {
-        margin-bottom: 8px;
-        width: 100%;
-      }
-      .chat-section .cowio-tip-bar,
-      .player-section .cowio-tip-bar {
-        margin: 8px 10px 0;
-      }
-      .mobile-header .cowio-tip-bar {
-        margin: 8px 12px 0;
-        font-size: 12px;
+      @media (max-width: 640px) {
+        #cowio-tips-container {
+          top: 12px;
+          right: 12px;
+          left: 12px;
+          align-items: stretch;
+        }
       }
     `;
     document.head.appendChild(style);
@@ -143,7 +169,10 @@ class SiteTipsManager {
     const set = this.getDismissed();
     set.add(id);
     localStorage.setItem(this.STORAGE_KEY, JSON.stringify([...set]));
-    document.querySelectorAll(`.cowio-tip-bar[data-tip-id="${id}"]`).forEach((el) => el.remove());
+    this.shownThisSession.add(id);
+    this.hideActive();
+    this.queue = this.queue.filter((t) => t.id !== id);
+    setTimeout(() => this.processQueue(), 100);
   }
 
   static isSectionVisible(container) {
@@ -154,33 +183,97 @@ class SiteTipsManager {
     return true;
   }
 
-  static renderAll() {
+  static scheduleTips() {
     document.querySelectorAll(".cowio-tip-bar").forEach((el) => el.remove());
+    this.collectEligibleTips();
+    this.processQueue();
+  }
+
+  static collectEligibleTips() {
     const dismissed = this.getDismissed();
     const activeScreen = document.querySelector(".screen.active")?.id;
+    const topicsInQueue = new Set(this.queue.map((t) => t.id));
 
     this.TIPS.forEach((tip) => {
       if (dismissed.has(tip.id)) return;
+      if (this.shownThisSession.has(tip.id)) return;
+      if (tip.id === this.activeTipId) return;
+      if (topicsInQueue.has(tip.id)) return;
       if (tip.screen && activeScreen !== tip.screen) return;
 
       const container = document.querySelector(tip.target);
       if (!container || !this.isSectionVisible(container)) return;
-      if (container.querySelector(`.cowio-tip-bar[data-tip-id="${tip.id}"]`)) return;
 
-      const bar = document.createElement("div");
-      bar.className = "cowio-tip-bar";
-      bar.dataset.tipId = tip.id;
-      bar.innerHTML = `
-        <img class="cowio-tip-icon" src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Light%20Bulb.webp" alt="">
-        <div class="cowio-tip-text">
-          <strong>Фишка</strong>
-          ${tip.text}
-        </div>
-        <button type="button" class="cowio-tip-dismiss" title="Понятно">✕</button>
-      `;
-      bar.querySelector(".cowio-tip-dismiss").onclick = () => this.dismiss(tip.id);
-      container.insertBefore(bar, container.firstChild);
+      this.queue.push(tip);
+      topicsInQueue.add(tip.id);
     });
+  }
+
+  static async processQueue() {
+    if (this.isProcessing || this.activeTipId) return;
+    if (!this.queue.length) return;
+
+    const now = Date.now();
+    const waitMs = Math.max(0, this.RATE_LIMIT_MS - (now - this.lastShownAt));
+    if (waitMs > 0) {
+      this.isProcessing = true;
+      setTimeout(() => {
+        this.isProcessing = false;
+        this.processQueue();
+      }, waitMs);
+      return;
+    }
+
+    const tip = this.queue.shift();
+    if (!tip) return;
+
+    this.showTip(tip);
+  }
+
+  static showTip(tip) {
+    this.ensureContainer();
+    const container = document.getElementById("cowio-tips-container");
+    if (!container) return;
+
+    this.hideActive();
+    this.activeTipId = tip.id;
+    this.lastShownAt = Date.now();
+
+    const bar = document.createElement("div");
+    bar.className = "cowio-tip-toast";
+    bar.dataset.tipId = tip.id;
+    bar.innerHTML = `
+      <img class="cowio-tip-icon" src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Light%20Bulb.webp" alt="">
+      <div class="cowio-tip-text">
+        <strong>Фишка</strong>
+        ${tip.text}
+      </div>
+      <button type="button" class="cowio-tip-dismiss" title="Понятно">✕</button>
+    `;
+    bar.querySelector(".cowio-tip-dismiss").onclick = () => this.dismiss(tip.id);
+    container.appendChild(bar);
+
+    this.activeTimer = setTimeout(() => {
+      this.dismiss(tip.id);
+    }, this.SHOW_MS);
+  }
+
+  static hideActive() {
+    if (this.activeTimer) {
+      clearTimeout(this.activeTimer);
+      this.activeTimer = null;
+    }
+    if (this.activeTipId) {
+      document
+        .querySelectorAll(`.cowio-tip-toast[data-tip-id="${this.activeTipId}"]`)
+        .forEach((el) => el.remove());
+      this.activeTipId = null;
+    }
+  }
+
+  /** @deprecated используйте scheduleTips */
+  static renderAll() {
+    this.scheduleTips();
   }
 }
 

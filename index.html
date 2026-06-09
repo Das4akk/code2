@@ -2848,6 +2848,10 @@
         background: rgba(255, 255, 255, 0.16);
         border-color: rgba(255, 255, 255, 0.36);
       }
+      .dm-theme-chip.dm-theme-locked {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
       #modal-dm-chat .modal-content {
         transition:
           background-color 0.8s ease,
@@ -4570,23 +4574,15 @@
                 Комнаты</span
               >
             </div>
-            <div class="nav-item" id="nav-catalog">
+            <div class="nav-item" id="nav-friends">
               <span
                 ><img
-                  src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Shopping%20Bags.webp"
+                  src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp"
                   style="width: 1.2em; height: 1.2em; vertical-align: bottom"
                 />
-                Каталог</span
+                Друзья</span
               >
-            </div>
-            <div class="nav-item" id="nav-premium">
-              <span
-                ><img
-                  src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp"
-                  style="width: 1.2em; height: 1.2em; vertical-align: bottom"
-                />
-                Premium</span
-              >
+              <div class="nav-badge" id="friend-req-badge">0</div>
             </div>
             <div class="nav-item" id="nav-find-friend">
               <span
@@ -4595,6 +4591,15 @@
                   style="width: 1.2em; height: 1.2em; vertical-align: bottom"
                 />
                 Найти друга</span
+              >
+            </div>
+            <div class="nav-item" id="nav-catalog">
+              <span
+                ><img
+                  src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Shopping%20Bags.webp"
+                  style="width: 1.2em; height: 1.2em; vertical-align: bottom"
+                />
+                Каталог</span
               >
             </div>
             <div class="nav-item" id="nav-support" style="display: none">
@@ -4620,16 +4625,6 @@
               >
             </div>
 
-            <div class="nav-item" id="nav-friends">
-              <span
-                ><img
-                  src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp"
-                  style="width: 1.2em; height: 1.2em; vertical-align: bottom"
-                />
-                Друзья</span
-              >
-              <div class="nav-badge" id="friend-req-badge">0</div>
-            </div>
             <div class="nav-item" id="nav-settings">
               <span
                 ><img
@@ -4652,6 +4647,15 @@
               flex-shrink: 0;
             "
           >
+            <div class="nav-item" id="nav-premium" style="margin-bottom: 4px">
+              <span
+                ><img
+                  src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp"
+                  style="width: 1.2em; height: 1.2em; vertical-align: bottom"
+                />
+                Premium</span
+              >
+            </div>
             <div id="lobby-theme-slot">
               <label class="global-theme-toggle" title="Светлая тема">
                 <span class="global-theme-label">Тема лобби</span>

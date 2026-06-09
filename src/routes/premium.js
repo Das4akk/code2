@@ -1,13 +1,13 @@
 import crypto from "crypto";
 
 const PREMIUM_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
-const pendingPayments = new Map();
+const LAVA_API_BASE = "https://gate.lava.top";
 
-function yukassaConfigured() {
+function lavaConfigured() {
   return Boolean(
-    process.env.YUKASSA_SHOP_ID &&
-      process.env.YUKASSA_SECRET_KEY &&
-      process.env.YUKASSA_SHOP_ID !== "your_shop_id",
+    process.env.LAVA_API_KEY &&
+      process.env.LAVA_OFFER_ID &&
+      process.env.LAVA_API_KEY !== "your_lava_api_key",
   );
 }
 
@@ -68,6 +68,19 @@ async function activatePremium(admin, uid, paymentId, amountRub) {
   return premium;
 }
 
+async function revokePremium(admin, uid) {
+  const db = getFirebaseDb(admin);
+  const now = Date.now();
+  if (db) {
+    await db.ref(`users/${uid}/profile/premium`).set({
+      active: false,
+      expiresAt: now,
+      updatedAt: now,
+    });
+  }
+  return { active: false, expiresAt: now };
+}
+
 async function verifyUidEmail(admin, uid, email) {
   if (!admin?.apps?.length) return { ok: true, reason: "no_admin" };
   try {
@@ -84,48 +97,114 @@ async function verifyUidEmail(admin, uid, email) {
   }
 }
 
-async function createYukassaPayment({ uid, email, returnUrl, amount }) {
-  const shopId = process.env.YUKASSA_SHOP_ID;
-  const secret = process.env.YUKASSA_SECRET_KEY;
-  const auth = Buffer.from(`${shopId}:${secret}`).toString("base64");
-  const idempotenceKey = crypto.randomUUID();
-
-  const response = await fetch("https://api.yookassa.ru/v3/payments", {
-    method: "POST",
+async function lavaRequest(path, { method = "GET", body } = {}) {
+  const response = await fetch(`${LAVA_API_BASE}${path}`, {
+    method,
     headers: {
-      Authorization: `Basic ${auth}`,
+      "X-Api-Key": process.env.LAVA_API_KEY,
       "Content-Type": "application/json",
-      "Idempotence-Key": idempotenceKey,
     },
-    body: JSON.stringify({
-      amount: { value: amount, currency: "RUB" },
-      capture: true,
-      confirmation: { type: "redirect", return_url: returnUrl },
-      description: "COWIO Premium — 1 месяц",
-      metadata: { uid, plan: "monthly", product: "cowio_premium" },
-      receipt: email
-        ? {
-            customer: { email },
-            items: [
-              {
-                description: "COWIO Premium подписка 30 дней",
-                quantity: "1.00",
-                amount: { value: amount, currency: "RUB" },
-                vat_code: 1,
-                payment_mode: "full_payment",
-                payment_subject: "service",
-              },
-            ],
-          }
-        : undefined,
-    }),
+    body: body ? JSON.stringify(body) : undefined,
   });
 
-  const data = await response.json();
+  const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(data?.description || data?.message || "YooKassa error");
+    throw new Error(
+      data?.error || data?.message || data?.detail || `LAVA HTTP ${response.status}`,
+    );
   }
   return data;
+}
+
+async function createLavaInvoice({ uid, email, returnUrl }) {
+  const offerId = process.env.LAVA_OFFER_ID;
+  const body = {
+    email,
+    offerId,
+    currency: "RUB",
+    buyerLanguage: "RU",
+    clientUtm: {
+      utm_source: "cowio",
+      utm_medium: "premium",
+      utm_campaign: "monthly",
+      utm_content: uid,
+    },
+  };
+
+  if (returnUrl) {
+    body.successUrl = returnUrl;
+    body.failUrl = returnUrl;
+  }
+
+  const data = await lavaRequest("/v2/invoice", { method: "POST", body });
+  const paymentId =
+    data.id || data.invoiceId || data.contractId || data.paymentId || null;
+  const confirmationUrl =
+    data.paymentUrl || data.url || data.payUrl || data.confirmationUrl || null;
+
+  if (!paymentId || !confirmationUrl) {
+    throw new Error("LAVA: не получена ссылка на оплату");
+  }
+
+  return { paymentId, confirmationUrl, raw: data };
+}
+
+async function getLavaInvoiceStatus(paymentId) {
+  try {
+    return await lavaRequest(`/api/v2/invoices/${paymentId}`);
+  } catch {
+    return await lavaRequest(`/v1/invoices/${paymentId}`);
+  }
+}
+
+function isLavaPaymentSuccess(invoice) {
+  const status = String(invoice?.status || invoice?.contractStatus || "").toUpperCase();
+  return (
+    status === "COMPLETED" ||
+    status === "SUCCESS" ||
+    status === "PAID" ||
+    status === "SUCCEEDED" ||
+    invoice?.success === true
+  );
+}
+
+function extractUidFromWebhook(payload) {
+  const direct =
+    payload?.metadata?.uid ||
+    payload?.customFields?.uid ||
+    payload?.clientUtm?.utm_content ||
+    payload?.utm?.utm_content;
+  if (direct) return String(direct);
+
+  const nested =
+    payload?.data?.metadata?.uid ||
+    payload?.data?.clientUtm?.utm_content ||
+    payload?.contract?.clientUtm?.utm_content;
+  return nested ? String(nested) : null;
+}
+
+function extractInvoiceIdFromWebhook(payload) {
+  return (
+    payload?.invoiceId ||
+    payload?.id ||
+    payload?.contractId ||
+    payload?.data?.invoiceId ||
+    payload?.data?.id ||
+    payload?.data?.contractId ||
+    null
+  );
+}
+
+function isLavaSuccessEvent(payload) {
+  const eventType = String(
+    payload?.eventType || payload?.type || payload?.event || "",
+  ).toLowerCase();
+  return (
+    eventType.includes("payment.success") ||
+    eventType.includes("subscription.recurring.payment.success") ||
+    payload?.status === "success" ||
+    payload?.contractStatus === "success"
+  );
 }
 
 export function registerPremiumRoutes(app, admin) {
@@ -139,11 +218,11 @@ export function registerPremiumRoutes(app, admin) {
         return res.status(403).json({ success: false, error: "Не удалось проверить аккаунт" });
       }
 
-      const amount = Number(process.env.PREMIUM_PRICE_RUB || 179).toFixed(2);
+      const amount = Number(process.env.PREMIUM_PRICE_RUB || 179);
       const baseUrl = getBaseUrl(req);
       const returnUrl = `${baseUrl}/?premium_return=1&uid=${encodeURIComponent(uid)}`;
 
-      if (!yukassaConfigured()) {
+      if (!lavaConfigured()) {
         if (process.env.PREMIUM_SANDBOX_AUTO === "true") {
           const premium = await activatePremium(admin, uid, `sandbox_${Date.now()}`, amount);
           return res.json({
@@ -156,39 +235,33 @@ export function registerPremiumRoutes(app, admin) {
         }
         return res.status(503).json({
           success: false,
-          error: "Платежи не настроены. Добавьте YUKASSA_SHOP_ID и YUKASSA_SECRET_KEY в .env",
+          error: "Платежи не настроены. Добавьте LAVA_API_KEY и LAVA_OFFER_ID в .env",
           setupRequired: true,
         });
       }
 
-      const payment = await createYukassaPayment({
+      const payment = await createLavaInvoice({
         uid,
         email: verified.email || email,
         returnUrl,
-        amount,
-      });
-
-      pendingPayments.set(payment.id, {
-        uid,
-        status: payment.status,
-        createdAt: Date.now(),
       });
 
       const db = getFirebaseDb(admin);
       if (db) {
-        await db.ref(`premium_orders/${payment.id}`).set({
+        await db.ref(`premium_orders/${payment.paymentId}`).set({
           uid,
-          status: payment.status,
-          amountRub: Number(amount),
+          status: "pending",
+          amountRub: amount,
+          provider: "lava",
           createdAt: Date.now(),
         });
       }
 
       res.json({
         success: true,
-        paymentId: payment.id,
-        confirmationUrl: payment.confirmation?.confirmation_url,
-        status: payment.status,
+        paymentId: payment.paymentId,
+        confirmationUrl: payment.confirmationUrl,
+        status: "pending",
       });
     } catch (e) {
       console.error("[Premium] create-payment:", e);
@@ -198,22 +271,37 @@ export function registerPremiumRoutes(app, admin) {
 
   app.post("/api/premium/webhook", async (req, res) => {
     try {
-      const event = req.body?.event;
-      const payment = req.body?.object;
-      if (!payment?.id) return res.status(400).send("bad request");
-
-      if (event === "payment.succeeded" && payment.status === "succeeded") {
-        const uid = payment.metadata?.uid;
-        if (uid) {
-          const amount = payment.amount?.value || process.env.PREMIUM_PRICE_RUB || 179;
-          await activatePremium(admin, uid, payment.id, amount);
+      const webhookKey = process.env.LAVA_WEBHOOK_KEY;
+      if (webhookKey) {
+        const incoming = req.headers["x-api-key"] || req.headers["x-webhook-key"];
+        if (incoming !== webhookKey) {
+          return res.status(401).send("unauthorized");
         }
       }
 
-      if (event === "payment.canceled") {
-        const db = getFirebaseDb(admin);
-        if (db) {
-          await db.ref(`premium_orders/${payment.id}/status`).set("canceled");
+      const payload = req.body || {};
+      if (!isLavaSuccessEvent(payload)) {
+        return res.status(200).send("ok");
+      }
+
+      const paymentId = extractInvoiceIdFromWebhook(payload);
+      let uid = extractUidFromWebhook(payload);
+      const db = getFirebaseDb(admin);
+
+      if (!uid && paymentId && db) {
+        const orderSnap = await db.ref(`premium_orders/${paymentId}/uid`).once("value");
+        if (orderSnap.exists()) uid = orderSnap.val();
+      }
+
+      if (uid) {
+        const amount =
+          payload?.amount ||
+          payload?.data?.amount ||
+          process.env.PREMIUM_PRICE_RUB ||
+          179;
+        await activatePremium(admin, uid, paymentId || `lava_${Date.now()}`, amount);
+        if (db && paymentId) {
+          await db.ref(`premium_orders/${paymentId}/status`).set("succeeded");
         }
       }
 
@@ -233,22 +321,26 @@ export function registerPremiumRoutes(app, admin) {
       if (db) {
         const premiumSnap = await db.ref(`users/${uid}/profile/premium`).once("value");
         const premium = premiumSnap.exists() ? premiumSnap.val() : null;
-        const active = Boolean(premium?.active && Number(premium.expiresAt) > Date.now());
+        let active = Boolean(premium?.active && Number(premium.expiresAt) > Date.now());
 
-        if (paymentId && yukassaConfigured()) {
-          const shopId = process.env.YUKASSA_SHOP_ID;
-          const secret = process.env.YUKASSA_SECRET_KEY;
-          const auth = Buffer.from(`${shopId}:${secret}`).toString("base64");
-          const payRes = await fetch(`https://api.yookassa.ru/v3/payments/${paymentId}`, {
-            headers: { Authorization: `Basic ${auth}` },
-          });
-          if (payRes.ok) {
-            const payData = await payRes.json();
-            if (payData.status === "succeeded" && payData.metadata?.uid === uid && !active) {
-              await activatePremium(admin, uid, paymentId, payData.amount?.value);
+        if (paymentId && lavaConfigured() && !active) {
+          try {
+            const payData = await getLavaInvoiceStatus(paymentId);
+            const orderUidSnap = await db.ref(`premium_orders/${paymentId}/uid`).once("value");
+            const orderUid = orderUidSnap.exists() ? orderUidSnap.val() : null;
+            if (isLavaPaymentSuccess(payData) && (orderUid === uid || !orderUid)) {
+              await activatePremium(
+                admin,
+                uid,
+                paymentId,
+                payData.amount || process.env.PREMIUM_PRICE_RUB || 179,
+              );
               const refreshed = await readExistingPremium(db, uid);
-              return res.json({ success: true, active: true, premium: refreshed });
+              active = Boolean(refreshed?.active && Number(refreshed.expiresAt) > Date.now());
+              return res.json({ success: true, active, premium: active ? refreshed : null });
             }
+          } catch (pollErr) {
+            console.warn("[Premium] status poll:", pollErr.message);
           }
         }
 
@@ -276,6 +368,21 @@ export function registerPremiumRoutes(app, admin) {
       const { uid } = req.body || {};
       if (!uid) return res.status(400).json({ success: false, error: "UID обязателен" });
       const premium = await activatePremium(admin, uid, `admin_grant_${Date.now()}`, 0);
+      res.json({ success: true, premium });
+    } catch (e) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  app.post("/api/premium/revoke", async (req, res) => {
+    try {
+      const secret = req.headers["x-premium-admin-secret"];
+      if (!secret || secret !== process.env.PREMIUM_ADMIN_SECRET) {
+        return res.status(403).json({ success: false, error: "Forbidden" });
+      }
+      const { uid } = req.body || {};
+      if (!uid) return res.status(400).json({ success: false, error: "UID обязателен" });
+      const premium = await revokePremium(admin, uid);
       res.json({ success: true, premium });
     } catch (e) {
       res.status(500).json({ success: false, error: e.message });

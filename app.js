@@ -6209,11 +6209,21 @@ class ThemeManager {
     const dmControls = Utils.$("dm-theme-controls");
     if (!dmControls) return;
     dmControls.innerHTML = "";
+    const uid = AppState?.currentUser?.uid;
+    const profile = uid ? AppState.usersCache.get(uid) : null;
+    const premiumThemes = window.PremiumManager?.PREMIUM_DM_THEMES || [];
     Object.keys(this.EXTENDED_THEMES).forEach((key) => {
+      const isPremiumTheme = premiumThemes.includes(key);
+      const locked =
+        isPremiumTheme &&
+        window.PremiumManager &&
+        !PremiumManager.canUseDmTheme(key, profile, uid);
       const btn = document.createElement("button");
-      btn.className = "dm-theme-chip";
+      btn.className = "dm-theme-chip" + (locked ? " dm-theme-locked" : "");
       btn.dataset.theme = key;
-      btn.innerText = key;
+      btn.innerText = locked ? `${key} ★` : key;
+      btn.title = locked ? "Только для Premium" : key;
+      btn.disabled = locked;
       dmControls.appendChild(btn);
     });
   }
@@ -6259,7 +6269,7 @@ class ProfileManager {
       );
     if (
       window.PremiumManager &&
-      PremiumManager.isPremiumActive(profile, uid) &&
+      PremiumManager.hasPaidPremium(profile, uid) &&
       !AdminPanel.isCreatorProfile(profile, uid) &&
       !AdminPanel.isModeratorProfile(profile, uid)
     ) {
@@ -6462,7 +6472,15 @@ class ProfileManager {
     const p = AppState.usersCache.get(AppState.currentUser.uid) || {};
     Utils.$("edit-name").value = p.name || "";
     Utils.$("edit-username-input").value = p.username || "";
-    Utils.$("edit-bio").value = p.bio || "";
+    const bioEl = Utils.$("edit-bio");
+    const bioLimit = window.PremiumManager
+      ? PremiumManager.getBioLimit(p, AppState.currentUser?.uid)
+      : 200;
+    if (bioEl) {
+      bioEl.value = p.bio || "";
+      bioEl.maxLength = bioLimit;
+      bioEl.placeholder = `О себе (до ${bioLimit} символов)`;
+    }
     Utils.$("edit-hashtags").value = Array.isArray(p.hashtags)
       ? p.hashtags.join(" ")
       : "";
@@ -7414,6 +7432,12 @@ class ProfileManager {
       .trim()
       .replace("@", "");
     const bio = Utils.$("edit-bio").value.trim();
+    const bioLimit = window.PremiumManager
+      ? PremiumManager.getBioLimit(oldProfile, uid)
+      : 200;
+    if (bio.length > bioLimit) {
+      throw new Error(`Био слишком длинное (макс. ${bioLimit} символов)`);
+    }
     const hashtags = HashtagManager.parseHashtags(
       Utils.$("edit-hashtags").value,
       false,
@@ -8191,11 +8215,11 @@ class FriendsManager {
     const navItems = [
       "nav-profile",
       "nav-rooms",
+      "nav-friends",
+      "nav-find-friend",
       "nav-catalog",
       "nav-premium",
       "nav-shop",
-      "nav-find-friend",
-      "nav-friends",
       "nav-switch-account",
       "nav-support",
       "nav-support-staff",
@@ -8234,19 +8258,23 @@ class FriendsManager {
       Utils.$("section-switch-account").style.display =
         id === "nav-switch-account" ? "flex" : "none";
     };
+    FriendsManager.setNavActive = setNavActive;
 
     Utils.$("nav-friends").onclick = () => setNavActive("nav-friends");
     Utils.$("nav-find-friend").onclick = () => setNavActive("nav-find-friend");
     Utils.$("nav-rooms").onclick = () => setNavActive("nav-rooms");
     if (Utils.$("nav-catalog"))
-      Utils.$("nav-catalog").onclick = () => {
+      Utils.$("nav-catalog").onclick = async () => {
         const uid = AppState.currentUser?.uid;
-        const profile = uid ? AppState.usersCache.get(uid) : null;
+        let profile = uid ? AppState.usersCache.get(uid) : null;
+        if (uid && !profile && window.ProfileManager) {
+          profile = await ProfileManager.loadUser(uid);
+        }
         if (
           window.PremiumManager &&
           !PremiumManager.hasCatalogAccess(profile, uid)
         ) {
-          PremiumManager.openCatalogOrUpsell();
+          PremiumManager.openCatalogOrUpsell(true);
           return;
         }
         setNavActive("nav-catalog");
@@ -9205,6 +9233,15 @@ class DirectMessages {
   static applyTheme(theme = "default", persist = false) {
     const modal = Utils.$("modal-dm-chat");
     if (!modal) return;
+    const uid = AppState?.currentUser?.uid;
+    const profile = uid ? AppState.usersCache.get(uid) : null;
+    if (
+      window.PremiumManager &&
+      !PremiumManager.canUseDmTheme(theme, profile, uid)
+    ) {
+      Utils.toast("Эта тема доступна только Premium-подписчикам", "info");
+      return;
+    }
     this.theme = this.normalizeTheme(theme);
     Object.keys(ThemeManager.EXTENDED_THEMES).forEach((k) =>
       modal.classList.remove("theme-" + k),
@@ -11711,6 +11748,26 @@ class AdminPanel {
             <textarea id="admin-edit-bio" rows="4" placeholder="Описание">${Utils.escapeHtml(profile.bio || "")}</textarea>
             
             <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
+                <div style="font-weight:700; margin-bottom:6px;">Premium подписка</div>
+                <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">
+                    Статус: ${
+                      profile?.premium?.active && Number(profile.premium.expiresAt) > Date.now()
+                        ? `активен до ${new Date(Number(profile.premium.expiresAt)).toLocaleDateString("ru-RU")}`
+                        : "не активен"
+                    }
+                </div>
+                ${
+                  this.isCurrentUserCreator()
+                    ? `<div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <button class="primary-btn" id="btn-admin-grant-premium" style="width:auto;padding:8px 14px;">Выдать Premium (30 дн.)</button>
+                        <button class="danger-btn" id="btn-admin-revoke-premium" style="width:auto;padding:8px 14px;">Снять Premium</button>
+                      </div>
+                      <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Только Создатель может выдавать Premium.</div>`
+                    : `<div style="font-size:11px;color:var(--text-muted);">Выдача Premium — только для Создателя.</div>`
+                }
+            </div>
+
+            <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
                 <div style="font-weight:700; margin-bottom:6px;">Стрик (Огонек)</div>
                 <input type="number" id="admin-edit-streak" min="0" value="${Utils.escapeHtml(profile.streak || 0)}" placeholder="Количество дней подряд">
             </div>
@@ -11796,6 +11853,15 @@ class AdminPanel {
 
     BadgeManager.renderUserEditorBadges(uid, profile.assignedBadges);
 
+    const grantPremiumBtn = Utils.$("btn-admin-grant-premium");
+    if (grantPremiumBtn) {
+      grantPremiumBtn.onclick = () => this.grantPremiumToUser(uid);
+    }
+    const revokePremiumBtn = Utils.$("btn-admin-revoke-premium");
+    if (revokePremiumBtn) {
+      revokePremiumBtn.onclick = () => this.revokePremiumFromUser(uid);
+    }
+
     const grantFrameBtn = Utils.$("btn-admin-user-grant-frame");
     if (grantFrameBtn) {
       grantFrameBtn.onclick = async () => {
@@ -11858,6 +11924,65 @@ class AdminPanel {
       });
       Utils.toast("Сигнал на отмену туториала отправлен.");
     };
+  }
+
+  static async grantPremiumToUser(uid) {
+    if (!this.isCurrentUserCreator())
+      return Utils.toast("Только Создатель может выдавать Premium", "error");
+    if (!(await this.checkModRestrictionsForTarget(uid))) return;
+    if (!(await Utils.confirm(`Выдать Premium на 30 дней пользователю ${uid}?`)))
+      return;
+
+    const snap = await get(ref(db, `users/${uid}/profile/premium`));
+    const existing = snap.exists() ? snap.val() : {};
+    const now = Date.now();
+    const PREMIUM_MS = 30 * 24 * 60 * 60 * 1000;
+    let expiresAt = now + PREMIUM_MS;
+    if (existing?.expiresAt && Number(existing.expiresAt) > now) {
+      expiresAt = Number(existing.expiresAt) + PREMIUM_MS;
+    }
+
+    await set(ref(db, `users/${uid}/profile/premium`), {
+      active: true,
+      expiresAt,
+      since: existing?.since || now,
+      plan: "monthly",
+      statusEmoji: existing?.statusEmoji || "star",
+      grantedBy: AppState.currentUser.uid,
+      grantedAt: now,
+      updatedAt: now,
+    });
+
+    await this.pushAuditLog("grant_premium", { uid, expiresAt });
+    Utils.toast("Premium выдан на 30 дней", "success");
+    await this.loadUserEditor(uid);
+    if (window.PremiumManager) PremiumManager.syncFromProfile(
+      AppState.usersCache.get(uid),
+      uid,
+    );
+  }
+
+  static async revokePremiumFromUser(uid) {
+    if (!this.isCurrentUserCreator())
+      return Utils.toast("Только Создатель может снимать Premium", "error");
+    if (!(await this.checkModRestrictionsForTarget(uid))) return;
+    if (!(await Utils.confirm(`Снять Premium у пользователя ${uid}?`))) return;
+
+    const now = Date.now();
+    await set(ref(db, `users/${uid}/profile/premium`), {
+      active: false,
+      expiresAt: now,
+      revokedBy: AppState.currentUser.uid,
+      updatedAt: now,
+    });
+
+    await this.pushAuditLog("revoke_premium", { uid });
+    Utils.toast("Premium снят", "success");
+    await this.loadUserEditor(uid);
+    if (window.PremiumManager) PremiumManager.syncFromProfile(
+      AppState.usersCache.get(uid),
+      uid,
+    );
   }
 
   static async forceSetPartner(uid) {
@@ -15304,10 +15429,13 @@ class CatalogManager {
 
     const uid = AppState.currentUser?.uid;
     const currentProf = uid ? AppState.usersCache.get(uid) : null;
+    const catalogVisible =
+      Utils.$("section-catalog")?.style?.display === "flex";
     if (
       window.PremiumManager &&
       !PremiumManager.hasCatalogAccess(currentProf, uid)
     ) {
+      if (!catalogVisible) return;
       list.innerHTML = PremiumManager.renderCatalogLock();
       list.querySelector("#catalog-unlock-premium-btn")?.addEventListener(
         "click",

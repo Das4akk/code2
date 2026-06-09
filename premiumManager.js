@@ -30,15 +30,33 @@ class PremiumManager {
       label: "Огонь",
       url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp",
     },
+    butterfly: {
+      label: "Бабочка",
+      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Butterfly.webp",
+    },
+    rainbow: {
+      label: "Радуга",
+      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Rainbow.webp",
+    },
+    trophy: {
+      label: "Кубок",
+      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Trophy.webp",
+    },
   };
+
+  static PREMIUM_DM_THEMES = ["vault-gold", "abyss-frost", "crimson-chalk", "noir-rose"];
+  static BIO_LIMIT_DEFAULT = 200;
+  static BIO_LIMIT_PREMIUM = 500;
 
   static PERKS = [
     { url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Shopping%20Bags.webp", title: "Полный каталог", desc: "Рамки, звуки и акции только для Premium" },
-    { url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp", title: "Статус-эмодзи", desc: "Как в Telegram: эмодзи рядом с ником в чате и профиле" },
+    { url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp", title: "Статус-эмодзи", desc: "10 эмодзи рядом с ником в чате и профиле" },
     { url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkler.webp", title: "x2 XP", desc: "В два раза больше опыта за время в комнатах" },
     { url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Woman%20Technologist.webp", title: "Приоритетная поддержка", desc: "Тикеты помечаются и обрабатываются быстрее" },
-    { url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp", title: "Золотая аура", desc: "Премиальное свечение имени в чате и особый фон частиц" },
     { url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Party%20Popper.webp", title: "Ранний доступ", desc: "Первыми видите горячие акции в каталоге" },
+    { url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Artist%20Palette.webp", title: "Эксклюзивные темы DM", desc: "4 премиальные темы оформления личных сообщений" },
+    { url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp", title: "Расширенное био", desc: "До 500 символов в описании профиля вместо 200" },
+    { url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Label.webp", title: "Premium-значок", desc: "Особый бейдж Premium в профиле и списках" },
   ];
 
   static init() {
@@ -66,15 +84,6 @@ class PremiumManager {
         margin-right: 3px;
         display: inline-block;
         filter: drop-shadow(0 0 4px rgba(255, 200, 80, 0.45));
-      }
-      .chat-name-premium {
-        background: linear-gradient(90deg, #ffe9a8, #ffb347, #ffe9a8);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-      }
-      body.user-is-premium #particle-canvas {
-        filter: blur(0.3px) hue-rotate(-8deg) saturate(1.15);
       }
       .nav-item.nav-locked {
         opacity: 0.72;
@@ -232,6 +241,28 @@ class PremiumManager {
   }
 
   static hasCatalogAccess(profile, uid) {
+    if (!uid) return false;
+    if (window.AdminPanel) {
+      if (AdminPanel.isCreatorProfile(profile || {}, uid)) return true;
+      if (AdminPanel.isModeratorProfile(profile || {}, uid)) return true;
+    }
+    const prem = this.normalizePremium(profile);
+    return Boolean(prem?.active);
+  }
+
+  static hasPaidPremium(profile, uid) {
+    const prem = this.normalizePremium(profile);
+    return Boolean(prem?.active);
+  }
+
+  static getBioLimit(profile, uid) {
+    return this.isPremiumActive(profile, uid)
+      ? this.BIO_LIMIT_PREMIUM
+      : this.BIO_LIMIT_DEFAULT;
+  }
+
+  static canUseDmTheme(themeKey, profile, uid) {
+    if (!this.PREMIUM_DM_THEMES.includes(themeKey)) return true;
     return this.isPremiumActive(profile, uid);
   }
 
@@ -246,10 +277,8 @@ class PremiumManager {
     return `<img class="premium-status-emoji" src="${preset.url}" alt="" title="Premium">`;
   }
 
-  static getChatNameClass(profile, uid) {
-    return this.isPremiumActive(profile, uid) && !this.isStaff(profile, uid)
-      ? "chat-name-premium"
-      : "";
+  static getChatNameClass() {
+    return "";
   }
 
   static formatExpiry(profile) {
@@ -263,10 +292,7 @@ class PremiumManager {
   }
 
   static syncFromProfile(profile, uid) {
-    document.body.classList.toggle(
-      "user-is-premium",
-      this.isPremiumActive(profile, uid) && !this.isStaff(profile, uid),
-    );
+    document.body.classList.remove("user-is-premium");
     this.syncNav(profile, uid);
     this.renderPremiumSection(profile, uid);
   }
@@ -358,7 +384,7 @@ class PremiumManager {
                   Оформить Premium
                 </button>
                 <div style="font-size:11px;color:var(--text-muted);margin-top:10px;max-width:420px;line-height:1.5;">
-                  Оплата через ЮKassa. После успешной оплаты Premium активируется автоматически.
+                  Оплата через LAVA. После успешной оплаты Premium активируется автоматически.
                 </div>`
               : !staff && active
                 ? `<button class="secondary-btn" id="btn-extend-premium" style="width:auto;padding:10px 18px;">Продлить ещё на месяц (${this.PRICE_RUB} ₽)</button>`
@@ -501,15 +527,22 @@ class PremiumManager {
       </div>`;
   }
 
-  static openCatalogOrUpsell() {
+  static openCatalogOrUpsell(navigate = true) {
     const uid = AppState?.currentUser?.uid;
     const profile = uid ? AppState.usersCache.get(uid) : null;
     if (this.hasCatalogAccess(profile, uid)) {
-      document.getElementById("nav-catalog")?.click();
-      return;
+      if (navigate && window.FriendsManager?.setNavActive) {
+        FriendsManager.setNavActive("nav-catalog");
+        if (window.CatalogManager) CatalogManager.renderCatalog();
+      }
+      return true;
     }
-    document.getElementById("nav-premium")?.click();
+    if (navigate && window.FriendsManager?.setNavActive) {
+      FriendsManager.setNavActive("nav-premium");
+      this.renderPremiumSection(profile, uid);
+    }
     if (window.Utils?.toast) Utils.toast("Оформите Premium для доступа к каталогу", "info");
+    return false;
   }
 }
 
