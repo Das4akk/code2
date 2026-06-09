@@ -178,10 +178,20 @@ class SecurityManager {
                 node.src.includes("gstatic.com") === false && 
                 node.src.includes("youtube.com") === false &&
                 node.src.includes("hls.js") === false &&
-                node.src.includes("rutube.ru") === false
+                node.src.includes("rutube.ru") === false &&
+                node.src.includes("vercel") === false &&
+                node.src.includes("google") === false &&
+                node.src.includes("run.app") === false &&
+                node.src.includes("ai.studio") === false &&
+                node.src.includes("localhost") === false &&
+                node.src.trim() !== ""
               ) {
                 console.error(`[SECURITY] Blocked potentially unsafe DOM injection: ${node.tagName}`);
-                if (node.parentNode) node.parentNode.removeChild(node);
+                if (node.parentNode) {
+                  try {
+                    node.parentNode.removeChild(node);
+                  } catch (err) {}
+                }
               }
             }
           });

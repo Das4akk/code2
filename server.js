@@ -223,7 +223,10 @@ app.use((err, req, res, next) => {
     return next(err);
 });
 
-const finalPort = 3000;
-app.listen(finalPort, '0.0.0.0', () => {
-    console.log(`[COWIO] Server listening on http://0.0.0.0:${finalPort}`);
-});
+const finalPort = process.env.PORT || 3000;
+if (process.env.VERCEL !== '1') {
+    app.listen(finalPort, '0.0.0.0', () => {
+        console.log(`[COWIO] Server listening on http://0.0.0.0:${finalPort}`);
+    });
+}
+export default app;
