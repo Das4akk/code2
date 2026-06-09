@@ -75,6 +75,7 @@ app.use('/api', rateLimit({
 
 import nodemailer from 'nodemailer';
 import admin from 'firebase-admin';
+import { registerPremiumRoutes } from './src/routes/premium.js';
 
 // ----------------------------------------------------
 // НАСТРОЙКА FIREBASE ADMIN И ПОЧТЫ (ДЛЯ СБРОСА ПАРОЛЯ)
@@ -85,7 +86,8 @@ try {
     if (fs.existsSync('./serviceAccountKey.json')) {
         const serviceAccount = JSON.parse(fs.readFileSync('./serviceAccountKey.json', 'utf8'));
         admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount)
+            credential: admin.credential.cert(serviceAccount),
+            databaseURL: process.env.FIREBASE_DATABASE_URL || 'https://das4akk-1-default-rtdb.firebaseio.com'
         });
         console.log('[COWIO] Firebase Admin SDK успешно запущен!');
     } else {
@@ -243,6 +245,8 @@ app.post('/api/custom-auth/change-email', async (req, res) => {
 app.get('/api/resolve-media', (req, res) => {
     res.status(500).json({ error: 'Backend media resolver not found' });
 });
+
+registerPremiumRoutes(app, admin);
 
 const publicPath = __dirname;
 app.use(express.static(publicPath, { index: false })); // avoid index.html auto serving first if we want specific rules, or just allow it

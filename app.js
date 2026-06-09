@@ -51,6 +51,11 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getDatabase(app);
+window.db = db;
+window.firebaseRef = ref;
+window.firebaseUpdate = update;
+window.firebaseSet = set;
+window.firebaseGet = get;
 
 const AppState = {
   currentUser: null,
@@ -3113,9 +3118,8 @@ class BackgroundFX {
     let dots = [];
     const connectionStrength = new Map();
     let isTabVisible = true;
-    let mouse = { x: null, y: null, radius: window.innerWidth < 768 ? 20 : 40, vx: 0, vy: 0 };
+    let mouse = { x: null, y: null, radius: window.innerWidth < 768 ? 18 : 32, vx: 0, vy: 0 };
     let lastMouse = { x: null, y: null };
-    let ripples = [];
     let flashes = [];
 
     function resize() {
@@ -3143,12 +3147,6 @@ class BackgroundFX {
       mouse.vy = 0;
     });
 
-    window.addEventListener("mousedown", (e) => {
-      if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') {
-        ripples.push({ x: e.clientX, y: e.clientY, radius: 0, maxRadius: 300, alpha: 0.6 });
-      }
-    });
-
     class Dot {
       constructor(isDust = false) {
         // Spawn from random positions but staggered
@@ -3171,7 +3169,8 @@ class BackgroundFX {
         this.offset = Math.random() * 10000;
         this.parallaxX = 0;
         this.parallaxY = 0;
-        this.grayLevel = isDust ? 180 + Math.random() * 40 : 200 + Math.random() * 55; // Grayscale shade
+        this.grayLevel = isDust ? 175 + Math.random() * 35 : 210 + Math.random() * 40;
+        this.tint = isDust ? 0 : Math.random() * 0.08;
         this.isInteractive = !isDust || Math.random() > 0.4;
         this.shapeType = isDust ? (Math.random() < 0.33 ? 'square' : Math.random() < 0.5 ? 'triangle' : 'circle') : 'circle';
       }
@@ -3226,13 +3225,15 @@ class BackgroundFX {
           for (let i = 1; i < this.history.length; i++) {
             ctx.lineTo(this.history[i].x, this.history[i].y);
           }
-          ctx.strokeStyle = `rgba(${this.grayLevel}, ${this.grayLevel}, ${this.grayLevel}, ${alpha * 0.3})`;
+          const g = this.grayLevel;
+          ctx.strokeStyle = `rgba(${g}, ${g + 8}, ${g + 18}, ${alpha * 0.28})`;
           ctx.lineWidth = this.size * 0.8;
           ctx.lineCap = "round";
           ctx.stroke();
         }
 
-        ctx.fillStyle = `rgba(${this.grayLevel}, ${this.grayLevel}, ${this.grayLevel}, ${alpha})`;
+        const g = this.grayLevel;
+        ctx.fillStyle = `rgba(${g}, ${g + 6 + this.tint * 40}, ${g + 14 + this.tint * 60}, ${alpha})`;
         ctx.beginPath();
         if (this.shapeType === 'square') {
           ctx.rect(drawX - this.size, drawY - this.size, this.size * 2, this.size * 2);
@@ -3248,9 +3249,9 @@ class BackgroundFX {
       }
     }
 
-    const numDots = window.innerWidth < 768 ? 40 : 80;
-    for (let i = 0; i < numDots; i++) dots.push(new Dot(false)); // Nodes
-    for (let i = 0; i < numDots * 3; i++) dots.push(new Dot(true)); // Dust
+    const numDots = window.innerWidth < 768 ? 32 : 58;
+    for (let i = 0; i < numDots; i++) dots.push(new Dot(false));
+    for (let i = 0; i < numDots * 2; i++) dots.push(new Dot(true));
 
     function animate(t) {
       if (!isTabVisible) {
@@ -3258,30 +3259,12 @@ class BackgroundFX {
         return;
       }
       
-      // Ghosting / Motion Blur Effect
-      ctx.globalCompositeOperation = 'destination-out';
-      ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.fillStyle = "rgba(0, 0, 0, 0.22)";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalCompositeOperation = "source-over";
 
-      // Interactive Glowing Ripples
-      for (let i = ripples.length - 1; i >= 0; i--) {
-        let r = ripples[i];
-        r.radius += 4;
-        r.alpha -= 0.01;
-        if (r.alpha <= 0) {
-          ripples.splice(i, 1);
-          continue;
-        }
-        ctx.beginPath();
-        ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(255, 255, 255, ${r.alpha * 0.5})`;
-        ctx.lineWidth = 1;
-        ctx.stroke();
-      }
-
-      // Spontaneous Flashes
-      if (Math.random() > 0.99 && dots.length > 2) {
+      if (Math.random() > 0.996 && dots.length > 2) {
          let n1 = dots[Math.floor(Math.random() * numDots)];
          let n2 = dots[Math.floor(Math.random() * numDots)];
          if (n1 && n2) flashes.push({ start: n1, end: n2, life: 1, segments: Math.floor(Math.random() * 4 + 3) });
@@ -3339,8 +3322,8 @@ class BackgroundFX {
             const pulse = 0.92 + Math.sin(time + i * 0.21 + j * 0.13) * 0.08;
             const alpha = Math.min(0.4, (baseAlpha + proximity * 0.2) * nextStrength * pulse);
             
-            ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
-            ctx.lineWidth = Math.max(0.2, 1.2 * nextStrength);
+            ctx.strokeStyle = `rgba(220, 230, 255, ${alpha * 0.85})`;
+            ctx.lineWidth = Math.max(0.15, 0.9 * nextStrength);
             ctx.beginPath();
             ctx.moveTo(dots[i].x + dots[i].parallaxX, dots[i].y + dots[i].parallaxY);
             if ((i + j) % 2 === 0) {
@@ -5206,6 +5189,7 @@ class AuthManager {
           await BadgeManager.checkRelationshipBadges(user.uid);
           ProfileManager.bindMyProfileListener();
           FriendsManager.initListeners();
+          if (window.PremiumManager) PremiumManager.handlePostLoginReturn();
           RoomManager.initLobbyListeners();
           DirectMessages.startNotifications();
           AdminPanel.init();
@@ -6273,6 +6257,14 @@ class ProfileManager {
       badges.push(
         `<span class="role-badge badge-hybrid">Создатель/Модератор</span>`,
       );
+    if (
+      window.PremiumManager &&
+      PremiumManager.isPremiumActive(profile, uid) &&
+      !AdminPanel.isCreatorProfile(profile, uid) &&
+      !AdminPanel.isModeratorProfile(profile, uid)
+    ) {
+      badges.push(`<span class="role-badge badge-premium">Premium</span>`);
+    }
     if (profile?.adminBadgeCustom?.text) {
       const custom = profile.adminBadgeCustom;
       const text = Utils.escapeHtml(custom.text);
@@ -6441,11 +6433,15 @@ class ProfileManager {
       AdminPanel.hydrateDeveloperUidFromProfile(uid, p);
 
       const badgeHtml = this.getRoleBadgeHtml(p, uid);
+      const statusEmoji =
+        window.PremiumManager ? PremiumManager.getStatusEmojiHtml(p, uid) : "";
       Utils.$("my-name-display").innerHTML =
-        `${Utils.escapeHtml(p.name)} ${badgeHtml}`;
+        `${statusEmoji}${Utils.escapeHtml(p.name)} ${badgeHtml}`;
       Utils.$("my-username-display").innerText =
         `@${Utils.escapeHtml(p.username)}`;
       Utils.$("my-avatar-display").innerHTML = ProfileManager.getAvatarHtml(p);
+
+      if (window.PremiumManager) PremiumManager.syncFromProfile(p, uid);
 
       RoomManager.syncDeveloperControls(p);
     });
@@ -7694,7 +7690,7 @@ class ProfileManager {
     }
 
     Utils.$("view-name").innerHTML =
-      `${Utils.escapeHtml(profile.name)} ${badgeHtml}`;
+      `${window.PremiumManager ? PremiumManager.getStatusEmojiHtml(profile, targetUid) : ""}${Utils.escapeHtml(profile.name)} ${badgeHtml}`;
     Utils.$("view-username").innerText =
       `@${Utils.escapeHtml(profile.username)}`;
     Utils.$("view-bio").innerHTML = `
@@ -8196,6 +8192,7 @@ class FriendsManager {
       "nav-profile",
       "nav-rooms",
       "nav-catalog",
+      "nav-premium",
       "nav-shop",
       "nav-find-friend",
       "nav-friends",
@@ -8225,6 +8222,9 @@ class FriendsManager {
       if (Utils.$("section-settings"))
         Utils.$("section-settings").style.display =
           id === "nav-settings" ? "flex" : "none";
+      if (Utils.$("section-premium"))
+        Utils.$("section-premium").style.display =
+          id === "nav-premium" ? "flex" : "none";
       if (Utils.$("section-support"))
         Utils.$("section-support").style.display =
           id === "nav-support" || id === "nav-support-staff" ? "flex" : "none";
@@ -8240,6 +8240,15 @@ class FriendsManager {
     Utils.$("nav-rooms").onclick = () => setNavActive("nav-rooms");
     if (Utils.$("nav-catalog"))
       Utils.$("nav-catalog").onclick = () => {
+        const uid = AppState.currentUser?.uid;
+        const profile = uid ? AppState.usersCache.get(uid) : null;
+        if (
+          window.PremiumManager &&
+          !PremiumManager.hasCatalogAccess(profile, uid)
+        ) {
+          PremiumManager.openCatalogOrUpsell();
+          return;
+        }
         setNavActive("nav-catalog");
         if (window.CatalogManager) CatalogManager.renderCatalog();
       };
@@ -8250,6 +8259,11 @@ class FriendsManager {
       };
     if (Utils.$("nav-settings"))
       Utils.$("nav-settings").onclick = () => setNavActive("nav-settings");
+    if (Utils.$("nav-premium"))
+      Utils.$("nav-premium").onclick = () => {
+        setNavActive("nav-premium");
+        if (window.PremiumManager) PremiumManager.renderPremiumSection();
+      };
     if (Utils.$("nav-support"))
       Utils.$("nav-support").onclick = () => {
         setNavActive("nav-support");
@@ -9617,6 +9631,9 @@ class SupportSystem {
           const priority = t.priority
             ? `<span style="margin-left:8px;font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.1);color:#fff;">${t.priority}</span>`
             : "";
+          const premiumMark = t.isPremium
+            ? `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" style="width:14px;height:14px;margin-left:6px;vertical-align:middle;" title="Premium">`
+            : "";
           const unreadDot =
             t.lastActivity &&
             t.lastActivity > (t.readReceipts?.[uid] || 0) &&
@@ -9639,7 +9656,7 @@ class SupportSystem {
                     </div>
                     <div class="dm-chat-info">
                         <div class="dm-chat-name" style="display:flex;align-items:center;justify-content:space-between;width:100%;">
-                           <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${titleStr}</span>
+                           <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${titleStr}${premiumMark}</span>
                            ${unreadDot}
                         </div>
                         <div class="dm-chat-last-msg" style="display:flex;align-items:center;">${statusText}${isAdmin ? priority : ""}</div>
@@ -9664,15 +9681,21 @@ class SupportSystem {
         if (!title || !text) return;
         const newRef = push(ref(db, "support_tickets"));
         const ts = Date.now();
+        const profile = AppState.usersCache.get(uid) || {};
+        const isPremiumUser =
+          window.PremiumManager &&
+          PremiumManager.isPremiumActive(profile, uid) &&
+          !PremiumManager.isStaff(profile, uid);
         await set(newRef, {
           title,
-          priority,
+          priority: isPremiumUser && priority !== "Срочный" ? "Высокий" : priority,
           creatorUid: uid,
           status: "open",
           createdAt: ts,
           lastActivity: ts,
           lastSender: uid,
           problemDescription: text,
+          isPremium: Boolean(isPremiumUser),
         });
         await push(ref(db, `support_tickets/${newRef.key}/messages`), {
           text: text,
@@ -13716,7 +13739,7 @@ class RoomManager {
                         ${avatarHtml}
                     </div>
                     <div style="display:flex; flex-direction:column; ${isMe ? "align-items:flex-end;" : "align-items:flex-start;"} max-width:85%;">
-                        <strong class="profile-open-link chat-profile-link" data-uid="${Utils.escapeHtml(msg.uid || "")}" style="font-size:11px; margin-bottom:4px; opacity:0.75; padding:0 4px;">${Utils.escapeHtml(msg.name)}</strong>
+                        <strong class="profile-open-link chat-profile-link ${window.PremiumManager ? PremiumManager.getChatNameClass(AppState.usersCache.get(msg.uid) || {}, msg.uid) : ""}" data-uid="${Utils.escapeHtml(msg.uid || "")}" style="font-size:11px; margin-bottom:4px; opacity:0.75; padding:0 4px;">${window.PremiumManager ? PremiumManager.getStatusEmojiHtml(AppState.usersCache.get(msg.uid) || {}, msg.uid) : ""}${Utils.escapeHtml(msg.name)}</strong>
                         <div class="bubble" style="max-width:100%;">${content}</div>
                     </div>
                 </div>
@@ -13724,13 +13747,15 @@ class RoomManager {
 
       ProfileManager.loadUser(msg.uid).then((uProfile) => {
         if (uProfile) {
-          const container = line.querySelector(
-            ".chat-profile-link[data-uid=\x22" +
-              Utils.escapeHtml(msg.uid || "") +
-              "\x22]",
-          );
-          if (container)
+          line.querySelectorAll(".chat-profile-link[data-uid]").forEach((container) => {
+            if (container.tagName === "STRONG") return;
             container.innerHTML = ProfileManager.getAvatarHtml(uProfile);
+          });
+          const nameEl = line.querySelector("strong.profile-open-link");
+          if (nameEl && window.PremiumManager) {
+            nameEl.className = `profile-open-link chat-profile-link ${PremiumManager.getChatNameClass(uProfile, msg.uid)}`;
+            nameEl.innerHTML = `${PremiumManager.getStatusEmojiHtml(uProfile, msg.uid)}${Utils.escapeHtml(msg.name)}`;
+          }
         }
       });
 
@@ -14358,7 +14383,11 @@ class RoomManager {
       AppState.pendingRoomExp += 1;
 
       if (AppState.pendingRoomExp >= 10) {
-        const addXp = AppState.pendingRoomExp;
+        const profile = AppState.usersCache.get(uid) || {};
+        const mult = window.PremiumManager
+          ? PremiumManager.getXpMultiplier(profile, uid)
+          : 1;
+        const addXp = AppState.pendingRoomExp * mult;
         AppState.pendingRoomExp = 0;
 
         try {
@@ -14381,7 +14410,11 @@ class RoomManager {
 
     if (AppState.pendingRoomExp > 0 && AppState.currentUser) {
       const uid = AppState.currentUser.uid;
-      const addXp = AppState.pendingRoomExp;
+      const profile = AppState.usersCache.get(uid) || {};
+      const mult = window.PremiumManager
+        ? PremiumManager.getXpMultiplier(profile, uid)
+        : 1;
+      const addXp = AppState.pendingRoomExp * mult;
       AppState.pendingRoomExp = 0;
       const profRef = ref(db, `users/${uid}/profile`);
       get(profRef)
@@ -15122,6 +15155,8 @@ window.onload = () => {
   initSystem("HashtagManager", () => HashtagManager.initHashtags());
   initSystem("MobileSwipeManager", () => MobileSwipeManager.init()); // [NEW] Mobile Swipes initialization
   initSystem("HelpGuideManager", () => HelpGuideManager.init());
+  initSystem("SiteTipsManager", () => SiteTipsManager.init());
+  initSystem("PremiumManager", () => PremiumManager.init());
 
   // Добавляем мини-контейнер с ссылками (изначально скрыт, покажется только в lobby-screen)
   const footerLinks = document.createElement("div");
@@ -15267,6 +15302,20 @@ class CatalogManager {
     const list = Utils.$("catalog-list");
     if (!list) return;
 
+    const uid = AppState.currentUser?.uid;
+    const currentProf = uid ? AppState.usersCache.get(uid) : null;
+    if (
+      window.PremiumManager &&
+      !PremiumManager.hasCatalogAccess(currentProf, uid)
+    ) {
+      list.innerHTML = PremiumManager.renderCatalogLock();
+      list.querySelector("#catalog-unlock-premium-btn")?.addEventListener(
+        "click",
+        () => PremiumManager.openCatalogOrUpsell(),
+      );
+      return;
+    }
+
     let filtered = [...this.items];
     filtered.sort((a, b) => {
       const aHot = a.isHot === true || a.isHot === "true" ? 1 : 0;
@@ -15308,16 +15357,6 @@ class CatalogManager {
                 .catalog-card-wrapper:hover {
                     transform: translateY(-4px);
                     box-shadow: 0 12px 24px rgba(0,0,0,0.3);
-                }
-                .catalog-card-wrapper.is-hot {
-                    background: linear-gradient(135deg, #ff4757, #ffa502, #ff4757);
-                    background-size: 200% 200%;
-                    animation: catalogFadeIn 0.4s ease forwards, fireBgPan 3s linear infinite;
-                }
-                @keyframes fireBgPan {
-                    0% { background-position: 0% 50%; }
-                    50% { background-position: 100% 50%; }
-                    100% { background-position: 0% 50%; }
                 }
                 .catalog-card-inner {
                     background: rgba(17, 18, 20, 0.4);
@@ -15409,7 +15448,7 @@ class CatalogManager {
             <div class="catalog-card-wrapper ${isHot ? "is-hot" : ""} ${isOwned ? "is-owned" : ""}" style="animation-delay: ${i * 0.05}s;">
                 <div class="catalog-card-inner" onclick="if(typeof openCatalogItemModal === 'function') openCatalogItemModal('${item.id}')">
                     <div class="catalog-card-banner">
-                        ${isHot ? `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" style="position:absolute; top:8px; left:8px; width:28px; height:28px; object-fit:contain; z-index:5; pointer-events:none; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5));">` : ""}
+                        ${isHot ? `<div class="catalog-hot-badge"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" alt=""> Акция</div>` : ""}
                         
                         ${
                           item.type === "sound"
@@ -16391,6 +16430,8 @@ window.AdminSoundManager = class {
   static initAdmin() {}
 };
 window.ShopController = class {
-  static loadShop() {}
+  static loadShop() {
+    document.getElementById("nav-premium")?.click();
+    if (window.PremiumManager) PremiumManager.renderPremiumSection();
+  }
 };
-ЛИЗ

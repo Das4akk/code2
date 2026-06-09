@@ -583,8 +583,9 @@
         z-index: -1;
         width: 100%;
         height: 100%;
-        opacity: 0.15;
+        opacity: 0.2;
         pointer-events: none;
+        filter: blur(0.3px);
       }
       @keyframes premiumDriftLight {
         0%,
@@ -1276,30 +1277,35 @@
       }
       #lobby-help-fab {
         position: fixed;
-        right: 16px;
-        bottom: 16px;
+        right: 18px;
+        bottom: 18px;
         z-index: 8500;
-        width: 52px;
-        height: 52px;
-        border-radius: 14px;
-        border: 1px solid rgba(255,255,255,0.2);
-        background: rgba(15,15,17,0.92);
-        backdrop-filter: blur(12px);
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        border: 1px solid rgba(255,255,255,0.14);
+        background: rgba(12,12,14,0.88);
+        backdrop-filter: blur(14px);
         cursor: pointer;
         display: none;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.45);
-        transition: transform 0.2s, border-color 0.2s;
+        box-shadow: 0 4px 18px rgba(0,0,0,0.35);
+        transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
       }
       #lobby-help-fab:hover {
-        transform: scale(1.05);
-        border-color: rgba(255,255,255,0.45);
+        border-color: rgba(255,255,255,0.32);
+        box-shadow: 0 6px 22px rgba(0,0,0,0.45);
+        background: rgba(18,18,22,0.94);
+      }
+      #lobby-help-fab:active {
+        transform: none;
       }
       #lobby-help-fab img {
-        width: 28px;
-        height: 28px;
+        width: 24px;
+        height: 24px;
         filter: grayscale(1) contrast(0);
+        pointer-events: none;
       }
       .room-card:hover {
         transform: translateY(-4px);
@@ -4573,6 +4579,15 @@
                 Каталог</span
               >
             </div>
+            <div class="nav-item" id="nav-premium">
+              <span
+                ><img
+                  src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp"
+                  style="width: 1.2em; height: 1.2em; vertical-align: bottom"
+                />
+                Premium</span
+              >
+            </div>
             <div class="nav-item" id="nav-find-friend">
               <span
                 ><img
@@ -5445,6 +5460,22 @@
                 gap: 16px;
               "
             ></div>
+          </div>
+        </main>
+
+        <main class="rooms-main" id="section-premium" style="display: none">
+          <div
+            class="friends-container"
+            style="max-width: 860px; width: 100%; margin: 0 auto; padding-top: 20px"
+          >
+            <div class="section-title" style="font-size: 24px; margin-bottom: 8px">
+              <img
+                src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp"
+                style="width: 1.2em; height: 1.2em; vertical-align: bottom"
+              />
+              Premium
+            </div>
+            <div id="premium-dynamic-content"></div>
           </div>
         </main>
 
@@ -7026,6 +7057,8 @@
     </script>
     <script src="emojis_registry.js"></script>
     <script src="helpGuide.js"></script>
+    <script src="siteTips.js"></script>
+    <script src="premiumManager.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.7/dist/hls.min.js"></script>
     <script src="settingsRenderer.js"></script>
     <script type="module" src="app.js"></script>
