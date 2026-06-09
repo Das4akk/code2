@@ -16,6 +16,26 @@ import {
 const app = express();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// On Vercel, rewrites can strip the original path before Express routing.
+if (process.env.VERCEL === '1') {
+    app.use((req, _res, next) => {
+        const raw =
+            req.headers['x-vercel-original-url'] ||
+            req.headers['x-original-url'] ||
+            req.headers['x-forwarded-uri'] ||
+            req.headers['x-invoke-path'];
+        if (typeof raw === 'string' && raw.length > 0) {
+            if (raw.startsWith('http://') || raw.startsWith('https://')) {
+                const u = new URL(raw);
+                req.url = u.pathname + u.search;
+            } else {
+                req.url = raw.startsWith('/') ? raw : `/${raw}`;
+            }
+        }
+        next();
+    });
+}
+
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
 
