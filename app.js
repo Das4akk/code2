@@ -707,6 +707,162 @@ class Utils {
     });
   }
 
+  static promptCode(email, onResendClick) {
+    return new Promise((resolve) => {
+      const modal = document.createElement("div");
+      modal.className = "modal active";
+      modal.style.zIndex = "99999"; 
+      modal.innerHTML = `
+        <div class="modal-content glass-panel" style="max-width: 420px; text-align: center; border-radius: 24px; padding: 40px 30px; background: rgba(15, 15, 20, 0.85); box-shadow: 0 0 50px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.1); backdrop-filter: blur(25px); position: relative; overflow: hidden; animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+          
+          <div style="position: relative; z-index: 1;">
+            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width: 72px; height: 72px; margin-bottom: 20px; filter: drop-shadow(0 10px 15px rgba(0,0,0,0.5)); animation: float 3s ease-in-out infinite;">
+            <h3 style="margin-bottom: 12px; font-weight: 800; font-size: 26px; color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,0.5);">Код подтверждения</h3>
+            <p style="margin-bottom: 30px; color: var(--text-muted); font-size: 15px; line-height: 1.5;">Мы отправили секретный код на<br><b style="color:#fff; background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 6px; display: inline-block; margin-top: 6px;">${Utils.escapeHtml(email)}</b></p>
+            
+            <div style="display: flex; gap: 8px; justify-content: center; margin-bottom: 25px; perspective: 1000px;" id="code-inputs-container">
+              ${[0,1,2,3,4,5].map(i => `<input type="text" inputmode="numeric" maxlength="1" data-index="${i}" style="width: 48px; height: 58px; padding: 0; margin: 0; text-align: center; font-size: 26px; font-family: monospace; font-weight: 800; border-radius: 14px; background: rgba(0,0,0,0.4); border: 2px solid rgba(255,255,255,0.15); color: #fff; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); outline: none; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);" autocomplete="off" />`).join('')}
+            </div>
+
+            <div style="margin-bottom: 25px;">
+              <button id="resend-code-btn" class="btn-text-link" disabled style="color: var(--text-muted); font-size: 13px; cursor: pointer; text-decoration: underline; transition: color 0.2s;">Отправить повторно (через <span id="resend-timer">60</span>с)</button>
+            </div>
+
+            <div style="display: flex; gap: 15px; margin-top: 10px;">
+              <button class="secondary-btn" id="custom-prompt-cancel" style="flex: 1; padding: 14px; border-radius: 14px; font-weight: 600; font-size: 15px; transition: all 0.2s; border: 1px solid rgba(255,255,255,0.1);">Отмена</button>
+              <button class="primary-btn" id="custom-prompt-ok" style="flex: 1; padding: 14px; border-radius: 14px; font-weight: 600; font-size: 15px; box-shadow: 0 5px 15px rgba(255,255,255,0.1); transition: all 0.2s;">Готово <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width:16px;height:16px;vertical-align:text-bottom;"></button>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+
+      let timerVal = 60;
+      let timerInt = setInterval(() => {
+        timerVal--;
+        const timerEl = modal.querySelector("#resend-timer");
+        const btnEl = modal.querySelector("#resend-code-btn");
+        if(timerVal <= 0) {
+           clearInterval(timerInt);
+           if(timerEl) timerEl.parentElement.innerHTML = "Отправить код повторно";
+           if(btnEl) {
+              btnEl.disabled = false;
+              btnEl.style.color = "#fff";
+           }
+        } else {
+           if(timerEl) timerEl.innerText = timerVal;
+        }
+      }, 1000);
+
+      const resendBtn = modal.querySelector("#resend-code-btn");
+      if(resendBtn && onResendClick) {
+         resendBtn.onclick = async () => {
+             resendBtn.disabled = true;
+             resendBtn.style.color = "var(--text-muted)";
+             resendBtn.innerHTML = `Отправка...`;
+             await onResendClick();
+             timerVal = 60;
+             resendBtn.innerHTML = `Отправить повторно (через <span id="resend-timer">60</span>с)`;
+             timerInt = setInterval(() => {
+                timerVal--;
+                const tEl = modal.querySelector("#resend-timer");
+                if(timerVal <= 0) {
+                  clearInterval(timerInt);
+                  resendBtn.innerHTML = "Отправить код повторно";
+                  resendBtn.disabled = false;
+                  resendBtn.style.color = "#fff";
+                } else {
+                  if(tEl) tEl.innerText = timerVal;
+                }
+             }, 1000);
+         };
+      }
+
+      const inputs = Array.from(modal.querySelectorAll("#code-inputs-container input"));
+      inputs[0].focus();
+
+      inputs.forEach((input, index) => {
+        input.addEventListener('input', (e) => {
+          if (e.target.value.length > 0) {
+            input.style.borderColor = '#fff';
+            input.style.boxShadow = '0 0 15px rgba(255,255,255,0.3)';
+            if (index < inputs.length - 1) {
+              inputs[index + 1].focus();
+            }
+          } else {
+            input.style.borderColor = 'rgba(255,255,255,0.15)';
+            input.style.boxShadow = 'none';
+          }
+        });
+        
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Backspace' && e.target.value === '' && index > 0) {
+            inputs[index - 1].focus();
+            inputs[index - 1].value = '';
+            inputs[index - 1].style.borderColor = 'rgba(255,255,255,0.15)';
+            inputs[index - 1].style.boxShadow = 'none';
+          }
+          if (e.key === 'Enter') {
+             const code = inputs.map(i => i.value).join('');
+             if (code.length === 6) {
+                 cleanup();
+                 resolve(code);
+             }
+          }
+        });
+
+        input.addEventListener('paste', (e) => {
+          e.preventDefault();
+          const pastedData = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6);
+          if (pastedData.length > 0) {
+            pastedData.split('').forEach((char, i) => {
+              if (inputs[index + i]) {
+                inputs[index + i].value = char;
+                inputs[index + i].style.borderColor = '#fff';
+                inputs[index + i].style.boxShadow = '0 0 15px rgba(255,255,255,0.3)';
+              }
+            });
+            const nextIndex = Math.min(5, index + pastedData.length);
+            inputs[nextIndex].focus();
+          }
+        });
+      });
+
+      const cleanup = () => {
+        if (typeof timerInt !== 'undefined') clearInterval(timerInt);
+        modal.classList.remove("active");
+        setTimeout(() => modal.remove(), 400); 
+      };
+
+      modal.querySelector("#custom-prompt-cancel").onclick = () => {
+        cleanup();
+        resolve(null);
+      };
+
+      modal.querySelector("#custom-prompt-ok").onclick = () => {
+        const code = inputs.map(i => i.value).join('');
+        if (code.length === 6) {
+            cleanup();
+            resolve(code);
+        } else {
+            inputs.forEach(i => {
+               if(!i.value) {
+                 i.style.borderColor = '#ff4d4f';
+               }
+            });
+            modal.animate([
+              { transform: 'translateX(0px)' },
+              { transform: 'translateX(-5px)' },
+              { transform: 'translateX(5px)' },
+              { transform: 'translateX(-5px)' },
+              { transform: 'translateX(5px)' },
+              { transform: 'translateX(0px)' }
+            ], { duration: 300 });
+        }
+      };
+    });
+  }
+
   static escapeHtml(str) {
     return String(str || "").replace(/[&<>"']/g, (match) => {
       const map = {
@@ -1098,8 +1254,7 @@ class Utils {
             }
             .theme-light-global #particle-canvas,
             body.theme-light-global #particle-canvas {
-                opacity: 0.76 !important;
-                filter: contrast(1.12) saturate(1.08) brightness(1.03) !important;
+                filter: contrast(1.12) saturate(1.08) brightness(0) !important;
                 display: block !important;
             }
             #particle-canvas {
@@ -4946,23 +5101,30 @@ class AuthManager {
         Utils.toast("Отправка кода...", "info");
         try {
             const apiBase = typeof window !== "undefined" && window.COWIO_MEDIA_API ? String(window.COWIO_MEDIA_API).replace(/\/$/, "") : "";
-            const res = await fetch(`${apiBase}/api/auth/send-code`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email })
-            });
-            let text = await res.text();
-            let data;
-            try { data = JSON.parse(text); } catch(err) { throw new Error("API send-code failed (HTTP " + res.status + "): " + (text ? text : "Empty body")); }
-            if (!data.success) throw new Error(data.error);
+            
+            const reqCode = async () => {
+                const res = await fetch(`${apiBase}/custom-auth/send-code`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                let text = await res.text();
+                let data;
+                try { data = JSON.parse(text); } catch(err) { throw new Error("API send-code failed (HTTP " + res.status + "): " + (text ? text : "Empty body")); }
+                if (!data.success) throw new Error(data.error);
+            };
+            
+            await reqCode();
 
-            const code = await Utils.prompt("Код отправлен на " + email + ". Введите 6-значный код из письма:");
+            const code = await Utils.promptCode(email, async () => {
+                try { await reqCode(); Utils.toast("Код отправлен повторно", "success"); } catch(ex) { Utils.toast(ex.message, "error"); }
+            });
             if (!code) return Utils.toast("Сброс отменен", "error");
 
             const newPassword = await Utils.prompt("Введите новый пароль (минимум 6 символов):");
             if (!newPassword || newPassword.length < 6) return Utils.toast("Пароль слишком короткий или сброс отменен", "error");
 
-            const resetRes = await fetch(`${apiBase}/api/auth/reset-password`, {
+            const resetRes = await fetch(`${apiBase}/custom-auth/reset-password`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, code, newPassword })
@@ -4981,27 +5143,42 @@ class AuthManager {
 
     if (Utils.$("btn-settings-change-email")) {
       Utils.$("btn-settings-change-email").onclick = async () => {
+        const oldPassword = Utils.$("settings-email-old-password").value;
         const newEmail = Utils.$("settings-new-email").value.trim();
-        if(!newEmail) return Utils.toast("Введите новую почту", "error");
+        if(!oldPassword) return Utils.toast("Введите текущий пароль", "error");
+        if(!newEmail || !newEmail.includes("@")) return Utils.toast("Введите корректную новую почту", "error");
         if(!AppState.currentUser || !AppState.currentUser.email) return Utils.toast("Вы не авторизованы", "error");
+
+        try {
+            await signInWithEmailAndPassword(auth, AppState.currentUser.email, oldPassword);
+        } catch(e) {
+            return Utils.toast("Неверный текущий пароль", "error");
+        }
 
         Utils.toast("Отправка кода на " + newEmail + "...", "info");
         try {
             const apiBase = typeof window !== "undefined" && window.COWIO_MEDIA_API ? String(window.COWIO_MEDIA_API).replace(/\/$/, "") : "";
-            const res = await fetch(`${apiBase}/api/auth/send-code`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: newEmail })
-            });
-            let text = await res.text();
-            let data;
-            try { data = JSON.parse(text); } catch(err) { throw new Error("API send-code failed (HTTP " + res.status + "): " + (text ? text : "Empty body")); }
-            if (!data.success) throw new Error(data.error);
+            
+            const reqCodeEmail = async () => {
+                const res = await fetch(`${apiBase}/custom-auth/send-code`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: newEmail })
+                });
+                let text = await res.text();
+                let data;
+                try { data = JSON.parse(text); } catch(err) { throw new Error("API send-code failed (HTTP " + res.status + "): " + (text ? text : "Empty body")); }
+                if (!data.success) throw new Error(data.error);
+            };
+            
+            await reqCodeEmail();
 
-            const code = await Utils.prompt("Введите 6-значный код из письма на " + newEmail + ":");
+            const code = await Utils.promptCode(newEmail, async () => {
+                try { await reqCodeEmail(); Utils.toast("Код отправлен повторно", "success"); } catch(ex) { Utils.toast(ex.message, "error"); }
+            });
             if (!code) return;
 
-            const changeRes = await fetch(`${apiBase}/api/auth/change-email`, {
+            const changeRes = await fetch(`${apiBase}/custom-auth/change-email`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ oldEmail: AppState.currentUser.email, newEmail, code })
@@ -5011,7 +5188,9 @@ class AuthManager {
             try { changeData = JSON.parse(changeText); } catch(err) { throw new Error("API change-email failed (HTTP " + changeRes.status + "): " + (changeText ? changeText : "Empty body")); }
             if (!changeData.success) throw new Error(changeData.error);
 
+            Utils.$("settings-email-old-password").value = "";
             Utils.$("settings-new-email").value = "";
+            document.getElementById('security-email-form').style.display = 'none';
             Utils.toast("Почта успешно изменена! Рекомендуем перезайти в аккаунт.", "success");
         } catch (e) {
             Utils.toast(e.message || "Ошибка", "error");
@@ -5021,28 +5200,46 @@ class AuthManager {
 
     if (Utils.$("btn-settings-change-password")) {
       Utils.$("btn-settings-change-password").onclick = async () => {
+        const oldPassword = Utils.$("settings-password-old").value;
         const newPassword = Utils.$("settings-new-password").value.trim();
+        const confirmPassword = Utils.$("settings-new-password-confirm").value.trim();
+        
+        if(!oldPassword) return Utils.toast("Введите текущий пароль", "error");
         if(!newPassword || newPassword.length < 6) return Utils.toast("Введите новый пароль (не менее 6 символов)", "error");
+        if(newPassword !== confirmPassword) return Utils.toast("Новые пароли не совпадают", "error");
         if(!AppState.currentUser || !AppState.currentUser.email) return Utils.toast("Вы не авторизованы", "error");
-        const email = AppState.currentUser.email;
+        
+        try {
+            await signInWithEmailAndPassword(auth, AppState.currentUser.email, oldPassword);
+        } catch(e) {
+            return Utils.toast("Неверный текущий пароль", "error");
+        }
 
+        const email = AppState.currentUser.email;
         Utils.toast("Отправка кода на вашу текущую почту...", "info");
         try {
             const apiBase = typeof window !== "undefined" && window.COWIO_MEDIA_API ? String(window.COWIO_MEDIA_API).replace(/\/$/, "") : "";
-            const res = await fetch(`${apiBase}/api/auth/send-code`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email })
-            });
-            let text = await res.text();
-            let data;
-            try { data = JSON.parse(text); } catch(err) { throw new Error("API send-code failed (HTTP " + res.status + "): " + (text ? text : "Empty body")); }
-            if (!data.success) throw new Error(data.error);
+            
+            const reqCodeReauth = async () => {
+                const res = await fetch(`${apiBase}/custom-auth/send-code`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                let text = await res.text();
+                let data;
+                try { data = JSON.parse(text); } catch(err) { throw new Error("API send-code failed (HTTP " + res.status + "): " + (text ? text : "Empty body")); }
+                if (!data.success) throw new Error(data.error);
+            };
+            
+            await reqCodeReauth();
 
-            const code = await Utils.prompt("Введите 6-значный код из письма (" + email + "):");
+            const code = await Utils.promptCode(email, async () => {
+                try { await reqCodeReauth(); Utils.toast("Код отправлен повторно", "success"); } catch(ex) { Utils.toast(ex.message, "error"); }
+            });
             if (!code) return;
 
-            const resetRes = await fetch(`${apiBase}/api/auth/reset-password`, {
+            const resetRes = await fetch(`${apiBase}/custom-auth/reset-password`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, code, newPassword })
@@ -5052,7 +5249,10 @@ class AuthManager {
             try { resetData = JSON.parse(resetText); } catch(err) { throw new Error("API reset-password failed (HTTP " + resetRes.status + "): " + (resetText ? resetText : "Empty body")); }
             if (!resetData.success) throw new Error(resetData.error);
 
+            Utils.$("settings-password-old").value = "";
             Utils.$("settings-new-password").value = "";
+            Utils.$("settings-new-password-confirm").value = "";
+            document.getElementById('security-password-form').style.display = 'none';
             Utils.toast("Пароль успешно изменен!", "success");
         } catch (e) {
             Utils.toast(e.message || "Ошибка", "error");

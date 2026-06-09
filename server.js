@@ -1,4 +1,5 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
+dotenv.config({ override: true });
 import express from 'express';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
@@ -30,6 +31,17 @@ app.use(express.json({
 }));
 
 app.use('/api', rateLimit({
+    windowMs: RATE_LIMIT_WINDOW_MS,
+    max: RATE_LIMIT_MAX,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+        success: false,
+        error: 'Too many requests',
+        code: 'RATE_LIMITED'
+    }
+}));
+app.use('/custom-auth', rateLimit({
     windowMs: RATE_LIMIT_WINDOW_MS,
     max: RATE_LIMIT_MAX,
     standardHeaders: true,
@@ -77,7 +89,7 @@ const mailTransporter = nodemailer.createTransport({
 const verificationCodes = new Map();
 
 // Отправка 6-значного кода
-app.post('/api/auth/send-code', async (req, res) => {
+app.post('/custom-auth/send-code', async (req, res) => {
     try {
         const { email } = req.body;
         if (!email) return res.status(400).json({ error: 'Email не указан' });
@@ -94,13 +106,30 @@ app.post('/api/auth/send-code', async (req, res) => {
             to: email,
             subject: 'Код подтверждения COWIO',
             html: `
-                <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; background: #111; color: #fff; padding: 20px; border-radius: 10px;">
-                    <h2 style="color: #ff8fc6; text-align: center;">COWIO</h2>
-                    <p style="font-size: 16px;">Ваш код подтверждения:</p>
-                    <div style="font-size: 32px; font-weight: bold; padding: 15px; background: #222; text-align: center; border-radius: 10px; letter-spacing: 5px;">
-                        ${code}
+                <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 500px; margin: 40px auto; background: #0f0f11; color: #fff; padding: 40px; border-radius: 20px; text-align: center; border: 1px solid rgba(255,143,198,0.3); box-shadow: 0 10px 40px rgba(255,143,198,0.15);">
+                    <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width: 48px; height: 48px; margin-bottom: 10px;">
+                    <h2 style="color: #fff; font-size: 24px; margin-top: 0; margin-bottom: 25px; font-weight: 800; letter-spacing: 0.5px;">Авторизация COWIO</h2>
+                    <p style="font-size: 15px; color: #aaa; margin-bottom: 15px; text-align: left;">Здравствуйте!</p>
+                    <p style="font-size: 15px; color: #aaa; margin-bottom: 30px; text-align: left; line-height: 1.6;">Вы сделали запрос на получение кода подтверждения. Пожалуйста, введите приведенный ниже секретный код в приложении для подтверждения вашего действия.</p>
+                    
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin: 0 auto;">
+                        <tr>
+                            ${code.split('').map(digit => `
+                            <td style="padding: 0 4px;">
+                                <div style="display: block; width: 44px; height: 50px; line-height: 50px; font-size: 26px; font-family: monospace; font-weight: 800; background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.2); border-radius: 12px; color: #fff; text-align: center; text-shadow: 0 0 10px rgba(255,255,255,0.3);">
+                                    ${digit}
+                                </div>
+                            </td>
+                            `).join('')}
+                        </tr>
+                    </table>
+                    
+                    <div style="font-size: 13px; color: #666; margin-top: 40px; text-align: left; line-height: 1.6; background: rgba(0,0,0,0.5); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                        <strong style="color: #888;">Важная информация:</strong><br><br>
+                        • Этот код действителен в течение 10 минут.<br>
+                        • Никому не передавайте этот код. Наши сотрудники никогда не попросят вас назвать его.<br>
+                        • Если вы не запрашивали отправку кода, возможно, кто-то другой по ошибке ввел ваш email. Просто проигнорируйте и удалите это письмо.
                     </div>
-                    <p style="font-size: 12px; color: #888; margin-top: 20px;">Код действителен 10 минут. Если вы не запрашивали код, проигнорируйте это письмо.</p>
                 </div>
             `
         };
@@ -115,7 +144,7 @@ app.post('/api/auth/send-code', async (req, res) => {
 });
 
 // Сброс пароля
-app.post('/api/auth/reset-password', async (req, res) => {
+app.post('/custom-auth/reset-password', async (req, res) => {
     try {
         const { email, code, newPassword } = req.body;
 
@@ -142,7 +171,7 @@ app.post('/api/auth/reset-password', async (req, res) => {
 });
 
 // Смена почты (здесь отправляем на новую)
-app.post('/api/auth/change-email', async (req, res) => {
+app.post('/custom-auth/change-email', async (req, res) => {
     try {
         const { oldEmail, newEmail, code } = req.body;
 

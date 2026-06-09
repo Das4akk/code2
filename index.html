@@ -405,12 +405,12 @@
       html.theme-light-global #premium-black-bg {
         opacity: 0.12;
         animation: premiumDriftLight 24s ease-in-out infinite;
-      } /* // [UPDATE] */
+      }
       html.theme-light-global #particle-canvas {
         filter: brightness(0);
         opacity: 0.28;
         animation: particleBreathLight 18s ease-in-out infinite;
-      } /* // [UPDATE] */
+      }
       html.theme-light-global .glass-panel {
         background: rgba(255, 255, 255, 0.92);
         border-color: var(--border);
@@ -497,6 +497,63 @@
           border-color 0.35s ease,
           box-shadow 0.35s ease,
           filter 0.35s ease;
+      }
+      button:focus, input:focus, a:focus, textarea:focus {
+        outline: none !important;
+        box-shadow: none !important;
+      }
+      .btn-text-link {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        outline: none !important;
+      }
+      .btn-text-link:hover {
+        transform: translateY(-1px) !important;
+        background: transparent !important;
+        color: #fff !important;
+      }
+      
+      .st-switch {
+        position: relative;
+        display: inline-block;
+        width: 44px;
+        height: 24px;
+        flex-shrink: 0;
+      }
+      .st-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+      .st-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background-color: rgba(255,255,255,0.1);
+        transition: .3s;
+        border-radius: 24px;
+        border: 1px solid rgba(255,255,255,0.1);
+      }
+      .st-slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 2px;
+        bottom: 2px;
+        background-color: #fff;
+        transition: .3s;
+        border-radius: 50%;
+      }
+      input:checked + .st-slider {
+        background-color: var(--brand, #fff);
+      }
+      html.theme-light-global input:checked + .st-slider {
+        background-color: #111;
+      }
+      input:checked + .st-slider:before {
+        transform: translateX(20px);
       }
 
       /* ========================================================= */
@@ -4228,7 +4285,7 @@
               <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Peeking%20Eye.webp" class="auth-pass-eye" onclick="togglePasswordVisibility(this, 'login-pass')">
             </div>
           </div>
-          <button type="button" id="btn-forgot-password" style="background:none; border:none; color:var(--text-muted); font-size:12px; cursor:pointer; text-decoration:underline; width:100%; margin-top:0px; margin-bottom:10px;">Забыли пароль?</button>
+          <button type="button" id="btn-forgot-password" class="btn-text-link" style="color:var(--text-muted); font-size:12px; cursor:pointer; text-decoration:underline; width:100%; margin-top:0px; margin-bottom:10px;">Забыли пароль?</button>
       <button class="submit-btn" id="btn-do-login" style="margin-top: 10px;">
             Войти в систему <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Rocket.webp" style="width: 16px; height: 16px;">
           </button>
@@ -5284,87 +5341,8 @@
               Настройки
             </h2>
           </div>
-          <div class="friends-container" style="padding: 20px;">
-            <div style="background: rgba(255,255,255,0.02); padding: 20px; border-radius: 16px; border: 1px solid var(--border-light); margin-bottom: 20px;">
-              <h3 style="font-size: 16px; margin-bottom: 15px; font-weight: 700;">Внешний вид и анимации</h3>
-              <div style="display:flex; flex-direction:column; gap:12px;">
-                  <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
-                      <input type="checkbox" id="site-settings-theme" onchange="toggleGlobalThemeSetting(this.checked)" style="width:20px;height:20px;">
-                      <span>Светлая тема (Лобби)</span>
-                  </label>
-                  <label style="display:flex; align-items:center; gap:10px; cursor:pointer;" title="Отключите для повышения производительности">
-                      <input type="checkbox" id="site-settings-particle" checked onchange="toggleSiteParticlesSetting(this.checked)" style="width:20px;height:20px;">
-                      <span>Включить анимации частиц фона</span>
-                  </label>
-                  <label style="display:flex; flex-direction:column; gap:5px; margin-left: 30px; margin-bottom: 5px;" id="particle-brightness-container" title="Яркость/непрозрачность частиц">
-                      <span style="font-size: 13px; color: var(--text-muted);">Яркость: <span id="particle-brightness-val">100%</span></span>
-                      <input type="range" id="site-settings-particle-brightness" min="0" max="1" step="0.05" value="1" onchange="updateParticleBrightness(this.value)" oninput="document.getElementById('particle-brightness-val').innerText = Math.round(this.value * 100) + '%'" style="width: 150px;">
-                  </label>
-                  <label style="display:flex; align-items:center; gap:10px; cursor:pointer;" title="Премиальный черный фон">
-                      <input type="checkbox" id="site-settings-neuro" checked onchange="toggleSiteNeuroSetting(this.checked)" style="width:20px;height:20px;">
-                      <span>Премиальный черный фон (neuro-bg)</span>
-                  </label>
-                  <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
-                      <input type="checkbox" id="site-settings-static-emojis" onchange="toggleStaticEmojis(this.checked)" style="width:20px;height:20px;">
-                      <span>Использовать статичные эмодзи вместо анимаций</span>
-                  </label>
-              </div>
-            </div>
-
-            <div style="background: rgba(255,255,255,0.02); padding: 20px; border-radius: 16px; border: 1px solid var(--border-light); margin-bottom: 20px;">
-              <div style="background: rgba(255,255,255,0.02); padding: 20px; border-radius: 16px; border: 1px solid var(--border-light); margin-bottom: 20px;"><h3 style="font-size: 16px; margin-bottom: 15px; font-weight: 700;">Безопасность (Подготовка)</h3><div style="display:flex; flex-direction:column; gap:12px;"><input type="email" id="settings-new-email" placeholder="Новая почта" style="margin-bottom:0; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); padding:10px; border-radius:8px; color:#fff;" /><button class="primary-btn" id="btn-settings-change-email" style="font-size: 14px;">Сменить почту</button><hr style="border:none; border-top:1px solid rgba(255,255,255,0.05); margin: 5px 0;"><input type="password" id="settings-new-password" placeholder="Новый пароль" style="margin-bottom:0; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); padding:10px; border-radius:8px; color:#fff;" /><button class="primary-btn" id="btn-settings-change-password" style="font-size: 14px;">Сменить пароль</button></div></div>
-<h3 style="font-size: 16px; margin-bottom: 15px; font-weight: 700;">🔊 Уведомления</h3>
-              <div style="display:flex; flex-direction:column; gap:12px;">
-                  <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
-                      <input type="checkbox" checked style="width:20px;height:20px;">
-                      <span>Звук новых сообщений</span>
-                  </label>
-                  <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
-                      <input type="checkbox" checked style="width:20px;height:20px;">
-                      <span>Пуши при входящих звонках</span>
-                  </label>
-                  <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
-                      <input type="checkbox" checked style="width:20px;height:20px;">
-                      <span>Уведомления об обновлениях системы</span>
-                  </label>
-              </div>
-            </div>
-
-            <div style="background: rgba(255,255,255,0.02); padding: 20px; border-radius: 16px; border: 1px solid var(--border-light); margin-bottom: 20px;">
-              <h3 style="font-size: 16px; margin-bottom: 15px; font-weight: 700;">🔒 Конфиденциальность</h3>
-              <div style="display:flex; flex-direction:column; gap:12px;">
-                  <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
-                      <input type="checkbox" style="width:20px;height:20px;">
-                      <span>Скрывать статус "в сети"</span>
-                  </label>
-                  <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
-                      <input type="checkbox" style="width:20px;height:20px;">
-                      <span>Запретить сообщения от не-друзей</span>
-                  </label>
-                  <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
-                      <input type="checkbox" checked style="width:20px;height:20px;">
-                      <span>Показывать мою активность в лобби</span>
-                  </label>
-              </div>
-            </div>
-
-            <div style="background: rgba(255,255,255,0.02); padding: 20px; border-radius: 16px; border: 1px solid var(--border-light); margin-bottom: 20px;">
-              <h3 style="font-size: 16px; margin-bottom: 15px; font-weight: 700;">⚙️ Дополнительно</h3>
-              <div style="display:flex; flex-direction:column; gap:12px;">
-                  <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
-                      <input type="checkbox" style="width:20px;height:20px;">
-                      <span>Аппаратное ускорение видео</span>
-                  </label>
-                  <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
-                      <input type="checkbox" checked style="width:20px;height:20px;">
-                      <span>Смарт-переключение качества</span>
-                  </label>
-                  <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
-                      <input type="checkbox" style="width:20px;height:20px;">
-                      <span>Расширенный режим отладки системы</span>
-                  </label>
-              </div>
-            </div>
+          <div class="friends-container" style="padding: 20px;" id="settings-dynamic-container">
+            <!-- Rendered by JS -->
           </div>
         </main>
 
@@ -6934,7 +6912,27 @@
     </script>
     <script src="emojis_registry.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.7/dist/hls.min.js"></script>
+    <script src="settingsRenderer.js"></script>
     <script type="module" src="app.js"></script>
+    <style>
+      body.monochrome { filter: grayscale(1) !important; }
+      body.high-contrast { filter: contrast(1.2) !important; }
+      body.compact-chat .bubble { padding: 8px 12px !important; }
+      body.hide-chat-time .bubble-time { display: none !important; }
+      body.hide-online-counter .online-counter-badge { display: none !important; }
+      body.hide-recent-rooms .lobby-rooms-grid { display: none !important; }
+      body.disable-transitions *, body.disable-transitions { transition: none !important; animation-duration: 0.1s !important; }
+      body.hide-copy-id #btn-copy-link, body.hide-copy-id #btn-fast-id { display: none !important; }
+      body.round-avatars .avatar-img,
+      body.round-avatars img.avatar,
+      body.round-avatars .chat-profile-link img,
+      body.round-avatars .room-user-profile-link img,
+      body.round-avatars .avatar-border-glow img,
+      body.round-avatars .chat-avatar-placeholder,
+      body.round-avatars .lobby-friends-list img {
+          border-radius: 50% !important;
+      }
+    </style>
     <div class="modal" id="modal-create-ticket">
       <div
         class="modal-content glass-panel"
