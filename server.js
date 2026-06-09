@@ -41,17 +41,17 @@ app.use('/api', rateLimit({
         code: 'RATE_LIMITED'
     }
 }));
-app.use('/custom-auth', rateLimit({
-    windowMs: RATE_LIMIT_WINDOW_MS,
-    max: RATE_LIMIT_MAX,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: {
-        success: false,
-        error: 'Too many requests',
-        code: 'RATE_LIMITED'
-    }
-}));
+        app.use('/custom-auth', rateLimit({
+            windowMs: RATE_LIMIT_WINDOW_MS,
+            max: RATE_LIMIT_MAX,
+            standardHeaders: true,
+            legacyHeaders: false,
+            message: {
+                success: false,
+                error: 'Too many requests',
+                code: 'RATE_LIMITED'
+            }
+        }));
 
 import nodemailer from 'nodemailer';
 import admin from 'firebase-admin';
@@ -134,6 +134,10 @@ app.post('/custom-auth/send-code', async (req, res) => {
             `
         };
 
+        if (!process.env.SMTP_USER || process.env.SMTP_USER === 'ваша_почта@gmail.com') {
+            console.log(`[COWIO MOCK EMAIL] To: ${email}, Verification Code: ${code}`);
+            return res.json({ success: true, message: 'Код отправлен в консоль (тестовый режим)' });
+        }
         await mailTransporter.sendMail(mailOptions);
         res.json({ success: true, message: 'Код отправлен' });
 

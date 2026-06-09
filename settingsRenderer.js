@@ -8,7 +8,7 @@ const SettingSections = [
         type: "toggle",
         title: "Светлая тема (Лобби)",
         desc: "Альтернативное светлое оформление интерфейса",
-        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Sky%20and%20Weather/Sun.webp",
+        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Sun.webp",
         default: false,
         onChange: (val) => {
            localStorage.setItem('cowio:globalTheme', val ? 'light' : 'dark');
@@ -21,7 +21,7 @@ const SettingSections = [
         type: "toggle",
         title: "Анимации частиц",
         desc: "Интерактивный летающий фон",
-        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Firework%20Sparkler.webp",
+        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkler.webp",
         default: true,
         onChange: (val) => {
            localStorage.setItem('siteParticles', val ? 'true' : 'false');
@@ -47,7 +47,7 @@ const SettingSections = [
         type: "toggle",
         title: "Черный фон",
         desc: "Премиальное темное оформление (neuro-bg)",
-        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Sky%20and%20Weather/Night%20with%20Stars.webp",
+        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp",
         default: true,
         onChange: (val) => {
            localStorage.setItem('siteNeuro', val ? 'true' : 'false');
@@ -60,7 +60,7 @@ const SettingSections = [
         type: "toggle",
         title: "Скрывать онлайн",
         desc: "Прячет счетчик онлайна в правом нижнем углу лобби",
-        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Eye%20in%20Speech%20Bubble.webp",
+        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Eyes.webp",
         default: false,
         onChange: (val) => {
            localStorage.setItem('hideOnlineCounter', val);
@@ -73,7 +73,7 @@ const SettingSections = [
         type: "toggle",
         title: "Скрывать недавние комнаты",
         desc: "Очищает интерфейс от списка ваших комнат",
-        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Broom.webp",
+        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Sponge.webp",
         default: false,
         onChange: (val) => {
            localStorage.setItem('hideRecentRooms', val);
@@ -85,7 +85,7 @@ const SettingSections = [
         type: "toggle",
         title: "Черно-белый интерфейс",
         desc: "Абсолютно 0 насыщенности",
-        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/White%20Circle.webp",
+        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Full%20Moon.webp",
         default: false,
         onChange: (val) => {
            localStorage.setItem('siteMonochrome', val);
@@ -96,14 +96,14 @@ const SettingSections = [
   },
   {
     title: "Оптимизация и чат",
-    icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Level%20Slider.webp",
+    icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Keyboard.webp",
     items: [
       {
         id: "site-settings-static-emojis",
         type: "toggle",
         title: "Статичные эмодзи",
         desc: "Снижает нагрузку на ПК",
-        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Battery.webp",
+        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Telephone.webp",
         default: false,
         onChange: (val) => {
            localStorage.setItem('staticEmojis', val);
@@ -129,7 +129,7 @@ const SettingSections = [
         type: "toggle",
         title: "Отключить анимации окон",
         desc: "Делает интерфейс резким",
-        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Fast-Forward%20Button.webp",
+        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/High%20Speed%20Train.webp",
         default: false,
         onChange: (val) => {
            localStorage.setItem('disableTransitions', val);
@@ -141,7 +141,7 @@ const SettingSections = [
         type: "toggle",
         title: "Круглые аватарки",
         desc: "Сделать все аватары полностью круглыми",
-        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Purple%20Circle.webp",
+        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/New%20Moon.webp",
         default: false,
         onChange: (val) => {
            localStorage.setItem('siteRoundAvars', val);
@@ -153,7 +153,7 @@ const SettingSections = [
         type: "toggle",
         title: "Компактный чат",
         desc: "Уменьшает отступы в сообщениях чата комнаты",
-        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Minimize.webp",
+        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Microscope.webp",
         default: false,
         onChange: (val) => {
            localStorage.setItem('compactChat', val);
@@ -165,74 +165,11 @@ const SettingSections = [
         type: "toggle",
         title: "Скрыть время сообщений",
         desc: "Скрывает блок времени в чате",
-        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Hourglass%20Not%20Done.webp",
+        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Hourglass%20Not%20Done.webp",
         default: false,
         onChange: (val) => {
            localStorage.setItem('hideChatTime', val);
            document.body.classList.toggle('hide-chat-time', val);
-        }
-      }
-    ]
-  },
-  {
-    title: "Звук и конфиденциальность",
-    icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Shield.webp",
-    items: [
-      {
-        id: "site-set-mute-ui",
-        type: "toggle",
-        title: "Без звуков UI",
-        desc: "Отключает системные звуки при кликах",
-        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Muted%20Speaker.webp",
-        default: false,
-        onChange: (val) => {
-           localStorage.setItem('muteUISounds', val);
-           window.COWIO_MUTE = val;
-        }
-      },
-      {
-        id: "site-set-mute-chat",
-        type: "toggle",
-        title: "Без звуков чата",
-        desc: "Отключает звук при входящих из чата",
-        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Bell%20with%20Slash.webp",
-        default: false,
-        onChange: (val) => {
-           localStorage.setItem('muteIncomingMessages', val);
-        }
-      },
-      {
-        id: "site-set-join-mic-off",
-        type: "toggle",
-        title: "Заходить без микрофона",
-        desc: "Микрофон всегда отключен при входе в комнату",
-        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Microphone.webp",
-        default: false,
-        onChange: (val) => {
-           localStorage.setItem('joinMicOff', val);
-        }
-      },
-      {
-        id: "site-set-join-cam-off",
-        type: "toggle",
-        title: "Заходить без камеры",
-        desc: "Камера всегда отключена при входе в комнату",
-        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Video%20Camera.webp",
-        default: false,
-        onChange: (val) => {
-           localStorage.setItem('joinCamOff', val);
-        }
-      },
-      {
-        id: "site-set-hide-copy-id",
-        type: "toggle",
-        title: "Скрыть быстрый ID",
-        desc: "Прячет плашку копирования ID в комнате",
-        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Link.webp",
-        default: false,
-        onChange: (val) => {
-           localStorage.setItem('hideCopyId', val);
-           document.body.classList.toggle('hide-copy-id', val);
         }
       }
     ]
@@ -337,7 +274,7 @@ function initSettingsRenderer() {
             <input type="password" id="settings-email-old-password" placeholder="Введите ваш текущий пароль" style="margin-bottom:0; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); padding:12px; border-radius:10px; color:#fff;" />
             <label style="font-size: 12px; color: var(--text-muted); margin-top: 5px; margin-bottom: -5px;">Новый адрес электронной почты</label>
             <input type="email" id="settings-new-email" placeholder="new@example.com" style="margin-bottom:0; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); padding:12px; border-radius:10px; color:#fff;" />
-            <button class="primary-btn" id="btn-settings-change-email" style="font-size: 14px; padding: 12px; border-radius: 10px; margin-top: 10px;">Продолжить <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Right%20Arrow.webp" style="width:16px;height:16px;vertical-align:text-bottom;"></button>
+            <button class="primary-btn" id="btn-settings-change-email" style="font-size: 14px; padding: 12px; border-radius: 10px; margin-top: 10px;">Продолжить <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Rightwards%20Hand.webp" style="width:16px;height:16px;vertical-align:text-bottom;"></button>
           </div>
         </div>
       </div>
@@ -363,7 +300,7 @@ function initSettingsRenderer() {
             <input type="password" id="settings-new-password" placeholder="Введите новый пароль" style="margin-bottom:0; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); padding:12px; border-radius:10px; color:#fff;" />
             <label style="font-size: 12px; color: var(--text-muted); margin-top: 5px; margin-bottom: -5px;">Подтверждение нового пароля</label>
             <input type="password" id="settings-new-password-confirm" placeholder="Повторите новый пароль" style="margin-bottom:0; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); padding:12px; border-radius:10px; color:#fff;" />
-            <button class="primary-btn" id="btn-settings-change-password" style="font-size: 14px; padding: 12px; border-radius: 10px; margin-top: 10px;">Продолжить <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Right%20Arrow.webp" style="width:16px;height:16px;vertical-align:text-bottom;"></button>
+            <button class="primary-btn" id="btn-settings-change-password" style="font-size: 14px; padding: 12px; border-radius: 10px; margin-top: 10px;">Продолжить <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Rightwards%20Hand.webp" style="width:16px;height:16px;vertical-align:text-bottom;"></button>
           </div>
         </div>
       </div>
