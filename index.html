@@ -1213,6 +1213,93 @@
         transition: 0.3s;
         background: var(--panel);
         border-radius: 18px;
+        min-width: 0;
+        width: 100%;
+      }
+      @media (max-width: 768px) {
+        .rooms-grid {
+          grid-template-columns: 1fr !important;
+          gap: 16px !important;
+          padding-left: 4px;
+          padding-right: 4px;
+        }
+        .room-card {
+          min-height: 200px;
+        }
+        .room-preview {
+          height: 130px !important;
+          min-height: 130px;
+          flex-shrink: 0;
+        }
+        .room-info {
+          padding: 14px 16px !important;
+          flex: 1;
+        }
+        .room-info h4 {
+          white-space: normal;
+          overflow: visible;
+          text-overflow: unset;
+          line-height: 1.3;
+        }
+      }
+      .auth-verify-panel {
+        flex: 1;
+        display: none;
+        flex-direction: column;
+        justify-content: center;
+        align-items: stretch;
+      }
+      .auth-verify-panel.active-form {
+        display: flex !important;
+      }
+      .auth-right.auth-verify-mode .auth-tabs-new {
+        display: none !important;
+      }
+      .reg-code-digit {
+        width: 44px;
+        height: 52px;
+        text-align: center;
+        font-size: 24px;
+        font-family: monospace;
+        font-weight: 800;
+        border-radius: 12px;
+        background: rgba(0,0,0,0.4);
+        border: 2px solid rgba(255,255,255,0.15);
+        color: #fff;
+        padding: 0;
+        margin: 0;
+      }
+      .reg-code-digit:focus {
+        border-color: #fff;
+        outline: none;
+        box-shadow: 0 0 12px rgba(255,255,255,0.25);
+      }
+      #lobby-help-fab {
+        position: fixed;
+        right: 16px;
+        bottom: 16px;
+        z-index: 8500;
+        width: 52px;
+        height: 52px;
+        border-radius: 14px;
+        border: 1px solid rgba(255,255,255,0.2);
+        background: rgba(15,15,17,0.92);
+        backdrop-filter: blur(12px);
+        cursor: pointer;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+        transition: transform 0.2s, border-color 0.2s;
+      }
+      #lobby-help-fab:hover {
+        transform: scale(1.05);
+        border-color: rgba(255,255,255,0.45);
+      }
+      #lobby-help-fab img {
+        width: 28px;
+        height: 28px;
+        filter: grayscale(1) contrast(0);
       }
       .room-card:hover {
         transform: translateY(-4px);
@@ -4358,6 +4445,33 @@
             <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Globe%20With%20Meridians.webp" style="width: 16px; height: 16px;"> Регистрация через Google
           </button>
         </div>
+
+        <div id="reg-verify-form" class="auth-form-new auth-verify-panel" style="display: none;">
+          <div style="text-align: center; width: 100%;">
+            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width: 72px; height: 72px; margin-bottom: 16px;">
+            <h3 style="margin: 0 0 8px; font-weight: 800; font-size: 24px;">Подтвердите почту</h3>
+            <p style="color: var(--text-muted); font-size: 14px; line-height: 1.5; margin-bottom: 24px;">
+              Мы отправили 6-значный код на<br>
+              <b id="reg-verify-email-display" style="color: #fff;"></b>
+            </p>
+            <div id="reg-verify-code-inputs" style="display: flex; gap: 8px; justify-content: center; margin-bottom: 20px;">
+              <input type="text" inputmode="numeric" maxlength="1" class="reg-code-digit" data-index="0" autocomplete="off" />
+              <input type="text" inputmode="numeric" maxlength="1" class="reg-code-digit" data-index="1" autocomplete="off" />
+              <input type="text" inputmode="numeric" maxlength="1" class="reg-code-digit" data-index="2" autocomplete="off" />
+              <input type="text" inputmode="numeric" maxlength="1" class="reg-code-digit" data-index="3" autocomplete="off" />
+              <input type="text" inputmode="numeric" maxlength="1" class="reg-code-digit" data-index="4" autocomplete="off" />
+              <input type="text" inputmode="numeric" maxlength="1" class="reg-code-digit" data-index="5" autocomplete="off" />
+            </div>
+            <button type="button" id="btn-reg-resend-code" class="btn-text-link" disabled style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">
+              Отправить повторно (через <span id="reg-resend-timer">60</span>с)
+            </button>
+            <button class="submit-btn" id="btn-reg-verify-submit" style="width: 100%; margin-bottom: 10px;">
+              Подтвердить и создать аккаунт
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 16px; height: 16px;">
+            </button>
+            <button type="button" id="btn-reg-verify-back" class="secondary-btn" style="width: 100%;">← Назад к регистрации</button>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -6911,6 +7025,7 @@
       window.COWIO_MEDIA_API = window.COWIO_MEDIA_API || "";
     </script>
     <script src="emojis_registry.js"></script>
+    <script src="helpGuide.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.7/dist/hls.min.js"></script>
     <script src="settingsRenderer.js"></script>
     <script type="module" src="app.js"></script>

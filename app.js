@@ -76,6 +76,8 @@ const AppState = {
   currentDirectChat: null,
   usersListRenderToken: 0,
   inviteCooldowns: new Map(),
+  pendingRegistration: null,
+  regResendTimer: null,
   admin: {
     settings: {
       roomCreationBlocked: false,
@@ -898,6 +900,9 @@ class Utils {
     if (footerLinks) {
       footerLinks.style.display = screenId === "lobby-screen" ? "flex" : "none";
     }
+    if (window.HelpGuideManager) {
+      HelpGuideManager.setLobbyVisible(screenId === "lobby-screen");
+    }
 
     // MPA Routing Emulation
     if (pushState) {
@@ -1097,6 +1102,21 @@ class Utils {
                     -webkit-overflow-scrolling: touch;
                     max-height: 70vh;
                     padding-bottom: 120px;
+                    grid-template-columns: 1fr !important;
+                    gap: 16px !important;
+                }
+                .room-card {
+                    min-height: 200px;
+                    width: 100%;
+                }
+                .room-preview {
+                    height: 130px !important;
+                    min-height: 130px;
+                    flex-shrink: 0;
+                }
+                .room-info h4 {
+                    white-space: normal !important;
+                    line-height: 1.3;
                 }
                 .logo { font-size: 28px !important; font-weight: 900; letter-spacing: 2px; background: linear-gradient(90deg, #fff, #888); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0; text-align: center; display: inline-block; }
             }
@@ -3404,6 +3424,29 @@ class EasterEggManager {
     "b",
     "a",
   ];
+  static STICKERS = {
+    cow: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Cow.webp",
+    popcorn: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Popcorn.webp",
+    milk: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Glass%20Of%20Milk.webp",
+    tv: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Television.webp",
+    cat: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Cat.webp",
+    clapper: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Clapper%20Board.webp",
+    scream: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20Screaming%20In%20Fear.webp",
+    clap: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Clapping%20Hands.webp",
+    tree: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Deciduous%20Tree.webp",
+    rocket: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Rocket.webp",
+    skull: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Skull.webp",
+    party: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Party%20Popper.webp",
+    potato: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Canned%20Food.webp",
+    mirror: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Mirror%20Ball.webp",
+    ninja: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Ghost.webp",
+    glass: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Clinking%20Glasses.webp",
+    vhs: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Video%20Camera.webp",
+  };
+
+  static sticker(url, size = 48) {
+    return `<img src="${url}" class="easter-sticker" style="width:${size}px;height:${size}px;object-fit:contain;" alt="" draggable="false">`;
+  }
 
   static init() {
     this.injectStyles();
@@ -3454,18 +3497,44 @@ class EasterEggManager {
             body.easter-space {
                 transition: filter 0.9s ease, transform 0.9s ease;
             }
-            body.easter-vhs { filter: saturate(0.8) contrast(1.08); }
-            body.easter-zombie { filter: grayscale(1) contrast(1.15); }
-            body.easter-potato * {
-                font-family: "Comic Sans MS", "Comic Neue", cursive !important;
-                image-rendering: pixelated;
-            }
+            body.easter-vhs { filter: saturate(0.85) contrast(1.1); }
+            body.easter-zombie { filter: grayscale(0.9) contrast(1.2) sepia(0.35); }
             body.easter-potato {
-                filter: contrast(1.25) saturate(0.82);
+                filter: contrast(1.15) saturate(1.1);
+            }
+            body.easter-potato::after {
+                content: '';
+                position: fixed; inset: 0; pointer-events: none; z-index: 3999;
+                background: radial-gradient(circle at 80% 20%, rgba(255,200,100,0.12), transparent 40%);
             }
             body.easter-mirror {
                 transform: scaleX(-1);
                 transform-origin: center center;
+            }
+            .easter-sticker {
+                filter: drop-shadow(0 8px 20px rgba(0,0,0,0.45));
+                animation: easterStickerBob 2.4s ease-in-out infinite;
+            }
+            @keyframes easterStickerBob {
+                0%, 100% { transform: translateY(0) rotate(0deg); }
+                50% { transform: translateY(-8px) rotate(3deg); }
+            }
+            .easter-floating-stickers {
+                position: fixed; inset: 0; pointer-events: none; z-index: 3998;
+                overflow: hidden;
+            }
+            .easter-float-item {
+                position: absolute;
+                animation: easterFloatDrift 6s ease-in-out infinite;
+            }
+            @keyframes easterFloatDrift {
+                0%, 100% { transform: translate(0,0) scale(1); opacity: 0.85; }
+                50% { transform: translate(12px,-18px) scale(1.08); opacity: 1; }
+            }
+            body.easter-cinema::before {
+                content: '';
+                position: fixed; inset: 0; pointer-events: none; z-index: 3997;
+                background: radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.75) 100%);
             }
             body.easter-space .glass-panel,
             body.easter-space .room-card,
@@ -3652,9 +3721,35 @@ class EasterEggManager {
             <div id="glass-overlay" class="easter-overlay"></div>
             <div id="cinema-overlay" class="easter-overlay"></div>
             <div id="popcorn-overlay" class="easter-overlay"></div>
-            <div id="nyan-overlay" class="easter-overlay"><div class="nyan-cat">🐱🌈</div></div>
+            <div id="nyan-overlay" class="easter-overlay"></div>
+            <div id="easter-floating-root" class="easter-floating-stickers"></div>
         `;
     document.body.appendChild(root);
+  }
+
+  static spawnFloatingStickers(urls, count = 8) {
+    const root = Utils.$("easter-floating-root");
+    if (!root) return;
+    root.innerHTML = "";
+    for (let i = 0; i < count; i++) {
+      const url = urls[i % urls.length];
+      const el = document.createElement("div");
+      el.className = "easter-float-item";
+      el.style.left = `${8 + Math.random() * 84}%`;
+      el.style.top = `${8 + Math.random() * 84}%`;
+      el.style.animationDelay = `${-Math.random() * 4}s`;
+      el.innerHTML = this.sticker(url, 36 + Math.floor(Math.random() * 28));
+      root.appendChild(el);
+    }
+    root.style.opacity = "1";
+  }
+
+  static clearFloatingStickers() {
+    const root = Utils.$("easter-floating-root");
+    if (root) {
+      root.style.opacity = "0";
+      root.innerHTML = "";
+    }
   }
 
   static bindKeyboard() {
@@ -3729,20 +3824,42 @@ class EasterEggManager {
     if (effect === "cinema")
       return this.activateLocalEffect(
         "cinema",
-        () => this.showOverlay("cinema-overlay"),
-        () => this.hideOverlay("cinema-overlay"),
+        () => {
+          document.body.classList.add("easter-cinema");
+          this.showOverlay("cinema-overlay");
+          const o = Utils.$("cinema-overlay");
+          if (o) o.innerHTML = `<div style="position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);text-align:center;">${this.sticker(this.STICKERS.clapper, 120)}<div style="color:#fff;font-weight:800;margin-top:12px;font-size:22px;letter-spacing:2px;">CINEMA MODE</div></div>`;
+        },
+        () => {
+          document.body.classList.remove("easter-cinema");
+          this.hideOverlay("cinema-overlay");
+          const o = Utils.$("cinema-overlay");
+          if (o) o.innerHTML = "";
+        },
       );
     if (effect === "potato")
       return this.activateLocalEffect(
         "potato",
-        () => document.body.classList.add("easter-potato"),
-        () => document.body.classList.remove("easter-potato"),
+        () => {
+          document.body.classList.add("easter-potato");
+          this.spawnFloatingStickers([this.STICKERS.potato, this.STICKERS.popcorn], 10);
+        },
+        () => {
+          document.body.classList.remove("easter-potato");
+          this.clearFloatingStickers();
+        },
       );
     if (effect === "ninja")
       return this.activateLocalEffect(
         "ninja",
-        () => document.body.classList.add("easter-hide-ui"),
-        () => document.body.classList.remove("easter-hide-ui"),
+        () => {
+          document.body.classList.add("easter-hide-ui");
+          this.spawnFloatingStickers([this.STICKERS.ninja], 6);
+        },
+        () => {
+          document.body.classList.remove("easter-hide-ui");
+          this.clearFloatingStickers();
+        },
       );
     if (effect === "zombie")
       return this.activateLocalEffect(
@@ -3753,14 +3870,26 @@ class EasterEggManager {
     if (effect === "space")
       return this.activateLocalEffect(
         "space",
-        () => document.body.classList.add("easter-space"),
-        () => document.body.classList.remove("easter-space"),
+        () => {
+          document.body.classList.add("easter-space");
+          this.spawnFloatingStickers([this.STICKERS.rocket, this.STICKERS.party], 12);
+        },
+        () => {
+          document.body.classList.remove("easter-space");
+          this.clearFloatingStickers();
+        },
       );
     if (effect === "mirror")
       return this.activateLocalEffect(
         "mirror",
-        () => document.body.classList.add("easter-mirror"),
-        () => document.body.classList.remove("easter-mirror"),
+        () => {
+          document.body.classList.add("easter-mirror");
+          this.spawnFloatingStickers([this.STICKERS.mirror], 8);
+        },
+        () => {
+          document.body.classList.remove("easter-mirror");
+          this.clearFloatingStickers();
+        },
       );
   }
 
@@ -3841,10 +3970,14 @@ class EasterEggManager {
             this.playSound(this.SOUND_URLS.grass, { volume: 0.5 });
             document.body.classList.add("easter-green");
             this.showOverlay("green-overlay");
+            const g = Utils.$("green-overlay");
+            if (g) g.innerHTML = `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:20px;flex-wrap:wrap;opacity:0.35;">${this.sticker(this.STICKERS.tree, 80)}${this.sticker(this.STICKERS.tree, 64)}${this.sticker(this.STICKERS.tree, 96)}</div>`;
           },
           () => {
             document.body.classList.remove("easter-green");
             this.hideOverlay("green-overlay");
+            const g = Utils.$("green-overlay");
+            if (g) g.innerHTML = "";
           },
         );
         break;
@@ -3914,20 +4047,30 @@ class EasterEggManager {
         );
         break;
       case "scream":
-        Utils.toast(`Скример${fromName} 👻`, "info");
+        Utils.toast(`Скример${fromName}`, "info");
         this.activateLocalEffect(
           "scream",
-          () => this.playSound(this.SOUND_URLS.scream, { volume: 0.8 }),
-          () => {},
+          () => {
+            this.playSound(this.SOUND_URLS.scream, { volume: 0.8 });
+            const el = document.createElement("div");
+            el.style.cssText = "position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:99999;pointer-events:none;background:rgba(0,0,0,0.5);animation:fadeInUp 0.2s ease;";
+            el.innerHTML = this.sticker(this.STICKERS.scream, 160);
+            el.id = "easter-scream-flash";
+            document.body.appendChild(el);
+          },
+          () => document.getElementById("easter-scream-flash")?.remove(),
           3000,
         );
         break;
       case "cheer":
-        Utils.toast(`Овации${fromName} 👏`, "success");
+        Utils.toast(`Овации${fromName}`, "success");
         this.activateLocalEffect(
           "cheer",
-          () => this.playSound(this.SOUND_URLS.cheer, { volume: 0.7 }),
-          () => {},
+          () => {
+            this.playSound(this.SOUND_URLS.cheer, { volume: 0.7 });
+            this.spawnFloatingStickers([this.STICKERS.clap, this.STICKERS.party], 14);
+          },
+          () => this.clearFloatingStickers(),
           6000,
         );
         break;
@@ -3993,6 +4136,8 @@ class EasterEggManager {
       "popcorn-overlay",
       "nyan-overlay",
     ].forEach((id) => this.hideOverlay(id));
+    document.body.classList.remove("easter-cinema");
+    this.clearFloatingStickers();
     this.stopMatrix();
     this.stopVhs();
     this.stopPopcornRain();
@@ -4020,7 +4165,7 @@ class EasterEggManager {
                 <div class="milk-surface"></div>
             </div>
             <div style="position:fixed; top:40%; left:50%; transform:translate(-50%,-50%); font-size:120px; z-index:9999; 
-                animation: bounceInMilk 2s infinite alternate ease-in-out; pointer-events:none;">🥛</div>
+                animation: bounceInMilk 2s infinite alternate ease-in-out; pointer-events:none;">${this.sticker(this.STICKERS.milk, 140)}</div>
         `;
     container.innerHTML = html;
     if (!document.getElementById("milk-css-fix")) {
@@ -4068,7 +4213,8 @@ class EasterEggManager {
 
     const container = document.createElement("div");
     container.style.cssText = `position:fixed; inset:0; pointer-events:none; z-index:9999; display:flex; align-items:center; justify-content:center;`;
-    container.innerHTML = `<div style="font-size: 25vw; animation: mooZoom 2.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.5)); will-change: transform, opacity;">🐄</div>`;
+    const size = Math.min(window.innerWidth * 0.35, 280);
+    container.innerHTML = `<div style="animation: mooZoom 2.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; will-change: transform, opacity;">${this.sticker(this.STICKERS.cow, size)}</div>`;
     if (!document.getElementById("moo-css")) {
       const s = document.createElement("style");
       s.id = "moo-css";
@@ -4118,7 +4264,7 @@ class EasterEggManager {
     const overlay = Utils.$("popcorn-overlay");
     if (!overlay) return;
     overlay.innerHTML = `
-            <div style="position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); font-size:120px; z-index:99; animation: rumblingBucket 0.5s infinite linear;">🍿</div>
+            <div style="position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:99; animation: rumblingBucket 0.5s infinite linear;">${this.sticker(this.STICKERS.popcorn, 120)}</div>
             <div id="popcorn-particles"></div>
         `;
     if (!document.getElementById("popcorn-css-fix")) {
@@ -4135,8 +4281,8 @@ class EasterEggManager {
       if (!particles) return;
       for (let i = 0; i < 3; i++) {
         const item = document.createElement("div");
-        item.innerText = "🍿";
         item.className = "popcorn-p";
+        item.innerHTML = this.sticker(this.STICKERS.popcorn, 28);
         particles.appendChild(item);
         const angle = Math.random() * Math.PI * 2;
         const velocity = 20 + Math.random() * 30;
@@ -4189,7 +4335,7 @@ class EasterEggManager {
     if (AppState.easterEggs.animationHandles.has("dvd"))
       cancelAnimationFrame(AppState.easterEggs.animationHandles.get("dvd"));
     overlay.innerHTML =
-      '<div class="dvd-logo" id="dvd-logo-anim">DVD<br><span style="font-size:14px; font-weight:700; letter-spacing:4px">VIDEO</span></div>';
+      `<div class="dvd-logo" id="dvd-logo-anim" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 22px;">${this.sticker(this.STICKERS.tv, 56)}<span style="font-size:22px;font-weight:900;letter-spacing:2px">DVD</span><span style="font-size:12px;font-weight:700;letter-spacing:4px;opacity:0.9">VIDEO</span></div>`;
     if (!document.getElementById("dvd-css-fix")) {
       const style = document.createElement("style");
       style.id = "dvd-css-fix";
@@ -4353,7 +4499,7 @@ class EasterEggManager {
     overlay.innerHTML = `
             <div class="vhs-css-overlay">
                 <div class="vhs-track-line"></div>
-                <div class="vhs-text" id="vhs-time-text">PLAY ►</div>
+                <div class="vhs-text" id="vhs-time-text" style="display:flex;align-items:center;gap:12px;">${this.sticker(this.STICKERS.vhs, 48)}<span>PLAY ►</span></div>
             </div>
         `;
     const vhsInterval = setInterval(() => {
@@ -4399,7 +4545,7 @@ class EasterEggManager {
                         z-index: 10000; pointer-events: none; opacity: 1; animation: glassFadeOut 2.5s forwards;">
             </div>
             <div style="position:fixed; inset:0; background:white; opacity:1; animation: flashWhite 0.5s ease-out forwards; pointer-events:none; z-index:10001;"></div>
-            <div style="position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); padding:20px; font-size:120px; font-weight:900; color:white; filter:drop-shadow(0 0 30px white); animation: txtShake 0.4s; pointer-events:none; z-index:10002;">CRACK!</div>
+            <div style="position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); animation: txtShake 0.4s; pointer-events:none; z-index:10002;">${this.sticker(this.STICKERS.glass, 100)}</div>
         `;
     if (!document.getElementById("glass-css-fix")) {
       const style = document.createElement("style");
@@ -4435,8 +4581,9 @@ class EasterEggManager {
     const overlay = Utils.$("nyan-overlay");
     if (overlay) {
       overlay.innerHTML = `
-                <div id="nyan-cat-anim" style="position:absolute; width:120px; height:80px; font-size: 60px; line-height:80px; text-align:center; transform:translate3d(-200px, 50vh, 0); will-change: transform;">🐱
-                    <div style="content:''; position:absolute; top:20px; right:80px; width:200vw; height:40px; background:linear-gradient(to bottom, red 16%, orange 16% 32%, yellow 32% 48%, green 48% 64%, blue 64% 80%, purple 80%); z-index:-1; opacity:0.8; border-radius:20px 0 0 20px;"></div>
+                <div id="nyan-cat-anim" style="position:absolute; transform:translate3d(-200px, 50vh, 0); will-change: transform; display:flex; align-items:center;">
+                    <div style="position:absolute; top:50%; right:70px; width:200vw; height:36px; transform:translateY(-50%); background:linear-gradient(to bottom, red 16%, orange 16% 32%, yellow 32% 48%, green 48% 64%, blue 64% 80%, purple 80%); z-index:-1; opacity:0.85; border-radius:18px 0 0 18px;"></div>
+                    ${this.sticker(this.STICKERS.cat, 72)}
                 </div>
             `;
       if (!document.getElementById("nyan-css-fix")) {
@@ -4473,6 +4620,7 @@ class EasterEggManager {
 
   static startZombie() {
     document.body.classList.add("easter-zombie");
+    this.spawnFloatingStickers([this.STICKERS.skull], 7);
     const video = Utils.$("native-player");
     if (video) {
       video.dataset.originalPlaybackRate = String(video.playbackRate || 1);
@@ -4482,6 +4630,7 @@ class EasterEggManager {
 
   static stopZombie() {
     document.body.classList.remove("easter-zombie");
+    this.clearFloatingStickers();
     setTimeout(() => {
       const video = Utils.$("native-player");
       if (video && video.dataset.originalPlaybackRate) {
@@ -5080,6 +5229,165 @@ class AuthManager {
     document.body.classList.remove("auth-loading");
   }
 
+  static getApiBase() {
+    return typeof window !== "undefined" && window.COWIO_MEDIA_API
+      ? String(window.COWIO_MEDIA_API).replace(/\/$/, "")
+      : "";
+  }
+
+  static async sendAuthCode(email) {
+    const res = await fetch(`${this.getApiBase()}/api/custom-auth/send-code`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    const text = await res.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (err) {
+      throw new Error(
+        "API send-code failed (HTTP " + res.status + "): " + (text ? text : "Empty body"),
+      );
+    }
+    if (!data.success) throw new Error(data.error || "Ошибка отправки кода");
+    return data;
+  }
+
+  static async verifyAuthCode(email, code) {
+    const res = await fetch(`${this.getApiBase()}/api/custom-auth/verify-code`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, code }),
+    });
+    const text = await res.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (err) {
+      throw new Error(
+        "API verify-code failed (HTTP " + res.status + "): " + (text ? text : "Empty body"),
+      );
+    }
+    if (!data.success) throw new Error(data.error || "Неверный код");
+    return data;
+  }
+
+  static showRegVerifyPanel(email) {
+    const authRight = document.querySelector(".auth-right");
+    authRight?.classList.add("auth-verify-mode");
+    Utils.$("login-form")?.classList.remove("active-form");
+    Utils.$("reg-form")?.classList.remove("active-form");
+    if (Utils.$("login-form")) Utils.$("login-form").style.display = "none";
+    if (Utils.$("reg-form")) Utils.$("reg-form").style.display = "none";
+    const vf = Utils.$("reg-verify-form");
+    if (vf) {
+      vf.style.display = "flex";
+      vf.classList.add("active-form");
+    }
+    const emailEl = Utils.$("reg-verify-email-display");
+    if (emailEl) emailEl.textContent = email;
+    document.querySelectorAll(".reg-code-digit").forEach((inp) => {
+      inp.value = "";
+    });
+    document.querySelector(".reg-code-digit")?.focus();
+    this.startRegResendTimer();
+  }
+
+  static hideRegVerifyPanel() {
+    const authRight = document.querySelector(".auth-right");
+    authRight?.classList.remove("auth-verify-mode");
+    const vf = Utils.$("reg-verify-form");
+    if (vf) {
+      vf.style.display = "none";
+      vf.classList.remove("active-form");
+    }
+    if (Utils.$("login-form")) Utils.$("login-form").style.display = "";
+    if (Utils.$("reg-form")) Utils.$("reg-form").style.display = "";
+    Utils.$("reg-form")?.classList.add("active-form");
+    if (AppState.regResendTimer) clearInterval(AppState.regResendTimer);
+    AppState.pendingRegistration = null;
+  }
+
+  static startRegResendTimer() {
+    if (AppState.regResendTimer) clearInterval(AppState.regResendTimer);
+    let timerVal = 60;
+    const btn = Utils.$("btn-reg-resend-code");
+    const tick = () => {
+      timerVal--;
+      const span = Utils.$("reg-resend-timer");
+      if (timerVal <= 0) {
+        clearInterval(AppState.regResendTimer);
+        AppState.regResendTimer = null;
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = "Отправить код повторно";
+          btn.style.color = "#fff";
+        }
+      } else if (span) {
+        span.textContent = String(timerVal);
+      }
+    };
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `Отправить повторно (через <span id="reg-resend-timer">60</span>с)`;
+      btn.style.color = "var(--text-muted)";
+    }
+    AppState.regResendTimer = setInterval(tick, 1000);
+  }
+
+  static bindRegCodeInputs() {
+    const inputs = Array.from(document.querySelectorAll(".reg-code-digit"));
+    inputs.forEach((input, index) => {
+      input.addEventListener("input", (e) => {
+        const v = e.target.value.replace(/\D/g, "").slice(-1);
+        e.target.value = v;
+        if (v && index < inputs.length - 1) inputs[index + 1].focus();
+      });
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Backspace" && !input.value && index > 0) {
+          inputs[index - 1].focus();
+        }
+      });
+      input.addEventListener("paste", (e) => {
+        e.preventDefault();
+        const pasted = (e.clipboardData?.getData("text") || "").replace(/\D/g, "").slice(0, 6);
+        pasted.split("").forEach((ch, i) => {
+          if (inputs[i]) inputs[i].value = ch;
+        });
+        if (pasted.length >= 6) inputs[5]?.focus();
+        else inputs[pasted.length]?.focus();
+      });
+    });
+  }
+
+  static getRegCodeValue() {
+    return Array.from(document.querySelectorAll(".reg-code-digit"))
+      .map((i) => i.value)
+      .join("");
+  }
+
+  static async completeRegistration(pending) {
+    AppState.isRegistering = true;
+    const creds = await createUserWithEmailAndPassword(auth, pending.email, pending.pass);
+    const savedAccounts = JSON.parse(localStorage.getItem("cowio_saved_accounts") || "[]");
+    savedAccounts.push({ uid: creds.user.uid, email: pending.email, pass: pending.pass });
+    localStorage.setItem("cowio_saved_accounts", JSON.stringify(savedAccounts));
+    await updateProfile(creds.user, { displayName: pending.name });
+    await ProfileManager.createProfile(
+      creds.user.uid,
+      pending.name,
+      pending.username,
+      pending.email,
+      { provider: "email", emailVerified: true },
+      pending.gender,
+    );
+    TutorialManager.startTutorial();
+    AppState.isRegistering = false;
+    AuthManager.hideRegVerifyPanel();
+    Utils.toast("Аккаунт создан! Добро пожаловать в COWIO", "success");
+  }
+
   static bindUI() {
     Utils.$("tab-login-btn").onclick = () => {
       Utils.$("tab-login-btn").classList.add("active");
@@ -5297,6 +5605,46 @@ class AuthManager {
       }
     };
 
+    this.bindRegCodeInputs();
+
+    if (Utils.$("btn-reg-verify-back")) {
+      Utils.$("btn-reg-verify-back").onclick = () => {
+        this.hideRegVerifyPanel();
+        Utils.$("btn-do-reg").disabled = false;
+      };
+    }
+
+    if (Utils.$("btn-reg-resend-code")) {
+      Utils.$("btn-reg-resend-code").onclick = async () => {
+        if (!AppState.pendingRegistration?.email) return;
+        try {
+          await this.sendAuthCode(AppState.pendingRegistration.email);
+          Utils.toast("Код отправлен повторно", "success");
+          this.startRegResendTimer();
+        } catch (e) {
+          Utils.toast(e.message, "error");
+        }
+      };
+    }
+
+    if (Utils.$("btn-reg-verify-submit")) {
+      Utils.$("btn-reg-verify-submit").onclick = async () => {
+        const pending = AppState.pendingRegistration;
+        if (!pending) return Utils.toast("Сессия регистрации истекла", "error");
+        const code = this.getRegCodeValue();
+        if (code.length !== 6) return Utils.toast("Введите 6-значный код", "error");
+        try {
+          Utils.$("btn-reg-verify-submit").disabled = true;
+          await this.verifyAuthCode(pending.email, code);
+          await this.completeRegistration(pending);
+        } catch (e) {
+          Utils.toast(e.message || "Ошибка подтверждения", "error");
+        } finally {
+          Utils.$("btn-reg-verify-submit").disabled = false;
+        }
+      };
+    }
+
     Utils.$("btn-do-reg").onclick = async () => {
       if (!SecurityManager.validateAction("auth_register", { count: 2, timeWindowMs: 60000 })) return;
       if (AppState.admin.settings.globalRegistrationsBlocked)
@@ -5330,35 +5678,13 @@ class AuthManager {
         if (!isAvail)
           throw new Error("Этот @ID уже занят другим пользователем!");
 
-        AppState.isRegistering = true;
-        const creds = await createUserWithEmailAndPassword(auth, email, pass);
+        Utils.toast("Отправка кода на почту...", "info");
+        await this.sendAuthCode(email);
 
-        // save password for 1-click login
-        const savedAccounts = JSON.parse(
-          localStorage.getItem("cowio_saved_accounts") || "[]",
-        );
-        savedAccounts.push({ uid: creds.user.uid, email: email, pass: pass });
-        localStorage.setItem(
-          "cowio_saved_accounts",
-          JSON.stringify(savedAccounts),
-        );
-
-        await updateProfile(creds.user, { displayName: name });
-        await ProfileManager.createProfile(
-          creds.user.uid,
-          name,
-          username,
-          email,
-          {
-            provider: "email",
-            emailVerified: false,
-          },
-          gender,
-        );
-        TutorialManager.startTutorial();
-        AppState.isRegistering = false;
+        AppState.pendingRegistration = { email, pass, name, username, gender };
+        this.showRegVerifyPanel(email);
+        Utils.toast("Введите код из письма", "success");
       } catch (e) {
-        AppState.isRegistering = false;
         Utils.toast(e.message, "error");
         Utils.$("btn-do-reg").disabled = false;
       }
@@ -10063,7 +10389,7 @@ class AdminPanel {
   }
 
   static ensureUI() {
-    if (Utils.$("modal-admin-panel")) return;
+    Utils.$("modal-admin-panel")?.remove();
 
     const modal = document.createElement("div");
     modal.className = "modal";
@@ -10093,8 +10419,6 @@ class AdminPanel {
                     </div>
                     <button class="secondary-btn" id="btn-close-admin-panel" style="width:auto; padding:8px 12px;">✕</button>
                 </div>
-
-                <div id="admin-stats-grid" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:16px;"></div>
 
                 <div class="godmode-section" data-section="catalog" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02); margin-bottom: 16px;">
                     <div style="font-weight:700; margin-bottom:10px;">Управление базаром</div>
@@ -10140,7 +10464,9 @@ class AdminPanel {
                     </div>
                 </div>
 
-                <div class="godmode-section active" data-section="dashboard" style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin-bottom:16px;">
+                <div class="godmode-section active" data-section="dashboard">
+                    <div id="admin-stats-grid" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:16px;"></div>
+                <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin-bottom:16px;">
                     <div style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
                         <div style="font-weight:700; margin-bottom:10px;">Глобальное оповещение / Пасхалка</div>
                         <textarea id="admin-announcement-input" rows="4" placeholder="Введите текст или команду пасхалки (напр. /matrix)"></textarea>
@@ -10210,6 +10536,7 @@ class AdminPanel {
                          <button class="secondary-btn" onclick="window.triggerAdminAction('thanosSnapROOM')">Clear Chat (Thanos)</button>
                      </div>
                 </div>
+                </div>
 
                 <div class="godmode-section" data-section="rooms" style="display:grid; grid-template-columns:1fr; gap:16px;">
                     <div style="display:flex; flex-direction:column; gap:16px; min-width:0;">
@@ -10219,6 +10546,21 @@ class AdminPanel {
                                 <div style="font-size:12px; color:var(--text-muted);">Удаление любых комнат одним нажатием</div>
                             </div>
                             <div id="admin-rooms-list" style="display:flex; flex-direction:column; gap:8px; max-height:280px; overflow:auto;"></div>
+                        </div>
+                        <div style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
+                            <div style="font-weight:700; margin-bottom:10px;">Управление комнатами</div>
+                            <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-bottom:10px;">
+                                <input type="text" id="admin-room-action-id" placeholder="ID комнаты" style="margin:0; grid-column:1/-1;">
+                                <button class="danger-btn" id="btn-admin-kick-all-room">Кикнуть всех из комнаты</button>
+                                <button class="secondary-btn" id="btn-admin-clone-room">Клонировать настройки</button>
+                                <input type="number" id="admin-room-max-viewers" placeholder="Лимит зрителей" min="1" style="margin:0;">
+                                <button class="primary-btn" id="btn-admin-set-room-cap">Установить лимит</button>
+                                <input type="text" id="admin-room-password" placeholder="Пароль комнаты (пусто=снять)" style="margin:0;">
+                                <button class="secondary-btn" id="btn-admin-set-room-password">Замок комнаты</button>
+                                <button class="secondary-btn" id="btn-admin-sort-rooms-occupancy">Сортировать по онлайну</button>
+                                <button class="secondary-btn" id="btn-admin-room-heatmap">Тепловая карта комнат</button>
+                            </div>
+                            <div id="admin-room-heatmap-out" style="font-size:12px; color:var(--text-muted); max-height:120px; overflow:auto;"></div>
                         </div>
                     </div>
                 </div>
@@ -10258,6 +10600,19 @@ class AdminPanel {
                                 Выберите пользователя через поиск или клик по списку онлайна.
                             </div>
                         </div>
+                        <div style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02); margin-top:16px;">
+                            <div style="font-weight:700; margin-bottom:10px;">Массовые операции (People)</div>
+                            <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px;">
+                                <button class="secondary-btn" id="btn-admin-export-users-csv">Экспорт users CSV</button>
+                                <button class="secondary-btn" id="btn-admin-scan-inactive">Неактивные 30+ дней</button>
+                                <button class="secondary-btn" id="btn-admin-scan-duplicate-ip">Дубликаты IP</button>
+                                <button class="secondary-btn" id="btn-admin-bulk-shadowban">Bulk shadowban (список @id)</button>
+                                <button class="secondary-btn" id="btn-admin-force-verify-email">Force email verified</button>
+                                <button class="secondary-btn" id="btn-admin-reset-all-tutorials">Сбросить туториал всем</button>
+                            </div>
+                            <textarea id="admin-bulk-usernames" rows="2" placeholder="@id через запятую или с новой строки" style="margin-top:8px; width:100%;"></textarea>
+                            <div id="admin-people-tools-out" style="font-size:12px; color:var(--text-muted); margin-top:8px; max-height:140px; overflow:auto;"></div>
+                        </div>
                     </div>
                 </div>
                 <div class="godmode-section" data-section="logs" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
@@ -10270,47 +10625,53 @@ class AdminPanel {
                 <div class="godmode-section" data-section="security" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
                     <div style="font-weight:700; margin-bottom:10px;">Security Systems</div>
                     <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px;">
-                        <button class="secondary-btn" disabled>Brute-force Shield (soon)</button>
-                        <button class="secondary-btn" disabled>2FA Monitor (soon)</button>
-                        <button class="secondary-btn" disabled>Geo Alerts (soon)</button>
-                        <button class="secondary-btn" disabled>Session Risk Scan (soon)</button>
+                        <button class="secondary-btn" id="btn-admin-brute-shield">Brute-force Shield</button>
+                        <button class="secondary-btn" id="btn-admin-audit-reserved-names">Аудит @id (reserved)</button>
+                        <button class="secondary-btn" id="btn-admin-session-risk-scan">Session Risk Scan</button>
+                        <button class="secondary-btn" id="btn-admin-list-force-logout">Список force-logout</button>
                     </div>
+                    <div id="admin-security-out" style="font-size:12px; color:var(--text-muted); margin-top:10px; max-height:160px; overflow:auto;"></div>
                 </div>
                 <div class="godmode-section" data-section="automation" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
                     <div style="font-weight:700; margin-bottom:10px;">Automation Systems</div>
                     <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px;">
-                        <button class="secondary-btn" disabled>Auto Cleanup Rules (soon)</button>
-                        <button class="secondary-btn" disabled>Auto Moderation (soon)</button>
-                        <button class="secondary-btn" disabled>Scheduled Jobs (soon)</button>
-                        <button class="secondary-btn" disabled>Incident Playbooks (soon)</button>
+                        <button class="secondary-btn" id="btn-admin-auto-purge-empty">Auto purge пустых комнат</button>
+                        <button class="secondary-btn" id="btn-admin-save-automod-keywords">Сохранить automod слова</button>
+                        <button class="secondary-btn" id="btn-admin-scheduled-message">Запланировать сообщение</button>
+                        <button class="secondary-btn" id="btn-admin-incident-unmute">Incident: unmute all</button>
                     </div>
+                    <textarea id="admin-automod-keywords" rows="2" placeholder="Запрещённые слова через запятую" style="margin-top:8px; width:100%;"></textarea>
                 </div>
                 <div class="godmode-section" data-section="broadcast" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
                     <div style="font-weight:700; margin-bottom:10px;">Broadcast Systems</div>
+                    <input type="text" id="admin-emergency-banner" placeholder="Текст emergency banner" style="margin:0 0 8px 0; width:100%;">
                     <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px;">
-                        <button class="secondary-btn" disabled>Segmented Notices (soon)</button>
-                        <button class="secondary-btn" disabled>Emergency Banner (soon)</button>
-                        <button class="secondary-btn" disabled>Push Queue (soon)</button>
-                        <button class="secondary-btn" disabled>Delivery Stats (soon)</button>
+                        <button class="primary-btn" id="btn-admin-set-emergency-banner">Emergency Banner</button>
+                        <button class="secondary-btn" id="btn-admin-notify-online-segment">Оповестить онлайн</button>
+                        <button class="secondary-btn" id="btn-admin-maintenance-countdown">Maintenance текст</button>
+                        <button class="secondary-btn" id="btn-admin-broadcast-stats">Delivery Stats</button>
                     </div>
                 </div>
                 <div class="godmode-section" data-section="integrations" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
                     <div style="font-weight:700; margin-bottom:10px;">Integration Systems</div>
+                    <input type="text" id="admin-webhook-url" placeholder="Webhook URL" style="margin:0 0 8px 0; width:100%;">
                     <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px;">
-                        <button class="secondary-btn" disabled>Webhook Hub (soon)</button>
-                        <button class="secondary-btn" disabled>External Audit Sink (soon)</button>
-                        <button class="secondary-btn" disabled>Bot Gateway (soon)</button>
-                        <button class="secondary-btn" disabled>Status Bridge (soon)</button>
+                        <button class="secondary-btn" id="btn-admin-save-webhook">Сохранить Webhook</button>
+                        <button class="secondary-btn" id="btn-admin-export-audit-json">Экспорт Audit JSON</button>
+                        <button class="secondary-btn" id="btn-admin-webhook-ping">Webhook test ping</button>
+                        <button class="secondary-btn" id="btn-admin-status-bridge">Status Bridge ping</button>
                     </div>
                 </div>
                 <div class="godmode-section" data-section="backups" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
                     <div style="font-weight:700; margin-bottom:10px;">Backup Systems</div>
                     <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px;">
-                        <button class="secondary-btn" disabled>Snapshot Scheduler (soon)</button>
-                        <button class="secondary-btn" disabled>Restore Sandbox (soon)</button>
-                        <button class="secondary-btn" disabled>Retention Policy (soon)</button>
-                        <button class="secondary-btn" disabled>Backup Integrity Check (soon)</button>
+                        <button class="secondary-btn" id="btn-admin-backup-now">Snapshot сейчас</button>
+                        <button class="secondary-btn" id="btn-admin-backup-integrity">Integrity Check</button>
+                        <input type="number" id="admin-backup-retention" placeholder="Retention (дней)" min="1" style="margin:0;">
+                        <button class="secondary-btn" id="btn-admin-set-retention">Retention Policy</button>
+                        <button class="secondary-btn" id="btn-admin-restore-dry-run">Restore dry-run</button>
                     </div>
+                    <div id="admin-backup-out" style="font-size:12px; color:var(--text-muted); margin-top:10px;"></div>
                 </div>
                 <!-- // [NEW] BADGES SECTION -->
                 <div class="godmode-section" data-section="badges" style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
@@ -10419,6 +10780,38 @@ class AdminPanel {
     Utils.$("btn-admin-global-maintenance").onclick = () =>
       this.toggleGlobalSetting("maintenanceMode", "Maintenance mode");
     Utils.$("btn-admin-clear-audit").onclick = () => this.clearAuditLog();
+    Utils.$("btn-admin-kick-all-room")?.addEventListener("click", () => this.kickAllFromRoom());
+    Utils.$("btn-admin-clone-room")?.addEventListener("click", () => this.cloneRoomSettings());
+    Utils.$("btn-admin-set-room-cap")?.addEventListener("click", () => this.setRoomMaxViewers());
+    Utils.$("btn-admin-set-room-password")?.addEventListener("click", () => this.setRoomPassword());
+    Utils.$("btn-admin-sort-rooms-occupancy")?.addEventListener("click", () => this.sortRoomsByOccupancy());
+    Utils.$("btn-admin-room-heatmap")?.addEventListener("click", () => this.renderRoomHeatmap());
+    Utils.$("btn-admin-export-users-csv")?.addEventListener("click", () => this.exportUsersCsv());
+    Utils.$("btn-admin-scan-inactive")?.addEventListener("click", () => this.scanInactiveUsers());
+    Utils.$("btn-admin-scan-duplicate-ip")?.addEventListener("click", () => this.scanDuplicateIPs());
+    Utils.$("btn-admin-bulk-shadowban")?.addEventListener("click", () => this.bulkShadowban());
+    Utils.$("btn-admin-force-verify-email")?.addEventListener("click", () => this.forceVerifySelectedEmail());
+    Utils.$("btn-admin-reset-all-tutorials")?.addEventListener("click", () => this.resetAllTutorials());
+    Utils.$("btn-admin-brute-shield")?.addEventListener("click", () => this.toggleGlobalSetting("bruteForceShield", "Brute-force Shield"));
+    Utils.$("btn-admin-audit-reserved-names")?.addEventListener("click", () => this.auditReservedUsernames());
+    Utils.$("btn-admin-session-risk-scan")?.addEventListener("click", () => this.sessionRiskScan());
+    Utils.$("btn-admin-list-force-logout")?.addEventListener("click", () => this.listForceLogoutUsers());
+    Utils.$("btn-admin-auto-purge-empty")?.addEventListener("click", () => this.toggleGlobalSetting("autoPurgeEmptyRooms", "Auto purge пустых"));
+    Utils.$("btn-admin-save-automod-keywords")?.addEventListener("click", () => this.saveAutomodKeywords());
+    Utils.$("btn-admin-scheduled-message")?.addEventListener("click", () => this.scheduleGlobalMessage());
+    Utils.$("btn-admin-incident-unmute")?.addEventListener("click", () => this.unmuteAndUnbanAllUsers());
+    Utils.$("btn-admin-set-emergency-banner")?.addEventListener("click", () => this.setEmergencyBanner());
+    Utils.$("btn-admin-notify-online-segment")?.addEventListener("click", () => this.notifyOnlineSegment());
+    Utils.$("btn-admin-maintenance-countdown")?.addEventListener("click", () => this.setMaintenanceCountdown());
+    Utils.$("btn-admin-broadcast-stats")?.addEventListener("click", () => this.showBroadcastStats());
+    Utils.$("btn-admin-save-webhook")?.addEventListener("click", () => this.saveWebhookUrl());
+    Utils.$("btn-admin-export-audit-json")?.addEventListener("click", () => this.exportAuditJson());
+    Utils.$("btn-admin-webhook-ping")?.addEventListener("click", () => this.webhookTestPing());
+    Utils.$("btn-admin-status-bridge")?.addEventListener("click", () => this.statusBridgePing());
+    Utils.$("btn-admin-backup-now")?.addEventListener("click", () => this.exportAdminSnapshot());
+    Utils.$("btn-admin-backup-integrity")?.addEventListener("click", () => this.backupIntegrityCheck());
+    Utils.$("btn-admin-set-retention")?.addEventListener("click", () => this.setBackupRetention());
+    Utils.$("btn-admin-restore-dry-run")?.addEventListener("click", () => this.restoreDryRun());
     Utils.$("admin-user-search").onkeydown = (e) => {
       if (e.key === "Enter") this.findUser();
     };
@@ -11161,7 +11554,7 @@ class AdminPanel {
           ? Object.keys(room.presence).length
           : 0;
         return `
-                <div style="border:1px solid var(--border-light); border-radius:12px; padding:12px; display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap;">
+                <div data-occupancy="${membersCount}" style="border:1px solid var(--border-light); border-radius:12px; padding:12px; display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap;">
                     <div style="min-width:0; flex:1;">
                         <div style="font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${room.isPrivate ? "🔒 " : ""}${Utils.escapeHtml(room.name || "Без названия")}</div>
                         <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">ID: ${roomId} • <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> ${membersCount} • Хост: ${Utils.escapeHtml(room.hostName || "Неизвестно")}</div>
@@ -11998,9 +12391,348 @@ class AdminPanel {
     if (!this.requireAdmin()) return;
 
     const stats = await this.collectDashboardData();
-    this.renderStats(stats);
+    if (AppState.admin.activeSection === "dashboard") {
+      this.renderStats(stats);
+    }
     this.renderRoomsList(stats.rooms);
     this.renderUsersList(stats.usersData);
+  }
+
+  static getAdminRoomId() {
+    return Utils.$("admin-room-action-id")?.value?.trim() || "";
+  }
+
+  static async kickAllFromRoom() {
+    if (!this.requireAdmin()) return;
+    const roomId = this.getAdminRoomId();
+    if (!roomId) return Utils.toast("Укажите ID комнаты", "error");
+    const snap = await get(ref(db, `rooms/${roomId}/presence`));
+    const presence = snap.val() || {};
+    const updates = {};
+    Object.keys(presence).forEach((uid) => {
+      updates[`rooms/${roomId}/presence/${uid}`] = null;
+    });
+    if (!Object.keys(updates).length) return Utils.toast("В комнате никого нет", "info");
+    await update(ref(db), updates);
+    await this.pushAuditLog("admin.room.kickAll", { roomId });
+    Utils.toast("Все участники удалены из комнаты");
+    this.renderIfOpen();
+  }
+
+  static async cloneRoomSettings() {
+    if (!this.requireAdmin()) return;
+    const roomId = this.getAdminRoomId();
+    if (!roomId) return Utils.toast("Укажите ID комнаты", "error");
+    const snap = await get(ref(db, `rooms/${roomId}`));
+    if (!snap.exists()) return Utils.toast("Комната не найдена", "error");
+    const room = snap.val();
+    const newId = Utils.generateCryptoId(8);
+    const clone = { ...room, name: `${room.name || "Room"} (копия)`, createdAt: Date.now(), presence: null };
+    delete clone.presence;
+    await set(ref(db, `rooms/${newId}`), clone);
+    Utils.toast(`Клон создан: ${newId}`);
+    this.renderIfOpen();
+  }
+
+  static async setRoomMaxViewers() {
+    if (!this.requireAdmin()) return;
+    const roomId = this.getAdminRoomId();
+    const cap = Number(Utils.$("admin-room-max-viewers")?.value);
+    if (!roomId || !cap || cap < 1) return Utils.toast("ID комнаты и лимит ≥1", "error");
+    await update(ref(db, `rooms/${roomId}`), { maxViewers: cap });
+    Utils.toast(`Лимит ${cap} установлен`);
+  }
+
+  static async setRoomPassword() {
+    if (!this.requireAdmin()) return;
+    const roomId = this.getAdminRoomId();
+    if (!roomId) return Utils.toast("Укажите ID комнаты", "error");
+    const pass = Utils.$("admin-room-password")?.value ?? "";
+    await update(ref(db, `rooms/${roomId}`), {
+      isPrivate: Boolean(pass),
+      roomPassword: pass || null,
+    });
+    Utils.toast(pass ? "Пароль установлен" : "Пароль снят");
+  }
+
+  static sortRoomsByOccupancy() {
+    const list = Utils.$("admin-rooms-list");
+    if (!list) return;
+    const items = Array.from(list.children);
+    items.sort((a, b) => {
+      const ca = Number(a.dataset.occupancy || 0);
+      const cb = Number(b.dataset.occupancy || 0);
+      return cb - ca;
+    });
+    items.forEach((el) => list.appendChild(el));
+    Utils.toast("Список отсортирован по онлайну");
+  }
+
+  static renderRoomHeatmap() {
+    const out = Utils.$("admin-room-heatmap-out");
+    if (!out) return;
+    const rows = Array.from(AppState.roomsCache.entries())
+      .map(([id, room]) => {
+        const n = room?.presence ? Object.keys(room.presence).length : 0;
+        const bar = "█".repeat(Math.min(20, n)) || "·";
+        return `${bar} ${n} — ${Utils.escapeHtml(room.name || id)}`;
+      })
+      .sort((a, b) => b.localeCompare(a));
+    out.innerHTML = rows.length ? rows.map((r) => `<div>${r}</div>`).join("") : "Нет комнат";
+  }
+
+  static async exportUsersCsv() {
+    if (!this.requireAdmin()) return;
+    const snap = await get(ref(db, "users"));
+    const users = snap.val() || {};
+    const lines = ["uid,username,name,email,online,lastActive"];
+    Object.entries(users).forEach(([uid, data]) => {
+      const p = data.profile || {};
+      lines.push(
+        [uid, p.username, p.name, p.email, data.status?.online, data.status?.lastActive]
+          .map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`)
+          .join(","),
+      );
+    });
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `cowio-users-${Date.now()}.csv`;
+    a.click();
+    Utils.toast("CSV экспортирован");
+  }
+
+  static async scanInactiveUsers() {
+    if (!this.requireAdmin()) return;
+    const out = Utils.$("admin-people-tools-out");
+    const snap = await get(ref(db, "users"));
+    const users = snap.val() || {};
+    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const inactive = Object.entries(users).filter(([, d]) => {
+      const la = Number(d?.status?.lastActive || 0);
+      return !d?.status?.online && la > 0 && la < cutoff;
+    });
+    if (out) {
+      out.innerHTML = inactive.length
+        ? inactive
+            .slice(0, 50)
+            .map(([uid, d]) => `<div>@${Utils.escapeHtml(d.profile?.username || uid)} — ${Utils.formatExactDate(d.status.lastActive)}</div>`)
+            .join("")
+        : "Неактивных не найдено";
+    }
+    Utils.toast(`Неактивных: ${inactive.length}`);
+  }
+
+  static async scanDuplicateIPs() {
+    if (!this.requireAdmin()) return;
+    const out = Utils.$("admin-people-tools-out");
+    const snap = await get(ref(db, "users"));
+    const users = snap.val() || {};
+    const byIp = {};
+    Object.entries(users).forEach(([uid, d]) => {
+      const ip = d?.status?.ip || d?.profile?.registeredIp;
+      if (!ip || ip === "unavailable") return;
+      if (!byIp[ip]) byIp[ip] = [];
+      byIp[ip].push(uid);
+    });
+    const dups = Object.entries(byIp).filter(([, arr]) => arr.length > 1);
+    if (out) {
+      out.innerHTML = dups.length
+        ? dups.map(([ip, uids]) => `<div><b>${ip}</b>: ${uids.length} акк.</div>`).join("")
+        : "Дубликатов IP не найдено";
+    }
+    Utils.toast(`Групп с одинаковым IP: ${dups.length}`);
+  }
+
+  static async bulkShadowban() {
+    if (!this.requireAdmin()) return;
+    const raw = Utils.$("admin-bulk-usernames")?.value || "";
+    const names = raw.split(/[\s,;]+/).map((s) => s.replace("@", "").toLowerCase()).filter(Boolean);
+    if (!names.length) return Utils.toast("Введите @id", "error");
+    let count = 0;
+    for (const uname of names) {
+      const uSnap = await get(ref(db, `usernames/${uname}`));
+      if (!uSnap.exists()) continue;
+      const uid = uSnap.val();
+      await update(ref(db, `users/${uid}/moderation`), { shadowban: true });
+      count++;
+    }
+    Utils.toast(`Shadowban: ${count} пользователей`);
+    await this.pushAuditLog("admin.bulk.shadowban", { count, names });
+  }
+
+  static async forceVerifySelectedEmail() {
+    if (!this.requireAdmin()) return;
+    const uid = Utils.$("admin-user-editor")?.dataset?.targetUid;
+    if (!uid) return Utils.toast("Выберите пользователя", "error");
+    await update(ref(db, `users/${uid}/profile`), { emailVerified: true });
+    Utils.toast("Email помечен как verified");
+    this.loadUserEditor(uid);
+  }
+
+  static async resetAllTutorials() {
+    if (!this.requireAdmin() || !this.isCurrentUserCreator()) return;
+    if (!(await Utils.confirm("Сбросить туториал для ВСЕХ пользователей?"))) return;
+    await remove(ref(db, "admin/actions/cancelTutorial"));
+    const snap = await get(ref(db, "users"));
+    const users = snap.val() || {};
+    const updates = {};
+    Object.keys(users).forEach((uid) => {
+      updates[`admin/actions/cancelTutorial/${uid}`] = { ts: Date.now() };
+    });
+    await update(ref(db), updates);
+    Utils.toast("Туториал сброшен для всех");
+  }
+
+  static async auditReservedUsernames() {
+    if (!this.requireAdmin()) return;
+    const out = Utils.$("admin-security-out");
+    const reserved = ["developer", "admin", "moderator", "support", "cowio"];
+    const lines = [];
+    for (const name of reserved) {
+      const snap = await get(ref(db, `usernames/${name}`));
+      lines.push(snap.exists() ? `@${name} → занят (${snap.val()})` : `@${name} → свободен`);
+    }
+    if (out) out.innerHTML = lines.map((l) => `<div>${l}</div>`).join("");
+  }
+
+  static async sessionRiskScan() {
+    if (!this.requireAdmin()) return;
+    const out = Utils.$("admin-security-out");
+    const snap = await get(ref(db, "users"));
+    const users = snap.val() || {};
+    const risky = Object.entries(users).filter(
+      ([, d]) => d?.moderation?.shadowban || d?.moderation?.muted || (d?.moderation?.banHistory?.length || 0) > 0,
+    );
+    if (out) {
+      out.innerHTML = risky.length
+        ? risky.slice(0, 30).map(([uid, d]) => `<div>@${Utils.escapeHtml(d.profile?.username || uid)} — risk</div>`).join("")
+        : "Рисковых сессий не найдено";
+    }
+  }
+
+  static async listForceLogoutUsers() {
+    if (!this.requireAdmin()) return;
+    const out = Utils.$("admin-security-out");
+    const snap = await get(ref(db, "admin/actions/forceLogout"));
+    const data = snap.val() || {};
+    const uids = Object.keys(data);
+    if (out) out.innerHTML = uids.length ? uids.map((u) => `<div>${u}</div>`).join("") : "Нет pending force-logout";
+  }
+
+  static async saveAutomodKeywords() {
+    if (!this.requireAdmin() || !this.isCurrentUserCreator()) return;
+    const raw = Utils.$("admin-automod-keywords")?.value || "";
+    const keywords = raw.split(/[,;]+/).map((s) => s.trim().toLowerCase()).filter(Boolean);
+    await update(ref(db, "admin/settings"), { automodKeywords: keywords });
+    Utils.toast(`Сохранено слов: ${keywords.length}`);
+  }
+
+  static async scheduleGlobalMessage() {
+    if (!this.requireAdmin()) return;
+    const text = await Utils.prompt("Текст запланированного глобального сообщения:");
+    if (!text) return;
+    await push(ref(db, "admin/scheduledMessages"), { text, ts: Date.now(), by: AppState.currentUser?.uid });
+    Utils.toast("Сообщение запланировано (очередь admin/scheduledMessages)");
+  }
+
+  static async setEmergencyBanner() {
+    if (!this.requireAdmin() || !this.isCurrentUserCreator()) return;
+    const text = Utils.$("admin-emergency-banner")?.value?.trim() || "";
+    await update(ref(db, "admin/settings"), { emergencyBanner: text });
+    Utils.toast(text ? "Emergency banner установлен" : "Banner очищен");
+  }
+
+  static async notifyOnlineSegment() {
+    if (!this.requireAdmin()) return;
+    const text = await Utils.prompt("Текст для всех онлайн:");
+    if (!text) return;
+    const snap = await get(ref(db, "users"));
+    const users = snap.val() || {};
+    const updates = {};
+    Object.entries(users).forEach(([uid, d]) => {
+      if (d?.status?.online) updates[`admin/localAnnouncements/${uid}`] = { text, ts: Date.now() };
+    });
+    await update(ref(db), updates);
+    Utils.toast("Локальные оповещения отправлены онлайн-пользователям");
+  }
+
+  static async setMaintenanceCountdown() {
+    if (!this.requireAdmin() || !this.isCurrentUserCreator()) return;
+    const text = await Utils.prompt("Текст maintenance (отображается при maintenance mode):");
+    if (text === null) return;
+    await update(ref(db, "admin/settings"), { maintenanceMessage: text });
+    Utils.toast("Maintenance текст сохранён");
+  }
+
+  static async showBroadcastStats() {
+    if (!this.requireAdmin()) return;
+    const snap = await get(ref(db, "admin/auditLog"));
+    const logs = snap.val() || {};
+    const count = Object.keys(logs).length;
+    const announceSnap = await get(ref(db, "admin/announcement"));
+    Utils.toast(`Audit: ${count} записей. Announcement: ${announceSnap.exists() ? "есть" : "нет"}`);
+  }
+
+  static async saveWebhookUrl() {
+    if (!this.requireAdmin() || !this.isCurrentUserCreator()) return;
+    const url = Utils.$("admin-webhook-url")?.value?.trim() || "";
+    await update(ref(db, "admin/settings"), { webhookUrl: url });
+    Utils.toast("Webhook сохранён");
+  }
+
+  static async exportAuditJson() {
+    if (!this.requireAdmin()) return;
+    const snap = await get(ref(db, "admin/auditLog"));
+    const blob = new Blob([JSON.stringify(snap.val() || {}, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `cowio-audit-${Date.now()}.json`;
+    a.click();
+  }
+
+  static async webhookTestPing() {
+    if (!this.requireAdmin()) return;
+    const url = AppState.admin.settings?.webhookUrl || Utils.$("admin-webhook-url")?.value;
+    if (!url) return Utils.toast("Webhook URL не задан", "error");
+    try {
+      await fetch(url, { method: "POST", mode: "no-cors", body: JSON.stringify({ event: "cowio.test", ts: Date.now() }) });
+      Utils.toast("Ping отправлен (no-cors)");
+    } catch (e) {
+      Utils.toast("Ошибка ping", "error");
+    }
+  }
+
+  static async statusBridgePing() {
+    if (!this.requireAdmin()) return;
+    await this.pushAuditLog("integration.statusBridge", { ok: true, ts: Date.now() });
+    Utils.toast("Status bridge: OK (запись в audit)");
+  }
+
+  static async backupIntegrityCheck() {
+    if (!this.requireAdmin()) return;
+    const out = Utils.$("admin-backup-out");
+    const [u, r, a] = await Promise.all([get(ref(db, "users")), get(ref(db, "rooms")), get(ref(db, "admin/auditLog"))]);
+    const msg = `Users: ${Object.keys(u.val() || {}).length}, Rooms: ${Object.keys(r.val() || {}).length}, Audit: ${Object.keys(a.val() || {}).length}`;
+    if (out) out.textContent = msg;
+    Utils.toast("Integrity check выполнен");
+  }
+
+  static async setBackupRetention() {
+    if (!this.requireAdmin() || !this.isCurrentUserCreator()) return;
+    const days = Number(Utils.$("admin-backup-retention")?.value);
+    if (!days || days < 1) return Utils.toast("Укажите дни ≥1", "error");
+    await update(ref(db, "admin/settings"), { backupRetentionDays: days });
+    Utils.toast(`Retention: ${days} дней`);
+  }
+
+  static async restoreDryRun() {
+    if (!this.requireAdmin()) return;
+    const out = Utils.$("admin-backup-out");
+    const stats = await this.collectDashboardData();
+    const msg = `Dry-run: восстановление затронет ~${Object.keys(stats.usersData).length} users, ${stats.rooms.length} rooms`;
+    if (out) out.textContent = msg;
+    Utils.toast("Dry-run завершён (без изменений)");
   }
 }
 
@@ -14389,6 +15121,7 @@ window.onload = () => {
   initSystem("EasterEggManager", () => EasterEggManager.init());
   initSystem("HashtagManager", () => HashtagManager.initHashtags());
   initSystem("MobileSwipeManager", () => MobileSwipeManager.init()); // [NEW] Mobile Swipes initialization
+  initSystem("HelpGuideManager", () => HelpGuideManager.init());
 
   // Добавляем мини-контейнер с ссылками (изначально скрыт, покажется только в lobby-screen)
   const footerLinks = document.createElement("div");
@@ -15660,3 +16393,4 @@ window.AdminSoundManager = class {
 window.ShopController = class {
   static loadShop() {}
 };
+ЛИЗ

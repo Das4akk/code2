@@ -167,6 +167,24 @@ app.post('/api/custom-auth/send-code', async (req, res) => {
     }
 });
 
+// Проверка 6-значного кода (регистрация, сброс пароля и т.д.)
+app.post('/api/custom-auth/verify-code', async (req, res) => {
+    try {
+        const { email, code } = req.body;
+        if (!email || !code) return res.status(400).json({ error: 'Email и код обязательны' });
+
+        const record = verificationCodes.get(email);
+        if (!record || record.code !== String(code).trim() || Date.now() > record.expiresAt) {
+            return res.status(400).json({ error: 'Неверный или просроченный код' });
+        }
+
+        res.json({ success: true, message: 'Код подтверждён' });
+    } catch (e) {
+        console.error('Ошибка проверки кода:', e);
+        res.status(500).json({ error: 'Ошибка проверки кода' });
+    }
+});
+
 // Сброс пароля
 app.post('/api/custom-auth/reset-password', async (req, res) => {
     try {
