@@ -4657,6 +4657,15 @@
                 Premium</span
               >
             </div>
+            <div class="nav-item" id="nav-mystery" style="margin-bottom: 4px">
+              <span
+                ><img
+                  src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Question%20Mark.webp"
+                  style="width: 1.2em; height: 1.2em; vertical-align: bottom"
+                />
+                ???</span
+              >
+            </div>
             <div id="lobby-theme-slot">
               <label class="global-theme-toggle" title="Светлая тема">
                 <span class="global-theme-label">Тема лобби</span>
@@ -5488,6 +5497,37 @@
               Premium
             </div>
             <div id="premium-dynamic-content"></div>
+          </div>
+        </main>
+
+        <main class="rooms-main" id="section-mystery" style="display: none; position: relative">
+          <div class="mystery-event-shell">
+            <div class="mystery-event-blur"></div>
+            <div class="mystery-event-overlay">
+              <div class="mystery-question-row" aria-label="Секретный будущий ивент">
+                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Question%20Mark.webp" alt="?">
+                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Question%20Mark.webp" alt="?">
+                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Question%20Mark.webp" alt="?">
+              </div>
+              <div class="mystery-countdown" aria-live="polite">
+                <div class="mystery-time-cell">
+                  <span class="mystery-time-value" id="mystery-days">30</span>
+                  <span class="mystery-time-label">дней</span>
+                </div>
+                <div class="mystery-time-cell">
+                  <span class="mystery-time-value" id="mystery-hours">00</span>
+                  <span class="mystery-time-label">часов</span>
+                </div>
+                <div class="mystery-time-cell">
+                  <span class="mystery-time-value" id="mystery-minutes">00</span>
+                  <span class="mystery-time-label">минут</span>
+                </div>
+                <div class="mystery-time-cell">
+                  <span class="mystery-time-value" id="mystery-seconds">00</span>
+                  <span class="mystery-time-label">секунд</span>
+                </div>
+              </div>
+            </div>
           </div>
         </main>
 
@@ -7177,6 +7217,96 @@
           justify-content: center;
           text-align: center;
           border-radius: 20px;
+      }
+
+      .mystery-event-shell {
+          position: relative;
+          min-height: min(640px, calc(100vh - 120px));
+          width: min(920px, 100%);
+          margin: 0 auto;
+          overflow: hidden;
+          border-radius: 20px;
+      }
+
+      .mystery-event-blur {
+          position: absolute;
+          inset: 0;
+          filter: blur(14px);
+          transform: scale(1.03);
+          pointer-events: none;
+          user-select: none;
+          background:
+            linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02)),
+            repeating-linear-gradient(90deg, rgba(255,255,255,0.06) 0 1px, transparent 1px 86px),
+            repeating-linear-gradient(0deg, rgba(255,255,255,0.05) 0 1px, transparent 1px 74px);
+      }
+
+      .mystery-event-overlay {
+          position: absolute;
+          inset: 0;
+          z-index: 2;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 20px;
+          text-align: center;
+          background: rgba(10, 10, 12, 0.36);
+          backdrop-filter: blur(10px);
+      }
+
+      .mystery-question-row {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: clamp(12px, 3vw, 26px);
+      }
+
+      .mystery-question-row img {
+          width: clamp(58px, 10vw, 112px);
+          height: clamp(58px, 10vw, 112px);
+          object-fit: contain;
+          animation: mysteryFloat 2.6s ease-in-out infinite;
+      }
+
+      .mystery-question-row img:nth-child(2) { animation-delay: 0.22s; }
+      .mystery-question-row img:nth-child(3) { animation-delay: 0.44s; }
+
+      .mystery-countdown {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(62px, 1fr));
+          gap: 10px;
+          width: min(430px, calc(100% - 32px));
+      }
+
+      .mystery-time-cell {
+          padding: 12px 8px;
+          border: 1px solid rgba(255,255,255,0.14);
+          border-radius: 12px;
+          background: rgba(255,255,255,0.08);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+      }
+
+      .mystery-time-value {
+          display: block;
+          color: #fff;
+          font-size: clamp(22px, 4vw, 34px);
+          font-weight: 900;
+          line-height: 1;
+          font-variant-numeric: tabular-nums;
+      }
+
+      .mystery-time-label {
+          display: block;
+          color: rgba(255,255,255,0.72);
+          font-size: 11px;
+          margin-top: 6px;
+          text-transform: uppercase;
+      }
+
+      @keyframes mysteryFloat {
+          0%, 100% { transform: translateY(0) rotate(-2deg); }
+          50% { transform: translateY(-12px) rotate(3deg); }
       }
 
     </style>

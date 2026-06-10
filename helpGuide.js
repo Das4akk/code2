@@ -228,10 +228,10 @@ class HelpGuideManager {
          <h3 style="margin:0 0 16px; display:flex; align-items:center; gap:10px;">
            <img src="${topic.icon}" style="width:24px;height:24px;"> Контекстный ИИ-Ассистент
          </h3>
-         <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:16px;">
-           <p style="font-size:13px; color:var(--text-muted); margin-bottom:15px;">Задайте свой вопрос, и я поищу ответ по всем разделам базы знаний COWIO.</p>
+         <div style="background:#ffffff; border:1px solid rgba(0,0,0,0.08); border-radius:14px; padding:16px; color:#111827; box-shadow:0 18px 40px rgba(0,0,0,0.18);">
+           <p style="font-size:13px; color:#4b5563; margin-bottom:15px;">Задайте свой вопрос, и я поищу ответ по всем разделам базы знаний COWIO.</p>
            <div style="display:flex; gap:10px;">
-             <input type="text" id="help-ai-input" placeholder="Например: как поменять пароль?" class="text-input" style="flex:1; padding:10px; border-radius:8px; font-size:14px;" />
+             <input type="text" id="help-ai-input" placeholder="Например: как поменять пароль?" class="text-input" style="flex:1; padding:10px; border-radius:8px; font-size:14px; background:#f9fafb; color:#111827; border:1px solid #d1d5db;" />
              <button id="help-ai-send" class="primary-btn" style="width:auto; padding:0 20px;">Спросить</button>
            </div>
          </div>
@@ -242,9 +242,26 @@ class HelpGuideManager {
        const sendBtn = document.getElementById("help-ai-send");
        const answersBox = document.getElementById("help-ai-answers");
 
+       const findLocalAnswer = (query, docs) => {
+           const words = query.toLowerCase().replace(/[^\p{L}\p{N}\s@_-]+/gu, " ").split(/\s+/).filter((w) => w.length > 2).slice(0, 16);
+           const entries = [];
+           const entryRe = /В:\s*([^\n]+)\nО:\s*([\s\S]*?)(?=\nВ:|\n\nРаздел|$)/g;
+           let match;
+           while ((match = entryRe.exec(docs))) entries.push({ q: match[1].trim(), a: match[2].trim() });
+           let best = null;
+           entries.forEach((entry) => {
+              const haystack = `${entry.q} ${entry.a}`.toLowerCase();
+              const score = words.reduce((sum, word) => sum + (haystack.includes(word) ? 1 : 0), 0);
+              if (!best || score > best.score) best = { ...entry, score };
+           });
+           return best && best.score > 0
+             ? `Похоже, ближайший ответ из справочника: ${best.a}`
+             : "Я не нашел точный ответ в справочнике COWIO. Откройте поддержку и опишите вопрос там, чтобы оператор проверил ситуацию точнее.";
+       };
+
        const askAI = async () => {
-           const query = input.value.trim();
-           if (!query) return;
+            const query = input.value.trim();
+            if (!query) return;
            
            const docs = this.TOPICS.map(t => 
              "Раздел " + t.title + ":\n" + t.items.map(i => "В: " + i.q + "\nО: " + i.a).join("\n")
@@ -252,26 +269,36 @@ class HelpGuideManager {
            
            input.value = "";
            
-           const ansId = "ans_" + Date.now();
-           answersBox.innerHTML = `
-             <div class="help-faq-item" style="border:1px solid rgba(255,200,100,0.3); border-radius:12px; padding:12px 14px; background:rgba(255,179,71,0.05);" id="${ansId}">
-               <div style="font-weight:700; font-size:14px; color:#ffffff; margin-bottom:8px;">${Utils.escapeHtml(query)}</div>
-               <div class="ai-reply" style="font-size:13px; color:#ffffff; line-height:1.65;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width:16px;vertical-align:middle;"> ИИ думает...</div>
-             </div>` + answersBox.innerHTML;
-             
-           try {
-               const res = await fetch('/api/ask-guide-ai', {
-                   method: 'POST',
-                   headers: { 'Content-Type': 'application/json' },
-                   body: JSON.stringify({ query, docs })
-               });
-               const data = await res.json();
-               if (!data.success) throw new Error(data.error || "Ошибка API");
-               document.getElementById(ansId).querySelector('.ai-reply').innerText = data.answer;
-           } catch(e) {
-               document.getElementById(ansId).querySelector('.ai-reply').innerHTML = `<span style="color:#ff4d4d">Ошибка: ${e.message}</span>`;
-           }
-       };
+            const ansId = "ans_" + Date.now();
+            const localFallback = findLocalAnswer(query, docs);
+            sendBtn.disabled = true;
+            sendBtn.style.opacity = "0.75";
+            answersBox.innerHTML = `
+              <div class="help-faq-item" style="border:1px solid rgba(0,0,0,0.08); border-radius:12px; padding:12px 14px; background:#ffffff; color:#111827; box-shadow:0 10px 28px rgba(0,0,0,0.14);" id="${ansId}">
+                <div style="font-weight:700; font-size:14px; color:#111827; margin-bottom:8px;">${Utils.escapeHtml(query)}</div>
+                <div class="ai-reply" style="font-size:13px; color:#1f2937; line-height:1.65;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width:16px;vertical-align:middle;"> ИИ думает...</div>
+              </div>` + answersBox.innerHTML;
+              
+            try {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 9000);
+                const res = await fetch('/api/ask-guide-ai', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query, docs }),
+                    signal: controller.signal
+                });
+                clearTimeout(timeout);
+                const data = await res.json().catch(() => ({ success: true, answer: localFallback }));
+                const answer = data?.answer || localFallback;
+                document.getElementById(ansId).querySelector('.ai-reply').innerText = answer;
+            } catch(e) {
+                document.getElementById(ansId).querySelector('.ai-reply').innerText = localFallback;
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.style.opacity = "";
+            }
+        };
 
        sendBtn.onclick = askAI;
        input.onkeypress = (e) => { if(e.key === 'Enter') askAI(); };

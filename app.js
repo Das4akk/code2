@@ -8265,6 +8265,7 @@ class FriendsManager {
       "nav-find-friend",
       "nav-catalog",
       "nav-premium",
+      "nav-mystery",
       "nav-shop",
       "nav-switch-account",
       "nav-support",
@@ -8295,6 +8296,9 @@ class FriendsManager {
       if (Utils.$("section-premium"))
         Utils.$("section-premium").style.display =
           id === "nav-premium" ? "flex" : "none";
+      if (Utils.$("section-mystery"))
+        Utils.$("section-mystery").style.display =
+          id === "nav-mystery" ? "flex" : "none";
       if (Utils.$("section-support"))
         Utils.$("section-support").style.display =
           id === "nav-support" || id === "nav-support-staff" ? "flex" : "none";
@@ -8331,6 +8335,11 @@ class FriendsManager {
       Utils.$("nav-premium").onclick = () => {
         setNavActive("nav-premium");
         if (window.PremiumManager) PremiumManager.renderPremiumSection();
+      };
+    if (Utils.$("nav-mystery"))
+      Utils.$("nav-mystery").onclick = () => {
+        setNavActive("nav-mystery");
+        window.MysteryEventManager?.render();
       };
     if (Utils.$("nav-support"))
       Utils.$("nav-support").onclick = () => {
@@ -15402,6 +15411,7 @@ window.onload = () => {
   initSystem("HelpGuideManager", () => HelpGuideManager.init());
   initSystem("SiteTipsManager", () => SiteTipsManager.init());
   initSystem("PremiumManager", () => PremiumManager.init());
+  initSystem("MysteryEventManager", () => MysteryEventManager.init());
 
   // Добавляем мини-контейнер с ссылками (изначально скрыт, покажется только в lobby-screen)
   const footerLinks = document.createElement("div");
@@ -16707,6 +16717,40 @@ window.SoundpadController = class SoundpadController {
 window.AdminSoundManager = class {
   static renderAdminSoundCatalog() {}
   static initAdmin() {}
+};
+
+window.MysteryEventManager = class MysteryEventManager {
+  static RELEASE_AT = Date.parse("2026-06-10T19:46:00+03:00");
+  static EVENT_END_AT = this.RELEASE_AT + 30 * 24 * 60 * 60 * 1000;
+  static timer = null;
+
+  static init() {
+    this.render();
+    if (this.timer) clearInterval(this.timer);
+    this.timer = setInterval(() => this.render(), 1000);
+  }
+
+  static pad(value) {
+    return String(value).padStart(2, "0");
+  }
+
+  static render() {
+    const remaining = Math.max(0, this.EVENT_END_AT - Date.now());
+    const days = Math.floor(remaining / 86400000);
+    const hours = Math.floor((remaining % 86400000) / 3600000);
+    const minutes = Math.floor((remaining % 3600000) / 60000);
+    const seconds = Math.floor((remaining % 60000) / 1000);
+
+    const setText = (id, value) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value;
+    };
+
+    setText("mystery-days", String(days));
+    setText("mystery-hours", this.pad(hours));
+    setText("mystery-minutes", this.pad(minutes));
+    setText("mystery-seconds", this.pad(seconds));
+  }
 };
 
 window.openLegalModal = function(type) {

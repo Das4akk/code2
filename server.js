@@ -249,28 +249,150 @@ app.get('/api/resolve-media', (req, res) => {
 
 registerPremiumRoutes(app, admin);
 
-app.post('/api/ask-guide-ai', async (req, res) => {
+const guideAiCache = new Map();
+const GUIDE_AI_CACHE_TTL_MS = 5 * 60 * 1000;
+const GUIDE_AI_TIMEOUT_MS = Number(process.env.GUIDE_AI_TIMEOUT_MS || 6500);
+const GUIDE_AI_MODEL = process.env.GROQ_AI_MODEL || "llama-3.1-8b-instant";
+const geminiAi = process.env.GEMINI_API_KEY
+    ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
+    : null;
+
+function normalizeGuideText(text = "") {
+    return String(text)
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}\s@_-]+/gu, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
+function buildGuideFallback(query = "", docs = "") {
+    const source = String(docs || "");
+    const tokens = normalizeGuideText(query)
+        .split(" ")
+        .filter((word) => word.length > 2)
+        .slice(0, 16);
+    const entries = [];
+    const entryRe = /В:\s*([^\n]+)\nО:\s*([\s\S]*?)(?=\nВ:|\n\nРаздел|$)/g;
+    let match;
+
+    while ((match = entryRe.exec(source))) {
+        entries.push({ q: match[1].trim(), a: match[2].trim() });
+    }
+
+    let best = null;
+    for (const entry of entries) {
+        const haystack = normalizeGuideText(`${entry.q} ${entry.a}`);
+        const score = tokens.reduce((sum, token) => sum + (haystack.includes(token) ? 1 : 0), 0);
+        if (!best || score > best.score) best = { ...entry, score };
+    }
+
+    if (best && best.score > 0) {
+        return `Похоже, ближайший ответ из справочника: ${best.a}`;
+    }
+
+    return "Я не нашел точный ответ в справочнике COWIO, но сайт продолжает работать. Лучше всего открыть поддержку и описать вопрос там: оператор сможет проверить аккаунт, комнату или настройки точнее.";
+}
+
+function buildGuidePrompt(query, docs) {
+    return [
+        "Ты дружелюбный ИИ-ассистент платформы COWIO.",
+        "Отвечай кратко, спокойно и только по базе знаний ниже.",
+        "Если точного ответа нет, честно скажи, что лучше написать в поддержку.",
+        "Не придумывай функций, которых нет в базе.",
+        "",
+        `База знаний:\n${docs}`,
+        "",
+        `Вопрос пользователя: ${query}`,
+    ].join("\n");
+}
+
+async function withTimeout(taskFactory, timeoutMs = GUIDE_AI_TIMEOUT_MS) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
-        const { query, docs } = req.body;
-        if (!process.env.GEMINI_API_KEY) {
-            return res.status(500).json({ error: 'AI Assistant не настроен.' });
-        }
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-        const prompt = `Ты дружелюбный ИИ-ассистент платформы COWIO. Ответь на вопрос пользователя, опираясь ТОЛЬКО на предоставленную ниже документацию из базы знаний. Будь краток и понятен. Если ответа нет в тексте, скажи, что не знаешь, и посоветуй написать в поддержку.\n\nБаза знаний:\n${docs}\n\nВопрос пользователя: ${query}`;
-        
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
+        return await taskFactory(controller.signal);
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+async function askGroq(prompt) {
+    if (!process.env.GROQ_API_KEY) return "";
+    return withTimeout(async (signal) => {
+        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+            },
+            signal,
+            body: JSON.stringify({
+                model: GUIDE_AI_MODEL,
+                messages: [{ role: "user", content: prompt }],
+                temperature: 0.2,
+                max_tokens: 420,
+            }),
         });
-        
-        res.json({ success: true, answer: response.text });
-    } catch (e) {
-        console.error('Ошибка AI:', e);
-        let errorMsg = 'Произошла ошибка при обращении к ИИ: ' + (e.message || e);
-        if (e.status === 429 || errorMsg.includes('429') || errorMsg.includes('Quota') || errorMsg.includes('RESOURCE_EXHAUSTED')) {
-            errorMsg = 'Превышен лимит запросов к ИИ. Пожалуйста, подождите немного и повторите попытку.';
+
+        if (!response.ok) throw new Error(`Groq HTTP ${response.status}`);
+        const data = await response.json();
+        return data?.choices?.[0]?.message?.content?.trim() || "";
+    });
+}
+
+async function askGemini(prompt) {
+    if (!geminiAi) return "";
+    const response = await withTimeout(() =>
+        geminiAi.models.generateContent({
+            model: "gemini-2.5-flash-lite",
+            contents: prompt,
+        }),
+    );
+    return response?.text?.trim() || "";
+}
+
+app.post('/api/ask-guide-ai', async (req, res) => {
+    const query = String(req.body?.query || "").trim().slice(0, 600);
+    const docs = String(req.body?.docs || "").trim().slice(0, 20000);
+    const fallback = buildGuideFallback(query, docs);
+
+    try {
+        if (!query) {
+            return res.json({ success: true, answer: "Напишите вопрос, и я подберу ответ по справочнику COWIO.", source: "fallback" });
         }
-        res.status(500).json({ error: errorMsg });
+
+        const cacheKey = `${normalizeGuideText(query)}:${docs.length}`;
+        const cached = guideAiCache.get(cacheKey);
+        if (cached && Date.now() - cached.ts < GUIDE_AI_CACHE_TTL_MS) {
+            return res.json({ success: true, answer: cached.answer, source: cached.source, cached: true });
+        }
+
+        const prompt = buildGuidePrompt(query, docs);
+        let answer = "";
+        let source = "fallback";
+
+        try {
+            answer = await askGroq(prompt);
+            source = answer ? "groq" : source;
+        } catch (e) {
+            console.warn("[Guide AI] Groq fallback:", e.message || e);
+        }
+
+        if (!answer) {
+            try {
+                answer = await askGemini(prompt);
+                source = answer ? "gemini" : source;
+            } catch (e) {
+                console.warn("[Guide AI] Gemini fallback:", e.message || e);
+            }
+        }
+
+        answer = answer || fallback;
+        guideAiCache.set(cacheKey, { answer, source, ts: Date.now() });
+        res.json({ success: true, answer, source });
+    } catch (e) {
+        console.warn("[Guide AI] Safe fallback:", e.message || e);
+        res.json({ success: true, answer: fallback, source: "fallback" });
     }
 });
 
