@@ -36,7 +36,7 @@ class PremiumManager {
     },
     rainbow: {
       label: "Радуга",
-      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Rainbow.webp",
+      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Rainbow.webp",
     },
     trophy: {
       label: "Кубок",
@@ -54,9 +54,9 @@ class PremiumManager {
     { url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkler.webp", title: "x2 XP", desc: "В два раза больше опыта за время в комнатах" },
     { url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Woman%20Technologist.webp", title: "Приоритетная поддержка", desc: "Тикеты помечаются и обрабатываются быстрее" },
     { url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Party%20Popper.webp", title: "Ранний доступ", desc: "Первыми видите горячие акции в каталоге" },
-    { url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Artist%20Palette.webp", title: "Эксклюзивные темы DM", desc: "4 премиальные темы оформления личных сообщений" },
+    { url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Artist%20Palette.webp", title: "Эксклюзивные темы DM", desc: "4 премиальные темы оформления личных сообщений" },
     { url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp", title: "Расширенное био", desc: "До 500 символов в описании профиля вместо 200" },
-    { url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Label.webp", title: "Premium-значок", desc: "Особый бейдж Premium в профиле и списках" },
+    { url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp", title: "Premium-значок", desc: "Особый бейдж Premium в профиле и списках" },
   ];
 
   static init() {
@@ -261,8 +261,8 @@ class PremiumManager {
       : this.BIO_LIMIT_DEFAULT;
   }
 
-  static canUseDmTheme(themeKey, profile, uid) {
-    if (!this.PREMIUM_DM_THEMES.includes(themeKey)) return true;
+  static canUseTheme(themeKey, profile, uid) {
+    if (themeKey === "default") return true;
     return this.isPremiumActive(profile, uid);
   }
 
@@ -363,12 +363,18 @@ class PremiumManager {
     container.innerHTML = `
       <div class="premium-hero">
         <div style="position:relative;z-index:1;">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" style="width:32px;height:32px;">
-            <div>
-              <div style="font-size:22px;font-weight:900;letter-spacing:0.3px;">COWIO Premium</div>
-              <div style="font-size:13px;color:var(--text-muted);">Месяц привилегий за ${this.PRICE_RUB} ₽</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" style="width:32px;height:32px;">
+              <div>
+                <div style="font-size:22px;font-weight:900;letter-spacing:0.3px;">COWIO Premium</div>
+                <div style="font-size:13px;color:var(--text-muted);">Месяц привилегий за ${this.PRICE_RUB} ₽</div>
+              </div>
             </div>
+          </div>
+          <div style="margin-bottom:14px;display:flex;align-items:center;gap:6px;font-size:13px;color:#ffb347;background:rgba(255,179,71,0.1);padding:6px 12px;border-radius:12px;width:fit-content;">
+            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width:16px;height:16px;">
+            Уже владеют: <b id="premium-users-counter">загрузка...</b>
           </div>
           ${
             staff
@@ -400,6 +406,26 @@ class PremiumManager {
     container.querySelectorAll(".premium-emoji-btn").forEach((btn) => {
       btn.onclick = () => this.saveStatusEmoji(btn.dataset.emoji);
     });
+
+    const counterSpan = container.querySelector("#premium-users-counter");
+    if (counterSpan) {
+      this.getPremiumUsersCount().then((count) => {
+        counterSpan.innerText = count;
+      });
+    }
+  }
+
+  static async getPremiumUsersCount() {
+    if (!window.db) return 0;
+    try {
+      let count = 0;
+      AppState.usersCache.forEach((u, uid) => {
+        if (this.isPremiumActive(u, uid) || this.isStaff(u, uid)) count++;
+      });
+      return count;
+    } catch(e) {
+      return "~";
+    }
   }
 
   static async saveStatusEmoji(key) {
@@ -412,7 +438,7 @@ class PremiumManager {
     if (!window.db || !window.firebaseRef || !window.firebaseUpdate) {
       return Utils.toast("Подождите, сайт ещё загружается", "info");
     }
-    await window.firebaseUpdate(
+    await window.firebaseSet(
       window.firebaseRef(window.db, `users/${uid}/profile/premium/statusEmoji`),
       key,
     );

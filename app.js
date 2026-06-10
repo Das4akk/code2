@@ -6211,13 +6211,11 @@ class ThemeManager {
     dmControls.innerHTML = "";
     const uid = AppState?.currentUser?.uid;
     const profile = uid ? AppState.usersCache.get(uid) : null;
-    const premiumThemes = window.PremiumManager?.PREMIUM_DM_THEMES || [];
     Object.keys(this.EXTENDED_THEMES).forEach((key) => {
-      const isPremiumTheme = premiumThemes.includes(key);
       const locked =
-        isPremiumTheme &&
+        key !== "default" &&
         window.PremiumManager &&
-        !PremiumManager.canUseDmTheme(key, profile, uid);
+        !PremiumManager.canUseTheme(key, profile, uid);
       const btn = document.createElement("button");
       btn.className = "dm-theme-chip" + (locked ? " dm-theme-locked" : "");
       btn.dataset.theme = key;
@@ -6480,6 +6478,14 @@ class ProfileManager {
       bioEl.value = p.bio || "";
       bioEl.maxLength = bioLimit;
       bioEl.placeholder = `О себе (до ${bioLimit} символов)`;
+      
+      const counterEl = Utils.$("edit-bio-counter");
+      if (counterEl) {
+        counterEl.innerText = `${bioEl.value.length}/${bioLimit}`;
+        bioEl.oninput = () => {
+          counterEl.innerText = `${bioEl.value.length}/${bioLimit}`;
+        };
+      }
     }
     Utils.$("edit-hashtags").value = Array.isArray(p.hashtags)
       ? p.hashtags.join(" ")
@@ -7717,13 +7723,41 @@ class ProfileManager {
       `${window.PremiumManager ? PremiumManager.getStatusEmojiHtml(profile, targetUid) : ""}${Utils.escapeHtml(profile.name)} ${badgeHtml}`;
     Utils.$("view-username").innerText =
       `@${Utils.escapeHtml(profile.username)}`;
+    const safeBio = Utils.escapeHtml(profile.bio || "Пользователь не добавил описание.");
+    
+    // Check if the user is premium to apply advanced biography layout
+    const isPremium = window.PremiumManager ? PremiumManager.isPremiumActive(profile, targetUid) : false;
+    const bioLayoutClass = isPremium ? "premium-bio-layout" : "";
+
     Utils.$("view-bio").innerHTML = `
-            ${Utils.escapeHtml(profile.bio || "Пользователь не добавил описание.")}<br><br>
+            <div class="${bioLayoutClass}" id="profile-bio-content">
+              ${safeBio}
+            </div>
+            ${isPremium ? '<button id="btn-expand-bio" style="display:none;background:none;border:none;color:var(--primary);font-size:12px;cursor:pointer;padding:0;margin-top:4px;">Развернуть</button>' : ''}
+            <div style="margin-top:12px;"></div>
             ${genderString}
             <strong style="color:var(--text-main);">Статистика:</strong><br>
             Друзей: ${friendsCount}<br>
             На платформе с: ${joinDate}
         `;
+
+    if (isPremium) {
+      setTimeout(() => {
+        const bioContent = Utils.$("profile-bio-content");
+        const expandBtn = Utils.$("btn-expand-bio");
+        if (bioContent && expandBtn) {
+          // If the bio takes up too much horizontal/vertical space (e.g. height > 100), we enable expanding
+          if (bioContent.scrollHeight > 100) {
+            bioContent.classList.add("collapsed");
+            expandBtn.style.display = "block";
+            expandBtn.onclick = () => {
+              bioContent.classList.toggle("collapsed");
+              expandBtn.innerText = bioContent.classList.contains("collapsed") ? "Развернуть" : "Свернуть";
+            };
+          }
+        }
+      }, 50);
+    }
 
     const badgesContainer = Utils.$("view-badges-collection");
     if (badgesContainer) {
@@ -9237,7 +9271,7 @@ class DirectMessages {
     const profile = uid ? AppState.usersCache.get(uid) : null;
     if (
       window.PremiumManager &&
-      !PremiumManager.canUseDmTheme(theme, profile, uid)
+      !PremiumManager.canUseTheme(theme, profile, uid)
     ) {
       Utils.toast("Эта тема доступна только Premium-подписчикам", "info");
       return;
@@ -13003,6 +13037,12 @@ class RoomManager {
     track.onclick = (e) => {
       const card = e.target.closest(".theme-card");
       if (!card?.dataset.theme) return;
+      const uid = AppState?.currentUser?.uid;
+      const profile = uid ? AppState.usersCache.get(uid) : null;
+      if (window.PremiumManager && !PremiumManager.canUseTheme(card.dataset.theme, profile, uid)) {
+        Utils.toast("Эта тема доступна только Premium-подписчикам", "info");
+        return;
+      }
       const opts = ThemeManager.FOLDERS[this.currentThemeFolder].themes;
       this.themeIndex = Math.max(0, opts.indexOf(card.dataset.theme));
       this.updateThemeTransform();
@@ -13022,6 +13062,12 @@ class RoomManager {
     const track = Utils.$("room-theme-track");
     if (!track) return;
     track.querySelectorAll(".theme-card").forEach((card) => {
+      const isLocked = card.dataset.theme !== "default" && 
+                       window.PremiumManager && 
+                       !PremiumManager.canUseTheme(card.dataset.theme, 
+                         AppState?.currentUser?.uid ? AppState.usersCache.get(AppState.currentUser.uid) : null, 
+                         AppState?.currentUser?.uid);
+      card.classList.toggle("locked", !!isLocked);
       card.classList.toggle(
         "active",
         card.dataset.theme === this.selectedTheme,
@@ -16563,3 +16609,12 @@ window.ShopController = class {
     if (window.PremiumManager) PremiumManager.renderPremiumSection();
   }
 };
+
+window.AppState = AppState;
+window.Utils = Utils;
+window.ProfileManager = ProfileManager;
+window.ThemeManager = ThemeManager;
+window.HashtagManager = HashtagManager;
+window.RoomManager = RoomManager;
+window.MediaResolverClient = MediaResolverClient;
+window.SecurityManager = SecurityManager;
