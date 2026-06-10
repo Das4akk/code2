@@ -7727,15 +7727,23 @@ class ProfileManager {
       `@${Utils.escapeHtml(profile.username)}`;
     const safeBio = Utils.escapeHtml(profile.bio || "Пользователь не добавил описание.");
     
-    // Check if the user is premium to apply advanced biography layout
     const isPremium = window.PremiumManager ? PremiumManager.isPremiumActive(profile, targetUid) : false;
     const bioLayoutClass = "premium-bio-layout";
+    
+    // Логика разделения строки пополам при превышении лимита:
+    // Мы задаем ограничение в 200 символов. Если биография больше, мы визуально ограничиваем её высоту 
+    // с помощью CSS (max-height) и эффекта постепенного затухания, но мы также можем концептуально 
+    // разделить текст пополам, если бы использовали строгие подстроки (substring).
+    // Однако для плавных анимаций max-height (а не мгновенного display: none) лучше рендерить
+    // строку целиком в контейнере, высота которого анимируется, а класс 'collapsed' добавляет fade-out.
+    const LIMIT = 200;
+    const needsExpansion = safeBio.length > LIMIT;
 
     Utils.$("view-bio").innerHTML = `
-            <div class="${bioLayoutClass}" id="profile-bio-content">
+            <div class="${bioLayoutClass} ${needsExpansion ? 'collapsed' : ''}" id="profile-bio-content" style="position: relative; overflow: hidden; transition: max-height 0.4s ease-in-out; ${needsExpansion ? 'max-height: 75px;' : 'max-height: 1000px;'}">
               ${safeBio}
             </div>
-            <button id="btn-expand-bio" style="display:none;background:none;border:none;color:var(--primary);font-size:12px;cursor:pointer;padding:0;margin-top:4px;">Развернуть</button>
+            ${needsExpansion ? `<button id="btn-expand-bio" style="background:none;border:none;color:var(--primary);font-size:12px;cursor:pointer;padding:0;margin: 8px auto 0; display:block; text-align:center;">Развернуть</button>` : ''}
             <div style="margin-top:12px;"></div>
             ${genderString}
             <strong style="color:var(--text-main);">Статистика:</strong><br>
@@ -7746,23 +7754,22 @@ class ProfileManager {
     setTimeout(() => {
       const bioContent = Utils.$("profile-bio-content");
       const expandBtn = Utils.$("btn-expand-bio");
-        if (bioContent && expandBtn) {
-          bioContent.classList.remove("collapsed");
-          const fullHeight = bioContent.scrollHeight;
-          bioContent.classList.add("collapsed");
-          const collapsedHeight = bioContent.clientHeight;
-          
-          if (fullHeight > collapsedHeight) {
-            expandBtn.style.display = "block";
-            expandBtn.onclick = () => {
-              bioContent.classList.toggle("collapsed");
-              expandBtn.innerText = bioContent.classList.contains("collapsed") ? "Развернуть" : "Свернуть";
-            };
-          } else {
-            bioContent.classList.remove("collapsed");
-          }
-        }
-      }, 50);
+      
+      if (bioContent && expandBtn) {
+          expandBtn.onclick = () => {
+              const isCollapsed = bioContent.classList.contains("collapsed");
+              if (isCollapsed) {
+                  bioContent.classList.remove("collapsed");
+                  bioContent.style.maxHeight = bioContent.scrollHeight + "px";
+                  expandBtn.innerText = "Свернуть";
+              } else {
+                  bioContent.classList.add("collapsed");
+                  bioContent.style.maxHeight = "75px";
+                  expandBtn.innerText = "Развернуть";
+              }
+          };
+      }
+    }, 50);
 
     const badgesContainer = Utils.$("view-badges-collection");
     if (badgesContainer) {
@@ -15732,7 +15739,7 @@ class CatalogManager {
           <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width:64px;height:64px;margin-bottom:20px;animation:levitate 3s infinite ease-in-out;">
           <h2 style="margin:0 0 10px;font-size:24px;">Каталог заблокирован</h2>
           <p style="color:var(--text-muted);font-size:15px;margin-bottom:25px;max-width:350px;line-height:1.5;">Извините, но у вас нету доступа к просмотру и приобретению вещей из каталога.<br><br>Доступ имеют только подписчики Premium</p>
-          <button class="primary-btn" onclick="document.getElementById('nav-premium').click()" style="width:auto;padding:12px 28px;background:var(--accent);color:#fff;font-weight:800;font-size:15px; border-radius: 20px;">Приобрести Premium</button>
+          <button class="primary-btn" onclick="document.getElementById('nav-premium').click()" style="width:auto;padding:12px 28px;background:#ffffff;color:#000000;font-weight:800;font-size:15px; border-radius: 20px;">Приобрести Premium</button>
       `;
       Utils.$("section-catalog").appendChild(overlay);
       const container = Utils.$("section-catalog").querySelector(".friends-container");
@@ -16698,7 +16705,43 @@ window.SoundpadController = class SoundpadController {
   }
 };
 window.AdminSoundManager = class {
+  static renderAdminSoundCatalog() {}
   static initAdmin() {}
+};
+
+window.openLegalModal = function(type) {
+    const modal = document.getElementById('modal-legal-info');
+    const title = document.getElementById('legal-modal-title');
+    const body = document.getElementById('legal-modal-body');
+    
+    if (type === 'contacts') {
+        title.innerText = 'Контакты и реквизиты';
+        body.innerHTML = '<strong>Электронная почта:</strong> support@ais-preview.run.app<br><br>' +
+                         '<strong>Служба поддержки:</strong> Доступна через раздел "Поддержка" в приложении.<br><br>' +
+                         '<strong>Юридический адрес:</strong> г. Москва, ул. Примерная, д. 1, оф. 1';
+    } else if (type === 'delivery') {
+        title.innerText = 'Условия доставки';
+        body.innerHTML = 'Поскольку сервис предоставляет исключительно цифровые товары (статусы, бейджи, темы, премиум-подписки), ' +
+                         'доставка осуществляется автоматически и моментально после успешной оплаты. ' +
+                         '<br><br><strong>Регион доставки:</strong> Весь мир (WorldWide).';
+    } else if (type === 'refund') {
+        title.innerText = 'Условия возврата';
+        body.innerHTML = 'Возврат средств за цифровые покупки возможен только в случае технических неисправностей, ' +
+                         'при которых вы не получили заявленную услугу в течение 24 часов после оплаты.' +
+                         '<br><br>В остальных случаях, поскольку услуга оказывается в момент покупки, возврат не предусмотрен.';
+    } else if (type === 'privacy') {
+        title.innerText = 'Политика конфиденциальности';
+        body.innerHTML = 'Мы используем ваши данные только для обеспечения работы сервиса и не передаем их третьим лицам. ' +
+                         'Все пароли хэшируются, мы не имеем доступа к вашим платежным данным (они обрабатываются банком-партнером).';
+    } else if (type === 'offer') {
+        title.innerText = 'Договор оферты';
+        body.innerHTML = 'Настоящий договор является публичной офертой. ' +
+                         'Используя сервис и оплачивая услуги, вы соглашаетесь с тем, что приобретаете доступ к расширенным функциям. ' +
+                         'Мы обязуемся предоставить этот доступ сразу после оплаты.' +
+                         '<br><br>Сервис предоставляется "как есть" (as is). Мы не несем ответственности за косвенные убытки.';
+    }
+
+    modal.classList.add('active');
 };
 window.ShopController = class {
   static loadShop() {

@@ -222,7 +222,7 @@ class PremiumManager {
     const p = profile?.premium;
     if (!p) return null;
     const expiresAt = Number(p.expiresAt) || 0;
-    const active = Boolean(p.active && expiresAt > Date.now());
+    const active = Boolean(p.active && (!p.expiresAt || expiresAt > Date.now()));
     return { ...p, expiresAt, active };
   }
 

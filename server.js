@@ -266,7 +266,11 @@ app.post('/api/ask-guide-ai', async (req, res) => {
         res.json({ success: true, answer: response.text });
     } catch (e) {
         console.error('Ошибка AI:', e);
-        res.status(500).json({ error: 'Произошла ошибка при обращении к ИИ: ' + (e.message || e) });
+        let errorMsg = 'Произошла ошибка при обращении к ИИ: ' + (e.message || e);
+        if (e.status === 429 || errorMsg.includes('429') || errorMsg.includes('Quota') || errorMsg.includes('RESOURCE_EXHAUSTED')) {
+            errorMsg = 'Превышен лимит запросов к ИИ. Пожалуйста, подождите немного и повторите попытку.';
+        }
+        res.status(500).json({ error: errorMsg });
     }
 });
 

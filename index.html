@@ -4702,6 +4702,13 @@
               />
               Выйти из аккаунта
             </button>
+            <div id="legal-footer-links" style="margin-top: 5px; display: flex; flex-direction: column; gap: 4px; font-size: 11px; text-align: left; padding: 5px 10px;">
+                <a href="#" onclick="openLegalModal('contacts')" style="color: var(--text-muted); opacity: 0.7; text-decoration: none;">Контакты и реквизиты</a>
+                <a href="#" onclick="openLegalModal('delivery')" style="color: var(--text-muted); opacity: 0.7; text-decoration: none;">Условия доставки</a>
+                <a href="#" onclick="openLegalModal('refund')" style="color: var(--text-muted); opacity: 0.7; text-decoration: none;">Условия возврата</a>
+                <a href="#" onclick="openLegalModal('privacy')" style="color: var(--text-muted); opacity: 0.7; text-decoration: none;">Политика конфиденциальности</a>
+                <a href="#" onclick="openLegalModal('offer')" style="color: var(--text-muted); opacity: 0.7; text-decoration: none;">Договор оферты</a>
+            </div>
           </div>
         </aside>
 
@@ -5418,7 +5425,7 @@
           </div>
         </main>
 
-        <main class="rooms-main" id="section-catalog" style="display: none">
+        <main class="rooms-main" id="section-catalog" style="display: none; position: relative">
           <div
             class="friends-container"
             style="
@@ -6070,6 +6077,18 @@
       </div>
     </div>
 
+    <!-- Legal Info Modal -->
+    <div class="modal" id="modal-legal-info">
+      <div
+        class="modal-content glass-panel"
+        style="max-width: 500px; text-align: left; padding: 25px; position: relative"
+      >
+        <button class="close-btn" onclick="document.getElementById('modal-legal-info').classList.remove('active')" style="position: absolute; right: 15px; top: 15px; background: rgba(255, 255, 255, 0.1); border: none; color: #fff; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; transition: background 0.3s; z-index: 10;" onmouseover="this.style.background='rgba(255, 255, 255, 0.2)'" onmouseout="this.style.background='rgba(255, 255, 255, 0.1)'">✕</button>
+        <h2 id="legal-modal-title" style="margin-top: 0; margin-bottom: 20px; font-size: 22px; font-weight: 800;"></h2>
+        <div id="legal-modal-body" style="font-size: 14px; color: var(--text-muted); line-height: 1.6; max-height: 60vh; overflow-y: auto; padding-right: 10px;"></div>
+      </div>
+    </div>
+
     <!-- View User Profile Modal (Updated Button) -->
     <div class="modal" id="modal-view-profile">
       <div
@@ -6207,7 +6226,7 @@
           id="view-status"
           style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px"
         ></div>
-        <p
+        <div
           id="view-bio"
           style="
             color: var(--text-muted);
@@ -6215,7 +6234,7 @@
             margin-bottom: 25px;
             line-height: 1.5;
           "
-        ></p>
+        ></div>
         <!-- Achievements / Badges Collection -->
         <div
           id="view-badges-collection"
@@ -7095,14 +7114,17 @@
         word-break: break-word;
       }
       .premium-bio-layout.collapsed {
-        display: -webkit-box;
-        line-clamp: 3;
-        -webkit-line-clamp: 3;
-        -webkit-box-orient: vertical;
         overflow: hidden;
       }
       .premium-bio-layout.collapsed::after {
-        display: none;
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 25px;
+        background: linear-gradient(transparent, var(--profile-bg, #111));
+        display: block;
       }
 
       /* Roles Badges Tooltip */
@@ -7159,11 +7181,11 @@
 
     </style>
     <div class="modal" id="modal-badge-info">
-      <div class="modal-content glass-panel" style="max-width: 400px; text-align: center;">
-        <button class="close-btn" onclick="document.getElementById('modal-badge-info').classList.remove('active')">✕</button>
-        <img id="badge-modal-icon" src="" style="width: 80px; height: 80px; margin: 0 auto 15px; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.5));">
-        <h2 id="badge-modal-title" style="margin: 0 0 10px; font-size: 24px;"></h2>
-        <p id="badge-modal-desc" style="color: var(--text-muted); font-size: 15px; line-height: 1.5;"></p>
+      <div class="modal-content glass-panel" style="max-width: 400px; text-align: center; position: relative; padding: 40px 20px 30px;">
+        <button onclick="document.getElementById('modal-badge-info').classList.remove('active')" style="position: absolute; top: 15px; right: 15px; background: rgba(255, 255, 255, 0.1); border: none; color: #fff; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; transition: background 0.3s; z-index: 10; padding: 0;" onmouseover="this.style.background='rgba(255, 255, 255, 0.2)'" onmouseout="this.style.background='rgba(255, 255, 255, 0.1)'">✕</button>
+        <img id="badge-modal-icon" src="" style="width: 80px; height: 80px; margin: 0 auto 20px; filter: drop-shadow(0 4px 15px rgba(0,0,0,0.6));">
+        <h2 id="badge-modal-title" style="margin: 0 0 10px; font-size: 24px; font-weight: 800;"></h2>
+        <p id="badge-modal-desc" style="color: var(--text-muted); font-size: 15px; line-height: 1.6; margin: 0;"></p>
       </div>
     </div>
 
