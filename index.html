@@ -7089,26 +7089,84 @@
           border-radius: 50% !important;
       }
       .premium-bio-layout {
-        column-width: 150px;
-        column-gap: 15px;
         word-wrap: break-word;
         white-space: pre-wrap;
+        max-width: 50ch;
+        word-break: break-word;
       }
       .premium-bio-layout.collapsed {
-        max-height: 120px;
+        display: -webkit-box;
+        line-clamp: 3;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
         overflow: hidden;
-        position: relative;
       }
       .premium-bio-layout.collapsed::after {
-        content: "";
-        position: absolute;
-        bottom: 0;
-        right: 0;
-        width: 100%;
-        height: 20px;
-        background: linear-gradient(to bottom, transparent, var(--bg-surface, #1e1e1e));
+        display: none;
       }
+
+      /* Roles Badges Tooltip */
+      .role-badge-icon-wrapper {
+          position: relative;
+          display: inline-block;
+          cursor: pointer;
+      }
+      .role-badge-icon {
+          transition: transform 0.2s;
+      }
+      .role-badge-icon-wrapper:hover .role-badge-icon {
+          transform: scale(1.15);
+      }
+      .role-badge-icon-wrapper::after {
+          content: attr(data-tooltip);
+          position: absolute;
+          bottom: 120%;
+          left: 50%;
+          transform: translateX(-50%) translateY(5px);
+          opacity: 0;
+          pointer-events: none;
+          background: rgba(0, 0, 0, 0.85);
+          color: #fff;
+          padding: 6px 12px;
+          border-radius: 8px;
+          font-size: 12px;
+          font-weight: 600;
+          white-space: nowrap;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+          border: 1px solid rgba(255,255,255,0.1);
+          transition: all 0.2s ease;
+          z-index: 1000;
+      }
+      .role-badge-icon-wrapper:hover::after {
+          opacity: 1;
+          transform: translateX(-50%) translateY(0);
+      }
+
+      /* Locked Catalog Overlay */
+      .catalog-locked-overlay {
+          position: absolute;
+          inset: 0;
+          background: rgba(10, 10, 12, 0.4);
+          backdrop-filter: blur(12px);
+          z-index: 50;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+          border-radius: 20px;
+      }
+
     </style>
+    <div class="modal" id="modal-badge-info">
+      <div class="modal-content glass-panel" style="max-width: 400px; text-align: center;">
+        <button class="close-btn" onclick="document.getElementById('modal-badge-info').classList.remove('active')">✕</button>
+        <img id="badge-modal-icon" src="" style="width: 80px; height: 80px; margin: 0 auto 15px; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.5));">
+        <h2 id="badge-modal-title" style="margin: 0 0 10px; font-size: 24px;"></h2>
+        <p id="badge-modal-desc" style="color: var(--text-muted); font-size: 15px; line-height: 1.5;"></p>
+      </div>
+    </div>
+
     <div class="modal" id="modal-create-ticket">
       <div
         class="modal-content glass-panel"

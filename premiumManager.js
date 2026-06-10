@@ -51,6 +51,7 @@ class PremiumManager {
   static PERKS = [
     { url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Shopping%20Bags.webp", title: "Полный каталог", desc: "Рамки, звуки и акции только для Premium" },
     { url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp", title: "Статус-эмодзи", desc: "10 эмодзи рядом с ником в чате и профиле" },
+    { url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Military%20Medal.webp", title: "10-й Уровень", desc: "Автоматическое повышение до 10 уровня при покупке" },
     { url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkler.webp", title: "x2 XP", desc: "В два раза больше опыта за время в комнатах" },
     { url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Woman%20Technologist.webp", title: "Приоритетная поддержка", desc: "Тикеты помечаются и обрабатываются быстрее" },
     { url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Party%20Popper.webp", title: "Ранний доступ", desc: "Первыми видите горячие акции в каталоге" },
@@ -180,14 +181,14 @@ class PremiumManager {
         background-size: 220% 220%;
         animation: catalogFadeIn 0.45s ease forwards, premiumHotShimmer 7s ease-in-out infinite;
         padding: 2px;
-        box-shadow: 0 10px 36px rgba(201, 162, 39, 0.28), 0 0 0 1px rgba(255, 215, 120, 0.12) inset;
+        box-shadow: 0 16px 44px rgba(255, 170, 60, 0.32), 0 0 0 1px rgba(255, 220, 140, 0.18) inset;
       }
       .catalog-card-wrapper.is-hot .catalog-card-inner {
         background: linear-gradient(180deg, rgba(28, 24, 18, 0.97) 0%, rgba(10, 10, 12, 0.99) 100%);
         border: 1px solid rgba(255, 200, 100, 0.14);
       }
       .catalog-card-wrapper.is-hot:hover {
-        box-shadow: 0 16px 44px rgba(255, 170, 60, 0.32), 0 0 0 1px rgba(255, 220, 140, 0.18) inset;
+        box-shadow: 0 20px 50px rgba(255, 170, 60, 0.5), 0 0 0 1px rgba(255, 220, 140, 0.25) inset;
       }
       .catalog-hot-badge {
         position: absolute;
@@ -267,7 +268,8 @@ class PremiumManager {
   }
 
   static getXpMultiplier(profile, uid) {
-    return this.isPremiumActive(profile, uid) && !this.isStaff(profile, uid) ? 2 : 1;
+    if (this.isPremiumActive(profile, uid)) return 2;
+    return 1;
   }
 
   static getStatusEmojiHtml(profile, uid) {
@@ -413,6 +415,7 @@ class PremiumManager {
         counterSpan.innerText = count;
       });
     }
+    this.updateThemeButtons();
   }
 
   static async getPremiumUsersCount() {
@@ -448,6 +451,30 @@ class PremiumManager {
     if (profile?.premium) profile.premium.statusEmoji = key;
     AppState.usersCache.set(uid, profile);
     Utils.toast("Статус-эмодзи обновлён", "success");
+  }
+
+  static updateThemeButtons() {
+    setTimeout(() => {
+      const uid = window.AppState?.currentUser?.uid;
+      if (!uid) return;
+      const profile = window.AppState?.usersCache?.get(uid) || window.AppState?.myProfile;
+      const isAdmin = this.isStaff(profile, uid);
+      const isPremium = profile ? (this.isPremiumActive(profile, uid) || isAdmin) : false;
+      
+      ['btn-room-theme-toggle', 'btn-dm-theme-toggle'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+        if (isPremium) {
+           btn.classList.remove("premium-locked-theme");
+           btn.innerHTML = "Поменять тему";
+           btn.style.opacity = "1";
+        } else {
+           btn.classList.add("premium-locked-theme");
+           btn.innerHTML = '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width:18px;height:18px;vertical-align:middle;margin-right:6px;"><span style="position:relative;display:inline-flex;align-items:center;justify-content:center;"><span style="filter:blur(3px);opacity:0.3;position:absolute;">Поменять тему</span><span style="font-size:11px;font-weight:700;white-space:nowrap;color:#ffe6a0;position:relative;z-index:1;">Приобретите Premium</span></span>';
+           btn.style.opacity = "0.9";
+        }
+      });
+    }, 1500);
   }
 
   static async startPurchase() {

@@ -17,6 +17,12 @@ class HelpGuideManager {
 
   static TOPICS = [
     {
+      id: "ai_assistant",
+      title: "ИИ-Ассистент",
+      icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Robot.webp",
+      items: [],
+    },
+    {
       id: "start",
       title: "Начало работы",
       icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Rocket.webp",
@@ -216,6 +222,62 @@ class HelpGuideManager {
     document.querySelectorAll(".help-topic-btn").forEach((b) => {
       b.classList.toggle("active", b.dataset.topic === topic.id);
     });
+
+    if (topic.id === "ai_assistant") {
+       body.innerHTML = `
+         <h3 style="margin:0 0 16px; display:flex; align-items:center; gap:10px;">
+           <img src="${topic.icon}" style="width:24px;height:24px;"> Контекстный ИИ-Ассистент
+         </h3>
+         <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:16px;">
+           <p style="font-size:13px; color:var(--text-muted); margin-bottom:15px;">Задайте свой вопрос, и я поищу ответ по всем разделам базы знаний COWIO.</p>
+           <div style="display:flex; gap:10px;">
+             <input type="text" id="help-ai-input" placeholder="Например: как поменять пароль?" class="text-input" style="flex:1; padding:10px; border-radius:8px; font-size:14px;" />
+             <button id="help-ai-send" class="primary-btn" style="width:auto; padding:0 20px;">Спросить</button>
+           </div>
+         </div>
+         <div id="help-ai-answers" style="margin-top:20px; display:flex; flex-direction:column; gap:12px;"></div>
+       `;
+
+       const input = document.getElementById("help-ai-input");
+       const sendBtn = document.getElementById("help-ai-send");
+       const answersBox = document.getElementById("help-ai-answers");
+
+       const askAI = async () => {
+           const query = input.value.trim();
+           if (!query) return;
+           
+           const docs = this.TOPICS.map(t => 
+             "Раздел " + t.title + ":\n" + t.items.map(i => "В: " + i.q + "\nО: " + i.a).join("\n")
+           ).join("\n\n");
+           
+           input.value = "";
+           
+           const ansId = "ans_" + Date.now();
+           answersBox.innerHTML = `
+             <div class="help-faq-item" style="border:1px solid rgba(255,200,100,0.3); border-radius:12px; padding:12px 14px; background:rgba(255,179,71,0.05);" id="${ansId}">
+               <div style="font-weight:700; font-size:14px; color:#ffffff; margin-bottom:8px;">${Utils.escapeHtml(query)}</div>
+               <div class="ai-reply" style="font-size:13px; color:#ffffff; line-height:1.65;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width:16px;vertical-align:middle;"> ИИ думает...</div>
+             </div>` + answersBox.innerHTML;
+             
+           try {
+               const res = await fetch('/api/ask-guide-ai', {
+                   method: 'POST',
+                   headers: { 'Content-Type': 'application/json' },
+                   body: JSON.stringify({ query, docs })
+               });
+               const data = await res.json();
+               if (!data.success) throw new Error(data.error || "Ошибка API");
+               document.getElementById(ansId).querySelector('.ai-reply').innerText = data.answer;
+           } catch(e) {
+               document.getElementById(ansId).querySelector('.ai-reply').innerHTML = `<span style="color:#ff4d4d">Ошибка: ${e.message}</span>`;
+           }
+       };
+
+       sendBtn.onclick = askAI;
+       input.onkeypress = (e) => { if(e.key === 'Enter') askAI(); };
+       return;
+    }
+
     const itemsHtml = topic.items
       .map(
         (item) => `

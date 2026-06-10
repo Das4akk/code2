@@ -537,6 +537,15 @@ class TutorialManager {
 }
 
 class Utils {
+  static showBadgeModal(title, desc, iconSrc) {
+    const m = document.getElementById("modal-badge-info");
+    if (!m) return;
+    document.getElementById("badge-modal-title").innerText = title;
+    document.getElementById("badge-modal-desc").innerText = desc;
+    document.getElementById("badge-modal-icon").src = iconSrc;
+    m.classList.add("active");
+  }
+
   static getAppleEmojiHtml(char) {
     const appleMap = {
       "💋": "1f48b",
@@ -5189,7 +5198,10 @@ class AuthManager {
           await BadgeManager.checkRelationshipBadges(user.uid);
           ProfileManager.bindMyProfileListener();
           FriendsManager.initListeners();
-          if (window.PremiumManager) PremiumManager.handlePostLoginReturn();
+          if (window.PremiumManager) {
+             PremiumManager.handlePostLoginReturn();
+             PremiumManager.updateThemeButtons();
+          }
           RoomManager.initLobbyListeners();
           DirectMessages.startNotifications();
           AdminPanel.init();
@@ -6245,26 +6257,15 @@ class ProfileManager {
 
   static getRoleBadgeHtml(profile, uid = null) {
     if (!profile) return "";
-    const badges = []; // [UPDATE]
-    if (AdminPanel.isCreatorProfile(profile, uid))
-      badges.push(`<span class="role-badge badge-creator">Создатель</span>`); // [UPDATE]
-    if (AdminPanel.isModeratorProfile(profile, uid))
-      badges.push(`<span class="role-badge badge-moderator">Модератор</span>`); // [UPDATE]
-    const adminBadge = String(profile?.adminBadge || "")
-      .toLowerCase()
-      .trim();
-    if (adminBadge === "developer")
-      badges.push(
-        `<span class="role-badge badge-developer" style="background:#000; color:#0ff; border:1px solid #0ff; text-shadow:0 0 5px #0ff; box-shadow:0 0 8px rgba(0,255,255,0.4);">Разработчик</span>`,
-      );
-    if (adminBadge === "creator")
-      badges.push(`<span class="role-badge badge-creator">Создатель</span>`);
-    if (adminBadge === "moderator")
-      badges.push(`<span class="role-badge badge-moderator">Модератор</span>`);
-    if (adminBadge === "creator_moderator")
-      badges.push(
-        `<span class="role-badge badge-hybrid">Создатель/Модератор</span>`,
-      );
+    const badges = [];
+
+    const ownerImg = `<span class="role-badge-icon-wrapper" data-tooltip="Создатель платформы" onclick="event.stopPropagation(); if(window.Utils) Utils.showBadgeModal('Создатель', 'Высший ранг платформы. Владелец проекта.', 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Military%20Medal.webp')"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Military%20Medal.webp" class="role-badge-icon" style="width:1.2em;height:1.2em;vertical-align:bottom;" title=""></span>`;
+    const adminImg = `<span class="role-badge-icon-wrapper" data-tooltip="Администратор" onclick="event.stopPropagation(); if(window.Utils) Utils.showBadgeModal('Администратор', 'Управляет платформой и модераторами.', 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Diamond%20With%20A%20Dot.webp')"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Diamond%20With%20A%20Dot.webp" class="role-badge-icon" style="width:1.2em;height:1.2em;vertical-align:bottom;" title=""></span>`;
+    const modImg = `<span class="role-badge-icon-wrapper" data-tooltip="Модератор комьюнити" onclick="event.stopPropagation(); if(window.Utils) Utils.showBadgeModal('Модератор', 'Поддерживает порядок и помогает пользователям.', 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Shield.webp')"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Shield.webp" class="role-badge-icon" style="width:1.2em;height:1.2em;vertical-align:bottom;" title=""></span>`;
+
+    if (AdminPanel.isCreatorProfile(profile, uid)) badges.push(ownerImg);
+    else if (AdminPanel.isModeratorProfile(profile, uid)) badges.push(modImg);
+
     if (
       window.PremiumManager &&
       PremiumManager.hasPaidPremium(profile, uid) &&
@@ -6273,6 +6274,7 @@ class ProfileManager {
     ) {
       badges.push(`<span class="role-badge badge-premium">Premium</span>`);
     }
+
     if (profile?.adminBadgeCustom?.text) {
       const custom = profile.adminBadgeCustom;
       const text = Utils.escapeHtml(custom.text);
@@ -6285,9 +6287,9 @@ class ProfileManager {
         `<span class="role-badge" style="color:${color}; background:${bg}; border:1px solid ${border}; box-shadow:none;">${text}</span>`,
       );
     }
-
-     // [UPDATE]
-    return badges.join(" "); // [UPDATE]
+    
+    if (badges.length > 0) return `<span style="margin-left:5px;">${badges.join(" ")}</span>`;
+    return "";
   }
 
   static async checkUsernameAvailability(username, excludeUid = null) {
@@ -7727,13 +7729,13 @@ class ProfileManager {
     
     // Check if the user is premium to apply advanced biography layout
     const isPremium = window.PremiumManager ? PremiumManager.isPremiumActive(profile, targetUid) : false;
-    const bioLayoutClass = isPremium ? "premium-bio-layout" : "";
+    const bioLayoutClass = "premium-bio-layout";
 
     Utils.$("view-bio").innerHTML = `
             <div class="${bioLayoutClass}" id="profile-bio-content">
               ${safeBio}
             </div>
-            ${isPremium ? '<button id="btn-expand-bio" style="display:none;background:none;border:none;color:var(--primary);font-size:12px;cursor:pointer;padding:0;margin-top:4px;">Развернуть</button>' : ''}
+            <button id="btn-expand-bio" style="display:none;background:none;border:none;color:var(--primary);font-size:12px;cursor:pointer;padding:0;margin-top:4px;">Развернуть</button>
             <div style="margin-top:12px;"></div>
             ${genderString}
             <strong style="color:var(--text-main);">Статистика:</strong><br>
@@ -7741,23 +7743,26 @@ class ProfileManager {
             На платформе с: ${joinDate}
         `;
 
-    if (isPremium) {
-      setTimeout(() => {
-        const bioContent = Utils.$("profile-bio-content");
-        const expandBtn = Utils.$("btn-expand-bio");
+    setTimeout(() => {
+      const bioContent = Utils.$("profile-bio-content");
+      const expandBtn = Utils.$("btn-expand-bio");
         if (bioContent && expandBtn) {
-          // If the bio takes up too much horizontal/vertical space (e.g. height > 100), we enable expanding
-          if (bioContent.scrollHeight > 100) {
-            bioContent.classList.add("collapsed");
+          bioContent.classList.remove("collapsed");
+          const fullHeight = bioContent.scrollHeight;
+          bioContent.classList.add("collapsed");
+          const collapsedHeight = bioContent.clientHeight;
+          
+          if (fullHeight > collapsedHeight) {
             expandBtn.style.display = "block";
             expandBtn.onclick = () => {
               bioContent.classList.toggle("collapsed");
               expandBtn.innerText = bioContent.classList.contains("collapsed") ? "Развернуть" : "Свернуть";
             };
+          } else {
+            bioContent.classList.remove("collapsed");
           }
         }
       }, 50);
-    }
 
     const badgesContainer = Utils.$("view-badges-collection");
     if (badgesContainer) {
@@ -8304,15 +8309,9 @@ class FriendsManager {
         if (uid && !profile && window.ProfileManager) {
           profile = await ProfileManager.loadUser(uid);
         }
-        if (
-          window.PremiumManager &&
-          !PremiumManager.hasCatalogAccess(profile, uid)
-        ) {
-          PremiumManager.openCatalogOrUpsell(true);
-          return;
-        }
         setNavActive("nav-catalog");
-        if (window.CatalogManager) CatalogManager.renderCatalog();
+        if (window.CatalogStore) CatalogStore.renderCatalog();
+        else if (window.CatalogManager) CatalogManager.renderCatalog();
       };
     if (Utils.$("nav-shop"))
       Utils.$("nav-shop").onclick = () => {
@@ -8357,6 +8356,26 @@ class FriendsManager {
             : "Неизвестно";
 
           let avatarStrStr = ProfileManager.getAvatarHtml(profile);
+          const isUserPremium = window.PremiumManager && PremiumManager.isPremiumActive(profile, uid);
+          const isStaff = window.PremiumManager && PremiumManager.isStaff(profile, uid);
+          let premiumStatusHtml = "";
+          if (isStaff) {
+             premiumStatusHtml = `<div style="background:rgba(255,179,71,0.1); border:1px solid rgba(255,200,100,0.2); padding:15px; border-radius:12px; margin-top:20px; color:#ffb347; font-weight:600;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Star.webp" style="width:1.2em;vertical-align:bottom;margin-right:8px;">Персонал: Все премиум функции доступны навсегда</div>`;
+          } else if (isUserPremium) {
+             const expStr = profile?.premium?.expiresAt ? new Date(profile.premium.expiresAt).toLocaleDateString() : 'Неограниченно';
+             premiumStatusHtml = `<div style="background:rgba(255,179,71,0.1); border:1px solid rgba(255,200,100,0.2); padding:15px; border-radius:12px; margin-top:20px; color:#ffb347;">
+                 <h4 style="margin:0 0 10px; font-weight:800; font-size:16px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" style="width:1.2em;vertical-align:bottom;margin-right:6px;">COWIO Premium активен</h4>
+                 <div style="font-size:14px; opacity:0.9; margin-bottom:12px;">Вы можете наслаждаться анимированными плашками, кастомными темами, приоритетной поддержкой и x2 опытом.</div>
+                 <div style="font-size:13px; opacity:0.8;">Действителен до: <b>${expStr}</b></div>
+             </div>`;
+          } else {
+             premiumStatusHtml = `<div style="background:rgba(255,255,255,0.03); border:1px dashed rgba(255,255,255,0.1); padding:15px; border-radius:12px; margin-top:20px; color:var(--text-main);">
+                 <h4 style="margin:0 0 10px; font-weight:700; font-size:16px;">Управление подпиской</h4>
+                 <div style="font-size:14px; color:var(--text-muted); margin-bottom:12px;">Подписка COWIO Premium неактивна. Получите доступ к эксклюзивным темам, х2 опыту и рамкам.</div>
+                 <button class="primary-btn" id="btn-profile-go-premium" style="width:auto; padding: 10px 20px; background:linear-gradient(135deg,#ffe6a0,#ffb347); color:#1a1208;">Оформить Premium</button>
+             </div>`;
+          }
+
           c.innerHTML = `
                     <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 40px; text-align: center; position: relative;">
                         <div style="width: 120px; height: 120px; font-size: 48px; margin: 0 auto 20px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow: 0 10px 20px rgba(0,0,0,0.5);">
@@ -8369,8 +8388,15 @@ class FriendsManager {
                             <button class="primary-btn" id="btn-open-full-profile-inline" style="width:auto; padding: 12px 24px;">Посмотреть в полном виде</button>
                             <button class="secondary-btn" id="btn-edit-my-profile-inline" style="width:auto; padding: 12px 24px;">Редактировать</button>
                         </div>
+                        ${premiumStatusHtml}
                     </div>
                 `;
+
+          if (Utils.$("btn-profile-go-premium")) {
+              Utils.$("btn-profile-go-premium").onclick = () => {
+                  Utils.$("nav-premium").click();
+              };
+          }
 
           Utils.$("btn-open-full-profile-inline").onclick = async () => {
             try {
@@ -8756,6 +8782,13 @@ class FriendsManager {
             ? `<div style="position: absolute; bottom: -4px; right: -4px; background: rgba(0,0,0,0.8); border-radius: 50%; padding: 2px 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; border: none;" title="Стрик захода: ${activeStreak} дней"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" style="width:14px; height:14px; margin-right:2px;">${activeStreak}</div>`
             : "";
 
+        const isFriendPremium = window.PremiumManager ? PremiumManager.isPremiumActive(profile, uid) : false;
+        if (isFriendPremium) {
+            div.style.cssText = "background: radial-gradient(circle at 20% 0%, rgba(255, 180, 60, 0.18), transparent 45%), radial-gradient(circle at 90% 100%, rgba(255, 120, 40, 0.12), transparent 40%), linear-gradient(145deg, rgba(24, 20, 14, 0.96), rgba(10, 10, 12, 0.98)); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 220, 140, 0.08); border: 1px solid rgba(255, 200, 100, 0.22); margin-bottom: 2px;";
+        } else {
+            div.style.cssText = "";
+        }
+        
         const roleBadgeHtml = ProfileManager.getRoleBadgeHtml(profile, uid);
         div.innerHTML = `
                     <div class="avatar" style="position:relative; overflow:visible; background:transparent;">
@@ -9254,7 +9287,12 @@ class DirectMessages {
     const toggle = Utils.$("btn-dm-theme-toggle");
     const controls = Utils.$("dm-theme-controls");
     if (!toggle || !controls) return;
-    toggle.onclick = () => controls.classList.toggle("active");
+    toggle.onclick = () => {
+      if (toggle.classList.contains("premium-locked-theme")) {
+        return Utils.toast("Смена темы доступна только с Premium!", "error");
+      }
+      controls.classList.toggle("active");
+    };
     controls.querySelectorAll(".dm-theme-chip").forEach((btn) => {
       btn.onclick = () => this.applyTheme(btn.dataset.theme || "default", true);
     });
@@ -9688,7 +9726,13 @@ class SupportSystem {
         list.innerHTML = `<div style="text-align:center; padding: 20px; color: var(--text-muted);">Тикетов нет</div>`;
         return;
       }
-      tickets.sort((a, b) => b.createdAt - a.createdAt); // newest first
+      tickets.sort((a, b) => {
+        const priorityOrder = { "Срочный": 3, "Высокий": 2, "Средний": 1, "Обычный": 0 };
+        const pA = priorityOrder[a.priority] || 0;
+        const pB = priorityOrder[b.priority] || 0;
+        if (pA !== pB) return pB - pA;
+        return b.createdAt - a.createdAt;
+      });
       list.innerHTML = tickets
         .map((t) => {
           const titleStr = Utils.escapeHtml(t.title || "Без темы");
@@ -9699,9 +9743,12 @@ class SupportSystem {
           const statusText = isOpen
             ? '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/White%20Circle.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> В работе'
             : '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Circle.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Закрыт';
-          const priority = t.priority
+          let priorityHtml = t.priority
             ? `<span style="margin-left:8px;font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.1);color:#fff;">${t.priority}</span>`
             : "";
+          if (t.isPremium) {
+              priorityHtml = `<span style="margin-left:8px;font-size:10px;padding:2px 6px;border-radius:4px;background:linear-gradient(135deg,#ffaa00,#ff4400);color:#fff;box-shadow:0 0 8px rgba(255,170,0,0.5);font-weight:bold;">${t.priority || "Premium"}</span>`;
+          }
           const premiumMark = t.isPremium
             ? `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" style="width:14px;height:14px;margin-left:6px;vertical-align:middle;" title="Premium">`
             : "";
@@ -10506,6 +10553,12 @@ class AdminPanel {
                     <button class="secondary-btn godmode-nav-btn" data-section="catalog">catalog</button>
                 </div>
                 <div class="godmode-main" id="godmode-main">
+                <style>
+                    .godmode-section { display: none !important; }
+                    .godmode-section.active { display: block !important; }
+                    .godmode-section.active[style*="display:grid"], .godmode-section.active[style*="display: grid"] { display: grid !important; }
+                    .godmode-section.active[style*="display:flex"], .godmode-section.active[style*="display: flex"] { display: flex !important; }
+                </style>
                 <div style="display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:16px;">
                     <div>
                         <h2 style="margin:0;">Админ-панель</h2>
@@ -10530,6 +10583,10 @@ class AdminPanel {
                         <button class="primary-btn" id="btn-admin-grant-op" style="width:auto; padding:0 16px;">Оператор</button>
                         <button class="danger-btn" id="btn-admin-revoke-mod" style="width:auto; padding:0 16px;">Снять права</button>
                     </div>
+                </div>
+
+                <div class="godmode-section" data-section="badges" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
+                    <div style="font-weight:700; margin-bottom:10px;">Управление Бейджами</div>
                     <div style="display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px; margin-top:10px;">
                         <button class="secondary-btn" id="btn-admin-badge-developer">Разработчик</button>
                         <button class="secondary-btn" id="btn-admin-badge-creator">Создатель</button>
@@ -10560,50 +10617,34 @@ class AdminPanel {
 
                 <div class="godmode-section active" data-section="dashboard">
                     <div id="admin-stats-grid" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:16px;"></div>
-                <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin-bottom:16px;">
-                    <div style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
-                        <div style="font-weight:700; margin-bottom:10px;">Глобальное оповещение / Пасхалка</div>
-                        <textarea id="admin-announcement-input" rows="4" placeholder="Введите текст или команду пасхалки (напр. /matrix)"></textarea>
-                        <div style="display:flex; gap:8px;">
-                            <button class="primary-btn" id="btn-admin-send-announcement">Разослать</button>
-                            <button class="secondary-btn" id="btn-admin-clear-announcement">Очистить</button>
-                        </div>
-                    </div>
+                </div>
 
-                    <div style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
-                        <div style="font-weight:700; margin-bottom:10px;">Быстрые действия</div>
-                        <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px;">
-                            <button class="danger-btn" id="btn-admin-delete-all-rooms">Удалить все комнаты</button>
-                            <button class="secondary-btn" id="btn-admin-purge-empty-rooms">Очистить пустые комнаты</button>
-                            <button class="secondary-btn" id="btn-admin-clear-dms">Удалить все ЛС</button>
-                            <button class="secondary-btn" id="btn-admin-toggle-room-lock">Блокировать создание комнат</button>
-                            <button class="secondary-btn" id="btn-admin-refresh">Обновить данные</button>
-                            <button class="secondary-btn" id="btn-admin-clear-user-editor">Сбросить выбранного юзера</button>
-                            <button class="secondary-btn" id="btn-admin-export-snapshot">Экспорт Snapshot</button>
-                            <button class="secondary-btn" id="btn-admin-unmute-unban-all">Снять mute/shadowban всем</button>
-                        </div>
+                <div class="godmode-section" data-section="broadcast" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02); margin-bottom:16px;">
+                    <div style="font-weight:700; margin-bottom:10px;">Глобальное оповещение / Пасхалка</div>
+                    <textarea id="admin-announcement-input" rows="4" placeholder="Введите текст или команду пасхалки (напр. /matrix)"></textarea>
+                    <div style="display:flex; gap:8px;">
+                        <button class="primary-btn" id="btn-admin-send-announcement">Разослать</button>
+                        <button class="secondary-btn" id="btn-admin-clear-announcement">Очистить</button>
+                    </div>
+                    <div style="font-weight:700; margin-bottom:10px; margin-top:20px;">Новые супер-способности</div>
+                    <div style="display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px;">
+                        <button class="secondary-btn" id="btn-hijack-video" onclick="window.triggerAdminAction('hijack')">Угон видео</button>
+                        <button class="secondary-btn" id="btn-flashbang" onclick="window.triggerAdminAction('flashbang')">Флешбенг</button>
+                        <button class="secondary-btn" id="btn-shake" onclick="window.triggerAdminAction('shake')">Скример</button>
+                        <button class="secondary-btn" id="btn-god-voice" onclick="window.triggerAdminAction('godVoice')">Голос Бога</button>
+                        <button class="secondary-btn" onclick="window.triggerAdminAction('forceTutorial')">Вызвать Туториал</button>
+                        <button class="secondary-btn" id="btn-puppeteer" onclick="window.triggerAdminAction('puppeteer')">Кукловод</button>
+                        <button class="secondary-btn" id="btn-incognito" onclick="window.triggerAdminAction('incognito')">Инкогнито</button>
+                        <button class="secondary-btn" onclick="window.triggerAdminAction('uwuCurse')">UwU Проклятье</button>
+                        <button class="secondary-btn" onclick="window.triggerAdminAction('shadowClone')">Shadow Clone</button>
+                        <button class="secondary-btn" onclick="window.triggerAdminAction('ghostWhispers')">Шепот призраков</button>
+                        <button class="secondary-btn" onclick="window.triggerAdminAction('teleport')">Телепорт (Random)</button>
+                        <button class="secondary-btn" onclick="window.triggerAdminAction('thanosSnapROOM')">Clear Chat (Thanos)</button>
                     </div>
                 </div>
-                <div class="godmode-section active" data-section="dashboard" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02); margin-bottom:16px;">
-                    <div style="font-weight:700; margin-bottom:10px;">Ивенты (Выдача всем онлайн)</div>
-                    <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin-bottom:16px;">
-                        <div style="background:rgba(0,0,0,0.2); padding:12px; border-radius:12px;">
-                            <div style="font-size:12px; margin-bottom:5px;">Ачивки (Выдать всем)</div>
-                            <div style="display:flex; gap:8px;">
-                                <input type="text" id="admin-event-badge-id" placeholder="ID ачивки" style="margin:0; flex:1;">
-                                <button class="primary-btn" id="btn-admin-grant-event-badge" style="width:auto; padding:0 16px;">Выдать</button>
-                            </div>
-                        </div>
-                        <div style="background:rgba(0,0,0,0.2); padding:12px; border-radius:12px;">
-                            <div style="font-size:12px; margin-bottom:5px;">Рамки напрямую (Выдать всем)</div>
-                            <div style="display:flex; gap:8px;">
-                                <input type="text" id="admin-event-frame-url" class="admin-form-input" placeholder="Изображение рамки (URL)" style="margin:0; flex:1;">
-                                <button class="primary-btn" onclick="CatalogManager.grantFrameMass()" style="width:auto; padding:0 16px;">Выдать</button>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div style="font-weight:700; margin-bottom:10px; margin-top:10px;">Глобальные функции</div>
+
+                <div class="godmode-section" data-section="security" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02); margin-bottom:16px;">
+                    <div style="font-weight:700; margin-bottom:10px;">Глобальные функции</div>
                     <div style="display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px;">
                         <button class="danger-btn" id="btn-admin-system-readonly">Системный ReadOnly</button>
                         <button class="secondary-btn" id="btn-admin-global-session-refresh">Обновить все сессии</button>
@@ -10614,22 +10655,6 @@ class AdminPanel {
                         <button class="secondary-btn" id="btn-admin-global-reg-lock">Блок регистраций</button>
                         <button class="secondary-btn" id="btn-admin-global-maintenance">Maintenance mode</button>
                     </div>
-                     <div style="font-weight:700; margin-bottom:10px; margin-top:20px;">Новые супер-способности</div>
-                     <div style="display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px;">
-                         <button class="secondary-btn" id="btn-hijack-video" onclick="window.triggerAdminAction('hijack')">Угон видео</button>
-                         <button class="secondary-btn" id="btn-flashbang" onclick="window.triggerAdminAction('flashbang')">Флешбенг</button>
-                         <button class="secondary-btn" id="btn-shake" onclick="window.triggerAdminAction('shake')">Скример</button>
-                         <button class="secondary-btn" id="btn-god-voice" onclick="window.triggerAdminAction('godVoice')">Голос Бога</button>
-                         <button class="secondary-btn" onclick="window.triggerAdminAction('forceTutorial')">Вызвать Туториал</button>
-                         <button class="secondary-btn" id="btn-puppeteer" onclick="window.triggerAdminAction('puppeteer')">Кукловод</button>
-                         <button class="secondary-btn" id="btn-incognito" onclick="window.triggerAdminAction('incognito')">Инкогнито</button>
-                         <button class="secondary-btn" onclick="window.triggerAdminAction('uwuCurse')">UwU Проклятье</button>
-                         <button class="secondary-btn" onclick="window.triggerAdminAction('shadowClone')">Shadow Clone</button>
-                         <button class="secondary-btn" onclick="window.triggerAdminAction('ghostWhispers')">Шепот призраков</button>
-                         <button class="secondary-btn" onclick="window.triggerAdminAction('teleport')">Телепорт (Random)</button>
-                         <button class="secondary-btn" onclick="window.triggerAdminAction('thanosSnapROOM')">Clear Chat (Thanos)</button>
-                     </div>
-                </div>
                 </div>
 
                 <div class="godmode-section" data-section="rooms" style="display:grid; grid-template-columns:1fr; gap:16px;">
@@ -10642,6 +10667,12 @@ class AdminPanel {
                             <div id="admin-rooms-list" style="display:flex; flex-direction:column; gap:8px; max-height:280px; overflow:auto;"></div>
                         </div>
                         <div style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
+                            <div style="font-weight:700; margin-bottom:10px;">Быстрые действия (Rooms)</div>
+                            <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-bottom:16px;">
+                                <button class="danger-btn" id="btn-admin-delete-all-rooms">Удалить все комнаты</button>
+                                <button class="secondary-btn" id="btn-admin-purge-empty-rooms">Очистить пустые комнаты</button>
+                                <button class="secondary-btn" id="btn-admin-toggle-room-lock">Блокировать создание комнат</button>
+                            </div>
                             <div style="font-weight:700; margin-bottom:10px;">Управление комнатами</div>
                             <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-bottom:10px;">
                                 <input type="text" id="admin-room-action-id" placeholder="ID комнаты" style="margin:0; grid-column:1/-1;">
@@ -10672,6 +10703,25 @@ class AdminPanel {
                             </div>
                             <div id="admin-online-users" style="display:flex; flex-direction:column; gap:8px; max-height:380px; overflow:auto;"></div>
                         </div>
+                        <div style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02); margin-bottom:16px;">
+                            <div style="font-weight:700; margin-bottom:10px;">Ивенты (Выдача всем онлайн)</div>
+                            <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin-bottom:16px;">
+                                <div style="background:rgba(0,0,0,0.2); padding:12px; border-radius:12px;">
+                                    <div style="font-size:12px; margin-bottom:5px;">Ачивки (Выдать всем)</div>
+                                    <div style="display:flex; gap:8px;">
+                                        <input type="text" id="admin-event-badge-id" placeholder="ID ачивки" style="margin:0; flex:1;">
+                                        <button class="primary-btn" id="btn-admin-grant-event-badge" style="width:auto; padding:0 16px;">Выдать</button>
+                                    </div>
+                                </div>
+                                <div style="background:rgba(0,0,0,0.2); padding:12px; border-radius:12px;">
+                                    <div style="font-size:12px; margin-bottom:5px;">Рамки напрямую (Выдать всем)</div>
+                                    <div style="display:flex; gap:8px;">
+                                        <input type="text" id="admin-event-frame-url" class="admin-form-input" placeholder="Изображение рамки (URL)" style="margin:0; flex:1;">
+                                        <button class="primary-btn" onclick="CatalogManager.grantFrameMass()" style="width:auto; padding:0 16px;">Выдать</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02); min-width:0;">
@@ -10701,11 +10751,18 @@ class AdminPanel {
                                 <button class="secondary-btn" id="btn-admin-scan-inactive">Неактивные 30+ дней</button>
                                 <button class="secondary-btn" id="btn-admin-scan-duplicate-ip">Дубликаты IP</button>
                                 <button class="secondary-btn" id="btn-admin-bulk-shadowban">Bulk shadowban (список @id)</button>
-                                <button class="secondary-btn" id="btn-admin-force-verify-email">Force email verified</button>
-                                <button class="secondary-btn" id="btn-admin-reset-all-tutorials">Сбросить туториал всем</button>
+                                <button class="secondary-btn" id="btn-admin-force-verify-email">Force email</button>
+                                <button class="secondary-btn" id="btn-admin-reset-all-tutorials">Сбросить туториалы</button>
+                                <button class="secondary-btn" id="btn-admin-clear-dms">Удалить все ЛС</button>
+                                <button class="secondary-btn" id="btn-admin-unmute-unban-all">Снять mute/ban всем</button>
                             </div>
                             <textarea id="admin-bulk-usernames" rows="2" placeholder="@id через запятую или с новой строки" style="margin-top:8px; width:100%;"></textarea>
                             <div id="admin-people-tools-out" style="font-size:12px; color:var(--text-muted); margin-top:8px; max-height:140px; overflow:auto;"></div>
+                        </div>
+                        <div style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02); margin-top:16px;">
+                             <button class="secondary-btn" id="btn-admin-refresh">Обновить данные</button>
+                             <button class="secondary-btn" id="btn-admin-clear-user-editor" style="margin-left:8px;">Сбросить выбранного юзера</button>
+                             <button class="secondary-btn" id="btn-admin-export-snapshot" style="margin-top:8px;">Экспорт Snapshot</button>
                         </div>
                     </div>
                 </div>
@@ -13031,7 +13088,12 @@ class RoomManager {
     const track = Utils.$("room-theme-track");
     if (!toggleBtn || !carousel || !prevBtn || !nextBtn || !track) return;
 
-    toggleBtn.onclick = () => carousel.classList.toggle("active");
+    toggleBtn.onclick = () => {
+      if (toggleBtn.classList.contains("premium-locked-theme")) {
+        return window.Utils.toast("Смена темы доступна только с Premium!", "error");
+      }
+      carousel.classList.toggle("active");
+    };
     prevBtn.onclick = () => this.stepThemeCarousel(-1);
     nextBtn.onclick = () => this.stepThemeCarousel(1);
     track.onclick = (e) => {
@@ -14301,9 +14363,14 @@ class RoomManager {
           AdminPanel.isCreatorProfile(profile, uid);
         const roleBadgeHtml = ProfileManager.getRoleBadgeHtml(profile, uid);
 
-        let html = `<div class="user-item" data-uid="${uid}">`;
-        if (user.speaking)
-          html = `<div class="user-item speaking" data-uid="${uid}">`;
+        let html = `<div class="user-wrapper" style="margin-bottom:8px;">`;
+        let premiumStyle = "";
+        const isPremium = window.PremiumManager ? PremiumManager.isPremiumActive(profile, uid) : false;
+        if (isPremium) {
+            premiumStyle = `background: radial-gradient(circle at 20% 0%, rgba(255, 180, 60, 0.18), transparent 45%), radial-gradient(circle at 90% 100%, rgba(255, 120, 40, 0.12), transparent 40%), linear-gradient(145deg, rgba(24, 20, 14, 0.96), rgba(10, 10, 12, 0.98)); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 220, 140, 0.08); border: 1px solid rgba(255, 200, 100, 0.22);`;
+        }
+        let speakingClass = user.speaking ? " speaking" : "";
+        html += `<div class="user-item${speakingClass}" data-uid="${uid}" style="${premiumStyle}">`;
         html += `<div class="indicator online" style="margin-right:8px;"></div>`;
         html += `<div style="width:24px;height:24px;flex-shrink:0;margin-right:8px;border-radius:50%;">${ProfileManager.getAvatarHtml(profile)}</div>`;
         html += `<div class="user-main" style="flex:1;display:flex;align-items:center;gap:4px;"><span class="user-name profile-open-link room-user-profile-link" data-uid="${uid}">${Utils.escapeHtml(user.name)}</span>${roleBadgeHtml}<span class="voice-wave"><i></i><i></i><i></i><i></i></span></div>`;
@@ -15477,17 +15544,12 @@ class CatalogManager {
     const currentProf = uid ? AppState.usersCache.get(uid) : null;
     const catalogVisible =
       Utils.$("section-catalog")?.style?.display === "flex";
+    let hasAccess = true;
     if (
       window.PremiumManager &&
       !PremiumManager.hasCatalogAccess(currentProf, uid)
     ) {
-      if (!catalogVisible) return;
-      list.innerHTML = PremiumManager.renderCatalogLock();
-      list.querySelector("#catalog-unlock-premium-btn")?.addEventListener(
-        "click",
-        () => PremiumManager.openCatalogOrUpsell(),
-      );
-      return;
+      hasAccess = false;
     }
 
     let filtered = [...this.items];
@@ -15528,9 +15590,15 @@ class CatalogManager {
                     animation: catalogFadeIn 0.4s ease forwards;
                     box-shadow: 0 4px 8px rgba(0,0,0,0.2);
                 }
+                .catalog-card-wrapper.is-hot {
+                    box-shadow: 0 16px 44px rgba(255, 170, 60, 0.32), 0 0 0 1px rgba(255, 220, 140, 0.5) inset;
+                }
                 .catalog-card-wrapper:hover {
                     transform: translateY(-4px);
                     box-shadow: 0 12px 24px rgba(0,0,0,0.3);
+                }
+                .catalog-card-wrapper.is-hot:hover {
+                    box-shadow: 0 20px 50px rgba(255, 170, 60, 0.5), 0 0 0 2px rgba(255, 220, 140, 0.8) inset;
                 }
                 .catalog-card-inner {
                     background: rgba(17, 18, 20, 0.4);
@@ -15654,6 +15722,35 @@ class CatalogManager {
             `;
         })
         .join("");
+
+    if (!hasAccess && catalogVisible) {
+      if (Utils.$("section-catalog").querySelector(".catalog-locked-overlay")) return; // already added
+      const overlay = document.createElement("div");
+      overlay.className = "catalog-locked-overlay";
+      overlay.style = "position:absolute; inset:0; background:rgba(10,10,12,0.4); backdrop-filter:blur(12px); border-radius:20px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; z-index:50;";
+      overlay.innerHTML = `
+          <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width:64px;height:64px;margin-bottom:20px;animation:levitate 3s infinite ease-in-out;">
+          <h2 style="margin:0 0 10px;font-size:24px;">Каталог заблокирован</h2>
+          <p style="color:var(--text-muted);font-size:15px;margin-bottom:25px;max-width:350px;line-height:1.5;">Извините, но у вас нету доступа к просмотру и приобретению вещей из каталога.<br><br>Доступ имеют только подписчики Premium</p>
+          <button class="primary-btn" onclick="document.getElementById('nav-premium').click()" style="width:auto;padding:12px 28px;background:var(--accent);color:#fff;font-weight:800;font-size:15px; border-radius: 20px;">Приобрести Premium</button>
+      `;
+      Utils.$("section-catalog").appendChild(overlay);
+      const container = Utils.$("section-catalog").querySelector(".friends-container");
+      if (container) {
+          container.style.filter = "blur(8px)";
+          container.style.pointerEvents = "none";
+          container.style.userSelect = "none";
+      }
+    } else {
+      const existing = Utils.$("section-catalog")?.querySelector(".catalog-locked-overlay");
+      if (existing) existing.remove();
+      const container = Utils.$("section-catalog")?.querySelector(".friends-container");
+      if (container) {
+          container.style.filter = "";
+          container.style.pointerEvents = "";
+          container.style.userSelect = "";
+      }
+    }
   }
 
   static renderAdminCatalog() {

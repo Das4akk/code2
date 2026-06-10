@@ -56,6 +56,19 @@ async function activatePremium(admin, uid, paymentId, amountRub) {
 
   if (db) {
     await db.ref(`users/${uid}/profile/premium`).set(premium);
+    
+    // Auto-boost to level 10 (24000 XP) if below
+    try {
+      const xpSnap = await db.ref(`users/${uid}/profile/xp`).once("value");
+      const currentXp = Number(xpSnap.val()) || 0;
+      const level10Xp = 24000;
+      if (currentXp < level10Xp) {
+        await db.ref(`users/${uid}/profile/xp`).set(level10Xp);
+      }
+    } catch (e) {
+      console.error("[Premium] Failed to boost xp", e);
+    }
+
     await db.ref(`premium_orders/${paymentId || `manual_${uid}_${now}`}`).set({
       uid,
       status: "succeeded",

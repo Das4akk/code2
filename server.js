@@ -6,6 +6,7 @@ import rateLimit from 'express-rate-limit';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import { GoogleGenAI } from '@google/genai';
 import {
     CORS_ORIGIN,
     RATE_LIMIT_MAX,
@@ -247,6 +248,27 @@ app.get('/api/resolve-media', (req, res) => {
 });
 
 registerPremiumRoutes(app, admin);
+
+app.post('/api/ask-guide-ai', async (req, res) => {
+    try {
+        const { query, docs } = req.body;
+        if (!process.env.GEMINI_API_KEY) {
+            return res.status(500).json({ error: 'AI Assistant не настроен.' });
+        }
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        const prompt = `Ты дружелюбный ИИ-ассистент платформы COWIO. Ответь на вопрос пользователя, опираясь ТОЛЬКО на предоставленную ниже документацию из базы знаний. Будь краток и понятен. Если ответа нет в тексте, скажи, что не знаешь, и посоветуй написать в поддержку.\n\nБаза знаний:\n${docs}\n\nВопрос пользователя: ${query}`;
+        
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+        });
+        
+        res.json({ success: true, answer: response.text });
+    } catch (e) {
+        console.error('Ошибка AI:', e);
+        res.status(500).json({ error: 'Произошла ошибка при обращении к ИИ: ' + (e.message || e) });
+    }
+});
 
 const publicPath = __dirname;
 app.use(express.static(publicPath, { index: false })); // avoid index.html auto serving first if we want specific rules, or just allow it
