@@ -242,10 +242,10 @@ class HelpGuideManager {
          <h3 style="margin:0 0 16px; display:flex; align-items:center; gap:10px;">
            <img src="${topic.icon}" style="width:24px;height:24px;"> Контекстный ИИ-Ассистент
          </h3>
-         <div style="background:#ffffff; border:1px solid rgba(0,0,0,0.08); border-radius:14px; padding:16px; color:#111827; box-shadow:0 18px 40px rgba(0,0,0,0.18);">
-           <p style="font-size:13px; color:#4b5563; margin-bottom:15px;">Задайте свой вопрос, и я поищу ответ по всем разделам базы знаний COWIO.</p>
+         <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-light); border-radius:14px; padding:16px; color:var(--text-main); box-shadow:0 18px 40px rgba(0,0,0,0.3);">
+           <p style="font-size:13px; color:var(--text-muted); margin-bottom:15px;">Задайте свой вопрос, и я поищу ответ по всем разделам базы знаний COWIO.</p>
            <div class="help-ai-input-wrap">
-             <input type="text" id="help-ai-input" placeholder="Например: как поменять пароль?" class="text-input" style="flex:1; padding:12px; border-radius:8px; font-size:16px; background:#f9fafb; color:#111827; border:1px solid #d1d5db;" />
+             <input type="text" id="help-ai-input" placeholder="Например: как поменять пароль?" class="text-input" style="flex:1; padding:12px; border-radius:8px; font-size:16px; background:rgba(0,0,0,0.3); color:var(--text-main); border:1px solid var(--border-light);" />
              <button id="help-ai-send" class="primary-btn" style="width:auto; padding:10px 20px;">Спросить</button>
            </div>
          </div>
@@ -288,9 +288,9 @@ class HelpGuideManager {
             sendBtn.disabled = true;
             sendBtn.style.opacity = "0.75";
             answersBox.innerHTML = `
-              <div class="help-faq-item" style="border:1px solid rgba(0,0,0,0.08); border-radius:12px; padding:12px 14px; background:#ffffff; color:#111827; box-shadow:0 10px 28px rgba(0,0,0,0.14);" id="${ansId}">
-                <div style="font-weight:700; font-size:14px; color:#111827; margin-bottom:8px;">${Utils.escapeHtml(query)}</div>
-                <div class="ai-reply" style="font-size:13px; color:#1f2937; line-height:1.65;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width:16px;vertical-align:middle;"> ИИ думает...</div>
+              <div class="help-faq-item" style="border:1px solid var(--border-light); border-radius:12px; padding:12px 14px; background:rgba(255,255,255,0.03); color:var(--text-main); box-shadow:0 10px 28px rgba(0,0,0,0.2);" id="${ansId}">
+                <div style="font-weight:700; font-size:14px; color:var(--text-main); margin-bottom:8px;">${Utils.escapeHtml(query)}</div>
+                <div class="ai-reply" style="font-size:13px; color:var(--text-muted); line-height:1.65;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width:16px;vertical-align:middle;"> ИИ думает...</div>
               </div>` + answersBox.innerHTML;
               
             try {

@@ -91,6 +91,28 @@ const SettingSections = [
            localStorage.setItem('siteMonochrome', val);
            document.documentElement.style.filter = val ? 'grayscale(1)' : '';
         }
+      },
+      {
+        id: "site-set-zoom",
+        type: "slider",
+        title: "Масштаб страницы",
+        desc: "Изменяйте масштаб (50% - 200%)",
+        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Magnifying%20Glass%20Tilted%20Left.webp",
+        default: 100,
+        min: 50,
+        max: 200,
+        step: 1,
+        labelFn: (v) => v + "%",
+        onChange: (val) => {
+           localStorage.setItem('siteZoom', val);
+           const scale = Number(val) / 100;
+           document.documentElement.style.zoom = '';
+           document.body.style.zoom = '';
+           document.body.style.transformOrigin = 'top left';
+           document.body.style.transform = `scale(${scale})`;
+           document.body.style.width = `${100 / scale}%`;
+           document.body.style.height = `${100 / scale}%`;
+        }
       }
     ]
   },
@@ -197,10 +219,12 @@ function initSettingsRenderer() {
       if (item.id === 'site-settings-particle-brightness') saved = localStorage.getItem('siteParticleBrightness') || '1';
       if (item.id === 'site-settings-neuro') saved = localStorage.getItem('siteNeuro') || 'true';
       if (item.id === 'site-settings-static-emojis') saved = localStorage.getItem('staticEmojis') || 'false';
+      if (item.id === 'site-set-zoom') saved = localStorage.getItem('siteZoom') || '100';
 
       
       if (saved === null) saved = item.default;
       else if (item.type !== 'slider') saved = (saved === 'true');
+      else if (item.type === 'slider') saved = Number(saved);
 
       // Setup initialization for CSS rules
       try {
@@ -229,6 +253,11 @@ function initSettingsRenderer() {
           </label>
         `;
       } else if (item.type === 'slider') {
+        const min = item.min !== undefined ? item.min : 0;
+        const max = item.max !== undefined ? item.max : 1;
+        const step = item.step !== undefined ? item.step : 0.05;
+        const labelFn = item.labelFn || ((v) => Math.round(v * 100) + "%");
+        
         html += `
           <div style="padding: 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center;">
              <div style="display: flex; align-items: center; gap: 12px;">
@@ -237,10 +266,10 @@ function initSettingsRenderer() {
                </div>
                <div>
                  <div style="font-weight: 700; font-size: 15px;">${item.title}</div>
-                 <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">${item.desc}: <span id="${item.id}-val">${Math.round(saved * 100)}%</span></div>
+                 <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">${item.desc}: <span id="${item.id}-val">${labelFn(saved)}</span></div>
                </div>
              </div>
-             <input type="range" id="${item.id}" min="0" max="1" step="0.05" value="${saved}" style="width: 100px; accent-color: #fff; cursor: pointer;">
+             <input type="range" id="${item.id}" min="${min}" max="${max}" step="${step}" value="${saved}" style="width: 100px; accent-color: #fff; cursor: pointer;">
           </div>
         `;
       }
@@ -320,7 +349,8 @@ function initSettingsRenderer() {
           });
         } else if (item.type === 'slider') {
           el.addEventListener('input', (e) => {
-            document.getElementById(item.id + "-val").innerText = Math.round(e.target.value * 100) + "%";
+            const labelFn = item.labelFn || ((v) => Math.round(v * 100) + "%");
+            document.getElementById(item.id + "-val").innerText = labelFn(e.target.value);
             item.onChange(e.target.value);
           });
         }

@@ -129,6 +129,19 @@
           "theme-light-global",
           normalizedTheme === "light",
         ); // [NEW]
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            const zoom = localStorage.getItem("siteZoom");
+            if (zoom) {
+                const scale = Number(zoom) / 100;
+                document.documentElement.style.zoom = '';
+                document.body.style.zoom = '';
+                document.body.style.transformOrigin = 'top left';
+                document.body.style.transform = `scale(${scale})`;
+                document.body.style.width = `${100 / scale}%`;
+                document.body.style.height = `${100 / scale}%`;
+            }
+        });
       })(); // [NEW]
     </script>
     <style>
@@ -374,12 +387,16 @@
           sans-serif;
         -webkit-tap-highlight-color: transparent;
       }
+      html, body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
       body {
         background: var(--bg);
         color: var(--text-main);
         overflow: hidden;
-        height: 100dvh;
-        width: 100vw;
       }
       body.auth-loading {
         visibility: hidden;
@@ -708,8 +725,8 @@
       /* ========================================================= */
       .screen {
         display: none;
-        height: 100dvh;
-        width: 100vw;
+        height: 100%;
+        width: 100%;
         flex-direction: column;
         overflow: hidden;
       }
@@ -824,14 +841,12 @@
       /* LOBBY LAYOUT */
       /* ========================================================= */
       .lobby-layout {
-        display: grid;
-        grid-template-columns: 320px 1fr;
+        display: flex;
+        justify-content: space-between;
         gap: 20px;
         padding: 20px;
         flex: 1;
         min-height: 0;
-        max-width: 1600px;
-        margin: 0 auto;
         width: 100%;
         overflow-y: auto;
       }
@@ -841,6 +856,8 @@
         flex-direction: column;
         padding: 20px;
         overflow-y: hidden;
+        width: 320px;
+        flex-shrink: 0;
       }
       .sidebar::-webkit-scrollbar {
         width: 4px;
@@ -1112,6 +1129,12 @@
         flex-direction: column;
         gap: 20px;
         overflow: hidden;
+        flex: 1;
+        max-width: 1400px;
+        align-items: flex-end;
+      }
+      .rooms-main > * {
+        width: 100%;
       }
       .lobby-header {
         display: flex;
@@ -1364,7 +1387,7 @@
         grid-template-columns: 1fr 380px;
         gap: 20px;
         padding: 20px;
-        height: 100vh;
+        height: 100%;
         max-width: 1800px;
         margin: 0 auto;
         width: 100%;
@@ -1883,7 +1906,7 @@
         backdrop-filter: blur(8px);
         display: none;
         align-items: center;
-        justify-content: center;
+        justify-content: flex-end;
         z-index: 1000;
         padding: 20px;
         opacity: 0;
@@ -1894,11 +1917,11 @@
         opacity: 1;
       }
       .modal-content {
-        width: min(440px, calc(100vw - 32px));
+        width: min(440px, calc(100% - 32px));
         padding: 24px;
         transform: translateY(20px) scale(0.95);
         transition: 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        max-height: calc(100dvh - 32px);
+        max-height: calc(100% - 32px);
         overflow-y: auto;
         background: var(--panel);
         border: 1px solid var(--border-light);
@@ -2609,9 +2632,9 @@
 
       /* DM Modal specific */
       .dm-modal-content {
-        width: 100vw !important;
+        width: 100% !important;
         max-width: none !important;
-        height: 100dvh !important;
+        height: 100% !important;
         display: grid;
         grid-template-columns: 320px 1fr;
         gap: 0;
@@ -3725,7 +3748,7 @@
 
         .support-grid-layout {
           grid-template-columns: 1fr !important;
-          height: calc(100dvh - 70px) !important;
+          height: calc(100% - 70px) !important;
         }
         .support-grid-layout.chat-active .support-sidebar {
           display: none !important;
@@ -3785,7 +3808,7 @@
         .room-layout {
           grid-template-columns: 1fr;
           padding: env(safe-area-inset-top) 8px env(safe-area-inset-bottom) 8px;
-          height: 100dvh;
+          height: 100%;
           display: flex;
           flex-direction: column;
         }
@@ -4026,8 +4049,8 @@
         #auth-screen {
           flex-direction: row;
           align-items: stretch;
-          width: 100vw;
-          height: 100vh;
+          width: 100%;
+          height: 100%;
           overflow: hidden;
           background: transparent;
           z-index: 2;
@@ -4047,7 +4070,7 @@
             border-top: none !important;
             max-width: 100% !important;
             overflow-y: auto !important;
-            height: 100dvh;
+            height: 100%;
             padding: 20px !important;
           }
         }
@@ -4711,13 +4734,7 @@
               />
               Выйти из аккаунта
             </button>
-            <div id="legal-footer-links" style="margin-top: 5px; display: flex; flex-direction: column; gap: 4px; font-size: 11px; text-align: left; padding: 5px 10px;">
-                <a href="#" onclick="openLegalModal('contacts')" style="color: var(--text-muted); opacity: 0.7; text-decoration: none;">Контакты и реквизиты</a>
-                <a href="#" onclick="openLegalModal('delivery')" style="color: var(--text-muted); opacity: 0.7; text-decoration: none;">Условия доставки</a>
-                <a href="#" onclick="openLegalModal('refund')" style="color: var(--text-muted); opacity: 0.7; text-decoration: none;">Условия возврата</a>
-                <a href="#" onclick="openLegalModal('privacy')" style="color: var(--text-muted); opacity: 0.7; text-decoration: none;">Политика конфиденциальности</a>
-                <a href="#" onclick="openLegalModal('offer')" style="color: var(--text-muted); opacity: 0.7; text-decoration: none;">Договор оферты</a>
-            </div>
+            
           </div>
         </aside>
 
@@ -6569,7 +6586,7 @@
     <div class="modal" id="modal-room">
       <div
         class="modal-content glass-panel"
-        style="width: min(560px, calc(100vw - 32px)); max-width: 560px"
+        style="width: min(560px, calc(100% - 32px)); max-width: 560px"
       >
         <div class="modal-drag-handle"></div>
         <h2 id="room-modal-title">
@@ -6735,7 +6752,7 @@
         id="modal-catalog-content-panel"
         style="
           width: 420px;
-          max-width: calc(100vw - 32px);
+          max-width: calc(100% - 32px);
           padding: 0;
           border-radius: 20px;
           overflow: hidden;
@@ -7221,7 +7238,7 @@
 
       .mystery-event-shell {
           position: relative;
-          min-height: min(640px, calc(100vh - 120px));
+          min-height: min(640px, calc(100% - 120px));
           width: min(920px, 100%);
           margin: 0 auto;
           overflow: hidden;
