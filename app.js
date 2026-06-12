@@ -5206,8 +5206,8 @@ class AuthManager {
           DirectMessages.startNotifications();
           AdminPanel.init();
           if (window.SupportSystem) window.SupportSystem.initGlobalListener();
-          if (window.ShopController) window.ShopController.loadShop();
           if (window.AdminSoundManager) window.AdminSoundManager.initAdmin();
+          if (Utils.$("nav-rooms")) Utils.$("nav-rooms").click();
           this.bindGlobalPresence();
         } else {
           this.handleLogoutCleanup();
@@ -9760,7 +9760,7 @@ class SupportSystem {
             ? '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/White%20Circle.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> В работе'
             : '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Circle.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Закрыт';
           let priorityHtml = t.priority
-            ? `<span style="margin-left:8px;font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.1);color:#fff;">${t.priority}</span>`
+            ? `<span class="ticket-priority-label" style="margin-left:8px;font-size:10px;padding:2px 6px;border-radius:4px;background:var(--button-secondary-bg, rgba(100,100,100,0.3));color:inherit;">${t.priority}</span>`
             : "";
           if (t.isPremium) {
               priorityHtml = `<span style="margin-left:8px;font-size:10px;padding:2px 6px;border-radius:4px;background:linear-gradient(135deg,#ffaa00,#ff4400);color:#fff;box-shadow:0 0 8px rgba(255,170,0,0.5);font-weight:bold;">${t.priority || "Premium"}</span>`;
@@ -9793,7 +9793,7 @@ class SupportSystem {
                            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${titleStr}${premiumMark}</span>
                            ${unreadDot}
                         </div>
-                        <div class="dm-chat-last-msg" style="display:flex;align-items:center;">${statusText}${isAdmin ? priority : ""}</div>
+                        <div class="dm-chat-last-msg" style="display:flex;align-items:center;">${statusText}${isAdmin ? priorityHtml : ""}</div>
                     </div>
                 </div>`;
         })

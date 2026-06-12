@@ -174,6 +174,20 @@ class HelpGuideManager {
     modal.className = "modal";
     modal.id = "modal-help-guide";
     modal.innerHTML = `
+      <style>
+        .help-guide-layout { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+        .help-guide-nav-area { width: 200px; flex-shrink: 0; border-right: 1px solid var(--border-light); overflow-y: auto; padding: 10px; }
+        .help-guide-body-area { flex: 1; overflow-y: auto; padding: 18px 22px; }
+        .help-ai-input-wrap { display: flex; gap: 10px; }
+        @media (max-width: 768px) {
+          .help-guide-layout { flex-direction: column; }
+          .help-guide-nav-area { width: 100%; border-right: none; border-bottom: 1px solid var(--border-light); display: flex; flex-wrap: nowrap; overflow-x: auto; padding: 10px 10px 5px; min-height: 60px; }
+          .help-guide-nav-area .help-topic-btn { flex-shrink: 0; white-space: nowrap; margin-bottom: 0; margin-right: 8px; width: auto !important; }
+          .help-guide-body-area { padding: 14px 16px; }
+          .help-ai-input-wrap { flex-direction: column; }
+          .help-ai-input-wrap button { width: 100% !important; padding: 12px !important; }
+        }
+      </style>
       <div class="modal-content glass-panel" style="width:min(720px,96vw); max-height:90vh; display:flex; flex-direction:column; padding:0; overflow:hidden;">
         <div style="padding:20px 22px 12px; border-bottom:1px solid var(--border-light); display:flex; justify-content:space-between; align-items:center; gap:12px;">
           <div style="display:flex; align-items:center; gap:10px;">
@@ -185,9 +199,9 @@ class HelpGuideManager {
           </div>
           <button class="secondary-btn" id="btn-close-help-guide" style="width:auto; padding:8px 12px;">✕</button>
         </div>
-        <div style="display:flex; flex:1; min-height:0; overflow:hidden;">
-          <div id="help-guide-nav" style="width:200px; flex-shrink:0; border-right:1px solid var(--border-light); overflow-y:auto; padding:10px;"></div>
-          <div id="help-guide-body" style="flex:1; overflow-y:auto; padding:18px 22px;"></div>
+        <div class="help-guide-layout">
+          <div id="help-guide-nav" class="help-guide-nav-area"></div>
+          <div id="help-guide-body" class="help-guide-body-area"></div>
         </div>
         <div style="padding:12px 22px; border-top:1px solid var(--border-light); display:flex; gap:10px; flex-wrap:wrap;">
           <button class="primary-btn" id="btn-help-support-chat" style="width:auto; flex:1; min-width:180px;">Написать в поддержку</button>
@@ -230,9 +244,9 @@ class HelpGuideManager {
          </h3>
          <div style="background:#ffffff; border:1px solid rgba(0,0,0,0.08); border-radius:14px; padding:16px; color:#111827; box-shadow:0 18px 40px rgba(0,0,0,0.18);">
            <p style="font-size:13px; color:#4b5563; margin-bottom:15px;">Задайте свой вопрос, и я поищу ответ по всем разделам базы знаний COWIO.</p>
-           <div style="display:flex; gap:10px;">
-             <input type="text" id="help-ai-input" placeholder="Например: как поменять пароль?" class="text-input" style="flex:1; padding:10px; border-radius:8px; font-size:14px; background:#f9fafb; color:#111827; border:1px solid #d1d5db;" />
-             <button id="help-ai-send" class="primary-btn" style="width:auto; padding:0 20px;">Спросить</button>
+           <div class="help-ai-input-wrap">
+             <input type="text" id="help-ai-input" placeholder="Например: как поменять пароль?" class="text-input" style="flex:1; padding:12px; border-radius:8px; font-size:16px; background:#f9fafb; color:#111827; border:1px solid #d1d5db;" />
+             <button id="help-ai-send" class="primary-btn" style="width:auto; padding:10px 20px;">Спросить</button>
            </div>
          </div>
          <div id="help-ai-answers" style="margin-top:20px; display:flex; flex-direction:column; gap:12px;"></div>

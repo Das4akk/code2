@@ -543,25 +543,31 @@ class PremiumManager {
   static checkReturnFromPayment() {
     const params = new URLSearchParams(window.location.search);
     if (!params.get("premium_return")) return;
+    const uidOverride = params.get("uid") || AppState?.currentUser?.uid || "";
     sessionStorage.setItem(
       "cowio_premium_return_uid",
-      params.get("uid") || AppState?.currentUser?.uid || "",
+      JSON.stringify({ uid: uidOverride, ts: Date.now() })
     );
     window.history.replaceState({}, "", window.location.pathname);
     if (AppState?.currentUser) this.handlePostLoginReturn();
   }
 
   static handlePostLoginReturn() {
-    const uid =
-      sessionStorage.getItem("cowio_premium_return_uid") ||
-      AppState?.currentUser?.uid;
-    if (!uid || !AppState?.currentUser) return;
+    let data;
+    try {
+      data = JSON.parse(sessionStorage.getItem("cowio_premium_return_uid"));
+    } catch(e) {}
+    
+    if (!data || !data.uid || !AppState?.currentUser || data.uid !== AppState.currentUser.uid || Date.now() - data.ts > 60000) {
+      sessionStorage.removeItem("cowio_premium_return_uid");
+      return;
+    }
     sessionStorage.removeItem("cowio_premium_return_uid");
 
     if (window.Utils?.showScreen) Utils.showScreen("lobby-screen");
     setTimeout(async () => {
       document.getElementById("nav-premium")?.click();
-      await this.refreshStatus(uid);
+      await this.refreshStatus(data.uid);
     }, 800);
   }
 
