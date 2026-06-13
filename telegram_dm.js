@@ -7,6 +7,8 @@ const TELEGRAM_CSS = `
 .dm-modal-content {
     background: #0e1621 !important; /* Base Telegram Dark Blue */
     color: #f5f5f5;
+    border-radius: 16px !important;
+    overflow: hidden !important;
 }
 .dm-sidebar {
     background: #17212b !important;
@@ -257,8 +259,47 @@ DirectMessages.openChat = function(targetUid, targetName) {
         
         // Attach clip goes to standard media picker
         document.getElementById("tg-btn-clip").onclick = () => {
-            const picker = document.getElementById("dm-media-picker");
-            if(picker) picker.style.display = picker.style.display === "none" ? "flex" : "none";
+            const inputImg = document.createElement("input");
+            inputImg.type = "file";
+            inputImg.accept = "image/*";
+            inputImg.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                Utils.toast("Обработка картинки...", "info");
+                const reader = new FileReader();
+                reader.onload = (re) => {
+                    const img = new Image();
+                    img.onload = async () => {
+                        const canvas = document.createElement("canvas");
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        canvas.getContext("2d").drawImage(img, 0, 0);
+                        const compressedBase64 = canvas.toDataURL("image/jpeg", 0.6);
+                        
+                        const myName = AppState.usersCache.get(AppState.currentUser.uid)?.name || AppState.currentUser.displayName || "User";
+                        const chatId = AppState.currentDirectChat.id;
+                        const targetUid = AppState.currentDirectChat.uid;
+                        
+                        const payload = {
+                            type: "media",
+                            fromUid: AppState.currentUser.uid,
+                            fromName: myName,
+                            url: compressedBase64,
+                            ts: Date.now()
+                        };
+                        
+                        await push(ref(window.firebaseDatabase.db, `direct-messages/${chatId}/messages`), payload);
+                        await update(ref(window.firebaseDatabase.db, `direct-messages/${chatId}`), {
+                            participants: { [AppState.currentUser.uid]: true, [targetUid]: true },
+                            lastMessage: { text: "Картинка", ts: Date.now() },
+                            updatedAt: Date.now()
+                        });
+                    }
+                    img.src = re.target.result;
+                }
+                reader.readAsDataURL(file);
+            }
+            inputImg.click();
         };
         
         // Emulate sticker open (just shows gifs)
@@ -417,8 +458,19 @@ DirectMessages.renderMessages = function(messages) {
         window._curMessagesMap[m.id] = m;
       
         const isSelf = m.fromUid === AppState.currentUser.uid;
+        let dateHeaderHtml = "";
+        
+        if (m.type !== "system") {
+            const dateObj = new Date(m.ts);
+            const dateStr = dateObj.toLocaleDateString();
+            if (dateStr !== window._lastDateStr) {
+                dateHeaderHtml = `\n<div style="text-align:center; margin: 15px 0;"><span style="background:rgba(255,255,255,0.1); padding:4px 12px; border-radius:12px; font-size:12px; color:var(--text-muted);">${dateStr}</span></div>\n`;
+                window._lastDateStr = dateStr;
+            }
+        }
+        
         if (m.type === "system") {
-          return \`<div class="sys-msg">\${Utils.escapeHtml(m.fromName || "Пользователь")} \${Utils.escapeHtml(m.text || "")}</div>\`;
+          return dateHeaderHtml + \`<div class="sys-msg">\${Utils.escapeHtml(m.fromName || "Пользователь")} \${Utils.escapeHtml(m.text || "")}</div>\`;
         }
         
         let replyHtml = "";
@@ -430,6 +482,8 @@ DirectMessages.renderMessages = function(messages) {
                </div>
             \`;
         }
+        
+
 
         let reactionsHtml = "";
         if (m.reactions) {
@@ -450,6 +504,20 @@ DirectMessages.renderMessages = function(messages) {
         const timestamp = new Date(m.ts).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
         const editedStr = m.isEdited ? "изменено" : "";
 
+        if (m.type === "invite") {
+            return `
+                <div class="m-line ${isSelf ? "self" : ""}" id="msg-${m.id}">
+                    <div class="tg-bubble" style="border: 1px solid var(--accent); background: rgba(46,213,115,0.1);" oncontextmenu="DirectMessages.showContextMenu(event, window._curMessagesMap['${m.id}'])">
+                        <div style="font-weight:bold; margin-bottom:5px;">Привет! Заходи к нам:</div>
+                        <div style="font-size: 16px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Television.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> ${Utils.escapeHtml(m.roomName)}</div>
+                        <div style="font-size: 12px; opacity:0.8; margin-bottom:8px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Зрителей: ${m.membersCount || 1}</div>
+                        ${!isSelf ? `<button class="primary-btn" style="width:100%; border-radius:8px; padding:8px;" onclick="window.RoomManager.joinRoom('${m.roomId}')">Присоединиться</button>` : ''}
+                        <div class="tg-time">${timestamp}</div>
+                    </div>
+                </div>
+            `;
+        }
+
         if (m.type === "file" || m.type === "gif" || m.type === "media" || m.url) {
           const isImg =
             m.type === "gif" ||
@@ -457,7 +525,7 @@ DirectMessages.renderMessages = function(messages) {
             String(m.url).match(/tenor\\.com|giphy\\.com|imgur\\.com/i) ||
             String(m.url).startsWith("data:image/");
             
-          return \`
+          return dateHeaderHtml + \`
             <div class="m-line \${isSelf ? "self" : ""}" id="msg-\${m.id}">
                 <div class="tg-bubble" oncontextmenu="DirectMessages.showContextMenu(event, window._curMessagesMap['\${m.id}'])">
                     \${replyHtml}
@@ -469,7 +537,7 @@ DirectMessages.renderMessages = function(messages) {
           \`;
         }
 
-        return \`
+        return dateHeaderHtml + \`
             <div class="m-line \${isSelf ? "self" : ""}" id="msg-\${m.id}">
                 <div class="tg-bubble" oncontextmenu="DirectMessages.showContextMenu(event, window._curMessagesMap['\${m.id}'])">
                     \${replyHtml}

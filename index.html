@@ -8,116 +8,146 @@
     />
     <title>COWIO - Online Cinema Together</title>
     <!-- // [NEW] THEME PERSISTENCE BOOTSTRAP -->
-<script>
+    <script>
       let emojiMap = {};
-      fetch('/generated_emojis.json').then(r=>r.json()).then(d=>{
-          emojiMap=d;
-          if (localStorage.getItem("staticEmojis") === "true") toggleStaticEmojis(true);
-      });
+      fetch("/generated_emojis.json")
+        .then((r) => r.json())
+        .then((d) => {
+          emojiMap = d;
+          if (localStorage.getItem("staticEmojis") === "true")
+            toggleStaticEmojis(true);
+        });
 
       const applyStaticEmoji = (img) => {
-         if (localStorage.getItem("staticEmojis") !== "true") return;
-         if (img.dataset.staticApplied) return;
-         const urlOriginal = img.src.replace('.png', '.webp');
-         const emojiStr = emojiMap[urlOriginal] || '✨';
-         
-         const span = document.createElement('span');
-         span.textContent = emojiStr;
-         span.className = "static-emoji-text";
-         span.style.fontSize = img.style.height || "1.2em";
-         span.style.verticalAlign = "bottom";
-         span.dataset.originalSrc = urlOriginal;
-         
-         img.style.display = 'none';
-         img.dataset.staticApplied = "true";
-         img.parentNode.insertBefore(span, img.nextSibling);
+        if (localStorage.getItem("staticEmojis") !== "true") return;
+        if (img.dataset.staticApplied) return;
+        const urlOriginal = img.src.replace(".png", ".webp");
+        const emojiStr = emojiMap[urlOriginal] || "✨";
+
+        const span = document.createElement("span");
+        span.textContent = emojiStr;
+        span.className = "static-emoji-text";
+        span.style.fontSize = img.style.height || "1.2em";
+        span.style.verticalAlign = "bottom";
+        span.dataset.originalSrc = urlOriginal;
+
+        img.style.display = "none";
+        img.dataset.staticApplied = "true";
+        img.parentNode.insertBefore(span, img.nextSibling);
       };
 
       const revertStaticEmoji = (img) => {
-         img.style.display = '';
-         delete img.dataset.staticApplied;
-         if (img.nextSibling && img.nextSibling.className === "static-emoji-text") {
-            img.parentNode.removeChild(img.nextSibling);
-         }
+        img.style.display = "";
+        delete img.dataset.staticApplied;
+        if (
+          img.nextSibling &&
+          img.nextSibling.className === "static-emoji-text"
+        ) {
+          img.parentNode.removeChild(img.nextSibling);
+        }
       };
 
       function toggleStaticEmojis(enabled) {
         localStorage.setItem("staticEmojis", enabled ? "true" : "false");
-        const imgs = document.querySelectorAll('img[src*="Telegram-Animated-Emojis"]');
+        const imgs = document.querySelectorAll(
+          'img[src*="Telegram-Animated-Emojis"]',
+        );
         if (enabled) {
-            imgs.forEach(applyStaticEmoji);
+          imgs.forEach(applyStaticEmoji);
         } else {
-            imgs.forEach(revertStaticEmoji);
+          imgs.forEach(revertStaticEmoji);
         }
       }
 
-      window.toggleSiteParticlesSetting = function(enabled) {
-         localStorage.setItem('siteParticles', enabled ? 'true' : 'false');
-         const canvas = document.getElementById('particle-canvas');
-         if (canvas) canvas.style.setProperty('display', enabled ? 'block' : 'none', 'important');
-      };
-      
-      window.updateParticleBrightness = function(value) {
-         localStorage.setItem('siteParticleBrightness', value);
-         const canvas = document.getElementById('particle-canvas');
-         if (canvas) canvas.style.setProperty('opacity', value);
+      window.toggleSiteParticlesSetting = function (enabled) {
+        localStorage.setItem("siteParticles", enabled ? "true" : "false");
+        const canvas = document.getElementById("particle-canvas");
+        if (canvas)
+          canvas.style.setProperty(
+            "display",
+            enabled ? "block" : "none",
+            "important",
+          );
       };
 
-      window.toggleSiteNeuroSetting = function(enabled) {
-         localStorage.setItem('siteNeuro', enabled ? 'true' : 'false');
-         const bg = document.getElementById('premium-black-bg');
-         if (bg) bg.style.setProperty('display', enabled ? 'block' : 'none', 'important');
+      window.updateParticleBrightness = function (value) {
+        localStorage.setItem("siteParticleBrightness", value);
+        const canvas = document.getElementById("particle-canvas");
+        if (canvas) canvas.style.setProperty("opacity", value);
+      };
+
+      window.toggleSiteNeuroSetting = function (enabled) {
+        localStorage.setItem("siteNeuro", enabled ? "true" : "false");
+        const bg = document.getElementById("premium-black-bg");
+        if (bg)
+          bg.style.setProperty(
+            "display",
+            enabled ? "block" : "none",
+            "important",
+          );
       };
 
       document.addEventListener("DOMContentLoaded", () => {
-         if (localStorage.getItem("staticEmojis") === "true") {
-            const seCheckbox = document.getElementById("site-settings-static-emojis");
-            if (seCheckbox) seCheckbox.checked = true;
-         }
-         
-         const pVal = localStorage.getItem('siteParticles');
-         if (pVal === 'false') {
-             const cb = document.getElementById('site-settings-particle');
-             if (cb) cb.checked = false;
-             const canvas = document.getElementById('particle-canvas');
-             if (canvas) canvas.style.setProperty('display', 'none', 'important');
-         }
+        if (localStorage.getItem("staticEmojis") === "true") {
+          const seCheckbox = document.getElementById(
+            "site-settings-static-emojis",
+          );
+          if (seCheckbox) seCheckbox.checked = true;
+        }
 
-         const pBright = localStorage.getItem('siteParticleBrightness');
-         if (pBright !== null) {
-            const cbBright = document.getElementById('site-settings-particle-brightness');
-            if (cbBright) cbBright.value = pBright;
-            const cbBrightVal = document.getElementById('particle-brightness-val');
-            if (cbBrightVal) cbBrightVal.innerText = Math.round(Number(pBright) * 100) + '%';
-            const canvas = document.getElementById('particle-canvas');
-            if (canvas) canvas.style.setProperty('opacity', pBright);
-         }
+        const pVal = localStorage.getItem("siteParticles");
+        if (pVal === "false") {
+          const cb = document.getElementById("site-settings-particle");
+          if (cb) cb.checked = false;
+          const canvas = document.getElementById("particle-canvas");
+          if (canvas) canvas.style.setProperty("display", "none", "important");
+        }
 
-         const nVal = localStorage.getItem('siteNeuro');
-         if (nVal === 'false') {
-             const cb = document.getElementById('site-settings-neuro');
-             if (cb) cb.checked = false;
-             const bg = document.getElementById('premium-black-bg');
-             if (bg) bg.style.setProperty('display', 'none', 'important');
-         }
-         
-         const observer = new MutationObserver(mutations => {
-            if (localStorage.getItem("staticEmojis") !== "true") return;
-            mutations.forEach(m => {
-                if (m.type === 'childList') {
-                    m.addedNodes.forEach(node => {
-                        if (node.nodeName === 'IMG' && node.src.includes('Telegram-Animated-Emojis')) {
-                            applyStaticEmoji(node);
-                        } else if (node.querySelectorAll) {
-                            node.querySelectorAll('img[src*="Telegram-Animated-Emojis"]').forEach(applyStaticEmoji);
-                        }
-                    });
+        const pBright = localStorage.getItem("siteParticleBrightness");
+        if (pBright !== null) {
+          const cbBright = document.getElementById(
+            "site-settings-particle-brightness",
+          );
+          if (cbBright) cbBright.value = pBright;
+          const cbBrightVal = document.getElementById(
+            "particle-brightness-val",
+          );
+          if (cbBrightVal)
+            cbBrightVal.innerText = Math.round(Number(pBright) * 100) + "%";
+          const canvas = document.getElementById("particle-canvas");
+          if (canvas) canvas.style.setProperty("opacity", pBright);
+        }
+
+        const nVal = localStorage.getItem("siteNeuro");
+        if (nVal === "false") {
+          const cb = document.getElementById("site-settings-neuro");
+          if (cb) cb.checked = false;
+          const bg = document.getElementById("premium-black-bg");
+          if (bg) bg.style.setProperty("display", "none", "important");
+        }
+
+        const observer = new MutationObserver((mutations) => {
+          if (localStorage.getItem("staticEmojis") !== "true") return;
+          mutations.forEach((m) => {
+            if (m.type === "childList") {
+              m.addedNodes.forEach((node) => {
+                if (
+                  node.nodeName === "IMG" &&
+                  node.src.includes("Telegram-Animated-Emojis")
+                ) {
+                  applyStaticEmoji(node);
+                } else if (node.querySelectorAll) {
+                  node
+                    .querySelectorAll('img[src*="Telegram-Animated-Emojis"]')
+                    .forEach(applyStaticEmoji);
                 }
-            });
-         });
-         observer.observe(document.body, { childList: true, subtree: true });
+              });
+            }
+          });
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
       });
-</script>
+    </script>
     <script>
       // [NEW] Applies saved lobby theme before the first UI paint.
       (() => {
@@ -129,18 +159,9 @@
           "theme-light-global",
           normalizedTheme === "light",
         ); // [NEW]
-        
-        document.addEventListener('DOMContentLoaded', () => {
-            const zoom = localStorage.getItem("siteZoom");
-            if (zoom) {
-                const scale = Number(zoom) / 100;
-                document.documentElement.style.zoom = '';
-                document.body.style.zoom = '';
-                document.body.style.transformOrigin = 'top left';
-                document.body.style.transform = `scale(${scale})`;
-                document.body.style.width = `${100 / scale}%`;
-                document.body.style.height = `${100 / scale}%`;
-            }
+
+        document.addEventListener("DOMContentLoaded", () => {
+          // zoom logic removed
         });
       })(); // [NEW]
     </script>
@@ -387,7 +408,8 @@
           sans-serif;
         -webkit-tap-highlight-color: transparent;
       }
-      html, body {
+      html,
+      body {
         width: 100%;
         height: 100%;
         margin: 0;
@@ -515,7 +537,10 @@
           box-shadow 0.35s ease,
           filter 0.35s ease;
       }
-      button:focus, input:focus, a:focus, textarea:focus {
+      button:focus,
+      input:focus,
+      a:focus,
+      textarea:focus {
         outline: none !important;
         box-shadow: none !important;
       }
@@ -530,7 +555,7 @@
         background: transparent !important;
         color: #fff !important;
       }
-      
+
       .st-switch {
         position: relative;
         display: inline-block;
@@ -546,11 +571,14 @@
       .st-slider {
         position: absolute;
         cursor: pointer;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background-color: rgba(255,255,255,0.1);
-        transition: .3s;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(255, 255, 255, 0.1);
+        transition: 0.3s;
         border-radius: 24px;
-        border: 1px solid rgba(255,255,255,0.1);
+        border: 1px solid rgba(255, 255, 255, 0.1);
       }
       .st-slider:before {
         position: absolute;
@@ -560,7 +588,7 @@
         left: 2px;
         bottom: 2px;
         background-color: #fff;
-        transition: .3s;
+        transition: 0.3s;
         border-radius: 50%;
       }
       input:checked + .st-slider {
@@ -671,10 +699,10 @@
         background: #0a0a0a;
         box-shadow: 0 0 0 2px rgba(46, 213, 115, 0.15);
       }
-      
+
       input:-webkit-autofill,
-      input:-webkit-autofill:hover, 
-      input:-webkit-autofill:focus, 
+      input:-webkit-autofill:hover,
+      input:-webkit-autofill:focus,
       textarea:-webkit-autofill,
       textarea:-webkit-autofill:hover,
       textarea:-webkit-autofill:focus {
@@ -1287,8 +1315,8 @@
         font-family: monospace;
         font-weight: 800;
         border-radius: 12px;
-        background: rgba(0,0,0,0.4);
-        border: 2px solid rgba(255,255,255,0.15);
+        background: rgba(0, 0, 0, 0.4);
+        border: 2px solid rgba(255, 255, 255, 0.15);
         color: #fff;
         padding: 0;
         margin: 0;
@@ -1296,7 +1324,7 @@
       .reg-code-digit:focus {
         border-color: #fff;
         outline: none;
-        box-shadow: 0 0 12px rgba(255,255,255,0.25);
+        box-shadow: 0 0 12px rgba(255, 255, 255, 0.25);
       }
       #lobby-help-fab {
         position: fixed;
@@ -1306,20 +1334,23 @@
         width: 48px;
         height: 48px;
         border-radius: 50%;
-        border: 1px solid rgba(255,255,255,0.14);
-        background: rgba(12,12,14,0.88);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: rgba(12, 12, 14, 0.88);
         backdrop-filter: blur(14px);
         cursor: pointer;
         display: none;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 4px 18px rgba(0,0,0,0.35);
-        transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+        transition:
+          border-color 0.2s,
+          box-shadow 0.2s,
+          background 0.2s;
       }
       #lobby-help-fab:hover {
-        border-color: rgba(255,255,255,0.32);
-        box-shadow: 0 6px 22px rgba(0,0,0,0.45);
-        background: rgba(18,18,22,0.94);
+        border-color: rgba(255, 255, 255, 0.32);
+        box-shadow: 0 6px 22px rgba(0, 0, 0, 0.45);
+        background: rgba(18, 18, 22, 0.94);
       }
       #lobby-help-fab:active {
         transform: none;
@@ -1736,8 +1767,12 @@
         }
       }
       @keyframes pulseOpacity {
-        0% { opacity: 0.5; }
-        100% { opacity: 1; }
+        0% {
+          opacity: 0.5;
+        }
+        100% {
+          opacity: 1;
+        }
       }
 
       .send-btn {
@@ -1906,7 +1941,7 @@
         backdrop-filter: blur(8px);
         display: none;
         align-items: center;
-        justify-content: flex-end;
+        justify-content: center;
         z-index: 1000;
         padding: 20px;
         opacity: 0;
@@ -4017,8 +4052,12 @@
         pointer-events: auto !important;
       }
       @keyframes tutorialPulse {
-        0% { opacity: 1; }
-        100% { opacity: 0.7; }
+        0% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0.7;
+        }
       }
     </style>
     <meta name="lava-verify" content="b588132fc91334f7" />
@@ -4055,7 +4094,7 @@
           background: transparent;
           z-index: 2;
         }
-        
+
         @media (max-width: 768px) {
           #auth-screen {
             flex-direction: column;
@@ -4128,9 +4167,15 @@
           backdrop-filter: blur(10px);
         }
 
-        .auth-feature-item:nth-child(1) { animation-delay: 0.2s; }
-        .auth-feature-item:nth-child(2) { animation-delay: 0.3s; }
-        .auth-feature-item:nth-child(3) { animation-delay: 0.4s; }
+        .auth-feature-item:nth-child(1) {
+          animation-delay: 0.2s;
+        }
+        .auth-feature-item:nth-child(2) {
+          animation-delay: 0.3s;
+        }
+        .auth-feature-item:nth-child(3) {
+          animation-delay: 0.4s;
+        }
 
         .auth-feature-item:hover {
           background: rgba(255, 255, 255, 0.08);
@@ -4142,8 +4187,14 @@
         }
 
         @keyframes slideUpFade {
-          from { opacity: 0; transform: translateY(30px); }
-          to { opacity: 1; transform: translateY(0); }
+          from {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
 
         .auth-right {
@@ -4161,9 +4212,10 @@
           pointer-events: auto;
           overflow-y: auto;
         }
-        
-        .auth-right::before, .auth-right::after {
-          content: '';
+
+        .auth-right::before,
+        .auth-right::after {
+          content: "";
           margin: auto;
         }
 
@@ -4210,17 +4262,17 @@
           color: white;
           border-color: rgba(255, 255, 255, 0.2);
         }
-        
+
         .auth-form-new {
           display: none;
           flex-direction: column;
           gap: 20px;
         }
-        
+
         .auth-form-new.active-form {
           display: flex;
         }
-        
+
         .form-group-new {
           display: flex;
           flex-direction: column;
@@ -4232,7 +4284,7 @@
           color: #999;
           font-weight: 500;
         }
-        
+
         .auth-input-wrapper {
           position: relative;
           display: flex;
@@ -4249,7 +4301,7 @@
           pointer-events: none;
           filter: grayscale(0.5);
         }
-        
+
         .auth-pass-eye {
           position: absolute;
           right: 14px;
@@ -4282,7 +4334,7 @@
           box-sizing: border-box;
         }
         .form-group-new input[type="password"] {
-            padding-right: 44px;
+          padding-right: 44px;
         }
 
         .form-group-new input:focus {
@@ -4291,12 +4343,12 @@
         }
 
         .form-group-new input:-webkit-autofill,
-        .form-group-new input:-webkit-autofill:hover, 
-        .form-group-new input:-webkit-autofill:focus, 
-        .form-group-new input:-webkit-autofill:active{
-            -webkit-box-shadow: 0 0 0 30px #0f0f11 inset !important;
-            -webkit-text-fill-color: white !important;
-            transition: background-color 5000s ease-in-out 0s;
+        .form-group-new input:-webkit-autofill:hover,
+        .form-group-new input:-webkit-autofill:focus,
+        .form-group-new input:-webkit-autofill:active {
+          -webkit-box-shadow: 0 0 0 30px #0f0f11 inset !important;
+          -webkit-text-fill-color: white !important;
+          transition: background-color 5000s ease-in-out 0s;
         }
 
         .google-btn {
@@ -4318,7 +4370,7 @@
         .google-btn:hover {
           background: rgba(255, 255, 255, 0.05);
         }
-        
+
         .submit-btn {
           background: white;
           color: black;
@@ -4349,32 +4401,63 @@
       <div class="auth-left">
         <div id="auth-left-reg">
           <h1>Добро пожаловать</h1>
-          <p class="subtitle">Платформа нового поколения для общения, обмена идеями и создания уникальных сообществ. Присоединяйтесь к нам и откройте для себя мир безграничных возможностей.</p>
+          <p class="subtitle">
+            Платформа нового поколения для общения, обмена идеями и создания
+            уникальных сообществ. Присоединяйтесь к нам и откройте для себя мир
+            безграничных возможностей.
+          </p>
           <div class="auth-features">
             <div class="auth-feature-item">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 24px; height: 24px;"> Создавайте и управляйте своими комнатами
+              <img
+                src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp"
+                style="width: 24px; height: 24px"
+              />
+              Создавайте и управляйте своими комнатами
             </div>
             <div class="auth-feature-item">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width: 24px; height: 24px;"> Находите друзей и единомышленников
+              <img
+                src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp"
+                style="width: 24px; height: 24px"
+              />
+              Находите друзей и единомышленников
             </div>
             <div class="auth-feature-item">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width: 24px; height: 24px;"> Безопасная и приватная среда
+              <img
+                src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp"
+                style="width: 24px; height: 24px"
+              />
+              Безопасная и приватная среда
             </div>
           </div>
         </div>
 
-        <div id="auth-left-login" style="display: none;">
+        <div id="auth-left-login" style="display: none">
           <h1>С возвращением!</h1>
-          <p class="subtitle">Рады видеть вас снова. Войдите, чтобы продолжить общение, находить новые идеи и делиться впечатлениями.</p>
+          <p class="subtitle">
+            Рады видеть вас снова. Войдите, чтобы продолжить общение, находить
+            новые идеи и делиться впечатлениями.
+          </p>
           <div class="auth-features">
             <div class="auth-feature-item">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 24px; height: 24px;"> Продолжайте общение в любимых комнатах
+              <img
+                src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp"
+                style="width: 24px; height: 24px"
+              />
+              Продолжайте общение в любимых комнатах
             </div>
             <div class="auth-feature-item">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width: 24px; height: 24px;"> Узнавайте, что нового у друзей
+              <img
+                src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp"
+                style="width: 24px; height: 24px"
+              />
+              Узнавайте, что нового у друзей
             </div>
             <div class="auth-feature-item">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width: 24px; height: 24px;"> Приватность и защита сообщений
+              <img
+                src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp"
+                style="width: 24px; height: 24px"
+              />
+              Приватность и защита сообщений
             </div>
           </div>
         </div>
@@ -4383,10 +4466,18 @@
       <div class="auth-right">
         <div class="auth-tabs-new">
           <button id="tab-login-btn">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width: 16px; height: 16px;"> Вход
+            <img
+              src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp"
+              style="width: 16px; height: 16px"
+            />
+            Вход
           </button>
           <button id="tab-reg-btn" class="active">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp" style="width: 16px; height: 16px;"> Регистрация
+            <img
+              src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp"
+              style="width: 16px; height: 16px"
+            />
+            Регистрация
           </button>
         </div>
 
@@ -4394,24 +4485,61 @@
           <div class="form-group-new">
             <label>Электронная почта</label>
             <div class="auth-input-wrapper">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Incoming%20Envelope.webp" class="auth-input-icon">
-              <input type="email" id="login-email" placeholder="mail@example.com">
+              <img
+                src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Incoming%20Envelope.webp"
+                class="auth-input-icon"
+              />
+              <input
+                type="email"
+                id="login-email"
+                placeholder="mail@example.com"
+              />
             </div>
           </div>
           <div class="form-group-new">
             <label>Пароль</label>
             <div class="auth-input-wrapper">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Key.webp" class="auth-input-icon">
-              <input type="password" id="login-pass" placeholder="••••••••">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Peeking%20Eye.webp" class="auth-pass-eye" onclick="togglePasswordVisibility(this, 'login-pass')">
+              <img
+                src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Key.webp"
+                class="auth-input-icon"
+              />
+              <input type="password" id="login-pass" placeholder="••••••••" />
+              <img
+                src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Peeking%20Eye.webp"
+                class="auth-pass-eye"
+                onclick="togglePasswordVisibility(this, 'login-pass')"
+              />
             </div>
           </div>
-          <button type="button" id="btn-forgot-password" class="btn-text-link" style="color:var(--text-muted); font-size:12px; cursor:pointer; text-decoration:underline; width:100%; margin-top:0px; margin-bottom:10px;">Забыли пароль?</button>
-      <button class="submit-btn" id="btn-do-login" style="margin-top: 10px;">
-            Войти в систему <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Rocket.webp" style="width: 16px; height: 16px;">
+          <button
+            type="button"
+            id="btn-forgot-password"
+            class="btn-text-link"
+            style="
+              color: var(--text-muted);
+              font-size: 12px;
+              cursor: pointer;
+              text-decoration: underline;
+              width: 100%;
+              margin-top: 0px;
+              margin-bottom: 10px;
+            "
+          >
+            Забыли пароль?
+          </button>
+          <button class="submit-btn" id="btn-do-login" style="margin-top: 10px">
+            Войти в систему
+            <img
+              src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Rocket.webp"
+              style="width: 16px; height: 16px"
+            />
           </button>
           <button id="btn-google-login" class="google-btn">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Globe%20With%20Meridians.webp" style="width: 16px; height: 16px;"> Войти через Google
+            <img
+              src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Globe%20With%20Meridians.webp"
+              style="width: 16px; height: 16px"
+            />
+            Войти через Google
           </button>
         </div>
 
@@ -4419,31 +4547,92 @@
           <div class="form-group-new">
             <label>Отображаемое имя</label>
             <div class="auth-input-wrapper">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Bust%20In%20Silhouette.webp" class="auth-input-icon">
-              <input type="text" id="reg-name" placeholder="Моё имя">
+              <img
+                src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Bust%20In%20Silhouette.webp"
+                class="auth-input-icon"
+              />
+              <input type="text" id="reg-name" placeholder="Моё имя" />
             </div>
           </div>
           <div class="form-group-new">
             <label>Уникальный ID</label>
             <div class="auth-input-wrapper">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Identification%20Card.webp" class="auth-input-icon">
-              <input type="text" id="reg-username" placeholder="user123">
+              <img
+                src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Identification%20Card.webp"
+                class="auth-input-icon"
+              />
+              <input type="text" id="reg-username" placeholder="user123" />
             </div>
           </div>
 
           <div class="form-group-new">
             <label>Пол</label>
-            <div class="user-gender-select" style="display: flex; gap: 10px;">
+            <div class="user-gender-select" style="display: flex; gap: 10px">
               <label style="flex: 1; cursor: pointer">
-                <input type="radio" name="reg-gender" value="male" checked style="display: none">
-                <div class="gender-btn-box" style="padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); text-align: center; background: #0f0f11; font-size: 14px; font-weight: 500; color: #999; transition: all 0.2s;">
-                  <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Man%20Technologist.webp" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 4px;"> Мужской
+                <input
+                  type="radio"
+                  name="reg-gender"
+                  value="male"
+                  checked
+                  style="display: none"
+                />
+                <div
+                  class="gender-btn-box"
+                  style="
+                    padding: 12px;
+                    border-radius: 8px;
+                    border: 1px solid rgba(255, 255, 255, 0.05);
+                    text-align: center;
+                    background: #0f0f11;
+                    font-size: 14px;
+                    font-weight: 500;
+                    color: #999;
+                    transition: all 0.2s;
+                  "
+                >
+                  <img
+                    src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Man%20Technologist.webp"
+                    style="
+                      width: 16px;
+                      height: 16px;
+                      vertical-align: middle;
+                      margin-right: 4px;
+                    "
+                  />
+                  Мужской
                 </div>
               </label>
               <label style="flex: 1; cursor: pointer">
-                <input type="radio" name="reg-gender" value="female" style="display: none">
-                <div class="gender-btn-box" style="padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); text-align: center; background: #0f0f11; font-size: 14px; font-weight: 500; color: #999; transition: all 0.2s;">
-                  <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Woman%20Technologist.webp" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 4px;"> Женский
+                <input
+                  type="radio"
+                  name="reg-gender"
+                  value="female"
+                  style="display: none"
+                />
+                <div
+                  class="gender-btn-box"
+                  style="
+                    padding: 12px;
+                    border-radius: 8px;
+                    border: 1px solid rgba(255, 255, 255, 0.05);
+                    text-align: center;
+                    background: #0f0f11;
+                    font-size: 14px;
+                    font-weight: 500;
+                    color: #999;
+                    transition: all 0.2s;
+                  "
+                >
+                  <img
+                    src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Woman%20Technologist.webp"
+                    style="
+                      width: 16px;
+                      height: 16px;
+                      vertical-align: middle;
+                      margin-right: 4px;
+                    "
+                  />
+                  Женский
                 </div>
               </label>
             </div>
@@ -4452,58 +4641,188 @@
           <div class="form-group-new">
             <label>Электронная почта</label>
             <div class="auth-input-wrapper">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Incoming%20Envelope.webp" class="auth-input-icon">
-              <input type="email" id="reg-email" placeholder="mail@example.com">
+              <img
+                src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Incoming%20Envelope.webp"
+                class="auth-input-icon"
+              />
+              <input
+                type="email"
+                id="reg-email"
+                placeholder="mail@example.com"
+              />
             </div>
           </div>
           <div class="form-group-new">
             <label>Пароль (мин. 6 символов)</label>
             <div class="auth-input-wrapper">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Key.webp" class="auth-input-icon">
-              <input type="password" id="reg-pass" placeholder="••••••••">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Peeking%20Eye.webp" class="auth-pass-eye" onclick="togglePasswordVisibility(this, 'reg-pass')">
+              <img
+                src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Key.webp"
+                class="auth-input-icon"
+              />
+              <input type="password" id="reg-pass" placeholder="••••••••" />
+              <img
+                src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Peeking%20Eye.webp"
+                class="auth-pass-eye"
+                onclick="togglePasswordVisibility(this, 'reg-pass')"
+              />
             </div>
           </div>
 
-          <div class="agreement-wrap" style="display: flex; align-items: center; gap: 10px; margin-top: 5px;">
-            <input type="checkbox" id="reg-agreement" style="width: 16px; height: 16px; accent-color: white;">
-            <label for="reg-agreement" style="font-size: 12px; color: #999;">
-              Я принимаю <a href="https://cowio-privacy-accept.vercel.app" target="_blank" style="color: white; text-decoration: underline;">пользовательское соглашение</a>
+          <div
+            class="agreement-wrap"
+            style="
+              display: flex;
+              align-items: center;
+              gap: 10px;
+              margin-top: 5px;
+            "
+          >
+            <input
+              type="checkbox"
+              id="reg-agreement"
+              style="width: 16px; height: 16px; accent-color: white"
+            />
+            <label for="reg-agreement" style="font-size: 12px; color: #999">
+              Я принимаю
+              <a
+                href="https://cowio-privacy-accept.vercel.app"
+                target="_blank"
+                style="color: white; text-decoration: underline"
+                >пользовательское соглашение</a
+              >
             </label>
           </div>
 
-          <button class="submit-btn" id="btn-do-reg" style="margin-top: 10px;">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 16px; height: 16px; vertical-align: middle;"> Создать аккаунт
+          <button class="submit-btn" id="btn-do-reg" style="margin-top: 10px">
+            <img
+              src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp"
+              style="width: 16px; height: 16px; vertical-align: middle"
+            />
+            Создать аккаунт
           </button>
           <button id="btn-google-reg" class="google-btn">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Globe%20With%20Meridians.webp" style="width: 16px; height: 16px;"> Регистрация через Google
+            <img
+              src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Globe%20With%20Meridians.webp"
+              style="width: 16px; height: 16px"
+            />
+            Регистрация через Google
           </button>
         </div>
 
-        <div id="reg-verify-form" class="auth-form-new auth-verify-panel" style="display: none;">
-          <div style="text-align: center; width: 100%;">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width: 72px; height: 72px; margin-bottom: 16px;">
-            <h3 style="margin: 0 0 8px; font-weight: 800; font-size: 24px;">Подтвердите почту</h3>
-            <p style="color: var(--text-muted); font-size: 14px; line-height: 1.5; margin-bottom: 24px;">
-              Мы отправили 6-значный код на<br>
-              <b id="reg-verify-email-display" style="color: #fff;"></b>
+        <div
+          id="reg-verify-form"
+          class="auth-form-new auth-verify-panel"
+          style="display: none"
+        >
+          <div style="text-align: center; width: 100%">
+            <img
+              src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp"
+              style="width: 72px; height: 72px; margin-bottom: 16px"
+            />
+            <h3 style="margin: 0 0 8px; font-weight: 800; font-size: 24px">
+              Подтвердите почту
+            </h3>
+            <p
+              style="
+                color: var(--text-muted);
+                font-size: 14px;
+                line-height: 1.5;
+                margin-bottom: 24px;
+              "
+            >
+              Мы отправили 6-значный код на<br />
+              <b id="reg-verify-email-display" style="color: #fff"></b>
             </p>
-            <div id="reg-verify-code-inputs" style="display: flex; gap: 8px; justify-content: center; margin-bottom: 20px;">
-              <input type="text" inputmode="numeric" maxlength="1" class="reg-code-digit" data-index="0" autocomplete="off" />
-              <input type="text" inputmode="numeric" maxlength="1" class="reg-code-digit" data-index="1" autocomplete="off" />
-              <input type="text" inputmode="numeric" maxlength="1" class="reg-code-digit" data-index="2" autocomplete="off" />
-              <input type="text" inputmode="numeric" maxlength="1" class="reg-code-digit" data-index="3" autocomplete="off" />
-              <input type="text" inputmode="numeric" maxlength="1" class="reg-code-digit" data-index="4" autocomplete="off" />
-              <input type="text" inputmode="numeric" maxlength="1" class="reg-code-digit" data-index="5" autocomplete="off" />
+            <div
+              id="reg-verify-code-inputs"
+              style="
+                display: flex;
+                gap: 8px;
+                justify-content: center;
+                margin-bottom: 20px;
+              "
+            >
+              <input
+                type="text"
+                inputmode="numeric"
+                maxlength="1"
+                class="reg-code-digit"
+                data-index="0"
+                autocomplete="off"
+              />
+              <input
+                type="text"
+                inputmode="numeric"
+                maxlength="1"
+                class="reg-code-digit"
+                data-index="1"
+                autocomplete="off"
+              />
+              <input
+                type="text"
+                inputmode="numeric"
+                maxlength="1"
+                class="reg-code-digit"
+                data-index="2"
+                autocomplete="off"
+              />
+              <input
+                type="text"
+                inputmode="numeric"
+                maxlength="1"
+                class="reg-code-digit"
+                data-index="3"
+                autocomplete="off"
+              />
+              <input
+                type="text"
+                inputmode="numeric"
+                maxlength="1"
+                class="reg-code-digit"
+                data-index="4"
+                autocomplete="off"
+              />
+              <input
+                type="text"
+                inputmode="numeric"
+                maxlength="1"
+                class="reg-code-digit"
+                data-index="5"
+                autocomplete="off"
+              />
             </div>
-            <button type="button" id="btn-reg-resend-code" class="btn-text-link" disabled style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">
+            <button
+              type="button"
+              id="btn-reg-resend-code"
+              class="btn-text-link"
+              disabled
+              style="
+                color: var(--text-muted);
+                font-size: 13px;
+                margin-bottom: 20px;
+              "
+            >
               Отправить повторно (через <span id="reg-resend-timer">60</span>с)
             </button>
-            <button class="submit-btn" id="btn-reg-verify-submit" style="width: 100%; margin-bottom: 10px;">
+            <button
+              class="submit-btn"
+              id="btn-reg-verify-submit"
+              style="width: 100%; margin-bottom: 10px"
+            >
               Подтвердить и создать аккаунт
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 16px; height: 16px;">
+              <img
+                src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp"
+                style="width: 16px; height: 16px"
+              />
             </button>
-            <button type="button" id="btn-reg-verify-back" class="secondary-btn" style="width: 100%;">← Назад к регистрации</button>
+            <button
+              type="button"
+              id="btn-reg-verify-back"
+              class="secondary-btn"
+              style="width: 100%"
+            >
+              ← Назад к регистрации
+            </button>
           </div>
         </div>
       </div>
@@ -4734,7 +5053,6 @@
               />
               Выйти из аккаунта
             </button>
-            
           </div>
         </aside>
 
@@ -5083,7 +5401,14 @@
                         display: none;
                       "
                     >
-                      <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Toolbox.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">
+                      <img
+                        src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Toolbox.webp"
+                        style="
+                          width: 1.2em;
+                          height: 1.2em;
+                          vertical-align: bottom;
+                        "
+                      />
                     </button>
                     <div
                       id="support-quick-actions-menu"
@@ -5197,11 +5522,7 @@
                   >
                     <img
                       src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp"
-                      style="
-                        width: 64px;
-                        height: 64px;
-                        margin-bottom: 15px;
-                      "
+                      style="width: 64px; height: 64px; margin-bottom: 15px"
                     />
                     <h3
                       style="margin: 0 0 10px 0; font-size: 24px; color: #fff"
@@ -5371,13 +5692,42 @@
         </main>
 
         <main class="rooms-main" id="section-profile" style="display: none">
-          <div class="friends-container" style="max-width: 800px; width: 100%; margin: 0 auto; padding-top: 20px;">
-            <div class="section-title" style="font-size: 24px; margin-bottom: 20px">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Bust%20In%20Silhouette.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom" />
+          <div
+            class="friends-container"
+            style="
+              max-width: 800px;
+              width: 100%;
+              margin: 0 auto;
+              padding-top: 20px;
+            "
+          >
+            <div
+              class="section-title"
+              style="font-size: 24px; margin-bottom: 20px"
+            >
+              <img
+                src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Bust%20In%20Silhouette.webp"
+                style="width: 1.2em; height: 1.2em; vertical-align: bottom"
+              />
               Мой профиль
             </div>
-            <div id="my-profile-container" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 20px; padding: 30px; text-align: center;">
-              <button class="primary-btn" id="btn-open-my-profile-modal" style="margin: 20px auto">Открыть редактор профиля</button>
+            <div
+              id="my-profile-container"
+              style="
+                background: rgba(255, 255, 255, 0.03);
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                border-radius: 20px;
+                padding: 30px;
+                text-align: center;
+              "
+            >
+              <button
+                class="primary-btn"
+                id="btn-open-my-profile-modal"
+                style="margin: 20px auto"
+              >
+                Открыть редактор профиля
+              </button>
             </div>
           </div>
         </main>
@@ -5451,7 +5801,11 @@
           </div>
         </main>
 
-        <main class="rooms-main" id="section-catalog" style="display: none; position: relative">
+        <main
+          class="rooms-main"
+          id="section-catalog"
+          style="display: none; position: relative"
+        >
           <div
             class="friends-container"
             style="
@@ -5504,9 +5858,17 @@
         <main class="rooms-main" id="section-premium" style="display: none">
           <div
             class="friends-container"
-            style="max-width: 860px; width: 100%; margin: 0 auto; padding-top: 20px"
+            style="
+              max-width: 860px;
+              width: 100%;
+              margin: 0 auto;
+              padding-top: 20px;
+            "
           >
-            <div class="section-title" style="font-size: 24px; margin-bottom: 8px">
+            <div
+              class="section-title"
+              style="font-size: 24px; margin-bottom: 8px"
+            >
               <img
                 src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp"
                 style="width: 1.2em; height: 1.2em; vertical-align: bottom"
@@ -5517,14 +5879,30 @@
           </div>
         </main>
 
-        <main class="rooms-main" id="section-mystery" style="display: none; position: relative">
+        <main
+          class="rooms-main"
+          id="section-mystery"
+          style="display: none; position: relative"
+        >
           <div class="mystery-event-shell">
             <div class="mystery-event-blur"></div>
             <div class="mystery-event-overlay">
-              <div class="mystery-question-row" aria-label="Секретный будущий ивент">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Question%20Mark.webp" alt="?">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Question%20Mark.webp" alt="?">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Question%20Mark.webp" alt="?">
+              <div
+                class="mystery-question-row"
+                aria-label="Секретный будущий ивент"
+              >
+                <img
+                  src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Question%20Mark.webp"
+                  alt="?"
+                />
+                <img
+                  src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Question%20Mark.webp"
+                  alt="?"
+                />
+                <img
+                  src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Question%20Mark.webp"
+                  alt="?"
+                />
               </div>
               <div class="mystery-countdown" aria-live="polite">
                 <div class="mystery-time-cell">
@@ -5536,11 +5914,15 @@
                   <span class="mystery-time-label">часов</span>
                 </div>
                 <div class="mystery-time-cell">
-                  <span class="mystery-time-value" id="mystery-minutes">00</span>
+                  <span class="mystery-time-value" id="mystery-minutes"
+                    >00</span
+                  >
                   <span class="mystery-time-label">минут</span>
                 </div>
                 <div class="mystery-time-cell">
-                  <span class="mystery-time-value" id="mystery-seconds">00</span>
+                  <span class="mystery-time-value" id="mystery-seconds"
+                    >00</span
+                  >
                   <span class="mystery-time-label">секунд</span>
                 </div>
               </div>
@@ -5551,15 +5933,21 @@
         <main class="rooms-main" id="section-settings" style="display: none">
           <div class="lobby-header">
             <h2>
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Toolbox.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom" />
+              <img
+                src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Toolbox.webp"
+                style="width: 1.2em; height: 1.2em; vertical-align: bottom"
+              />
               Настройки
             </h2>
           </div>
-          <div class="friends-container" style="padding: 20px;" id="settings-dynamic-container">
+          <div
+            class="friends-container"
+            style="padding: 20px"
+            id="settings-dynamic-container"
+          >
             <!-- Rendered by JS -->
           </div>
         </main>
-
       </div>
     </section>
 
@@ -5641,7 +6029,7 @@
                 z-index: 5;
               "
             >
-              <div id="yt-player" style="width: 100%; height: 100%;"></div>
+              <div id="yt-player" style="width: 100%; height: 100%"></div>
             </div>
             <div
               id="room-video-overlay"
@@ -5762,18 +6150,21 @@
             <div
               class="sound-grid"
               id="soundpad-grid"
-              style="
-                display: grid;
-                grid-template-columns: 1fr;
-                gap: 12px;
-              "
+              style="display: grid; grid-template-columns: 1fr; gap: 12px"
             ></div>
           </div>
 
           <div class="chat-input-area" id="chat-input-container">
             <div class="input-wrapper">
-              <button class="mic-icon-btn" id="btn-room-attach" title="Прикрепить фото">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/File%20Folder.webp" style="width:1.2em;height:1.2em;">
+              <button
+                class="mic-icon-btn"
+                id="btn-room-attach"
+                title="Прикрепить фото"
+              >
+                <img
+                  src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/File%20Folder.webp"
+                  style="width: 1.2em; height: 1.2em"
+                />
               </button>
               <button class="mic-icon-btn" id="mic-btn" title="Микрофон">
                 🎤
@@ -5794,8 +6185,6 @@
     <!-- ========================================================================= -->
     <!-- MODALS -->
     <!-- ========================================================================= -->
-
-    
 
     <div class="modal" id="modal-edit-profile">
       <div class="modal-content glass-panel">
@@ -5926,13 +6315,23 @@
             id="edit-username-input"
             placeholder="Уникальный ID (напр. @alexey99)"
           />
-          <div style="position:relative;">
+          <div style="position: relative">
             <textarea
               id="edit-bio"
               placeholder="Расскажите немного о себе..."
               rows="3"
             ></textarea>
-            <div id="edit-bio-counter" style="text-align:right; font-size:11px; color:var(--text-muted); margin-top:2px;">0/200</div>
+            <div
+              id="edit-bio-counter"
+              style="
+                text-align: right;
+                font-size: 11px;
+                color: var(--text-muted);
+                margin-top: 2px;
+              "
+            >
+              0/200
+            </div>
           </div>
 
           <div
@@ -6113,7 +6512,11 @@
             </div>
           </div>
           <!-- // [NEW] SECOND HALF SELF PROFILE UI -->
-          <div class="partner-container" id="edit-partner-container" style="display:none !important;"></div>
+          <div
+            class="partner-container"
+            id="edit-partner-container"
+            style="display: none !important"
+          ></div>
           <div class="love-requests-box" id="my-love-requests"></div>
           <div class="hashtag-input-wrap">
             <div
@@ -6138,11 +6541,63 @@
     <div class="modal" id="modal-legal-info">
       <div
         class="modal-content glass-panel"
-        style="max-width: 500px; text-align: left; padding: 25px; position: relative"
+        style="
+          max-width: 500px;
+          text-align: left;
+          padding: 25px;
+          position: relative;
+        "
       >
-        <button class="close-btn" onclick="document.getElementById('modal-legal-info').classList.remove('active')" style="position: absolute; right: 15px; top: 15px; background: rgba(255, 255, 255, 0.1); border: none; color: #fff; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; transition: background 0.3s; z-index: 10;" onmouseover="this.style.background='rgba(255, 255, 255, 0.2)'" onmouseout="this.style.background='rgba(255, 255, 255, 0.1)'">✕</button>
-        <h2 id="legal-modal-title" style="margin-top: 0; margin-bottom: 20px; font-size: 22px; font-weight: 800;"></h2>
-        <div id="legal-modal-body" style="font-size: 14px; color: var(--text-muted); line-height: 1.6; max-height: 60vh; overflow-y: auto; padding-right: 10px;"></div>
+        <button
+          class="close-btn"
+          onclick="
+            document
+              .getElementById('modal-legal-info')
+              .classList.remove('active')
+          "
+          style="
+            position: absolute;
+            right: 15px;
+            top: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: #fff;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            transition: background 0.3s;
+            z-index: 10;
+          "
+          onmouseover="this.style.background = 'rgba(255, 255, 255, 0.2)'"
+          onmouseout="this.style.background = 'rgba(255, 255, 255, 0.1)'"
+        >
+          ✕
+        </button>
+        <h2
+          id="legal-modal-title"
+          style="
+            margin-top: 0;
+            margin-bottom: 20px;
+            font-size: 22px;
+            font-weight: 800;
+          "
+        ></h2>
+        <div
+          id="legal-modal-body"
+          style="
+            font-size: 14px;
+            color: var(--text-muted);
+            line-height: 1.6;
+            max-height: 60vh;
+            overflow-y: auto;
+            padding-right: 10px;
+          "
+        ></div>
       </div>
     </div>
 
@@ -6304,7 +6759,11 @@
           "
         ></div>
         <!-- // [NEW] SECOND HALF PROFILE CONTAINER -->
-        <div class="partner-container" id="view-partner-container" style="display:none !important;"></div>
+        <div
+          class="partner-container"
+          id="view-partner-container"
+          style="display: none !important"
+        ></div>
         <div class="hashtags-list" id="view-hashtags"></div>
 
         <div
@@ -6324,7 +6783,8 @@
           </button>
           <button
             class="danger-btn"
-            id="btn-remove-partner" style="display:none !important;"
+            id="btn-remove-partner"
+            style="display: none !important"
             style="display: none"
           >
             Убрать вторую половинку
@@ -6335,7 +6795,7 @@
     </div>
 
     <!-- Partner relationship ambilight panel -->
-    <div class="modal" id="modal-partner-view" style="display:none !important;">
+    <div class="modal" id="modal-partner-view" style="display: none !important">
       <div class="modal-content partner-ambilight-modal">
         <div class="modal-drag-handle"></div>
         <div id="partner-ambilight-root"></div>
@@ -6490,9 +6950,9 @@
                 src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Smiling%20Face%20With%20Hearts.webp"
                 class="dm-preset-gif"
                 style="
-                  height: 80px;
+                  height: 48px;
                   flex-grow: 1;
-                  object-fit: cover;
+                  object-fit: contain;
                   border-radius: 6px;
                   cursor: pointer;
                 "
@@ -6501,9 +6961,9 @@
                 src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Cat%20With%20Tears%20Of%20Joy.webp"
                 class="dm-preset-gif"
                 style="
-                  height: 80px;
+                  height: 48px;
                   flex-grow: 1;
-                  object-fit: cover;
+                  object-fit: contain;
                   border-radius: 6px;
                   cursor: pointer;
                 "
@@ -6512,9 +6972,9 @@
                 src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Smiling%20Cat%20With%20Heart%20Eyes.webp"
                 class="dm-preset-gif"
                 style="
-                  height: 80px;
+                  height: 48px;
                   flex-grow: 1;
-                  object-fit: cover;
+                  object-fit: contain;
                   border-radius: 6px;
                   cursor: pointer;
                 "
@@ -6523,9 +6983,9 @@
                 src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Pouting%20Face.webp"
                 class="dm-preset-gif"
                 style="
-                  height: 80px;
+                  height: 48px;
                   flex-grow: 1;
-                  object-fit: cover;
+                  object-fit: contain;
                   border-radius: 6px;
                   cursor: pointer;
                 "
@@ -6534,9 +6994,9 @@
                 src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20Screaming%20In%20Fear.webp"
                 class="dm-preset-gif"
                 style="
-                  height: 80px;
+                  height: 48px;
                   flex-grow: 1;
-                  object-fit: cover;
+                  object-fit: contain;
                   border-radius: 6px;
                   cursor: pointer;
                 "
@@ -6788,13 +7248,46 @@
             align-items: center;
             justify-content: center;
             position: relative;
-            background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent);
+            background: linear-gradient(
+              to bottom,
+              rgba(255, 255, 255, 0.05),
+              transparent
+            );
             border-bottom: 1px solid var(--border-light);
             overflow: hidden;
           "
         >
-          <div id="catalog-item-bg-blur" style="position:absolute; inset:-20px; background-size:cover; background-position:center; filter:blur(30px) opacity(0.3); z-index:0; pointer-events:none;"></div>
-          <div id="catalog-item-avatar-bg" style="width:110px; height:110px; border-radius:50%; background:#111214; position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); z-index:1; box-shadow: inset 0 0 10px rgba(0,0,0,0.8); display:none; background-size:cover; background-position:center; filter:drop-shadow(0 10px 15px rgba(0,0,0,0.3));"></div>
+          <div
+            id="catalog-item-bg-blur"
+            style="
+              position: absolute;
+              inset: -20px;
+              background-size: cover;
+              background-position: center;
+              filter: blur(30px) opacity(0.3);
+              z-index: 0;
+              pointer-events: none;
+            "
+          ></div>
+          <div
+            id="catalog-item-avatar-bg"
+            style="
+              width: 110px;
+              height: 110px;
+              border-radius: 50%;
+              background: #111214;
+              position: absolute;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%);
+              z-index: 1;
+              box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
+              display: none;
+              background-size: cover;
+              background-position: center;
+              filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.3));
+            "
+          ></div>
           <img
             id="catalog-item-image-solo"
             src=""
@@ -6811,11 +7304,13 @@
           <audio
             id="catalog-item-audio-solo"
             controls
-            style="display: none; width: 80%; outline: none; z-index: 2;"
+            style="display: none; width: 80%; outline: none; z-index: 2"
           ></audio>
         </div>
 
-        <div style="padding: 24px; position:relative; background:var(--panel);">
+        <div
+          style="padding: 24px; position: relative; background: var(--panel)"
+        >
           <div
             style="
               font-size: 12px;
@@ -6894,7 +7389,7 @@
                 align-items: center;
                 justify-content: center;
                 padding: 12px;
-                background: rgba(255,255,255,0.05);
+                background: rgba(255, 255, 255, 0.05);
                 border: 1px solid var(--border-light);
                 border-radius: 12px;
                 color: var(--text-main);
@@ -6932,7 +7427,8 @@
         });
         if (sidebarOverlay) {
           sidebarOverlay.addEventListener("click", () => {
-             if (localStorage.getItem('tutorial_active') !== 'true') closeSidebar();
+            if (localStorage.getItem("tutorial_active") !== "true")
+              closeSidebar();
           });
         }
 
@@ -6940,7 +7436,11 @@
         const navItems = sidebar.querySelectorAll(".nav-item");
         navItems.forEach((item) => {
           item.addEventListener("click", () => {
-            if (window.innerWidth <= 1024 && localStorage.getItem('tutorial_active') !== 'true') closeSidebar();
+            if (
+              window.innerWidth <= 1024 &&
+              localStorage.getItem("tutorial_active") !== "true"
+            )
+              closeSidebar();
           });
         });
         // Also close when opening profile
@@ -7147,14 +7647,33 @@
     <script src="settingsRenderer.js"></script>
     <script type="module" src="app.js"></script>
     <style>
-      body.monochrome { filter: grayscale(1) !important; }
-      body.high-contrast { filter: contrast(1.2) !important; }
-      body.compact-chat .bubble { padding: 8px 12px !important; }
-      body.hide-chat-time .bubble-time { display: none !important; }
-      body.hide-online-counter .online-counter-badge { display: none !important; }
-      body.hide-recent-rooms .lobby-rooms-grid { display: none !important; }
-      body.disable-transitions *, body.disable-transitions { transition: none !important; animation-duration: 0.1s !important; }
-      body.hide-copy-id #btn-copy-link, body.hide-copy-id #btn-fast-id { display: none !important; }
+      body.monochrome {
+        filter: grayscale(1) !important;
+      }
+      body.high-contrast {
+        filter: contrast(1.2) !important;
+      }
+      body.compact-chat .bubble {
+        padding: 8px 12px !important;
+      }
+      body.hide-chat-time .bubble-time {
+        display: none !important;
+      }
+      body.hide-online-counter .online-counter-badge {
+        display: none !important;
+      }
+      body.hide-recent-rooms .lobby-rooms-grid {
+        display: none !important;
+      }
+      body.disable-transitions *,
+      body.disable-transitions {
+        transition: none !important;
+        animation: none !important;
+      }
+      body.hide-copy-id #btn-copy-link,
+      body.hide-copy-id #btn-fast-id {
+        display: none !important;
+      }
       body.round-avatars .avatar-img,
       body.round-avatars img.avatar,
       body.round-avatars .chat-profile-link img,
@@ -7162,7 +7681,7 @@
       body.round-avatars .avatar-border-glow img,
       body.round-avatars .chat-avatar-placeholder,
       body.round-avatars .lobby-friends-list img {
-          border-radius: 50% !important;
+        border-radius: 50% !important;
       }
       .premium-bio-layout {
         word-wrap: break-word;
@@ -7186,153 +7705,230 @@
 
       /* Roles Badges Tooltip */
       .role-badge-icon-wrapper {
-          position: relative;
-          display: inline-block;
-          cursor: pointer;
+        position: relative;
+        display: inline-block;
+        cursor: pointer;
       }
       .role-badge-icon {
-          transition: transform 0.2s;
+        transition: transform 0.2s;
       }
       .role-badge-icon-wrapper:hover .role-badge-icon {
-          transform: scale(1.15);
+        transform: scale(1.15);
       }
       .role-badge-icon-wrapper::after {
-          content: attr(data-tooltip);
-          position: absolute;
-          bottom: 120%;
-          left: 50%;
-          transform: translateX(-50%) translateY(5px);
-          opacity: 0;
-          pointer-events: none;
-          background: rgba(0, 0, 0, 0.85);
-          color: #fff;
-          padding: 6px 12px;
-          border-radius: 8px;
-          font-size: 12px;
-          font-weight: 600;
-          white-space: nowrap;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-          border: 1px solid rgba(255,255,255,0.1);
-          transition: all 0.2s ease;
-          z-index: 1000;
+        content: attr(data-tooltip);
+        position: absolute;
+        bottom: 120%;
+        left: 50%;
+        transform: translateX(-50%) translateY(5px);
+        opacity: 0;
+        pointer-events: none;
+        background: rgba(0, 0, 0, 0.85);
+        color: #fff;
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        white-space: nowrap;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        transition: all 0.2s ease;
+        z-index: 1000;
       }
       .role-badge-icon-wrapper:hover::after {
-          opacity: 1;
-          transform: translateX(-50%) translateY(0);
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
       }
 
       /* Locked Catalog Overlay */
       .catalog-locked-overlay {
-          position: absolute;
-          inset: 0;
-          background: rgba(10, 10, 12, 0.4);
-          backdrop-filter: blur(12px);
-          z-index: 50;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          text-align: center;
-          border-radius: 20px;
+        position: absolute;
+        inset: 0;
+        background: rgba(10, 10, 12, 0.4);
+        backdrop-filter: blur(12px);
+        z-index: 50;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        border-radius: 20px;
       }
 
       .mystery-event-shell {
-          position: relative;
-          min-height: min(640px, calc(100% - 120px));
-          width: min(920px, 100%);
-          margin: 0 auto;
-          overflow: hidden;
-          border-radius: 20px;
+        position: relative;
+        min-height: min(640px, calc(100% - 120px));
+        width: min(920px, 100%);
+        margin: 0 auto;
+        overflow: hidden;
+        border-radius: 20px;
       }
 
       .mystery-event-blur {
-          position: absolute;
-          inset: 0;
-          filter: blur(14px);
-          transform: scale(1.03);
-          pointer-events: none;
-          user-select: none;
-          background:
-            linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02)),
-            repeating-linear-gradient(90deg, rgba(255,255,255,0.06) 0 1px, transparent 1px 86px),
-            repeating-linear-gradient(0deg, rgba(255,255,255,0.05) 0 1px, transparent 1px 74px);
+        position: absolute;
+        inset: 0;
+        filter: blur(14px);
+        transform: scale(1.03);
+        pointer-events: none;
+        user-select: none;
+        background:
+          linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.08),
+            rgba(255, 255, 255, 0.02)
+          ),
+          repeating-linear-gradient(
+            90deg,
+            rgba(255, 255, 255, 0.06) 0 1px,
+            transparent 1px 86px
+          ),
+          repeating-linear-gradient(
+            0deg,
+            rgba(255, 255, 255, 0.05) 0 1px,
+            transparent 1px 74px
+          );
       }
 
       .mystery-event-overlay {
-          position: absolute;
-          inset: 0;
-          z-index: 2;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 20px;
-          text-align: center;
-          background: rgba(10, 10, 12, 0.36);
-          backdrop-filter: blur(10px);
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+        text-align: center;
+        background: rgba(10, 10, 12, 0.36);
+        backdrop-filter: blur(10px);
       }
 
       .mystery-question-row {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: clamp(12px, 3vw, 26px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: clamp(12px, 3vw, 26px);
       }
 
       .mystery-question-row img {
-          width: clamp(58px, 10vw, 112px);
-          height: clamp(58px, 10vw, 112px);
-          object-fit: contain;
-          animation: mysteryFloat 2.6s ease-in-out infinite;
+        width: clamp(58px, 10vw, 112px);
+        height: clamp(58px, 10vw, 112px);
+        object-fit: contain;
+        animation: mysteryFloat 2.6s ease-in-out infinite;
       }
 
-      .mystery-question-row img:nth-child(2) { animation-delay: 0.22s; }
-      .mystery-question-row img:nth-child(3) { animation-delay: 0.44s; }
+      .mystery-question-row img:nth-child(2) {
+        animation-delay: 0.22s;
+      }
+      .mystery-question-row img:nth-child(3) {
+        animation-delay: 0.44s;
+      }
 
       .mystery-countdown {
-          display: grid;
-          grid-template-columns: repeat(4, minmax(62px, 1fr));
-          gap: 10px;
-          width: min(430px, calc(100% - 32px));
+        display: grid;
+        grid-template-columns: repeat(4, minmax(62px, 1fr));
+        gap: 10px;
+        width: min(430px, calc(100% - 32px));
       }
 
       .mystery-time-cell {
-          padding: 12px 8px;
-          border: 1px solid rgba(255,255,255,0.14);
-          border-radius: 12px;
-          background: rgba(255,255,255,0.08);
-          box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+        padding: 12px 8px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.08);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
       }
 
       .mystery-time-value {
-          display: block;
-          color: #fff;
-          font-size: clamp(22px, 4vw, 34px);
-          font-weight: 900;
-          line-height: 1;
-          font-variant-numeric: tabular-nums;
+        display: block;
+        color: #fff;
+        font-size: clamp(22px, 4vw, 34px);
+        font-weight: 900;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
       }
 
       .mystery-time-label {
-          display: block;
-          color: rgba(255,255,255,0.72);
-          font-size: 11px;
-          margin-top: 6px;
-          text-transform: uppercase;
+        display: block;
+        color: rgba(255, 255, 255, 0.72);
+        font-size: 11px;
+        margin-top: 6px;
+        text-transform: uppercase;
       }
 
       @keyframes mysteryFloat {
-          0%, 100% { transform: translateY(0) rotate(-2deg); }
-          50% { transform: translateY(-12px) rotate(3deg); }
+        0%,
+        100% {
+          transform: translateY(0) rotate(-2deg);
+        }
+        50% {
+          transform: translateY(-12px) rotate(3deg);
+        }
       }
-
     </style>
     <div class="modal" id="modal-badge-info">
-      <div class="modal-content glass-panel" style="max-width: 400px; text-align: center; position: relative; padding: 40px 20px 30px;">
-        <button onclick="document.getElementById('modal-badge-info').classList.remove('active')" style="position: absolute; top: 15px; right: 15px; background: rgba(255, 255, 255, 0.1); border: none; color: #fff; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; transition: background 0.3s; z-index: 10; padding: 0;" onmouseover="this.style.background='rgba(255, 255, 255, 0.2)'" onmouseout="this.style.background='rgba(255, 255, 255, 0.1)'">✕</button>
-        <img id="badge-modal-icon" src="" style="width: 80px; height: 80px; margin: 0 auto 20px; filter: drop-shadow(0 4px 15px rgba(0,0,0,0.6));">
-        <h2 id="badge-modal-title" style="margin: 0 0 10px; font-size: 24px; font-weight: 800;"></h2>
-        <p id="badge-modal-desc" style="color: var(--text-muted); font-size: 15px; line-height: 1.6; margin: 0;"></p>
+      <div
+        class="modal-content glass-panel"
+        style="
+          max-width: 400px;
+          text-align: center;
+          position: relative;
+          padding: 40px 20px 30px;
+        "
+      >
+        <button
+          onclick="
+            document
+              .getElementById('modal-badge-info')
+              .classList.remove('active')
+          "
+          style="
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: #fff;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            transition: background 0.3s;
+            z-index: 10;
+            padding: 0;
+          "
+          onmouseover="this.style.background = 'rgba(255, 255, 255, 0.2)'"
+          onmouseout="this.style.background = 'rgba(255, 255, 255, 0.1)'"
+        >
+          ✕
+        </button>
+        <img
+          id="badge-modal-icon"
+          src=""
+          style="
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            filter: drop-shadow(0 4px 15px rgba(0, 0, 0, 0.6));
+          "
+        />
+        <h2
+          id="badge-modal-title"
+          style="margin: 0 0 10px; font-size: 24px; font-weight: 800"
+        ></h2>
+        <p
+          id="badge-modal-desc"
+          style="
+            color: var(--text-muted);
+            font-size: 15px;
+            line-height: 1.6;
+            margin: 0;
+          "
+        ></p>
       </div>
     </div>
 
@@ -7763,12 +8359,14 @@
       function togglePasswordVisibility(img, inputId) {
         const input = document.getElementById(inputId);
         if (!input) return;
-        if (input.type === 'password') {
-          input.type = 'text';
-          img.src = 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Eyes.webp';
+        if (input.type === "password") {
+          input.type = "text";
+          img.src =
+            "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Eyes.webp";
         } else {
-          input.type = 'password';
-          img.src = 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Peeking%20Eye.webp';
+          input.type = "password";
+          img.src =
+            "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Peeking%20Eye.webp";
         }
       }
     </script>

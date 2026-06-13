@@ -44,27 +44,70 @@ class PremiumManager {
     },
   };
 
-  static PREMIUM_DM_THEMES = ["vault-gold", "abyss-frost", "crimson-chalk", "noir-rose"];
+  static PREMIUM_DM_THEMES = [
+    "vault-gold",
+    "abyss-frost",
+    "crimson-chalk",
+    "noir-rose",
+  ];
   static BIO_LIMIT_DEFAULT = 200;
   static BIO_LIMIT_PREMIUM = 500;
 
   static PERKS = [
-    { url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Shopping%20Bags.webp", title: "Полный каталог", desc: "Рамки, звуки и акции только для Premium" },
-    { url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp", title: "Статус-эмодзи", desc: "10 эмодзи рядом с ником в чате и профиле" },
-    { url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Military%20Medal.webp", title: "10-й Уровень", desc: "Автоматическое повышение до 10 уровня при покупке" },
-    { url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkler.webp", title: "x2 XP", desc: "В два раза больше опыта за время в комнатах" },
-    { url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Woman%20Technologist.webp", title: "Приоритетная поддержка", desc: "Тикеты помечаются и обрабатываются быстрее" },
-    { url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Party%20Popper.webp", title: "Ранний доступ", desc: "Первыми видите горячие акции в каталоге" },
-    { url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Artist%20Palette.webp", title: "Эксклюзивные темы DM", desc: "4 премиальные темы оформления личных сообщений" },
-    { url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp", title: "Расширенное био", desc: "До 500 символов в описании профиля вместо 200" },
-    { url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp", title: "Premium-значок", desc: "Особый бейдж Premium в профиле и списках" },
+    {
+      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Shopping%20Bags.webp",
+      title: "Полный каталог",
+      desc: "Рамки, звуки и акции только для Premium",
+    },
+    {
+      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp",
+      title: "Статус-эмодзи",
+      desc: "10 эмодзи рядом с ником в чате и профиле",
+    },
+    {
+      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Military%20Medal.webp",
+      title: "10-й Уровень",
+      desc: "Автоматическое повышение до 10 уровня при покупке",
+    },
+    {
+      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkler.webp",
+      title: "x2 XP",
+      desc: "В два раза больше опыта за время в комнатах",
+    },
+    {
+      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Woman%20Technologist.webp",
+      title: "Приоритетная поддержка",
+      desc: "Тикеты помечаются и обрабатываются быстрее",
+    },
+    {
+      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Party%20Popper.webp",
+      title: "Ранний доступ",
+      desc: "Первыми видите горячие акции в каталоге",
+    },
+    {
+      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Artist%20Palette.webp",
+      title: "Эксклюзивные темы DM",
+      desc: "4 премиальные темы оформления личных сообщений",
+    },
+    {
+      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp",
+      title: "Расширенное био",
+      desc: "До 500 символов в описании профиля вместо 200",
+    },
+    {
+      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp",
+      title: "Premium-значок",
+      desc: "Особый бейдж Premium в профиле и списках",
+    },
   ];
 
   static init() {
     this.injectStyles();
     this.renderPremiumSection();
     this.checkReturnFromPayment();
-    document.addEventListener("DOMContentLoaded", () => this.renderPremiumSection());
+    document.addEventListener("DOMContentLoaded", () =>
+      this.renderPremiumSection(),
+    );
   }
 
   static injectStyles() {
@@ -177,18 +220,18 @@ class PremiumManager {
         background: rgba(255, 200, 80, 0.04);
       }
       .catalog-card-wrapper.is-hot {
-        background: linear-gradient(135deg, #2a2218 0%, #c9a227 22%, #fff0c8 50%, #c9a227 78%, #2a2218 100%);
+        background: linear-gradient(135deg, #2a2218 0%, #aa8222 22%, #d4af37 50%, #aa8222 78%, #2a2218 100%);
         background-size: 220% 220%;
         animation: catalogFadeIn 0.45s ease forwards, premiumHotShimmer 7s ease-in-out infinite;
         padding: 2px;
-        box-shadow: 0 16px 44px rgba(255, 170, 60, 0.32), 0 0 0 1px rgba(255, 220, 140, 0.18) inset;
+        box-shadow: 0 16px 44px rgba(210, 140, 40, 0.25), 0 0 0 1px rgba(210, 180, 100, 0.12) inset;
       }
       .catalog-card-wrapper.is-hot .catalog-card-inner {
         background: linear-gradient(180deg, rgba(28, 24, 18, 0.97) 0%, rgba(10, 10, 12, 0.99) 100%);
-        border: 1px solid rgba(255, 200, 100, 0.14);
+        border: 1px solid rgba(210, 180, 100, 0.12);
       }
       .catalog-card-wrapper.is-hot:hover {
-        box-shadow: 0 20px 50px rgba(255, 170, 60, 0.5), 0 0 0 1px rgba(255, 220, 140, 0.25) inset;
+        box-shadow: 0 20px 50px rgba(210, 140, 40, 0.4), 0 0 0 1px rgba(210, 180, 100, 0.2) inset;
       }
       .catalog-hot-badge {
         position: absolute;
@@ -205,9 +248,9 @@ class PremiumManager {
         letter-spacing: 0.9px;
         text-transform: uppercase;
         color: #fff8e7;
-        background: linear-gradient(135deg, rgba(180, 90, 20, 0.95), rgba(255, 170, 50, 0.9));
-        box-shadow: 0 4px 16px rgba(255, 140, 40, 0.35);
-        border: 1px solid rgba(255, 230, 160, 0.35);
+        background: linear-gradient(135deg, rgba(140, 70, 15, 0.95), rgba(210, 140, 30, 0.9));
+        box-shadow: 0 4px 16px rgba(210, 120, 30, 0.25);
+        border: 1px solid rgba(210, 180, 120, 0.25);
       }
       .catalog-hot-badge img { width: 14px; height: 14px; }
       @keyframes premiumHotShimmer {
@@ -222,7 +265,9 @@ class PremiumManager {
     const p = profile?.premium;
     if (!p) return null;
     const expiresAt = Number(p.expiresAt) || 0;
-    const active = Boolean(p.active && (!p.expiresAt || expiresAt > Date.now()));
+    const active = Boolean(
+      p.active && (!p.expiresAt || expiresAt > Date.now()),
+    );
     return { ...p, expiresAt, active };
   }
 
@@ -318,7 +363,8 @@ class PremiumManager {
     }
     const premNav = document.getElementById("nav-premium");
     if (premNav) {
-      const active = this.isPremiumActive(profile, uid) && !this.isStaff(profile, uid);
+      const active =
+        this.isPremiumActive(profile, uid) && !this.isStaff(profile, uid);
       premNav.classList.toggle("premium-active-nav", active);
     }
   }
@@ -403,8 +449,12 @@ class PremiumManager {
       </div>
     `;
 
-    container.querySelector("#btn-buy-premium")?.addEventListener("click", () => this.startPurchase());
-    container.querySelector("#btn-extend-premium")?.addEventListener("click", () => this.startPurchase());
+    container
+      .querySelector("#btn-buy-premium")
+      ?.addEventListener("click", () => this.startPurchase());
+    container
+      .querySelector("#btn-extend-premium")
+      ?.addEventListener("click", () => this.startPurchase());
     container.querySelectorAll(".premium-emoji-btn").forEach((btn) => {
       btn.onclick = () => this.saveStatusEmoji(btn.dataset.emoji);
     });
@@ -426,7 +476,7 @@ class PremiumManager {
         if (this.isPremiumActive(u, uid) || this.isStaff(u, uid)) count++;
       });
       return count;
-    } catch(e) {
+    } catch (e) {
       return "~";
     }
   }
@@ -457,21 +507,25 @@ class PremiumManager {
     setTimeout(() => {
       const uid = window.AppState?.currentUser?.uid;
       if (!uid) return;
-      const profile = window.AppState?.usersCache?.get(uid) || window.AppState?.myProfile;
+      const profile =
+        window.AppState?.usersCache?.get(uid) || window.AppState?.myProfile;
       const isAdmin = this.isStaff(profile, uid);
-      const isPremium = profile ? (this.isPremiumActive(profile, uid) || isAdmin) : false;
-      
-      ['btn-room-theme-toggle', 'btn-dm-theme-toggle'].forEach(id => {
+      const isPremium = profile
+        ? this.isPremiumActive(profile, uid) || isAdmin
+        : false;
+
+      ["btn-room-theme-toggle", "btn-dm-theme-toggle"].forEach((id) => {
         const btn = document.getElementById(id);
         if (!btn) return;
         if (isPremium) {
-           btn.classList.remove("premium-locked-theme");
-           btn.innerHTML = "Поменять тему";
-           btn.style.opacity = "1";
+          btn.classList.remove("premium-locked-theme");
+          btn.innerHTML = "Поменять тему";
+          btn.style.opacity = "1";
         } else {
-           btn.classList.add("premium-locked-theme");
-           btn.innerHTML = '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width:18px;height:18px;vertical-align:middle;margin-right:6px;"><span style="position:relative;display:inline-flex;align-items:center;justify-content:center;"><span style="filter:blur(3px);opacity:0.3;position:absolute;">Поменять тему</span><span style="font-size:11px;font-weight:700;white-space:nowrap;color:#ffe6a0;position:relative;z-index:1;">Приобретите Premium</span></span>';
-           btn.style.opacity = "0.9";
+          btn.classList.add("premium-locked-theme");
+          btn.innerHTML =
+            '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width:18px;height:18px;vertical-align:middle;margin-right:6px;"><span style="position:relative;display:inline-flex;align-items:center;justify-content:center;"><span style="filter:blur(3px);opacity:0.3;position:absolute;">Поменять тему</span><span style="font-size:11px;font-weight:700;white-space:nowrap;color:#ffe6a0;position:relative;z-index:1;">Приобретите Premium</span></span>';
+          btn.style.opacity = "0.9";
         }
       });
     }, 1500);
@@ -482,7 +536,9 @@ class PremiumManager {
     if (!user) return Utils.toast("Войдите в аккаунт", "error");
 
     const profile = AppState.usersCache.get(user.uid) || {};
-    const btn = document.getElementById("btn-buy-premium") || document.getElementById("btn-extend-premium");
+    const btn =
+      document.getElementById("btn-buy-premium") ||
+      document.getElementById("btn-extend-premium");
     if (btn) {
       btn.disabled = true;
       btn.textContent = "Переход к оплате...";
@@ -492,7 +548,10 @@ class PremiumManager {
       const res = await fetch("/api/premium/create-payment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uid: user.uid, email: profile.email || user.email }),
+        body: JSON.stringify({
+          uid: user.uid,
+          email: profile.email || user.email,
+        }),
       });
       const data = await res.json();
 
@@ -518,9 +577,10 @@ class PremiumManager {
     } finally {
       if (btn) {
         btn.disabled = false;
-        btn.textContent = btn.id === "btn-extend-premium"
-          ? `Продлить ещё на месяц (${this.PRICE_RUB} ₽)`
-          : "Оформить Premium";
+        btn.textContent =
+          btn.id === "btn-extend-premium"
+            ? `Продлить ещё на месяц (${this.PRICE_RUB} ₽)`
+            : "Оформить Premium";
       }
     }
   }
@@ -546,7 +606,7 @@ class PremiumManager {
     const uidOverride = params.get("uid") || AppState?.currentUser?.uid || "";
     sessionStorage.setItem(
       "cowio_premium_return_uid",
-      JSON.stringify({ uid: uidOverride, ts: Date.now() })
+      JSON.stringify({ uid: uidOverride, ts: Date.now() }),
     );
     window.history.replaceState({}, "", window.location.pathname);
     if (AppState?.currentUser) this.handlePostLoginReturn();
@@ -556,9 +616,15 @@ class PremiumManager {
     let data;
     try {
       data = JSON.parse(sessionStorage.getItem("cowio_premium_return_uid"));
-    } catch(e) {}
-    
-    if (!data || !data.uid || !AppState?.currentUser || data.uid !== AppState.currentUser.uid || Date.now() - data.ts > 60000) {
+    } catch (e) {}
+
+    if (
+      !data ||
+      !data.uid ||
+      !AppState?.currentUser ||
+      data.uid !== AppState.currentUser.uid ||
+      Date.now() - data.ts > 60000
+    ) {
       sessionStorage.removeItem("cowio_premium_return_uid");
       return;
     }
@@ -600,7 +666,8 @@ class PremiumManager {
       FriendsManager.setNavActive("nav-premium");
       this.renderPremiumSection(profile, uid);
     }
-    if (window.Utils?.toast) Utils.toast("Оформите Premium для доступа к каталогу", "info");
+    if (window.Utils?.toast)
+      Utils.toast("Оформите Premium для доступа к каталогу", "info");
     return false;
   }
 }

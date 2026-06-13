@@ -9383,7 +9383,7 @@ class DirectMessages {
       const roll = Math.random();
       const mode = roll < 0.33 ? "far" : roll > 0.74 ? "near" : "mid";
       heart.className = `love-heart ${mode}`;
-      heart.innerText =
+      heart.innerHTML =
         RoomManager.loveHeartEmojis[
           Math.floor(Math.random() * RoomManager.loveHeartEmojis.length)
         ];
@@ -13007,7 +13007,14 @@ class AdminPanel {
 class RoomManager {
   static themeIndex = 0;
   static heartsTimer = null;
-  static loveHeartEmojis = ["💗", "💘", "💞", "💕"];
+  static loveHeartEmojis = [
+    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smiley/Red%20Heart.webp' style='width:1em;height:1em;'>",
+    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smiley/Heart%20With%20Arrow.webp' style='width:1em;height:1em;'>",
+    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smiley/Revolving%20Hearts.webp' style='width:1em;height:1em;'>",
+    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smiley/Two%20Hearts.webp' style='width:1em;height:1em;'>",
+    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smiley/Sparkling%20Heart.webp' style='width:1em;height:1em;'>",
+    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smiley/Smiling%20Face%20With%20Hearts.webp' style='width:1em;height:1em;'>"
+  ];
 
   static syncDeveloperControls(profile = {}) {
     AdminPanel.syncSidebarButton(profile);
@@ -14807,7 +14814,7 @@ class RoomManager {
       if (!layer) return;
       const heart = document.createElement("div");
       heart.className = `love-heart ${mode}`;
-      heart.innerText =
+      heart.innerHTML =
         this.loveHeartEmojis[
           Math.floor(Math.random() * this.loveHeartEmojis.length)
         ];
@@ -17061,6 +17068,19 @@ DirectMessages.openChat = function(targetUid, targetName) {
             }
         });
         
+        const pinHtml = `
+        <div class="tg-pinned-bar" id="tg-pinned-bar" style="display:none; background:#17212b; padding:8px 15px; border-bottom:1px solid #101921; cursor:pointer;" onclick="if(window._tgPinnedId) Utils.$('msg-'+window._tgPinnedId)?.scrollIntoView({behavior:'smooth'})">
+            <div style="border-left:2px solid #5288c1; padding-left:8px; display:flex; justify-content:space-between; align-items:center;">
+                <div style="flex:1; overflow:hidden;">
+                    <div style="color:#5288c1; font-weight:bold; font-size:12px;">Закреплённое сообщение</div>
+                    <div id="tg-pinned-text" style="color:#fff; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
+                </div>
+                <button class="tg-btn" style="font-size:14px; padding:0 5px;" onclick="event.stopPropagation(); DirectMessages.unpinMsg()">✕</button>
+            </div>
+        </div>
+        `;
+        document.getElementById("dm-messages").insertAdjacentHTML("beforebegin", pinHtml);
+
         const myHtml = `
         <div class="tg-input-area" id="tg-bar-injected">
            <div id="tg-reply-bar" class="tg-reply-bar" style="display:none">
@@ -17109,6 +17129,25 @@ DirectMessages.openChat = function(targetUid, targetName) {
     }
     
     this.cancelReply();
+    
+    // Pinned message listener
+    const chatId = DirectMessages.getChatId(AppState.currentUser.uid, targetUid);
+    const chatRef = ref(db, `direct-messages/${chatId}`);
+    if(this.tgPinUnsub) this.tgPinUnsub();
+    this.tgPinUnsub = onValue(chatRef, (snap) => {
+        const data = snap.val() || {};
+        const pinBar = document.getElementById("tg-pinned-bar");
+        if(pinBar) {
+            if(data.pinnedMessage) {
+                pinBar.style.display = "block";
+                document.getElementById("tg-pinned-text").innerText = data.pinnedMessage.name ? (data.pinnedMessage.name + ": " + data.pinnedMessage.text) : data.pinnedMessage.text;
+                window._tgPinnedId = data.pinnedMessage.id;
+            } else {
+                pinBar.style.display = "none";
+                window._tgPinnedId = null;
+            }
+        }
+    });
 };
 
 DirectMessages.cancelReply = function() {
@@ -17180,8 +17219,9 @@ DirectMessages.sendTGMessage = async function() {
     await push(ref(db, `direct-messages/${chatId}/messages`), payload);
 }
 
-DirectMessages.toggleReaction = async function(msgId, emoji) {
+DirectMessages.toggleReaction = async function(msgId, emojiIdx) {
     if (!AppState.currentDirectChat) return;
+    const emoji = DirectMessages.EMOJIS[emojiIdx];
     const chatId = AppState.currentDirectChat.id;
     const myUid = AppState.currentUser.uid;
     const rRef = ref(db, `direct-messages/${chatId}/messages/${msgId}/reactions/${myUid}`);
@@ -17195,6 +17235,29 @@ DirectMessages.toggleReaction = async function(msgId, emoji) {
     
     const ctx = document.getElementById("tg-context-menu");
     if(ctx) ctx.remove();
+}
+
+DirectMessages.pinMsg = async function(msgId) {
+    if (!AppState.currentDirectChat) return;
+    const msg = window._curMessagesMap && window._curMessagesMap[msgId];
+    if (!msg) return;
+    const chatId = AppState.currentDirectChat.id;
+    await update(ref(db, `direct-messages/${chatId}`), {
+        pinnedMessage: {
+            id: msg.id,
+            text: msg.text || "Медиа",
+        }
+    });
+    const ctx = document.getElementById("tg-context-menu");
+    if(ctx) ctx.remove();
+}
+
+DirectMessages.unpinMsg = async function() {
+    if (!AppState.currentDirectChat) return;
+    const chatId = AppState.currentDirectChat.id;
+    await update(ref(db, `direct-messages/${chatId}`), {
+        pinnedMessage: null
+    });
 }
 
 DirectMessages.deleteMsg = async function(msgId) {
@@ -17216,9 +17279,10 @@ DirectMessages.showContextMenu = function(e, msg) {
     let html = `
     <div id="tg-context-menu" class="tg-context-menu" style="left: ${e.pageX}px; top: ${e.pageY - 50}px;">
        <div class="tg-quick-emojis">
-          ${this.EMOJIS.map(em => `<div class="tg-reaction" onclick="DirectMessages.toggleReaction('${msg.id}', '${em}')">${em}</div>`).join('')}
+          ${this.EMOJIS.map((em, idx) => `<div class="tg-reaction" onclick="DirectMessages.toggleReaction('${msg.id}', ${idx})">${em}</div>`).join('')}
        </div>
        <div class="tg-ctx-item" onclick="DirectMessages.setReplyOrEdit(${JSON.stringify(msg).replace(/"/g, "&quot;")}, 'reply')">↩️ Ответить</div>
+       <div class="tg-ctx-item" onclick="DirectMessages.pinMsg('${msg.id}')">📌 Закрепить</div>
        ${isEditingAllowed ? `<div class="tg-ctx-item" onclick="DirectMessages.setReplyOrEdit(${JSON.stringify(msg).replace(/"/g, "&quot;")}, 'edit')">✏️ Изменить</div>` : ''}
        ${isSelf ? `<div class="tg-ctx-item" style="color:#ff5555" onclick="DirectMessages.deleteMsg('${msg.id}')">🗑 Удалить</div>` : ''}
     </div>
@@ -17244,14 +17308,26 @@ DirectMessages.renderMessages = function(messages) {
     }
     
     window._curMessagesMap = {};
+    let _lastDateStr = null;
 
     list.innerHTML = messages
       .map((m) => {
         window._curMessagesMap[m.id] = m;
       
         const isSelf = m.fromUid === AppState.currentUser.uid;
+        let dateHeaderHtml = "";
+        
+        if (m.type !== "system") {
+            const dateObj = new Date(m.ts);
+            const dateStr = dateObj.toLocaleDateString();
+            if (dateStr !== _lastDateStr) {
+                dateHeaderHtml = `\n<div style="text-align:center; margin: 15px 0;"><span style="background:rgba(255,255,255,0.1); padding:4px 12px; border-radius:12px; font-size:12px; color:var(--text-muted);">${dateStr}</span></div>\n`;
+                _lastDateStr = dateStr;
+            }
+        }
+
         if (m.type === "system") {
-          return `<div class="sys-msg">${Utils.escapeHtml(m.fromName || "Пользователь")} ${Utils.escapeHtml(m.text || "")}</div>`;
+          return dateHeaderHtml + `<div class="sys-msg">${Utils.escapeHtml(m.fromName || "Пользователь")} ${Utils.escapeHtml(m.text || "")}</div>`;
         }
         
         let replyHtml = "";
@@ -17272,9 +17348,10 @@ DirectMessages.renderMessages = function(messages) {
                 grouped[em].count++;
                 if (uid === AppState.currentUser.uid) grouped[em].me = true;
             });
-            let items = Object.entries(grouped).map(([em, data]) => 
-               `<div class="tg-reaction ${data.me ? 'me' : ''}" onclick="DirectMessages.toggleReaction('${m.id}', '${em}')">${em} ${data.count}</div>`
-            );
+            let items = Object.entries(grouped).map(([em, data]) => {
+               const idx = DirectMessages.EMOJIS.indexOf(em);
+               return `<div class="tg-reaction ${data.me ? 'me' : ''}" onclick="DirectMessages.toggleReaction('${m.id}', ${idx > -1 ? idx : -1})">${em} ${data.count}</div>`;
+            });
             if (items.length) {
                reactionsHtml = `<div class="tg-reactions">${items.join('')}</div>`;
             }
@@ -17282,6 +17359,20 @@ DirectMessages.renderMessages = function(messages) {
         
         const timestamp = new Date(m.ts).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
         const editedStr = m.isEdited ? "изменено" : "";
+
+        if (m.type === "invite") {
+            return dateHeaderHtml + `
+                <div class="m-line ${isSelf ? "self" : ""}" id="msg-${m.id}">
+                    <div class="tg-bubble" style="border: 1px solid var(--accent); background: rgba(46,213,115,0.1);" oncontextmenu="DirectMessages.showContextMenu(event, window._curMessagesMap['${m.id}'])">
+                        <div style="font-weight:bold; margin-bottom:5px;">Привет! Заходи к нам:</div>
+                        <div style="font-size: 16px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Television.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> ${Utils.escapeHtml(m.roomName)}</div>
+                        <div style="font-size: 12px; opacity:0.8; margin-bottom:8px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Зрителей: ${m.membersCount || 1}</div>
+                        ${!isSelf ? `<div style="display:flex; gap:10px;"><button class="primary-btn" style="width:100%; border-radius:8px; padding:8px;" onclick="window.RoomManager.joinRoom('${m.roomId}')">Присоединиться</button></div>` : '<div style="font-size:11px; opacity:0.6; margin-top:5px;">Приглашение отправлено</div>'}
+                        <div class="tg-time">${timestamp}</div>
+                    </div>
+                </div>
+            `;
+        }
 
         if (m.type === "file" || m.type === "gif" || m.type === "media" || m.url) {
           const isImg =
@@ -17293,7 +17384,7 @@ DirectMessages.renderMessages = function(messages) {
           const isPackEmoji = m.url && String(m.url).includes("Telegram-Animated-Emojis");
           const sizeStyle = isPackEmoji ? "width: 48px; height: 48px;" : "max-width: 250px; max-height: 250px;";
             
-          return `
+          return dateHeaderHtml + `
             <div class="m-line ${isSelf ? "self" : ""}" id="msg-${m.id}">
                 <div class="tg-bubble" oncontextmenu="DirectMessages.showContextMenu(event, window._curMessagesMap['${m.id}'])">
                     ${replyHtml}
@@ -17305,7 +17396,7 @@ DirectMessages.renderMessages = function(messages) {
           `;
         }
 
-        return `
+        return dateHeaderHtml + `
             <div class="m-line ${isSelf ? "self" : ""}" id="msg-${m.id}">
                 <div class="tg-bubble" oncontextmenu="DirectMessages.showContextMenu(event, window._curMessagesMap['${m.id}'])">
                     ${replyHtml}

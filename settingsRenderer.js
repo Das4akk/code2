@@ -11,10 +11,10 @@ const SettingSections = [
         icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Sun.webp",
         default: false,
         onChange: (val) => {
-           localStorage.setItem('cowio:globalTheme', val ? 'light' : 'dark');
-           document.documentElement.dataset.globalTheme = val ? 'light' : 'dark';
-           document.documentElement.classList.toggle("theme-light-global", val);
-        }
+          localStorage.setItem("cowio:globalTheme", val ? "light" : "dark");
+          document.documentElement.dataset.globalTheme = val ? "light" : "dark";
+          document.documentElement.classList.toggle("theme-light-global", val);
+        },
       },
       {
         id: "site-settings-particle",
@@ -24,10 +24,15 @@ const SettingSections = [
         icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkler.webp",
         default: true,
         onChange: (val) => {
-           localStorage.setItem('siteParticles', val ? 'true' : 'false');
-           const canvas = document.getElementById('particle-canvas');
-           if (canvas) canvas.style.setProperty('display', val ? 'block' : 'none', 'important');
-        }
+          localStorage.setItem("siteParticles", val ? "true" : "false");
+          const canvas = document.getElementById("particle-canvas");
+          if (canvas)
+            canvas.style.setProperty(
+              "display",
+              val ? "block" : "none",
+              "important",
+            );
+        },
       },
       {
         id: "site-settings-particle-brightness",
@@ -37,10 +42,10 @@ const SettingSections = [
         icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Light%20Bulb.webp",
         default: 1,
         onChange: (val) => {
-           localStorage.setItem('siteParticleBrightness', val);
-           const canvas = document.getElementById('particle-canvas');
-           if (canvas) canvas.style.setProperty('opacity', val);
-        }
+          localStorage.setItem("siteParticleBrightness", val);
+          const canvas = document.getElementById("particle-canvas");
+          if (canvas) canvas.style.setProperty("opacity", val);
+        },
       },
       {
         id: "site-settings-neuro",
@@ -50,10 +55,15 @@ const SettingSections = [
         icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp",
         default: true,
         onChange: (val) => {
-           localStorage.setItem('siteNeuro', val ? 'true' : 'false');
-           const bg = document.getElementById('premium-black-bg');
-           if (bg) bg.style.setProperty('display', val ? 'block' : 'none', 'important');
-        }
+          localStorage.setItem("siteNeuro", val ? "true" : "false");
+          const bg = document.getElementById("premium-black-bg");
+          if (bg)
+            bg.style.setProperty(
+              "display",
+              val ? "block" : "none",
+              "important",
+            );
+        },
       },
       {
         id: "site-set-hide-counter",
@@ -63,10 +73,10 @@ const SettingSections = [
         icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Eyes.webp",
         default: false,
         onChange: (val) => {
-           localStorage.setItem('hideOnlineCounter', val);
-           const counter = document.querySelector('.online-counter-badge');
-           if(counter) counter.style.display = val ? 'none' : 'flex';
-        }
+          localStorage.setItem("hideOnlineCounter", val);
+          const counter = document.querySelector(".online-counter-badge");
+          if (counter) counter.style.display = val ? "none" : "flex";
+        },
       },
       {
         id: "site-set-hide-recent",
@@ -76,9 +86,9 @@ const SettingSections = [
         icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Sponge.webp",
         default: false,
         onChange: (val) => {
-           localStorage.setItem('hideRecentRooms', val);
-           document.body.classList.toggle('hide-recent-rooms', val);
-        }
+          localStorage.setItem("hideRecentRooms", val);
+          document.body.classList.toggle("hide-recent-rooms", val);
+        },
       },
       {
         id: "site-set-monochrome",
@@ -88,33 +98,12 @@ const SettingSections = [
         icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Full%20Moon.webp",
         default: false,
         onChange: (val) => {
-           localStorage.setItem('siteMonochrome', val);
-           document.documentElement.style.filter = val ? 'grayscale(1)' : '';
-        }
+          localStorage.setItem("siteMonochrome", val);
+          document.documentElement.style.filter = val ? "grayscale(1)" : "";
+        },
       },
-      {
-        id: "site-set-zoom",
-        type: "slider",
-        title: "Масштаб страницы",
-        desc: "Изменяйте масштаб (50% - 200%)",
-        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Magnifying%20Glass%20Tilted%20Left.webp",
-        default: 100,
-        min: 50,
-        max: 200,
-        step: 1,
-        labelFn: (v) => v + "%",
-        onChange: (val) => {
-           localStorage.setItem('siteZoom', val);
-           const scale = Number(val) / 100;
-           document.documentElement.style.zoom = '';
-           document.body.style.zoom = '';
-           document.body.style.transformOrigin = 'top left';
-           document.body.style.transform = `scale(${scale})`;
-           document.body.style.width = `${100 / scale}%`;
-           document.body.style.height = `${100 / scale}%`;
-        }
-      }
-    ]
+
+    ],
   },
   {
     title: "Оптимизация и чат",
@@ -128,11 +117,13 @@ const SettingSections = [
         icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Telephone.webp",
         default: false,
         onChange: (val) => {
-           localStorage.setItem('staticEmojis', val);
-           const imgs = document.querySelectorAll('img[src*="Telegram-Animated-Emojis"]');
-           if (val) imgs.forEach(applyStaticEmoji);
-           else imgs.forEach(revertStaticEmoji);
-        }
+          localStorage.setItem("staticEmojis", val);
+          const imgs = document.querySelectorAll(
+            'img[src*="Telegram-Animated-Emojis"]',
+          );
+          if (val) imgs.forEach(applyStaticEmoji);
+          else imgs.forEach(revertStaticEmoji);
+        },
       },
       {
         id: "site-set-dyslexia",
@@ -142,9 +133,9 @@ const SettingSections = [
         icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Abacus.webp",
         default: false,
         onChange: (val) => {
-           localStorage.setItem('siteDyslexia', val);
-           document.body.style.fontFamily = val ? 'monospace' : '';
-        }
+          localStorage.setItem("siteDyslexia", val);
+          document.body.style.fontFamily = val ? "monospace" : "";
+        },
       },
       {
         id: "site-set-disable-transitions",
@@ -154,9 +145,9 @@ const SettingSections = [
         icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/High%20Speed%20Train.webp",
         default: false,
         onChange: (val) => {
-           localStorage.setItem('disableTransitions', val);
-           document.body.classList.toggle('disable-transitions', val);
-        }
+          localStorage.setItem("disableTransitions", val);
+          document.body.classList.toggle("disable-transitions", val);
+        },
       },
       {
         id: "site-set-round-avatars",
@@ -166,9 +157,9 @@ const SettingSections = [
         icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/New%20Moon.webp",
         default: false,
         onChange: (val) => {
-           localStorage.setItem('siteRoundAvars', val);
-           document.body.classList.toggle('round-avatars', val);
-        }
+          localStorage.setItem("siteRoundAvars", val);
+          document.body.classList.toggle("round-avatars", val);
+        },
       },
       {
         id: "site-set-compact-chat",
@@ -178,9 +169,9 @@ const SettingSections = [
         icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Microscope.webp",
         default: false,
         onChange: (val) => {
-           localStorage.setItem('compactChat', val);
-           document.body.classList.toggle('compact-chat', val);
-        }
+          localStorage.setItem("compactChat", val);
+          document.body.classList.toggle("compact-chat", val);
+        },
       },
       {
         id: "site-set-hide-chat-time",
@@ -190,12 +181,12 @@ const SettingSections = [
         icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Hourglass%20Not%20Done.webp",
         default: false,
         onChange: (val) => {
-           localStorage.setItem('hideChatTime', val);
-           document.body.classList.toggle('hide-chat-time', val);
-        }
-      }
-    ]
-  }
+          localStorage.setItem("hideChatTime", val);
+          document.body.classList.toggle("hide-chat-time", val);
+        },
+      },
+    ],
+  },
 ];
 
 function initSettingsRenderer() {
@@ -203,7 +194,7 @@ function initSettingsRenderer() {
   if (!container) return;
 
   let html = "";
-  SettingSections.forEach(section => {
+  SettingSections.forEach((section) => {
     html += `
       <div style="margin-bottom: 25px;">
         <h3 style="font-size: 18px; margin-bottom: 15px; font-weight: 800; display: flex; align-items: center; gap: 8px;">
@@ -212,29 +203,38 @@ function initSettingsRenderer() {
         <div style="background: rgba(255,255,255,0.02); border-radius: 16px; border: 1px solid var(--border-light); overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
     `;
 
-    section.items.forEach(item => {
-      let saved = localStorage.getItem(item.id) || localStorage.getItem(item.id.replace('site-settings-', 'site')); // backward compatibility
-      if (item.id === 'site-settings-theme') saved = localStorage.getItem('cowio:globalTheme') === 'light' ? 'true' : 'false';
-      if (item.id === 'site-settings-particle') saved = localStorage.getItem('siteParticles') || 'true';
-      if (item.id === 'site-settings-particle-brightness') saved = localStorage.getItem('siteParticleBrightness') || '1';
-      if (item.id === 'site-settings-neuro') saved = localStorage.getItem('siteNeuro') || 'true';
-      if (item.id === 'site-settings-static-emojis') saved = localStorage.getItem('staticEmojis') || 'false';
-      if (item.id === 'site-set-zoom') saved = localStorage.getItem('siteZoom') || '100';
+    section.items.forEach((item) => {
+      let saved =
+        localStorage.getItem(item.id) ||
+        localStorage.getItem(item.id.replace("site-settings-", "site")); // backward compatibility
+      if (item.id === "site-settings-theme")
+        saved =
+          localStorage.getItem("cowio:globalTheme") === "light"
+            ? "true"
+            : "false";
+      if (item.id === "site-settings-particle")
+        saved = localStorage.getItem("siteParticles") || "true";
+      if (item.id === "site-settings-particle-brightness")
+        saved = localStorage.getItem("siteParticleBrightness") || "1";
+      if (item.id === "site-settings-neuro")
+        saved = localStorage.getItem("siteNeuro") || "true";
+      if (item.id === "site-settings-static-emojis")
+        saved = localStorage.getItem("staticEmojis") || "false";
 
-      
+
       if (saved === null) saved = item.default;
-      else if (item.type !== 'slider') saved = (saved === 'true');
-      else if (item.type === 'slider') saved = Number(saved);
+      else if (item.type !== "slider") saved = saved === "true";
+      else if (item.type === "slider") saved = Number(saved);
 
       // Setup initialization for CSS rules
       try {
-        if (saved && item.type !== 'slider') item.onChange(true);
-        if (item.type === 'slider') item.onChange(saved);
-      } catch(e) {
+        if (saved && item.type !== "slider") item.onChange(true);
+        if (item.type === "slider") item.onChange(saved);
+      } catch (e) {
         console.warn("Setting init err", e);
       }
 
-      if (item.type === 'toggle') {
+      if (item.type === "toggle") {
         html += `
           <label style="padding: 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
             <div style="display: flex; align-items: center; gap: 12px;">
@@ -247,17 +247,17 @@ function initSettingsRenderer() {
                </div>
             </div>
             <div class="st-switch">
-               <input type="checkbox" id="${item.id}" ${saved ? 'checked' : ''}>
+               <input type="checkbox" id="${item.id}" ${saved ? "checked" : ""}>
                <span class="st-slider"></span>
             </div>
           </label>
         `;
-      } else if (item.type === 'slider') {
+      } else if (item.type === "slider") {
         const min = item.min !== undefined ? item.min : 0;
         const max = item.max !== undefined ? item.max : 1;
         const step = item.step !== undefined ? item.step : 0.05;
         const labelFn = item.labelFn || ((v) => Math.round(v * 100) + "%");
-        
+
         html += `
           <div style="padding: 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center;">
              <div style="display: flex; align-items: center; gap: 12px;">
@@ -340,17 +340,19 @@ function initSettingsRenderer() {
 
   // Add event listeners
   SettingSections.forEach((s) => {
-    s.items.forEach(item => {
+    s.items.forEach((item) => {
       const el = document.getElementById(item.id);
       if (el) {
-        if (item.type === 'toggle') {
-          el.addEventListener('change', (e) => {
+        if (item.type === "toggle") {
+          el.addEventListener("change", (e) => {
             item.onChange(e.target.checked);
           });
-        } else if (item.type === 'slider') {
-          el.addEventListener('input', (e) => {
+        } else if (item.type === "slider") {
+          el.addEventListener("input", (e) => {
             const labelFn = item.labelFn || ((v) => Math.round(v * 100) + "%");
-            document.getElementById(item.id + "-val").innerText = labelFn(e.target.value);
+            document.getElementById(item.id + "-val").innerText = labelFn(
+              e.target.value,
+            );
             item.onChange(e.target.value);
           });
         }
@@ -360,7 +362,7 @@ function initSettingsRenderer() {
 }
 
 try {
-  if (document.readyState === 'loading') {
+  if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initSettingsRenderer);
   } else {
     initSettingsRenderer();
