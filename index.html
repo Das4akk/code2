@@ -3780,6 +3780,9 @@
         .dm-modal-content:not(.chat-active) .dm-main {
           display: none !important;
         }
+        #btn-dm-sidebar-close {
+          display: flex !important;
+        }
 
         .support-grid-layout {
           grid-template-columns: 1fr !important;
@@ -6854,6 +6857,7 @@
         <div class="dm-sidebar">
           <div class="dm-sidebar-header">
             <span>Чаты</span>
+            <button class="secondary-btn btn-close-modal" style="display:none; width:auto; padding:6px 10px;" id="btn-dm-sidebar-close">✕</button>
           </div>
           <div class="dm-sidebar-list" id="dm-sidebar-list">
             <!-- Populated by JS -->
@@ -6862,8 +6866,9 @@
 
         <!-- Right Main Area for Chat -->
         <div class="dm-main">
-          <div class="dm-modal-header">
-            <div>
+          <div class="dm-modal-header" style="display:flex; align-items:center; gap:10px;">
+            <button class="secondary-btn" id="btn-dm-back" style="display:none; width:auto; padding:8px 12px; border-radius:10px; font-size:18px;">‹</button>
+            <div style="flex:1;">
               <h2 id="dm-chat-title" style="margin-bottom: 5px">Личный чат <span id="dm-typing-status" style="font-size: 12px; color: var(--text-muted); display:inline-block; margin-left: 10px; font-weight:normal;"></span></h2>
               <p style="font-size: 12px; color: var(--text-muted)">
                 Приватные сообщения

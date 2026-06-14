@@ -6275,7 +6275,7 @@ class ProfileManager {
 
     const ownerImg = `<span class="role-badge-icon-wrapper" data-tooltip="Создатель платформы" onclick="event.stopPropagation(); if(window.Utils) Utils.showBadgeModal('Создатель', 'Высший ранг платформы. Владелец проекта.', 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Military%20Medal.webp')"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Military%20Medal.webp" class="role-badge-icon" style="width:1.2em;height:1.2em;vertical-align:bottom;" title=""></span>`;
     const adminImg = `<span class="role-badge-icon-wrapper" data-tooltip="Администратор" onclick="event.stopPropagation(); if(window.Utils) Utils.showBadgeModal('Администратор', 'Управляет платформой и модераторами.', 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Diamond%20With%20A%20Dot.webp')"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Diamond%20With%20A%20Dot.webp" class="role-badge-icon" style="width:1.2em;height:1.2em;vertical-align:bottom;" title=""></span>`;
-    const modImg = `<span class="role-badge-icon-wrapper" data-tooltip="Модератор комьюнити" onclick="event.stopPropagation(); if(window.Utils) Utils.showBadgeModal('Модератор', 'Поддерживает порядок и помогает пользователям.', 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Shield.webp')"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Shield.webp" class="role-badge-icon" style="width:1.2em;height:1.2em;vertical-align:bottom;" title=""></span>`;
+    const modImg = `<span class="role-badge-icon-wrapper" data-tooltip="Модератор комьюнити" onclick="event.stopPropagation(); if(window.Utils) Utils.showBadgeModal('Модератор', 'Поддерживает порядок и помогает пользователям.', 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Man%20Police%20Officer.webp')"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Man%20Police%20Officer.webp" class="role-badge-icon" style="width:1.2em;height:1.2em;vertical-align:bottom;" title=""></span>`;
 
     if (AdminPanel.isCreatorProfile(profile, uid)) badges.push(ownerImg);
     else if (AdminPanel.isModeratorProfile(profile, uid)) badges.push(modImg);
@@ -9061,7 +9061,25 @@ class DirectMessages {
         }
     });
 
+    const btnCloseSidebar = Utils.$("btn-dm-sidebar-close");
+    if (btnCloseSidebar) {
+        btnCloseSidebar.onclick = () => {
+            Utils.$("modal-dm-chat").classList.remove("active");
+        };
+    }
+
     Utils.$("modal-dm-chat").classList.add("active");
+    const dmContent = document.querySelector(".dm-modal-content");
+    if (dmContent) dmContent.classList.add("chat-active");
+    
+    const btnBack = Utils.$("btn-dm-back");
+    if (btnBack) {
+        btnBack.style.display = window.innerWidth <= 1024 ? "block" : "none";
+        btnBack.onclick = () => {
+            if (dmContent) dmContent.classList.remove("chat-active");
+        };
+    }
+
     this.bindThemeControls();
     this.applyTheme(this.theme, false);
     this.populateSidebar(targetUid);

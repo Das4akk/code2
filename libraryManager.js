@@ -173,13 +173,20 @@ class LibraryManager {
                 <label style="display:block; margin-bottom:5px; color:var(--text-muted); font-size:13px;">Ссылка на видео (YouTube/Rutube)</label>
                 <input type="text" id="lib-add-url" class="settings-input" placeholder="https://..." />
             </div>
-            <div style="margin-bottom: 15px">
-                <label style="display:block; margin-bottom:5px; color:var(--text-muted); font-size:13px;">Название</label>
-                <input type="text" id="lib-add-title" class="settings-input" placeholder="Точное название" />
-            </div>
-            <div style="margin-bottom: 20px">
-                <label style="display:block; margin-bottom:5px; color:var(--text-muted); font-size:13px;">Описание (мин. 40 символов)</label>
-                <textarea id="lib-add-desc" class="settings-input" rows="4" placeholder="Подробное описание..."></textarea>
+            <div id="lib-ai-fields-container" style="position:relative;">
+                <div id="lib-ai-lock-overlay" style="display:none; position:absolute; inset:-10px; background:rgba(10,10,15,0.7); backdrop-filter:blur(8px); z-index:10; border-radius:16px; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
+                    <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width:48px;height:48px;margin-bottom:10px;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.5));" />
+                    <div style="color:#fff; font-weight:600; font-size:14px;">Нейросеть пишет описание...</div>
+                    <div style="color:var(--text-muted); font-size:12px; margin-top:4px;">Пожалуйста, подождите</div>
+                </div>
+                <div style="margin-bottom: 15px">
+                    <label style="display:block; margin-bottom:5px; color:var(--text-muted); font-size:13px;">Название</label>
+                    <input type="text" id="lib-add-title" class="settings-input" placeholder="Точное название" />
+                </div>
+                <div style="margin-bottom: 20px">
+                    <label style="display:block; margin-bottom:5px; color:var(--text-muted); font-size:13px;">Описание (мин. 40 символов)</label>
+                    <textarea id="lib-add-desc" class="settings-input" rows="4" placeholder="Подробное описание..."></textarea>
+                </div>
             </div>
             <div style="margin-bottom: 20px; display:flex; gap:10px; align-items:center;">
                 <input type="checkbox" id="lib-add-public" checked style="width:18px; height:18px;" />
@@ -196,6 +203,7 @@ class LibraryManager {
     const inputUrl = modal.querySelector("#lib-add-url");
     const inputTitle = modal.querySelector("#lib-add-title");
     const inputDesc = modal.querySelector("#lib-add-desc");
+    const lockOverlay = modal.querySelector("#lib-ai-lock-overlay");
     
     let fetchTimeout;
     inputUrl.addEventListener('input', () => {
@@ -205,8 +213,10 @@ class LibraryManager {
             if(!val || val.length < 5) return;
             // Fetch metadata
             try {
-                inputTitle.placeholder = "Ищу название...";
-                inputDesc.placeholder = "Думаю над описанием...";
+                if (lockOverlay) lockOverlay.style.display = "flex";
+                inputTitle.disabled = true;
+                inputDesc.disabled = true;
+                
                 const res = await fetch("/api/library/fetch-metadata", {
                     method: "POST",
                     headers: {"Content-Type": "application/json"},
@@ -220,8 +230,9 @@ class LibraryManager {
             } catch(e) {
                 console.error("fetch metadata failed", e);
             } finally {
-                inputTitle.placeholder = "Точное название";
-                inputDesc.placeholder = "Подробное описание...";
+                if (lockOverlay) lockOverlay.style.display = "none";
+                inputTitle.disabled = false;
+                inputDesc.disabled = false;
             }
         }, 1000);
     });
