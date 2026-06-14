@@ -17,6 +17,12 @@ function restoreOriginalUrl(req) {
     }
 }
 
+export const config = {
+    api: {
+        bodyParser: false,
+    },
+};
+
 export default function handler(req, res) {
     restoreOriginalUrl(req);
     return app(req, res);
