@@ -305,33 +305,17 @@ class HelpGuideManager {
               </div>` + answersBox.innerHTML;
               
             try {
-                const apiKey = "AIzaSyBx-rT_JZolf1jHh0bKN5P7c4rrgq9BQGE";
-                const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-                
-                const prompt = [
-                    "Ты дружелюбный, общительный и жизнерадостный ИИ-ассистент платформы COWIO.",
-                    "Для ответа на специфичные вопросы об устройстве сайта используй базу знаний COWIO ниже.",
-                    "НО если пользователь просто общается, здоровается (привет, как дела, настроение, что делаешь), отвечает на твои вопросы или говорит на общие темы - поддерживай живой и интересный диалог! Отвечай по-человечески, шути, интересуйся мнением пользователя, предлагай провести время с друзьями, послушать музыку или включить видео в комнатах COWIO.",
-                    "Не ограничивай себя справочником. Будь открытым ИИ, с которым приятно болтать.",
-                    "Не будь сухим роботом, общайся уверенно, лаконично и приветливо.",
-                    "Если пользователь задает технический вопрос, на который нет ответа в базе, посоветуй обратиться в поддержку.",
-                    "",
-                    `База знаний:\n${docs.slice(0, 5000)}`,
-                    "",
-                    `Ввод пользователя: ${query}`,
-                ].join("\\n");
-
-                const res = await fetch(geminiUrl, {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 9000);
+                const res = await fetch('/api/ask-guide-ai', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: prompt }] }]
-                    })
+                    body: JSON.stringify({ query, docs }),
+                    signal: controller.signal
                 });
-                
-                if (!res.ok) throw new Error("Gemini API error");
-                const data = await res.json();
-                const answer = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || localFallback;
+                clearTimeout(timeout);
+                const data = await res.json().catch(() => ({ success: true, answer: localFallback }));
+                const answer = data?.answer || localFallback;
                 document.getElementById(ansId).querySelector('.ai-reply').innerText = answer;
             } catch(e) {
                 document.getElementById(ansId).querySelector('.ai-reply').innerText = localFallback;

@@ -253,9 +253,8 @@ const guideAiCache = new Map();
 const GUIDE_AI_CACHE_TTL_MS = 5 * 60 * 1000;
 const GUIDE_AI_TIMEOUT_MS = Number(process.env.GUIDE_AI_TIMEOUT_MS || 6500);
 const GUIDE_AI_MODEL = process.env.GROQ_AI_MODEL || "llama-3.1-8b-instant";
-const geminiAi = process.env.GEMINI_API_KEY
-    ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
-    : null;
+const geminiKey = process.env.GEMINI_API_KEY || "AIzaSyBx-rT_JZolf1jHh0bKN5P7c4rrgq9BQGE";
+const geminiAi = geminiKey ? new GoogleGenAI({ apiKey: geminiKey }) : null;
 
 function normalizeGuideText(text = "") {
     return String(text)
@@ -426,10 +425,12 @@ app.post('/api/library/analyze-preview', async (req, res) => {
 
         const response = await geminiAi.models.generateContent({
             model: "gemini-3.5-flash",
-            contents: [
-                prompt,
-                { inlineData: { data: base64Image, mimeType } }
-            ]
+            contents: {
+                parts: [
+                    { inlineData: { data: base64Image, mimeType } },
+                    { text: prompt }
+                ]
+            }
         });
 
         res.json({ success: true, people: response.text.trim() });
