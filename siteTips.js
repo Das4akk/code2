@@ -14,6 +14,7 @@ class SiteTipsManager {
   static shownThisSession = new Set();
 
   static TIPS = [
+    { id: "library-explore", target: "#nav-library", screen: "lobby-screen", text: "В Библиотеке собраны лучшие видео и фильмы от пользователей. Добавляй свои находки и создавай с ними комнаты!" },
     { id: "rooms-watchparty", target: "#section-rooms", screen: "lobby-screen", text: "Создайте комнату и скиньте ссылку друзьям. Это наш аналог Watch Party из YouTube." },
     { id: "rooms-search", target: "#section-rooms", screen: "lobby-screen", text: "Поиск сверху ищет комнаты по названию, как глобальный поиск каналов в Discord." },
     { id: "rooms-theme", target: "#section-rooms", screen: "lobby-screen", text: "Перед созданием комнаты можно выбрать тему оформления. Попробуйте разные варианты." },

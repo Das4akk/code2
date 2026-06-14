@@ -353,7 +353,7 @@ async function askGemini(prompt) {
     if (!geminiAi) return "";
     const response = await withTimeout(() =>
         geminiAi.models.generateContent({
-            model: "gemini-3.1-flash-lite",
+            model: "gemini-3.5-flash",
             contents: prompt,
         }),
     );
