@@ -420,10 +420,10 @@ app.post('/api/library/analyze-preview', async (req, res) => {
         const base64Image = buffer.toString('base64');
         const mimeType = imgRes.headers.get('content-type') || 'image/jpeg';
 
-        const prompt = `Ты - ИИ ассистент, анализирующий превью видеоролика для социальной платформы. Твоя задача: перечислить людей (известных личностей, блогеров, персонажей), которых ты видишь на картинке. Если людей нет или они неизвестны, ответь "Никто" или "Неизвестные люди". Будь краток. Название видео: "${title}". Описание: "${description}".`;
+        const prompt = `Ты - ИИ ассистент, анализирующий превью видеоролика для социальной платформы. Твоя задача: перечислить людей (известных личностей, блогеров, персонажей), которых ты видишь на картинке. Если людей нет или они неизвестны, ответь "Никто". Название видео: "${title}". Описание: "${description}". ВАЖНО: Отвечай строго только именами через запятую, без лишних слов, мыслей или описаний.`;
 
         const response = await geminiAi.models.generateContent({
-            model: "gemini-1.5-flash",
+            model: "gemini-3.5-flash",
             contents: [
                 prompt,
                 { inlineData: { data: base64Image, mimeType } }
@@ -446,15 +446,24 @@ app.post('/api/library/fetch-metadata', async (req, res) => {
         let description = "";
 
         try {
-            const fetchRes = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" }});
-            if (fetchRes.ok) {
-                const html = await fetchRes.text();
-                
-                const titleMatch = html.match(/<meta\s+property="og:title"\s+content="([^"]*)"/i) || html.match(/<title>([^<]*)<\/title>/i);
-                if (titleMatch && titleMatch[1]) title = titleMatch[1].trim();
+            if (url.includes('youtube.com') || url.includes('youtu.be')) {
+                const oembedRes = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`);
+                if (oembedRes.ok) {
+                    const data = await oembedRes.json();
+                    title = data.title;
+                    description = data.author_name || ""; 
+                }
+            } else {
+                const fetchRes = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" }});
+                if (fetchRes.ok) {
+                    const html = await fetchRes.text();
+                    
+                    const titleMatch = html.match(/<meta\s+property="og:title"\s+content="([^"]*)"/i) || html.match(/<title>([^<]*)<\/title>/i);
+                    if (titleMatch && titleMatch[1]) title = titleMatch[1].trim();
 
-                const descMatch = html.match(/<meta\s+property="og:description"\s+content="([^"]*)"/i) || html.match(/<meta\s+name="description"\s+content="([^"]*)"/i);
-                if (descMatch && descMatch[1]) description = descMatch[1].trim();
+                    const descMatch = html.match(/<meta\s+property="og:description"\s+content="([^"]*)"/i) || html.match(/<meta\s+name="description"\s+content="([^"]*)"/i);
+                    if (descMatch && descMatch[1]) description = descMatch[1].trim();
+                }
             }
         } catch(e) {
             console.error("Fetch metadata error:", e);
@@ -464,8 +473,8 @@ app.post('/api/library/fetch-metadata', async (req, res) => {
             try {
                 const prompt = `Ты - креативный ИИ-копирайтер. Составь красивое, привлекающее внимание зрителя описание для видеоролика под названием "${title}". Оригинальное описание (если есть): "${description}". Напиши 1-2 живых предложения, используй подходящие эмодзи и объясни почему это стоит посмотреть. Не пиши ничего лишнего, только само описание.`;
                 const aiDescResponse = await geminiAi.models.generateContent({
-                    model: "gemini-1.5-flash",
-                    contents: prompt,
+                    model: "gemini-3.5-flash",
+                    contents: prompt
                 });
                 if (aiDescResponse.text) {
                     description = aiDescResponse.text.trim();

@@ -77,9 +77,7 @@ class LibraryManager {
                 }
             }
             this.allVideos = parsed.sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
-            if (document.getElementById("library-screen")?.classList.contains("active")) {
-                this.renderGrid();
-            }
+            this.renderGrid();
         });
     } catch(e) {
         console.error("[LibraryManager] DB listening error:", e);
@@ -131,7 +129,7 @@ class LibraryManager {
             <div class="room-preview">
                 <img src="${thumbUrl}" style="width:100%; height:100%; object-fit:cover;">
                 <div class="room-preview-overlay"></div>
-                ${v.isPublic ? '' : '<div style="position:absolute; top:8px; right:8px; background:rgba(0,0,0,0.7); padding:4px 8px; border-radius:6px; font-size:11px;">🔒 Личное</div>'}
+                ${v.isPublic ? '' : '<div style="position:absolute; top:8px; right:8px; background:rgba(0,0,0,0.7); padding:4px 8px; border-radius:6px; font-size:11px; display:flex; align-items:center; gap:4px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width:1.2em;height:1.2em;" /> Личное</div>'}
             </div>
             <div class="room-info">
                 <h4 class="rm-title">${window.Utils.escapeHtml(v.title || "Без названия")}</h4>
@@ -274,7 +272,7 @@ class LibraryManager {
       modal.innerHTML = `
           <div class="modal-content" style="max-width: 500px">
               <div class="modal-header">
-                  <h2>Определение лиц (ИИ) 🤖</h2>
+                  <h2>Определение лиц (ИИ) <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Robot.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom" /></h2>
               </div>
               <div style="text-align:center; margin-bottom:15px;">
                   <img src="${thumbUrl}" style="max-width:100%; border-radius:12px; max-height:200px; object-fit:cover;" />
@@ -351,15 +349,9 @@ class LibraryManager {
   static showViewModal(v) {
       const modal = this.getOrCreateModal("modal-lib-view");
       const thumbUrl = this.getYoutubeThumb(v.url);
-      
-      const sticker1 = "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Film%20Frames.webp";
-      const sticker2 = "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Popcorn.webp";
 
       modal.innerHTML = `
           <div class="modal-content" style="max-width: 600px; padding: 0; overflow: hidden; position: relative;">
-              <img src="${sticker1}" style="position:absolute; top:-20px; left:-20px; width:72px; height:72px; transform:rotate(-15deg); filter:drop-shadow(0 4px 10px rgba(0,0,0,0.5));" class="floating-emoji" />
-              <img src="${sticker2}" style="position:absolute; bottom:-10px; right:-10px; width:80px; height:80px; transform:rotate(10deg); filter:drop-shadow(0 4px 10px rgba(0,0,0,0.5));" class="floating-emoji" />
-
               <div style="height: 250px; background: #000; position:relative;">
                    <button class="secondary-btn btn-close-modal" id="btn-lib-close-view" style="position:absolute; top:10px; right:10px; z-index:10; background:rgba(0,0,0,0.5); border:none; padding:8px 12px; width:auto;">✕</button>
                    <img src="${thumbUrl}" style="width:100%; height:100%; object-fit:cover; opacity: 0.9;" />
@@ -370,14 +362,14 @@ class LibraryManager {
                   <h2 style="font-size:24px; margin-bottom:8px;">${window.Utils.escapeHtml(v.title)}</h2>
                   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; font-size:13px; color:var(--text-muted);">
                       <span>Добавил(а): <strong style="color:var(--text-main);">${window.Utils.escapeHtml(v.addedByName)}</strong></span>
-                      ${v.isPublic ? `<span>👥 На превью: <strong style="color:var(--accent);">${window.Utils.escapeHtml(v.people || "Не распознано")}</strong></span>` : ""}
+                      ${v.isPublic ? `<span style="display:inline-flex;align-items:center;gap:4px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width:1.2em;height:1.2em;"/> На превью: <strong style="color:var(--accent);">${window.Utils.escapeHtml(v.people || "Не распознано")}</strong></span>` : ""}
                   </div>
                   
                   <div style="background:rgba(255,255,255,0.03); border-radius:12px; padding:16px; margin-bottom:24px; border:1px solid var(--border-light);">
                       <p style="font-size:14px; line-height:1.6; color:#ddd; white-space:pre-wrap;">${window.Utils.escapeHtml(v.description)}</p>
                   </div>
 
-                  <button class="primary-btn" id="btn-lib-create-room" style="font-size:16px; padding:16px; border-radius:12px;">🍿 Создать комнату с этим видео</button>
+                  <button class="primary-btn" id="btn-lib-create-room" style="font-size:16px; padding:16px; border-radius:12px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Popcorn.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom" /> Создать комнату с этим видео</button>
               </div>
           </div>
       `;
@@ -390,12 +382,19 @@ class LibraryManager {
           // trigger create room mechanics
           window.AppState.pendingLibraryVideoUrl = v.url;
           if (document.getElementById("btn-open-create-room")) {
-              window.Utils.showOverlay("modal-create-room");
-              const urlInput = document.getElementById("room-input-url");
-              if (urlInput) {
-                  urlInput.value = v.url;
-                  urlInput.dispatchEvent(new Event('input', { bubbles: true }));
-              }
+              document.getElementById("btn-open-create-room").click();
+              setTimeout(() => {
+                  const urlInput = document.getElementById("room-input-url");
+                  if (urlInput) {
+                      urlInput.value = v.url;
+                      urlInput.dispatchEvent(new Event('input', { bubbles: true }));
+                  }
+                  const nameInput = document.getElementById("room-input-name");
+                  if (nameInput) {
+                      nameInput.value = v.title;
+                      nameInput.dispatchEvent(new Event('input', { bubbles: true }));
+                  }
+              }, 100);
           }
       };
   }
@@ -491,7 +490,7 @@ class LibraryManager {
           results.forEach(v => {
               const item = document.createElement("div");
               item.style = "background:rgba(0,0,0,0.3); padding:8px 12px; border-radius:8px; border:1px solid var(--border-light); display:flex; justify-content:space-between; align-items:center; cursor:pointer;";
-              item.innerHTML = `<div style="font-size:13px; max-width:80%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${v.isPublic===false?"🔒 ":""}${window.Utils.escapeHtml(v.title||"Без названия")} <span style="opacity:0.5">(${v.addedByName})</span></div>`;
+              item.innerHTML = `<div style="font-size:13px; max-width:80%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; align-items:center; gap:4px;">${v.isPublic===false?'<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width:1.2em;height:1.2em;" /> ':""} <span>${window.Utils.escapeHtml(v.title||"Без названия")} <span style="opacity:0.5">(${v.addedByName})</span></span></div>`;
               
               item.onclick = () => {
                   document.getElementById("admin-lib-edit-id").value = v.id || v.path;

@@ -230,7 +230,7 @@ const TELEGRAM_CSS = `
 }
 `;
 
-document.head.insertAdjacentHTML("beforeend", \`<style>\${TELEGRAM_CSS}</style>\`);
+document.head.insertAdjacentHTML("beforeend", `<style>${TELEGRAM_CSS}</style>`);
 
 DirectMessages.EDITING_MSG_ID = null;
 DirectMessages.REPLY_TO_MSG = null;
@@ -251,7 +251,7 @@ DirectMessages.openChat = function(targetUid, targetName) {
             }
         });
         
-        const myHtml = \`
+        const myHtml = `
         <div class="tg-input-area" id="tg-bar-injected">
            <div id="tg-reply-bar" class="tg-reply-bar" style="display:none">
               <div style="flex:1">
@@ -272,7 +272,7 @@ DirectMessages.openChat = function(targetUid, targetName) {
               </button>
            </div>
         </div>
-        \`;
+        `;
         
         document.querySelector(".dm-main").insertAdjacentHTML("beforeend", myHtml);
         
@@ -378,7 +378,7 @@ DirectMessages.sendTGMessage = async function() {
     
     if (this.EDITING_MSG_ID) {
         // Apply edit
-        await update(ref(window.firebaseDatabase.db, \`direct-messages/\${chatId}/messages/\${this.EDITING_MSG_ID}\`), {
+        await update(ref(window.firebaseDatabase.db, `direct-messages/${chatId}/messages/${this.EDITING_MSG_ID}`), {
             text: text,
             isEdited: true
         });
@@ -405,19 +405,19 @@ DirectMessages.sendTGMessage = async function() {
     ta.value = "";
     this.cancelReply();
     
-    await update(ref(window.firebaseDatabase.db, \`direct-messages/\${chatId}\`), {
+    await update(ref(window.firebaseDatabase.db, `direct-messages/${chatId}`), {
         participants: { [AppState.currentUser.uid]: true, [targetUid]: true },
         updatedAt: payload.ts,
         lastMessage: payload
     });
-    await push(ref(window.firebaseDatabase.db, \`direct-messages/\${chatId}/messages\`), payload);
+    await push(ref(window.firebaseDatabase.db, `direct-messages/${chatId}/messages`), payload);
 }
 
 DirectMessages.toggleReaction = async function(msgId, emoji) {
     if (!AppState.currentDirectChat) return;
     const chatId = AppState.currentDirectChat.id;
     const myUid = AppState.currentUser.uid;
-    const rRef = ref(window.firebaseDatabase.db, \`direct-messages/\${chatId}/messages/\${msgId}/reactions/\${myUid}\`);
+    const rRef = ref(window.firebaseDatabase.db, `direct-messages/${chatId}/messages/${msgId}/reactions/${myUid}`);
     
     const snap = await get(rRef);
     if (snap.exists() && snap.val() === emoji) {
@@ -434,7 +434,7 @@ DirectMessages.toggleReaction = async function(msgId, emoji) {
 DirectMessages.deleteMsg = async function(msgId) {
     if (!AppState.currentDirectChat) return;
     const chatId = AppState.currentDirectChat.id;
-    await remove(ref(window.firebaseDatabase.db, \`direct-messages/\${chatId}/messages/\${msgId}\`));
+    await remove(ref(window.firebaseDatabase.db, `direct-messages/${chatId}/messages/${msgId}`));
     const ctx = document.getElementById("tg-context-menu");
     if(ctx) ctx.remove();
 }
@@ -447,16 +447,16 @@ DirectMessages.showContextMenu = function(e, msg) {
     const isSelf = msg.fromUid === AppState.currentUser.uid;
     const isEditingAllowed = isSelf && msg.type === "text";
     
-    let html = \`
-    <div id="tg-context-menu" class="tg-context-menu" style="left: \${e.pageX}px; top: \${e.pageY}px;">
+    let html = `
+    <div id="tg-context-menu" class="tg-context-menu" style="left: ${e.pageX}px; top: ${e.pageY}px;">
        <div class="tg-quick-emojis">
-          \${this.EMOJIS.map(em => \`<div class="tg-reaction" onclick="DirectMessages.toggleReaction('\${msg.id}', '\${em}')">\${em}</div>\`).join('')}
+          ${this.EMOJIS.map(em => `<div class="tg-reaction" onclick="DirectMessages.toggleReaction('${msg.id}', '${em}')">${em}</div>`).join('')}
        </div>
-       <div class="tg-ctx-item" onclick="DirectMessages.setReplyOrEdit(\${JSON.stringify(msg).replace(/"/g, "&quot;")}, 'reply')">↩️ Ответить</div>
-       \${isEditingAllowed ? \`<div class="tg-ctx-item" onclick="DirectMessages.setReplyOrEdit(\${JSON.stringify(msg).replace(/"/g, "&quot;")}, 'edit')">✏️ Изменить</div>\` : ''}
-       \${isSelf ? \`<div class="tg-ctx-item" style="color:#ff5555" onclick="DirectMessages.deleteMsg('\${msg.id}')">🗑 Удалить</div>\` : ''}
+       <div class="tg-ctx-item" onclick="DirectMessages.setReplyOrEdit(${JSON.stringify(msg).replace(/"/g, "&quot;")}, 'reply')">↩️ Ответить</div>
+       ${isEditingAllowed ? `<div class="tg-ctx-item" onclick="DirectMessages.setReplyOrEdit(${JSON.stringify(msg).replace(/"/g, "&quot;")}, 'edit')">✏️ Изменить</div>` : ''}
+       ${isSelf ? `<div class="tg-ctx-item" style="color:#ff5555" onclick="DirectMessages.deleteMsg('${msg.id}')">🗑 Удалить</div>` : ''}
     </div>
-    \`;
+    `;
     
     document.body.insertAdjacentHTML("beforeend", html);
     
@@ -474,7 +474,7 @@ DirectMessages.showContextMenu = function(e, msg) {
 DirectMessages.renderMessages = function(messages) {
     const list = Utils.$("dm-messages");
     if (!messages.length) {
-      list.innerHTML = \`<div style="color:var(--text-muted); text-align:center; padding:20px;">Нет сообщений</div>\`;
+      list.innerHTML = `<div style="color:var(--text-muted); text-align:center; padding:20px;">Нет сообщений</div>`;
       return;
     }
     
@@ -498,17 +498,17 @@ DirectMessages.renderMessages = function(messages) {
         }
         
         if (m.type === "system") {
-          return dateHeaderHtml + \`<div class="sys-msg">\${Utils.escapeHtml(m.fromName || "Пользователь")} \${Utils.escapeHtml(m.text || "")}</div>\`;
+          return dateHeaderHtml + `<div class="sys-msg">${Utils.escapeHtml(m.fromName || "Пользователь")} ${Utils.escapeHtml(m.text || "")}</div>`;
         }
         
         let replyHtml = "";
         if (m.replyToId) {
-            replyHtml = \`
-               <div style="border-left: 2px solid #5288c1; padding-left: 8px; margin-bottom: 5px; cursor: pointer; opacity: 0.8;" onclick="Utils.$('msg-\${m.replyToId}')?.scrollIntoView({behavior:'smooth'})">
-                  <div style="color: #5288c1; font-weight: bold; font-size: 12px;">\${Utils.escapeHtml(m.replyToName || "Пользователь")}</div>
-                  <div style="font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;">\${Utils.escapeHtml(m.replyToText || "Медиа")}</div>
+            replyHtml = `
+               <div style="border-left: 2px solid #5288c1; padding-left: 8px; margin-bottom: 5px; cursor: pointer; opacity: 0.8;" onclick="Utils.$('msg-${m.replyToId}')?.scrollIntoView({behavior:'smooth'})">
+                  <div style="color: #5288c1; font-weight: bold; font-size: 12px;">${Utils.escapeHtml(m.replyToName || "Пользователь")}</div>
+                  <div style="font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;">${Utils.escapeHtml(m.replyToText || "Медиа")}</div>
                </div>
-            \`;
+            `;
         }
         
 
@@ -522,10 +522,10 @@ DirectMessages.renderMessages = function(messages) {
                 if (uid === AppState.currentUser.uid) grouped[em].me = true;
             });
             let items = Object.entries(grouped).map(([em, data]) => 
-               \`<div class="tg-reaction \${data.me ? 'me' : ''}" onclick="DirectMessages.toggleReaction('\${m.id}', '\${em}')">\${em} \${data.count}</div>\`
+               `<div class="tg-reaction ${data.me ? 'me' : ''}" onclick="DirectMessages.toggleReaction('${m.id}', '${em}')">${em} ${data.count}</div>`
             );
             if (items.length) {
-               reactionsHtml = \`<div class="tg-reactions">\${items.join('')}</div>\`;
+               reactionsHtml = `<div class="tg-reactions">${items.join('')}</div>`;
             }
         }
         
@@ -553,28 +553,28 @@ DirectMessages.renderMessages = function(messages) {
             String(m.url).match(/tenor\\.com|giphy\\.com|imgur\\.com/i) ||
             String(m.url).startsWith("data:image/");
             
-          return dateHeaderHtml + \`
-            <div class="m-line \${isSelf ? "self" : ""}" id="msg-\${m.id}">
-                <div class="tg-bubble" oncontextmenu="DirectMessages.showContextMenu(event, window._curMessagesMap['\${m.id}'])">
-                    \${replyHtml}
-                    \${isImg ? \`<img src="\${Utils.escapeHtml(m.url)}" style="max-width: 250px; max-height: 250px; object-fit: contain; border-radius: 8px; display: block;" onerror="this.onerror=null; this.src='https://via.placeholder.com/200x150?text=Error';" />\` : \`<a href="\${Utils.escapeHtml(m.url)}" target="_blank" style="color: #5288c1; padding: 8px; display: inline-block;">📎 Прикрепленный файл</a>\`}
-                    <div class="tg-time">\${editedStr} \${timestamp}</div>
-                    \${reactionsHtml}
+          return dateHeaderHtml + `
+            <div class="m-line ${isSelf ? "self" : ""}" id="msg-${m.id}">
+                <div class="tg-bubble" oncontextmenu="DirectMessages.showContextMenu(event, window._curMessagesMap['${m.id}'])">
+                    ${replyHtml}
+                    ${isImg ? `<img src="${Utils.escapeHtml(m.url)}" style="max-width: 250px; max-height: 250px; object-fit: contain; border-radius: 8px; display: block;" onerror="this.onerror=null; this.src='https://via.placeholder.com/200x150?text=Error';" />` : `<a href="${Utils.escapeHtml(m.url)}" target="_blank" style="color: #5288c1; padding: 8px; display: inline-block;">📎 Прикрепленный файл</a>`}
+                    <div class="tg-time">${editedStr} ${timestamp}</div>
+                    ${reactionsHtml}
                 </div>
             </div>
-          \`;
+          `;
         }
 
-        return dateHeaderHtml + \`
-            <div class="m-line \${isSelf ? "self" : ""}" id="msg-\${m.id}">
-                <div class="tg-bubble" oncontextmenu="DirectMessages.showContextMenu(event, window._curMessagesMap['\${m.id}'])">
-                    \${replyHtml}
-                    <div>\${Utils.escapeHtml(m.text)}</div>
-                    <div class="tg-time">\${editedStr} \${timestamp}</div>
-                    \${reactionsHtml}
+        return dateHeaderHtml + `
+            <div class="m-line ${isSelf ? "self" : ""}" id="msg-${m.id}">
+                <div class="tg-bubble" oncontextmenu="DirectMessages.showContextMenu(event, window._curMessagesMap['${m.id}'])">
+                    ${replyHtml}
+                    <div>${Utils.escapeHtml(m.text)}</div>
+                    <div class="tg-time">${editedStr} ${timestamp}</div>
+                    ${reactionsHtml}
                 </div>
             </div>
-        \`;
+        `;
       })
       .join("");
       
