@@ -56,9 +56,6 @@ window.firebaseRef = ref;
 window.firebaseUpdate = update;
 window.firebaseSet = set;
 window.firebaseGet = get;
-window.firebaseDatabase = {
-  db, ref, get, set, push, update, remove, onValue, off, onChildAdded
-};
 
 const AppState = {
   currentUser: null,
@@ -4660,9 +4657,8 @@ class EasterEggManager {
       if (!Ctx) return null;
       this.audioContext = new Ctx();
     }
-    if (this.audioContext.state === "suspended") {
+    if (this.audioContext.state === "suspended")
       this.audioContext.resume().catch(() => {});
-    }
     return this.audioContext;
   }
 
@@ -8283,8 +8279,7 @@ class FriendsManager {
       "nav-switch-account",
       "nav-support",
       "nav-support-staff",
-      "nav-settings",
-      "nav-library"
+      "nav-settings"
     ];
     const setNavActive = (id) => {
       navItems.forEach((n) => {
@@ -8292,9 +8287,6 @@ class FriendsManager {
         if (el) el.classList.remove("active");
       });
       if (Utils.$(id)) Utils.$(id).classList.add("active");
-
-      if (Utils.$("section-library"))
-        Utils.$("section-library").style.display = id === "nav-library" ? "flex" : "none";
 
       Utils.$("section-friends").style.display =
         id === "nav-friends" ? "flex" : "none";
@@ -8330,11 +8322,6 @@ class FriendsManager {
     Utils.$("nav-friends").onclick = () => setNavActive("nav-friends");
     Utils.$("nav-find-friend").onclick = () => setNavActive("nav-find-friend");
     Utils.$("nav-rooms").onclick = () => setNavActive("nav-rooms");
-    if (Utils.$("nav-library"))
-      Utils.$("nav-library").onclick = () => {
-        setNavActive("nav-library");
-        if (window.LibraryManager) window.LibraryManager.renderGrid();
-      };
     if (Utils.$("nav-catalog"))
       Utils.$("nav-catalog").onclick = async () => {
         const uid = AppState.currentUser?.uid;
@@ -8398,7 +8385,7 @@ class FriendsManager {
           const isStaff = window.PremiumManager && PremiumManager.isStaff(profile, uid);
           let premiumStatusHtml = "";
           if (isStaff) {
-             premiumStatusHtml = `<div style="background:rgba(255,179,71,0.1); border:1px solid rgba(255,200,100,0.2); padding:15px; border-radius:12px; margin-top:20px; color:#ffb347; font-weight:600;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" style="width:1.2em;vertical-align:bottom;margin-right:8px;">Персонал: Все премиум функции доступны навсегда</div>`;
+             premiumStatusHtml = `<div style="background:rgba(255,179,71,0.1); border:1px solid rgba(255,200,100,0.2); padding:15px; border-radius:12px; margin-top:20px; color:#ffb347; font-weight:600;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Star.webp" style="width:1.2em;vertical-align:bottom;margin-right:8px;">Персонал: Все премиум функции доступны навсегда</div>`;
           } else if (isUserPremium) {
              const expStr = profile?.premium?.expiresAt ? new Date(profile.premium.expiresAt).toLocaleDateString() : 'Неограниченно';
              premiumStatusHtml = `<div style="background:rgba(255,179,71,0.1); border:1px solid rgba(255,200,100,0.2); padding:15px; border-radius:12px; margin-top:20px; color:#ffb347;">
@@ -9012,11 +8999,7 @@ class DirectMessages {
         if (e.target.closest(".dm-pin-btn")) {
           if (item.isPinned) localStorage.removeItem(`dmPin:${item.uid}`);
           else localStorage.setItem(`dmPin:${item.uid}`, "1");
-          const scrollP = sidebar.scrollTop;
-          this.populateSidebar(activeTargetUid, chatsData).then(() => {
-              const newSidebar = Utils.$("dm-sidebar-list");
-              if (newSidebar) newSidebar.scrollTop = scrollP;
-          });
+          this.populateSidebar(activeTargetUid, chatsData); // re-render
           return;
         }
         if (!item.isActive) {
@@ -9051,22 +9034,13 @@ class DirectMessages {
       if (subtitleEl) subtitleEl.innerText = subtitle;
     });
 
-    const typingRef = ref(db, `direct-messages/${chatId}/typing/${targetUid}`);
-    const typingUnsub = onValue(typingRef, (snap) => {
-        const isTyping = !!snap.val();
-        const typingEl = Utils.$("dm-typing-status");
-        if (typingEl) {
-            typingEl.innerText = isTyping ? "печатает..." : "";
-        }
-    });
-
     Utils.$("modal-dm-chat").classList.add("active");
     this.bindThemeControls();
     this.applyTheme(this.theme, false);
     this.populateSidebar(targetUid);
 
     const chatRef = ref(db, `direct-messages/${chatId}`);
-    const origUnsub = onValue(chatRef, (snap) => {
+    this.unsubCurrent = onValue(chatRef, (snap) => {
       const data = snap.val() || {};
       const dbTheme = this.normalizeTheme(data.theme || "default");
       if (dbTheme !== this.theme) this.applyTheme(dbTheme, false);
@@ -9077,11 +9051,6 @@ class DirectMessages {
       if (data.lastMessage?.ts)
         localStorage.setItem(`dmSeen:${chatId}`, String(data.lastMessage.ts));
     });
-
-    this.unsubCurrent = () => {
-        origUnsub();
-        typingUnsub();
-    };
 
     const sendBtn = Utils.$("btn-dm-send");
     const input = Utils.$("dm-input");
@@ -9096,6 +9065,7 @@ class DirectMessages {
       if (mediaPicker) {
         mediaPicker.style.display =
           mediaPicker.style.display === "none" ? "flex" : "none";
+        if (mediaPicker.style.display === "flex") mediaInput.focus();
       }
     };
 
@@ -9151,6 +9121,58 @@ class DirectMessages {
     if (mediaCancelBtnTop)
       mediaCancelBtnTop.onclick = () => (mediaPicker.style.display = "none");
 
+    let dmGifSearchTimeout = null;
+    if (mediaInput) {
+      mediaInput.addEventListener("input", () => {
+        if (dmGifSearchTimeout) clearTimeout(dmGifSearchTimeout);
+        const query = mediaInput.value.trim();
+        const container = Utils.$("dm-gif-results");
+        if (!container) return;
+
+        if (!query) {
+          container.innerHTML =
+            '<div style="width: 100%; text-align: center; color: var(--text-muted); font-size: 12px; padding: 10px 0;">Начните вводить текст для поиска GIF</div>';
+          return;
+        }
+
+        if (query.startsWith("http")) {
+          container.innerHTML =
+            '<div style="width: 100%; text-align: center; color: var(--text-muted); font-size: 12px; padding: 10px 0;">Вы ввели ссылку. Нажмите "Отправить"</div>';
+          return;
+        }
+
+        container.innerHTML =
+          '<div style="width: 100%; text-align: center; color: var(--text-muted); font-size: 12px; padding: 10px 0;">Поиск GIF...</div>';
+
+        dmGifSearchTimeout = setTimeout(async () => {
+          try {
+            const res = await fetch(
+              `https://api.giphy.com/v1/gifs/search?api_key=dc6zaTOxFJmzC&q=${encodeURIComponent(query)}&limit=20`,
+            );
+            const data = await res.json();
+            if (data.data && data.data.length > 0) {
+              container.innerHTML = data.data
+                .map((g) => {
+                  const url = g.images.fixed_height.url;
+                  return `<img src="${url}" class="dm-preset-gif" style="height:80px; flex-grow:1; object-fit:cover; border-radius:6px; cursor:pointer;" />`;
+                })
+                .join("");
+              // Bind clicks
+              container.querySelectorAll(".dm-preset-gif").forEach((img) => {
+                img.onclick = () => performMediaSend(img.src);
+              });
+            } else {
+              container.innerHTML =
+                '<div style="width: 100%; text-align: center; color: var(--text-muted); font-size: 12px; padding: 10px 0;">Ничего не найдено</div>';
+            }
+          } catch (e) {
+            container.innerHTML =
+              '<div style="width: 100%; text-align: center; color: var(--text-error); font-size: 12px; padding: 10px 0;">Ошибка загрузки</div>';
+          }
+        }, 500);
+      });
+    }
+
     const performMediaSend = async (url) => {
       if (!SecurityManager.validateAction("dm_message", { count: 10, timeWindowMs: 10000 })) return;
       if (!url) return;
@@ -9177,52 +9199,12 @@ class DirectMessages {
       await push(ref(db, `direct-messages/${chatId}/messages`), payload);
     };
 
-    if (mediaPicker) {
-      const catContainer = Utils.$("dm-emoji-categories");
-      const resultsContainer = Utils.$("dm-gif-results");
-      if (catContainer && resultsContainer && !catContainer.hasChildNodes()) {
-          const groupings = {};
-          if(window.ANIMATED_EMOJIS) {
-              window.ANIMATED_EMOJIS.forEach(url => {
-                  const parts = url.split('/');
-                  const category = parts[parts.length - 2] || "Other";
-                  if(!groupings[category]) groupings[category] = [];
-                  groupings[category].push(url);
-              });
-          }
-          
-          let firstCat = null;
-          for(const cat in groupings) {
-              if(!firstCat) firstCat = cat;
-              const btn = document.createElement("button");
-              btn.className = "secondary-btn";
-              btn.style.padding = "4px 8px";
-              btn.style.fontSize = "12px";
-              btn.innerText = cat;
-              btn.onclick = () => {
-                  Array.from(catContainer.children).forEach(c => c.style.background = "transparent");
-                  btn.style.background = "rgba(255,255,255,0.2)";
-                  renderEmojis(cat);
-              };
-              catContainer.appendChild(btn);
-          }
-          
-          const renderEmojis = (cat) => {
-              const urls = groupings[cat] || [];
-              resultsContainer.innerHTML = urls.map(url => 
-                 `<img src="${url}" class="dm-preset-gif" loading="lazy" style="height:48px; width:48px; object-fit:contain; border-radius:6px; cursor:pointer; padding:2px;" title="${url.split('/').pop().split('.')[0]}" />`
-              ).join("");
-              
-              resultsContainer.querySelectorAll(".dm-preset-gif").forEach(img => {
-                 img.onclick = () => performMediaSend(img.src);
-              });
-          };
-          
-          if(firstCat) {
-              catContainer.firstChild.click();
-          }
-      }
-    }
+    if (mediaSendBtn)
+      mediaSendBtn.onclick = () => performMediaSend(mediaInput.value.trim());
+
+    document.querySelectorAll(".dm-preset-gif").forEach((img) => {
+      img.onclick = () => performMediaSend(img.src);
+    });
 
     const sendAction = async () => {
       if (!SecurityManager.validateAction("dm_message", { count: 10, timeWindowMs: 10000 })) return;
@@ -9268,28 +9250,15 @@ class DirectMessages {
       return;
     }
 
-    let _lastDateStr = null;
-
     list.innerHTML = messages
       .map((m) => {
         const isSelf = m.fromUid === AppState.currentUser.uid;
-        let dateHeaderHtml = "";
-        
-        if (m.type !== "system") {
-            const dateObj = new Date(m.ts);
-            const dateStr = dateObj.toLocaleDateString();
-            if (dateStr !== _lastDateStr) {
-                dateHeaderHtml = `\n<div style="text-align:center; margin: 15px 0;"><span style="background:rgba(255,255,255,0.1); padding:4px 12px; border-radius:12px; font-size:12px; color:var(--text-muted);">${dateStr}</span></div>\n`;
-                _lastDateStr = dateStr;
-            }
-        }
-
         if (m.type === "system") {
-          return dateHeaderHtml + `<div class="sys-msg">${Utils.escapeHtml(m.fromName || "Пользователь")} ${Utils.escapeHtml(m.text || "")}</div>`;
+          return `<div class="sys-msg">${Utils.escapeHtml(m.fromName || "Пользователь")} ${Utils.escapeHtml(m.text || "")}</div>`;
         }
 
         if (m.type === "invite") {
-          return dateHeaderHtml + `
+          return `
                     <div class="m-line ${isSelf ? "self" : ""}">
                         <strong>${Utils.escapeHtml(isSelf ? "Вы" : m.fromName)}</strong>
                         <div class="bubble" style="border: 1px solid var(--accent); background: rgba(46,213,115,0.1);">
@@ -9317,7 +9286,7 @@ class DirectMessages {
             String(m.url).match(/\.(gif|jpe?g|png|webp|bmp)$/i) ||
             String(m.url).match(/tenor\.com|giphy\.com|imgur\.com/i) ||
             String(m.url).startsWith("data:image/");
-          return dateHeaderHtml + `
+          return `
                     <div class="m-line ${isSelf ? "self" : ""}">
                         <strong>${Utils.escapeHtml(isSelf ? "Вы" : m.fromName)}</strong>
                         <div class="bubble" style="padding: 4px;">
@@ -9327,7 +9296,7 @@ class DirectMessages {
                 `;
         }
 
-        return dateHeaderHtml + `
+        return `
                 <div class="m-line ${isSelf ? "self" : ""}">
                     <strong>${Utils.escapeHtml(isSelf ? "Вы" : m.fromName)}</strong>
                     <div class="bubble">${Utils.escapeHtml(m.text)}</div>
@@ -9341,135 +9310,16 @@ class DirectMessages {
 
   static bindThemeControls() {
     const toggle = Utils.$("btn-dm-theme-toggle");
-    const carousel = Utils.$("dm-theme-carousel");
-    if (!toggle || !carousel) return;
-
+    const controls = Utils.$("dm-theme-controls");
+    if (!toggle || !controls) return;
     toggle.onclick = () => {
-      const uid = AppState?.currentUser?.uid;
-      const profile = uid ? AppState.usersCache.get(uid) : null;
-      const isPremium = profile ? (PremiumManager.isPremiumActive(profile, uid) || PremiumManager.isStaff(profile, uid)) : false;
-
-      if (!isPremium) {
+      if (toggle.classList.contains("premium-locked-theme")) {
         return Utils.toast("Смена темы доступна только с Premium!", "error");
       }
-      carousel.classList.toggle("active");
-      if (carousel.classList.contains("active")) {
-          this.renderThemeCarousel();
-      }
+      controls.classList.toggle("active");
     };
-
-    Utils.$("dm-theme-prev")?.addEventListener("click", () => this.stepThemeCarousel(-1));
-    Utils.$("dm-theme-next")?.addEventListener("click", () => this.stepThemeCarousel(1));
-  }
-
-  static currentThemeFolder = "favorites";
-  static themeIndex = 0;
-  static selectedTheme = "default";
-
-  static renderThemeCarousel() {
-    if (!this.currentThemeFolder) this.currentThemeFolder = Object.keys(ThemeManager.FOLDERS)[0];
-    
-    // Render Folders
-    const foldersContainer = Utils.$("dm-theme-folders");
-    if (foldersContainer) {
-        foldersContainer.innerHTML = "";
-        const fKeys = Object.keys(ThemeManager.FOLDERS);
-        fKeys.forEach((fKey, index) => {
-          const btn = document.createElement("button");
-          btn.className = `secondary-btn theme-folder-btn ${fKey === this.currentThemeFolder ? "active" : ""}`;
-          btn.dataset.folder = fKey;
-          btn.innerHTML = ThemeManager.FOLDERS[fKey].label;
-          btn.style.padding = "6px 12px";
-          btn.style.fontSize = "12px";
-          btn.onclick = () => {
-             foldersContainer.querySelectorAll(".theme-folder-btn").forEach((b) => b.classList.remove("active"));
-             btn.classList.add("active");
-             this.currentThemeFolder = fKey;
-             this.renderCarouselTrack(fKey);
-          };
-          foldersContainer.appendChild(btn);
-        });
-    }
-
-    this.renderCarouselTrack(this.currentThemeFolder);
-  }
-
-  static renderCarouselTrack(fKey) {
-    const track = Utils.$("dm-theme-track");
-    if (!track) return;
-    track.innerHTML = "";
-    
-    // Need to initialize selectedTheme to current theme
-    this.selectedTheme = this.theme;
-
-    const themesList = ThemeManager.FOLDERS[fKey]?.themes || [];
-    if (fKey === "favorites" && !themesList.length) {
-      track.innerHTML = `
-                <div class="theme-card theme-card-empty">
-                    <div class="theme-empty-msg">Нажмите ★ на любой теме,<br>чтобы добавить в любимые</div>
-                </div>
-            `;
-      this.themeIndex = 0;
-      this.updateThemeTransform();
-      return;
-    }
-
-    themesList.forEach((themeKey) => {
-      const t = ThemeManager.EXTENDED_THEMES[themeKey];
-      if (!t) return;
-      const isFav = ThemeManager.isFavorite(themeKey);
-      const div = document.createElement("div");
-      div.className = `theme-card ${this.selectedTheme === themeKey ? "active" : ""}`;
-      div.dataset.theme = themeKey;
-      div.innerHTML = `
-                <button type="button" class="theme-fav-btn ${isFav ? "active" : ""}" data-theme="${themeKey}" title="${isFav ? "Убрать из любимых" : "В любимые"}">★</button>
-                <div class="theme-rect ${themeKey}"></div>
-                <div class="theme-name">${ThemeManager.getThemeLabel(themeKey)}</div>
-                <div class="theme-check">✓</div>
-            `;
-      track.appendChild(div);
-    });
-
-    track.querySelectorAll(".theme-fav-btn").forEach((btn) => {
-      btn.onclick = (e) => {
-        e.stopPropagation();
-        ThemeManager.toggleFavorite(btn.dataset.theme);
-        this.renderCarouselTrack(this.currentThemeFolder);
-      };
-    });
-
-    const opts = ThemeManager.FOLDERS[this.currentThemeFolder]?.themes || [];
-    const idx = opts.indexOf(this.selectedTheme);
-    if (idx >= 0) this.themeIndex = idx;
-    else this.themeIndex = Math.min(this.themeIndex, Math.max(0, opts.length - 1));
-    this.updateThemeTransform();
-
-    track.querySelectorAll(".theme-card").forEach((card) => {
-      card.onclick = () => {
-        const t = card.dataset.theme;
-        if (!t) return;
-        this.applyTheme(t, true);
-        this.selectedTheme = t;
-        const opts = ThemeManager.FOLDERS[this.currentThemeFolder].themes;
-        this.themeIndex = Math.max(0, opts.indexOf(t));
-        this.updateThemeTransform();
-      };
-    });
-  }
-
-  static stepThemeCarousel(direction = 1) {
-    const opts = ThemeManager.FOLDERS[this.currentThemeFolder]?.themes || [];
-    if (!opts.length) return;
-    this.themeIndex = (this.themeIndex + direction + opts.length) % opts.length;
-    this.updateThemeTransform();
-  }
-
-  static updateThemeTransform() {
-    const track = Utils.$("dm-theme-track");
-    if (!track) return;
-    track.style.transform = `translateX(-${this.themeIndex * 100}%)`;
-    track.querySelectorAll(".theme-card").forEach((card) => {
-      card.classList.toggle("active", card.dataset.theme === this.selectedTheme);
+    controls.querySelectorAll(".dm-theme-chip").forEach((btn) => {
+      btn.onclick = () => this.applyTheme(btn.dataset.theme || "default", true);
     });
   }
 
@@ -10717,7 +10567,6 @@ class AdminPanel {
                     <button class="secondary-btn godmode-nav-btn active" data-section="dashboard">dashboard</button>
                     <button class="secondary-btn godmode-nav-btn" data-section="people">people</button>
                     <button class="secondary-btn godmode-nav-btn" data-section="rooms">rooms</button>
-                    <button class="secondary-btn godmode-nav-btn" data-section="library">library</button>
                     <button class="secondary-btn godmode-nav-btn" data-section="badges">badges</button>
                     <button class="secondary-btn godmode-nav-btn" data-section="logs">logs</button>
                     <button class="secondary-btn godmode-nav-btn" data-section="settings">settings</button>
@@ -10863,29 +10712,6 @@ class AdminPanel {
                             </div>
                             <div id="admin-room-heatmap-out" style="font-size:12px; color:var(--text-muted); max-height:120px; overflow:auto;"></div>
                         </div>
-                    </div>
-                </div>
-
-                <div class="godmode-section" data-section="library" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02); margin-bottom:16px;">
-                    <div style="font-weight:700; margin-bottom:10px;">Модерация Библиотеки</div>
-                    <div style="display:flex; gap:10px; margin-bottom:10px;">
-                        <input type="text" id="admin-lib-search" placeholder="ID видео или поиска..." class="settings-input">
-                        <button class="primary-btn" id="btn-admin-lib-search" style="width:auto;">Найти</button>
-                    </div>
-                    <div id="admin-lib-list" style="display:flex; flex-direction:column; gap:8px; max-height:220px; overflow:auto; margin-bottom:15px;"></div>
-                    
-                    <div style="border-top:1px solid var(--border-light); padding-top:10px;">
-                      <div style="font-weight:700; font-size:14px; margin-bottom:8px;">Редактор Видео</div>
-                      <input type="hidden" id="admin-lib-edit-id">
-                      <input type="hidden" id="admin-lib-edit-path">
-                      <input type="text" id="admin-lib-edit-title" placeholder="Название" class="settings-input" style="margin-bottom:8px;">
-                      <textarea id="admin-lib-edit-desc" rows="2" placeholder="Описание" class="settings-input" style="margin-bottom:8px;"></textarea>
-                      <input type="text" id="admin-lib-edit-url" placeholder="URL" class="settings-input" style="margin-bottom:8px;">
-                      <input type="text" id="admin-lib-edit-people" placeholder="Распознанные люди/ИИ" class="settings-input" style="margin-bottom:8px;">
-                      <div style="display:flex; gap:10px;">
-                          <button class="primary-btn" id="btn-admin-lib-save">Сохранить</button>
-                          <button class="danger-btn" id="btn-admin-lib-delete">Удалить видео</button>
-                      </div>
                     </div>
                 </div>
 
@@ -11272,9 +11098,6 @@ class AdminPanel {
     // Render catalog items if data is already loaded
     if (window.CatalogManager) {
       window.CatalogManager.renderAdminCatalog();
-    }
-    if (window.LibraryManager) {
-      window.LibraryManager.bindAdminPanel();
     }
   }
 
@@ -13185,11 +13008,12 @@ class RoomManager {
   static themeIndex = 0;
   static heartsTimer = null;
   static loveHeartEmojis = [
-    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Heart.webp' style='width:1em;height:1em;'>",
-    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Heart%20With%20Arrow.webp' style='width:1em;height:1em;'>",
-    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Revolving%20Hearts.webp' style='width:1em;height:1em;'>",
-    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Two%20Hearts.webp' style='width:1em;height:1em;'>",
-    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Sparkling%20Heart.webp' style='width:1em;height:1em;'>"
+    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smiley/Red%20Heart.webp' style='width:1em;height:1em;'>",
+    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smiley/Heart%20With%20Arrow.webp' style='width:1em;height:1em;'>",
+    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smiley/Revolving%20Hearts.webp' style='width:1em;height:1em;'>",
+    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smiley/Two%20Hearts.webp' style='width:1em;height:1em;'>",
+    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smiley/Sparkling%20Heart.webp' style='width:1em;height:1em;'>",
+    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smiley/Smiling%20Face%20With%20Hearts.webp' style='width:1em;height:1em;'>"
   ];
 
   static syncDeveloperControls(profile = {}) {
@@ -13891,24 +13715,6 @@ class RoomManager {
     const syncRef = ref(db, `rooms/${roomId}/sync`);
     const chatRef = ref(db, `rooms/${roomId}/chat`);
     const reactionsRef = ref(db, `rooms/${roomId}/reactions`);
-    const typingRef = ref(db, `rooms/${roomId}/typing`);
-    
-    const typingUnsub = onValue(typingRef, (snap) => {
-        const typings = snap.val() || {};
-        const typingIds = Object.keys(typings).filter(id => id !== AppState.currentUser.uid && typings[id] === true);
-        const el = Utils.$("room-typing-status");
-        if(el) {
-            if(typingIds.length === 0) {
-                el.innerText = "";
-            } else if(typingIds.length === 1) {
-                const p = AppState.currentPresenceCache?.[typingIds[0]];
-                el.innerText = (p ? p.name : "Кто-то") + " печатает...";
-            } else {
-                el.innerText = "Несколько человек печатают...";
-            }
-        }
-    });
-
     let presenceBootstrapped = false;
 
     const myName =
@@ -14402,17 +14208,6 @@ class RoomManager {
       }
       input.value = "";
     };
-    let roomTypingTimeout = null;
-    Utils.$("chat-input").oninput = () => {
-        if (!AppState.currentRoomId || !AppState.currentUser) return;
-        const refT = ref(db, `rooms/${AppState.currentRoomId}/typing/${AppState.currentUser.uid}`);
-        set(refT, true);
-        if(roomTypingTimeout) clearTimeout(roomTypingTimeout);
-        roomTypingTimeout = setTimeout(() => {
-            set(refT, null);
-        }, 3000);
-    };
-
     Utils.$("chat-input").onkeydown = (e) => {
       if (e.key === "Enter") Utils.$("send-btn").click();
     };
@@ -15632,7 +15427,6 @@ window.onload = () => {
   initSystem("HelpGuideManager", () => HelpGuideManager.init());
   initSystem("SiteTipsManager", () => SiteTipsManager.init());
   initSystem("PremiumManager", () => PremiumManager.init());
-  initSystem("LibraryManager", () => window.LibraryManager.init());
   initSystem("MysteryEventManager", () => MysteryEventManager.init());
 
   // Добавляем мини-контейнер с ссылками (изначально скрыт, покажется только в lobby-screen)
@@ -17195,38 +16989,21 @@ const TELEGRAM_CSS = `
     cursor: pointer;
     font-size: 20px;
     padding: 5px;
-    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s, color 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    transition: color 0.2s;
 }
-.tg-btn:hover { 
-    color: var(--text-main); 
-    transform: scale(1.15) translateY(-2px);
-    filter: brightness(1.2);
-}
-.tg-btn:active {
-    transform: scale(0.95);
-}
+.tg-btn:hover { color: var(--text-main); }
 .tg-btn-send {
-    background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+    background: rgba(255,255,255,0.1);
     color: var(--text-main);
     border: 1px solid var(--border-light);
     border-radius: 50%;
     width: 44px;
     height: 44px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s, background 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
-.tg-btn-send:hover { 
-    background: linear-gradient(135deg, rgba(255,255,255,0.2), rgba(255,255,255,0.1)); 
-    color: #fff; 
-    transform: scale(1.1) rotate(-5deg);
-    box-shadow: 0 6px 14px rgba(0,0,0,0.4);
-}
-.tg-btn-send:active {
-    transform: scale(0.9);
-}
+.tg-btn-send:hover { background: rgba(255,255,255,0.15); color: #fff; }
 
 /* Context Menu */
 .tg-context-menu {
@@ -17268,14 +17045,14 @@ document.head.insertAdjacentHTML("beforeend", `<style>${TELEGRAM_CSS}</style>`);
 DirectMessages.EDITING_MSG_ID = null;
 DirectMessages.REPLY_TO_MSG = null;
 DirectMessages.EMOJIS = [
-    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Thumbs%20Up.webp' style='width:24px;height:24px;vertical-align:middle;'>",
-    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Heart.webp' style='width:24px;height:24px;vertical-align:middle;'>",
-    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp' style='width:24px;height:24px;vertical-align:middle;'>",
-    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Tears%20Of%20Joy.webp' style='width:24px;height:24px;vertical-align:middle;'>",
-    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Open%20Mouth.webp' style='width:24px;height:24px;vertical-align:middle;'>",
-    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Crying%20Face.webp' style='width:24px;height:24px;vertical-align:middle;'>",
-    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Clapping%20Hands.webp' style='width:24px;height:24px;vertical-align:middle;'>",
-    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Pile%20Of%20Poo.webp' style='width:24px;height:24px;vertical-align:middle;'>"
+    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smiley/Thumbs%20Up.webp' style='width:24px;height:24px;vertical-align:middle;'>",
+    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smiley/Red%20Heart.webp' style='width:24px;height:24px;vertical-align:middle;'>",
+    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smiley/Fire.webp' style='width:24px;height:24px;vertical-align:middle;'>",
+    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smiley/Face%20With%20Tears%20Of%20Joy.webp' style='width:24px;height:24px;vertical-align:middle;'>",
+    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smiley/Face%20With%20Open%20Mouth.webp' style='width:24px;height:24px;vertical-align:middle;'>",
+    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smiley/Crying%20Face.webp' style='width:24px;height:24px;vertical-align:middle;'>",
+    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smiley/Clapping%20Hands.webp' style='width:24px;height:24px;vertical-align:middle;'>",
+    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smiley/Pile%20Of%20Poo.webp' style='width:24px;height:24px;vertical-align:middle;'>"
 ];
 
 const tgOldOpenChat = DirectMessages.openChat;
@@ -17315,10 +17092,10 @@ DirectMessages.openChat = function(targetUid, targetName) {
            </div>
            
            <div class="tg-input-row">
-              <button class="tg-btn" title="Прикрепить" id="tg-btn-clip"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/File%20Folder.webp" style="width:24px;height:24px;"></button>
+              <button class="tg-btn" title="Прикрепить" id="tg-btn-clip">📎</button>
               <div class="tg-input-box">
                  <textarea id="tg-textarea" rows="1" placeholder="Write a message..."></textarea>
-                 <button class="tg-btn" title="Стикеры/Эмодзи" id="tg-btn-smile" style="display:flex;align-items:center;justify-content:center;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Smiling%20Face.webp" style="width:24px;height:24px;"></button>
+                 <button class="tg-btn" title="Стикеры/Эмодзи" id="tg-btn-smile" style="font-size:18px">😊</button>
               </div>
               <button class="tg-btn tg-btn-send" id="tg-btn-send-msg">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
@@ -17330,18 +17107,6 @@ DirectMessages.openChat = function(targetUid, targetName) {
         document.querySelector(".dm-main").insertAdjacentHTML("beforeend", myHtml);
         
         document.getElementById("tg-btn-send-msg").onclick = () => this.sendTGMessage();
-        
-        let dmTypingTimeout = null;
-        document.getElementById("tg-textarea").oninput = () => {
-            const chatId = DirectMessages.getChatId(AppState.currentUser.uid, AppState.currentDirectChat.targetUid);
-            set(ref(db, `direct-messages/${chatId}/typing/${AppState.currentUser.uid}`), true);
-            
-            if(dmTypingTimeout) clearTimeout(dmTypingTimeout);
-            dmTypingTimeout = setTimeout(() => {
-                set(ref(db, `direct-messages/${chatId}/typing/${AppState.currentUser.uid}`), null);
-            }, 3000);
-        };
-        
         document.getElementById("tg-textarea").onkeydown = (e) => {
            if(e.key === "Enter" && !e.shiftKey) {
                e.preventDefault();
@@ -17350,55 +17115,15 @@ DirectMessages.openChat = function(targetUid, targetName) {
         };
         
         document.getElementById("tg-btn-clip").onclick = () => {
-            const inputImg = document.createElement("input");
-            inputImg.type = "file";
-            inputImg.accept = "image/*";
-            inputImg.onchange = async (e) => {
-              const file = e.target.files[0];
-              if (!file) return;
-              Utils.toast("Обработка картинки...", "info");
-              const reader = new FileReader();
-              reader.onload = (re) => {
-                const img = new Image();
-                img.onload = async () => {
-                  const canvas = document.createElement("canvas");
-                  canvas.width = img.width;
-                  canvas.height = img.height;
-                  canvas.getContext("2d").drawImage(img, 0, 0);
-                  const compressedBase64 = canvas.toDataURL("image/jpeg", 0.6);
-                  
-                  const myProfile = AppState.usersCache.get(AppState.currentUser.uid);
-                  const myName = myProfile?.name || AppState.currentUser.displayName || "User";
-                  const payload = {
-                    type: "media",
-                    fromUid: AppState.currentUser.uid,
-                    fromName: myName,
-                    url: compressedBase64,
-                    ts: Date.now()
-                  };
-                  
-                  try {
-                      const chatId = DirectMessages.getChatId(AppState.currentUser.uid, AppState.currentDirectChat.targetUid);
-                      await push(ref(db, `direct-messages/${chatId}/messages`), payload);
-                      await update(ref(db, `direct-messages/${chatId}`), {
-                          lastMessage: payload
-                      });
-                      Utils.toast("Медиа отправлено!", "success");
-                  } catch (err) {
-                      console.error(err);
-                  }
-                };
-                img.src = re.target.result;
-              };
-              reader.readAsDataURL(file);
-            };
-            inputImg.click();
+            const picker = document.getElementById("dm-media-picker");
+            if(picker) picker.style.display = picker.style.display === "none" ? "flex" : "none";
         };
         
         document.getElementById("tg-btn-smile").onclick = () => {
             const picker = document.getElementById("dm-media-picker");
             if(picker) {
                 picker.style.display = "flex";
+                document.getElementById("dm-media-input").focus();
             }
         };
     }
@@ -17551,20 +17276,15 @@ DirectMessages.showContextMenu = function(e, msg) {
     const isSelf = msg.fromUid === AppState.currentUser.uid;
     const isEditingAllowed = isSelf && msg.type === "text";
     
-    const emojiReply = '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Backhand%20Index%20Pointing%20Left.webp" style="width:18px;height:18px;vertical-align:bottom;margin-right:5px;">';
-    const emojiEdit = '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Pencil.webp" style="width:18px;height:18px;vertical-align:bottom;margin-right:5px;">';
-    const emojiTrash = '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Cross%20Mark.webp" style="width:18px;height:18px;vertical-align:bottom;margin-right:5px;">';
-    const emojiPin = '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Reminder%20Ribbon.webp" style="width:18px;height:18px;vertical-align:bottom;margin-right:5px;">';
-
     let html = `
     <div id="tg-context-menu" class="tg-context-menu" style="left: ${e.pageX}px; top: ${e.pageY - 50}px;">
        <div class="tg-quick-emojis">
           ${this.EMOJIS.map((em, idx) => `<div class="tg-reaction" onclick="DirectMessages.toggleReaction('${msg.id}', ${idx})">${em}</div>`).join('')}
        </div>
-       <div class="tg-ctx-item" onclick="DirectMessages.setReplyOrEdit(${JSON.stringify(msg).replace(/"/g, "&quot;")}, 'reply')">${emojiReply} Ответить</div>
-       <div class="tg-ctx-item" onclick="DirectMessages.pinMsg('${msg.id}')">${emojiPin} Закрепить</div>
-       ${isEditingAllowed ? `<div class="tg-ctx-item" onclick="DirectMessages.setReplyOrEdit(${JSON.stringify(msg).replace(/"/g, "&quot;")}, 'edit')">${emojiEdit} Изменить</div>` : ''}
-       ${isSelf ? `<div class="tg-ctx-item" style="color:#ff5555" onclick="DirectMessages.deleteMsg('${msg.id}')">${emojiTrash} Удалить</div>` : ''}
+       <div class="tg-ctx-item" onclick="DirectMessages.setReplyOrEdit(${JSON.stringify(msg).replace(/"/g, "&quot;")}, 'reply')">↩️ Ответить</div>
+       <div class="tg-ctx-item" onclick="DirectMessages.pinMsg('${msg.id}')">📌 Закрепить</div>
+       ${isEditingAllowed ? `<div class="tg-ctx-item" onclick="DirectMessages.setReplyOrEdit(${JSON.stringify(msg).replace(/"/g, "&quot;")}, 'edit')">✏️ Изменить</div>` : ''}
+       ${isSelf ? `<div class="tg-ctx-item" style="color:#ff5555" onclick="DirectMessages.deleteMsg('${msg.id}')">🗑 Удалить</div>` : ''}
     </div>
     `;
     
@@ -17590,7 +17310,7 @@ DirectMessages.renderMessages = function(messages) {
     window._curMessagesMap = {};
     let _lastDateStr = null;
 
-    const newHtml = messages
+    list.innerHTML = messages
       .map((m) => {
         window._curMessagesMap[m.id] = m;
       
@@ -17689,50 +17409,6 @@ DirectMessages.renderMessages = function(messages) {
       })
       .join("");
       
-    const isAtBottom = (list.scrollHeight - list.scrollTop - list.clientHeight) <= 150;
-    const oldScroll = list.scrollTop;
-
-    const tempDiv = document.createElement("div");
-    tempDiv.innerHTML = newHtml;
-    
-    if (list.innerHTML === "") {
-        list.innerHTML = newHtml;
-    } else {
-        Array.from(tempDiv.children).forEach(newChild => {
-            const id = newChild.id;
-            if (id) {
-                const oldChild = document.getElementById(id);
-                if (oldChild) {
-                    if (oldChild.innerHTML !== newChild.innerHTML || oldChild.className !== newChild.className) {
-                        oldChild.innerHTML = newChild.innerHTML;
-                        oldChild.className = newChild.className;
-                    }
-                } else {
-                    list.appendChild(newChild);
-                }
-            } else if (newChild.classList.contains('date-header')) {
-                const date = newChild.getAttribute('data-date');
-                if (!list.querySelector(`.date-header[data-date="${date}"]`)) {
-                    list.appendChild(newChild);
-                }
-            } else {
-                list.appendChild(newChild);
-            }
-        });
-        
-        // Remove deleted messages
-        Array.from(list.children).forEach(oldChild => {
-            if (oldChild.id && !tempDiv.querySelector('#' + oldChild.id)) {
-                oldChild.remove();
-            }
-        });
-    }
-
-    if (isAtBottom) {
-        list.scrollTop = list.scrollHeight;
-    } else {
-        list.scrollTop = oldScroll;
-    }
-    
+    list.scrollTop = list.scrollHeight;
     if (this.theme === "love") this.startLoveHearts();
 }

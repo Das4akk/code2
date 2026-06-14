@@ -53,33 +53,6 @@ const TELEGRAM_CSS = `
     display: flex;
     flex-direction: column;
     gap: 8px;
-    overflow-y: auto;
-}
-.dm-messages::-webkit-scrollbar,
-.dm-sidebar::-webkit-scrollbar,
-.dm-main::-webkit-scrollbar,
-#dm-theme-carousel::-webkit-scrollbar,
-.theme-folders::-webkit-scrollbar,
-.theme-preview-track::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-}
-.dm-messages::-webkit-scrollbar-thumb,
-.dm-sidebar::-webkit-scrollbar-thumb,
-.dm-main::-webkit-scrollbar-thumb,
-#dm-theme-carousel::-webkit-scrollbar-thumb,
-.theme-folders::-webkit-scrollbar-thumb,
-.theme-preview-track::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 6px;
-}
-.dm-messages::-webkit-scrollbar-track,
-.dm-sidebar::-webkit-scrollbar-track,
-.dm-main::-webkit-scrollbar-track,
-#dm-theme-carousel::-webkit-scrollbar-track,
-.theme-folders::-webkit-scrollbar-track,
-.theme-preview-track::-webkit-scrollbar-track {
-    background: transparent;
 }
 .tg-bubble {
     max-width: 65%;
@@ -479,7 +452,6 @@ DirectMessages.renderMessages = function(messages) {
     }
     
     window._curMessagesMap = {};
-    window._lastDateStr = null;
 
     list.innerHTML = messages
       .map((m) => {

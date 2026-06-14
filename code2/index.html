@@ -4917,15 +4917,6 @@
                 Комнаты</span
               >
             </div>
-            <div class="nav-item" id="nav-library">
-              <span
-                ><img
-                  src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Open%20Book.webp"
-                  style="width: 1.2em; height: 1.2em; vertical-align: bottom"
-                />
-                Библиотека</span
-              >
-            </div>
             <div class="nav-item" id="nav-friends">
               <span
                 ><img
@@ -5082,29 +5073,6 @@
           </header>
 
           <div class="rooms-grid" id="rooms-grid"></div>
-        </main>
-
-        <main class="rooms-main" id="section-library" style="display: none">
-          <div class="lobby-top-bar" style="justify-content:space-between; margin-bottom: 20px;">
-              <h2 style="font-size: 24px; display:flex; align-items:center; gap:10px;">
-                  <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Open%20Book.webp" style="width: 32px; height: 32px;" />
-                  Библиотека
-              </h2>
-          </div>
-          <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-            <button class="primary-btn" id="btn-lib-public" style="flex: 1; border-radius: 12px;">Публичная библиотека</button>
-            <button class="secondary-btn" id="btn-lib-my" style="flex: 1; border-radius: 12px;">Моя библиотека</button>
-          </div>
-          <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-            <input type="text" id="library-search" placeholder="Поиск видео..." class="settings-input" style="flex: 1; border-radius: 12px;" />
-            <button class="primary-btn" id="btn-lib-add-video" style="border-radius: 12px; width:auto; padding:0 20px;">
-              ➕ Добавить видео
-            </button>
-          </div>
-          
-          <div id="library-grid" class="rooms-grid">
-            <!-- Videos inject here -->
-          </div>
         </main>
 
         <main class="rooms-main" id="section-friends" style="display: none">
@@ -5998,7 +5966,7 @@
               ⬅️ Выйти
             </button>
             <div class="room-title-wrapper">
-              <h2 id="room-title-text">Загрузка комнаты... <span id="room-typing-status" style="font-size: 13px; color: var(--text-muted); display:inline-block; margin-left: 10px; font-weight:normal; animation: pulse 1.5s infinite;"></span></h2>
+              <h2 id="room-title-text">Загрузка комнаты...</h2>
             </div>
             <div
               style="
@@ -6864,7 +6832,7 @@
         <div class="dm-main">
           <div class="dm-modal-header">
             <div>
-              <h2 id="dm-chat-title" style="margin-bottom: 5px">Личный чат <span id="dm-typing-status" style="font-size: 12px; color: var(--text-muted); display:inline-block; margin-left: 10px; font-weight:normal;"></span></h2>
+              <h2 id="dm-chat-title" style="margin-bottom: 5px">Личный чат</h2>
               <p style="font-size: 12px; color: var(--text-muted)">
                 Приватные сообщения
               </p>
@@ -6885,27 +6853,12 @@
               </button>
             </div>
           </div>
-          <div class="room-theme-carousel" id="dm-theme-carousel">
-            <div
-              class="theme-folders"
-              id="dm-theme-folders"
-              style="
-                display: flex;
-                gap: 8px;
-                padding: 10px;
-                overflow-x: auto;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-              "
-            ></div>
-            <div class="theme-carousel-top">
-              <button class="theme-arrow-btn" id="dm-theme-prev">‹</button>
-              <div class="theme-preview-wrap">
-                <div class="theme-preview-track" id="dm-theme-track">
-                  <!-- cards go here -->
-                </div>
-              </div>
-              <button class="theme-arrow-btn" id="dm-theme-next">›</button>
-            </div>
+          <div
+            class="dm-theme-controls"
+            id="dm-theme-controls"
+            style="overflow-x: auto; padding-bottom: 5px"
+          >
+            <!-- Populated by JS -->
           </div>
           <div class="panel-love-hearts" id="dm-love-hearts"></div>
           <div id="dm-messages" class="dm-messages"></div>
@@ -6937,7 +6890,7 @@
                 align-items: center;
               "
             >
-              <span>Стикеры и Эмодзи</span>
+              <span>Прикрепить медиа или GIF</span>
               <button
                 id="btn-dm-media-cancel-top"
                 style="
@@ -6950,36 +6903,104 @@
                 ✕
               </button>
             </div>
-            
             <div
-              id="dm-emoji-categories"
               style="
                 display: flex;
-                gap: 5px;
-                overflow-x: auto;
-                padding-bottom: 5px;
-                margin-bottom: 5px;
-                border-bottom: 1px solid rgba(255,255,255,0.1);
+                gap: 8px;
                 flex-shrink: 0;
+                margin-bottom: 10px;
               "
             >
-              <!-- Categories injected here -->
+              <input
+                type="text"
+                id="dm-media-input"
+                placeholder="Поиск GIF или вставьте ссылку..."
+                style="
+                  flex: 1;
+                  padding: 8px;
+                  border-radius: 8px;
+                  background: rgba(0, 0, 0, 0.3);
+                  border: 1px solid var(--border);
+                  color: #fff;
+                "
+              />
+              <button
+                id="btn-dm-media-send"
+                class="primary-btn"
+                style="width: auto; padding: 0 12px"
+              >
+                Отправить
+              </button>
             </div>
-
             <div
               id="dm-gif-results"
               style="
                 display: flex;
                 flex-wrap: wrap;
-                gap: 8px;
+                gap: 4px;
                 overflow-y: auto;
                 overflow-x: hidden;
                 padding-bottom: 5px;
-                height: 250px;
-                align-content: flex-start;
+                height: 200px;
+                justify-content: space-between;
               "
             >
-              <!-- Emojis injected here -->
+              <!-- Default GIFs initially -->
+              <img
+                src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Smiling%20Face%20With%20Hearts.webp"
+                class="dm-preset-gif"
+                style="
+                  height: 48px;
+                  flex-grow: 1;
+                  object-fit: contain;
+                  border-radius: 6px;
+                  cursor: pointer;
+                "
+              />
+              <img
+                src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Cat%20With%20Tears%20Of%20Joy.webp"
+                class="dm-preset-gif"
+                style="
+                  height: 48px;
+                  flex-grow: 1;
+                  object-fit: contain;
+                  border-radius: 6px;
+                  cursor: pointer;
+                "
+              />
+              <img
+                src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Smiling%20Cat%20With%20Heart%20Eyes.webp"
+                class="dm-preset-gif"
+                style="
+                  height: 48px;
+                  flex-grow: 1;
+                  object-fit: contain;
+                  border-radius: 6px;
+                  cursor: pointer;
+                "
+              />
+              <img
+                src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Pouting%20Face.webp"
+                class="dm-preset-gif"
+                style="
+                  height: 48px;
+                  flex-grow: 1;
+                  object-fit: contain;
+                  border-radius: 6px;
+                  cursor: pointer;
+                "
+              />
+              <img
+                src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20Screaming%20In%20Fear.webp"
+                class="dm-preset-gif"
+                style="
+                  height: 48px;
+                  flex-grow: 1;
+                  object-fit: contain;
+                  border-radius: 6px;
+                  cursor: pointer;
+                "
+              />
             </div>
           </div>
 
@@ -7621,7 +7642,6 @@
     <script src="emojis_registry.js"></script>
     <script src="helpGuide.js"></script>
     <script src="siteTips.js"></script>
-    <script src="libraryManager.js"></script>
     <script src="premiumManager.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.7/dist/hls.min.js"></script>
     <script src="settingsRenderer.js"></script>

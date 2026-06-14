@@ -41,33 +41,6 @@ const TELEGRAM_CSS = `
     display: flex;
     flex-direction: column;
     gap: 8px;
-    overflow-y: auto;
-}
-.dm-messages::-webkit-scrollbar,
-.dm-sidebar::-webkit-scrollbar,
-.dm-main::-webkit-scrollbar,
-#dm-theme-carousel::-webkit-scrollbar,
-.theme-folders::-webkit-scrollbar,
-.theme-preview-track::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-}
-.dm-messages::-webkit-scrollbar-thumb,
-.dm-sidebar::-webkit-scrollbar-thumb,
-.dm-main::-webkit-scrollbar-thumb,
-#dm-theme-carousel::-webkit-scrollbar-thumb,
-.theme-folders::-webkit-scrollbar-thumb,
-.theme-preview-track::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 6px;
-}
-.dm-messages::-webkit-scrollbar-track,
-.dm-sidebar::-webkit-scrollbar-track,
-.dm-main::-webkit-scrollbar-track,
-#dm-theme-carousel::-webkit-scrollbar-track,
-.theme-folders::-webkit-scrollbar-track,
-.theme-preview-track::-webkit-scrollbar-track {
-    background: transparent;
 }
 .tg-bubble {
     max-width: 65%;
@@ -175,37 +148,20 @@ const TELEGRAM_CSS = `
     cursor: pointer;
     font-size: 20px;
     padding: 5px;
-    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s, color 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    transition: color 0.2s;
 }
-.tg-btn:hover { 
-    color: #5288c1; 
-    transform: scale(1.15) translateY(-2px);
-    filter: brightness(1.2);
-}
-.tg-btn:active {
-    transform: scale(0.95);
-}
+.tg-btn:hover { color: #5288c1; }
 .tg-btn-send {
-    background: linear-gradient(135deg, #5288c1, #3c6a99);
+    background: #5288c1;
     color: #fff;
     border-radius: 50%;
     width: 44px;
     height: 44px;
-    box-shadow: 0 4px 10px rgba(82,136,193,0.3);
-    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
-.tg-btn-send:hover { 
-    background: linear-gradient(135deg, #5ca2e8, #4679ae); 
-    color: #fff; 
-    transform: scale(1.1) rotate(-5deg);
-    box-shadow: 0 6px 14px rgba(82,136,193,0.5);
-}
-.tg-btn-send:active {
-    transform: scale(0.9);
-}
+.tg-btn-send:hover { background: #4679ae; color: #fff; }
 
 /* Context Menu */
 .tg-context-menu {
@@ -266,10 +222,10 @@ DirectMessages.openChat = function(targetUid, targetName) {
            </div>
            
            <div class="tg-input-row">
-              <button class="tg-btn" title="Прикрепить" id="tg-btn-clip"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/File%20Folder.webp" style="width:24px;height:24px;"></button>
+              <button class="tg-btn" title="Прикрепить" id="tg-btn-clip">📎</button>
               <div class="tg-input-box">
                  <textarea id="tg-textarea" rows="1" placeholder="Write a message..."></textarea>
-                 <button class="tg-btn" title="Стикеры/Эмодзи" id="tg-btn-smile" style="display:flex;align-items:center;justify-content:center;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Smiling%20Face.webp" style="width:24px;height:24px;"></button>
+                 <button class="tg-btn" title="Стикеры/Эмодзи" id="tg-btn-smile" style="font-size:18px">😊</button>
               </div>
               <button class="tg-btn tg-btn-send" id="tg-btn-send-msg">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
@@ -281,19 +237,6 @@ DirectMessages.openChat = function(targetUid, targetName) {
         document.querySelector(".dm-main").insertAdjacentHTML("beforeend", myHtml);
         
         document.getElementById("tg-btn-send-msg").onclick = () => this.sendTGMessage();
-        
-        let dmTypingTimeout = null;
-        document.getElementById("tg-textarea").oninput = () => {
-            const chatId = DirectMessages.getChatId(AppState.currentUser.uid, AppState.currentDirectChat.targetUid);
-            const refT = window.firebaseDatabase.ref(window.firebaseDatabase.db, `direct-messages/${chatId}/typing/${AppState.currentUser.uid}`);
-            window.firebaseDatabase.set(refT, true);
-            
-            if(dmTypingTimeout) clearTimeout(dmTypingTimeout);
-            dmTypingTimeout = setTimeout(() => {
-                window.firebaseDatabase.set(refT, null);
-            }, 3000);
-        };
-        
         document.getElementById("tg-textarea").onkeydown = (e) => {
            if(e.key === "Enter" && !e.shiftKey) {
                e.preventDefault();
@@ -302,57 +245,15 @@ DirectMessages.openChat = function(targetUid, targetName) {
         };
         
         document.getElementById("tg-btn-clip").onclick = () => {
-            const inputImg = document.createElement("input");
-            inputImg.type = "file";
-            inputImg.accept = "image/*";
-            inputImg.onchange = async (e) => {
-              const file = e.target.files[0];
-              if (!file) return;
-              if (window.Utils) Utils.toast("Обработка картинки...", "info");
-              const reader = new FileReader();
-              reader.onload = (re) => {
-                const img = new Image();
-                img.onload = async () => {
-                  const canvas = document.createElement("canvas");
-                  canvas.width = img.width;
-                  canvas.height = img.height;
-                  canvas.getContext("2d").drawImage(img, 0, 0);
-                  const compressedBase64 = canvas.toDataURL("image/jpeg", 0.6);
-                  
-                  const myProfile = AppState.usersCache.get(AppState.currentUser.uid);
-                  const myName = myProfile?.name || AppState.currentUser.displayName || "User";
-                  const payload = {
-                    type: "media",
-                    fromUid: AppState.currentUser.uid,
-                    fromName: myName,
-                    url: compressedBase64,
-                    ts: Date.now()
-                  };
-                  
-                  const chatId = DirectMessages.getChatId(AppState.currentUser.uid, AppState.currentDirectChat.targetUid);
-                  try {
-                      const { ref: dbRef, push, update } = window.firebaseDatabase;
-                      const db = window.firebaseDatabase.db;
-                      await push(dbRef(db, `direct-messages/${chatId}/messages`), payload);
-                      await update(dbRef(db, `direct-messages/${chatId}`), {
-                          lastMessage: payload
-                      });
-                      if (window.Utils) Utils.toast("Медиа отправлено!", "success");
-                  } catch (err) {
-                      console.error(err);
-                  }
-                };
-                img.src = re.target.result;
-              };
-              reader.readAsDataURL(file);
-            };
-            inputImg.click();
+            const picker = document.getElementById("dm-media-picker");
+            if(picker) picker.style.display = picker.style.display === "none" ? "flex" : "none";
         };
         
         document.getElementById("tg-btn-smile").onclick = () => {
             const picker = document.getElementById("dm-media-picker");
             if(picker) {
                 picker.style.display = "flex";
+                document.getElementById("dm-media-input").focus();
             }
         };
     }
@@ -462,20 +363,14 @@ DirectMessages.showContextMenu = function(e, msg) {
     const isSelf = msg.fromUid === AppState.currentUser.uid;
     const isEditingAllowed = isSelf && msg.type === "text";
     
-    const emojiReply = '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Backhand%20Index%20Pointing%20Left.webp" style="width:18px;height:18px;vertical-align:bottom;margin-right:5px;">';
-    const emojiEdit = '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Pencil.webp" style="width:18px;height:18px;vertical-align:bottom;margin-right:5px;">';
-    const emojiTrash = '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Cross%20Mark.webp" style="width:18px;height:18px;vertical-align:bottom;margin-right:5px;">';
-    const emojiPin = '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Reminder%20Ribbon.webp" style="width:18px;height:18px;vertical-align:bottom;margin-right:5px;">';
-
     let html = `
     <div id="tg-context-menu" class="tg-context-menu" style="left: ${e.pageX}px; top: ${e.pageY - 50}px;">
        <div class="tg-quick-emojis">
           ${this.EMOJIS.map(em => `<div class="tg-reaction" onclick="DirectMessages.toggleReaction('${msg.id}', '${em}')">${em}</div>`).join('')}
        </div>
-       <div class="tg-ctx-item" onclick="DirectMessages.setReplyOrEdit(${JSON.stringify(msg).replace(/"/g, "&quot;")}, 'reply')">${emojiReply} Ответить</div>
-       <div class="tg-ctx-item" onclick="DirectMessages.pinMsg('${msg.id}')">${emojiPin} Закрепить</div>
-       ${isEditingAllowed ? `<div class="tg-ctx-item" onclick="DirectMessages.setReplyOrEdit(${JSON.stringify(msg).replace(/"/g, "&quot;")}, 'edit')">${emojiEdit} Изменить</div>` : ''}
-       ${isSelf ? `<div class="tg-ctx-item" style="color:#ff5555" onclick="DirectMessages.deleteMsg('${msg.id}')">${emojiTrash} Удалить</div>` : ''}
+       <div class="tg-ctx-item" onclick="DirectMessages.setReplyOrEdit(${JSON.stringify(msg).replace(/"/g, "&quot;")}, 'reply')">↩️ Ответить</div>
+       ${isEditingAllowed ? `<div class="tg-ctx-item" onclick="DirectMessages.setReplyOrEdit(${JSON.stringify(msg).replace(/"/g, "&quot;")}, 'edit')">✏️ Изменить</div>` : ''}
+       ${isSelf ? `<div class="tg-ctx-item" style="color:#ff5555" onclick="DirectMessages.deleteMsg('${msg.id}')">🗑 Удалить</div>` : ''}
     </div>
     `;
     
@@ -499,26 +394,14 @@ DirectMessages.renderMessages = function(messages) {
     }
     
     window._curMessagesMap = {};
-    window._lastDateStr = null;
 
-    const newHtml = messages
+    list.innerHTML = messages
       .map((m) => {
         window._curMessagesMap[m.id] = m;
       
         const isSelf = m.fromUid === AppState.currentUser.uid;
-        let dateHeaderHtml = "";
-        
-        if (m.type !== "system") {
-            const dateObj = new Date(m.ts);
-            const dateStr = dateObj.toLocaleDateString();
-            if (dateStr !== window._lastDateStr) {
-                dateHeaderHtml = `\n<div style="text-align:center; margin: 15px 0;" class="date-header" data-date="${dateStr}"><span style="background:rgba(255,255,255,0.1); padding:4px 12px; border-radius:12px; font-size:12px; color:var(--text-muted);">${dateStr}</span></div>\n`;
-                window._lastDateStr = dateStr;
-            }
-        }
-
         if (m.type === "system") {
-          return dateHeaderHtml + `<div class="sys-msg" id="msg-${m.id || m.ts}">${Utils.escapeHtml(m.fromName || "Пользователь")} ${Utils.escapeHtml(m.text || "")}</div>`;
+          return `<div class="sys-msg">${Utils.escapeHtml(m.fromName || "Пользователь")} ${Utils.escapeHtml(m.text || "")}</div>`;
         }
         
         let replyHtml = "";
@@ -557,7 +440,7 @@ DirectMessages.renderMessages = function(messages) {
             String(m.url).match(/tenor\.com|giphy\.com|imgur\.com/i) ||
             String(m.url).startsWith("data:image/");
             
-          return dateHeaderHtml + `
+          return `
             <div class="m-line ${isSelf ? "self" : ""}" id="msg-${m.id}">
                 <div class="tg-bubble" oncontextmenu="DirectMessages.showContextMenu(event, window._curMessagesMap['${m.id}'])">
                     ${replyHtml}
@@ -569,7 +452,7 @@ DirectMessages.renderMessages = function(messages) {
           `;
         }
 
-        return dateHeaderHtml + `
+        return `
             <div class="m-line ${isSelf ? "self" : ""}" id="msg-${m.id}">
                 <div class="tg-bubble" oncontextmenu="DirectMessages.showContextMenu(event, window._curMessagesMap['${m.id}'])">
                     ${replyHtml}
@@ -582,53 +465,6 @@ DirectMessages.renderMessages = function(messages) {
       })
       .join("");
       
-    const isAtBottom = (list.scrollHeight - list.scrollTop - list.clientHeight) <= 150;
-    const oldScroll = list.scrollTop;
-
-    // To prevent flicker, we use morphdom like approach or just innerHTML if empty, else simple diff.
-    // For simplicity, we just check if it's identical HTML. If not, replace and restore scroll.
-    // But replacing all HTML still flickers images! Let's do simple DOM patch by ID for existing messages.
-    const tempDiv = document.createElement("div");
-    tempDiv.innerHTML = newHtml;
-    
-    if (list.innerHTML === "") {
-        list.innerHTML = newHtml;
-    } else {
-        Array.from(tempDiv.children).forEach(newChild => {
-            const id = newChild.id;
-            if (id) {
-                const oldChild = document.getElementById(id);
-                if (oldChild) {
-                    if (oldChild.innerHTML !== newChild.innerHTML || oldChild.className !== newChild.className) {
-                        oldChild.innerHTML = newChild.innerHTML;
-                        oldChild.className = newChild.className;
-                    }
-                } else {
-                    list.appendChild(newChild);
-                }
-            } else if (newChild.classList.contains('date-header')) {
-                const date = newChild.getAttribute('data-date');
-                if (!list.querySelector(`.date-header[data-date="${date}"]`)) {
-                    list.appendChild(newChild);
-                }
-            } else {
-                list.appendChild(newChild);
-            }
-        });
-        
-        // Remove deleted messages
-        Array.from(list.children).forEach(oldChild => {
-            if (oldChild.id && !tempDiv.querySelector('#' + oldChild.id)) {
-                oldChild.remove();
-            }
-        });
-    }
-
-    if (isAtBottom) {
-        list.scrollTop = list.scrollHeight;
-    } else {
-        list.scrollTop = oldScroll;
-    }
-    
+    list.scrollTop = list.scrollHeight;
     if (this.theme === "love") this.startLoveHearts();
 }
