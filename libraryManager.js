@@ -217,16 +217,54 @@ class LibraryManager {
                 inputTitle.disabled = true;
                 inputDesc.disabled = true;
                 
-                const res = await fetch("/api/library/fetch-metadata", {
-                    method: "POST",
-                    headers: {"Content-Type": "application/json"},
-                    body: JSON.stringify({ url: val })
-                });
-                const data = await res.json();
-                if(data.success) {
-                    if (data.title && !inputTitle.value) inputTitle.value = data.title;
-                    if (data.description && !inputDesc.value) inputDesc.value = data.description;
+                let title = "Без названия";
+                let description = "";
+
+                try {
+                    if (val.includes('youtube.com') || val.includes('youtu.be')) {
+                        const oembedRes = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(val)}&format=json`);
+                        if (oembedRes.ok) {
+                            const oData = await oembedRes.json();
+                            title = oData.title || title;
+                            description = oData.author_name || ""; 
+                        }
+                    } else {
+                        const fetchRes = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(val)}`);
+                        if (fetchRes.ok) {
+                            const originData = await fetchRes.json();
+                            const html = originData.contents || "";
+                            const titleMatch = html.match(/<meta\s+property="og:title"\s+content="([^"]*)"/i) || html.match(/<title>([^<]*)<\/title>/i);
+                            if (titleMatch && titleMatch[1]) title = titleMatch[1].trim();
+
+                            const descMatch = html.match(/<meta\s+property="og:description"\s+content="([^"]*)"/i) || html.match(/<meta\s+name="description"\s+content="([^"]*)"/i);
+                            if (descMatch && descMatch[1]) description = descMatch[1].trim();
+                        }
+                    }
+                } catch(e) {
+                    console.error("fetch HTML metadata error:", e);
                 }
+
+                try {
+                    const apiKey = "AIzaSyBx-rT_JZolf1jHh0bKN5P7c4rrgq9BQGE";
+                    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+                    const prompt = `Ты - креативный ИИ-копирайтер. Составь красивое, привлекающее внимание зрителя описание для видеоролика под названием "${title}". Оригинальное описание (если есть): "${description}". Напиши 1-2 живых предложения, используй подходящие эмодзи и объясни почему это стоит посмотреть. Не пиши ничего лишнего, только само описание.`;
+                    
+                    const aiRes = await fetch(geminiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                    });
+                    if (aiRes.ok) {
+                        const aiData = await aiRes.json();
+                        const aiText = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
+                        if (aiText) description = aiText.trim();
+                    }
+                } catch(e) {
+                    console.error("AI description failed", e);
+                }
+
+                if (title && !inputTitle.value) inputTitle.value = title;
+                if (description && !inputDesc.value) inputDesc.value = description;
             } catch(e) {
                 console.error("fetch metadata failed", e);
             } finally {
@@ -309,17 +347,41 @@ class LibraryManager {
       modal.classList.add("active");
 
       try {
-          const res = await fetch("/api/library/analyze-preview", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                  imageUrl: thumbUrl,
-                  title: videoData.title,
-                  description: videoData.description
-              })
-          });
-          const data = await res.json();
-          const peopleStr = data.success ? data.people : "Ошибка ИИ. Впишите вручную.";
+          let peopleStr = "Ошибка ИИ. Впишите вручную.";
+          try {
+              const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(thumbUrl)}`;
+              const imgRes = await fetch(proxyUrl);
+              const blob = await imgRes.blob();
+              const base64data = await new Promise((resolve) => {
+                  const reader = new FileReader();
+                  reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                  reader.readAsDataURL(blob);
+              });
+
+              const apiKey = "AIzaSyBx-rT_JZolf1jHh0bKN5P7c4rrgq9BQGE";
+              const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+              const prompt = `Ты - ИИ ассистент, анализирующий превью видеоролика для социальной платформы. Твоя задача: перечислить людей (известных личностей, блогеров, персонажей), которых ты видишь на картинке. Если людей нет или они неизвестны, ответь "Никто". Название видео: "${videoData.title}". Описание: "${videoData.description}". ВАЖНО: Отвечай строго только именами через запятую, без лишних слов, мыслей или описаний.`;
+
+              const aiRes = await fetch(geminiUrl, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                      contents: [{
+                          parts: [
+                              { text: prompt },
+                              { inline_data: { mime_type: blob.type || 'image/jpeg', data: base64data } }
+                          ]
+                      }]
+                  })
+              });
+              if(aiRes.ok) {
+                  const aiData = await aiRes.json();
+                  const aiText = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
+                  if (aiText) peopleStr = aiText.trim();
+              }
+          } catch(e) {
+              console.error("Client side image analysis failed", e);
+          }
           
           modal.querySelector("#ai-loading").style.display = "none";
           modal.querySelector("#ai-result-area").style.display = "block";

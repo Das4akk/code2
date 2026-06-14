@@ -405,44 +405,7 @@ app.post('/api/ask-guide-ai', async (req, res) => {
     }
 });
 
-// MULTI-TURN CHAT INTERFACE WITH THINKING MODE
-app.post('/api/chat', async (req, res) => {
-    try {
-        const { messages, complexity } = req.body;
-        if (!geminiAi) {
-            return res.status(500).json({ error: "Gemini API key is not configured. Please add it to the environment variables." });
-        }
-
-        let model = "gemini-3.5-flash";
-        const config = {
-           systemInstruction: "You are a helpful, deep-thinking assistant. Ensure your answers are comprehensive and consider all complex implications.",
-        };
-
-        if (complexity === "high") {
-            model = "gemini-3.1-pro-preview";
-            config.thinkingConfig = { thinkingLevel: ThinkingLevel.HIGH };
-        } else if (complexity === "fast") {
-            model = "gemini-3.1-flash-lite";
-        }
-
-        // Convert simplistic roles to user/model format
-        const formattedContents = (messages || []).map(m => ({
-            role: m.role, // 'user' or 'model'
-            parts: [{ text: m.content }]
-        }));
-
-        const response = await geminiAi.models.generateContent({
-            model,
-            contents: formattedContents,
-            config
-        });
-
-        res.json({ success: true, text: response.text });
-    } catch (e) {
-        console.error("Chat API error:", e);
-        res.status(500).json({ error: "Failed to process chat: " + String(e.message) });
-    }
-});
+// Chat widget removed
 
 app.post('/api/library/analyze-preview', async (req, res) => {
     try {
