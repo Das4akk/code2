@@ -364,15 +364,46 @@ async function askGroq(prompt) {
     });
 }
 
+async function generateGeminiContent(options, timeoutFn = withTimeout) {
+    if (!geminiAi) throw new Error("Gemini API not configured");
+    
+    const modelsToTry = [
+        "gemini-3.5-flash", 
+        "gemini-2.0-flash", 
+        "gemini-1.5-flash-latest", 
+        "gemini-1.5-flash"
+    ];
+    let lastError = null;
+
+    for (const model of modelsToTry) {
+        try {
+            console.log(`[Diagnostics] Trying Gemini model: ${model}`);
+            const response = await timeoutFn(() =>
+                geminiAi.models.generateContent({
+                    model: model,
+                    ...options
+                })
+            );
+            return response;
+        } catch (e) {
+            console.warn(`[Diagnostics] Model ${model} failed:`, e.status, e.message);
+            lastError = e;
+            if (e.status !== "NOT_FOUND" && e.status !== 404) {
+                break;
+            }
+        }
+    }
+    throw lastError;
+}
+
 async function askGemini(prompt) {
     if (!geminiAi) return "";
-    const response = await withTimeout(() =>
-        geminiAi.models.generateContent({
-            model: "gemini-3.5-flash",
-            contents: prompt,
-        }),
-    );
-    return response?.text?.trim() || "";
+    try {
+        const response = await generateGeminiContent({ contents: prompt });
+        return response?.text?.trim() || "";
+    } catch(e) {
+        throw e;
+    }
 }
 
 app.post('/api/ask-guide-ai', async (req, res) => {
@@ -443,8 +474,7 @@ app.post('/api/library/analyze-preview', async (req, res) => {
 
         const prompt = `Ты - ИИ ассистент, анализирующий превью видеоролика для социальной платформы. Твоя задача: перечислить людей (известных личностей, блогеров, персонажей), которых ты видишь на картинке. Если людей нет или они неизвестны, ответь "Никто". Название видео: "${title}". Описание: "${description}". ВАЖНО: Отвечай строго только именами через запятую, без лишних слов, мыслей или описаний.`;
 
-        const response = await geminiAi.models.generateContent({
-            model: "gemini-3.5-flash",
+        const response = await generateGeminiContent({
             contents: {
                 parts: [
                     { inlineData: { data: base64Image, mimeType } },
@@ -495,8 +525,7 @@ app.post('/api/library/fetch-metadata', async (req, res) => {
         if (geminiAi) {
             try {
                 const prompt = `Ты - креативный ИИ-копирайтер. Составь красивое, привлекающее внимание зрителя описание для видеоролика под названием "${title}". Оригинальное описание (если есть): "${description}". Напиши 1-2 живых предложения, используй подходящие эмодзи и объясни почему это стоит посмотреть. Не пиши ничего лишнего, только само описание.`;
-                const aiDescResponse = await geminiAi.models.generateContent({
-                    model: "gemini-3.5-flash",
+                const aiDescResponse = await generateGeminiContent({
                     contents: prompt
                 });
                 if (aiDescResponse.text) {
