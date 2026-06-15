@@ -1,2 +1,3 @@
+import serverless from 'serverless-http';
 import app from '../server.js';
-export default app;
+export default serverless(app);

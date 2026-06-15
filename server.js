@@ -399,141 +399,17 @@ async function askGemini(prompt) {
     }
 }
 
-app.post('/api/ask-guide-ai', async (req, res) => {
-    const query = String(req.body?.query || "").trim().slice(0, 600);
-    const docs = String(req.body?.docs || "").trim().slice(0, 20000);
-    const fallback = buildGuideFallback(query, docs);
+import askGuideAiHandler from './api/ask-guide-ai.js';
+import analyzePreviewHandler from './api/library/analyze-preview.js';
+import fetchMetadataHandler from './api/library/fetch-metadata.js';
 
-    try {
-        if (!query) {
-            return res.json({ success: true, answer: "Напишите вопрос, и я подберу ответ по справочнику COWIO.", source: "fallback" });
-        }
-
-        const cacheKey = `${normalizeGuideText(query)}:${docs.length}`;
-        const cached = guideAiCache.get(cacheKey);
-        if (cached && Date.now() - cached.ts < GUIDE_AI_CACHE_TTL_MS) {
-            return res.json({ success: true, answer: cached.answer, source: cached.source, cached: true });
-        }
-
-        const prompt = buildGuidePrompt(query, docs);
-        let answer = "";
-        let source = "fallback";
-
-        try {
-            console.log(`[Diagnostics] Attempting Groq for question: "${query}"`);
-            answer = await askGroq(prompt);
-            source = answer ? "groq" : source;
-        } catch (e) {
-            console.warn("[Guide AI] Groq fallback:", e.message || e);
-        }
-
-        if (!answer) {
-            try {
-                console.log(`[Diagnostics] Attempting Gemini for question: "${query}"`);
-                answer = await askGemini(prompt);
-                source = answer ? "gemini" : source;
-            } catch (e) {
-                console.error("[Guide AI] Gemini fallback explicitly failed in askGemini:", e);
-                // Also stringify error if it's an object to capture code/message
-                if (e.status) console.error("Gemini Error Status:", e.status);
-            }
-        }
-
-        answer = answer || fallback;
-        guideAiCache.set(cacheKey, { answer, source, ts: Date.now() });
-        res.json({ success: true, answer, source });
-    } catch (e) {
-        console.warn("[Guide AI] Safe fallback:", e.message || e);
-        res.json({ success: true, answer: fallback, source: "fallback" });
-    }
-});
+app.post('/api/ask-guide-ai', askGuideAiHandler);
+app.post('/api/library/analyze-preview', analyzePreviewHandler);
+app.post('/api/library/fetch-metadata', fetchMetadataHandler);
 
 // Chat widget removed
 
-app.post('/api/library/analyze-preview', async (req, res) => {
-    try {
-        const { imageUrl, title, description } = req.body;
-        if (!imageUrl || !geminiAi) {
-            return res.status(400).json({ success: false, error: "No image or no API key" });
-        }
-
-        // Fetch image as base64
-        const imgRes = await fetch(imageUrl);
-        if(!imgRes.ok) throw new Error("Image fetch failed");
-        const arrayBuffer = await imgRes.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-        const base64Image = buffer.toString('base64');
-        const mimeType = imgRes.headers.get('content-type') || 'image/jpeg';
-
-        const prompt = `Ты - ИИ ассистент, анализирующий превью видеоролика для социальной платформы. Твоя задача: перечислить людей (известных личностей, блогеров, персонажей), которых ты видишь на картинке. Если людей нет или они неизвестны, ответь "Никто". Название видео: "${title}". Описание: "${description}". ВАЖНО: Отвечай строго только именами через запятую, без лишних слов, мыслей или описаний.`;
-
-        const response = await generateGeminiContent({
-            contents: {
-                parts: [
-                    { inlineData: { data: base64Image, mimeType } },
-                    { text: prompt }
-                ]
-            }
-        });
-
-        res.json({ success: true, people: response.text.trim() });
-    } catch (e) {
-        console.error("Gemini Preview Analysis Error:", e);
-        res.status(500).json({ success: false, error: e.message });
-    }
-});
-
-app.post('/api/library/fetch-metadata', async (req, res) => {
-    try {
-        const { url } = req.body;
-        if (!url) return res.status(400).json({ error: "No URL provided" });
-
-        let title = "Без названия";
-        let description = "";
-
-        try {
-            if (url.includes('youtube.com') || url.includes('youtu.be')) {
-                const oembedRes = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`);
-                if (oembedRes.ok) {
-                    const data = await oembedRes.json();
-                    title = data.title;
-                    description = data.author_name || ""; 
-                }
-            } else {
-                const fetchRes = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" }});
-                if (fetchRes.ok) {
-                    const html = await fetchRes.text();
-                    
-                    const titleMatch = html.match(/<meta\s+property="og:title"\s+content="([^"]*)"/i) || html.match(/<title>([^<]*)<\/title>/i);
-                    if (titleMatch && titleMatch[1]) title = titleMatch[1].trim();
-
-                    const descMatch = html.match(/<meta\s+property="og:description"\s+content="([^"]*)"/i) || html.match(/<meta\s+name="description"\s+content="([^"]*)"/i);
-                    if (descMatch && descMatch[1]) description = descMatch[1].trim();
-                }
-            }
-        } catch(e) {
-            console.error("Fetch metadata error:", e);
-        }
-
-        if (geminiAi) {
-            try {
-                const prompt = `Ты - креативный ИИ-копирайтер. Составь красивое, привлекающее внимание зрителя описание для видеоролика под названием "${title}". Оригинальное описание (если есть): "${description}". Напиши 1-2 живых предложения, используй подходящие эмодзи и объясни почему это стоит посмотреть. Не пиши ничего лишнего, только само описание.`;
-                const aiDescResponse = await generateGeminiContent({
-                    contents: prompt
-                });
-                if (aiDescResponse.text) {
-                    description = aiDescResponse.text.trim();
-                }
-            } catch (aiErr) {
-                console.error("AI description failed", aiErr);
-            }
-        }
-
-        res.json({ success: true, title, description });
-    } catch (e) {
-        res.status(500).json({ success: false, error: e.message });
-    }
-});
+// Removed legacy inline endpoint functions to use modular Vercel handlers
 
 const publicPath = __dirname;
 app.use(express.static(publicPath, { index: false })); // avoid index.html auto serving first if we want specific rules, or just allow it
