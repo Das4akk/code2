@@ -3,12 +3,12 @@ import { generateGeminiContent, geminiAi } from '../../lib/gemini.js';
 export default async function handler(req, res) {
     console.log("[API]", req.method, req.url);
 
-    if (req.method !== 'POST') {
-        return res.status(405).json({ success: false, error: 'Method not allowed' });
-    }
-
     try {
-        const { url } = req.body;
+        if (req.method !== 'POST') {
+            return res.status(405).json({ success: false, error: 'Method not allowed' });
+        }
+
+        const { url } = req.body || {};
         if (!url) return res.status(200).json({ success: false, error: "No URL provided", fallback: true });
 
         let title = "Без названия";
@@ -35,7 +35,7 @@ export default async function handler(req, res) {
                 }
             }
         } catch(e) {
-            console.error("Fetch metadata error:", e);
+            console.error("Fetch metadata inner error:", e);
         }
 
         if (geminiAi) {
@@ -54,7 +54,7 @@ export default async function handler(req, res) {
 
         return res.status(200).json({ success: true, title, description });
     } catch (e) {
-        console.error("[API ERROR]", e.stack);
+        console.error("[API ERROR]", e);
         return res.status(200).json({ success: false, error: e.message || "Unknown error", fallback: true });
     }
 }

@@ -3,14 +3,18 @@ import { generateGeminiContent, geminiAi } from '../../lib/gemini.js';
 export default async function handler(req, res) {
     console.log("[API]", req.method, req.url);
 
-    if (req.method !== 'POST') {
-        return res.status(405).json({ success: false, error: 'Method not allowed' });
-    }
-
     try {
-        const { imageUrl, title, description } = req.body;
-        if (!imageUrl || !geminiAi) {
-            return res.status(200).json({ success: false, error: "No image or no API key", fallback: true, people: "Не удалось определить" });
+        if (req.method !== 'POST') {
+            return res.status(405).json({ success: false, error: 'Method not allowed' });
+        }
+
+        const { imageUrl, title, description } = req.body || {};
+        if (!imageUrl) {
+            return res.status(200).json({ success: false, error: "No image", fallback: true, people: "Не удалось определить" });
+        }
+        if (!geminiAi) {
+            console.warn("[API] Gemini AI key missing in analyze-preview");
+            return res.status(200).json({ success: false, error: "No API key", fallback: true, people: "Не удалось определить" });
         }
 
         // Fetch image as base64
@@ -22,7 +26,7 @@ export default async function handler(req, res) {
         const base64Image = buffer.toString('base64');
         const mimeType = imgRes.headers.get('content-type') || 'image/jpeg';
 
-        const prompt = `Ты - ИИ ассистент, анализирующий превью видеоролика для социальной платформы. Твоя задача: перечислить людей (известных личностей, блогеров, персонажей), которых ты видишь на картинке. Если людей нет или они неизвестны, ответь "Никто". Название видео: "${title}". Описание: "${description}". ВАЖНО: Отвечай строго только именами через запятую, без лишних слов, мыслей или описаний.`;
+        const prompt = `Ты - ИИ ассистент, анализирующий превью видеоролика для социальной платформы. Твоя задача: перечислить людей (известных личностей, блогеров, персонажей), которых ты видишь на картинке. Если людей нет или они неизвестны, ответь "Никто". Название видео: "${title || ""}". Описание: "${description || ""}". ВАЖНО: Отвечай строго только именами через запятую, без лишних слов, мыслей или описаний.`;
 
         const response = await generateGeminiContent({
             contents: {
@@ -35,7 +39,7 @@ export default async function handler(req, res) {
 
         return res.status(200).json({ success: true, people: response?.text?.trim() || "Никто" });
     } catch (e) {
-        console.error("[API ERROR]", e.stack);
+        console.error("[API ERROR]", e);
         return res.status(200).json({ success: false, error: e.message || "Unknown error", fallback: true, people: "Не удалось определить" });
     }
 }

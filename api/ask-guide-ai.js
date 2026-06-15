@@ -64,11 +64,11 @@ function buildGuidePrompt(query, docs) {
 export default async function handler(req, res) {
     console.log("[API]", req.method, req.url);
 
-    if (req.method !== 'POST') {
-        return res.status(405).json({ success: false, error: 'Method not allowed' });
-    }
-
     try {
+        if (req.method !== 'POST') {
+            return res.status(405).json({ success: false, error: 'Method not allowed' });
+        }
+
         const query = String(req.body?.query || "").trim().slice(0, 600);
         const docs = String(req.body?.docs || "").trim().slice(0, 20000);
         const fallback = buildGuideFallback(query, docs);
@@ -112,13 +112,13 @@ export default async function handler(req, res) {
 
         guideAiCache.set(cacheKey, { answer, source, ts: Date.now() });
         return res.status(200).json({ success: true, answer, source });
+
     } catch (err) {
-        console.error("[API ERROR]", err.stack);
-        const safeFallback = "AI temporarily unavailable";
+        console.error("[API ERROR]", err);
         return res.status(200).json({ 
             success: false, 
             error: err.message || "Unknown error", 
-            answer: safeFallback,
+            answer: "AI temporarily unavailable",
             fallback: true,
             source: "error"
         });
