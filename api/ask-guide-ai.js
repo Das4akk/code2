@@ -62,17 +62,17 @@ function buildGuidePrompt(query, docs) {
 }
 
 export default async function handler(req, res) {
-    console.log("[API] /api/ask-guide-ai", req.method, req.url);
+    console.log("[API]", req.method, req.url);
 
     if (req.method !== 'POST') {
         return res.status(405).json({ success: false, error: 'Method not allowed' });
     }
 
-    const query = String(req.body?.query || "").trim().slice(0, 600);
-    const docs = String(req.body?.docs || "").trim().slice(0, 20000);
-    const fallback = buildGuideFallback(query, docs);
-
     try {
+        const query = String(req.body?.query || "").trim().slice(0, 600);
+        const docs = String(req.body?.docs || "").trim().slice(0, 20000);
+        const fallback = buildGuideFallback(query, docs);
+
         if (!query) {
             return res.status(200).json({ success: true, answer: "Напишите вопрос, и я подберу ответ по справочнику COWIO.", source: "fallback" });
         }
@@ -92,7 +92,7 @@ export default async function handler(req, res) {
             answer = await askGroq(prompt);
             source = answer ? "groq" : source;
         } catch (e) {
-            console.warn("[Guide AI] Groq fallback:", e.message || e);
+            console.error("[Guide AI] Groq fallback log:", e.message || e);
         }
 
         if (!answer) {
@@ -102,16 +102,25 @@ export default async function handler(req, res) {
                 answer = response?.text?.trim() || "";
                 source = answer ? "gemini" : source;
             } catch (e) {
-                console.error("[Guide AI] Gemini fallback explicitly failed in askGemini:", e);
-                if (e.status) console.error("Gemini Error Status:", e.status);
+                console.error("[Guide AI] Gemini fallback explicitly failed in askGemini:", e.stack);
             }
         }
 
-        answer = answer || fallback;
+        if (!answer) {
+            answer = fallback;
+        }
+
         guideAiCache.set(cacheKey, { answer, source, ts: Date.now() });
         return res.status(200).json({ success: true, answer, source });
-    } catch (e) {
-        console.warn("[Guide AI] Safe fallback:", e.message || e);
-        return res.status(200).json({ success: true, answer: fallback, source: "fallback" });
+    } catch (err) {
+        console.error("[API ERROR]", err.stack);
+        const safeFallback = "AI temporarily unavailable";
+        return res.status(200).json({ 
+            success: false, 
+            error: err.message || "Unknown error", 
+            answer: safeFallback,
+            fallback: true,
+            source: "error"
+        });
     }
 }

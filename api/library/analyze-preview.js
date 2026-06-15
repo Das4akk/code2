@@ -1,7 +1,7 @@
 import { generateGeminiContent, geminiAi } from '../../lib/gemini.js';
 
 export default async function handler(req, res) {
-    console.log("[API] /api/library/analyze-preview", req.method, req.url);
+    console.log("[API]", req.method, req.url);
 
     if (req.method !== 'POST') {
         return res.status(405).json({ success: false, error: 'Method not allowed' });
@@ -10,7 +10,7 @@ export default async function handler(req, res) {
     try {
         const { imageUrl, title, description } = req.body;
         if (!imageUrl || !geminiAi) {
-            return res.status(400).json({ success: false, error: "No image or no API key" });
+            return res.status(200).json({ success: false, error: "No image or no API key", fallback: true, people: "Не удалось определить" });
         }
 
         // Fetch image as base64
@@ -33,9 +33,9 @@ export default async function handler(req, res) {
             }
         });
 
-        return res.status(200).json({ success: true, people: response.text.trim() });
+        return res.status(200).json({ success: true, people: response?.text?.trim() || "Никто" });
     } catch (e) {
-        console.error("Gemini Preview Analysis Error:", e);
-        return res.status(500).json({ success: false, error: e.message });
+        console.error("[API ERROR]", e.stack);
+        return res.status(200).json({ success: false, error: e.message || "Unknown error", fallback: true, people: "Не удалось определить" });
     }
 }

@@ -1,7 +1,7 @@
 import { generateGeminiContent, geminiAi } from '../../lib/gemini.js';
 
 export default async function handler(req, res) {
-    console.log("[API] /api/library/fetch-metadata", req.method, req.url);
+    console.log("[API]", req.method, req.url);
 
     if (req.method !== 'POST') {
         return res.status(405).json({ success: false, error: 'Method not allowed' });
@@ -9,7 +9,7 @@ export default async function handler(req, res) {
 
     try {
         const { url } = req.body;
-        if (!url) return res.status(400).json({ success: false, error: "No URL provided" });
+        if (!url) return res.status(200).json({ success: false, error: "No URL provided", fallback: true });
 
         let title = "Без названия";
         let description = "";
@@ -44,7 +44,7 @@ export default async function handler(req, res) {
                 const aiDescResponse = await generateGeminiContent({
                     contents: prompt
                 });
-                if (aiDescResponse.text) {
+                if (aiDescResponse?.text) {
                     description = aiDescResponse.text.trim();
                 }
             } catch (aiErr) {
@@ -54,6 +54,7 @@ export default async function handler(req, res) {
 
         return res.status(200).json({ success: true, title, description });
     } catch (e) {
-        return res.status(500).json({ success: false, error: e.message });
+        console.error("[API ERROR]", e.stack);
+        return res.status(200).json({ success: false, error: e.message || "Unknown error", fallback: true });
     }
 }
