@@ -254,7 +254,23 @@ const GUIDE_AI_CACHE_TTL_MS = 5 * 60 * 1000;
 const GUIDE_AI_TIMEOUT_MS = Number(process.env.GUIDE_AI_TIMEOUT_MS || 6500);
 const GUIDE_AI_MODEL = process.env.GROQ_AI_MODEL || "llama-3.1-8b-instant";
 const geminiKey = process.env.GEMINI_API_KEY || "AIzaSyBx-rT_JZolf1jHh0bKN5P7c4rrgq9BQGE";
-const geminiAi = geminiKey ? new GoogleGenAI({ apiKey: geminiKey }) : null;
+const geminiAi = geminiKey ? new GoogleGenAI({ 
+    apiKey: geminiKey,
+    httpOptions: {
+        headers: {
+            'User-Agent': 'aistudio-build'
+        }
+    }
+}) : null;
+
+// Diagnostics: check key on startup
+if (geminiKey.startsWith('AIzaSyBx-rT_')) {
+    console.warn("[Diagnostics] Using default fallback Gemini API key. If hitting rate limits or 404s, please configure a custom GEMINI_API_KEY in Vercel.");
+} else if (geminiKey) {
+    console.log("[Diagnostics] Custom Gemini API key is configured.");
+} else {
+    console.warn("[Diagnostics] Gemini API key is MISSING.");
+}
 
 function normalizeGuideText(text = "") {
     return String(text)
@@ -380,6 +396,7 @@ app.post('/api/ask-guide-ai', async (req, res) => {
         let source = "fallback";
 
         try {
+            console.log(`[Diagnostics] Attempting Groq for question: "${query}"`);
             answer = await askGroq(prompt);
             source = answer ? "groq" : source;
         } catch (e) {
@@ -388,10 +405,13 @@ app.post('/api/ask-guide-ai', async (req, res) => {
 
         if (!answer) {
             try {
+                console.log(`[Diagnostics] Attempting Gemini for question: "${query}"`);
                 answer = await askGemini(prompt);
                 source = answer ? "gemini" : source;
             } catch (e) {
-                console.warn("[Guide AI] Gemini fallback:", e.message || e);
+                console.error("[Guide AI] Gemini fallback explicitly failed in askGemini:", e);
+                // Also stringify error if it's an object to capture code/message
+                if (e.status) console.error("Gemini Error Status:", e.status);
             }
         }
 
