@@ -17,6 +17,17 @@ import {
 const app = express();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+app.use((req, res, next) => {
+    console.log('[REQUEST]', {
+        method: req.method,
+        url: req.url,
+        originalUrl: req.originalUrl,
+        path: req.path,
+        headers: req.headers
+    });
+    next();
+});
+
 // On Vercel, rewrites can strip the original path before Express routing.
 if (process.env.VERCEL === '1') {
     app.use((req, _res, next) => {
