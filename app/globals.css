@@ -1,5 +1,40 @@
 @import "tailwindcss";
 
+.avatar, img[src*='avatar'], img[src*='seed='], .profile-avatar, .user-avatar, .chat-avatar, .friend-avatar {
+  border-radius: 50% !important;
+}
+
+#yt-player-container {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: #000 !important;
+  container-type: size;
+}
+
+#yt-player-container > div,
+#yt-player-container iframe {
+  aspect-ratio: 16 / 9 !important;
+  border: none !important;
+  background: #000;
+}
+
+@container (min-aspect-ratio: 16/9) {
+  #yt-player-container > div,
+  #yt-player-container iframe {
+    width: auto !important;
+    height: 100% !important;
+  }
+}
+
+@container (max-aspect-ratio: 16/9) {
+  #yt-player-container > div,
+  #yt-player-container iframe {
+    width: 100% !important;
+    height: auto !important;
+  }
+}
+
 .premium-bio-layout {
   word-wrap: break-word;
   white-space: pre-wrap;

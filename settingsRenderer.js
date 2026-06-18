@@ -150,6 +150,18 @@ const SettingSections = [
         },
       },
       {
+        id: "site-set-use-proxy",
+        type: "toggle",
+        title: "Включить прокси (Обход)",
+        desc: "Проксирует запрос ютуб видео для обхода блокировок",
+        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Satellite%20Antenna.webp",
+        default: false,
+        onChange: (val) => {
+          localStorage.setItem("useGlobalProxy", val);
+          if (window.AppState) window.AppState.useProxy = val;
+        },
+      },
+      {
         id: "site-set-round-avatars",
         type: "toggle",
         title: "Круглые аватарки",
@@ -220,6 +232,8 @@ function initSettingsRenderer() {
         saved = localStorage.getItem("siteNeuro") || "true";
       if (item.id === "site-settings-static-emojis")
         saved = localStorage.getItem("staticEmojis") || "false";
+      if (item.id === "site-set-use-proxy")
+        saved = localStorage.getItem("useGlobalProxy") || "false";
 
 
       if (saved === null) saved = item.default;

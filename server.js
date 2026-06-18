@@ -242,174 +242,43 @@ app.get('/api/resolve-media', (req, res) => {
 
 registerPremiumRoutes(app, admin);
 
-const guideAiCache = new Map();
-const GUIDE_AI_CACHE_TTL_MS = 5 * 60 * 1000;
-const GUIDE_AI_TIMEOUT_MS = Number(process.env.GUIDE_AI_TIMEOUT_MS || 6500);
-const GUIDE_AI_MODEL = process.env.GROQ_AI_MODEL || "llama-3.1-8b-instant";
-const geminiKey = process.env.GEMINI_API_KEY || "AIzaSyBx-rT_JZolf1jHh0bKN5P7c4rrgq9BQGE";
-const geminiAi = geminiKey ? new GoogleGenAI({ 
-    apiKey: geminiKey,
-    httpOptions: {
-        headers: {
-            'User-Agent': 'aistudio-build'
-        }
-    }
-}) : null;
+// Removed AI logic
 
-// Diagnostics: check key on startup
-if (geminiKey.startsWith('AIzaSyBx-rT_')) {
-    console.warn("[Diagnostics] Using default fallback Gemini API key. If hitting rate limits or 404s, please configure a custom GEMINI_API_KEY in Vercel.");
-} else if (geminiKey) {
-    console.log("[Diagnostics] Custom Gemini API key is configured.");
-} else {
-    console.warn("[Diagnostics] Gemini API key is MISSING.");
-}
-
-function normalizeGuideText(text = "") {
-    return String(text)
-        .toLowerCase()
-        .replace(/[^\p{L}\p{N}\s@_-]+/gu, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-}
-
-function buildGuideFallback(query = "", docs = "") {
-    const qLower = query.toLowerCase().trim();
-    const isGreetingOrChat = ["как дела", "привет", "здравствуй", "ты кто", "настроение", "как жизнь", "расскажи о себе", "как ты", "что нового", "добрый день", "доброе утро"].some(s => qLower.includes(s));
-    
-    if (isGreetingOrChat) {
-        return "У меня всё отлично! (Правда, мой нейросетевой мозг сейчас чуть-чуть перегружен от большого количества запросов). Если у тебя есть вопросы по сайту, напиши их, и я постараюсь помочь. Или мы можем просто пообщаться, а также ты можешь посмотреть видео и послушать музыку с друзьями в комнатах!";
-    }
-
-    const source = String(docs || "");
-    const tokens = normalizeGuideText(query)
-        .split(" ")
-        .filter((word) => word.length > 2)
-        .slice(0, 16);
-    const entries = [];
-    const entryRe = /В:\s*([^\n]+)\nО:\s*([\s\S]*?)(?=\nВ:|\n\nРаздел|$)/g;
-    let match;
-
-    while ((match = entryRe.exec(source))) {
-        entries.push({ q: match[1].trim(), a: match[2].trim() });
-    }
-
-    let best = null;
-    for (const entry of entries) {
-        const haystack = normalizeGuideText(`${entry.q} ${entry.a}`);
-        const score = tokens.reduce((sum, token) => sum + (haystack.includes(token) ? 1 : 0), 0);
-        if (!best || score > best.score) best = { ...entry, score };
-    }
-
-    if (best && best.score > 0) {
-        return `Не могу подключиться к нейросети из-за лимита обращений, но вот что я нашел в базе данных сайта:\n${best.a}`;
-    }
-
-    return "Сложный вопрос. Мой ИИ-модуль сейчас перегружен запросами, поэтому я работаю в базовом режиме. Лучше всего открыть поддержку и задать вопрос там!";
-}
-
-function buildGuidePrompt(query, docs) {
-    return [
-        "Ты дружелюбный, общительный и жизнерадостный ИИ-ассистент платформы COWIO.",
-        "Для ответа на специфичные вопросы об устройстве сайта используй базу знаний COWIO ниже.",
-        "НО если пользователь просто общается, здоровается (привет, как дела, настроение, что делаешь), отвечает на твои вопросы или говорит на общие темы - поддерживай живой и интересный диалог! Отвечай по-человечески, шути, интересуйся мнением пользователя, предлагай провести время с друзьями, послушать музыку или включить видео в комнатах COWIO.",
-        "Не ограничивай себя справочником. Будь открытым ИИ, с которым приятно болтать.",
-        "Не будь сухим роботом, не говори 'возможно/похоже', общайся уверенно, лаконично и приветливо.",
-        "Если пользователь задает технический вопрос, на который нет ответа в базе, посоветуй обратиться в поддержку.",
-        "",
-        `База знаний:\n${docs}`,
-        "",
-        `Ввод пользователя: ${query}`,
-    ].join("\n");
-}
-
-async function withTimeout(taskFactory, timeoutMs = GUIDE_AI_TIMEOUT_MS) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    try {
-        return await taskFactory(controller.signal);
-    } finally {
-        clearTimeout(timer);
-    }
-}
-
-async function askGroq(prompt) {
-    if (!process.env.GROQ_API_KEY) return "";
-    return withTimeout(async (signal) => {
-        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-            },
-            signal,
-            body: JSON.stringify({
-                model: GUIDE_AI_MODEL,
-                messages: [{ role: "user", content: prompt }],
-                temperature: 0.2,
-                max_tokens: 420,
-            }),
-        });
-
-        if (!response.ok) throw new Error(`Groq HTTP ${response.status}`);
-        const data = await response.json();
-        return data?.choices?.[0]?.message?.content?.trim() || "";
-    });
-}
-
-async function generateGeminiContent(options, timeoutFn = withTimeout) {
-    if (!geminiAi) throw new Error("Gemini API not configured");
-    
-    const modelsToTry = [
-        "gemini-3.5-flash", 
-        "gemini-2.0-flash", 
-        "gemini-1.5-flash-latest", 
-        "gemini-1.5-flash"
-    ];
-    let lastError = null;
-
-    for (const model of modelsToTry) {
-        try {
-            console.log(`[Diagnostics] Trying Gemini model: ${model}`);
-            const response = await timeoutFn(() =>
-                geminiAi.models.generateContent({
-                    model: model,
-                    ...options
-                })
-            );
-            return response;
-        } catch (e) {
-            console.warn(`[Diagnostics] Model ${model} failed:`, e.status, e.message);
-            lastError = e;
-            if (e.status !== "NOT_FOUND" && e.status !== 404) {
-                break;
-            }
-        }
-    }
-    throw lastError;
-}
-
-async function askGemini(prompt) {
-    if (!geminiAi) return "";
-    try {
-        const response = await generateGeminiContent({ contents: prompt });
-        return response?.text?.trim() || "";
-    } catch(e) {
-        throw e;
-    }
-}
-
-import askGuideAiHandler from './api/ask-guide-ai.js';
-import analyzePreviewHandler from './api/library/analyze-preview.js';
 import fetchMetadataHandler from './api/library/fetch-metadata.js';
-
-app.post('/api/ask-guide-ai', askGuideAiHandler);
-app.post('/api/library/analyze-preview', analyzePreviewHandler);
 app.post('/api/library/fetch-metadata', fetchMetadataHandler);
 
-// Chat widget removed
+import { createProxyMiddleware } from 'http-proxy-middleware';
 
-// Removed legacy inline endpoint functions to use modular Vercel handlers
+app.use('/api/proxy/yt', createProxyMiddleware({
+    target: 'https://pipedapi.kavin.rocks',
+    changeOrigin: true,
+    pathRewrite: {
+        '^/api/proxy/yt': '', 
+    },
+    onProxyReq: (proxyReq) => {
+        proxyReq.setHeader('User-Agent', 'Mozilla/5.0');
+    }
+}));
+
+app.use('/api/proxy/stream', createProxyMiddleware({
+    router: (req) => {
+        const target = req.query.url;
+        if (!target) return 'http://localhost';
+        const url = new URL(target);
+        return url.origin;
+    },
+    changeOrigin: true,
+    pathRewrite: (path, req) => {
+        const target = req.query.url;
+        if (!target) return path;
+        const url = new URL(target);
+        return url.pathname + url.search;
+    },
+    onProxyReq: (proxyReq, req) => {
+        proxyReq.setHeader('User-Agent', 'Mozilla/5.0');
+        proxyReq.setHeader('Referer', 'https://piped.video/');
+    }
+}));
 
 const publicPath = __dirname;
 app.use(express.static(publicPath, { index: false })); // avoid index.html auto serving first if we want specific rules, or just allow it

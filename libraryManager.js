@@ -268,38 +268,33 @@ class LibraryManager {
         };
 
         if (isPublic && thumb && !thumb.includes("Telegram-Animated-Emojis")) {
-            // Initiate AI verification
-            this.showAiVerificationModal(videoData, thumb);
+            this.showAuthorsModal(videoData, thumb);
         } else {
-            // Direct save
             videoData.people = "Не определено";
             this.saveVideo(videoData, isPublic);
         }
     };
   }
 
-  static async showAiVerificationModal(videoData, thumbUrl) {
-      const modal = this.getOrCreateModal("modal-lib-ai-verify");
+  static async showAuthorsModal(videoData, thumbUrl) {
+      const modal = this.getOrCreateModal("modal-lib-authors-verify");
       modal.innerHTML = `
           <div class="modal-content" style="max-width: 500px">
               <div class="modal-header">
-                  <h2>Определение лиц (ИИ) <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Robot.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom" /></h2>
+                  <h2>Участники видео <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom" /></h2>
               </div>
               <div style="text-align:center; margin-bottom:15px;">
                   <img src="${thumbUrl}" style="max-width:100%; border-radius:12px; max-height:200px; object-fit:cover;" />
               </div>
               <p style="font-size:14px; text-align:center; color:var(--text-muted); margin-bottom:15px;">
-                 ИИ анализирует, кто изображен на превью...
+                  Укажите, кто изображен или участвует в этом видео
               </p>
-              <div id="ai-loading" style="text-align:center; margin-bottom:15px;">
-                 <div class="spinner" style="margin: 0 auto;"></div>
-              </div>
-              <div id="ai-result-area" style="display:none;">
-                <p style="font-size:14px; margin-bottom:10px;">Верно ли определены участники видео?</p>
-                <input type="text" id="lib-add-people" class="settings-input" style="margin-bottom:10px;" />
-                <p style="font-size:11px; color:#ff5555; text-align:center; margin-bottom:15px;">
-                  * ИИ может ошибаться. Если ответ неверный, исправьте его вручную. Если людей нет, напишите "Никого".
-                </p>
+              <div id="ai-result-area">
+                <div style="position:relative;">
+                   <input type="text" id="lib-add-people" class="settings-input" placeholder="Начните вводить имя автора..." style="margin-bottom:10px; width: 100%;" autocomplete="off" />
+                   <div id="lib-authors-dropdown" style="display:none; position:absolute; top:100%; left:0; right:0; background:var(--panel); border:1px solid rgba(255,255,255,0.1); border-radius:12px; max-height:200px; overflow-y:auto; z-index:100; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+                   </div>
+                </div>
                 <div style="display:flex; gap:10px;">
                     <button class="primary-btn" id="lib-verify-submit" style="flex:1">Подтвердить и Опубликовать</button>
                 </div>
@@ -308,41 +303,63 @@ class LibraryManager {
       `;
       modal.classList.add("active");
 
+      const input = modal.querySelector("#lib-add-people");
+      const dropdown = modal.querySelector("#lib-authors-dropdown");
+      let allAuthors = [];
+      
       try {
-          const res = await fetch("/api/library/analyze-preview", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                  imageUrl: thumbUrl,
-                  title: videoData.title,
-                  description: videoData.description
-              })
-          });
-          const data = await res.json();
-          const peopleStr = data.success ? data.people : "Ошибка ИИ. Впишите вручную.";
-          
-          modal.querySelector("#ai-loading").style.display = "none";
-          modal.querySelector("#ai-result-area").style.display = "block";
-          modal.querySelector("#lib-add-people").value = peopleStr;
-
-          modal.querySelector("#lib-verify-submit").onclick = () => {
-              const p = modal.querySelector("#lib-add-people").value.trim();
-              videoData.people = p || "Не определено";
-              this.closeModal("modal-lib-ai-verify");
-              this.saveVideo(videoData, true);
-          };
-
-      } catch (err) {
-          modal.querySelector("#ai-loading").style.display = "none";
-          modal.querySelector("#ai-result-area").style.display = "block";
-          modal.querySelector("#lib-add-people").value = "";
-          modal.querySelector("#lib-verify-submit").onclick = () => {
-              const p = modal.querySelector("#lib-add-people").value.trim();
-              videoData.people = p || "Не определено";
-              this.closeModal("modal-lib-ai-verify");
-              this.saveVideo(videoData, true);
-          };
+          const { ref: dbRef, get, db } = await this.getDb();
+          const snap = await get(dbRef(db, "content_authors"));
+          if (snap.exists()) {
+             const data = snap.val();
+             allAuthors = Object.values(data);
+          }
+      } catch(e) {
+          console.error("Failed to load authors", e);
       }
+
+      input.addEventListener("input", () => {
+          const val = input.value.toLowerCase().trim();
+          dropdown.innerHTML = "";
+          if (!val) {
+              dropdown.style.display = "none";
+              return;
+          }
+          const matches = allAuthors.filter(a => a.name.toLowerCase().includes(val));
+          if (matches.length > 0) {
+              matches.forEach(m => {
+                  const item = document.createElement("div");
+                  item.style.cssText = "padding: 10px; display:flex; align-items:center; gap: 10px; cursor:pointer; border-bottom:1px solid rgba(255,255,255,0.05);";
+                  item.innerHTML = `
+                      <img src="${m.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + encodeURIComponent(m.name)}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;" />
+                      <span style="font-weight:600; font-size:14px;">${m.name}</span>
+                  `;
+                  item.onmouseover = () => item.style.background = "rgba(255,255,255,0.05)";
+                  item.onmouseout = () => item.style.background = "transparent";
+                  item.onclick = () => {
+                      input.value = m.name;
+                      dropdown.style.display = "none";
+                  };
+                  dropdown.appendChild(item);
+              });
+              dropdown.style.display = "block";
+          } else {
+              dropdown.style.display = "none";
+          }
+      });
+
+      document.addEventListener("click", (e) => {
+          if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+              dropdown.style.display = "none";
+          }
+      });
+
+      modal.querySelector("#lib-verify-submit").onclick = () => {
+          const p = input.value.trim();
+          videoData.people = p || "Не определено";
+          this.closeModal("modal-lib-authors-verify");
+          this.saveVideo(videoData, true);
+      };
   }
 
   static async saveVideo(videoData, isPublic) {

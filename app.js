@@ -323,7 +323,7 @@ class TutorialManager {
         'profile': { id: 'nav-profile', emoji: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Bust%20In%20Silhouette.webp', title: 'Твой профиль', text: 'Твоя личная крепость! Здесь ты можешь красиво оформить свою страничку - поставить крутую аватарку, написать пару слов о себе и даже поменять фон. Люди любят, когда профиль заполнен с душой, так проще найти общие интересы.', next: 'friends' },
         'friends': { id: 'nav-friends', emoji: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Handshake.webp', title: 'Друзья', text: 'Твой круг общения. Тут будут отображаться все, с кем ты подружился. Отсюда удобно сразу переходить к переписке, смотреть кто онлайн и управлять запросами в друзья. Не стесняйся заводить новые знакомства!', next: 'search' },
         'search': { id: 'nav-find-friend', emoji: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Magnifying%20Glass%20Tilted%20Left.webp', title: 'Найти друга', text: 'Не с кем поболтать? Загляни сюда. Здесь можно найти других ребят, посмотреть их профили и отправить запрос в друзья. Если кто-то показался интересным - смело пиши, тут все рады новому общению.', next: 'catalog' },
-        'catalog': { id: 'nav-catalog', emoji: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp', title: 'Каталог', text: 'Местная сокровищница! В каталоге мы собираем классные темы оформления, рамки, значки и другие штуки для кастомизации. Заглядывай сюда периодически, чтобы обновить свой стиль и выделиться из толпы.', next: 'library' },
+        'catalog': { id: 'nav-catalog', emoji: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp', title: 'Каталог', text: 'Местная сокровищница! В каталоге мы собираем классные темы оформления, рамки, значки и другие штуки для кастомизации. Доступ к нему открывается при достижении 10-го уровня. Заглядывай сюда периодически, чтобы обновить свой стиль и выделиться из толпы.', next: 'library' },
         'library': { id: 'nav-library', emoji: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Open%20Book.webp', title: 'Библиотека', text: 'Настоящая кинобаза от наших пользователей! Здесь можно искать классные ролики и фильмы, смотреть, кто есть на превьюшках, и, самое главное — моментально создавать комнаты для просмотра с друзьями прямо из карточки видео. Заглядывай и делись своими находками!', next: 'rooms' },
         'rooms': { id: 'nav-rooms', emoji: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/House.webp', title: 'Комнаты', text: 'А вот здесь происходит магия общения! Заходи в комнаты чтобы общаться с людьми, смотреть видео вместе или обмениваться сообщениями вживую. Можешь даже создать свою уютную комнату и собрать там компанию!', next: null }
     };
@@ -2457,12 +2457,41 @@ class VideoPlaybackManager {
     };
 
     const signature = this.getPlaybackSignature(room);
-    const ytId = MediaResolverClient.extractYouTubeId(
+    let ytId = MediaResolverClient.extractYouTubeId(
       room.videoSourceUrl || room.videoUrl,
     );
     const rtId = MediaResolverClient.extractRutubeId(
       room.videoSourceUrl || room.videoUrl,
     );
+    
+    if (rtId && window.AppState && window.AppState.useProxy) {
+        window.AppState.wasProxyEnabled = true;
+        window.AppState.useProxy = false;
+        Utils.toast("Прокси отключен для Rutube", "info");
+    } else if (!rtId && window.AppState && window.AppState.wasProxyEnabled) {
+        window.AppState.useProxy = true;
+        window.AppState.wasProxyEnabled = false;
+        Utils.toast("Прокси снова включен", "info");
+    }
+
+    if (ytId && window.AppState && window.AppState.useProxy) {
+        try {
+            const res = await fetch(`/api/proxy/yt/streams/${ytId}`);
+            const data = await res.json();
+            if (data.hls) {
+                room.videoSourceUrl = `/api/proxy/stream?url=${encodeURIComponent(data.hls)}`;
+                room.isHls = true;
+                ytId = null;
+            } else if (data.videoStreams && data.videoStreams.length > 0) {
+                const stream = data.videoStreams.find(s => s.quality === "1080p") || data.videoStreams[0];
+                room.videoSourceUrl = `/api/proxy/stream?url=${encodeURIComponent(stream.url)}`;
+                room.isHls = false;
+                ytId = null;
+            }
+        } catch (e) {
+            console.error("Failed to proxy youtube", e);
+        }
+    }
 
     if (
       signature === this.lastSignature &&
@@ -6461,8 +6490,8 @@ class ProfileManager {
         window.PremiumManager ? PremiumManager.getStatusEmojiHtml(p, uid) : "";
       Utils.$("my-name-display").innerHTML =
         `${statusEmoji}${Utils.escapeHtml(p.name)} ${badgeHtml}`;
-      Utils.$("my-username-display").innerText =
-        `@${Utils.escapeHtml(p.username)}`;
+      Utils.$("my-username-display").innerHTML =
+        `@${Utils.escapeHtml(p.username)}` + (p.extraUsernames && p.extraUsernames.length > 0 ? `<br><span style="opacity:0.7;font-size:0.9em;">` + p.extraUsernames.map(u => `@${Utils.escapeHtml(u)}`).join(' | ') + `</span>` : "");
       Utils.$("my-avatar-display").innerHTML = ProfileManager.getAvatarHtml(p);
 
       if (window.PremiumManager) PremiumManager.syncFromProfile(p, uid);
@@ -6486,6 +6515,32 @@ class ProfileManager {
     const p = AppState.usersCache.get(AppState.currentUser.uid) || {};
     Utils.$("edit-name").value = p.name || "";
     Utils.$("edit-username-input").value = p.username || "";
+    const level = Math.floor(Math.sqrt((p.xp || 0) / 240));
+    const extraContainer = Utils.$("extra-usernames-container");
+    const eInps = [
+      Utils.$("edit-extra-username-input-1"),
+      Utils.$("edit-extra-username-input-2"),
+      Utils.$("edit-extra-username-input-3")
+    ];
+    if (extraContainer) {
+       if (level >= 30) {
+           extraContainer.style.display = "block";
+           if (eInps[0]) {
+             eInps[0].style.display = level >= 30 ? "block" : "none";
+             eInps[0].value = (p.extraUsernames && p.extraUsernames.length > 0) ? p.extraUsernames[0] : "";
+           }
+           if (eInps[1]) {
+             eInps[1].style.display = level >= 50 ? "block" : "none";
+             eInps[1].value = (p.extraUsernames && p.extraUsernames.length > 1) ? p.extraUsernames[1] : "";
+           }
+           if (eInps[2]) {
+             eInps[2].style.display = level >= 100 ? "block" : "none";
+             eInps[2].value = (p.extraUsernames && p.extraUsernames.length > 2) ? p.extraUsernames[2] : "";
+           }
+       } else {
+           extraContainer.style.display = "none";
+       }
+    }
     const bioEl = Utils.$("edit-bio");
     const bioLimit = window.PremiumManager
       ? PremiumManager.getBioLimit(p, AppState.currentUser?.uid)
@@ -7469,6 +7524,23 @@ class ProfileManager {
     const gender =
       document.querySelector('input[name="edit-gender"]:checked')?.value ||
       "male";
+    
+    // extra username
+    const level = Math.floor(Math.sqrt((oldProfile?.xp || 0) / 240));
+    let newExtraUsernames = [];
+    const _validateExtra = (inputId, minLvl, num) => {
+        if (level < minLvl) return;
+        const xInput = Utils.$(inputId);
+        if (!xInput) return;
+        const xUname = xInput.value.toLowerCase().trim().replace("@", "");
+        if (!xUname) return;
+        if (!/^[a-z0-9_]{3,15}$/.test(xUname)) throw new Error(`Доп. ID ${num}: 3-15 символов, a-z, 0-9, _`);
+        if (xUname === username || xUname === "developer" || newExtraUsernames.includes(xUname)) throw new Error(`Доп. ID ${num}: Недопустимый ID`);
+        newExtraUsernames.push(xUname);
+    };
+    _validateExtra("edit-extra-username-input-1", 30, 1);
+    _validateExtra("edit-extra-username-input-2", 50, 2);
+    _validateExtra("edit-extra-username-input-3", 100, 3);
     const frame = Utils.$("modal-edit-profile").dataset.selectedFrame || null;
 
     if (!name || !username) throw new Error("Имя и ID обязательны");
@@ -7498,10 +7570,31 @@ class ProfileManager {
       updates[`usernames/${username}`] = uid;
     }
 
+    if (newExtraUsernames.length > 0) {
+      for (let eu of newExtraUsernames) {
+          const snapExt = await get(ref(db, `usernames/${eu}`));
+          if (snapExt.exists() && snapExt.val() !== uid)
+             throw new Error(`ID ${eu} уже занят`);
+      }
+    }
+
+    if (oldProfile.extraUsernames) {
+      oldProfile.extraUsernames.forEach(eu => {
+        if (eu && !newExtraUsernames.includes(eu)) {
+           updates[`usernames/${eu}`] = null;
+        }
+      });
+    }
+
+    newExtraUsernames.forEach(eu => {
+       updates[`usernames/${eu}`] = uid;
+    });
+
     updates[`users/${uid}/profile`] = {
       ...oldProfile,
       name,
       username,
+      extraUsernames: newExtraUsernames,
       bio,
       hashtags,
       avatar,
@@ -7737,8 +7830,8 @@ class ProfileManager {
 
     Utils.$("view-name").innerHTML =
       `${window.PremiumManager ? PremiumManager.getStatusEmojiHtml(profile, targetUid) : ""}${Utils.escapeHtml(profile.name)} ${badgeHtml}`;
-    Utils.$("view-username").innerText =
-      `@${Utils.escapeHtml(profile.username)}`;
+    Utils.$("view-username").innerHTML =
+      `@${Utils.escapeHtml(profile.username)}` + (profile.extraUsernames && profile.extraUsernames.length > 0 ? `<br><span style="opacity:0.7;font-size:0.9em;">` + profile.extraUsernames.map(u => `@${Utils.escapeHtml(u)}`).join(' | ') + `</span>` : "");
     const safeBio = Utils.escapeHtml(profile.bio || "Пользователь не добавил описание.");
     
     const isPremium = window.PremiumManager ? PremiumManager.isPremiumActive(profile, targetUid) : false;
@@ -8588,8 +8681,8 @@ class FriendsManager {
             if (uid === AppState.currentUser.uid) continue;
             if (
               udata.profile &&
-              udata.profile.username &&
-              udata.profile.username.toLowerCase().includes(val)
+              ((udata.profile.username && udata.profile.username.toLowerCase().includes(val)) ||
+               (udata.profile.extraUsernames && udata.profile.extraUsernames.some(u => u.toLowerCase().includes(val))))
             ) {
               foundCount++;
               const isFriend =
@@ -8818,22 +8911,22 @@ class FriendsManager {
           : profile.streak;
         const streakHTML =
           activeStreak && activeStreak > 0
-            ? `<div style="position: absolute; bottom: -4px; right: -4px; background: rgba(0,0,0,0.8); border-radius: 50%; padding: 2px 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; border: none;" title="Стрик захода: ${activeStreak} дней"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" style="width:14px; height:14px; margin-right:2px;">${activeStreak}</div>`
+            ? `<div style="position: absolute; bottom: 8px; right: 12px; background: rgba(0,0,0,0.4); border-radius: 12px; padding: 2px 6px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: rgba(255,255,255,0.8);" title="Стрик захода: ${activeStreak} дней"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" style="width:14px; height:14px; margin-right:4px;">${activeStreak}</div>`
             : "";
 
         const isFriendPremium = window.PremiumManager ? PremiumManager.isPremiumActive(profile, uid) : false;
         if (isFriendPremium) {
-            div.style.cssText = "background: radial-gradient(circle at 20% 0%, rgba(255, 180, 60, 0.18), transparent 45%), radial-gradient(circle at 90% 100%, rgba(255, 120, 40, 0.12), transparent 40%), linear-gradient(145deg, rgba(24, 20, 14, 0.96), rgba(10, 10, 12, 0.98)); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 220, 140, 0.08); border: 1px solid rgba(255, 200, 100, 0.22); margin-bottom: 2px;";
+            div.style.cssText = "position: relative; background: radial-gradient(circle at 20% 0%, rgba(255, 180, 60, 0.18), transparent 45%), radial-gradient(circle at 90% 100%, rgba(255, 120, 40, 0.12), transparent 40%), linear-gradient(145deg, rgba(24, 20, 14, 0.96), rgba(10, 10, 12, 0.98)); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 220, 140, 0.08); border: 1px solid rgba(255, 200, 100, 0.22); margin-bottom: 2px;";
         } else {
-            div.style.cssText = "";
+            div.style.cssText = "position: relative;";
         }
         
         const roleBadgeHtml = ProfileManager.getRoleBadgeHtml(profile, uid);
         div.innerHTML = `
                     <div class="avatar" style="position:relative; overflow:visible; background:transparent;">
                         ${ProfileManager.getAvatarHtml(profile)}
-                        ${streakHTML}
                     </div>
+                    ${streakHTML}
                     <div class="friend-info-col" style="flex:1;">
                         <div class="friend-name">${Utils.escapeHtml(profile.name)} ${roleBadgeHtml}</div>
                         <div class="friend-status" style="font-size: 11px; opacity: 0.8; margin-top: 2px;">
@@ -16002,8 +16095,8 @@ class CatalogManager {
       overlay.innerHTML = `
           <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width:64px;height:64px;margin-bottom:20px;animation:levitate 3s infinite ease-in-out;">
           <h2 style="margin:0 0 10px;font-size:24px;">Каталог заблокирован</h2>
-          <p style="color:var(--text-muted);font-size:15px;margin-bottom:25px;max-width:350px;line-height:1.5;">Извините, но у вас нету доступа к просмотру и приобретению вещей из каталога.<br><br>Доступ имеют только подписчики Premium</p>
-          <button class="primary-btn" onclick="document.getElementById('nav-premium').click()" style="width:auto;padding:12px 28px;background:#ffffff;color:#000000;font-weight:800;font-size:15px; border-radius: 20px;">Приобрести Premium</button>
+          <p style="color:var(--text-muted);font-size:15px;margin-bottom:25px;max-width:350px;line-height:1.5;">Извините, но у вас нет доступа к просмотру и приобретению вещей из каталога.<br><br>Доступ открывается только при достижении 10 уровня!</p>
+          <button class="primary-btn" onclick="document.getElementById('nav-profile').click()" style="width:auto;padding:12px 28px;background:#ffffff;color:#000000;font-weight:800;font-size:15px; border-radius: 20px;">Мой Профиль</button>
       `;
       Utils.$("section-catalog").appendChild(overlay);
       const container = Utils.$("section-catalog").querySelector(".friends-container");

@@ -286,14 +286,20 @@ class PremiumManager {
     return Boolean(prem?.active);
   }
 
+  static getUserLevel(profile) {
+    if (!profile) return 0;
+    const totalXp = Number(profile.xp) || 0;
+    return Math.floor(Math.sqrt(totalXp / 240));
+  }
+
   static hasCatalogAccess(profile, uid) {
     if (!uid) return false;
     if (window.AdminPanel) {
       if (AdminPanel.isCreatorProfile(profile || {}, uid)) return true;
       if (AdminPanel.isModeratorProfile(profile || {}, uid)) return true;
     }
-    const prem = this.normalizePremium(profile);
-    return Boolean(prem?.active);
+    const level = this.getUserLevel(profile);
+    return level >= 10;
   }
 
   static hasPaidPremium(profile, uid) {
@@ -638,17 +644,16 @@ class PremiumManager {
   }
 
   static renderCatalogLock() {
+    const profile = AppState?.currentUser?.uid ? AppState.usersCache.get(AppState.currentUser.uid) : null;
+    const level = this.getUserLevel(profile);
     return `
       <div class="catalog-lock-screen">
         <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width:48px;height:48px;margin-bottom:14px;opacity:0.9;">
-        <h3 style="margin:0 0 10px;font-size:20px;">Каталог только для Premium</h3>
+        <h3 style="margin:0 0 10px;font-size:20px;">Каталог с 10 Уровня</h3>
         <p style="margin:0 0 20px;font-size:14px;color:var(--text-muted);max-width:420px;margin-left:auto;margin-right:auto;line-height:1.55;">
-          Рамки, звуки и горячие акции доступны подписчикам COWIO Premium.
-          Модераторы и создатель заходят без ограничений.
+          Рамки, звуки и горячие акции доступны игрокам, достигшим 10 уровня.
+          Ваш текущий уровень: <b>${level}</b>. Общайтесь в комнатах для получения опыта!
         </p>
-        <button class="primary-btn" id="catalog-unlock-premium-btn" style="width:auto;padding:12px 24px;border-radius:12px;background:linear-gradient(135deg,#ffe6a0,#ffb347);color:#1a1208;border:none;font-weight:800;">
-          Premium за ${this.PRICE_RUB} ₽ / месяц
-        </button>
       </div>`;
   }
 
@@ -663,11 +668,10 @@ class PremiumManager {
       return true;
     }
     if (navigate && window.FriendsManager?.setNavActive) {
-      FriendsManager.setNavActive("nav-premium");
-      this.renderPremiumSection(profile, uid);
+      FriendsManager.setNavActive("nav-profile");
     }
     if (window.Utils?.toast)
-      Utils.toast("Оформите Premium для доступа к каталогу", "info");
+      Utils.toast("Достигните 10 уровня для доступа к каталогу", "info");
     return false;
   }
 }

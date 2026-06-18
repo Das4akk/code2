@@ -1,5 +1,3 @@
-import { generateGeminiContent, geminiAi } from '../../lib/gemini.js';
-
 export default async function handler(req, res) {
     console.log("[API]", req.method, req.url);
 
@@ -22,6 +20,17 @@ export default async function handler(req, res) {
                     title = data.title;
                     description = data.author_name || ""; 
                 }
+            } else if (url.includes('rutube.ru')) {
+                const fetchRes = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" }});
+                if (fetchRes.ok) {
+                    const html = await fetchRes.text();
+                    
+                    const titleMatch = html.match(/<meta\s+property="og:title"\s+content="([^"]*)"/i) || html.match(/<title>([^<]*)<\/title>/i);
+                    if (titleMatch && titleMatch[1]) title = titleMatch[1].trim();
+
+                    const descMatch = html.match(/<meta\s+property="og:description"\s+content="([^"]*)"/i) || html.match(/<meta\s+name="description"\s+content="([^"]*)"/i);
+                    if (descMatch && descMatch[1]) description = descMatch[1].trim();
+                }
             } else {
                 const fetchRes = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" }});
                 if (fetchRes.ok) {
@@ -38,18 +47,8 @@ export default async function handler(req, res) {
             console.error("Fetch metadata inner error:", e);
         }
 
-        if (geminiAi) {
-            try {
-                const prompt = `Ты - креативный ИИ-копирайтер. Составь красивое, привлекающее внимание зрителя описание для видеоролика под названием "${title}". Оригинальное описание (если есть): "${description}". Напиши 1-2 живых предложения, используй подходящие эмодзи и объясни почему это стоит посмотреть. Не пиши ничего лишнего, только само описание.`;
-                const aiDescResponse = await generateGeminiContent({
-                    contents: prompt
-                });
-                if (aiDescResponse?.text) {
-                    description = aiDescResponse.text.trim();
-                }
-            } catch (aiErr) {
-                console.error("AI description failed", aiErr);
-            }
+        if (description.length > 100) {
+            description = description.substring(0, 100).trim() + "...";
         }
 
         return res.status(200).json({ success: true, title, description });
