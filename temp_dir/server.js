@@ -250,7 +250,7 @@ app.post('/api/library/fetch-metadata', fetchMetadataHandler);
 import { createProxyMiddleware } from 'http-proxy-middleware';
 
 app.use('/api/proxy/yt', createProxyMiddleware({
-    target: 'https://pipedapi.smnz.de',
+    target: 'https://pipedapi.kavin.rocks',
     changeOrigin: true,
     pathRewrite: {
         '^/api/proxy/yt': '', 

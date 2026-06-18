@@ -18,12 +18,7 @@ export default async function handler(req, res) {
                 if (oembedRes.ok) {
                     const data = await oembedRes.json();
                     title = data.title;
-                }
-                const fetchRes = await fetch(url.replace("youtu.be/", "youtube.com/watch?v="), { headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" }});
-                if (fetchRes.ok) {
-                    const html = await fetchRes.text();
-                    const descMatch = html.match(/<meta\s+property="og:description"\s+content="([^"]*)"/i) || html.match(/<meta\s+name="description"\s+content="([^"]*)"/i);
-                    if (descMatch && descMatch[1]) description = descMatch[1].trim();
+                    description = data.author_name || ""; 
                 }
             } else if (url.includes('rutube.ru')) {
                 const fetchRes = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" }});
@@ -50,29 +45,6 @@ export default async function handler(req, res) {
             }
         } catch(e) {
             console.error("Fetch metadata inner error:", e);
-        }
-
-        if (description === "Enjoy the videos and music you love, upload original content, and share it all with friends, family, and the world on YouTube." || description.includes("YouTube")) {
-             description = "";
-        }
-
-        if (description) {
-            description = description.replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>');
-        }
-
-        try {
-            if (process.env.GEMINI_API_KEY) {
-                const { GoogleGenAI } = await import("@google/genai");
-                const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-                const prompt = `Напиши очень короткое описание (максимум 1 предложение, до 100 символов) для видео с названием: "${title}". Если про видео непонятно, придумай общее интригующее описание.`;
-                const response = await ai.models.generateContent({
-                    model: 'gemini-2.5-flash',
-                    contents: prompt,
-                });
-                if (response.text) description = response.text.trim();
-            }
-        } catch (e) {
-            console.error("Gemini description failed", e);
         }
 
         if (description.length > 100) {

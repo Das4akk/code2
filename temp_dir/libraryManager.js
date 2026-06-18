@@ -176,7 +176,7 @@ class LibraryManager {
             <div id="lib-ai-fields-container" style="position:relative;">
                 <div id="lib-ai-lock-overlay" style="display:none; position:absolute; inset:-10px; background:rgba(10,10,15,0.7); backdrop-filter:blur(8px); z-index:10; border-radius:16px; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
                     <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width:48px;height:48px;margin-bottom:10px;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.5));" />
-                    <div style="color:#fff; font-weight:600; font-size:14px;">Получение информации...</div>
+                    <div style="color:#fff; font-weight:600; font-size:14px;">Нейросеть пишет описание...</div>
                     <div style="color:var(--text-muted); font-size:12px; margin-top:4px;">Пожалуйста, подождите</div>
                 </div>
                 <div style="margin-bottom: 15px">
@@ -184,8 +184,8 @@ class LibraryManager {
                     <input type="text" id="lib-add-title" class="settings-input" placeholder="Точное название" />
                 </div>
                 <div style="margin-bottom: 20px">
-                    <label style="display:block; margin-bottom:5px; color:var(--text-muted); font-size:13px;">Описание (макс. 100 символов, авто-заполнение)</label>
-                    <textarea id="lib-add-desc" class="settings-input" rows="4" placeholder="Краткое описание..."></textarea>
+                    <label style="display:block; margin-bottom:5px; color:var(--text-muted); font-size:13px;">Описание (мин. 40 символов)</label>
+                    <textarea id="lib-add-desc" class="settings-input" rows="4" placeholder="Подробное описание..."></textarea>
                 </div>
             </div>
             <div style="margin-bottom: 20px; display:flex; gap:10px; align-items:center;">
@@ -250,7 +250,7 @@ class LibraryManager {
 
         if (!url) return window.Utils.toast("Введите ссылку");
         if (!title) return window.Utils.toast("Введите название");
-        if (desc.length > 100) return window.Utils.toast("Описание должно быть не больше 100 символов", "error");
+        if (desc.length < 40) return window.Utils.toast("Описание должно быть минимум 40 символов", "error");
 
         this.closeModal("modal-lib-add");
 
@@ -481,83 +481,6 @@ class LibraryManager {
               }
           }
       }
-
-      this.loadAdminLibraryAuthors();
-      const btnAddAuthor = document.getElementById("btn-admin-lib-add-author");
-      if (btnAddAuthor) {
-          btnAddAuthor.onclick = async () => {
-              const name = document.getElementById("admin-lib-author-name").value.trim();
-              const url = document.getElementById("admin-lib-author-url").value.trim();
-              if (!name || !url) return window.Utils.toast("Заполните оба поля", "error");
-              try {
-                  const { ref: dbRef, set, update, push, db } = await this.getDb();
-                  
-                  if (btnAddAuthor.dataset.editId) {
-                      await update(dbRef(db, `content_authors/${btnAddAuthor.dataset.editId}`), { name, avatar: url });
-                      window.Utils.toast("Автор обновлен", "success");
-                      btnAddAuthor.dataset.editId = "";
-                      btnAddAuthor.innerText = "Добавить";
-                  } else {
-                      const newRef = push(dbRef(db, "content_authors"));
-                      await set(newRef, { id: newRef.key, name, avatar: url });
-                      window.Utils.toast("Автор добавлен", "success");
-                  }
-
-                  document.getElementById("admin-lib-author-name").value = "";
-                  document.getElementById("admin-lib-author-url").value = "";
-                  this.loadAdminLibraryAuthors();
-              } catch (e) {
-                  window.Utils.toast("Ошибка: " + e.message, "error");
-              }
-          };
-      }
-  }
-
-  static async loadAdminLibraryAuthors() {
-      const list = document.getElementById("admin-lib-authors-list");
-      if (!list) return;
-      
-      try {
-          const { ref: dbRef, get, db, remove } = await this.getDb();
-          const snap = await get(dbRef(db, "content_authors"));
-          list.innerHTML = "";
-          if (snap.exists()) {
-              const authors = snap.val();
-              for (const key in authors) {
-                  const data = authors[key];
-                  const div = document.createElement("div");
-                  div.style.cssText = "display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); padding:10px; border-radius:12px;";
-                  div.innerHTML = `
-                      <div style="display:flex; align-items:center; gap:10px;">
-                          <img src="${data.avatar || data.url}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;">
-                          <div style="display:flex; flex-direction:column;">
-                              <span style="font-size:14px; color:#fff;">${window.Utils.escapeHtml(data.name)}</span>
-                          </div>
-                      </div>
-                      <div style="display:flex; gap:5px;">
-                          <button class="secondary-btn btn-edit" style="width:auto; padding:4px 8px; font-size:12px;">Изменить</button>
-                          <button class="danger-btn btn-del" style="width:auto; padding:4px 8px; font-size:12px;">Удалить</button>
-                      </div>
-                  `;
-                  div.querySelector(".btn-del").onclick = async () => {
-                      if (await window.Utils.confirm("Удалить автора?")) {
-                          await remove(dbRef(db, `content_authors/${key}`));
-                          this.loadAdminLibraryAuthors();
-                      }
-                  };
-                  div.querySelector(".btn-edit").onclick = () => {
-                      document.getElementById("admin-lib-author-name").value = data.name || "";
-                      document.getElementById("admin-lib-author-url").value = data.avatar || data.url || "";
-                      const btnAdd = document.getElementById("btn-admin-lib-add-author");
-                      btnAdd.innerText = "Сохранить";
-                      btnAdd.dataset.editId = key;
-                  };
-                  list.appendChild(div);
-              }
-          } else {
-              list.innerHTML = "<div style='color:var(--text-muted); font-size:12px; text-align:center;'>Нет добавленных авторов</div>";
-          }
-      } catch (e) {}
   }
 
   static async searchAdminLibrary() {

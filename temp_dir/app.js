@@ -2280,7 +2280,7 @@ class YouTubePlayerManager {
     }
     const container = document.getElementById("yt-player-container");
     if (container) {
-      container.innerHTML = '<div id="yt-player" style="width: 100%; height: 100%; max-width: 100%; max-height: 100%; aspect-ratio: 16/9; display: flex; justify-content: center; align-items: center;"></div>';
+      container.innerHTML = '<div id="yt-player"></div>';
     }
   }
 }
@@ -8566,7 +8566,7 @@ class FriendsManager {
           const nameStr = profile ? profile.name : acc.email;
           const avatarStr = profile
             ? `<div style=\"width:40px;height:40px;\">${ProfileManager.getAvatarHtml(profile)}</div>`
-            : `<div style=\"width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:18px;\">${(nameStr || "?")[0]}</div>`;
+            : `<div style=\"width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:18px;\">${(nameStr || "?")[0]}</div>`;
 
           const item = document.createElement("div");
           item.style.cssText = `display:flex; align-items:center; gap:12px; background:rgba(0,0,0,0.3); padding:10px; border-radius:12px; cursor:${isCurrent ? "default" : "pointer"}; border:1px solid ${isCurrent ? "var(--brand)" : "rgba(255,255,255,0.1)"}; position: relative;`;
@@ -10998,16 +10998,6 @@ class AdminPanel {
                           <button class="primary-btn" id="btn-admin-lib-save">Сохранить</button>
                           <button class="danger-btn" id="btn-admin-lib-delete">Удалить видео</button>
                       </div>
-                    </div>
-                    
-                    <div style="border-top:1px solid var(--border-light); padding-top:20px; margin-top:20px;">
-                        <div style="font-weight:700; margin-bottom:10px;">Авторы Библиотеки (для превью)</div>
-                        <div style="display:flex; gap:10px; margin-bottom:10px;">
-                            <input type="text" id="admin-lib-author-name" placeholder="Имя автора" class="settings-input">
-                            <input type="text" id="admin-lib-author-url" placeholder="URL аватарки" class="settings-input">
-                            <button class="primary-btn" id="btn-admin-lib-add-author" style="width:auto;">Добавить</button>
-                        </div>
-                        <div id="admin-lib-authors-list" style="display:flex; flex-direction:column; gap:8px; max-height:220px; overflow:auto;"></div>
                     </div>
                 </div>
 
@@ -17858,85 +17848,3 @@ DirectMessages.renderMessages = function(messages) {
     
     if (this.theme === "love") this.startLoveHearts();
 }
-
-class RewardsPath {
-    static init() {
-        const btn = document.getElementById("btn-show-rewards-path");
-        if (btn) {
-            btn.addEventListener("click", () => {
-                this.showModal();
-            });
-        }
-    }
-    
-    static showModal() {
-        let modal = document.getElementById("modal-rewards-path");
-        if (!modal) {
-            modal = document.createElement("div");
-            modal.className = "modal";
-            modal.id = "modal-rewards-path";
-            modal.innerHTML = `
-                <div class="modal-content glass-panel" style="max-width: 500px; padding: 0; display:flex; flex-direction:column; overflow:hidden;">
-                    <div style="padding: 20px; border-bottom: 1px solid var(--border-light); display:flex; justify-content:space-between; align-items:center;">
-                        <h2 style="margin:0;">Путь наград за уровень</h2>
-                        <button class="secondary-btn" id="btn-close-rewards" style="width:auto; padding:5px 10px;">✕</button>
-                    </div>
-                    <div style="padding: 20px; flex:1; overflow-y:auto; max-height:400px; background:rgba(0,0,0,0.2);">
-                        <div style="display:flex; flex-direction:column; gap:10px;">
-                            ${this.generatePathHtml()}
-                        </div>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(modal);
-            modal.querySelector("#btn-close-rewards").onclick = () => {
-                modal.classList.remove("active");
-            };
-        }
-        modal.classList.add("active");
-    }
-
-    static generatePathHtml() {
-        let html = "";
-        const rewards = [
-            { level: 2, desc: "Открывается возможность ставить реакции на сообщения" },
-            { level: 5, desc: "Бейдж 'Активный зритель'" },
-            { level: 10, desc: "Особая рамка профиля 'Бронза'" },
-            { level: 15, desc: "Цветной текст профиля" },
-            { level: 20, desc: "Особая рамка профиля 'Серебро'" },
-            { level: 30, desc: "Анимированная рамка 'Золото'" },
-            { level: 40, desc: "Кастомная обложка профиля (Анимированная)" },
-            { level: 50, desc: "Бейдж 'Легенда COWIO'" }
-        ];
-
-        let currentUid = window.AppState?.currentUser?.uid;
-        let currentProfile = currentUid ? window.AppState.usersCache.get(currentUid) : null;
-        let currentXp = currentProfile?.xp || 0;
-        let currentLevelInfo = window.ProfileManager?.getExpMath(currentXp) || {level: 0};
-        let currentLvl = currentLevelInfo.level;
-
-        rewards.forEach(r => {
-            const isUnlocked = currentLvl >= r.level;
-            const bg = isUnlocked ? "rgba(0, 255, 136, 0.1)" : "rgba(255,255,255,0.03)";
-            const border = isUnlocked ? "1px solid var(--brand)" : "1px solid rgba(255,255,255,0.08)";
-            const icon = isUnlocked ? "✅" : "🔒";
-            html += `
-                <div style="background:${bg}; border:${border}; border-radius:12px; padding:15px; display:flex; gap:15px; align-items:center;">
-                    <div style="font-size:24px;">${icon}</div>
-                    <div style="flex:1;">
-                        <div style="font-weight:700; font-size:16px;">Уровень ${r.level}</div>
-                        <div style="color:var(--text-muted); font-size:14px;">${r.desc}</div>
-                    </div>
-                </div>
-            `;
-        });
-        return html;
-    }
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-    setTimeout(() => {
-        RewardsPath.init();
-    }, 1000);
-});
-

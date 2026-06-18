@@ -1,0 +1,7 @@
+1049:            .glass-panel, .room-card, .user-card, .msg-bubble, .friend-item {
+1054:            .user-card { animation-delay: 2s; }
+8541:                            <div class="user-card" onclick="ProfileManager.openProfileModal('${uid}')" style="cursor:pointer; display:flex; align-items:center; space-between; gap:10px;">
+8543:                                <div class="user-card-info" style="flex:1;">
+8544:                                    <div class="user-card-name">${Utils.escapeHtml(udata.profile.name)}</div>
+8545:                                    <div class="user-card-username">@${Utils.escapeHtml(udata.profile.username)}</div>
+14333:        html += `<div class="user-card-actions">`;

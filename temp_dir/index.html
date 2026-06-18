@@ -6062,12 +6062,9 @@
                 overflow: hidden;
                 pointer-events: auto;
                 z-index: 5;
-                display: flex;
-                align-items: center;
-                justify-content: center;
               "
             >
-              <div id="yt-player" style="width: 100%; height: 100%; max-width: 100%; max-height: 100%; aspect-ratio: 16/9; display: flex; justify-content: center; align-items: center;"></div>
+              <div id="yt-player" style="width: 100%; height: 100%"></div>
             </div>
             <div
               id="room-video-overlay"
@@ -7616,7 +7613,6 @@
               border-radius: 6px;
               overflow: hidden;
               position: relative;
-              margin-bottom: 12px;
             "
           >
             <div
@@ -7633,7 +7629,6 @@
               "
             ></div>
           </div>
-          <button class="primary-btn" id="btn-show-rewards-path" style="width: 100%; font-size: 14px; padding: 10px;">Путь наград</button>
         </div>
 
         <button
@@ -7692,15 +7687,13 @@
       body.hide-copy-id #btn-fast-id {
         display: none !important;
       }
-      .avatar-img,
-      img.avatar,
-      .chat-profile-link img,
-      .room-user-profile-link img,
-      .avatar-border-glow img,
-      .chat-avatar-placeholder,
-      .lobby-friends-list img,
-      .avatar,
-      .users-tab-avatar {
+      body.round-avatars .avatar-img,
+      body.round-avatars img.avatar,
+      body.round-avatars .chat-profile-link img,
+      body.round-avatars .room-user-profile-link img,
+      body.round-avatars .avatar-border-glow img,
+      body.round-avatars .chat-avatar-placeholder,
+      body.round-avatars .lobby-friends-list img {
         border-radius: 50% !important;
       }
       .premium-bio-layout {
