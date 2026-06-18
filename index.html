@@ -1716,6 +1716,26 @@
         border-top: 1px solid var(--border);
         background: var(--panel);
       }
+
+      /* Custom scrollbar for modals */
+      .modal-content::-webkit-scrollbar,
+      .modal-scrollable-content::-webkit-scrollbar {
+        width: 6px;
+      }
+      .modal-content::-webkit-scrollbar-track,
+      .modal-scrollable-content::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .modal-content::-webkit-scrollbar-thumb,
+      .modal-scrollable-content::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+      }
+      .modal-content::-webkit-scrollbar-thumb:hover,
+      .modal-scrollable-content::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.2);
+      }
+
       .input-wrapper {
         display: flex;
         gap: 8px;
@@ -5095,13 +5115,13 @@
               </h2>
           </div>
           <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-            <button class="primary-btn" id="btn-lib-public" style="flex: 1; border-radius: 12px;">Публичная библиотека</button>
-            <button class="secondary-btn" id="btn-lib-my" style="flex: 1; border-radius: 12px;">Моя библиотека</button>
+            <button class="primary-btn" id="btn-lib-public" style="flex: 1; border-radius: 12px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Globe%20Showing%20Americas.webp" style="width: 20px; height: 20px; vertical-align: middle; margin-right: 8px;" /> Публичная библиотека</button>
+            <button class="secondary-btn" id="btn-lib-my" style="flex: 1; border-radius: 12px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Bust%20In%20Silhouette.webp" style="width: 20px; height: 20px; vertical-align: middle; margin-right: 8px;" /> Моя библиотека</button>
           </div>
           <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-            <input type="text" id="library-search" placeholder="Поиск видео..." class="settings-input" style="flex: 1; border-radius: 12px;" />
+            <input type="text" id="library-search" placeholder="Поиск видео..." class="settings-input" style="flex: 1; border-radius: 12px; padding-left: 15px;" />
             <button class="primary-btn" id="btn-lib-add-video" style="border-radius: 12px; width:auto; padding:0 20px;">
-              ➕ Добавить видео
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Plus.webp" style="width: 20px; height: 20px; vertical-align: middle; margin-right: 5px; filter: invert(1);" /> Добавить видео
             </button>
           </div>
           

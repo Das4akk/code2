@@ -10983,6 +10983,7 @@ class AdminPanel {
                     <div style="display:flex; gap:10px; margin-bottom:10px;">
                         <input type="text" id="admin-lib-search" placeholder="ID видео или поиска..." class="settings-input">
                         <button class="primary-btn" id="btn-admin-lib-search" style="width:auto;">Найти</button>
+                        <button class="danger-btn" id="btn-admin-lib-delete-all" style="width:auto; display:none;">Удалить все найденные</button>
                     </div>
                     <div id="admin-lib-list" style="display:flex; flex-direction:column; gap:8px; max-height:220px; overflow:auto; margin-bottom:15px;"></div>
                     
@@ -11003,8 +11004,8 @@ class AdminPanel {
                     <div style="border-top:1px solid var(--border-light); padding-top:20px; margin-top:20px;">
                         <div style="font-weight:700; margin-bottom:10px;">Авторы Библиотеки (для превью)</div>
                         <div style="display:flex; gap:10px; margin-bottom:10px;">
-                            <input type="text" id="admin-lib-author-name" placeholder="Имя автора" class="settings-input">
-                            <input type="text" id="admin-lib-author-url" placeholder="URL аватарки" class="settings-input">
+                            <input type="text" id="admin-lib-author-name" placeholder="Имя (оставьте пустым для автопоиска YouTube)" class="settings-input">
+                            <input type="text" id="admin-lib-author-url" placeholder="URL аватарки ИЛИ ссылка на YouTube" class="settings-input">
                             <button class="primary-btn" id="btn-admin-lib-add-author" style="width:auto;">Добавить</button>
                         </div>
                         <div id="admin-lib-authors-list" style="display:flex; flex-direction:column; gap:8px; max-height:220px; overflow:auto;"></div>
@@ -17899,37 +17900,63 @@ class RewardsPath {
     static generatePathHtml() {
         let html = "";
         const rewards = [
-            { level: 2, desc: "Открывается возможность ставить реакции на сообщения" },
-            { level: 5, desc: "Бейдж 'Активный зритель'" },
-            { level: 10, desc: "Особая рамка профиля 'Бронза'" },
-            { level: 15, desc: "Цветной текст профиля" },
-            { level: 20, desc: "Особая рамка профиля 'Серебро'" },
-            { level: 30, desc: "Анимированная рамка 'Золото'" },
-            { level: 40, desc: "Кастомная обложка профиля (Анимированная)" },
-            { level: 50, desc: "Бейдж 'Легенда COWIO'" }
+            { level: 10, icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/1st%20Place%20Medal.webp", title: "Каталог косметики", desc: "Открывает доступ к магазину косметики, рамок, корон и бейджей профиля за COWCoins" },
+            { level: 30, icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Label.webp", title: "Дополнительное Имя (1 Слот)", desc: "Позволяет установить дополнительное юзернейм/титул, видимый в карточке профиля" },
+            { level: 50, icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Label.webp", title: "Дополнительное Имя (2 Слота)", desc: "Расширяет лимит до двух дополнительных кастомных имен профиля" },
+            { level: 100, icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp", title: "Дополнительное Имя (3 Слота)", desc: "Открывает максимальный лимит из трех дополнительных кастомных имен профиля" }
         ];
 
         let currentUid = window.AppState?.currentUser?.uid;
         let currentProfile = currentUid ? window.AppState.usersCache.get(currentUid) : null;
         let currentXp = currentProfile?.xp || 0;
-        let currentLevelInfo = window.ProfileManager?.getExpMath(currentXp) || {level: 0};
+        let currentLevelInfo = window.ProfileManager?.getExpMath ? window.ProfileManager.getExpMath(currentXp) : {level: 0};
         let currentLvl = currentLevelInfo.level;
 
-        rewards.forEach(r => {
+        html += `<div style="position:relative; margin-top:10px; margin-bottom: 20px;">
+                    <!-- Line connecting all nodes -->
+                    <div style="position:absolute; left:24px; top:30px; bottom:30px; width:4px; background:linear-gradient(to bottom, var(--accent), rgba(255,255,255,0.05)); border-radius:4px; z-index:0;"></div>
+        `;
+
+        rewards.forEach((r, i) => {
             const isUnlocked = currentLvl >= r.level;
-            const bg = isUnlocked ? "rgba(0, 255, 136, 0.1)" : "rgba(255,255,255,0.03)";
-            const border = isUnlocked ? "1px solid var(--brand)" : "1px solid rgba(255,255,255,0.08)";
-            const icon = isUnlocked ? "✅" : "🔒";
+            const op = isUnlocked ? "1.0" : "0.5";
+            const bg = isUnlocked ? "linear-gradient(135deg, rgba(255,143,198,0.15) 0%, rgba(255,255,255,0.02) 100%)" : "rgba(255,255,255,0.02)";
+            const border = isUnlocked ? "1px solid rgba(255,143,198,0.5)" : "1px solid rgba(255,255,255,0.05)";
+            const titleColor = isUnlocked ? "var(--brand, #ff8fc6)" : "#ffffff";
+            const glow = isUnlocked ? "0 8px 32px rgba(255,143,198,0.2)" : "0 4px 15px rgba(0,0,0,0.5)";
+
+            // Check if it's the specific currently next achievable (or recently unlocked)
+            let isNext = false;
+            if (!isUnlocked && (i === 0 || (rewards[i-1] && currentLvl >= rewards[i-1].level))) isNext = true;
+            
+            const nodeGlow = isUnlocked ? `box-shadow: 0 0 16px var(--accent);` : (isNext ? `box-shadow: 0 0 16px rgba(255,255,255,0.5); border-color:#fff !important;` : '');
+
             html += `
-                <div style="background:${bg}; border:${border}; border-radius:12px; padding:15px; display:flex; gap:15px; align-items:center;">
-                    <div style="font-size:24px;">${icon}</div>
-                    <div style="flex:1;">
-                        <div style="font-weight:700; font-size:16px;">Уровень ${r.level}</div>
-                        <div style="color:var(--text-muted); font-size:14px;">${r.desc}</div>
+                <div style="position:relative; margin-bottom:30px; opacity:${op}; z-index:1;">
+                    <div style="position:absolute; left:9px; top:18px; width:34px; height:34px; border-radius:50%; background:${isUnlocked ? 'var(--accent)' : 'var(--panel)'}; border:3px solid ${isUnlocked ? 'var(--accent)' : 'rgba(255,255,255,0.1)'}; display:flex; align-items:center; justify-content:center; color:${isUnlocked ? '#000' : '#fff'}; font-weight:800; font-size:12px; ${nodeGlow}">
+                        ${isUnlocked ? '✓' : ''}
+                        ${!isUnlocked && isNext ? '<div style="position:absolute; width:100%; height:100%; border-radius:50%; border:2px solid #fff; animation: ping 2s infinite cubic-bezier(0, 0, 0.2, 1); opacity:0.5;"></div>' : ''}
+                    </div>
+                    
+                    <div style="background:${bg}; border:${border}; border-radius: 20px; padding: 20px; margin-left: 60px; display:flex; gap:20px; box-shadow: ${glow}; transition: all 0.3s ease; align-items:center; position:relative; overflow:hidden;">
+                        ${isUnlocked ? '<div style="position:absolute; top:-60px; right:-60px; width:120px; height:120px; background:radial-gradient(circle, rgba(255,143,198,0.2) 0%, transparent 70%); border-radius:50%; pointer-events:none;"></div>' : ''}
+                        <div style="width:56px; height:56px; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.2); border-radius:14px; flex-shrink:0; border:1px solid rgba(255,255,255,0.05);">
+                            <img src="${r.icon}" style="width:40px; height:40px; object-fit:contain; filter:${isUnlocked ? 'drop-shadow(0 4px 6px rgba(0,0,0,0.3))' : 'grayscale(100%) opacity(0.5)'};" />
+                        </div>
+                        <div style="flex:1;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                <div style="font-size:13px; text-transform:uppercase; font-weight:800; letter-spacing:1px; color:${titleColor};">${r.title}</div>
+                                <div style="font-size:11px; font-weight:800; color:${isUnlocked?'#000':'var(--text-muted)'}; background:${isUnlocked?'var(--accent)':'rgba(255,255,255,0.1)'}; padding:4px 10px; border-radius:12px; letter-spacing:0.5px;">УРОВЕНЬ ${r.level}</div>
+                            </div>
+                            <div style="font-size:14px; font-weight:500; color:rgba(255,255,255,0.85); line-height:1.4;">${r.desc}</div>
+                        </div>
                     </div>
                 </div>
             `;
         });
+        
+        html += `</div>`;
+
         return html;
     }
 }

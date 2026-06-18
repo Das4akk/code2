@@ -184,8 +184,8 @@ class LibraryManager {
                     <input type="text" id="lib-add-title" class="settings-input" placeholder="Точное название" />
                 </div>
                 <div style="margin-bottom: 20px">
-                    <label style="display:block; margin-bottom:5px; color:var(--text-muted); font-size:13px;">Описание (макс. 100 символов, авто-заполнение)</label>
-                    <textarea id="lib-add-desc" class="settings-input" rows="4" placeholder="Краткое описание..."></textarea>
+                    <label style="display:block; margin-bottom:5px; color:var(--text-muted); font-size:13px;">Описание (авто-заполнение)</label>
+                    <textarea id="lib-add-desc" class="settings-input" rows="4" placeholder="Полное описание..."></textarea>
                 </div>
             </div>
             <div style="margin-bottom: 20px; display:flex; gap:10px; align-items:center;">
@@ -250,7 +250,6 @@ class LibraryManager {
 
         if (!url) return window.Utils.toast("Введите ссылку");
         if (!title) return window.Utils.toast("Введите название");
-        if (desc.length > 100) return window.Utils.toast("Описание должно быть не больше 100 символов", "error");
 
         this.closeModal("modal-lib-add");
 
@@ -287,11 +286,14 @@ class LibraryManager {
                   <img src="${thumbUrl}" style="max-width:100%; border-radius:12px; max-height:200px; object-fit:cover;" />
               </div>
               <p style="font-size:14px; text-align:center; color:var(--text-muted); margin-bottom:15px;">
-                  Укажите, кто изображен или участвует в этом видео
+                  Укажите, кто изображен или участвует в этом видео (можно выбрать нескольких)
               </p>
               <div id="ai-result-area">
-                <div style="position:relative;">
-                   <input type="text" id="lib-add-people" class="settings-input" placeholder="Начните вводить имя автора..." style="margin-bottom:10px; width: 100%;" autocomplete="off" />
+                <div style="margin-bottom: 20px; position:relative;">
+                   <div style="display:flex; gap:10px;">
+                       <input type="text" id="lib-add-people" class="settings-input" placeholder="Имена через запятую (начните вводить...)" style="flex:1;" autocomplete="off" />
+                       <button class="secondary-btn" id="btn-lib-add-author-from-list" style="width:auto; padding:0 15px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Man%20Student.webp" style="width: 20px; height: 20px; vertical-align: middle; margin-right: 5px;" /> Авторы</button>
+                   </div>
                    <div id="lib-authors-dropdown" style="display:none; position:absolute; top:100%; left:0; right:0; background:var(--panel); border:1px solid rgba(255,255,255,0.1); border-radius:12px; max-height:200px; overflow-y:auto; z-index:100; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
                    </div>
                 </div>
@@ -318,8 +320,20 @@ class LibraryManager {
           console.error("Failed to load authors", e);
       }
 
+      const btnAuthors = modal.querySelector("#btn-lib-add-author-from-list");
+      if (btnAuthors) {
+          btnAuthors.onclick = () => {
+              this.showAllAuthorsModal((selectedName) => {
+                  let currentParts = input.value.split(',').map(s => s.trim()).filter(Boolean);
+                  if (!currentParts.includes(selectedName)) currentParts.push(selectedName);
+                  input.value = currentParts.join(', ') + (currentParts.length ? ', ' : '');
+              });
+          };
+      }
+
       input.addEventListener("input", () => {
-          const val = input.value.toLowerCase().trim();
+          const parts = input.value.split(',');
+          const val = parts[parts.length - 1].toLowerCase().trim();
           dropdown.innerHTML = "";
           if (!val) {
               dropdown.style.display = "none";
@@ -337,8 +351,10 @@ class LibraryManager {
                   item.onmouseover = () => item.style.background = "rgba(255,255,255,0.05)";
                   item.onmouseout = () => item.style.background = "transparent";
                   item.onclick = () => {
-                      input.value = m.name;
+                      parts[parts.length - 1] = " " + m.name;
+                      input.value = parts.join(',').trim() + ", ";
                       dropdown.style.display = "none";
+                      input.focus();
                   };
                   dropdown.appendChild(item);
               });
@@ -362,6 +378,64 @@ class LibraryManager {
       };
   }
 
+  static async showAllAuthorsModal(onSelectCallback = null) {
+      const modal = this.getOrCreateModal("modal-all-authors");
+      modal.innerHTML = `
+          <div class="modal-content" style="max-width: 400px; padding: 0; display:flex; flex-direction:column; max-height:80vh;">
+              <div class="modal-header" style="padding: 20px; border-bottom: 1px solid var(--border-light); display:flex; justify-content:space-between; align-items:center;">
+                  <h2 style="margin:0;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom" /> Авторы библиотеки</h2>
+                  <button class="secondary-btn btn-close-modal" id="btn-close-all-authors" style="border:none; padding:4px 8px; width:auto; border-radius:8px;">✕</button>
+              </div>
+              <div class="modal-scrollable-content" style="flex-grow: 1; padding: 20px; overflow-y:auto;" id="all-authors-list-container">
+                  <div style="text-align:center; color:var(--text-muted); font-size:14px;">Загрузка...</div>
+              </div>
+          </div>
+      `;
+      modal.classList.add("active");
+      
+      modal.querySelector("#btn-close-all-authors").onclick = () => this.closeModal("modal-all-authors");
+
+      const container = modal.querySelector("#all-authors-list-container");
+      try {
+          const { ref: dbRef, get, db } = await this.getDb();
+          const snap = await get(dbRef(db, "content_authors"));
+          container.innerHTML = "";
+          
+          if (snap.exists()) {
+              const authors = Object.values(snap.val());
+              if (authors.length === 0) {
+                  container.innerHTML = "<div style='text-align:center; color:var(--text-muted); font-size:14px;'>Нет добавленных авторов</div>";
+                  return;
+              }
+              
+              authors.forEach(m => {
+                  const item = document.createElement("div");
+                  item.style.cssText = "padding: 12px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.05); background:rgba(255,255,255,0.02); border-radius:12px; margin-bottom:8px;";
+                  item.innerHTML = `
+                      <div style="display:flex; align-items:center; gap: 12px;">
+                          <img src="${m.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + encodeURIComponent(m.name)}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;" />
+                          <div style="display:flex; flex-direction:column;">
+                              <span style="font-weight:600; font-size:15px; color:#fff;">${window.Utils.escapeHtml(m.name)}</span>
+                          </div>
+                      </div>
+                      ${onSelectCallback ? '<button class="primary-btn" style="width:auto; padding:6px 12px; font-size:13px; border-radius:8px;">Выбрать</button>' : ''}
+                  `;
+                  if (onSelectCallback) {
+                     item.querySelector('button').onclick = () => {
+                         onSelectCallback(m.name);
+                         this.closeModal("modal-all-authors");
+                     }
+                  }
+                  container.appendChild(item);
+              });
+          } else {
+              container.innerHTML = "<div style='text-align:center; color:var(--text-muted); font-size:14px;'>Нет добавленных авторов</div>";
+          }
+      } catch (e) {
+          container.innerHTML = `<div style="text-align:center; color:var(--danger); font-size:14px;">Ошибка: ${e.message}</div>`;
+      }
+  }
+
   static async saveVideo(videoData, isPublic) {
       try {
           const { ref: dbRef, push, db } = await this.getDb();
@@ -374,27 +448,66 @@ class LibraryManager {
       }
   }
 
-  static showViewModal(v) {
+  static async showViewModal(v) {
       const modal = this.getOrCreateModal("modal-lib-view");
       const thumbUrl = this.getYoutubeThumb(v.url);
 
+      let authorHtml = '';
+      if (v.isPublic && v.people && v.people !== "Не определено") {
+          let authorsListHTML = "";
+          try {
+              const { ref: dbRef, get, db } = await this.getDb();
+              const snap = await get(dbRef(db, "content_authors"));
+              if (snap.exists()) {
+                  const dbAuthors = snap.val();
+                  const peopleArr = v.people.split(',').map(s => s.trim()).filter(Boolean);
+                  
+                  peopleArr.forEach(personName => {
+                      let avatarSrc = "";
+                      const match = Object.values(dbAuthors).find(a => a.name.toLowerCase() === personName.toLowerCase());
+                      if (match && (match.avatar || match.url)) {
+                          avatarSrc = match.avatar || match.url;
+                      }
+                      if (avatarSrc) {
+                          authorsListHTML += `<span style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.05);padding:4px 10px;border-radius:20px;"><img src="${avatarSrc}" style="width:20px;height:20px;border-radius:50%;object-fit:cover;"/> <strong style="color:var(--accent);font-size:13px;">${window.Utils.escapeHtml(personName)}</strong></span>`;
+                      } else {
+                          authorsListHTML += `<span style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.05);padding:4px 10px;border-radius:20px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width:1.2em;height:1.2em;"/> <strong style="color:var(--accent);font-size:13px;">${window.Utils.escapeHtml(personName)}</strong></span>`;
+                      }
+                  });
+              } else {
+                  // If no authors exist in db but there is people tag
+                  v.people.split(',').map(s => s.trim()).filter(Boolean).forEach(personName => {
+                      authorsListHTML += `<span style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.05);padding:4px 10px;border-radius:20px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width:1.2em;height:1.2em;"/> <strong style="color:var(--accent);font-size:13px;">${window.Utils.escapeHtml(personName)}</strong></span>`;
+                  });
+              }
+          } catch(e) {}
+
+          if (authorsListHTML) {
+              authorHtml = `<div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;">${authorsListHTML}</div>`;
+          }
+      }
+
       modal.innerHTML = `
-          <div class="modal-content" style="max-width: 600px; padding: 0; overflow: hidden; position: relative;">
-              <div style="height: 250px; background: #000; position:relative;">
+          <div class="modal-content" style="max-width: 600px; padding: 0; overflow: hidden; position: relative; max-height:85vh; display:flex; flex-direction:column;">
+              <div style="height: 250px; flex-shrink: 0; background: #000; position:relative;">
                    <button class="secondary-btn btn-close-modal" id="btn-lib-close-view" style="position:absolute; top:10px; right:10px; z-index:10; background:rgba(0,0,0,0.5); border:none; padding:8px 12px; width:auto;">✕</button>
                    <img src="${thumbUrl}" style="width:100%; height:100%; object-fit:cover; opacity: 0.9;" />
                    <div style="position:absolute; bottom:0; left:0; right:0; height:100px; background:linear-gradient(to top, var(--panel), transparent);"></div>
               </div>
               
-              <div style="padding: 24px; position:relative; z-index:5;">
+              <div class="modal-scrollable-content" style="flex-grow: 1; padding: 24px; position:relative; z-index:5; overflow-y:auto;">
                   <h2 style="font-size:24px; margin-bottom:8px;">${window.Utils.escapeHtml(v.title)}</h2>
                   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; font-size:13px; color:var(--text-muted);">
                       <span>Добавил(а): <strong style="color:var(--text-main);">${window.Utils.escapeHtml(v.addedByName)}</strong></span>
-                      ${v.isPublic ? `<span style="display:inline-flex;align-items:center;gap:4px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width:1.2em;height:1.2em;"/> На превью: <strong style="color:var(--accent);">${window.Utils.escapeHtml(v.people || "Не распознано")}</strong></span>` : ""}
+                      ${authorHtml}
                   </div>
                   
                   <div style="background:rgba(255,255,255,0.03); border-radius:12px; padding:16px; margin-bottom:24px; border:1px solid var(--border-light);">
-                      <p style="font-size:14px; line-height:1.6; color:#ddd; white-space:pre-wrap;">${window.Utils.escapeHtml(v.description)}</p>
+                      <div id="lib-view-desc-container" style="position:relative; max-height:120px; overflow:hidden; transition: max-height 0.3s ease;">
+                         <p style="font-size:14px; line-height:1.6; color:#ddd; white-space:pre-wrap;">${window.Utils.escapeHtml(v.description)}</p>
+                         <div id="lib-view-desc-gradient" style="position:absolute; bottom:0; left:0; right:0; height:40px; background:linear-gradient(to top, var(--panel), transparent);"></div>
+                      </div>
+                      <button id="btn-lib-desc-toggle" class="btn-text-link" style="display:none; margin-top:8px; font-size:13px; color:var(--accent);">Читать полностью</button>
                   </div>
 
                   <button class="primary-btn" id="btn-lib-create-room" style="font-size:16px; padding:16px; border-radius:12px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Popcorn.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom" /> Создать комнату с этим видео</button>
@@ -402,6 +515,31 @@ class LibraryManager {
           </div>
       `;
       modal.classList.add("active");
+
+      setTimeout(() => {
+          const descContainer = modal.querySelector("#lib-view-desc-container");
+          const descP = descContainer.querySelector("p");
+          const btnToggle = modal.querySelector("#btn-lib-desc-toggle");
+          const grad = modal.querySelector("#lib-view-desc-gradient");
+          if (descP.scrollHeight > 130) {
+              btnToggle.style.display = "block";
+              let expanded = false;
+              btnToggle.onclick = () => {
+                  if (!expanded) {
+                      descContainer.style.maxHeight = descP.scrollHeight + "px";
+                      grad.style.display = "none";
+                      btnToggle.innerText = "Свернуть";
+                  } else {
+                      descContainer.style.maxHeight = "120px";
+                      grad.style.display = "block";
+                      btnToggle.innerText = "Читать полностью";
+                  }
+                  expanded = !expanded;
+              };
+          } else {
+              grad.style.display = "none";
+          }
+      }, 50);
 
       modal.querySelector("#btn-lib-close-view").onclick = () => this.closeModal("modal-lib-view");
       
@@ -486,9 +624,29 @@ class LibraryManager {
       const btnAddAuthor = document.getElementById("btn-admin-lib-add-author");
       if (btnAddAuthor) {
           btnAddAuthor.onclick = async () => {
-              const name = document.getElementById("admin-lib-author-name").value.trim();
-              const url = document.getElementById("admin-lib-author-url").value.trim();
-              if (!name || !url) return window.Utils.toast("Заполните оба поля", "error");
+              let name = document.getElementById("admin-lib-author-name").value.trim();
+              let url = document.getElementById("admin-lib-author-url").value.trim();
+              if (!url) return window.Utils.toast("Укажите URL аватара или YouTube канала", "error");
+              
+              const isYoutube = url.includes("youtube.com") || url.includes("youtu.be");
+              if (isYoutube && !name) {
+                  window.Utils.toast("Получение данных с YouTube...", "info");
+                  try {
+                      const res = await fetch("/api/library/fetch-metadata", {
+                          method: "POST", headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ url })
+                      });
+                      const data = await res.json();
+                      if (data.success && data.authorName) {
+                          name = data.authorName;
+                          if (data.authorAvatar) url = data.authorAvatar;
+                      }
+                  } catch(e) {
+                      console.error(e);
+                  }
+              }
+
+              if (!name) return window.Utils.toast("Заполните оба поля", "error");
               try {
                   const { ref: dbRef, set, update, push, db } = await this.getDb();
                   
@@ -589,14 +747,50 @@ class LibraryManager {
           list.innerHTML = "";
           if (results.length === 0) {
               list.innerHTML = "<div style='color:var(--text-muted); font-size:12px;'>Ничего не найдено</div>";
+              document.getElementById("btn-admin-lib-delete-all").style.display = "none";
               return;
           }
+          
+          document.getElementById("btn-admin-lib-delete-all").style.display = "block";
+          this.lastAdminSearchResults = results;
+          
+          const btnDelAll = document.getElementById("btn-admin-lib-delete-all");
+          btnDelAll.onclick = async () => {
+              if(await window.Utils.confirm("Удалить ВСЕ найденные видео? Это безвозвратно!")) {
+                  try {
+                      const { ref: dbRef, remove, db } = await this.getDb();
+                      for (let v of this.lastAdminSearchResults) {
+                          await remove(dbRef(db, v.path));
+                      }
+                      window.Utils.toast("Все найденные удалены", "success");
+                      this.searchAdminLibrary();
+                  } catch(e) { window.Utils.toast("Ошибка: " + e.message, "error"); }
+              }
+          };
           
           results.forEach(v => {
               const item = document.createElement("div");
               item.style = "background:rgba(0,0,0,0.3); padding:8px 12px; border-radius:8px; border:1px solid var(--border-light); display:flex; justify-content:space-between; align-items:center; cursor:pointer;";
-              item.innerHTML = `<div style="font-size:13px; max-width:80%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; align-items:center; gap:4px;">${v.isPublic===false?'<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width:1.2em;height:1.2em;" /> ':""} <span>${window.Utils.escapeHtml(v.title||"Без названия")} <span style="opacity:0.5">(${v.addedByName})</span></span></div>`;
+              item.innerHTML = `
+                <div style="font-size:13px; max-width:70%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; align-items:center; gap:4px;">
+                    ${v.isPublic===false?'<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width:1.2em;height:1.2em;" /> ':""} 
+                    <span>${window.Utils.escapeHtml(v.title||"Без названия")} <span style="opacity:0.5">(${v.addedByName})</span></span>
+                </div>
+                <button class="danger-btn btn-del-single" style="width:auto; padding:4px 8px; font-size:12px;">Удалить</button>
+              `;
               
+              item.querySelector('.btn-del-single').onclick = async (e) => {
+                  e.stopPropagation();
+                  if(await window.Utils.confirm("Удалить это видео?")) {
+                      try {
+                          const { ref: dbRef, remove, db } = await this.getDb();
+                          await remove(dbRef(db, v.path));
+                          window.Utils.toast("Удалено", "success");
+                          this.searchAdminLibrary();
+                      } catch(e) {}
+                  }
+              };
+
               item.onclick = () => {
                   document.getElementById("admin-lib-edit-id").value = v.id || v.path;
                   document.getElementById("admin-lib-edit-path").value = v.path;

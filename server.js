@@ -96,8 +96,8 @@ try {
 const mailTransporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
-        user: process.env.SMTP_USER || 'ваша_почта@gmail.com',
-        pass: process.env.SMTP_PASS || 'ваш_app_password'
+        user: process.env.SMTP_USER || 'cowiosupport@gmail.com',
+        pass: process.env.SMTP_PASS || 'qbkeftvifbqyicyx'
     }
 });
 
@@ -150,16 +150,16 @@ app.post('/api/custom-auth/send-code', async (req, res) => {
             `
         };
 
-        if (!process.env.SMTP_USER || process.env.SMTP_USER === 'ваша_почта@gmail.com') {
+        if (process.env.SMTP_USER === 'ваша_почта@gmail.com') {
             console.log(`[COWIO MOCK EMAIL] To: ${email}, Verification Code: ${code}`);
-            return res.json({ success: true, message: 'Код отправлен в консоль (тестовый режим)' });
+            return res.status(400).json({ error: 'Для отправки писем необходимо УКАЗАТЬ ВАШУ ПОЧТУ (SMTP_USER) и ПАРОЛЬ ПРИЛОЖЕНИЯ (SMTP_PASS) в настройках переменных окружения проекта' });
         }
         await mailTransporter.sendMail(mailOptions);
         res.json({ success: true, message: 'Код отправлен' });
 
     } catch (e) {
         console.error('Ошибка отправки email:', e);
-        res.status(500).json({ error: 'Ошибка отправки письма. Проверьте настройки SMTP.' });
+        res.status(500).json({ error: `Ошибка SMTP: ${e.message}` });
     }
 });
 
