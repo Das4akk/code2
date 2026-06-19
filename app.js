@@ -57,7 +57,16 @@ window.firebaseUpdate = update;
 window.firebaseSet = set;
 window.firebaseGet = get;
 window.firebaseDatabase = {
-  db, ref, get, set, push, update, remove, onValue, off, onChildAdded
+  db,
+  ref,
+  get,
+  set,
+  push,
+  update,
+  remove,
+  onValue,
+  off,
+  onChildAdded,
 };
 
 const AppState = {
@@ -130,9 +139,16 @@ class SecurityManager {
     this.monitorDOM();
   }
 
-  static validateAction(actionName, limits = { count: 5, timeWindowMs: 10000 }) {
+  static validateAction(
+    actionName,
+    limits = { count: 5, timeWindowMs: 10000 },
+  ) {
     if (this.anomalyScore > 100) {
-      if (typeof Utils !== "undefined") Utils.toast("Система безопасности временно заблокировала ваши действия из-за подозрительной активности", "error");
+      if (typeof Utils !== "undefined")
+        Utils.toast(
+          "Система безопасности временно заблокировала ваши действия из-за подозрительной активности",
+          "error",
+        );
       return false;
     }
     const now = Date.now();
@@ -144,19 +160,25 @@ class SecurityManager {
 
     if (times.length >= limits.count) {
       this.anomalyScore += 10;
-      console.warn(`[SECURITY] Action blocked: ${actionName} (Rate limit exceeded)`);
-      if (typeof Utils !== "undefined") Utils.toast(`Пожалуйста, помедленнее. Действие ${actionName} временно ограничено (DDoS защита).`, "error");
+      console.warn(
+        `[SECURITY] Action blocked: ${actionName} (Rate limit exceeded)`,
+      );
+      if (typeof Utils !== "undefined")
+        Utils.toast(
+          `Пожалуйста, помедленнее. Действие ${actionName} временно ограничено (DDoS защита).`,
+          "error",
+        );
       return false;
     }
 
     times.push(now);
     this.requestLog.set(actionName, times);
-    
+
     // Decrement anomaly score over time if it's healthy
     if (this.anomalyScore > 0 && Math.random() > 0.8) {
-       this.anomalyScore = Math.max(0, this.anomalyScore - 5);
+      this.anomalyScore = Math.max(0, this.anomalyScore - 5);
     }
-    
+
     return true;
   }
 
@@ -164,14 +186,16 @@ class SecurityManager {
     if (!text) return true;
     if (text.length > maxLength) {
       console.warn(`[SECURITY] Payload too large for context: ${context}`);
-      if (typeof Utils !== "undefined") Utils.toast("Текст слишком длинный", "error");
+      if (typeof Utils !== "undefined")
+        Utils.toast("Текст слишком длинный", "error");
       return false;
     }
     const xssPattern = /<(script|iframe|object|embed|svg|math|base|link|meta)/i;
     if (xssPattern.test(text)) {
       console.warn(`[SECURITY] Potential XSS detected in context: ${context}`);
       this.anomalyScore += 50;
-      if (typeof Utils !== "undefined") Utils.toast("Недопустимое содержимое", "error");
+      if (typeof Utils !== "undefined")
+        Utils.toast("Недопустимое содержимое", "error");
       return false;
     }
     return true;
@@ -184,8 +208,8 @@ class SecurityManager {
           mutation.addedNodes.forEach((node) => {
             if (node.tagName === "SCRIPT" || node.tagName === "IFRAME") {
               if (
-                node.src && 
-                node.src.includes("gstatic.com") === false && 
+                node.src &&
+                node.src.includes("gstatic.com") === false &&
                 node.src.includes("youtube.com") === false &&
                 node.src.includes("hls.js") === false &&
                 node.src.includes("rutube.ru") === false &&
@@ -196,7 +220,9 @@ class SecurityManager {
                 node.src.includes("localhost") === false &&
                 node.src.trim() !== ""
               ) {
-                console.error(`[SECURITY] Blocked potentially unsafe DOM injection: ${node.tagName}`);
+                console.error(
+                  `[SECURITY] Blocked potentially unsafe DOM injection: ${node.tagName}`,
+                );
                 if (node.parentNode) {
                   try {
                     node.parentNode.removeChild(node);
@@ -208,336 +234,387 @@ class SecurityManager {
         }
       });
     });
-    observer.observe(document.documentElement, { childList: true, subtree: true });
+    observer.observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+    });
   }
 }
 
 class TutorialManager {
-    static init() {
-        if (!localStorage.getItem('device_account_created')) {
-            // Not created yet, do nothing on init
+  static init() {
+    if (!localStorage.getItem("device_account_created")) {
+      // Not created yet, do nothing on init
+    }
+    if (localStorage.getItem("tutorial_active") === "true") {
+      const step = localStorage.getItem("tutorial_step");
+      if (step && step !== "0") {
+        // To avoid immediately blurring before UI load, we wait
+        setTimeout(() => {
+          if (window.innerWidth <= 1024) {
+            const sidebar = document.getElementById("main-sidebar");
+            const overlay = document.getElementById("sidebar-overlay");
+            if (sidebar) sidebar.classList.add("open");
+            if (overlay) overlay.classList.add("open");
+          }
+          this.applyBlur();
+          this.highlightNav(step);
+        }, 1500);
+      }
+    }
+  }
+
+  static markDeviceUsed() {
+    localStorage.setItem("device_account_created", "true");
+  }
+
+  static startTutorial(force = false) {
+    if (!force && localStorage.getItem("device_account_created") === "true")
+      return;
+
+    if (!force) {
+      localStorage.setItem("device_account_created", "true");
+    }
+    localStorage.setItem("tutorial_active", "true");
+    localStorage.setItem("tutorial_step", "0");
+
+    setTimeout(() => this.showWelcome(), 100);
+
+    // Check IP in the background to prevent abuse later, without blocking UI
+    fetch("https://api.ipify.org?format=json")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && data.ip) {
+          const ipKey = data.ip.replace(/\./g, "_").replace(/:/g, "_");
+          const ipRef = ref(db, `tutorial_ips/${ipKey}`);
+          get(ipRef).then((snap) => {
+            if (!snap.exists()) set(ipRef, true);
+          });
         }
-        if (localStorage.getItem('tutorial_active') === 'true') {
-            const step = localStorage.getItem('tutorial_step');
-            if (step && step !== '0') {
-               // To avoid immediately blurring before UI load, we wait
-               setTimeout(() => {
-                   if (window.innerWidth <= 1024) {
-                        const sidebar = document.getElementById("main-sidebar");
-                        const overlay = document.getElementById("sidebar-overlay");
-                        if (sidebar) sidebar.classList.add("open");
-                        if (overlay) overlay.classList.add("open");
-                   }
-                   this.applyBlur();
-                   this.highlightNav(step);
-               }, 1500);
-            }
-        }
+      })
+      .catch((e) => console.warn("Could not check IP for tutorial", e));
+  }
+
+  static showWelcome() {
+    this.renderModal(
+      "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Waving%20Hand.webp",
+      "Добро пожаловать!",
+      "Хей, добро пожаловать! Спасибо, что решил(а) присоединиться к нашей платформе. Мы тут постарались создать уютное место для общения, поиска друзей и просто хорошего времяпровождения. Давай я быстро покажу тебе, что к чему? Это не займёт много времени!",
+      "Поехали!",
+      () => this.startNavigationTour(),
+    );
+  }
+
+  static applyBlur() {
+    const els = Array.from(document.querySelectorAll(".lobby-layout > *"));
+    const mobileHeader = document.querySelector(".mobile-header");
+    if (mobileHeader) els.push(mobileHeader);
+
+    els.forEach((el) => {
+      if (
+        el &&
+        el.id !== "main-sidebar" &&
+        el.id !== "tutorial-modal-overlay"
+      ) {
+        el.style.filter = "blur(6px)";
+        el.style.pointerEvents = "none";
+        el.style.transition = "filter 0.3s ease";
+      }
+    });
+
+    const navPanel = document.getElementById("main-sidebar");
+    if (navPanel) {
+      if (window.innerWidth > 1024) {
+        navPanel.style.position = "relative";
+      }
+      navPanel.style.zIndex = "100001";
+      navPanel.style.transition = "background 0.4s ease";
+      navPanel.style.background = "rgba(0,0,0,0.9)";
+      navPanel.style.borderRadius = "16px";
     }
+  }
 
-    static markDeviceUsed() {
-        localStorage.setItem('device_account_created', 'true');
+  static removeBlur() {
+    const els = Array.from(document.querySelectorAll(".lobby-layout > *"));
+    const mobileHeader = document.querySelector(".mobile-header");
+    if (mobileHeader) els.push(mobileHeader);
+
+    els.forEach((el) => {
+      if (el) {
+        el.style.filter = "";
+        el.style.pointerEvents = "";
+      }
+    });
+    const navPanel = document.getElementById("main-sidebar");
+    if (navPanel) {
+      navPanel.style.zIndex = "";
+      navPanel.style.position = "";
+      navPanel.style.background = "";
+      navPanel.style.borderRadius = "";
     }
+  }
 
-    static startTutorial(force = false) {
-        if (!force && localStorage.getItem('device_account_created') === 'true') return;
+  static navPointers = {
+    profile: {
+      id: "nav-profile",
+      emoji:
+        "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Bust%20In%20Silhouette.webp",
+      title: "Твой профиль",
+      text: "Твоя личная крепость! Здесь ты можешь красиво оформить свою страничку - поставить крутую аватарку, написать пару слов о себе и даже поменять фон. Люди любят, когда профиль заполнен с душой, так проще найти общие интересы.",
+      next: "friends",
+    },
+    friends: {
+      id: "nav-friends",
+      emoji:
+        "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Handshake.webp",
+      title: "Друзья",
+      text: "Твой круг общения. Тут будут отображаться все, с кем ты подружился. Отсюда удобно сразу переходить к переписке, смотреть кто онлайн и управлять запросами в друзья. Не стесняйся заводить новые знакомства!",
+      next: "search",
+    },
+    search: {
+      id: "nav-find-friend",
+      emoji:
+        "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Magnifying%20Glass%20Tilted%20Left.webp",
+      title: "Найти друга",
+      text: "Не с кем поболтать? Загляни сюда. Здесь можно найти других ребят, посмотреть их профили и отправить запрос в друзья. Если кто-то показался интересным - смело пиши, тут все рады новому общению.",
+      next: "catalog",
+    },
+    catalog: {
+      id: "nav-catalog",
+      emoji:
+        "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp",
+      title: "Каталог",
+      text: "Местная сокровищница! В каталоге мы собираем классные темы оформления, рамки, значки и другие штуки для кастомизации. Доступ к нему открывается при достижении 10-го уровня. Заглядывай сюда периодически, чтобы обновить свой стиль и выделиться из толпы.",
+      next: "library",
+    },
+    library: {
+      id: "nav-library",
+      emoji:
+        "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Open%20Book.webp",
+      title: "Библиотека",
+      text: "Настоящая кинобаза от наших пользователей! Здесь можно искать классные ролики и фильмы, смотреть, кто есть на превьюшках, и, самое главное — моментально создавать комнаты для просмотра с друзьями прямо из карточки видео. Заглядывай и делись своими находками!",
+      next: "rooms",
+    },
+    rooms: {
+      id: "nav-rooms",
+      emoji:
+        "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/House.webp",
+      title: "Комнаты",
+      text: "А вот здесь происходит магия общения! Заходи в комнаты чтобы общаться с людьми, смотреть видео вместе или обмениваться сообщениями вживую. Можешь даже создать свою уютную комнату и собрать там компанию!",
+      next: null,
+    },
+  };
 
-        if (!force) {
-            localStorage.setItem('device_account_created', 'true');
-        }
-        localStorage.setItem('tutorial_active', 'true');
-        localStorage.setItem('tutorial_step', '0');
-        
-        setTimeout(() => this.showWelcome(), 100);
-        
-        // Check IP in the background to prevent abuse later, without blocking UI
-        fetch('https://api.ipify.org?format=json')
-            .then(res => res.json())
-            .then(data => {
-                if (data && data.ip) {
-                    const ipKey = data.ip.replace(/\./g, '_').replace(/:/g, '_');
-                    const ipRef = ref(db, `tutorial_ips/${ipKey}`);
-                    get(ipRef).then(snap => {
-                        if (!snap.exists()) set(ipRef, true);
-                    });
-                }
-            }).catch(e => console.warn("Could not check IP for tutorial", e));
+  static currentHole = null;
+
+  static startNavigationTour() {
+    localStorage.setItem("tutorial_step", "profile");
+    if (window.innerWidth <= 1024) {
+      const sidebar = document.getElementById("main-sidebar");
+      const overlay = document.getElementById("sidebar-overlay");
+      if (sidebar) sidebar.classList.add("open");
+      if (overlay) overlay.classList.add("open");
     }
+    this.applyBlur();
+    this.highlightNav("profile");
+  }
 
-    static showWelcome() {
-        this.renderModal(
-            'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Waving%20Hand.webp',
-            'Добро пожаловать!',
-            'Хей, добро пожаловать! Спасибо, что решил(а) присоединиться к нашей платформе. Мы тут постарались создать уютное место для общения, поиска друзей и просто хорошего времяпровождения. Давай я быстро покажу тебе, что к чему? Это не займёт много времени!',
-            'Поехали!',
-            () => this.startNavigationTour()
-        );
+  static highlightNav(step) {
+    if (this.currentHole)
+      this.currentHole.classList.remove("tutorial-highlightpulse");
+    const data = this.navPointers[step];
+    if (!data) return this.endTutorial();
+
+    // Lock other nav items
+    document.querySelectorAll(".nav-item").forEach((item) => {
+      item.style.transition = "all 0.3s ease";
+      if (item.id !== data.id) {
+        item.style.pointerEvents = "none";
+        item.style.opacity = "0.15";
+        item.style.filter = "brightness(0.3)";
+      } else {
+        item.style.pointerEvents = "auto";
+        item.style.opacity = "1";
+        item.style.filter =
+          "brightness(1.5) drop-shadow(0 0 10px rgba(255,255,255,0.4))";
+      }
+    });
+
+    const btn = document.getElementById(data.id);
+    if (btn) {
+      btn.classList.add("tutorial-highlightpulse");
+      this.currentHole = btn;
+
+      const handler = (e) => {
+        if (!e.isTrusted) return;
+        btn.classList.remove("tutorial-highlightpulse");
+        btn.removeEventListener("click", handler);
+        setTimeout(() => this.showStepModal(step), 300);
+      };
+      btn.addEventListener("click", handler);
+    } else {
+      this.highlightNav(data.next);
     }
+  }
 
-    static applyBlur() {
-        const els = Array.from(document.querySelectorAll('.lobby-layout > *'));
-        const mobileHeader = document.querySelector('.mobile-header');
-        if (mobileHeader) els.push(mobileHeader);
+  static showStepModal(step) {
+    const data = this.navPointers[step];
+    this.renderModal(data.emoji, data.title, data.text, "Понял(а)", () => {
+      if (data.next) {
+        localStorage.setItem("tutorial_step", data.next);
+        this.highlightNav(data.next);
+      } else {
+        this.endTutorial();
+      }
+    });
+  }
 
-        els.forEach(el => {
-            if (el && el.id !== 'main-sidebar' && el.id !== 'tutorial-modal-overlay') { 
-                el.style.filter = 'blur(6px)';
-                el.style.pointerEvents = 'none';
-                el.style.transition = 'filter 0.3s ease';
-            }
-        });
-        
-        const navPanel = document.getElementById('main-sidebar');
-        if(navPanel) {
-            if (window.innerWidth > 1024) {
-               navPanel.style.position = 'relative'; 
-            }
-            navPanel.style.zIndex = '100001';
-            navPanel.style.transition = 'background 0.4s ease';
-            navPanel.style.background = 'rgba(0,0,0,0.9)';
-            navPanel.style.borderRadius = '16px';
-        }
-    }
-    
-    static removeBlur() {
-        const els = Array.from(document.querySelectorAll('.lobby-layout > *'));
-        const mobileHeader = document.querySelector('.mobile-header');
-        if (mobileHeader) els.push(mobileHeader);
+  static endTutorial() {
+    localStorage.removeItem("tutorial_active");
+    localStorage.removeItem("tutorial_step");
+    this.removeBlur();
 
-        els.forEach(el => {
-            if (el) {
-                el.style.filter = '';
-                el.style.pointerEvents = '';
-            }
-        });
-        const navPanel = document.getElementById('main-sidebar');
-        if(navPanel) {
-            navPanel.style.zIndex = '';
-            navPanel.style.position = '';
-            navPanel.style.background = '';
-            navPanel.style.borderRadius = '';
-        }
-    }
+    // Unlock all nav items
+    document.querySelectorAll(".nav-item").forEach((item) => {
+      item.style.pointerEvents = "";
+      item.style.opacity = "";
+      item.style.filter = "";
+    });
 
-    static navPointers = {
-        'profile': { id: 'nav-profile', emoji: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Bust%20In%20Silhouette.webp', title: 'Твой профиль', text: 'Твоя личная крепость! Здесь ты можешь красиво оформить свою страничку - поставить крутую аватарку, написать пару слов о себе и даже поменять фон. Люди любят, когда профиль заполнен с душой, так проще найти общие интересы.', next: 'friends' },
-        'friends': { id: 'nav-friends', emoji: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Handshake.webp', title: 'Друзья', text: 'Твой круг общения. Тут будут отображаться все, с кем ты подружился. Отсюда удобно сразу переходить к переписке, смотреть кто онлайн и управлять запросами в друзья. Не стесняйся заводить новые знакомства!', next: 'search' },
-        'search': { id: 'nav-find-friend', emoji: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Magnifying%20Glass%20Tilted%20Left.webp', title: 'Найти друга', text: 'Не с кем поболтать? Загляни сюда. Здесь можно найти других ребят, посмотреть их профили и отправить запрос в друзья. Если кто-то показался интересным - смело пиши, тут все рады новому общению.', next: 'catalog' },
-        'catalog': { id: 'nav-catalog', emoji: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp', title: 'Каталог', text: 'Местная сокровищница! В каталоге мы собираем классные темы оформления, рамки, значки и другие штуки для кастомизации. Доступ к нему открывается при достижении 10-го уровня. Заглядывай сюда периодически, чтобы обновить свой стиль и выделиться из толпы.', next: 'library' },
-        'library': { id: 'nav-library', emoji: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Open%20Book.webp', title: 'Библиотека', text: 'Настоящая кинобаза от наших пользователей! Здесь можно искать классные ролики и фильмы, смотреть, кто есть на превьюшках, и, самое главное — моментально создавать комнаты для просмотра с друзьями прямо из карточки видео. Заглядывай и делись своими находками!', next: 'rooms' },
-        'rooms': { id: 'nav-rooms', emoji: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/House.webp', title: 'Комнаты', text: 'А вот здесь происходит магия общения! Заходи в комнаты чтобы общаться с людьми, смотреть видео вместе или обмениваться сообщениями вживую. Можешь даже создать свою уютную комнату и собрать там компанию!', next: null }
+    if (this.currentHole)
+      this.currentHole.classList.remove("tutorial-highlightpulse");
+
+    this.renderModal(
+      "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Party%20Popper.webp",
+      "Готово!",
+      "Вот и всё! Теперь ты знаешь самое важное. Желаем отличного настроения и классного общения на нашей платформе!",
+      "Завершить",
+      () => {},
+    );
+  }
+
+  static renderModal(emojiSrc, title, text, btnText, onConfirm) {
+    const existing = document.getElementById("tutorial-modal-overlay");
+    if (existing) existing.remove();
+
+    const overlay = document.createElement("div");
+    overlay.id = "tutorial-modal-overlay";
+    overlay.style.position = "fixed";
+    overlay.style.inset = "0";
+    overlay.style.backgroundColor = "rgba(0,0,0,0.6)";
+    overlay.style.backdropFilter = "blur(10px)";
+    overlay.style.zIndex = "100005";
+    overlay.style.display = "flex";
+    overlay.style.alignItems = "center";
+    overlay.style.justifyContent = "center";
+    overlay.style.padding = "20px";
+    overlay.style.opacity = "0";
+    overlay.style.transition = "opacity 0.6s ease";
+
+    const modal = document.createElement("div");
+    modal.style.background =
+      "linear-gradient(145deg, #2a2a2a 0%, #151515 100%)";
+    modal.style.border = "1px solid rgba(255,255,255,0.1)";
+    modal.style.borderRadius = "24px";
+    modal.style.padding = "35px 30px";
+    modal.style.maxWidth = "380px";
+    modal.style.width = "100%";
+    modal.style.display = "flex";
+    modal.style.flexDirection = "column";
+    modal.style.alignItems = "center";
+    modal.style.textAlign = "center";
+    modal.style.boxShadow = "0 25px 60px rgba(0,0,0,0.6)";
+    modal.style.transform = "translateY(30px) scale(0.9)";
+    modal.style.opacity = "0";
+    modal.style.transition =
+      "transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.6s ease";
+
+    const emoji = document.createElement("img");
+    emoji.src = emojiSrc;
+    emoji.style.width = "72px";
+    emoji.style.height = "72px";
+    emoji.style.marginBottom = "20px";
+    emoji.style.animation = "pulse 2s infinite alternate";
+
+    const h2 = document.createElement("h2");
+    h2.textContent = title;
+    h2.style.margin = "0 0 10px 0";
+    h2.style.fontSize = "22px";
+    h2.style.color = "#ffffff";
+
+    const p = document.createElement("p");
+    p.style.margin = "0 0 25px 0";
+    p.style.fontSize = "14px";
+    p.style.lineHeight = "1.5";
+    p.style.color = "rgba(255,255,255,0.7)";
+    p.style.minHeight = "120px"; // enough space for longest tutorial text to avoid layout shift
+
+    const btn = document.createElement("button");
+    btn.textContent = btnText;
+    btn.style.width = "100%";
+    btn.style.padding = "12px 20px";
+    btn.style.borderRadius = "12px";
+    btn.style.fontSize = "14px";
+    btn.style.fontWeight = "bold";
+    btn.style.background = "linear-gradient(90deg, #ffffff, #e0e0e0)";
+    btn.style.color = "#000000";
+    btn.style.border = "none";
+    btn.style.cursor = "pointer";
+    btn.style.opacity = "0";
+    btn.style.transition = "opacity 0.4s ease";
+
+    btn.onmouseover = () => (btn.style.background = "#ffffff");
+    btn.onmouseout = () =>
+      (btn.style.background = "linear-gradient(90deg, #ffffff, #e0e0e0)");
+
+    let typingInterval;
+    let isTyping = false;
+
+    btn.onclick = () => {
+      if (isTyping) {
+        // If clicked while typing, skip to the end
+        clearInterval(typingInterval);
+        p.textContent = text;
+        isTyping = false;
+        return;
+      }
+      overlay.style.opacity = "0";
+      modal.style.opacity = "0";
+      modal.style.transform = "translateY(30px) scale(0.9)";
+      setTimeout(() => {
+        overlay.remove();
+        if (onConfirm) onConfirm();
+      }, 600);
     };
 
-    static currentHole = null;
+    modal.appendChild(emoji);
+    modal.appendChild(h2);
+    modal.appendChild(p);
+    modal.appendChild(btn);
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
 
-    static startNavigationTour() {
-        localStorage.setItem('tutorial_step', 'profile');
-        if (window.innerWidth <= 1024) {
-             const sidebar = document.getElementById("main-sidebar");
-             const overlay = document.getElementById("sidebar-overlay");
-             if (sidebar) sidebar.classList.add("open");
-             if (overlay) overlay.classList.add("open");
-        }
-        this.applyBlur();
-        this.highlightNav('profile');
-    }
+    requestAnimationFrame(() => {
+      overlay.style.opacity = "1";
+      modal.style.transform = "translateY(0) scale(1)";
+      modal.style.opacity = "1";
 
-    static highlightNav(step) {
-        if (this.currentHole) this.currentHole.classList.remove('tutorial-highlightpulse');
-        const data = this.navPointers[step];
-        if (!data) return this.endTutorial();
-        
-        // Lock other nav items
-        document.querySelectorAll('.nav-item').forEach(item => {
-            item.style.transition = 'all 0.3s ease';
-            if (item.id !== data.id) {
-                item.style.pointerEvents = 'none';
-                item.style.opacity = '0.15';
-                item.style.filter = 'brightness(0.3)';
-            } else {
-                item.style.pointerEvents = 'auto';
-                item.style.opacity = '1';
-                item.style.filter = 'brightness(1.5) drop-shadow(0 0 10px rgba(255,255,255,0.4))';
-            }
-        });
-
-        const btn = document.getElementById(data.id);
-        if (btn) {
-             btn.classList.add('tutorial-highlightpulse');
-             this.currentHole = btn;
-             
-             const handler = (e) => {
-                 if (!e.isTrusted) return;
-                 btn.classList.remove('tutorial-highlightpulse');
-                 btn.removeEventListener('click', handler);
-                 setTimeout(() => this.showStepModal(step), 300);
-             };
-             btn.addEventListener('click', handler);
-        } else {
-             this.highlightNav(data.next);
-        }
-    }
-
-    static showStepModal(step) {
-        const data = this.navPointers[step];
-        this.renderModal(
-            data.emoji,
-            data.title,
-            data.text,
-            'Понял(а)',
-            () => {
-                if (data.next) {
-                    localStorage.setItem('tutorial_step', data.next);
-                    this.highlightNav(data.next);
-                } else {
-                    this.endTutorial();
-                }
-            }
-        );
-    }
-
-    static endTutorial() {
-        localStorage.removeItem('tutorial_active');
-        localStorage.removeItem('tutorial_step');
-        this.removeBlur();
-
-        // Unlock all nav items
-        document.querySelectorAll('.nav-item').forEach(item => {
-            item.style.pointerEvents = '';
-            item.style.opacity = '';
-            item.style.filter = '';
-        });
-
-        if (this.currentHole) this.currentHole.classList.remove('tutorial-highlightpulse');
-        
-        this.renderModal(
-            'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Party%20Popper.webp',
-            'Готово!',
-            'Вот и всё! Теперь ты знаешь самое важное. Желаем отличного настроения и классного общения на нашей платформе!',
-            'Завершить',
-            () => {}
-        );
-    }
-
-    static renderModal(emojiSrc, title, text, btnText, onConfirm) {
-        const existing = document.getElementById('tutorial-modal-overlay');
-        if (existing) existing.remove();
-
-        const overlay = document.createElement('div');
-        overlay.id = 'tutorial-modal-overlay';
-        overlay.style.position = 'fixed';
-        overlay.style.inset = '0';
-        overlay.style.backgroundColor = 'rgba(0,0,0,0.6)';
-        overlay.style.backdropFilter = 'blur(10px)';
-        overlay.style.zIndex = '100005';
-        overlay.style.display = 'flex';
-        overlay.style.alignItems = 'center';
-        overlay.style.justifyContent = 'center';
-        overlay.style.padding = '20px';
-        overlay.style.opacity = '0';
-        overlay.style.transition = 'opacity 0.6s ease';
-
-        const modal = document.createElement('div');
-        modal.style.background = 'linear-gradient(145deg, #2a2a2a 0%, #151515 100%)';
-        modal.style.border = '1px solid rgba(255,255,255,0.1)';
-        modal.style.borderRadius = '24px';
-        modal.style.padding = '35px 30px';
-        modal.style.maxWidth = '380px';
-        modal.style.width = '100%';
-        modal.style.display = 'flex';
-        modal.style.flexDirection = 'column';
-        modal.style.alignItems = 'center';
-        modal.style.textAlign = 'center';
-        modal.style.boxShadow = '0 25px 60px rgba(0,0,0,0.6)';
-        modal.style.transform = 'translateY(30px) scale(0.9)';
-        modal.style.opacity = '0';
-        modal.style.transition = 'transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.6s ease';
-
-        const emoji = document.createElement('img');
-        emoji.src = emojiSrc;
-        emoji.style.width = '72px';
-        emoji.style.height = '72px';
-        emoji.style.marginBottom = '20px';
-        emoji.style.animation = 'pulse 2s infinite alternate';
-
-        const h2 = document.createElement('h2');
-        h2.textContent = title;
-        h2.style.margin = '0 0 10px 0';
-        h2.style.fontSize = '22px';
-        h2.style.color = '#ffffff';
-
-        const p = document.createElement('p');
-        p.style.margin = '0 0 25px 0';
-        p.style.fontSize = '14px';
-        p.style.lineHeight = '1.5';
-        p.style.color = 'rgba(255,255,255,0.7)';
-        p.style.minHeight = '120px'; // enough space for longest tutorial text to avoid layout shift
-
-        const btn = document.createElement('button');
-        btn.textContent = btnText;
-        btn.style.width = '100%';
-        btn.style.padding = '12px 20px';
-        btn.style.borderRadius = '12px';
-        btn.style.fontSize = '14px';
-        btn.style.fontWeight = 'bold';
-        btn.style.background = 'linear-gradient(90deg, #ffffff, #e0e0e0)';
-        btn.style.color = '#000000';
-        btn.style.border = 'none';
-        btn.style.cursor = 'pointer';
-        btn.style.opacity = '0';
-        btn.style.transition = 'opacity 0.4s ease';
-        
-        btn.onmouseover = () => btn.style.background = '#ffffff';
-        btn.onmouseout = () => btn.style.background = 'linear-gradient(90deg, #ffffff, #e0e0e0)';
-        
-        let typingInterval;
-        let isTyping = false;
-        
-        btn.onclick = () => {
-            if (isTyping) {
-                // If clicked while typing, skip to the end
-                clearInterval(typingInterval);
-                p.textContent = text;
-                isTyping = false;
-                return;
-            }
-            overlay.style.opacity = '0';
-            modal.style.opacity = '0';
-            modal.style.transform = 'translateY(30px) scale(0.9)';
-            setTimeout(() => {
-                overlay.remove();
-                if (onConfirm) onConfirm();
-            }, 600);
-        };
-
-        modal.appendChild(emoji);
-        modal.appendChild(h2);
-        modal.appendChild(p);
-        modal.appendChild(btn);
-        overlay.appendChild(modal);
-        document.body.appendChild(overlay);
-
-        requestAnimationFrame(() => {
-            overlay.style.opacity = '1';
-            modal.style.transform = 'translateY(0) scale(1)';
-            modal.style.opacity = '1';
-            
-            setTimeout(() => {
-                let i = 0;
-                isTyping = true;
-                typingInterval = setInterval(() => {
-                    if (i < text.length) {
-                        p.textContent += text.charAt(i);
-                        i++;
-                    } else {
-                        clearInterval(typingInterval);
-                        isTyping = false;
-                        btn.style.opacity = '1';
-                    }
-                }, 15);
-            }, 400); // Start typing after modal enters
-        });
-    }
+      setTimeout(() => {
+        let i = 0;
+        isTyping = true;
+        typingInterval = setInterval(() => {
+          if (i < text.length) {
+            p.textContent += text.charAt(i);
+            i++;
+          } else {
+            clearInterval(typingInterval);
+            isTyping = false;
+            btn.style.opacity = "1";
+          }
+        }, 15);
+      }, 400); // Start typing after modal enters
+    });
+  }
 }
 
 class Utils {
@@ -637,7 +714,7 @@ class Utils {
     if (!ts) return "unknown";
     const d = new Date(Number(ts));
     if (isNaN(d.getTime())) return "unknown";
-    return `${d.getDate().toString().padStart(2, '0')}.${(d.getMonth()+1).toString().padStart(2, '0')}.${d.getFullYear()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}:${d.getSeconds().toString().padStart(2, '0')}`;
+    return `${d.getDate().toString().padStart(2, "0")}.${(d.getMonth() + 1).toString().padStart(2, "0")}.${d.getFullYear()} ${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}:${d.getSeconds().toString().padStart(2, "0")}`;
   }
 
   static toast(msg, type = "info") {
@@ -677,7 +754,7 @@ class Utils {
 
       const cleanup = () => {
         modal.classList.remove("active");
-        setTimeout(() => modal.remove(), 400); 
+        setTimeout(() => modal.remove(), 400);
       };
 
       modal.querySelector("#custom-confirm-cancel").onclick = () => {
@@ -696,7 +773,7 @@ class Utils {
     return new Promise((resolve) => {
       const modal = document.createElement("div");
       modal.className = "modal active";
-      modal.style.zIndex = "99999"; 
+      modal.style.zIndex = "99999";
       modal.innerHTML = `
         <div class="modal-content glass-panel" style="max-width: 400px; text-align: center; border-radius: 20px; padding: 30px;">
           <h3 style="margin-bottom: 12px; font-weight: 800; font-size: 22px;">Ввод данных</h3>
@@ -715,7 +792,7 @@ class Utils {
 
       const cleanup = () => {
         modal.classList.remove("active");
-        setTimeout(() => modal.remove(), 400); 
+        setTimeout(() => modal.remove(), 400);
       };
 
       modal.querySelector("#custom-prompt-cancel").onclick = () => {
@@ -733,7 +810,7 @@ class Utils {
           cleanup();
           resolve(input.value);
         }
-      }
+      };
     });
   }
 
@@ -741,7 +818,7 @@ class Utils {
     return new Promise((resolve) => {
       const modal = document.createElement("div");
       modal.className = "modal active";
-      modal.style.zIndex = "99999"; 
+      modal.style.zIndex = "99999";
       modal.innerHTML = `
         <div class="modal-content glass-panel" style="max-width: 420px; text-align: center; border-radius: 24px; padding: 40px 30px; background: rgba(15, 15, 20, 0.85); box-shadow: 0 0 50px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.1); backdrop-filter: blur(25px); position: relative; overflow: hidden; animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
           
@@ -751,7 +828,7 @@ class Utils {
             <p style="margin-bottom: 30px; color: var(--text-muted); font-size: 15px; line-height: 1.5;">Мы отправили секретный код на<br><b style="color:#fff; background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 6px; display: inline-block; margin-top: 6px;">${Utils.escapeHtml(email)}</b></p>
             
             <div style="display: flex; gap: 8px; justify-content: center; margin-bottom: 25px; perspective: 1000px;" id="code-inputs-container">
-              ${[0,1,2,3,4,5].map(i => `<input type="text" inputmode="numeric" maxlength="1" data-index="${i}" style="width: 48px; height: 58px; padding: 0; margin: 0; text-align: center; font-size: 26px; font-family: monospace; font-weight: 800; border-radius: 14px; background: rgba(0,0,0,0.4); border: 2px solid rgba(255,255,255,0.15); color: #fff; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); outline: none; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);" autocomplete="off" />`).join('')}
+              ${[0, 1, 2, 3, 4, 5].map((i) => `<input type="text" inputmode="numeric" maxlength="1" data-index="${i}" style="width: 48px; height: 58px; padding: 0; margin: 0; text-align: center; font-size: 26px; font-family: monospace; font-weight: 800; border-radius: 14px; background: rgba(0,0,0,0.4); border: 2px solid rgba(255,255,255,0.15); color: #fff; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); outline: none; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);" autocomplete="off" />`).join("")}
             </div>
 
             <div style="margin-bottom: 25px;">
@@ -772,84 +849,91 @@ class Utils {
         timerVal--;
         const timerEl = modal.querySelector("#resend-timer");
         const btnEl = modal.querySelector("#resend-code-btn");
-        if(timerVal <= 0) {
-           clearInterval(timerInt);
-           if(timerEl) timerEl.parentElement.innerHTML = "Отправить код повторно";
-           if(btnEl) {
-              btnEl.disabled = false;
-              btnEl.style.color = "#fff";
-           }
+        if (timerVal <= 0) {
+          clearInterval(timerInt);
+          if (timerEl)
+            timerEl.parentElement.innerHTML = "Отправить код повторно";
+          if (btnEl) {
+            btnEl.disabled = false;
+            btnEl.style.color = "#fff";
+          }
         } else {
-           if(timerEl) timerEl.innerText = timerVal;
+          if (timerEl) timerEl.innerText = timerVal;
         }
       }, 1000);
 
       const resendBtn = modal.querySelector("#resend-code-btn");
-      if(resendBtn && onResendClick) {
-         resendBtn.onclick = async () => {
-             resendBtn.disabled = true;
-             resendBtn.style.color = "var(--text-muted)";
-             resendBtn.innerHTML = `Отправка...`;
-             await onResendClick();
-             timerVal = 60;
-             resendBtn.innerHTML = `Отправить повторно (через <span id="resend-timer">60</span>с)`;
-             timerInt = setInterval(() => {
-                timerVal--;
-                const tEl = modal.querySelector("#resend-timer");
-                if(timerVal <= 0) {
-                  clearInterval(timerInt);
-                  resendBtn.innerHTML = "Отправить код повторно";
-                  resendBtn.disabled = false;
-                  resendBtn.style.color = "#fff";
-                } else {
-                  if(tEl) tEl.innerText = timerVal;
-                }
-             }, 1000);
-         };
+      if (resendBtn && onResendClick) {
+        resendBtn.onclick = async () => {
+          resendBtn.disabled = true;
+          resendBtn.style.color = "var(--text-muted)";
+          resendBtn.innerHTML = `Отправка...`;
+          await onResendClick();
+          timerVal = 60;
+          resendBtn.innerHTML = `Отправить повторно (через <span id="resend-timer">60</span>с)`;
+          timerInt = setInterval(() => {
+            timerVal--;
+            const tEl = modal.querySelector("#resend-timer");
+            if (timerVal <= 0) {
+              clearInterval(timerInt);
+              resendBtn.innerHTML = "Отправить код повторно";
+              resendBtn.disabled = false;
+              resendBtn.style.color = "#fff";
+            } else {
+              if (tEl) tEl.innerText = timerVal;
+            }
+          }, 1000);
+        };
       }
 
-      const inputs = Array.from(modal.querySelectorAll("#code-inputs-container input"));
+      const inputs = Array.from(
+        modal.querySelectorAll("#code-inputs-container input"),
+      );
       inputs[0].focus();
 
       inputs.forEach((input, index) => {
-        input.addEventListener('input', (e) => {
+        input.addEventListener("input", (e) => {
           if (e.target.value.length > 0) {
-            input.style.borderColor = '#fff';
-            input.style.boxShadow = '0 0 15px rgba(255,255,255,0.3)';
+            input.style.borderColor = "#fff";
+            input.style.boxShadow = "0 0 15px rgba(255,255,255,0.3)";
             if (index < inputs.length - 1) {
               inputs[index + 1].focus();
             }
           } else {
-            input.style.borderColor = 'rgba(255,255,255,0.15)';
-            input.style.boxShadow = 'none';
-          }
-        });
-        
-        input.addEventListener('keydown', (e) => {
-          if (e.key === 'Backspace' && e.target.value === '' && index > 0) {
-            inputs[index - 1].focus();
-            inputs[index - 1].value = '';
-            inputs[index - 1].style.borderColor = 'rgba(255,255,255,0.15)';
-            inputs[index - 1].style.boxShadow = 'none';
-          }
-          if (e.key === 'Enter') {
-             const code = inputs.map(i => i.value).join('');
-             if (code.length === 6) {
-                 cleanup();
-                 resolve(code);
-             }
+            input.style.borderColor = "rgba(255,255,255,0.15)";
+            input.style.boxShadow = "none";
           }
         });
 
-        input.addEventListener('paste', (e) => {
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Backspace" && e.target.value === "" && index > 0) {
+            inputs[index - 1].focus();
+            inputs[index - 1].value = "";
+            inputs[index - 1].style.borderColor = "rgba(255,255,255,0.15)";
+            inputs[index - 1].style.boxShadow = "none";
+          }
+          if (e.key === "Enter") {
+            const code = inputs.map((i) => i.value).join("");
+            if (code.length === 6) {
+              cleanup();
+              resolve(code);
+            }
+          }
+        });
+
+        input.addEventListener("paste", (e) => {
           e.preventDefault();
-          const pastedData = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6);
+          const pastedData = (e.clipboardData || window.clipboardData)
+            .getData("text")
+            .replace(/\D/g, "")
+            .slice(0, 6);
           if (pastedData.length > 0) {
-            pastedData.split('').forEach((char, i) => {
+            pastedData.split("").forEach((char, i) => {
               if (inputs[index + i]) {
                 inputs[index + i].value = char;
-                inputs[index + i].style.borderColor = '#fff';
-                inputs[index + i].style.boxShadow = '0 0 15px rgba(255,255,255,0.3)';
+                inputs[index + i].style.borderColor = "#fff";
+                inputs[index + i].style.boxShadow =
+                  "0 0 15px rgba(255,255,255,0.3)";
               }
             });
             const nextIndex = Math.min(5, index + pastedData.length);
@@ -859,9 +943,9 @@ class Utils {
       });
 
       const cleanup = () => {
-        if (typeof timerInt !== 'undefined') clearInterval(timerInt);
+        if (typeof timerInt !== "undefined") clearInterval(timerInt);
         modal.classList.remove("active");
-        setTimeout(() => modal.remove(), 400); 
+        setTimeout(() => modal.remove(), 400);
       };
 
       modal.querySelector("#custom-prompt-cancel").onclick = () => {
@@ -870,24 +954,27 @@ class Utils {
       };
 
       modal.querySelector("#custom-prompt-ok").onclick = () => {
-        const code = inputs.map(i => i.value).join('');
+        const code = inputs.map((i) => i.value).join("");
         if (code.length === 6) {
-            cleanup();
-            resolve(code);
+          cleanup();
+          resolve(code);
         } else {
-            inputs.forEach(i => {
-               if(!i.value) {
-                 i.style.borderColor = '#ff4d4f';
-               }
-            });
-            modal.animate([
-              { transform: 'translateX(0px)' },
-              { transform: 'translateX(-5px)' },
-              { transform: 'translateX(5px)' },
-              { transform: 'translateX(-5px)' },
-              { transform: 'translateX(5px)' },
-              { transform: 'translateX(0px)' }
-            ], { duration: 300 });
+          inputs.forEach((i) => {
+            if (!i.value) {
+              i.style.borderColor = "#ff4d4f";
+            }
+          });
+          modal.animate(
+            [
+              { transform: "translateX(0px)" },
+              { transform: "translateX(-5px)" },
+              { transform: "translateX(5px)" },
+              { transform: "translateX(-5px)" },
+              { transform: "translateX(5px)" },
+              { transform: "translateX(0px)" },
+            ],
+            { duration: 300 },
+          );
         }
       };
     });
@@ -1538,21 +1625,24 @@ class Utils {
       customBadge.id = "custom-online-badge";
       customBadge.innerHTML = `Live актив: <span id="custom-online-count" style="color:var(--accent);">0</span>`;
       roomsMain.insertBefore(customBadge, roomsMain.firstChild);
-      
+
       const updateLiveActive = async () => {
-          try {
-              const { get, ref } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
-              const snap = await get(ref(window.db || db, 'users'));
-              let activeNow = 0;
-              if (snap.exists()) {
-                  const usersData = snap.val();
-                  for (let uid in usersData) {
-                      if (usersData[uid]?.status?.online === true) activeNow++;
-                  }
-              }
-              const el = document.getElementById('custom-online-count');
-              if (el) el.innerText = activeNow;
-          } catch(e) { console.warn("Live active error", e); }
+        try {
+          const { get, ref } =
+            await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
+          const snap = await get(ref(window.db || db, "users"));
+          let activeNow = 0;
+          if (snap.exists()) {
+            const usersData = snap.val();
+            for (let uid in usersData) {
+              if (usersData[uid]?.status?.online === true) activeNow++;
+            }
+          }
+          const el = document.getElementById("custom-online-count");
+          if (el) el.innerText = activeNow;
+        } catch (e) {
+          console.warn("Live active error", e);
+        }
       };
       updateLiveActive();
       setInterval(updateLiveActive, 60000);
@@ -1645,10 +1735,12 @@ class MediaResolverClient {
 
   static extractVkId(url) {
     if (!url || typeof url !== "string") return null;
-    let match = url.match(/vk\.(?:com|ru)\/(?:video|video_ext\.php\?).*(?:oid=|video-?)(-?\d+)[_]([A-Za-z0-9]+)/i);
+    let match = url.match(
+      /vk\.(?:com|ru)\/(?:video|video_ext\.php\?).*(?:oid=|video-?)(-?\d+)[_]([A-Za-z0-9]+)/i,
+    );
     if (!match) match = url.match(/vkvideo\.ru\/video-?(\d+)_([A-Za-z0-9]+)/i);
     if (!match) match = url.match(/vk\.com\/video-?(\d+)_([A-Za-z0-9]+)/i);
-    if (match) return match[1] + '_' + match[2];
+    if (match) return match[1] + "_" + match[2];
     return null;
   }
 
@@ -1662,7 +1754,7 @@ class MediaResolverClient {
   static extractTwitchId(url) {
     if (!url || typeof url !== "string") return null;
     const match = url.match(/twitch\.tv\/([^?]+)/i);
-    if (match && match[1] !== 'videos') return match[1];
+    if (match && match[1] !== "videos") return match[1];
     return null;
   }
 
@@ -1802,7 +1894,7 @@ class MediaResolverClient {
         source: normalized,
         title: "Rutube Video",
         duration: 0,
-        thumbnail: `https://rutube.ru/api/video/${rutubeId}/thumbnail/?format=json`, 
+        thumbnail: `https://rutube.ru/api/video/${rutubeId}/thumbnail/?format=json`,
         platform: "rutube",
         isHls: false,
         ext: "rutube",
@@ -1813,43 +1905,43 @@ class MediaResolverClient {
     const vkId = this.extractVkId(normalized);
     if (vkId) {
       return {
-        source: `https://vk.com/video_ext.php?oid=${vkId.split('_')[0]}&id=${vkId.split('_')[1]}&hd=2&js_api=1`,
+        source: `https://vk.com/video_ext.php?oid=${vkId.split("_")[0]}&id=${vkId.split("_")[1]}&hd=2&js_api=1`,
         title: "VK Video",
         duration: 0,
         thumbnail: "",
         platform: "vk",
         isHls: false,
         ext: "vk",
-        resolvedAt: Date.now()
-      }
+        resolvedAt: Date.now(),
+      };
     }
 
     const vimeoId = this.extractVimeoId(normalized);
     if (vimeoId) {
-       return {
-         source: `https://player.vimeo.com/video/${vimeoId}?api=1`,
-         title: "Vimeo Video",
-         duration: 0,
-         thumbnail: "",
-         platform: "vimeo",
-         isHls: false,
-         ext: "vimeo",
-         resolvedAt: Date.now()
-       };
+      return {
+        source: `https://player.vimeo.com/video/${vimeoId}?api=1`,
+        title: "Vimeo Video",
+        duration: 0,
+        thumbnail: "",
+        platform: "vimeo",
+        isHls: false,
+        ext: "vimeo",
+        resolvedAt: Date.now(),
+      };
     }
 
     const twitchId = this.extractTwitchId(normalized);
     if (twitchId) {
-       return {
-          source: `https://player.twitch.tv/?channel=${twitchId}&parent=localhost`,
-          title: "Twitch Stream",
-          duration: 0,
-          thumbnail: "",
-          platform: "twitch",
-          isHls: false,
-          ext: "twitch",
-          resolvedAt: Date.now()
-       };
+      return {
+        source: `https://player.twitch.tv/?channel=${twitchId}&parent=localhost`,
+        title: "Twitch Stream",
+        duration: 0,
+        thumbnail: "",
+        platform: "twitch",
+        isHls: false,
+        ext: "twitch",
+        resolvedAt: Date.now(),
+      };
     }
 
     const task = (async () => {
@@ -1960,16 +2052,20 @@ class VkPlayerManager {
   static iframe = null;
 
   static destroy() {
-    if (this.iframe) { this.iframe.remove(); this.iframe = null; }
+    if (this.iframe) {
+      this.iframe.remove();
+      this.iframe = null;
+    }
     this.player = null;
     window.removeEventListener("message", this.handleMessage);
   }
 
   static handleMessage = (e) => {
     try {
-      const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+      const data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
       if (data.event === "timeupdate") this.currentTime = data.time;
-      if (data.event === "onStateChange" && this.onStateChange) this.onStateChange(data.state);
+      if (data.event === "onStateChange" && this.onStateChange)
+        this.onStateChange(data.state);
     } catch {}
   };
 
@@ -1981,7 +2077,8 @@ class VkPlayerManager {
     this.iframe = document.createElement("iframe");
     this.iframe.src = src;
     this.iframe.frameBorder = "0";
-    this.iframe.allow = "autoplay; encrypted-media; fullscreen; picture-in-picture;";
+    this.iframe.allow =
+      "autoplay; encrypted-media; fullscreen; picture-in-picture;";
     this.iframe.style.width = "100%";
     this.iframe.style.height = "100%";
     container.appendChild(this.iframe);
@@ -1990,17 +2087,30 @@ class VkPlayerManager {
     this.player = {
       postMessage: (method, args) => {
         if (this.iframe && this.iframe.contentWindow) {
-          this.iframe.contentWindow.postMessage(JSON.stringify({method}), "*");
+          this.iframe.contentWindow.postMessage(
+            JSON.stringify({ method }),
+            "*",
+          );
         }
-      }
+      },
     };
     return Promise.resolve(this.player);
   }
-  static play() { if (this.player) this.player.postMessage("play"); }
-  static pause() { if (this.player) this.player.postMessage("pause"); }
-  static seek(time) { if(this.player) this.player.postMessage("seek", {time}); }
-  static getCurrentTime() { return this.currentTime || 0; }
-  static getState() { return 'unknown'; }
+  static play() {
+    if (this.player) this.player.postMessage("play");
+  }
+  static pause() {
+    if (this.player) this.player.postMessage("pause");
+  }
+  static seek(time) {
+    if (this.player) this.player.postMessage("seek", { time });
+  }
+  static getCurrentTime() {
+    return this.currentTime || 0;
+  }
+  static getState() {
+    return "unknown";
+  }
 }
 
 class VimeoPlayerManager {
@@ -2008,14 +2118,17 @@ class VimeoPlayerManager {
   static iframe = null;
 
   static destroy() {
-    if (this.iframe) { this.iframe.remove(); this.iframe = null; }
+    if (this.iframe) {
+      this.iframe.remove();
+      this.iframe = null;
+    }
     this.player = null;
     window.removeEventListener("message", this.handleMessage);
   }
 
   static handleMessage = (e) => {
     try {
-      let data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+      let data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
       if (data.event === "playProgress") this.currentTime = data.data.seconds;
     } catch {}
   };
@@ -2037,17 +2150,30 @@ class VimeoPlayerManager {
     this.player = {
       postMessage: (method, value) => {
         if (this.iframe && this.iframe.contentWindow) {
-          this.iframe.contentWindow.postMessage(JSON.stringify({method, value}), "*");
+          this.iframe.contentWindow.postMessage(
+            JSON.stringify({ method, value }),
+            "*",
+          );
         }
-      }
+      },
     };
     return Promise.resolve(this.player);
   }
-  static play() { if (this.player) this.player.postMessage("play"); }
-  static pause() { if (this.player) this.player.postMessage("pause"); }
-  static seek(time) { if(this.player) this.player.postMessage("seekTo", time); }
-  static getCurrentTime() { return this.currentTime || 0; }
-  static getState() { return 'unknown'; }
+  static play() {
+    if (this.player) this.player.postMessage("play");
+  }
+  static pause() {
+    if (this.player) this.player.postMessage("pause");
+  }
+  static seek(time) {
+    if (this.player) this.player.postMessage("seekTo", time);
+  }
+  static getCurrentTime() {
+    return this.currentTime || 0;
+  }
+  static getState() {
+    return "unknown";
+  }
 }
 
 class TwitchPlayerManager {
@@ -2056,8 +2182,10 @@ class TwitchPlayerManager {
   static initPlayer(src) {
     this.iframe = document.createElement("iframe");
     this.iframe.src = src;
-    this.iframe.style.width = "100%"; this.iframe.style.height = "100%";
-    const container = Utils.$("yt-player"); container.innerHTML = "";
+    this.iframe.style.width = "100%";
+    this.iframe.style.height = "100%";
+    const container = Utils.$("yt-player");
+    container.innerHTML = "";
     container.appendChild(this.iframe);
     this.player = {};
     return Promise.resolve(this.player);
@@ -2280,7 +2408,8 @@ class YouTubePlayerManager {
     }
     const container = document.getElementById("yt-player-container");
     if (container) {
-      container.innerHTML = '<div id="yt-player" style="width: 100%; height: 100%; max-width: 100%; max-height: 100%; aspect-ratio: 16/9; display: flex; justify-content: center; align-items: center;"></div>';
+      container.innerHTML =
+        '<div id="yt-player" style="width: 100%; height: 100%; max-width: 100%; max-height: 100%; aspect-ratio: 16/9; display: flex; justify-content: center; align-items: center;"></div>';
     }
   }
 }
@@ -2463,34 +2592,36 @@ class VideoPlaybackManager {
     const rtId = MediaResolverClient.extractRutubeId(
       room.videoSourceUrl || room.videoUrl,
     );
-    
+
     if (rtId && window.AppState && window.AppState.useProxy) {
-        window.AppState.wasProxyEnabled = true;
-        window.AppState.useProxy = false;
-        Utils.toast("Прокси отключен для Rutube", "info");
+      window.AppState.wasProxyEnabled = true;
+      window.AppState.useProxy = false;
+      Utils.toast("Прокси отключен для Rutube", "info");
     } else if (!rtId && window.AppState && window.AppState.wasProxyEnabled) {
-        window.AppState.useProxy = true;
-        window.AppState.wasProxyEnabled = false;
-        Utils.toast("Прокси снова включен", "info");
+      window.AppState.useProxy = true;
+      window.AppState.wasProxyEnabled = false;
+      Utils.toast("Прокси снова включен", "info");
     }
 
     if (ytId && window.AppState && window.AppState.useProxy) {
-        try {
-            const res = await fetch(`/api/proxy/yt/streams/${ytId}`);
-            const data = await res.json();
-            if (data.hls) {
-                room.videoSourceUrl = `/api/proxy/stream?url=${encodeURIComponent(data.hls)}`;
-                room.isHls = true;
-                ytId = null;
-            } else if (data.videoStreams && data.videoStreams.length > 0) {
-                const stream = data.videoStreams.find(s => s.quality === "1080p") || data.videoStreams[0];
-                room.videoSourceUrl = `/api/proxy/stream?url=${encodeURIComponent(stream.url)}`;
-                room.isHls = false;
-                ytId = null;
-            }
-        } catch (e) {
-            console.error("Failed to proxy youtube", e);
+      try {
+        const res = await fetch(`/api/proxy/yt/streams/${ytId}`);
+        const data = await res.json();
+        if (data.hls) {
+          room.videoSourceUrl = `/api/proxy/stream?url=${encodeURIComponent(data.hls)}`;
+          room.isHls = true;
+          ytId = null;
+        } else if (data.videoStreams && data.videoStreams.length > 0) {
+          const stream =
+            data.videoStreams.find((s) => s.quality === "1080p") ||
+            data.videoStreams[0];
+          room.videoSourceUrl = `/api/proxy/stream?url=${encodeURIComponent(stream.url)}`;
+          room.isHls = false;
+          ytId = null;
         }
+      } catch (e) {
+        console.error("Failed to proxy youtube", e);
+      }
     }
 
     if (
@@ -2736,9 +2867,8 @@ class PartnerBondEngine {
 
   static calcStreak(bond, dateKey = this.dateKey()) {
     const last = bond.lastStreakKey || "";
-    if (last === dateKey) return (bond.streak || 1);
-    if (last === this.yesterdayKey())
-      return (bond.streak || 0) + 1;
+    if (last === dateKey) return bond.streak || 1;
+    if (last === this.yesterdayKey()) return (bond.streak || 0) + 1;
     return 1;
   }
 
@@ -2962,12 +3092,16 @@ class PartnerRelationshipPanel {
                         <span class="metric-label">Тепло связи</span>
                         <strong>${bond.totalWarmth} ✦</strong>
                     </div>
-                    ${(bond.streak && bond.streak > 1) ? `
+                    ${
+                      bond.streak && bond.streak > 1
+                        ? `
                     <div class="partner-metric-card">
                         <span class="metric-label">Серия дней</span>
                         <strong>${bond.streak} <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"></strong>
                     </div>
-                    ` : ""}
+                    `
+                        : ""
+                    }
                     <div class="partner-metric-card milestone-card">
                         <span class="metric-label">Моментов · до ${nextMilestone} дн.</span>
                         <div class="milestone-bar"><span style="width:${milestoneProgress}%"></span></div>
@@ -3169,7 +3303,13 @@ class BackgroundFX {
     let dots = [];
     const connectionStrength = new Map();
     let isTabVisible = true;
-    let mouse = { x: null, y: null, radius: window.innerWidth < 768 ? 18 : 32, vx: 0, vy: 0 };
+    let mouse = {
+      x: null,
+      y: null,
+      radius: window.innerWidth < 768 ? 18 : 32,
+      vx: 0,
+      vy: 0,
+    };
     let lastMouse = { x: null, y: null };
     let flashes = [];
 
@@ -3203,40 +3343,66 @@ class BackgroundFX {
         // Spawn from random positions but staggered
         this.x = Math.random() * canvas.width;
         this.y = Math.random() * canvas.height;
-        
+
         let angle = Math.random() * Math.PI * 2;
         let speed = Math.random() * 0.1 + (isDust ? 0.02 : 0.05);
-        
+
         this.baseVx = Math.cos(angle) * speed;
         this.baseVy = Math.sin(angle) * speed;
         this.vx = this.baseVx;
         this.vy = this.baseVy;
-        
+
         this.z = isDust ? Math.random() * 0.4 + 0.2 : Math.random() * 0.6 + 0.4;
         this.size = (Math.random() * 2 + 1) * this.z;
         this.isDust = isDust;
         this.history = [];
-        this.baseAlpha = isDust ? Math.random() * 0.3 + 0.1 : Math.random() * 0.5 + 0.2;
+        this.baseAlpha = isDust
+          ? Math.random() * 0.3 + 0.1
+          : Math.random() * 0.5 + 0.2;
         this.offset = Math.random() * 10000;
         this.parallaxX = 0;
         this.parallaxY = 0;
-        this.grayLevel = isDust ? 175 + Math.random() * 35 : 210 + Math.random() * 40;
+        this.grayLevel = isDust
+          ? 175 + Math.random() * 35
+          : 210 + Math.random() * 40;
         this.tint = isDust ? 0 : Math.random() * 0.08;
         this.isInteractive = !isDust || Math.random() > 0.4;
-        this.shapeType = isDust ? (Math.random() < 0.33 ? 'square' : Math.random() < 0.5 ? 'triangle' : 'circle') : 'circle';
+        this.shapeType = isDust
+          ? Math.random() < 0.33
+            ? "square"
+            : Math.random() < 0.5
+              ? "triangle"
+              : "circle"
+          : "circle";
       }
 
       update(t) {
         this.vx += (this.baseVx - this.vx) * 0.05;
         this.vy += (this.baseVy - this.vy) * 0.05;
-        
+
         this.x += this.vx * this.z;
         this.y += this.vy * this.z;
 
-        if (this.x < 0) { this.x = 0; this.baseVx = Math.abs(this.baseVx); this.vx = Math.abs(this.vx); }
-        if (this.x > canvas.width) { this.x = canvas.width; this.baseVx = -Math.abs(this.baseVx); this.vx = -Math.abs(this.vx); }
-        if (this.y < 0) { this.y = 0; this.baseVy = Math.abs(this.baseVy); this.vy = Math.abs(this.vy); }
-        if (this.y > canvas.height) { this.y = canvas.height; this.baseVy = -Math.abs(this.baseVy); this.vy = -Math.abs(this.vy); }
+        if (this.x < 0) {
+          this.x = 0;
+          this.baseVx = Math.abs(this.baseVx);
+          this.vx = Math.abs(this.vx);
+        }
+        if (this.x > canvas.width) {
+          this.x = canvas.width;
+          this.baseVx = -Math.abs(this.baseVx);
+          this.vx = -Math.abs(this.vx);
+        }
+        if (this.y < 0) {
+          this.y = 0;
+          this.baseVy = Math.abs(this.baseVy);
+          this.vy = Math.abs(this.vy);
+        }
+        if (this.y > canvas.height) {
+          this.y = canvas.height;
+          this.baseVy = -Math.abs(this.baseVy);
+          this.vy = -Math.abs(this.vy);
+        }
 
         if (mouse.x != null && this.isInteractive) {
           let cx = canvas.width / 2;
@@ -3257,7 +3423,10 @@ class BackgroundFX {
         }
 
         if (!this.isDust) {
-          this.history.push({ x: this.x + this.parallaxX, y: this.y + this.parallaxY });
+          this.history.push({
+            x: this.x + this.parallaxX,
+            y: this.y + this.parallaxY,
+          });
           if (this.history.length > 10) this.history.shift();
         }
       }
@@ -3266,8 +3435,12 @@ class BackgroundFX {
         let drawX = this.x + this.parallaxX;
         let drawY = this.y + this.parallaxY;
 
-        let twink = this.isDust ? Math.sin(t * 0.005 + this.offset) * 0.5 + 0.5 : 1;
-        let pulse = this.isDust ? 1 : Math.sin(t * 0.003 + this.offset) * 0.5 + 0.5;
+        let twink = this.isDust
+          ? Math.sin(t * 0.005 + this.offset) * 0.5 + 0.5
+          : 1;
+        let pulse = this.isDust
+          ? 1
+          : Math.sin(t * 0.003 + this.offset) * 0.5 + 0.5;
         let alpha = this.baseAlpha * pulse * twink;
 
         if (!this.isDust && this.history.length > 1) {
@@ -3286,9 +3459,14 @@ class BackgroundFX {
         const g = this.grayLevel;
         ctx.fillStyle = `rgba(${g}, ${g + 6 + this.tint * 40}, ${g + 14 + this.tint * 60}, ${alpha})`;
         ctx.beginPath();
-        if (this.shapeType === 'square') {
-          ctx.rect(drawX - this.size, drawY - this.size, this.size * 2, this.size * 2);
-        } else if (this.shapeType === 'triangle') {
+        if (this.shapeType === "square") {
+          ctx.rect(
+            drawX - this.size,
+            drawY - this.size,
+            this.size * 2,
+            this.size * 2,
+          );
+        } else if (this.shapeType === "triangle") {
           ctx.moveTo(drawX, drawY - this.size);
           ctx.lineTo(drawX + this.size, drawY + this.size * 0.8);
           ctx.lineTo(drawX - this.size, drawY + this.size * 0.8);
@@ -3309,33 +3487,44 @@ class BackgroundFX {
         requestAnimationFrame(animate);
         return;
       }
-      
+
       ctx.globalCompositeOperation = "destination-out";
       ctx.fillStyle = "rgba(0, 0, 0, 0.22)";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.globalCompositeOperation = "source-over";
 
       if (Math.random() > 0.996 && dots.length > 2) {
-         let n1 = dots[Math.floor(Math.random() * numDots)];
-         let n2 = dots[Math.floor(Math.random() * numDots)];
-         if (n1 && n2) flashes.push({ start: n1, end: n2, life: 1, segments: Math.floor(Math.random() * 4 + 3) });
+        let n1 = dots[Math.floor(Math.random() * numDots)];
+        let n2 = dots[Math.floor(Math.random() * numDots)];
+        if (n1 && n2)
+          flashes.push({
+            start: n1,
+            end: n2,
+            life: 1,
+            segments: Math.floor(Math.random() * 4 + 3),
+          });
       }
 
       for (let i = flashes.length - 1; i >= 0; i--) {
         let f = flashes[i];
         f.life -= 0.03;
-        if (f.life <= 0) { flashes.splice(i, 1); continue; }
-        
+        if (f.life <= 0) {
+          flashes.splice(i, 1);
+          continue;
+        }
+
         ctx.beginPath();
-        let sx = f.start.x + f.start.parallaxX, sy = f.start.y + f.start.parallaxY;
-        let ex = f.end.x + f.end.parallaxX, ey = f.end.y + f.end.parallaxY;
+        let sx = f.start.x + f.start.parallaxX,
+          sy = f.start.y + f.start.parallaxY;
+        let ex = f.end.x + f.end.parallaxX,
+          ey = f.end.y + f.end.parallaxY;
         ctx.moveTo(sx, sy);
-        
+
         for (let s = 1; s < f.segments; s++) {
-           let pt = s / f.segments;
-           let nx = sx + (ex - sx) * pt + (Math.random() - 0.5) * (40 * f.life);
-           let ny = sy + (ey - sy) * pt + (Math.random() - 0.5) * (40 * f.life);
-           ctx.lineTo(nx, ny);
+          let pt = s / f.segments;
+          let nx = sx + (ex - sx) * pt + (Math.random() - 0.5) * (40 * f.life);
+          let ny = sy + (ey - sy) * pt + (Math.random() - 0.5) * (40 * f.life);
+          ctx.lineTo(nx, ny);
         }
         ctx.lineTo(ex, ey);
         ctx.strokeStyle = `rgba(255, 255, 255, ${f.life * 0.6})`;
@@ -3348,44 +3537,71 @@ class BackgroundFX {
       for (let i = 0; i < dots.length; i++) {
         dots[i].update(time);
         dots[i].draw(ctx, time);
-        
+
         if (dots[i].isDust) continue;
 
         for (let j = i + 1; j < numDots; j++) {
-          let dx = (dots[i].x + dots[i].parallaxX) - (dots[j].x + dots[j].parallaxX);
-          let dy = (dots[i].y + dots[i].parallaxY) - (dots[j].y + dots[j].parallaxY);
+          let dx =
+            dots[i].x + dots[i].parallaxX - (dots[j].x + dots[j].parallaxX);
+          let dy =
+            dots[i].y + dots[i].parallaxY - (dots[j].y + dots[j].parallaxY);
           let dist = dx * dx + dy * dy;
           const key = `${i}:${j}`;
           const prevStrength = connectionStrength.get(key) || 0;
           const targetStrength = dist < 35000 ? 1 : 0;
-          const nextStrength = prevStrength + (targetStrength - prevStrength) * 0.08;
-          
+          const nextStrength =
+            prevStrength + (targetStrength - prevStrength) * 0.08;
+
           if (nextStrength <= 0.01) {
             connectionStrength.delete(key);
             continue;
           }
           connectionStrength.set(key, nextStrength);
-          
+
           if (nextStrength > 0.02) {
             const distance = Math.sqrt(dist);
             const proximity = Math.max(0, 1 - distance / 180);
-            const baseAlpha = Math.max(0.04, 0.2 - distance / 2500); 
+            const baseAlpha = Math.max(0.04, 0.2 - distance / 2500);
             const pulse = 0.92 + Math.sin(time + i * 0.21 + j * 0.13) * 0.08;
-            const alpha = Math.min(0.4, (baseAlpha + proximity * 0.2) * nextStrength * pulse);
-            
+            const alpha = Math.min(
+              0.4,
+              (baseAlpha + proximity * 0.2) * nextStrength * pulse,
+            );
+
             ctx.strokeStyle = `rgba(220, 230, 255, ${alpha * 0.85})`;
             ctx.lineWidth = Math.max(0.15, 0.9 * nextStrength);
             ctx.beginPath();
-            ctx.moveTo(dots[i].x + dots[i].parallaxX, dots[i].y + dots[i].parallaxY);
+            ctx.moveTo(
+              dots[i].x + dots[i].parallaxX,
+              dots[i].y + dots[i].parallaxY,
+            );
             if ((i + j) % 2 === 0) {
-              let cx = (dots[i].x + dots[i].parallaxX + dots[j].x + dots[j].parallaxX) / 2;
-              let cy = (dots[i].y + dots[i].parallaxY + dots[j].y + dots[j].parallaxY) / 2;
+              let cx =
+                (dots[i].x +
+                  dots[i].parallaxX +
+                  dots[j].x +
+                  dots[j].parallaxX) /
+                2;
+              let cy =
+                (dots[i].y +
+                  dots[i].parallaxY +
+                  dots[j].y +
+                  dots[j].parallaxY) /
+                2;
               let offset = Math.sin(time * 0.5 + i + j) * (distance * 0.2);
               cx += offset;
               cy -= offset;
-              ctx.quadraticCurveTo(cx, cy, dots[j].x + dots[j].parallaxX, dots[j].y + dots[j].parallaxY);
+              ctx.quadraticCurveTo(
+                cx,
+                cy,
+                dots[j].x + dots[j].parallaxX,
+                dots[j].y + dots[j].parallaxY,
+              );
             } else {
-              ctx.lineTo(dots[j].x + dots[j].parallaxX, dots[j].y + dots[j].parallaxY);
+              ctx.lineTo(
+                dots[j].x + dots[j].parallaxX,
+                dots[j].y + dots[j].parallaxY,
+              );
             }
             ctx.stroke();
           }
@@ -3460,21 +3676,31 @@ class EasterEggManager {
   ];
   static STICKERS = {
     cow: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Cow.webp",
-    popcorn: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Popcorn.webp",
+    popcorn:
+      "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Popcorn.webp",
     milk: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Glass%20Of%20Milk.webp",
     tv: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Television.webp",
     cat: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Cat.webp",
-    clapper: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Clapper%20Board.webp",
-    scream: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20Screaming%20In%20Fear.webp",
+    clapper:
+      "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Clapper%20Board.webp",
+    scream:
+      "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20Screaming%20In%20Fear.webp",
     clap: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Clapping%20Hands.webp",
     tree: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Deciduous%20Tree.webp",
-    rocket: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Rocket.webp",
-    skull: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Skull.webp",
-    party: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Party%20Popper.webp",
-    potato: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Canned%20Food.webp",
-    mirror: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Mirror%20Ball.webp",
-    ninja: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Ghost.webp",
-    glass: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Clinking%20Glasses.webp",
+    rocket:
+      "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Rocket.webp",
+    skull:
+      "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Skull.webp",
+    party:
+      "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Party%20Popper.webp",
+    potato:
+      "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Canned%20Food.webp",
+    mirror:
+      "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Mirror%20Ball.webp",
+    ninja:
+      "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Ghost.webp",
+    glass:
+      "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Clinking%20Glasses.webp",
     vhs: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Video%20Camera.webp",
   };
 
@@ -3862,7 +4088,8 @@ class EasterEggManager {
           document.body.classList.add("easter-cinema");
           this.showOverlay("cinema-overlay");
           const o = Utils.$("cinema-overlay");
-          if (o) o.innerHTML = `<div style="position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);text-align:center;">${this.sticker(this.STICKERS.clapper, 120)}<div style="color:#fff;font-weight:800;margin-top:12px;font-size:22px;letter-spacing:2px;">CINEMA MODE</div></div>`;
+          if (o)
+            o.innerHTML = `<div style="position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);text-align:center;">${this.sticker(this.STICKERS.clapper, 120)}<div style="color:#fff;font-weight:800;margin-top:12px;font-size:22px;letter-spacing:2px;">CINEMA MODE</div></div>`;
         },
         () => {
           document.body.classList.remove("easter-cinema");
@@ -3876,7 +4103,10 @@ class EasterEggManager {
         "potato",
         () => {
           document.body.classList.add("easter-potato");
-          this.spawnFloatingStickers([this.STICKERS.potato, this.STICKERS.popcorn], 10);
+          this.spawnFloatingStickers(
+            [this.STICKERS.potato, this.STICKERS.popcorn],
+            10,
+          );
         },
         () => {
           document.body.classList.remove("easter-potato");
@@ -3906,7 +4136,10 @@ class EasterEggManager {
         "space",
         () => {
           document.body.classList.add("easter-space");
-          this.spawnFloatingStickers([this.STICKERS.rocket, this.STICKERS.party], 12);
+          this.spawnFloatingStickers(
+            [this.STICKERS.rocket, this.STICKERS.party],
+            12,
+          );
         },
         () => {
           document.body.classList.remove("easter-space");
@@ -4005,7 +4238,8 @@ class EasterEggManager {
             document.body.classList.add("easter-green");
             this.showOverlay("green-overlay");
             const g = Utils.$("green-overlay");
-            if (g) g.innerHTML = `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:20px;flex-wrap:wrap;opacity:0.35;">${this.sticker(this.STICKERS.tree, 80)}${this.sticker(this.STICKERS.tree, 64)}${this.sticker(this.STICKERS.tree, 96)}</div>`;
+            if (g)
+              g.innerHTML = `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:20px;flex-wrap:wrap;opacity:0.35;">${this.sticker(this.STICKERS.tree, 80)}${this.sticker(this.STICKERS.tree, 64)}${this.sticker(this.STICKERS.tree, 96)}</div>`;
           },
           () => {
             document.body.classList.remove("easter-green");
@@ -4087,7 +4321,8 @@ class EasterEggManager {
           () => {
             this.playSound(this.SOUND_URLS.scream, { volume: 0.8 });
             const el = document.createElement("div");
-            el.style.cssText = "position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:99999;pointer-events:none;background:rgba(0,0,0,0.5);animation:fadeInUp 0.2s ease;";
+            el.style.cssText =
+              "position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:99999;pointer-events:none;background:rgba(0,0,0,0.5);animation:fadeInUp 0.2s ease;";
             el.innerHTML = this.sticker(this.STICKERS.scream, 160);
             el.id = "easter-scream-flash";
             document.body.appendChild(el);
@@ -4102,7 +4337,10 @@ class EasterEggManager {
           "cheer",
           () => {
             this.playSound(this.SOUND_URLS.cheer, { volume: 0.7 });
-            this.spawnFloatingStickers([this.STICKERS.clap, this.STICKERS.party], 14);
+            this.spawnFloatingStickers(
+              [this.STICKERS.clap, this.STICKERS.party],
+              14,
+            );
           },
           () => this.clearFloatingStickers(),
           6000,
@@ -4368,8 +4606,7 @@ class EasterEggManager {
     if (!overlay) return;
     if (AppState.easterEggs.animationHandles.has("dvd"))
       cancelAnimationFrame(AppState.easterEggs.animationHandles.get("dvd"));
-    overlay.innerHTML =
-      `<div class="dvd-logo" id="dvd-logo-anim" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 22px;">${this.sticker(this.STICKERS.tv, 56)}<span style="font-size:22px;font-weight:900;letter-spacing:2px">DVD</span><span style="font-size:12px;font-weight:700;letter-spacing:4px;opacity:0.9">VIDEO</span></div>`;
+    overlay.innerHTML = `<div class="dvd-logo" id="dvd-logo-anim" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 22px;">${this.sticker(this.STICKERS.tv, 56)}<span style="font-size:22px;font-weight:900;letter-spacing:2px">DVD</span><span style="font-size:12px;font-weight:700;letter-spacing:4px;opacity:0.9">VIDEO</span></div>`;
     if (!document.getElementById("dvd-css-fix")) {
       const style = document.createElement("style");
       style.id = "dvd-css-fix";
@@ -4831,7 +5068,11 @@ class BadgeManager {
     const badgeId = Utils.$("admin-event-badge-id")?.value.trim();
     if (!badgeId) return Utils.toast("Введите ID бейджа", "error");
 
-    if (!(await Utils.confirm(`Точно выдать бейдж "${badgeId}" всем, кто сейчас онлайн?`)))
+    if (
+      !(await Utils.confirm(
+        `Точно выдать бейдж "${badgeId}" всем, кто сейчас онлайн?`,
+      ))
+    )
       return;
 
     const usersSnap = await get(ref(db, "users"));
@@ -5176,7 +5417,7 @@ class AuthManager {
       try {
         if (user) {
           if (!AppState.isRegistering) {
-             TutorialManager.markDeviceUsed();
+            TutorialManager.markDeviceUsed();
           }
           AppState.currentUser = user;
           const savedAccounts = JSON.parse(
@@ -5242,8 +5483,8 @@ class AuthManager {
           ProfileManager.bindMyProfileListener();
           FriendsManager.initListeners();
           if (window.PremiumManager) {
-             PremiumManager.handlePostLoginReturn();
-             PremiumManager.updateThemeButtons();
+            PremiumManager.handlePostLoginReturn();
+            PremiumManager.updateThemeButtons();
           }
           RoomManager.initLobbyListeners();
           DirectMessages.startNotifications();
@@ -5265,7 +5506,7 @@ class AuthManager {
   }
 
   static finishAuthBootstrap() {
-    document.body.classList.remove("auth-loading");
+    // Auth bootstrap done
   }
 
   static getApiBase() {
@@ -5286,7 +5527,10 @@ class AuthManager {
       data = JSON.parse(text);
     } catch (err) {
       throw new Error(
-        "API send-code failed (HTTP " + res.status + "): " + (text ? text : "Empty body"),
+        "API send-code failed (HTTP " +
+          res.status +
+          "): " +
+          (text ? text : "Empty body"),
       );
     }
     if (!data.success) throw new Error(data.error || "Ошибка отправки кода");
@@ -5294,18 +5538,24 @@ class AuthManager {
   }
 
   static async verifyAuthCode(email, code) {
-    const res = await fetch(`${this.getApiBase()}/api/custom-auth/verify-code`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, code }),
-    });
+    const res = await fetch(
+      `${this.getApiBase()}/api/custom-auth/verify-code`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code }),
+      },
+    );
     const text = await res.text();
     let data;
     try {
       data = JSON.parse(text);
     } catch (err) {
       throw new Error(
-        "API verify-code failed (HTTP " + res.status + "): " + (text ? text : "Empty body"),
+        "API verify-code failed (HTTP " +
+          res.status +
+          "): " +
+          (text ? text : "Empty body"),
       );
     }
     if (!data.success) throw new Error(data.error || "Неверный код");
@@ -5390,7 +5640,9 @@ class AuthManager {
       });
       input.addEventListener("paste", (e) => {
         e.preventDefault();
-        const pasted = (e.clipboardData?.getData("text") || "").replace(/\D/g, "").slice(0, 6);
+        const pasted = (e.clipboardData?.getData("text") || "")
+          .replace(/\D/g, "")
+          .slice(0, 6);
         pasted.split("").forEach((ch, i) => {
           if (inputs[i]) inputs[i].value = ch;
         });
@@ -5408,9 +5660,19 @@ class AuthManager {
 
   static async completeRegistration(pending) {
     AppState.isRegistering = true;
-    const creds = await createUserWithEmailAndPassword(auth, pending.email, pending.pass);
-    const savedAccounts = JSON.parse(localStorage.getItem("cowio_saved_accounts") || "[]");
-    savedAccounts.push({ uid: creds.user.uid, email: pending.email, pass: pending.pass });
+    const creds = await createUserWithEmailAndPassword(
+      auth,
+      pending.email,
+      pending.pass,
+    );
+    const savedAccounts = JSON.parse(
+      localStorage.getItem("cowio_saved_accounts") || "[]",
+    );
+    savedAccounts.push({
+      uid: creds.user.uid,
+      email: pending.email,
+      pass: pending.pass,
+    });
     localStorage.setItem("cowio_saved_accounts", JSON.stringify(savedAccounts));
     await updateProfile(creds.user, { displayName: pending.name });
     await ProfileManager.createProfile(
@@ -5435,8 +5697,8 @@ class AuthManager {
       Utils.$("reg-form").classList.remove("active-form");
       const leftLogin = Utils.$("auth-left-login");
       const leftReg = Utils.$("auth-left-reg");
-      if (leftLogin) leftLogin.style.display = 'block';
-      if (leftReg) leftReg.style.display = 'none';
+      if (leftLogin) leftLogin.style.display = "block";
+      if (leftReg) leftReg.style.display = "none";
     };
     Utils.$("tab-reg-btn").onclick = () => {
       Utils.$("tab-reg-btn").classList.add("active");
@@ -5445,55 +5707,92 @@ class AuthManager {
       Utils.$("login-form").classList.remove("active-form");
       const leftLogin = Utils.$("auth-left-login");
       const leftReg = Utils.$("auth-left-reg");
-      if (leftLogin) leftLogin.style.display = 'none';
-      if (leftReg) leftReg.style.display = 'block';
+      if (leftLogin) leftLogin.style.display = "none";
+      if (leftReg) leftReg.style.display = "block";
     };
 
-    
     if (Utils.$("btn-forgot-password")) {
       Utils.$("btn-forgot-password").onclick = async () => {
         const email = Utils.$("login-email").value.trim();
-        if(!email) return Utils.toast("Введите почту для сброса", "error");
-        
+        if (!email) return Utils.toast("Введите почту для сброса", "error");
+
         Utils.toast("Отправка кода...", "info");
         try {
-            const apiBase = typeof window !== "undefined" && window.COWIO_MEDIA_API ? String(window.COWIO_MEDIA_API).replace(/\/$/, "") : "";
-            
-            const reqCode = async () => {
-                const res = await fetch(`${apiBase}/api/custom-auth/send-code`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email })
-                });
-                let text = await res.text();
-                let data;
-                try { data = JSON.parse(text); } catch(err) { throw new Error("API send-code failed (HTTP " + res.status + "): " + (text ? text : "Empty body")); }
-                if (!data.success) throw new Error(data.error);
-            };
-            
-            await reqCode();
+          const apiBase =
+            typeof window !== "undefined" && window.COWIO_MEDIA_API
+              ? String(window.COWIO_MEDIA_API).replace(/\/$/, "")
+              : "";
 
-            const code = await Utils.promptCode(email, async () => {
-                try { await reqCode(); Utils.toast("Код отправлен повторно", "success"); } catch(ex) { Utils.toast(ex.message, "error"); }
+          const reqCode = async () => {
+            const res = await fetch(`${apiBase}/api/custom-auth/send-code`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email }),
             });
-            if (!code) return Utils.toast("Сброс отменен", "error");
+            let text = await res.text();
+            let data;
+            try {
+              data = JSON.parse(text);
+            } catch (err) {
+              throw new Error(
+                "API send-code failed (HTTP " +
+                  res.status +
+                  "): " +
+                  (text ? text : "Empty body"),
+              );
+            }
+            if (!data.success) throw new Error(data.error);
+          };
 
-            const newPassword = await Utils.prompt("Введите новый пароль (минимум 6 символов):");
-            if (!newPassword || newPassword.length < 6) return Utils.toast("Пароль слишком короткий или сброс отменен", "error");
+          await reqCode();
 
-            const resetRes = await fetch(`${apiBase}/api/custom-auth/reset-password`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, code, newPassword })
-            });
-            let resetText = await resetRes.text();
-            let resetData;
-            try { resetData = JSON.parse(resetText); } catch(err) { throw new Error("API reset-password failed (HTTP " + resetRes.status + "): " + (resetText ? resetText : "Empty body")); }
-            if (!resetData.success) throw new Error(resetData.error);
+          const code = await Utils.promptCode(email, async () => {
+            try {
+              await reqCode();
+              Utils.toast("Код отправлен повторно", "success");
+            } catch (ex) {
+              Utils.toast(ex.message, "error");
+            }
+          });
+          if (!code) return Utils.toast("Сброс отменен", "error");
 
-            Utils.toast("Пароль успешно изменен! Теперь вы можете войти.", "success");
+          const newPassword = await Utils.prompt(
+            "Введите новый пароль (минимум 6 символов):",
+          );
+          if (!newPassword || newPassword.length < 6)
+            return Utils.toast(
+              "Пароль слишком короткий или сброс отменен",
+              "error",
+            );
+
+          const resetRes = await fetch(
+            `${apiBase}/api/custom-auth/reset-password`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email, code, newPassword }),
+            },
+          );
+          let resetText = await resetRes.text();
+          let resetData;
+          try {
+            resetData = JSON.parse(resetText);
+          } catch (err) {
+            throw new Error(
+              "API reset-password failed (HTTP " +
+                resetRes.status +
+                "): " +
+                (resetText ? resetText : "Empty body"),
+            );
+          }
+          if (!resetData.success) throw new Error(resetData.error);
+
+          Utils.toast(
+            "Пароль успешно изменен! Теперь вы можете войти.",
+            "success",
+          );
         } catch (e) {
-            Utils.toast(e.message || "Ошибка сброса", "error");
+          Utils.toast(e.message || "Ошибка сброса", "error");
         }
       };
     }
@@ -5502,123 +5801,213 @@ class AuthManager {
       Utils.$("btn-settings-change-email").onclick = async () => {
         const oldPassword = Utils.$("settings-email-old-password").value;
         const newEmail = Utils.$("settings-new-email").value.trim();
-        if(!oldPassword) return Utils.toast("Введите текущий пароль", "error");
-        if(!newEmail || !newEmail.includes("@")) return Utils.toast("Введите корректную новую почту", "error");
-        if(!AppState.currentUser || !AppState.currentUser.email) return Utils.toast("Вы не авторизованы", "error");
+        if (!oldPassword) return Utils.toast("Введите текущий пароль", "error");
+        if (!newEmail || !newEmail.includes("@"))
+          return Utils.toast("Введите корректную новую почту", "error");
+        if (!AppState.currentUser || !AppState.currentUser.email)
+          return Utils.toast("Вы не авторизованы", "error");
 
         try {
-            await signInWithEmailAndPassword(auth, AppState.currentUser.email, oldPassword);
-        } catch(e) {
-            return Utils.toast("Неверный текущий пароль", "error");
+          await signInWithEmailAndPassword(
+            auth,
+            AppState.currentUser.email,
+            oldPassword,
+          );
+        } catch (e) {
+          return Utils.toast("Неверный текущий пароль", "error");
         }
 
         Utils.toast("Отправка кода на " + newEmail + "...", "info");
         try {
-            const apiBase = typeof window !== "undefined" && window.COWIO_MEDIA_API ? String(window.COWIO_MEDIA_API).replace(/\/$/, "") : "";
-            
-            const reqCodeEmail = async () => {
-                const res = await fetch(`${apiBase}/api/custom-auth/send-code`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: newEmail })
-                });
-                let text = await res.text();
-                let data;
-                try { data = JSON.parse(text); } catch(err) { throw new Error("API send-code failed (HTTP " + res.status + "): " + (text ? text : "Empty body")); }
-                if (!data.success) throw new Error(data.error);
-            };
-            
-            await reqCodeEmail();
+          const apiBase =
+            typeof window !== "undefined" && window.COWIO_MEDIA_API
+              ? String(window.COWIO_MEDIA_API).replace(/\/$/, "")
+              : "";
 
-            const code = await Utils.promptCode(newEmail, async () => {
-                try { await reqCodeEmail(); Utils.toast("Код отправлен повторно", "success"); } catch(ex) { Utils.toast(ex.message, "error"); }
+          const reqCodeEmail = async () => {
+            const res = await fetch(`${apiBase}/api/custom-auth/send-code`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email: newEmail }),
             });
-            if (!code) return;
+            let text = await res.text();
+            let data;
+            try {
+              data = JSON.parse(text);
+            } catch (err) {
+              throw new Error(
+                "API send-code failed (HTTP " +
+                  res.status +
+                  "): " +
+                  (text ? text : "Empty body"),
+              );
+            }
+            if (!data.success) throw new Error(data.error);
+          };
 
-            const changeRes = await fetch(`${apiBase}/api/custom-auth/change-email`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ oldEmail: AppState.currentUser.email, newEmail, code })
-            });
-            let changeText = await changeRes.text();
-            let changeData;
-            try { changeData = JSON.parse(changeText); } catch(err) { throw new Error("API change-email failed (HTTP " + changeRes.status + "): " + (changeText ? changeText : "Empty body")); }
-            if (!changeData.success) throw new Error(changeData.error);
+          await reqCodeEmail();
 
-            Utils.$("settings-email-old-password").value = "";
-            Utils.$("settings-new-email").value = "";
-            document.getElementById('security-email-form').style.display = 'none';
-            Utils.toast("Почта успешно изменена! Рекомендуем перезайти в аккаунт.", "success");
+          const code = await Utils.promptCode(newEmail, async () => {
+            try {
+              await reqCodeEmail();
+              Utils.toast("Код отправлен повторно", "success");
+            } catch (ex) {
+              Utils.toast(ex.message, "error");
+            }
+          });
+          if (!code) return;
+
+          const changeRes = await fetch(
+            `${apiBase}/api/custom-auth/change-email`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                oldEmail: AppState.currentUser.email,
+                newEmail,
+                code,
+              }),
+            },
+          );
+          let changeText = await changeRes.text();
+          let changeData;
+          try {
+            changeData = JSON.parse(changeText);
+          } catch (err) {
+            throw new Error(
+              "API change-email failed (HTTP " +
+                changeRes.status +
+                "): " +
+                (changeText ? changeText : "Empty body"),
+            );
+          }
+          if (!changeData.success) throw new Error(changeData.error);
+
+          Utils.$("settings-email-old-password").value = "";
+          Utils.$("settings-new-email").value = "";
+          document.getElementById("security-email-form").style.display = "none";
+          Utils.toast(
+            "Почта успешно изменена! Рекомендуем перезайти в аккаунт.",
+            "success",
+          );
         } catch (e) {
-            Utils.toast(e.message || "Ошибка", "error");
+          Utils.toast(e.message || "Ошибка", "error");
         }
-      }
+      };
     }
 
     if (Utils.$("btn-settings-change-password")) {
       Utils.$("btn-settings-change-password").onclick = async () => {
         const oldPassword = Utils.$("settings-password-old").value;
         const newPassword = Utils.$("settings-new-password").value.trim();
-        const confirmPassword = Utils.$("settings-new-password-confirm").value.trim();
-        
-        if(!oldPassword) return Utils.toast("Введите текущий пароль", "error");
-        if(!newPassword || newPassword.length < 6) return Utils.toast("Введите новый пароль (не менее 6 символов)", "error");
-        if(newPassword !== confirmPassword) return Utils.toast("Новые пароли не совпадают", "error");
-        if(!AppState.currentUser || !AppState.currentUser.email) return Utils.toast("Вы не авторизованы", "error");
-        
+        const confirmPassword = Utils.$(
+          "settings-new-password-confirm",
+        ).value.trim();
+
+        if (!oldPassword) return Utils.toast("Введите текущий пароль", "error");
+        if (!newPassword || newPassword.length < 6)
+          return Utils.toast(
+            "Введите новый пароль (не менее 6 символов)",
+            "error",
+          );
+        if (newPassword !== confirmPassword)
+          return Utils.toast("Новые пароли не совпадают", "error");
+        if (!AppState.currentUser || !AppState.currentUser.email)
+          return Utils.toast("Вы не авторизованы", "error");
+
         try {
-            await signInWithEmailAndPassword(auth, AppState.currentUser.email, oldPassword);
-        } catch(e) {
-            return Utils.toast("Неверный текущий пароль", "error");
+          await signInWithEmailAndPassword(
+            auth,
+            AppState.currentUser.email,
+            oldPassword,
+          );
+        } catch (e) {
+          return Utils.toast("Неверный текущий пароль", "error");
         }
 
         const email = AppState.currentUser.email;
         Utils.toast("Отправка кода на вашу текущую почту...", "info");
         try {
-            const apiBase = typeof window !== "undefined" && window.COWIO_MEDIA_API ? String(window.COWIO_MEDIA_API).replace(/\/$/, "") : "";
-            
-            const reqCodeReauth = async () => {
-                const res = await fetch(`${apiBase}/api/custom-auth/send-code`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email })
-                });
-                let text = await res.text();
-                let data;
-                try { data = JSON.parse(text); } catch(err) { throw new Error("API send-code failed (HTTP " + res.status + "): " + (text ? text : "Empty body")); }
-                if (!data.success) throw new Error(data.error);
-            };
-            
-            await reqCodeReauth();
+          const apiBase =
+            typeof window !== "undefined" && window.COWIO_MEDIA_API
+              ? String(window.COWIO_MEDIA_API).replace(/\/$/, "")
+              : "";
 
-            const code = await Utils.promptCode(email, async () => {
-                try { await reqCodeReauth(); Utils.toast("Код отправлен повторно", "success"); } catch(ex) { Utils.toast(ex.message, "error"); }
+          const reqCodeReauth = async () => {
+            const res = await fetch(`${apiBase}/api/custom-auth/send-code`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email }),
             });
-            if (!code) return;
+            let text = await res.text();
+            let data;
+            try {
+              data = JSON.parse(text);
+            } catch (err) {
+              throw new Error(
+                "API send-code failed (HTTP " +
+                  res.status +
+                  "): " +
+                  (text ? text : "Empty body"),
+              );
+            }
+            if (!data.success) throw new Error(data.error);
+          };
 
-            const resetRes = await fetch(`${apiBase}/api/custom-auth/reset-password`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, code, newPassword })
-            });
-            let resetText = await resetRes.text();
-            let resetData;
-            try { resetData = JSON.parse(resetText); } catch(err) { throw new Error("API reset-password failed (HTTP " + resetRes.status + "): " + (resetText ? resetText : "Empty body")); }
-            if (!resetData.success) throw new Error(resetData.error);
+          await reqCodeReauth();
 
-            Utils.$("settings-password-old").value = "";
-            Utils.$("settings-new-password").value = "";
-            Utils.$("settings-new-password-confirm").value = "";
-            document.getElementById('security-password-form').style.display = 'none';
-            Utils.toast("Пароль успешно изменен!", "success");
+          const code = await Utils.promptCode(email, async () => {
+            try {
+              await reqCodeReauth();
+              Utils.toast("Код отправлен повторно", "success");
+            } catch (ex) {
+              Utils.toast(ex.message, "error");
+            }
+          });
+          if (!code) return;
+
+          const resetRes = await fetch(
+            `${apiBase}/api/custom-auth/reset-password`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email, code, newPassword }),
+            },
+          );
+          let resetText = await resetRes.text();
+          let resetData;
+          try {
+            resetData = JSON.parse(resetText);
+          } catch (err) {
+            throw new Error(
+              "API reset-password failed (HTTP " +
+                resetRes.status +
+                "): " +
+                (resetText ? resetText : "Empty body"),
+            );
+          }
+          if (!resetData.success) throw new Error(resetData.error);
+
+          Utils.$("settings-password-old").value = "";
+          Utils.$("settings-new-password").value = "";
+          Utils.$("settings-new-password-confirm").value = "";
+          document.getElementById("security-password-form").style.display =
+            "none";
+          Utils.toast("Пароль успешно изменен!", "success");
         } catch (e) {
-            Utils.toast(e.message || "Ошибка", "error");
+          Utils.toast(e.message || "Ошибка", "error");
         }
-      }
+      };
     }
 
     Utils.$("btn-do-login").onclick = async () => {
-      if (!SecurityManager.validateAction("auth_login", { count: 3, timeWindowMs: 30000 })) return;
+      if (
+        !SecurityManager.validateAction("auth_login", {
+          count: 3,
+          timeWindowMs: 30000,
+        })
+      )
+        return;
       const email = Utils.$("login-email").value.trim();
       const pass = Utils.$("login-pass").value.trim();
       if (!email || !pass) return Utils.toast("Заполните все поля", "error");
@@ -5671,7 +6060,8 @@ class AuthManager {
         const pending = AppState.pendingRegistration;
         if (!pending) return Utils.toast("Сессия регистрации истекла", "error");
         const code = this.getRegCodeValue();
-        if (code.length !== 6) return Utils.toast("Введите 6-значный код", "error");
+        if (code.length !== 6)
+          return Utils.toast("Введите 6-значный код", "error");
         try {
           Utils.$("btn-reg-verify-submit").disabled = true;
           await this.verifyAuthCode(pending.email, code);
@@ -5685,7 +6075,13 @@ class AuthManager {
     }
 
     Utils.$("btn-do-reg").onclick = async () => {
-      if (!SecurityManager.validateAction("auth_register", { count: 2, timeWindowMs: 60000 })) return;
+      if (
+        !SecurityManager.validateAction("auth_register", {
+          count: 2,
+          timeWindowMs: 60000,
+        })
+      )
+        return;
       if (AppState.admin.settings.globalRegistrationsBlocked)
         return Utils.toast("Регистрация временно отключена", "error");
       const email = Utils.$("reg-email").value.trim();
@@ -5768,13 +6164,13 @@ class AuthManager {
 
     let currentIp = "unavailable";
     try {
-        const ipRes = await fetch("https://api64.ipify.org?format=json");
-        const ipData = await ipRes.json();
-        if (ipData && ipData.ip) {
-            currentIp = ipData.ip;
-        }
-    } catch(e) {
-        // ignore
+      const ipRes = await fetch("https://api64.ipify.org?format=json");
+      const ipData = await ipRes.json();
+      if (ipData && ipData.ip) {
+        currentIp = ipData.ip;
+      }
+    } catch (e) {
+      // ignore
     }
 
     onValue(connectedRef, (snap) => {
@@ -5782,7 +6178,11 @@ class AuthManager {
         onDisconnect(userStatusRef)
           .set({ online: false, lastActive: Date.now(), ip: currentIp })
           .then(() =>
-            set(userStatusRef, { online: true, lastActive: Date.now(), ip: currentIp }),
+            set(userStatusRef, {
+              online: true,
+              lastActive: Date.now(),
+              ip: currentIp,
+            }),
           );
       }
     });
@@ -6330,8 +6730,9 @@ class ProfileManager {
         `<span class="role-badge" style="color:${color}; background:${bg}; border:1px solid ${border}; box-shadow:none;">${text}</span>`,
       );
     }
-    
-    if (badges.length > 0) return `<span style="margin-left:5px;">${badges.join(" ")}</span>`;
+
+    if (badges.length > 0)
+      return `<span style="margin-left:5px;">${badges.join(" ")}</span>`;
     return "";
   }
 
@@ -6371,10 +6772,10 @@ class ProfileManager {
 
     let registeredIp = "unavailable";
     try {
-        const ipRes = await fetch("https://api64.ipify.org?format=json");
-        const ipData = await ipRes.json();
-        if (ipData && ipData.ip) registeredIp = ipData.ip;
-    } catch(e) {}
+      const ipRes = await fetch("https://api64.ipify.org?format=json");
+      const ipData = await ipRes.json();
+      if (ipData && ipData.ip) registeredIp = ipData.ip;
+    } catch (e) {}
 
     const profileData = {
       name,
@@ -6486,12 +6887,18 @@ class ProfileManager {
       AdminPanel.hydrateDeveloperUidFromProfile(uid, p);
 
       const badgeHtml = this.getRoleBadgeHtml(p, uid);
-      const statusEmoji =
-        window.PremiumManager ? PremiumManager.getStatusEmojiHtml(p, uid) : "";
+      const statusEmoji = window.PremiumManager
+        ? PremiumManager.getStatusEmojiHtml(p, uid)
+        : "";
       Utils.$("my-name-display").innerHTML =
         `${statusEmoji}${Utils.escapeHtml(p.name)} ${badgeHtml}`;
       Utils.$("my-username-display").innerHTML =
-        `@${Utils.escapeHtml(p.username)}` + (p.extraUsernames && p.extraUsernames.length > 0 ? `<br><span style="opacity:0.7;font-size:0.9em;">` + p.extraUsernames.map(u => `@${Utils.escapeHtml(u)}`).join(' | ') + `</span>` : "");
+        `@${Utils.escapeHtml(p.username)}` +
+        (p.extraUsernames && p.extraUsernames.length > 0
+          ? `<br><span style="opacity:0.7;font-size:0.9em;">` +
+            p.extraUsernames.map((u) => `@${Utils.escapeHtml(u)}`).join(" | ") +
+            `</span>`
+          : "");
       Utils.$("my-avatar-display").innerHTML = ProfileManager.getAvatarHtml(p);
 
       if (window.PremiumManager) PremiumManager.syncFromProfile(p, uid);
@@ -6505,7 +6912,10 @@ class ProfileManager {
       e.stopPropagation();
       this.toggleProfileMenu();
     };
-    Utils.$("btn-open-security").onclick = () => { Utils.$("modal-edit-profile").classList.remove("active"); document.getElementById("nav-settings").click(); };
+    Utils.$("btn-open-security").onclick = () => {
+      Utils.$("modal-edit-profile").classList.remove("active");
+      document.getElementById("nav-settings").click();
+    };
     document.addEventListener("click", () => {
       Utils.$("profile-menu-dropdown")?.classList.remove("active");
     });
@@ -6520,26 +6930,35 @@ class ProfileManager {
     const eInps = [
       Utils.$("edit-extra-username-input-1"),
       Utils.$("edit-extra-username-input-2"),
-      Utils.$("edit-extra-username-input-3")
+      Utils.$("edit-extra-username-input-3"),
     ];
     if (extraContainer) {
-       if (level >= 30) {
-           extraContainer.style.display = "block";
-           if (eInps[0]) {
-             eInps[0].style.display = level >= 30 ? "block" : "none";
-             eInps[0].value = (p.extraUsernames && p.extraUsernames.length > 0) ? p.extraUsernames[0] : "";
-           }
-           if (eInps[1]) {
-             eInps[1].style.display = level >= 50 ? "block" : "none";
-             eInps[1].value = (p.extraUsernames && p.extraUsernames.length > 1) ? p.extraUsernames[1] : "";
-           }
-           if (eInps[2]) {
-             eInps[2].style.display = level >= 100 ? "block" : "none";
-             eInps[2].value = (p.extraUsernames && p.extraUsernames.length > 2) ? p.extraUsernames[2] : "";
-           }
-       } else {
-           extraContainer.style.display = "none";
-       }
+      if (level >= 30) {
+        extraContainer.style.display = "block";
+        if (eInps[0]) {
+          eInps[0].style.display = level >= 30 ? "block" : "none";
+          eInps[0].value =
+            p.extraUsernames && p.extraUsernames.length > 0
+              ? p.extraUsernames[0]
+              : "";
+        }
+        if (eInps[1]) {
+          eInps[1].style.display = level >= 50 ? "block" : "none";
+          eInps[1].value =
+            p.extraUsernames && p.extraUsernames.length > 1
+              ? p.extraUsernames[1]
+              : "";
+        }
+        if (eInps[2]) {
+          eInps[2].style.display = level >= 100 ? "block" : "none";
+          eInps[2].value =
+            p.extraUsernames && p.extraUsernames.length > 2
+              ? p.extraUsernames[2]
+              : "";
+        }
+      } else {
+        extraContainer.style.display = "none";
+      }
     }
     const bioEl = Utils.$("edit-bio");
     const bioLimit = window.PremiumManager
@@ -6549,7 +6968,7 @@ class ProfileManager {
       bioEl.value = p.bio || "";
       bioEl.maxLength = bioLimit;
       bioEl.placeholder = `О себе (до ${bioLimit} символов)`;
-      
+
       const counterEl = Utils.$("edit-bio-counter");
       if (counterEl) {
         counterEl.innerText = `${bioEl.value.length}/${bioLimit}`;
@@ -6753,7 +7172,9 @@ class ProfileManager {
     Utils.$("profile-menu-dropdown")?.classList.toggle("active");
   }
 
-  static openSecurityModal() { document.getElementById("nav-settings").click(); }
+  static openSecurityModal() {
+    document.getElementById("nav-settings").click();
+  }
 
   static renderSecurityModal() {
     const p = AppState.usersCache.get(AppState.currentUser.uid) || {};
@@ -7236,7 +7657,7 @@ class ProfileManager {
     if (ownerUid && !String(partnerUid).startsWith("custom_partner_")) {
       const bond = await PartnerBondEngine.getBond(ownerUid, partnerUid);
       const lvl = PartnerBondEngine.bondLevel(bond.totalWarmth);
-      bondMeta = ` · ур. ${lvl}${(bond.streak && bond.streak > 1) ? ` · <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">${bond.streak}` : ""}`;
+      bondMeta = ` · ур. ${lvl}${bond.streak && bond.streak > 1 ? ` · <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">${bond.streak}` : ""}`;
     }
     container.innerHTML = `
             <div class="partner-avatar">${this.getAvatarHtml(partnerProfile)}</div>
@@ -7500,7 +7921,13 @@ class ProfileManager {
   }
 
   static async saveProfile() {
-    if (!SecurityManager.validateAction("profile_update", { count: 5, timeWindowMs: 60000 })) return;
+    if (
+      !SecurityManager.validateAction("profile_update", {
+        count: 5,
+        timeWindowMs: 60000,
+      })
+    )
+      return;
     const uid = AppState.currentUser.uid;
     const oldProfile = AppState.usersCache.get(uid);
     const name = Utils.$("edit-name").value.trim();
@@ -7524,19 +7951,25 @@ class ProfileManager {
     const gender =
       document.querySelector('input[name="edit-gender"]:checked')?.value ||
       "male";
-    
+
     // extra username
     const level = Math.floor(Math.sqrt((oldProfile?.xp || 0) / 240));
     let newExtraUsernames = [];
     const _validateExtra = (inputId, minLvl, num) => {
-        if (level < minLvl) return;
-        const xInput = Utils.$(inputId);
-        if (!xInput) return;
-        const xUname = xInput.value.toLowerCase().trim().replace("@", "");
-        if (!xUname) return;
-        if (!/^[a-z0-9_]{3,15}$/.test(xUname)) throw new Error(`Доп. ID ${num}: 3-15 символов, a-z, 0-9, _`);
-        if (xUname === username || xUname === "developer" || newExtraUsernames.includes(xUname)) throw new Error(`Доп. ID ${num}: Недопустимый ID`);
-        newExtraUsernames.push(xUname);
+      if (level < minLvl) return;
+      const xInput = Utils.$(inputId);
+      if (!xInput) return;
+      const xUname = xInput.value.toLowerCase().trim().replace("@", "");
+      if (!xUname) return;
+      if (!/^[a-z0-9_]{3,15}$/.test(xUname))
+        throw new Error(`Доп. ID ${num}: 3-15 символов, a-z, 0-9, _`);
+      if (
+        xUname === username ||
+        xUname === "developer" ||
+        newExtraUsernames.includes(xUname)
+      )
+        throw new Error(`Доп. ID ${num}: Недопустимый ID`);
+      newExtraUsernames.push(xUname);
     };
     _validateExtra("edit-extra-username-input-1", 30, 1);
     _validateExtra("edit-extra-username-input-2", 50, 2);
@@ -7572,22 +8005,22 @@ class ProfileManager {
 
     if (newExtraUsernames.length > 0) {
       for (let eu of newExtraUsernames) {
-          const snapExt = await get(ref(db, `usernames/${eu}`));
-          if (snapExt.exists() && snapExt.val() !== uid)
-             throw new Error(`ID ${eu} уже занят`);
+        const snapExt = await get(ref(db, `usernames/${eu}`));
+        if (snapExt.exists() && snapExt.val() !== uid)
+          throw new Error(`ID ${eu} уже занят`);
       }
     }
 
     if (oldProfile.extraUsernames) {
-      oldProfile.extraUsernames.forEach(eu => {
+      oldProfile.extraUsernames.forEach((eu) => {
         if (eu && !newExtraUsernames.includes(eu)) {
-           updates[`usernames/${eu}`] = null;
+          updates[`usernames/${eu}`] = null;
         }
       });
     }
 
-    newExtraUsernames.forEach(eu => {
-       updates[`usernames/${eu}`] = uid;
+    newExtraUsernames.forEach((eu) => {
+      updates[`usernames/${eu}`] = uid;
     });
 
     updates[`users/${uid}/profile`] = {
@@ -7635,9 +8068,9 @@ class ProfileManager {
     if (AppState.usersCache.has(uid)) return AppState.usersCache.get(uid);
     try {
       const snap = await get(ref(db, `users/${uid}`));
-      if (!snap.exists()) return { name: "Unknown", username: "unknown" };
+      if (!snap.exists()) return null;
       const node = snap.val();
-      const data = node.profile || { name: "Unknown", username: "unknown" };
+      const data = node.profile || null;
 
       const eqFrame = node.equippedFrame;
       if (
@@ -7680,8 +8113,18 @@ class ProfileManager {
   }
 
   static async openViewProfileModal(targetUid) {
+    // Show modal immediately with loading UX
+    const vModal = Utils.$("modal-view-profile");
+    if (vModal) vModal.classList.add("active");
+    Utils.$("view-name").innerHTML = "Загрузка...";
+    Utils.$("view-username").innerHTML = "@...";
+    Utils.$("view-bio").innerHTML = "";
+
     const profile = await this.loadUser(targetUid);
-    if (!profile) return Utils.toast("Пользователь не найден", "error");
+    if (!profile) {
+      if (vModal) vModal.classList.remove("active");
+      return Utils.toast("Пользователь не найден", "error");
+    }
 
     const activeStreak = this.getActiveStreak(profile);
     const streakEl = Utils.$("view-streak");
@@ -7831,15 +8274,26 @@ class ProfileManager {
     Utils.$("view-name").innerHTML =
       `${window.PremiumManager ? PremiumManager.getStatusEmojiHtml(profile, targetUid) : ""}${Utils.escapeHtml(profile.name)} ${badgeHtml}`;
     Utils.$("view-username").innerHTML =
-      `@${Utils.escapeHtml(profile.username)}` + (profile.extraUsernames && profile.extraUsernames.length > 0 ? `<br><span style="opacity:0.7;font-size:0.9em;">` + profile.extraUsernames.map(u => `@${Utils.escapeHtml(u)}`).join(' | ') + `</span>` : "");
-    const safeBio = Utils.escapeHtml(profile.bio || "Пользователь не добавил описание.");
-    
-    const isPremium = window.PremiumManager ? PremiumManager.isPremiumActive(profile, targetUid) : false;
+      `@${Utils.escapeHtml(profile.username)}` +
+      (profile.extraUsernames && profile.extraUsernames.length > 0
+        ? `<br><span style="opacity:0.7;font-size:0.9em;">` +
+          profile.extraUsernames
+            .map((u) => `@${Utils.escapeHtml(u)}`)
+            .join(" | ") +
+          `</span>`
+        : "");
+    const safeBio = Utils.escapeHtml(
+      profile.bio || "Пользователь не добавил описание.",
+    );
+
+    const isPremium = window.PremiumManager
+      ? PremiumManager.isPremiumActive(profile, targetUid)
+      : false;
     const bioLayoutClass = "premium-bio-layout";
-    
+
     // Логика разделения строки пополам при превышении лимита:
-    // Мы задаем ограничение в 200 символов. Если биография больше, мы визуально ограничиваем её высоту 
-    // с помощью CSS (max-height) и эффекта постепенного затухания, но мы также можем концептуально 
+    // Мы задаем ограничение в 200 символов. Если биография больше, мы визуально ограничиваем её высоту
+    // с помощью CSS (max-height) и эффекта постепенного затухания, но мы также можем концептуально
     // разделить текст пополам, если бы использовали строгие подстроки (substring).
     // Однако для плавных анимаций max-height (а не мгновенного display: none) лучше рендерить
     // строку целиком в контейнере, высота которого анимируется, а класс 'collapsed' добавляет fade-out.
@@ -7847,10 +8301,10 @@ class ProfileManager {
     const needsExpansion = safeBio.length > LIMIT;
 
     Utils.$("view-bio").innerHTML = `
-            <div class="${bioLayoutClass} ${needsExpansion ? 'collapsed' : ''}" id="profile-bio-content" style="position: relative; overflow: hidden; transition: max-height 0.4s ease-in-out; ${needsExpansion ? 'max-height: 75px;' : 'max-height: 1000px;'}">
+            <div class="${bioLayoutClass} ${needsExpansion ? "collapsed" : ""}" id="profile-bio-content" style="position: relative; overflow: hidden; transition: max-height 0.4s ease-in-out; ${needsExpansion ? "max-height: 75px;" : "max-height: 1000px;"}">
               ${safeBio}
             </div>
-            ${needsExpansion ? `<button id="btn-expand-bio" style="background:none;border:none;color:var(--primary);font-size:12px;cursor:pointer;padding:0;margin: 8px auto 0; display:block; text-align:center;">Развернуть</button>` : ''}
+            ${needsExpansion ? `<button id="btn-expand-bio" style="background:none;border:none;color:var(--primary);font-size:12px;cursor:pointer;padding:0;margin: 8px auto 0; display:block; text-align:center;">Развернуть</button>` : ""}
             <div style="margin-top:12px;"></div>
             ${genderString}
             <strong style="color:var(--text-main);">Статистика:</strong><br>
@@ -7861,20 +8315,20 @@ class ProfileManager {
     setTimeout(() => {
       const bioContent = Utils.$("profile-bio-content");
       const expandBtn = Utils.$("btn-expand-bio");
-      
+
       if (bioContent && expandBtn) {
-          expandBtn.onclick = () => {
-              const isCollapsed = bioContent.classList.contains("collapsed");
-              if (isCollapsed) {
-                  bioContent.classList.remove("collapsed");
-                  bioContent.style.maxHeight = bioContent.scrollHeight + "px";
-                  expandBtn.innerText = "Свернуть";
-              } else {
-                  bioContent.classList.add("collapsed");
-                  bioContent.style.maxHeight = "75px";
-                  expandBtn.innerText = "Развернуть";
-              }
-          };
+        expandBtn.onclick = () => {
+          const isCollapsed = bioContent.classList.contains("collapsed");
+          if (isCollapsed) {
+            bioContent.classList.remove("collapsed");
+            bioContent.style.maxHeight = bioContent.scrollHeight + "px";
+            expandBtn.innerText = "Свернуть";
+          } else {
+            bioContent.classList.add("collapsed");
+            bioContent.style.maxHeight = "75px";
+            expandBtn.innerText = "Развернуть";
+          }
+        };
       }
     }, 50);
 
@@ -8289,37 +8743,42 @@ class ProfileManager {
     }
     await this.updateLoveProfileActions(targetUid, isFriendForLove); // [NEW]
 
-    const vModal = Utils.$("modal-view-profile");
-    vModal.classList.add("active");
     const vAvatar = Utils.$("view-avatar");
 
-    if (typeof AdminPanel !== "undefined" && AdminPanel.isCurrentUserCreator()) {
+    if (
+      typeof AdminPanel !== "undefined" &&
+      AdminPanel.isCurrentUserCreator()
+    ) {
       let inspector = vModal.querySelector("#live-user-inspector");
       if (!inspector) {
-          inspector = document.createElement("div");
-          inspector.id = "live-user-inspector";
-          inspector.style.position = "absolute";
-          inspector.style.bottom = "20px";
-          inspector.style.left = "20px";
-          inspector.style.padding = "16px";
-          inspector.style.background = "rgba(0,0,0,0.85)";
-          inspector.style.backdropFilter = "blur(10px)";
-          inspector.style.border = "1px solid var(--border-light)";
-          inspector.style.borderRadius = "16px";
-          inspector.style.color = "#fff";
-          inspector.style.zIndex = "999";
-          inspector.style.pointerEvents = "none";
-          inspector.style.fontFamily = "Consolas, monospace";
-          inspector.style.fontSize = "12px";
-          inspector.style.boxShadow = "0 8px 32px rgba(0,0,0,0.5)";
-          inspector.style.textAlign = "left";
-          vModal.appendChild(inspector);
+        inspector = document.createElement("div");
+        inspector.id = "live-user-inspector";
+        inspector.style.position = "absolute";
+        inspector.style.bottom = "20px";
+        inspector.style.left = "20px";
+        inspector.style.padding = "16px";
+        inspector.style.background = "rgba(0,0,0,0.85)";
+        inspector.style.backdropFilter = "blur(10px)";
+        inspector.style.border = "1px solid var(--border-light)";
+        inspector.style.borderRadius = "16px";
+        inspector.style.color = "#fff";
+        inspector.style.zIndex = "999";
+        inspector.style.pointerEvents = "none";
+        inspector.style.fontFamily = "Consolas, monospace";
+        inspector.style.fontSize = "12px";
+        inspector.style.boxShadow = "0 8px 32px rgba(0,0,0,0.5)";
+        inspector.style.textAlign = "left";
+        vModal.appendChild(inspector);
       }
-      
-      const userData = await get(ref(db, `users/${targetUid}`)).then(s=>s.val()||{});
+
+      const userData = await get(ref(db, `users/${targetUid}`)).then(
+        (s) => s.val() || {},
+      );
       const moderation = userData?.moderation || {};
-      const lastSessionDate = userData?.status?.lastActive ? Utils.formatExactDate(userData.status.lastActive) : (profile.lastLoginDate || "unknown");
-      
+      const lastSessionDate = userData?.status?.lastActive
+        ? Utils.formatExactDate(userData.status.lastActive)
+        : profile.lastLoginDate || "unknown";
+
       inspector.innerHTML = `
           <div style="font-weight:800; font-family:var(--font-sans); font-size:14px; margin-bottom:8px; color:var(--accent);">Live Inspector</div>
           <div>UID: ${targetUid}</div>
@@ -8333,7 +8792,6 @@ class ProfileManager {
       `;
     }
   }
-
 }
 
 // ============================================================================
@@ -8378,7 +8836,7 @@ class FriendsManager {
       "nav-support",
       "nav-support-staff",
       "nav-settings",
-      "nav-library"
+      "nav-library",
     ];
     const setNavActive = (id) => {
       navItems.forEach((n) => {
@@ -8388,7 +8846,8 @@ class FriendsManager {
       if (Utils.$(id)) Utils.$(id).classList.add("active");
 
       if (Utils.$("section-library"))
-        Utils.$("section-library").style.display = id === "nav-library" ? "flex" : "none";
+        Utils.$("section-library").style.display =
+          id === "nav-library" ? "flex" : "none";
 
       Utils.$("section-friends").style.display =
         id === "nav-friends" ? "flex" : "none";
@@ -8488,20 +8947,25 @@ class FriendsManager {
             : "Неизвестно";
 
           let avatarStrStr = ProfileManager.getAvatarHtml(profile);
-          const isUserPremium = window.PremiumManager && PremiumManager.isPremiumActive(profile, uid);
-          const isStaff = window.PremiumManager && PremiumManager.isStaff(profile, uid);
+          const isUserPremium =
+            window.PremiumManager &&
+            PremiumManager.isPremiumActive(profile, uid);
+          const isStaff =
+            window.PremiumManager && PremiumManager.isStaff(profile, uid);
           let premiumStatusHtml = "";
           if (isStaff) {
-             premiumStatusHtml = `<div style="background:rgba(255,179,71,0.1); border:1px solid rgba(255,200,100,0.2); padding:15px; border-radius:12px; margin-top:20px; color:#ffb347; font-weight:600;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" style="width:1.2em;vertical-align:bottom;margin-right:8px;">Персонал: Все премиум функции доступны навсегда</div>`;
+            premiumStatusHtml = `<div style="background:rgba(255,179,71,0.1); border:1px solid rgba(255,200,100,0.2); padding:15px; border-radius:12px; margin-top:20px; color:#ffb347; font-weight:600;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" style="width:1.2em;vertical-align:bottom;margin-right:8px;">Персонал: Все премиум функции доступны навсегда</div>`;
           } else if (isUserPremium) {
-             const expStr = profile?.premium?.expiresAt ? new Date(profile.premium.expiresAt).toLocaleDateString() : 'Неограниченно';
-             premiumStatusHtml = `<div style="background:rgba(255,179,71,0.1); border:1px solid rgba(255,200,100,0.2); padding:15px; border-radius:12px; margin-top:20px; color:#ffb347;">
+            const expStr = profile?.premium?.expiresAt
+              ? new Date(profile.premium.expiresAt).toLocaleDateString()
+              : "Неограниченно";
+            premiumStatusHtml = `<div style="background:rgba(255,179,71,0.1); border:1px solid rgba(255,200,100,0.2); padding:15px; border-radius:12px; margin-top:20px; color:#ffb347;">
                  <h4 style="margin:0 0 10px; font-weight:800; font-size:16px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" style="width:1.2em;vertical-align:bottom;margin-right:6px;">COWIO Premium активен</h4>
                  <div style="font-size:14px; opacity:0.9; margin-bottom:12px;">Вы можете наслаждаться анимированными плашками, кастомными темами, приоритетной поддержкой и x2 опытом.</div>
                  <div style="font-size:13px; opacity:0.8;">Действителен до: <b>${expStr}</b></div>
              </div>`;
           } else {
-             premiumStatusHtml = `<div style="background:rgba(255,255,255,0.03); border:1px dashed rgba(255,255,255,0.1); padding:15px; border-radius:12px; margin-top:20px; color:var(--text-main);">
+            premiumStatusHtml = `<div style="background:rgba(255,255,255,0.03); border:1px dashed rgba(255,255,255,0.1); padding:15px; border-radius:12px; margin-top:20px; color:var(--text-main);">
                  <h4 style="margin:0 0 10px; font-weight:700; font-size:16px;">Управление подпиской</h4>
                  <div style="font-size:14px; color:var(--text-muted); margin-bottom:12px;">Подписка COWIO Premium неактивна. Получите доступ к эксклюзивным темам, х2 опыту и рамкам.</div>
                  <button class="primary-btn" id="btn-profile-go-premium" style="width:auto; padding: 10px 20px; background:linear-gradient(135deg,#ffe6a0,#ffb347); color:#1a1208;">Оформить Premium</button>
@@ -8525,9 +8989,9 @@ class FriendsManager {
                 `;
 
           if (Utils.$("btn-profile-go-premium")) {
-              Utils.$("btn-profile-go-premium").onclick = () => {
-                  Utils.$("nav-premium").click();
-              };
+            Utils.$("btn-profile-go-premium").onclick = () => {
+              Utils.$("nav-premium").click();
+            };
           }
 
           Utils.$("btn-open-full-profile-inline").onclick = async () => {
@@ -8681,8 +9145,12 @@ class FriendsManager {
             if (uid === AppState.currentUser.uid) continue;
             if (
               udata.profile &&
-              ((udata.profile.username && udata.profile.username.toLowerCase().includes(val)) ||
-               (udata.profile.extraUsernames && udata.profile.extraUsernames.some(u => u.toLowerCase().includes(val))))
+              ((udata.profile.username &&
+                udata.profile.username.toLowerCase().includes(val)) ||
+                (udata.profile.extraUsernames &&
+                  udata.profile.extraUsernames.some((u) =>
+                    u.toLowerCase().includes(val),
+                  )))
             ) {
               foundCount++;
               const isFriend =
@@ -8723,7 +9191,13 @@ class FriendsManager {
   }
 
   static async sendFriendRequest(targetUid) {
-    if (!SecurityManager.validateAction("friend_request", { count: 3, timeWindowMs: 60000 })) return;
+    if (
+      !SecurityManager.validateAction("friend_request", {
+        count: 3,
+        timeWindowMs: 60000,
+      })
+    )
+      return;
     if (targetUid === AppState.currentUser.uid) return;
     try {
       await set(
@@ -8914,13 +9388,16 @@ class FriendsManager {
             ? `<div style="position: absolute; bottom: 8px; right: 12px; background: rgba(0,0,0,0.4); border-radius: 12px; padding: 2px 6px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: rgba(255,255,255,0.8);" title="Стрик захода: ${activeStreak} дней"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" style="width:14px; height:14px; margin-right:4px;">${activeStreak}</div>`
             : "";
 
-        const isFriendPremium = window.PremiumManager ? PremiumManager.isPremiumActive(profile, uid) : false;
+        const isFriendPremium = window.PremiumManager
+          ? PremiumManager.isPremiumActive(profile, uid)
+          : false;
         if (isFriendPremium) {
-            div.style.cssText = "position: relative; background: radial-gradient(circle at 20% 0%, rgba(255, 180, 60, 0.18), transparent 45%), radial-gradient(circle at 90% 100%, rgba(255, 120, 40, 0.12), transparent 40%), linear-gradient(145deg, rgba(24, 20, 14, 0.96), rgba(10, 10, 12, 0.98)); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 220, 140, 0.08); border: 1px solid rgba(255, 200, 100, 0.22); margin-bottom: 2px;";
+          div.style.cssText =
+            "position: relative; background: radial-gradient(circle at 20% 0%, rgba(255, 180, 60, 0.18), transparent 45%), radial-gradient(circle at 90% 100%, rgba(255, 120, 40, 0.12), transparent 40%), linear-gradient(145deg, rgba(24, 20, 14, 0.96), rgba(10, 10, 12, 0.98)); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 220, 140, 0.08); border: 1px solid rgba(255, 200, 100, 0.22); margin-bottom: 2px;";
         } else {
-            div.style.cssText = "position: relative;";
+          div.style.cssText = "position: relative;";
         }
-        
+
         const roleBadgeHtml = ProfileManager.getRoleBadgeHtml(profile, uid);
         div.innerHTML = `
                     <div class="avatar" style="position:relative; overflow:visible; background:transparent;">
@@ -9099,7 +9576,7 @@ class DirectMessages {
                     <div class="dm-chat-name">${Utils.escapeHtml(item.name)}</div>
                     <div class="dm-chat-last-msg">${Utils.escapeHtml(item.lastText) || "<i>Нет сообщений</i>"}</div>
                 </div>
-                <button class="dm-pin-btn" title="Закрепить">${item.isPinned ? '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Reminder%20Ribbon.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">' : "📍"}</button>
+                <button class="dm-pin-btn" title="Закрепить">${item.isPinned ? '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Reminder%20Ribbon.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">' : '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Pushpin.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;opacity:0.5;">'}</button>
             `;
 
       el.onclick = (e) => {
@@ -9108,8 +9585,8 @@ class DirectMessages {
           else localStorage.setItem(`dmPin:${item.uid}`, "1");
           const scrollP = sidebar.scrollTop;
           this.populateSidebar(activeTargetUid, chatsData).then(() => {
-              const newSidebar = Utils.$("dm-sidebar-list");
-              if (newSidebar) newSidebar.scrollTop = scrollP;
+            const newSidebar = Utils.$("dm-sidebar-list");
+            if (newSidebar) newSidebar.scrollTop = scrollP;
           });
           return;
         }
@@ -9147,30 +9624,30 @@ class DirectMessages {
 
     const typingRef = ref(db, `direct-messages/${chatId}/typing/${targetUid}`);
     const typingUnsub = onValue(typingRef, (snap) => {
-        const isTyping = !!snap.val();
-        const typingEl = Utils.$("dm-typing-status");
-        if (typingEl) {
-            typingEl.innerText = isTyping ? "печатает..." : "";
-        }
+      const isTyping = !!snap.val();
+      const typingEl = Utils.$("dm-typing-status");
+      if (typingEl) {
+        typingEl.innerText = isTyping ? "печатает..." : "";
+      }
     });
 
     const btnCloseSidebar = Utils.$("btn-dm-sidebar-close");
     if (btnCloseSidebar) {
-        btnCloseSidebar.onclick = () => {
-            Utils.$("modal-dm-chat").classList.remove("active");
-        };
+      btnCloseSidebar.onclick = () => {
+        Utils.$("modal-dm-chat").classList.remove("active");
+      };
     }
 
     Utils.$("modal-dm-chat").classList.add("active");
     const dmContent = document.querySelector(".dm-modal-content");
     if (dmContent) dmContent.classList.add("chat-active");
-    
+
     const btnBack = Utils.$("btn-dm-back");
     if (btnBack) {
-        btnBack.style.display = window.innerWidth <= 1024 ? "block" : "none";
-        btnBack.onclick = () => {
-            if (dmContent) dmContent.classList.remove("chat-active");
-        };
+      btnBack.style.display = window.innerWidth <= 1024 ? "block" : "none";
+      btnBack.onclick = () => {
+        if (dmContent) dmContent.classList.remove("chat-active");
+      };
     }
 
     this.bindThemeControls();
@@ -9191,8 +9668,8 @@ class DirectMessages {
     });
 
     this.unsubCurrent = () => {
-        origUnsub();
-        typingUnsub();
+      origUnsub();
+      typingUnsub();
     };
 
     const sendBtn = Utils.$("btn-dm-send");
@@ -9213,10 +9690,10 @@ class DirectMessages {
 
     const attachBtnFile = Utils.$("btn-dm-attach-file");
     if (attachBtnFile) {
-        attachBtnFile.onclick = () => {
+      attachBtnFile.onclick = () => {
         if (AdminPanel.isSystemReadOnlyForUser())
           return Utils.toast("Система в режиме ReadOnly", "error");
-        
+
         const inputImg = document.createElement("input");
         inputImg.type = "file";
         inputImg.accept = "image/*";
@@ -9233,23 +9710,35 @@ class DirectMessages {
               canvas.height = img.height;
               canvas.getContext("2d").drawImage(img, 0, 0);
               const compressedBase64 = canvas.toDataURL("image/jpeg", 0.6);
-              
-              const myProfile = AppState.usersCache.get(AppState.currentUser.uid);
-              const myName = myProfile?.name || AppState.currentUser.displayName || "User";
+
+              const myProfile = AppState.usersCache.get(
+                AppState.currentUser.uid,
+              );
+              const myName =
+                myProfile?.name || AppState.currentUser.displayName || "User";
 
               const payload = {
                 type: "media",
                 fromUid: AppState.currentUser.uid,
                 fromName: myName,
                 url: compressedBase64,
-                timestamp: Date.now()
+                timestamp: Date.now(),
               };
-              
-              push(ref(db, `direct-messages/${AppState.currentDirectChat.id}/messages`), payload);
-              update(ref(db, `direct-messages/${AppState.currentDirectChat.id}`), {
-                lastMessage: "Картинка",
-                updatedAt: Date.now()
-              });
+
+              push(
+                ref(
+                  db,
+                  `direct-messages/${AppState.currentDirectChat.id}/messages`,
+                ),
+                payload,
+              );
+              update(
+                ref(db, `direct-messages/${AppState.currentDirectChat.id}`),
+                {
+                  lastMessage: "Картинка",
+                  updatedAt: Date.now(),
+                },
+              );
             };
             img.src = re.target.result;
           };
@@ -9264,7 +9753,13 @@ class DirectMessages {
       mediaCancelBtnTop.onclick = () => (mediaPicker.style.display = "none");
 
     const performMediaSend = async (url) => {
-      if (!SecurityManager.validateAction("dm_message", { count: 10, timeWindowMs: 10000 })) return;
+      if (
+        !SecurityManager.validateAction("dm_message", {
+          count: 10,
+          timeWindowMs: 10000,
+        })
+      )
+        return;
       if (!url) return;
       if (AdminPanel.isSystemReadOnlyForUser())
         return Utils.toast("Система в режиме ReadOnly", "error");
@@ -9293,51 +9788,62 @@ class DirectMessages {
       const catContainer = Utils.$("dm-emoji-categories");
       const resultsContainer = Utils.$("dm-gif-results");
       if (catContainer && resultsContainer && !catContainer.hasChildNodes()) {
-          const groupings = {};
-          if(window.ANIMATED_EMOJIS) {
-              window.ANIMATED_EMOJIS.forEach(url => {
-                  const parts = url.split('/');
-                  const category = parts[parts.length - 2] || "Other";
-                  if(!groupings[category]) groupings[category] = [];
-                  groupings[category].push(url);
-              });
-          }
-          
-          let firstCat = null;
-          for(const cat in groupings) {
-              if(!firstCat) firstCat = cat;
-              const btn = document.createElement("button");
-              btn.className = "secondary-btn";
-              btn.style.padding = "4px 8px";
-              btn.style.fontSize = "12px";
-              btn.innerText = cat;
-              btn.onclick = () => {
-                  Array.from(catContainer.children).forEach(c => c.style.background = "transparent");
-                  btn.style.background = "rgba(255,255,255,0.2)";
-                  renderEmojis(cat);
-              };
-              catContainer.appendChild(btn);
-          }
-          
-          const renderEmojis = (cat) => {
-              const urls = groupings[cat] || [];
-              resultsContainer.innerHTML = urls.map(url => 
-                 `<img src="${url}" class="dm-preset-gif" loading="lazy" style="height:48px; width:48px; object-fit:contain; border-radius:6px; cursor:pointer; padding:2px;" title="${url.split('/').pop().split('.')[0]}" />`
-              ).join("");
-              
-              resultsContainer.querySelectorAll(".dm-preset-gif").forEach(img => {
-                 img.onclick = () => performMediaSend(img.src);
-              });
+        const groupings = {};
+        if (window.ANIMATED_EMOJIS) {
+          window.ANIMATED_EMOJIS.forEach((url) => {
+            const parts = url.split("/");
+            const category = parts[parts.length - 2] || "Other";
+            if (!groupings[category]) groupings[category] = [];
+            groupings[category].push(url);
+          });
+        }
+
+        let firstCat = null;
+        for (const cat in groupings) {
+          if (!firstCat) firstCat = cat;
+          const btn = document.createElement("button");
+          btn.className = "secondary-btn";
+          btn.style.padding = "4px 8px";
+          btn.style.fontSize = "12px";
+          btn.innerText = cat;
+          btn.onclick = () => {
+            Array.from(catContainer.children).forEach(
+              (c) => (c.style.background = "transparent"),
+            );
+            btn.style.background = "rgba(255,255,255,0.2)";
+            renderEmojis(cat);
           };
-          
-          if(firstCat) {
-              catContainer.firstChild.click();
-          }
+          catContainer.appendChild(btn);
+        }
+
+        const renderEmojis = (cat) => {
+          const urls = groupings[cat] || [];
+          resultsContainer.innerHTML = urls
+            .map(
+              (url) =>
+                `<img src="${url}" class="dm-preset-gif" loading="lazy" style="height:48px; width:48px; object-fit:contain; border-radius:6px; cursor:pointer; padding:2px;" title="${url.split("/").pop().split(".")[0]}" />`,
+            )
+            .join("");
+
+          resultsContainer.querySelectorAll(".dm-preset-gif").forEach((img) => {
+            img.onclick = () => performMediaSend(img.src);
+          });
+        };
+
+        if (firstCat) {
+          catContainer.firstChild.click();
+        }
       }
     }
 
     const sendAction = async () => {
-      if (!SecurityManager.validateAction("dm_message", { count: 10, timeWindowMs: 10000 })) return;
+      if (
+        !SecurityManager.validateAction("dm_message", {
+          count: 10,
+          timeWindowMs: 10000,
+        })
+      )
+        return;
       const text = input.value.trim();
       if (!text) return;
       if (!SecurityManager.validateTextPayload(text, 2000, "dm")) return;
@@ -9386,22 +9892,27 @@ class DirectMessages {
       .map((m) => {
         const isSelf = m.fromUid === AppState.currentUser.uid;
         let dateHeaderHtml = "";
-        
+
         if (m.type !== "system") {
-            const dateObj = new Date(m.ts);
-            const dateStr = dateObj.toLocaleDateString();
-            if (dateStr !== _lastDateStr) {
-                dateHeaderHtml = `\n<div style="text-align:center; margin: 15px 0;"><span style="background:rgba(255,255,255,0.1); padding:4px 12px; border-radius:12px; font-size:12px; color:var(--text-muted);">${dateStr}</span></div>\n`;
-                _lastDateStr = dateStr;
-            }
+          const dateObj = new Date(m.ts);
+          const dateStr = dateObj.toLocaleDateString();
+          if (dateStr !== _lastDateStr) {
+            dateHeaderHtml = `\n<div style="text-align:center; margin: 15px 0;"><span style="background:rgba(255,255,255,0.1); padding:4px 12px; border-radius:12px; font-size:12px; color:var(--text-muted);">${dateStr}</span></div>\n`;
+            _lastDateStr = dateStr;
+          }
         }
 
         if (m.type === "system") {
-          return dateHeaderHtml + `<div class="sys-msg">${Utils.escapeHtml(m.fromName || "Пользователь")} ${Utils.escapeHtml(m.text || "")}</div>`;
+          return (
+            dateHeaderHtml +
+            `<div class="sys-msg">${Utils.escapeHtml(m.fromName || "Пользователь")} ${Utils.escapeHtml(m.text || "")}</div>`
+          );
         }
 
         if (m.type === "invite") {
-          return dateHeaderHtml + `
+          return (
+            dateHeaderHtml +
+            `
                     <div class="m-line ${isSelf ? "self" : ""}">
                         <strong>${Utils.escapeHtml(isSelf ? "Вы" : m.fromName)}</strong>
                         <div class="bubble" style="border: 1px solid var(--accent); background: rgba(46,213,115,0.1);">
@@ -9420,7 +9931,8 @@ class DirectMessages {
                             }
                         </div>
                     </div>
-                `;
+                `
+          );
         }
 
         if (m.type === "file" || m.type === "gif" || m.type === "media") {
@@ -9429,22 +9941,28 @@ class DirectMessages {
             String(m.url).match(/\.(gif|jpe?g|png|webp|bmp)$/i) ||
             String(m.url).match(/tenor\.com|giphy\.com|imgur\.com/i) ||
             String(m.url).startsWith("data:image/");
-          return dateHeaderHtml + `
+          return (
+            dateHeaderHtml +
+            `
                     <div class="m-line ${isSelf ? "self" : ""}">
                         <strong>${Utils.escapeHtml(isSelf ? "Вы" : m.fromName)}</strong>
                         <div class="bubble" style="padding: 4px;">
-                            ${isImg ? `<img src="${Utils.escapeHtml(m.url)}" style="max-width: 250px; max-height: 250px; object-fit: contain; border-radius: 8px; display: block;" onerror="this.onerror=null; this.src='https://via.placeholder.com/200x150?text=Error';" />` : `<a href="${Utils.escapeHtml(m.url)}" target="_blank" style="color: var(--accent); padding: 8px; display: inline-block;">📎 Прикрепленный файл</a>`}
+                            ${isImg ? `<img src="${Utils.escapeHtml(m.url)}" style="max-width: 250px; max-height: 250px; object-fit: contain; border-radius: 8px; display: block;" onerror="this.onerror=null; this.src='https://via.placeholder.com/200x150?text=Error';" />` : `<a href="${Utils.escapeHtml(m.url)}" target="_blank" style="color: var(--accent); padding: 8px; display: inline-block;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Paperclip.webp" style="width:18px;height:18px;vertical-align:bottom;margin-right:5px;">Прикрепленный файл</a>`}
                         </div>
                     </div>
-                `;
+                `
+          );
         }
 
-        return dateHeaderHtml + `
+        return (
+          dateHeaderHtml +
+          `
                 <div class="m-line ${isSelf ? "self" : ""}">
                     <strong>${Utils.escapeHtml(isSelf ? "Вы" : m.fromName)}</strong>
                     <div class="bubble">${Utils.escapeHtml(m.text)}</div>
                 </div>
-            `;
+            `
+        );
       })
       .join("");
     list.scrollTop = list.scrollHeight;
@@ -9459,19 +9977,26 @@ class DirectMessages {
     toggle.onclick = () => {
       const uid = AppState?.currentUser?.uid;
       const profile = uid ? AppState.usersCache.get(uid) : null;
-      const isPremium = profile ? (PremiumManager.isPremiumActive(profile, uid) || PremiumManager.isStaff(profile, uid)) : false;
+      const isPremium = profile
+        ? PremiumManager.isPremiumActive(profile, uid) ||
+          PremiumManager.isStaff(profile, uid)
+        : false;
 
       if (!isPremium) {
         return Utils.toast("Смена темы доступна только с Premium!", "error");
       }
       carousel.classList.toggle("active");
       if (carousel.classList.contains("active")) {
-          this.renderThemeCarousel();
+        this.renderThemeCarousel();
       }
     };
 
-    Utils.$("dm-theme-prev")?.addEventListener("click", () => this.stepThemeCarousel(-1));
-    Utils.$("dm-theme-next")?.addEventListener("click", () => this.stepThemeCarousel(1));
+    Utils.$("dm-theme-prev")?.addEventListener("click", () =>
+      this.stepThemeCarousel(-1),
+    );
+    Utils.$("dm-theme-next")?.addEventListener("click", () =>
+      this.stepThemeCarousel(1),
+    );
   }
 
   static currentThemeFolder = "favorites";
@@ -9479,28 +10004,31 @@ class DirectMessages {
   static selectedTheme = "default";
 
   static renderThemeCarousel() {
-    if (!this.currentThemeFolder) this.currentThemeFolder = Object.keys(ThemeManager.FOLDERS)[0];
-    
+    if (!this.currentThemeFolder)
+      this.currentThemeFolder = Object.keys(ThemeManager.FOLDERS)[0];
+
     // Render Folders
     const foldersContainer = Utils.$("dm-theme-folders");
     if (foldersContainer) {
-        foldersContainer.innerHTML = "";
-        const fKeys = Object.keys(ThemeManager.FOLDERS);
-        fKeys.forEach((fKey, index) => {
-          const btn = document.createElement("button");
-          btn.className = `secondary-btn theme-folder-btn ${fKey === this.currentThemeFolder ? "active" : ""}`;
-          btn.dataset.folder = fKey;
-          btn.innerHTML = ThemeManager.FOLDERS[fKey].label;
-          btn.style.padding = "6px 12px";
-          btn.style.fontSize = "12px";
-          btn.onclick = () => {
-             foldersContainer.querySelectorAll(".theme-folder-btn").forEach((b) => b.classList.remove("active"));
-             btn.classList.add("active");
-             this.currentThemeFolder = fKey;
-             this.renderCarouselTrack(fKey);
-          };
-          foldersContainer.appendChild(btn);
-        });
+      foldersContainer.innerHTML = "";
+      const fKeys = Object.keys(ThemeManager.FOLDERS);
+      fKeys.forEach((fKey, index) => {
+        const btn = document.createElement("button");
+        btn.className = `secondary-btn theme-folder-btn ${fKey === this.currentThemeFolder ? "active" : ""}`;
+        btn.dataset.folder = fKey;
+        btn.innerHTML = ThemeManager.FOLDERS[fKey].label;
+        btn.style.padding = "6px 12px";
+        btn.style.fontSize = "12px";
+        btn.onclick = () => {
+          foldersContainer
+            .querySelectorAll(".theme-folder-btn")
+            .forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          this.currentThemeFolder = fKey;
+          this.renderCarouselTrack(fKey);
+        };
+        foldersContainer.appendChild(btn);
+      });
     }
 
     this.renderCarouselTrack(this.currentThemeFolder);
@@ -9510,7 +10038,7 @@ class DirectMessages {
     const track = Utils.$("dm-theme-track");
     if (!track) return;
     track.innerHTML = "";
-    
+
     // Need to initialize selectedTheme to current theme
     this.selectedTheme = this.theme;
 
@@ -9553,7 +10081,8 @@ class DirectMessages {
     const opts = ThemeManager.FOLDERS[this.currentThemeFolder]?.themes || [];
     const idx = opts.indexOf(this.selectedTheme);
     if (idx >= 0) this.themeIndex = idx;
-    else this.themeIndex = Math.min(this.themeIndex, Math.max(0, opts.length - 1));
+    else
+      this.themeIndex = Math.min(this.themeIndex, Math.max(0, opts.length - 1));
     this.updateThemeTransform();
 
     track.querySelectorAll(".theme-card").forEach((card) => {
@@ -9581,7 +10110,10 @@ class DirectMessages {
     if (!track) return;
     track.style.transform = `translateX(-${this.themeIndex * 100}%)`;
     track.querySelectorAll(".theme-card").forEach((card) => {
-      card.classList.toggle("active", card.dataset.theme === this.selectedTheme);
+      card.classList.toggle(
+        "active",
+        card.dataset.theme === this.selectedTheme,
+      );
     });
   }
 
@@ -10014,7 +10546,12 @@ class SupportSystem {
         return;
       }
       tickets.sort((a, b) => {
-        const priorityOrder = { "Срочный": 3, "Высокий": 2, "Средний": 1, "Обычный": 0 };
+        const priorityOrder = {
+          Срочный: 3,
+          Высокий: 2,
+          Средний: 1,
+          Обычный: 0,
+        };
         const pA = priorityOrder[a.priority] || 0;
         const pB = priorityOrder[b.priority] || 0;
         if (pA !== pB) return pB - pA;
@@ -10034,7 +10571,7 @@ class SupportSystem {
             ? `<span class="ticket-priority-label" style="margin-left:8px;font-size:10px;padding:2px 6px;border-radius:4px;background:var(--button-secondary-bg, rgba(100,100,100,0.3));color:inherit;">${t.priority}</span>`
             : "";
           if (t.isPremium) {
-              priorityHtml = `<span style="margin-left:8px;font-size:10px;padding:2px 6px;border-radius:4px;background:linear-gradient(135deg,#ffaa00,#ff4400);color:#fff;box-shadow:0 0 8px rgba(255,170,0,0.5);font-weight:bold;">${t.priority || "Premium"}</span>`;
+            priorityHtml = `<span style="margin-left:8px;font-size:10px;padding:2px 6px;border-radius:4px;background:linear-gradient(135deg,#ffaa00,#ff4400);color:#fff;box-shadow:0 0 8px rgba(255,170,0,0.5);font-weight:bold;">${t.priority || "Premium"}</span>`;
           }
           const premiumMark = t.isPremium
             ? `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" style="width:14px;height:14px;margin-left:6px;vertical-align:middle;" title="Premium">`
@@ -10093,7 +10630,8 @@ class SupportSystem {
           !PremiumManager.isStaff(profile, uid);
         await set(newRef, {
           title,
-          priority: isPremiumUser && priority !== "Срочный" ? "Высокий" : priority,
+          priority:
+            isPremiumUser && priority !== "Срочный" ? "Высокий" : priority,
           creatorUid: uid,
           status: "open",
           createdAt: ts,
@@ -10305,21 +10843,27 @@ class SupportSystem {
         .sort((a, b) => a.timestamp - b.timestamp)
         .map((m) => {
           try {
-            const mUid = m.uid || 'unknown';
+            const mUid = m.uid || "unknown";
             const cachedUser = AppState.usersCache
               ? AppState.usersCache.get(mUid)
               : null;
-            const mName = Utils.escapeHtml(cachedUser
-              ? cachedUser.name || "Пользователь"
-              : m.name || "Пользователь");
-            const mUsername = Utils.escapeHtml(cachedUser
-              ? cachedUser.username || mUid
-              : m.username || mUid);
-            const mAvatar = Utils.escapeHtml(cachedUser ? cachedUser.avatar || "" : m.avatar || "");
+            const mName = Utils.escapeHtml(
+              cachedUser
+                ? cachedUser.name || "Пользователь"
+                : m.name || "Пользователь",
+            );
+            const mUsername = Utils.escapeHtml(
+              cachedUser ? cachedUser.username || mUid : m.username || mUid,
+            );
+            const mAvatar = Utils.escapeHtml(
+              cachedUser ? cachedUser.avatar || "" : m.avatar || "",
+            );
             const isMe = mUid === uid;
             const bg = isMe
               ? "rgba(255,255,255,0.15)"
-              : (m.isInternal ? "rgba(255,165,0,0.15)" : "rgba(255,255,255,0.06)");
+              : m.isInternal
+                ? "rgba(255,165,0,0.15)"
+                : "rgba(255,255,255,0.06)";
             const avatarHtml = !isMe
               ? `<div style="width:32px;height:32px;border-radius:50%;background-image:url('${mAvatar}');background-size:cover;background-color:#333;flex-shrink:0;cursor:pointer;border:1px solid rgba(255,255,255,0.1);" onclick="ProfileManager.openProfileModal('${Utils.escapeHtml(mUid)}')"></div>`
               : "";
@@ -10333,15 +10877,17 @@ class SupportSystem {
               sentDate.getHours().toString().padStart(2, "0") +
               ":" +
               sentDate.getMinutes().toString().padStart(2, "0");
-              
+
             const senderIdentity = m.isAdmin
-                ? `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Briefcase.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> ` + (isMe ? `Вы (Поддержка) (${mName})` : `Поддержка (${mName})`)
-                : `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Bust%20In%20Silhouette.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> ` + (isMe ? `Вы` : `${mName} @${mUsername}`);
+              ? `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Briefcase.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> ` +
+                (isMe ? `Вы (Поддержка) (${mName})` : `Поддержка (${mName})`)
+              : `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Bust%20In%20Silhouette.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> ` +
+                (isMe ? `Вы` : `${mName} @${mUsername}`);
 
             return `
-                   <div style="display:flex; gap:10px; align-self: ${isMe ? 'flex-end' : 'flex-start'}; max-width: 85%;">
+                   <div style="display:flex; gap:10px; align-self: ${isMe ? "flex-end" : "flex-start"}; max-width: 85%;">
                        ${avatarHtml}
-                       <div style="background: ${bg}; padding: 10px 16px; border-radius: 16px; border-bottom-${isMe ? 'right' : 'left'}-radius: 4px; border: 1px solid rgba(255,255,255,0.05); position:relative; min-width: 120px;">
+                       <div style="background: ${bg}; padding: 10px 16px; border-radius: 16px; border-bottom-${isMe ? "right" : "left"}-radius: 4px; border: 1px solid rgba(255,255,255,0.05); position:relative; min-width: 120px;">
                            <div style="font-size: 11px; opacity: 0.6; margin-bottom: 4px; font-weight: 600; cursor:pointer;" onclick="ProfileManager.openProfileModal('${Utils.escapeHtml(mUid)}')">
                                ${senderIdentity}
                            </div>
@@ -10353,7 +10899,7 @@ class SupportSystem {
                        </div>
                    </div>`;
           } catch (e) {
-            console.error('Error rendering message:', e);
+            console.error("Error rendering message:", e);
             return '<div style="color:red; font-size:12px;">Ошибка загрузки сообщения</div>';
           }
         })
@@ -10521,7 +11067,11 @@ class SupportSystem {
   }
 
   static async closeAllActiveTickets() {
-    if (!(await Utils.confirm("Закрыть все открытые тикеты? Это действие нельзя отменить.")))
+    if (
+      !(await Utils.confirm(
+        "Закрыть все открытые тикеты? Это действие нельзя отменить.",
+      ))
+    )
       return;
     const snap = await get(ref(db, "support_tickets"));
     const val = snap.val() || {};
@@ -10539,7 +11089,7 @@ class SupportSystem {
   static async deleteAllTickets() {
     if (
       !(await Utils.confirm(
-        "ВНИМАНИЕ! Это действие удалит все тикеты без возможности восстановления. Продолжить?"
+        "ВНИМАНИЕ! Это действие удалит все тикеты без возможности восстановления. Продолжить?",
       ))
     )
       return;
@@ -10550,7 +11100,11 @@ class SupportSystem {
   }
 
   static async resetTemplates() {
-    if (!(await Utils.confirm("Удалить все текущие шаблоны и сбросить на стандартные?")))
+    if (
+      !(await Utils.confirm(
+        "Удалить все текущие шаблоны и сбросить на стандартные?",
+      ))
+    )
       return;
     const defaults = {
       Приветствие: "Здравствуйте! Чем я могу вам помочь?",
@@ -10564,7 +11118,11 @@ class SupportSystem {
   }
 
   static async clearAllBans() {
-    if (!(await Utils.confirm("Разблокировать всех пользователей в модуле поддержки?")))
+    if (
+      !(await Utils.confirm(
+        "Разблокировать всех пользователей в модуле поддержки?",
+      ))
+    )
       return;
     await remove(ref(db, "support_bans"));
     Utils.toast("Все пользователи разблокированы", "success");
@@ -11253,44 +11811,110 @@ class AdminPanel {
     Utils.$("btn-admin-global-maintenance").onclick = () =>
       this.toggleGlobalSetting("maintenanceMode", "Maintenance mode");
     Utils.$("btn-admin-clear-audit").onclick = () => this.clearAuditLog();
-    Utils.$("btn-admin-kick-all-room")?.addEventListener("click", () => this.kickAllFromRoom());
-    Utils.$("btn-admin-clone-room")?.addEventListener("click", () => this.cloneRoomSettings());
-    Utils.$("btn-admin-set-room-cap")?.addEventListener("click", () => this.setRoomMaxViewers());
-    Utils.$("btn-admin-set-room-password")?.addEventListener("click", () => this.setRoomPassword());
-    Utils.$("btn-admin-sort-rooms-occupancy")?.addEventListener("click", () => this.sortRoomsByOccupancy());
-    Utils.$("btn-admin-room-heatmap")?.addEventListener("click", () => this.renderRoomHeatmap());
-    Utils.$("btn-admin-export-users-csv")?.addEventListener("click", () => this.exportUsersCsv());
-    Utils.$("btn-admin-scan-inactive")?.addEventListener("click", () => this.scanInactiveUsers());
-    Utils.$("btn-admin-scan-duplicate-ip")?.addEventListener("click", () => this.scanDuplicateIPs());
-    Utils.$("btn-admin-bulk-shadowban")?.addEventListener("click", () => this.bulkShadowban());
-    Utils.$("btn-admin-force-verify-email")?.addEventListener("click", () => this.forceVerifySelectedEmail());
-    Utils.$("btn-admin-reset-all-tutorials")?.addEventListener("click", () => this.resetAllTutorials());
-    Utils.$("btn-admin-brute-shield")?.addEventListener("click", () => this.toggleGlobalSetting("bruteForceShield", "Brute-force Shield"));
-    Utils.$("btn-admin-audit-reserved-names")?.addEventListener("click", () => this.auditReservedUsernames());
-    Utils.$("btn-admin-session-risk-scan")?.addEventListener("click", () => this.sessionRiskScan());
-    Utils.$("btn-admin-list-force-logout")?.addEventListener("click", () => this.listForceLogoutUsers());
-    Utils.$("btn-admin-auto-purge-empty")?.addEventListener("click", () => this.toggleGlobalSetting("autoPurgeEmptyRooms", "Auto purge пустых"));
-    Utils.$("btn-admin-save-automod-keywords")?.addEventListener("click", () => this.saveAutomodKeywords());
-    Utils.$("btn-admin-scheduled-message")?.addEventListener("click", () => this.scheduleGlobalMessage());
-    Utils.$("btn-admin-incident-unmute")?.addEventListener("click", () => this.unmuteAndUnbanAllUsers());
-    Utils.$("btn-admin-set-emergency-banner")?.addEventListener("click", () => this.setEmergencyBanner());
-    Utils.$("btn-admin-notify-online-segment")?.addEventListener("click", () => this.notifyOnlineSegment());
-    Utils.$("btn-admin-maintenance-countdown")?.addEventListener("click", () => this.setMaintenanceCountdown());
-    Utils.$("btn-admin-broadcast-stats")?.addEventListener("click", () => this.showBroadcastStats());
-    Utils.$("btn-admin-save-webhook")?.addEventListener("click", () => this.saveWebhookUrl());
-    Utils.$("btn-admin-export-audit-json")?.addEventListener("click", () => this.exportAuditJson());
-    Utils.$("btn-admin-webhook-ping")?.addEventListener("click", () => this.webhookTestPing());
-    Utils.$("btn-admin-status-bridge")?.addEventListener("click", () => this.statusBridgePing());
-    Utils.$("btn-admin-backup-now")?.addEventListener("click", () => this.exportAdminSnapshot());
-    Utils.$("btn-admin-backup-integrity")?.addEventListener("click", () => this.backupIntegrityCheck());
-    Utils.$("btn-admin-set-retention")?.addEventListener("click", () => this.setBackupRetention());
-    Utils.$("btn-admin-restore-dry-run")?.addEventListener("click", () => this.restoreDryRun());
+    Utils.$("btn-admin-kick-all-room")?.addEventListener("click", () =>
+      this.kickAllFromRoom(),
+    );
+    Utils.$("btn-admin-clone-room")?.addEventListener("click", () =>
+      this.cloneRoomSettings(),
+    );
+    Utils.$("btn-admin-set-room-cap")?.addEventListener("click", () =>
+      this.setRoomMaxViewers(),
+    );
+    Utils.$("btn-admin-set-room-password")?.addEventListener("click", () =>
+      this.setRoomPassword(),
+    );
+    Utils.$("btn-admin-sort-rooms-occupancy")?.addEventListener("click", () =>
+      this.sortRoomsByOccupancy(),
+    );
+    Utils.$("btn-admin-room-heatmap")?.addEventListener("click", () =>
+      this.renderRoomHeatmap(),
+    );
+    Utils.$("btn-admin-export-users-csv")?.addEventListener("click", () =>
+      this.exportUsersCsv(),
+    );
+    Utils.$("btn-admin-scan-inactive")?.addEventListener("click", () =>
+      this.scanInactiveUsers(),
+    );
+    Utils.$("btn-admin-scan-duplicate-ip")?.addEventListener("click", () =>
+      this.scanDuplicateIPs(),
+    );
+    Utils.$("btn-admin-bulk-shadowban")?.addEventListener("click", () =>
+      this.bulkShadowban(),
+    );
+    Utils.$("btn-admin-force-verify-email")?.addEventListener("click", () =>
+      this.forceVerifySelectedEmail(),
+    );
+    Utils.$("btn-admin-reset-all-tutorials")?.addEventListener("click", () =>
+      this.resetAllTutorials(),
+    );
+    Utils.$("btn-admin-brute-shield")?.addEventListener("click", () =>
+      this.toggleGlobalSetting("bruteForceShield", "Brute-force Shield"),
+    );
+    Utils.$("btn-admin-audit-reserved-names")?.addEventListener("click", () =>
+      this.auditReservedUsernames(),
+    );
+    Utils.$("btn-admin-session-risk-scan")?.addEventListener("click", () =>
+      this.sessionRiskScan(),
+    );
+    Utils.$("btn-admin-list-force-logout")?.addEventListener("click", () =>
+      this.listForceLogoutUsers(),
+    );
+    Utils.$("btn-admin-auto-purge-empty")?.addEventListener("click", () =>
+      this.toggleGlobalSetting("autoPurgeEmptyRooms", "Auto purge пустых"),
+    );
+    Utils.$("btn-admin-save-automod-keywords")?.addEventListener("click", () =>
+      this.saveAutomodKeywords(),
+    );
+    Utils.$("btn-admin-scheduled-message")?.addEventListener("click", () =>
+      this.scheduleGlobalMessage(),
+    );
+    Utils.$("btn-admin-incident-unmute")?.addEventListener("click", () =>
+      this.unmuteAndUnbanAllUsers(),
+    );
+    Utils.$("btn-admin-set-emergency-banner")?.addEventListener("click", () =>
+      this.setEmergencyBanner(),
+    );
+    Utils.$("btn-admin-notify-online-segment")?.addEventListener("click", () =>
+      this.notifyOnlineSegment(),
+    );
+    Utils.$("btn-admin-maintenance-countdown")?.addEventListener("click", () =>
+      this.setMaintenanceCountdown(),
+    );
+    Utils.$("btn-admin-broadcast-stats")?.addEventListener("click", () =>
+      this.showBroadcastStats(),
+    );
+    Utils.$("btn-admin-save-webhook")?.addEventListener("click", () =>
+      this.saveWebhookUrl(),
+    );
+    Utils.$("btn-admin-export-audit-json")?.addEventListener("click", () =>
+      this.exportAuditJson(),
+    );
+    Utils.$("btn-admin-webhook-ping")?.addEventListener("click", () =>
+      this.webhookTestPing(),
+    );
+    Utils.$("btn-admin-status-bridge")?.addEventListener("click", () =>
+      this.statusBridgePing(),
+    );
+    Utils.$("btn-admin-backup-now")?.addEventListener("click", () =>
+      this.exportAdminSnapshot(),
+    );
+    Utils.$("btn-admin-backup-integrity")?.addEventListener("click", () =>
+      this.backupIntegrityCheck(),
+    );
+    Utils.$("btn-admin-set-retention")?.addEventListener("click", () =>
+      this.setBackupRetention(),
+    );
+    Utils.$("btn-admin-restore-dry-run")?.addEventListener("click", () =>
+      this.restoreDryRun(),
+    );
     Utils.$("admin-user-search").onkeydown = (e) => {
       if (e.key === "Enter") this.findUser();
     };
 
-    Utils.$("btn-admin-grant-mod").onclick = () => this.toggleModRole("moderator");
-    Utils.$("btn-admin-grant-op").onclick = () => this.toggleModRole("operator");
+    Utils.$("btn-admin-grant-mod").onclick = () =>
+      this.toggleModRole("moderator");
+    Utils.$("btn-admin-grant-op").onclick = () =>
+      this.toggleModRole("operator");
     Utils.$("btn-admin-revoke-mod").onclick = () => this.toggleModRole(null);
     Utils.$("btn-admin-badge-developer").onclick = () =>
       this.setAdminBadgeForUser("developer");
@@ -11484,7 +12108,8 @@ class AdminPanel {
 
   static async unmuteAndUnbanAllUsers() {
     if (!this.requireAdmin()) return;
-    if (!(await Utils.confirm("Снять mute и shadowban у всех пользователей?"))) return;
+    if (!(await Utils.confirm("Снять mute и shadowban у всех пользователей?")))
+      return;
     const usersSnap = await get(ref(db, "users"));
     const users = usersSnap.val() || {};
     const updates = {};
@@ -11501,20 +12126,21 @@ class AdminPanel {
 
   static async toggleModRole(roleName) {
     if (!this.isCurrentUserCreator())
-      return Utils.toast(
-        "Только Создатель может управлять правами",
-        "error",
-      );
+      return Utils.toast("Только Создатель может управлять правами", "error");
 
-    const inputVal = Utils.$("admin-mod-username").value.trim().replace("@", "");
+    const inputVal = Utils.$("admin-mod-username")
+      .value.trim()
+      .replace("@", "");
     if (!inputVal) return Utils.toast("Введите ID пользователя", "error");
 
     let targetUid = inputVal;
-    
+
     // First try to look up username just in case it's a username
-    const usernameSnap = await get(ref(db, `usernames/${inputVal.toLowerCase()}`));
+    const usernameSnap = await get(
+      ref(db, `usernames/${inputVal.toLowerCase()}`),
+    );
     if (usernameSnap.exists()) {
-        targetUid = usernameSnap.val();
+      targetUid = usernameSnap.val();
     }
 
     if (await this.isProtectedCreatorTarget(targetUid)) {
@@ -12167,7 +12793,8 @@ class AdminPanel {
                 <div style="font-weight:700; margin-bottom:6px;">Premium подписка</div>
                 <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">
                     Статус: ${
-                      profile?.premium?.active && Number(profile.premium.expiresAt) > Date.now()
+                      profile?.premium?.active &&
+                      Number(profile.premium.expiresAt) > Date.now()
                         ? `активен до ${new Date(Number(profile.premium.expiresAt)).toLocaleDateString("ru-RU")}`
                         : "не активен"
                     }
@@ -12333,7 +12960,8 @@ class AdminPanel {
       this.issuePasswordReset(uid);
     Utils.$("btn-admin-cancel-tutorial").onclick = async () => {
       if (!this.requireAdmin()) return;
-      if (!(await Utils.confirm(`Отозвать туториал для пользователя ${uid}?`))) return;
+      if (!(await Utils.confirm(`Отозвать туториал для пользователя ${uid}?`)))
+        return;
       await set(ref(db, `admin/actions/cancelTutorial/${uid}`), {
         ts: Date.now(),
         by: AppState.currentUser.uid,
@@ -12346,7 +12974,9 @@ class AdminPanel {
     if (!this.isCurrentUserCreator())
       return Utils.toast("Только Создатель может выдавать Premium", "error");
     if (!(await this.checkModRestrictionsForTarget(uid))) return;
-    if (!(await Utils.confirm(`Выдать Premium на 30 дней пользователю ${uid}?`)))
+    if (
+      !(await Utils.confirm(`Выдать Premium на 30 дней пользователю ${uid}?`))
+    )
       return;
 
     const snap = await get(ref(db, `users/${uid}/profile/premium`));
@@ -12372,10 +13002,8 @@ class AdminPanel {
     await this.pushAuditLog("grant_premium", { uid, expiresAt });
     Utils.toast("Premium выдан на 30 дней", "success");
     await this.loadUserEditor(uid);
-    if (window.PremiumManager) PremiumManager.syncFromProfile(
-      AppState.usersCache.get(uid),
-      uid,
-    );
+    if (window.PremiumManager)
+      PremiumManager.syncFromProfile(AppState.usersCache.get(uid), uid);
   }
 
   static async revokePremiumFromUser(uid) {
@@ -12395,10 +13023,8 @@ class AdminPanel {
     await this.pushAuditLog("revoke_premium", { uid });
     Utils.toast("Premium снят", "success");
     await this.loadUserEditor(uid);
-    if (window.PremiumManager) PremiumManager.syncFromProfile(
-      AppState.usersCache.get(uid),
-      uid,
-    );
+    if (window.PremiumManager)
+      PremiumManager.syncFromProfile(AppState.usersCache.get(uid), uid);
   }
 
   static async forceSetPartner(uid) {
@@ -12503,7 +13129,10 @@ class AdminPanel {
   static async deleteUserCompletely(uid) {
     if (!this.requireAdmin()) return;
     if (!(await this.checkModRestrictionsForTarget(uid))) return;
-    if (!(await Utils.confirm("Полностью удалить пользователя и все его данные?"))) return;
+    if (
+      !(await Utils.confirm("Полностью удалить пользователя и все его данные?"))
+    )
+      return;
     const userSnap = await get(ref(db, `users/${uid}`));
     if (!userSnap.exists()) return Utils.toast("Пользователь уже удален");
     const userData = userSnap.val() || {};
@@ -12784,7 +13413,8 @@ class AdminPanel {
 
     const roomData = AppState.roomsCache.get(roomId);
     if (!roomData) return Utils.toast("Комната уже удалена", "error");
-    if (!(await Utils.confirm(`Закрыть комнату "${roomData.name || roomId}"?`))) return;
+    if (!(await Utils.confirm(`Закрыть комнату "${roomData.name || roomId}"?`)))
+      return;
 
     if (AppState.currentRoomId === roomId) RoomManager.leaveRoom();
     await remove(ref(db, `rooms/${roomId}`));
@@ -12797,7 +13427,11 @@ class AdminPanel {
 
   static async deleteAllRooms() {
     if (!this.requireAdmin()) return;
-    if (!(await Utils.confirm("Удалить вообще все комнаты? Это действие необратимо.")))
+    if (
+      !(await Utils.confirm(
+        "Удалить вообще все комнаты? Это действие необратимо.",
+      ))
+    )
       return;
 
     const devUid = await this.getDeveloperUid();
@@ -12890,7 +13524,12 @@ class AdminPanel {
     if (!uid) return;
     if (!(await this.checkModRestrictionsForTarget(uid))) return; // Защита Создателя
 
-    if (!(await Utils.confirm(`Принудительно завершить сессию пользователя ${uid}?`))) return;
+    if (
+      !(await Utils.confirm(
+        `Принудительно завершить сессию пользователя ${uid}?`,
+      ))
+    )
+      return;
 
     await set(ref(db, `admin/actions/forceSignOut/${uid}`), {
       ts: Date.now(),
@@ -12914,7 +13553,7 @@ class AdminPanel {
 
     if (
       !(await Utils.confirm(
-        `Удалить пользователя ${uid} из комнаты "${roomMeta.room.name || roomMeta.roomId}"?`
+        `Удалить пользователя ${uid} из комнаты "${roomMeta.room.name || roomMeta.roomId}"?`,
       ))
     )
       return;
@@ -12976,7 +13615,8 @@ class AdminPanel {
     Object.keys(presence).forEach((uid) => {
       updates[`rooms/${roomId}/presence/${uid}`] = null;
     });
-    if (!Object.keys(updates).length) return Utils.toast("В комнате никого нет", "info");
+    if (!Object.keys(updates).length)
+      return Utils.toast("В комнате никого нет", "info");
     await update(ref(db), updates);
     await this.pushAuditLog("admin.room.kickAll", { roomId });
     Utils.toast("Все участники удалены из комнаты");
@@ -12991,7 +13631,12 @@ class AdminPanel {
     if (!snap.exists()) return Utils.toast("Комната не найдена", "error");
     const room = snap.val();
     const newId = Utils.generateCryptoId(8);
-    const clone = { ...room, name: `${room.name || "Room"} (копия)`, createdAt: Date.now(), presence: null };
+    const clone = {
+      ...room,
+      name: `${room.name || "Room"} (копия)`,
+      createdAt: Date.now(),
+      presence: null,
+    };
     delete clone.presence;
     await set(ref(db, `rooms/${newId}`), clone);
     Utils.toast(`Клон создан: ${newId}`);
@@ -13002,7 +13647,8 @@ class AdminPanel {
     if (!this.requireAdmin()) return;
     const roomId = this.getAdminRoomId();
     const cap = Number(Utils.$("admin-room-max-viewers")?.value);
-    if (!roomId || !cap || cap < 1) return Utils.toast("ID комнаты и лимит ≥1", "error");
+    if (!roomId || !cap || cap < 1)
+      return Utils.toast("ID комнаты и лимит ≥1", "error");
     await update(ref(db, `rooms/${roomId}`), { maxViewers: cap });
     Utils.toast(`Лимит ${cap} установлен`);
   }
@@ -13042,7 +13688,9 @@ class AdminPanel {
         return `${bar} ${n} — ${Utils.escapeHtml(room.name || id)}`;
       })
       .sort((a, b) => b.localeCompare(a));
-    out.innerHTML = rows.length ? rows.map((r) => `<div>${r}</div>`).join("") : "Нет комнат";
+    out.innerHTML = rows.length
+      ? rows.map((r) => `<div>${r}</div>`).join("")
+      : "Нет комнат";
   }
 
   static async exportUsersCsv() {
@@ -13053,12 +13701,21 @@ class AdminPanel {
     Object.entries(users).forEach(([uid, data]) => {
       const p = data.profile || {};
       lines.push(
-        [uid, p.username, p.name, p.email, data.status?.online, data.status?.lastActive]
+        [
+          uid,
+          p.username,
+          p.name,
+          p.email,
+          data.status?.online,
+          data.status?.lastActive,
+        ]
           .map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`)
           .join(","),
       );
     });
-    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const blob = new Blob([lines.join("\n")], {
+      type: "text/csv;charset=utf-8",
+    });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = `cowio-users-${Date.now()}.csv`;
@@ -13080,7 +13737,10 @@ class AdminPanel {
       out.innerHTML = inactive.length
         ? inactive
             .slice(0, 50)
-            .map(([uid, d]) => `<div>@${Utils.escapeHtml(d.profile?.username || uid)} — ${Utils.formatExactDate(d.status.lastActive)}</div>`)
+            .map(
+              ([uid, d]) =>
+                `<div>@${Utils.escapeHtml(d.profile?.username || uid)} — ${Utils.formatExactDate(d.status.lastActive)}</div>`,
+            )
             .join("")
         : "Неактивных не найдено";
     }
@@ -13102,7 +13762,9 @@ class AdminPanel {
     const dups = Object.entries(byIp).filter(([, arr]) => arr.length > 1);
     if (out) {
       out.innerHTML = dups.length
-        ? dups.map(([ip, uids]) => `<div><b>${ip}</b>: ${uids.length} акк.</div>`).join("")
+        ? dups
+            .map(([ip, uids]) => `<div><b>${ip}</b>: ${uids.length} акк.</div>`)
+            .join("")
         : "Дубликатов IP не найдено";
     }
     Utils.toast(`Групп с одинаковым IP: ${dups.length}`);
@@ -13111,7 +13773,10 @@ class AdminPanel {
   static async bulkShadowban() {
     if (!this.requireAdmin()) return;
     const raw = Utils.$("admin-bulk-usernames")?.value || "";
-    const names = raw.split(/[\s,;]+/).map((s) => s.replace("@", "").toLowerCase()).filter(Boolean);
+    const names = raw
+      .split(/[\s,;]+/)
+      .map((s) => s.replace("@", "").toLowerCase())
+      .filter(Boolean);
     if (!names.length) return Utils.toast("Введите @id", "error");
     let count = 0;
     for (const uname of names) {
@@ -13136,7 +13801,8 @@ class AdminPanel {
 
   static async resetAllTutorials() {
     if (!this.requireAdmin() || !this.isCurrentUserCreator()) return;
-    if (!(await Utils.confirm("Сбросить туториал для ВСЕХ пользователей?"))) return;
+    if (!(await Utils.confirm("Сбросить туториал для ВСЕХ пользователей?")))
+      return;
     await remove(ref(db, "admin/actions/cancelTutorial"));
     const snap = await get(ref(db, "users"));
     const users = snap.val() || {};
@@ -13155,7 +13821,11 @@ class AdminPanel {
     const lines = [];
     for (const name of reserved) {
       const snap = await get(ref(db, `usernames/${name}`));
-      lines.push(snap.exists() ? `@${name} → занят (${snap.val()})` : `@${name} → свободен`);
+      lines.push(
+        snap.exists()
+          ? `@${name} → занят (${snap.val()})`
+          : `@${name} → свободен`,
+      );
     }
     if (out) out.innerHTML = lines.map((l) => `<div>${l}</div>`).join("");
   }
@@ -13166,11 +13836,20 @@ class AdminPanel {
     const snap = await get(ref(db, "users"));
     const users = snap.val() || {};
     const risky = Object.entries(users).filter(
-      ([, d]) => d?.moderation?.shadowban || d?.moderation?.muted || (d?.moderation?.banHistory?.length || 0) > 0,
+      ([, d]) =>
+        d?.moderation?.shadowban ||
+        d?.moderation?.muted ||
+        (d?.moderation?.banHistory?.length || 0) > 0,
     );
     if (out) {
       out.innerHTML = risky.length
-        ? risky.slice(0, 30).map(([uid, d]) => `<div>@${Utils.escapeHtml(d.profile?.username || uid)} — risk</div>`).join("")
+        ? risky
+            .slice(0, 30)
+            .map(
+              ([uid, d]) =>
+                `<div>@${Utils.escapeHtml(d.profile?.username || uid)} — risk</div>`,
+            )
+            .join("")
         : "Рисковых сессий не найдено";
     }
   }
@@ -13181,22 +13860,34 @@ class AdminPanel {
     const snap = await get(ref(db, "admin/actions/forceLogout"));
     const data = snap.val() || {};
     const uids = Object.keys(data);
-    if (out) out.innerHTML = uids.length ? uids.map((u) => `<div>${u}</div>`).join("") : "Нет pending force-logout";
+    if (out)
+      out.innerHTML = uids.length
+        ? uids.map((u) => `<div>${u}</div>`).join("")
+        : "Нет pending force-logout";
   }
 
   static async saveAutomodKeywords() {
     if (!this.requireAdmin() || !this.isCurrentUserCreator()) return;
     const raw = Utils.$("admin-automod-keywords")?.value || "";
-    const keywords = raw.split(/[,;]+/).map((s) => s.trim().toLowerCase()).filter(Boolean);
+    const keywords = raw
+      .split(/[,;]+/)
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
     await update(ref(db, "admin/settings"), { automodKeywords: keywords });
     Utils.toast(`Сохранено слов: ${keywords.length}`);
   }
 
   static async scheduleGlobalMessage() {
     if (!this.requireAdmin()) return;
-    const text = await Utils.prompt("Текст запланированного глобального сообщения:");
+    const text = await Utils.prompt(
+      "Текст запланированного глобального сообщения:",
+    );
     if (!text) return;
-    await push(ref(db, "admin/scheduledMessages"), { text, ts: Date.now(), by: AppState.currentUser?.uid });
+    await push(ref(db, "admin/scheduledMessages"), {
+      text,
+      ts: Date.now(),
+      by: AppState.currentUser?.uid,
+    });
     Utils.toast("Сообщение запланировано (очередь admin/scheduledMessages)");
   }
 
@@ -13215,7 +13906,8 @@ class AdminPanel {
     const users = snap.val() || {};
     const updates = {};
     Object.entries(users).forEach(([uid, d]) => {
-      if (d?.status?.online) updates[`admin/localAnnouncements/${uid}`] = { text, ts: Date.now() };
+      if (d?.status?.online)
+        updates[`admin/localAnnouncements/${uid}`] = { text, ts: Date.now() };
     });
     await update(ref(db), updates);
     Utils.toast("Локальные оповещения отправлены онлайн-пользователям");
@@ -13223,7 +13915,9 @@ class AdminPanel {
 
   static async setMaintenanceCountdown() {
     if (!this.requireAdmin() || !this.isCurrentUserCreator()) return;
-    const text = await Utils.prompt("Текст maintenance (отображается при maintenance mode):");
+    const text = await Utils.prompt(
+      "Текст maintenance (отображается при maintenance mode):",
+    );
     if (text === null) return;
     await update(ref(db, "admin/settings"), { maintenanceMessage: text });
     Utils.toast("Maintenance текст сохранён");
@@ -13235,7 +13929,9 @@ class AdminPanel {
     const logs = snap.val() || {};
     const count = Object.keys(logs).length;
     const announceSnap = await get(ref(db, "admin/announcement"));
-    Utils.toast(`Audit: ${count} записей. Announcement: ${announceSnap.exists() ? "есть" : "нет"}`);
+    Utils.toast(
+      `Audit: ${count} записей. Announcement: ${announceSnap.exists() ? "есть" : "нет"}`,
+    );
   }
 
   static async saveWebhookUrl() {
@@ -13248,7 +13944,9 @@ class AdminPanel {
   static async exportAuditJson() {
     if (!this.requireAdmin()) return;
     const snap = await get(ref(db, "admin/auditLog"));
-    const blob = new Blob([JSON.stringify(snap.val() || {}, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify(snap.val() || {}, null, 2)], {
+      type: "application/json",
+    });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = `cowio-audit-${Date.now()}.json`;
@@ -13257,10 +13955,16 @@ class AdminPanel {
 
   static async webhookTestPing() {
     if (!this.requireAdmin()) return;
-    const url = AppState.admin.settings?.webhookUrl || Utils.$("admin-webhook-url")?.value;
+    const url =
+      AppState.admin.settings?.webhookUrl ||
+      Utils.$("admin-webhook-url")?.value;
     if (!url) return Utils.toast("Webhook URL не задан", "error");
     try {
-      await fetch(url, { method: "POST", mode: "no-cors", body: JSON.stringify({ event: "cowio.test", ts: Date.now() }) });
+      await fetch(url, {
+        method: "POST",
+        mode: "no-cors",
+        body: JSON.stringify({ event: "cowio.test", ts: Date.now() }),
+      });
       Utils.toast("Ping отправлен (no-cors)");
     } catch (e) {
       Utils.toast("Ошибка ping", "error");
@@ -13269,14 +13973,21 @@ class AdminPanel {
 
   static async statusBridgePing() {
     if (!this.requireAdmin()) return;
-    await this.pushAuditLog("integration.statusBridge", { ok: true, ts: Date.now() });
+    await this.pushAuditLog("integration.statusBridge", {
+      ok: true,
+      ts: Date.now(),
+    });
     Utils.toast("Status bridge: OK (запись в audit)");
   }
 
   static async backupIntegrityCheck() {
     if (!this.requireAdmin()) return;
     const out = Utils.$("admin-backup-out");
-    const [u, r, a] = await Promise.all([get(ref(db, "users")), get(ref(db, "rooms")), get(ref(db, "admin/auditLog"))]);
+    const [u, r, a] = await Promise.all([
+      get(ref(db, "users")),
+      get(ref(db, "rooms")),
+      get(ref(db, "admin/auditLog")),
+    ]);
     const msg = `Users: ${Object.keys(u.val() || {}).length}, Rooms: ${Object.keys(r.val() || {}).length}, Audit: ${Object.keys(a.val() || {}).length}`;
     if (out) out.textContent = msg;
     Utils.toast("Integrity check выполнен");
@@ -13312,7 +14023,7 @@ class RoomManager {
     "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Heart%20With%20Arrow.webp' style='width:1em;height:1em;'>",
     "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Revolving%20Hearts.webp' style='width:1em;height:1em;'>",
     "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Two%20Hearts.webp' style='width:1em;height:1em;'>",
-    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Sparkling%20Heart.webp' style='width:1em;height:1em;'>"
+    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Sparkling%20Heart.webp' style='width:1em;height:1em;'>",
   ];
 
   static syncDeveloperControls(profile = {}) {
@@ -13421,7 +14132,10 @@ class RoomManager {
 
     toggleBtn.onclick = () => {
       if (toggleBtn.classList.contains("premium-locked-theme")) {
-        return window.Utils.toast("Смена темы доступна только с Premium!", "error");
+        return window.Utils.toast(
+          "Смена темы доступна только с Premium!",
+          "error",
+        );
       }
       carousel.classList.toggle("active");
     };
@@ -13432,7 +14146,10 @@ class RoomManager {
       if (!card?.dataset.theme) return;
       const uid = AppState?.currentUser?.uid;
       const profile = uid ? AppState.usersCache.get(uid) : null;
-      if (window.PremiumManager && !PremiumManager.canUseTheme(card.dataset.theme, profile, uid)) {
+      if (
+        window.PremiumManager &&
+        !PremiumManager.canUseTheme(card.dataset.theme, profile, uid)
+      ) {
         Utils.toast("Эта тема доступна только Premium-подписчикам", "info");
         return;
       }
@@ -13455,11 +14172,16 @@ class RoomManager {
     const track = Utils.$("room-theme-track");
     if (!track) return;
     track.querySelectorAll(".theme-card").forEach((card) => {
-      const isLocked = card.dataset.theme !== "default" && 
-                       window.PremiumManager && 
-                       !PremiumManager.canUseTheme(card.dataset.theme, 
-                         AppState?.currentUser?.uid ? AppState.usersCache.get(AppState.currentUser.uid) : null, 
-                         AppState?.currentUser?.uid);
+      const isLocked =
+        card.dataset.theme !== "default" &&
+        window.PremiumManager &&
+        !PremiumManager.canUseTheme(
+          card.dataset.theme,
+          AppState?.currentUser?.uid
+            ? AppState.usersCache.get(AppState.currentUser.uid)
+            : null,
+          AppState?.currentUser?.uid,
+        );
       card.classList.toggle("locked", !!isLocked);
       card.classList.toggle(
         "active",
@@ -13701,7 +14423,13 @@ class RoomManager {
   }
 
   static async saveRoom() {
-    if (!SecurityManager.validateAction("room_create", { count: 3, timeWindowMs: 60000 })) return;
+    if (
+      !SecurityManager.validateAction("room_create", {
+        count: 3,
+        timeWindowMs: 60000,
+      })
+    )
+      return;
     const name = Utils.$("room-input-name").value.trim();
     const videoInputUrl = Utils.$("room-input-url").value.trim();
     const isPrivate = Utils.$("room-input-private").checked;
@@ -13848,20 +14576,28 @@ class RoomManager {
   static async joinRoom(roomId) {
     if (!roomId) return;
     try {
-      import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(({ getDatabase, ref, get }) => {
-          get(ref(getDatabase(), `rooms/${roomId}`)).then(snap => {
-              if (snap.exists()) {
-                  this.attemptJoinRoom(roomId, snap.val());
-              } else {
-                  Utils.toast("Комната не найдена", "error");
-              }
+      import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(
+        ({ getDatabase, ref, get }) => {
+          get(ref(getDatabase(), `rooms/${roomId}`)).then((snap) => {
+            if (snap.exists()) {
+              this.attemptJoinRoom(roomId, snap.val());
+            } else {
+              Utils.toast("Комната не найдена", "error");
+            }
           });
-      });
-    } catch(e) {}
+        },
+      );
+    } catch (e) {}
   }
 
   static async attemptJoinRoom(roomId, roomData) {
-    if (!SecurityManager.validateAction("room_join", { count: 10, timeWindowMs: 60000 })) return;
+    if (
+      !SecurityManager.validateAction("room_join", {
+        count: 10,
+        timeWindowMs: 60000,
+      })
+    )
+      return;
     if (
       AppState.admin.settings.maintenanceMode &&
       !AdminPanel.isCurrentUserAdmin()
@@ -14015,21 +14751,23 @@ class RoomManager {
     const chatRef = ref(db, `rooms/${roomId}/chat`);
     const reactionsRef = ref(db, `rooms/${roomId}/reactions`);
     const typingRef = ref(db, `rooms/${roomId}/typing`);
-    
+
     const typingUnsub = onValue(typingRef, (snap) => {
-        const typings = snap.val() || {};
-        const typingIds = Object.keys(typings).filter(id => id !== AppState.currentUser.uid && typings[id] === true);
-        const el = Utils.$("room-typing-status");
-        if(el) {
-            if(typingIds.length === 0) {
-                el.innerText = "";
-            } else if(typingIds.length === 1) {
-                const p = AppState.currentPresenceCache?.[typingIds[0]];
-                el.innerText = (p ? p.name : "Кто-то") + " печатает...";
-            } else {
-                el.innerText = "Несколько человек печатают...";
-            }
+      const typings = snap.val() || {};
+      const typingIds = Object.keys(typings).filter(
+        (id) => id !== AppState.currentUser.uid && typings[id] === true,
+      );
+      const el = Utils.$("room-typing-status");
+      if (el) {
+        if (typingIds.length === 0) {
+          el.innerText = "";
+        } else if (typingIds.length === 1) {
+          const p = AppState.currentPresenceCache?.[typingIds[0]];
+          el.innerText = (p ? p.name : "Кто-то") + " печатает...";
+        } else {
+          el.innerText = "Несколько человек печатают...";
         }
+      }
     });
 
     let presenceBootstrapped = false;
@@ -14273,8 +15011,13 @@ class RoomManager {
 
       let content = "";
       if (msg.type === "media" && msg.url) {
-        const isImg = String(msg.url).match(/\.(gif|jpe?g|png|webp|bmp)$/i) || String(msg.url).match(/tenor\.com|giphy\.com|imgur\.com/i) || String(msg.url).startsWith("data:image/");
-        content = isImg ? `<div style="padding:4px;"><img src="${Utils.escapeHtml(msg.url)}" style="max-width: 250px; max-height: 250px; object-fit: contain; border-radius: 8px; display: block;" onerror="this.onerror=null; this.src='https://via.placeholder.com/200x150?text=Error';" /></div>` : `<div style="padding:4px;"><a href="${Utils.escapeHtml(msg.url)}" target="_blank" style="color: var(--accent); padding: 8px; display: inline-block;">📎 Прикрепленный файл</a></div>`;
+        const isImg =
+          String(msg.url).match(/\.(gif|jpe?g|png|webp|bmp)$/i) ||
+          String(msg.url).match(/tenor\.com|giphy\.com|imgur\.com/i) ||
+          String(msg.url).startsWith("data:image/");
+        content = isImg
+          ? `<div style="padding:4px;"><img src="${Utils.escapeHtml(msg.url)}" style="max-width: 250px; max-height: 250px; object-fit: contain; border-radius: 8px; display: block;" onerror="this.onerror=null; this.src='https://via.placeholder.com/200x150?text=Error';" /></div>`
+          : `<div style="padding:4px;"><a href="${Utils.escapeHtml(msg.url)}" target="_blank" style="color: var(--accent); padding: 8px; display: inline-block;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Paperclip.webp" style="width:18px;height:18px;vertical-align:bottom;margin-right:5px;">Прикрепленный файл</a></div>`;
       } else {
         content = Utils.escapeHtml(msg.text || "");
         content = content.replace(
@@ -14329,10 +15072,12 @@ class RoomManager {
 
       ProfileManager.loadUser(msg.uid).then((uProfile) => {
         if (uProfile) {
-          line.querySelectorAll(".chat-profile-link[data-uid]").forEach((container) => {
-            if (container.tagName === "STRONG") return;
-            container.innerHTML = ProfileManager.getAvatarHtml(uProfile);
-          });
+          line
+            .querySelectorAll(".chat-profile-link[data-uid]")
+            .forEach((container) => {
+              if (container.tagName === "STRONG") return;
+              container.innerHTML = ProfileManager.getAvatarHtml(uProfile);
+            });
           const nameEl = line.querySelector("strong.profile-open-link");
           if (nameEl && window.PremiumManager) {
             nameEl.className = `profile-open-link chat-profile-link ${PremiumManager.getChatNameClass(uProfile, msg.uid)}`;
@@ -14369,8 +15114,9 @@ class RoomManager {
     if (roomAttachBtn) {
       roomAttachBtn.onclick = () => {
         if (!this.hasPerm("chat")) return;
-        if (AdminPanel.isSystemReadOnlyForUser()) return Utils.toast("Система в режиме ReadOnly", "error");
-        
+        if (AdminPanel.isSystemReadOnlyForUser())
+          return Utils.toast("Система в режиме ReadOnly", "error");
+
         const inputImg = document.createElement("input");
         inputImg.type = "file";
         inputImg.accept = "image/*";
@@ -14387,7 +15133,7 @@ class RoomManager {
               canvas.height = img.height;
               canvas.getContext("2d").drawImage(img, 0, 0);
               const compressedBase64 = canvas.toDataURL("image/jpeg", 0.6);
-              
+
               let sendUid = uid;
               let sendName =
                 AppState.usersCache.get(AppState.currentUser.uid)?.name ||
@@ -14418,10 +15164,19 @@ class RoomManager {
     }
 
     Utils.$("send-btn").onclick = async () => {
-      if (!SecurityManager.validateAction("chat_message", { count: 10, timeWindowMs: 10000 })) return;
+      if (
+        !SecurityManager.validateAction("chat_message", {
+          count: 10,
+          timeWindowMs: 10000,
+        })
+      )
+        return;
       const input = Utils.$("chat-input");
       if (!input.value.trim() || !this.hasPerm("chat")) return;
-      if (!SecurityManager.validateTextPayload(input.value.trim(), 2000, "chat")) return;
+      if (
+        !SecurityManager.validateTextPayload(input.value.trim(), 2000, "chat")
+      )
+        return;
       if (AdminPanel.isSystemReadOnlyForUser())
         return Utils.toast("Система в режиме ReadOnly", "error");
       if (
@@ -14527,13 +15282,16 @@ class RoomManager {
     };
     let roomTypingTimeout = null;
     Utils.$("chat-input").oninput = () => {
-        if (!AppState.currentRoomId || !AppState.currentUser) return;
-        const refT = ref(db, `rooms/${AppState.currentRoomId}/typing/${AppState.currentUser.uid}`);
-        set(refT, true);
-        if(roomTypingTimeout) clearTimeout(roomTypingTimeout);
-        roomTypingTimeout = setTimeout(() => {
-            set(refT, null);
-        }, 3000);
+      if (!AppState.currentRoomId || !AppState.currentUser) return;
+      const refT = ref(
+        db,
+        `rooms/${AppState.currentRoomId}/typing/${AppState.currentUser.uid}`,
+      );
+      set(refT, true);
+      if (roomTypingTimeout) clearTimeout(roomTypingTimeout);
+      roomTypingTimeout = setTimeout(() => {
+        set(refT, null);
+      }, 3000);
     };
 
     Utils.$("chat-input").onkeydown = (e) => {
@@ -14542,7 +15300,13 @@ class RoomManager {
 
     document.querySelectorAll(".react-btn").forEach((btn) => {
       btn.onclick = () => {
-        if (!SecurityManager.validateAction("react_message", { count: 12, timeWindowMs: 5000 })) return;
+        if (
+          !SecurityManager.validateAction("react_message", {
+            count: 12,
+            timeWindowMs: 5000,
+          })
+        )
+          return;
         if (!this.hasPerm("reactions")) return;
         if (AdminPanel.isSystemReadOnlyForUser())
           return Utils.toast("Система в режиме ReadOnly", "error");
@@ -14725,9 +15489,11 @@ class RoomManager {
 
         let html = `<div class="user-wrapper" style="margin-bottom:8px;">`;
         let premiumStyle = "";
-        const isPremium = window.PremiumManager ? PremiumManager.isPremiumActive(profile, uid) : false;
+        const isPremium = window.PremiumManager
+          ? PremiumManager.isPremiumActive(profile, uid)
+          : false;
         if (isPremium) {
-            premiumStyle = `background: radial-gradient(circle at 20% 0%, rgba(255, 180, 60, 0.18), transparent 45%), radial-gradient(circle at 90% 100%, rgba(255, 120, 40, 0.12), transparent 40%), linear-gradient(145deg, rgba(24, 20, 14, 0.96), rgba(10, 10, 12, 0.98)); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 220, 140, 0.08); border: 1px solid rgba(255, 200, 100, 0.22);`;
+          premiumStyle = `background: radial-gradient(circle at 20% 0%, rgba(255, 180, 60, 0.18), transparent 45%), radial-gradient(circle at 90% 100%, rgba(255, 120, 40, 0.12), transparent 40%), linear-gradient(145deg, rgba(24, 20, 14, 0.96), rgba(10, 10, 12, 0.98)); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 220, 140, 0.08); border: 1px solid rgba(255, 200, 100, 0.22);`;
         }
         let speakingClass = user.speaking ? " speaking" : "";
         html += `<div class="user-item${speakingClass}" data-uid="${uid}" style="${premiumStyle}">`;
@@ -14847,7 +15613,8 @@ class RoomManager {
           const targetUid = btn.dataset.uid;
           const targetName =
             AppState.currentPresenceCache?.[targetUid]?.name || targetUid;
-          if (!(await Utils.confirm(`Кикнуть ${targetName} из комнаты?`))) return;
+          if (!(await Utils.confirm(`Кикнуть ${targetName} из комнаты?`)))
+            return;
           await this.kickUserFromCurrentRoom(targetUid);
         };
       });
@@ -15692,7 +16459,7 @@ class MobileSwipeManager {
       sidebar.addEventListener("touchend", (e) => {
         const endX = e.changedTouches[0].clientX;
         if (startX - endX > 60) {
-          if (localStorage.getItem('tutorial_active') === 'true') return;
+          if (localStorage.getItem("tutorial_active") === "true") return;
           // swipe left
           sidebar.classList.remove("open");
           if (sidebarOverlay) sidebarOverlay.classList.remove("open");
@@ -15738,7 +16505,10 @@ window.onload = () => {
     } catch (e) {
       console.error(`[System: ${name}] Failed to initialize:`, e);
       if (window.Utils && window.Utils.toast) {
-        window.Utils.toast(`Ошибка подсистемы ${name}! Остальной сайт продолжает работу.`, "error");
+        window.Utils.toast(
+          `Ошибка подсистемы ${name}! Остальной сайт продолжает работу.`,
+          "error",
+        );
       }
     }
   };
@@ -15849,7 +16619,8 @@ class CatalogManager {
 
     if (!frameUrl) return Utils.toast("Укажите изображение (URL)", "error");
 
-    if (!(await Utils.confirm(`Точно ВЫДАТЬ РАМКУ ВСЕМ, кто сейчас онлайн?`))) return;
+    if (!(await Utils.confirm(`Точно ВЫДАТЬ РАМКУ ВСЕМ, кто сейчас онлайн?`)))
+      return;
 
     const usersSnap = await get(ref(db, "users"));
     const usersData = usersSnap.val() || {};
@@ -16057,10 +16828,15 @@ class CatalogManager {
           const inv = currentProf?.inventory || [];
           const isOwned = inv.includes(item.id);
           const isHot = item.isHot === true || item.isHot === "true";
-          
-                    let fakeProf = currentProf ? { ...currentProf, frame: null } : { name: "User", avatar: "https://telegra.ph/file/0c9e88d184cf43b448f21.png" };
+
+          let fakeProf = currentProf
+            ? { ...currentProf, frame: null }
+            : {
+                name: "User",
+                avatar: "https://telegra.ph/file/0c9e88d184cf43b448f21.png",
+              };
           let userAvatarInner = ProfileManager.getAvatarHtml(fakeProf);
-          
+
           return `
             <div class="catalog-card-wrapper ${isHot ? "is-hot" : ""} ${isOwned ? "is-owned" : ""}" style="animation-delay: ${i * 0.05}s;">
                 <div class="catalog-card-inner" onclick="if(typeof openCatalogItemModal === 'function') openCatalogItemModal('${item.id}')">
@@ -16099,10 +16875,12 @@ class CatalogManager {
         .join("");
 
     if (!hasAccess && catalogVisible) {
-      if (Utils.$("section-catalog").querySelector(".catalog-locked-overlay")) return; // already added
+      if (Utils.$("section-catalog").querySelector(".catalog-locked-overlay"))
+        return; // already added
       const overlay = document.createElement("div");
       overlay.className = "catalog-locked-overlay";
-      overlay.style = "position:absolute; inset:0; background:rgba(10,10,12,0.4); backdrop-filter:blur(12px); border-radius:20px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; z-index:50;";
+      overlay.style =
+        "position:absolute; inset:0; background:rgba(10,10,12,0.4); backdrop-filter:blur(12px); border-radius:20px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; z-index:50;";
       overlay.innerHTML = `
           <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width:64px;height:64px;margin-bottom:20px;animation:levitate 3s infinite ease-in-out;">
           <h2 style="margin:0 0 10px;font-size:24px;">Каталог заблокирован</h2>
@@ -16110,20 +16888,24 @@ class CatalogManager {
           <button class="primary-btn" onclick="document.getElementById('nav-profile').click()" style="width:auto;padding:12px 28px;background:#ffffff;color:#000000;font-weight:800;font-size:15px; border-radius: 20px;">Мой Профиль</button>
       `;
       Utils.$("section-catalog").appendChild(overlay);
-      const container = Utils.$("section-catalog").querySelector(".friends-container");
+      const container =
+        Utils.$("section-catalog").querySelector(".friends-container");
       if (container) {
-          container.style.filter = "blur(8px)";
-          container.style.pointerEvents = "none";
-          container.style.userSelect = "none";
+        container.style.filter = "blur(8px)";
+        container.style.pointerEvents = "none";
+        container.style.userSelect = "none";
       }
     } else {
-      const existing = Utils.$("section-catalog")?.querySelector(".catalog-locked-overlay");
+      const existing = Utils.$("section-catalog")?.querySelector(
+        ".catalog-locked-overlay",
+      );
       if (existing) existing.remove();
-      const container = Utils.$("section-catalog")?.querySelector(".friends-container");
+      const container =
+        Utils.$("section-catalog")?.querySelector(".friends-container");
       if (container) {
-          container.style.filter = "";
-          container.style.pointerEvents = "";
-          container.style.userSelect = "";
+        container.style.filter = "";
+        container.style.pointerEvents = "";
+        container.style.userSelect = "";
       }
     }
   }
@@ -16213,8 +16995,13 @@ window.openCatalogItemModal = function (itemId) {
     window.AppState && AppState.currentUser
       ? AppState.usersCache.get(AppState.currentUser.uid)
       : null;
-      
-    let fakeProf = currentProf ? { ...currentProf, frame: null } : { name: "User", avatar: "https://telegra.ph/file/0c9e88d184cf43b448f21.png" };
+
+  let fakeProf = currentProf
+    ? { ...currentProf, frame: null }
+    : {
+        name: "User",
+        avatar: "https://telegra.ph/file/0c9e88d184cf43b448f21.png",
+      };
   let userAvatarInner = ProfileManager.getAvatarHtml(fakeProf);
 
   if (item.type === "sound") {
@@ -16268,7 +17055,9 @@ window.openCatalogItemModal = function (itemId) {
           item.price === "0"
         ? "Получить"
         : `Купить (${item.price} ур.)`;
-    buyBtn.style.background = isOwned ? "rgba(255,255,255,0.05)" : "var(--text-main)";
+    buyBtn.style.background = isOwned
+      ? "rgba(255,255,255,0.05)"
+      : "var(--text-main)";
     buyBtn.style.color = isOwned ? "var(--text-main)" : "var(--bg)";
     if (isOwned) buyBtn.style.border = "1px solid var(--border-light)";
     else buyBtn.style.border = "none";
@@ -16282,7 +17071,12 @@ window.openCatalogItemModal = function (itemId) {
 
       if (inv.includes(item.id)) {
         if (item.type === "frame" || !item.type) {
-          await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(({ update, ref, getDatabase }) => update(ref(getDatabase()), { [`users/${uid}/profile/frame`]: item.id }));
+          await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(
+            ({ update, ref, getDatabase }) =>
+              update(ref(getDatabase()), {
+                [`users/${uid}/profile/frame`]: item.id,
+              }),
+          );
           Utils.toast("Рамка применена!", "success");
         } else if (item.type === "sound") {
           Utils.toast(
@@ -16755,13 +17549,13 @@ window.triggerAdminAction = (action) => {
         const target = vals[0].trim();
         if (!target) return Utils.toast("Введите UID или 'all'", "error");
         set(ref(db, "admin/actions/showTutorial"), {
-            ts: Date.now(),
-            by: AppState.currentUser.uid,
-            targetUid: target === "all" ? null : target,
-            targetAll: target === "all",
+          ts: Date.now(),
+          by: AppState.currentUser.uid,
+          targetUid: target === "all" ? null : target,
+          targetAll: target === "all",
         });
         Utils.toast("Команда на туториал отправлена", "success");
-      }
+      },
     );
   } else if (action === "godVoice") {
     showAdminPrompt(
@@ -16963,7 +17757,8 @@ window.SoundpadController = class SoundpadController {
       return;
     }
 
-    grid.innerHTML = `
+    grid.innerHTML =
+      `
       <style>
         .sound-grid .sound-btn {
           background: linear-gradient(135deg, rgba(80, 80, 80, 0.2) 0%, rgba(20, 20, 20, 0.4) 100%);
@@ -17035,18 +17830,18 @@ window.SoundpadController = class SoundpadController {
           color: #fff;
         }
       </style>
-    ` + sounds
-      .map(
-        (s, idx) => {
-            const emojis = [
-                'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Musical%20Notes.webp',
-                'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Musical%20Note.webp',
-                'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Microphone.webp',
-                'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Headphone.webp',
-                'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Radio.webp'
-            ];
-            const emo = emojis[idx % emojis.length];
-            return `
+    ` +
+      sounds
+        .map((s, idx) => {
+          const emojis = [
+            "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Musical%20Notes.webp",
+            "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Musical%20Note.webp",
+            "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Microphone.webp",
+            "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Headphone.webp",
+            "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Radio.webp",
+          ];
+          const emo = emojis[idx % emojis.length];
+          return `
             <div class="sound-btn" onclick="SoundpadController.triggerSound('${s.url}')">
                 <div class="sound-icon"><img src="${emo}" style="width:28px; height:28px; object-fit:contain;"></div>
                 <div class="sound-name">
@@ -17056,8 +17851,9 @@ window.SoundpadController = class SoundpadController {
                    <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Play%20Button.webp" style="width:24px; height:24px; pointer-events:none;">
                 </div>
             </div>
-        `})
-      .join("");
+        `;
+        })
+        .join("");
   }
   static triggerSound(url) {
     if (!AppState.currentRoomId) return;
@@ -17111,39 +17907,44 @@ window.MysteryEventManager = class MysteryEventManager {
   }
 };
 
-window.openLegalModal = function(type) {
-    const modal = document.getElementById('modal-legal-info');
-    const title = document.getElementById('legal-modal-title');
-    const body = document.getElementById('legal-modal-body');
-    
-    if (type === 'contacts') {
-        title.innerText = 'Контакты и реквизиты';
-        body.innerHTML = '<strong>Электронная почта:</strong> support@ais-preview.run.app<br><br>' +
-                         '<strong>Служба поддержки:</strong> Доступна через раздел "Поддержка" в приложении.<br><br>' +
-                         '<strong>Юридический адрес:</strong> г. Москва, ул. Примерная, д. 1, оф. 1';
-    } else if (type === 'delivery') {
-        title.innerText = 'Условия доставки';
-        body.innerHTML = 'Поскольку сервис предоставляет исключительно цифровые товары (статусы, бейджи, темы, премиум-подписки), ' +
-                         'доставка осуществляется автоматически и моментально после успешной оплаты. ' +
-                         '<br><br><strong>Регион доставки:</strong> Весь мир (WorldWide).';
-    } else if (type === 'refund') {
-        title.innerText = 'Условия возврата';
-        body.innerHTML = 'Возврат средств за цифровые покупки возможен только в случае технических неисправностей, ' +
-                         'при которых вы не получили заявленную услугу в течение 24 часов после оплаты.' +
-                         '<br><br>В остальных случаях, поскольку услуга оказывается в момент покупки, возврат не предусмотрен.';
-    } else if (type === 'privacy') {
-        title.innerText = 'Политика конфиденциальности';
-        body.innerHTML = 'Мы используем ваши данные только для обеспечения работы сервиса и не передаем их третьим лицам. ' +
-                         'Все пароли хэшируются, мы не имеем доступа к вашим платежным данным (они обрабатываются банком-партнером).';
-    } else if (type === 'offer') {
-        title.innerText = 'Договор оферты';
-        body.innerHTML = 'Настоящий договор является публичной офертой. ' +
-                         'Используя сервис и оплачивая услуги, вы соглашаетесь с тем, что приобретаете доступ к расширенным функциям. ' +
-                         'Мы обязуемся предоставить этот доступ сразу после оплаты.' +
-                         '<br><br>Сервис предоставляется "как есть" (as is). Мы не несем ответственности за косвенные убытки.';
-    }
+window.openLegalModal = function (type) {
+  const modal = document.getElementById("modal-legal-info");
+  const title = document.getElementById("legal-modal-title");
+  const body = document.getElementById("legal-modal-body");
 
-    modal.classList.add('active');
+  if (type === "contacts") {
+    title.innerText = "Контакты и реквизиты";
+    body.innerHTML =
+      "<strong>Электронная почта:</strong> support@ais-preview.run.app<br><br>" +
+      '<strong>Служба поддержки:</strong> Доступна через раздел "Поддержка" в приложении.<br><br>' +
+      "<strong>Юридический адрес:</strong> г. Москва, ул. Примерная, д. 1, оф. 1";
+  } else if (type === "delivery") {
+    title.innerText = "Условия доставки";
+    body.innerHTML =
+      "Поскольку сервис предоставляет исключительно цифровые товары (статусы, бейджи, темы, премиум-подписки), " +
+      "доставка осуществляется автоматически и моментально после успешной оплаты. " +
+      "<br><br><strong>Регион доставки:</strong> Весь мир (WorldWide).";
+  } else if (type === "refund") {
+    title.innerText = "Условия возврата";
+    body.innerHTML =
+      "Возврат средств за цифровые покупки возможен только в случае технических неисправностей, " +
+      "при которых вы не получили заявленную услугу в течение 24 часов после оплаты." +
+      "<br><br>В остальных случаях, поскольку услуга оказывается в момент покупки, возврат не предусмотрен.";
+  } else if (type === "privacy") {
+    title.innerText = "Политика конфиденциальности";
+    body.innerHTML =
+      "Мы используем ваши данные только для обеспечения работы сервиса и не передаем их третьим лицам. " +
+      "Все пароли хэшируются, мы не имеем доступа к вашим платежным данным (они обрабатываются банком-партнером).";
+  } else if (type === "offer") {
+    title.innerText = "Договор оферты";
+    body.innerHTML =
+      "Настоящий договор является публичной офертой. " +
+      "Используя сервис и оплачивая услуги, вы соглашаетесь с тем, что приобретаете доступ к расширенным функциям. " +
+      "Мы обязуемся предоставить этот доступ сразу после оплаты." +
+      '<br><br>Сервис предоставляется "как есть" (as is). Мы не несем ответственности за косвенные убытки.';
+  }
+
+  modal.classList.add("active");
 };
 window.ShopController = class {
   static loadShop() {
@@ -17391,30 +18192,35 @@ document.head.insertAdjacentHTML("beforeend", `<style>${TELEGRAM_CSS}</style>`);
 DirectMessages.EDITING_MSG_ID = null;
 DirectMessages.REPLY_TO_MSG = null;
 DirectMessages.EMOJIS = [
-    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Thumbs%20Up.webp' style='width:24px;height:24px;vertical-align:middle;'>",
-    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Heart.webp' style='width:24px;height:24px;vertical-align:middle;'>",
-    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp' style='width:24px;height:24px;vertical-align:middle;'>",
-    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Tears%20Of%20Joy.webp' style='width:24px;height:24px;vertical-align:middle;'>",
-    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Open%20Mouth.webp' style='width:24px;height:24px;vertical-align:middle;'>",
-    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Crying%20Face.webp' style='width:24px;height:24px;vertical-align:middle;'>",
-    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Clapping%20Hands.webp' style='width:24px;height:24px;vertical-align:middle;'>",
-    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Pile%20Of%20Poo.webp' style='width:24px;height:24px;vertical-align:middle;'>"
+  "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Thumbs%20Up.webp' style='width:24px;height:24px;vertical-align:middle;'>",
+  "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Heart.webp' style='width:24px;height:24px;vertical-align:middle;'>",
+  "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp' style='width:24px;height:24px;vertical-align:middle;'>",
+  "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Tears%20Of%20Joy.webp' style='width:24px;height:24px;vertical-align:middle;'>",
+  "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Open%20Mouth.webp' style='width:24px;height:24px;vertical-align:middle;'>",
+  "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Crying%20Face.webp' style='width:24px;height:24px;vertical-align:middle;'>",
+  "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Clapping%20Hands.webp' style='width:24px;height:24px;vertical-align:middle;'>",
+  "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Pile%20Of%20Poo.webp' style='width:24px;height:24px;vertical-align:middle;'>",
 ];
 
 const tgOldOpenChat = DirectMessages.openChat;
-DirectMessages.openChat = function(targetUid, targetName) {
-    tgOldOpenChat.call(this, targetUid, targetName);
-    
-    // Inject Telegram Input UI if not exists
-    if (!document.getElementById("tg-bar-injected")) {
-        const standardInputs = document.querySelectorAll("#dm-messages ~ div:not(#dm-media-picker), #dm-messages ~ input, #dm-messages ~ button");
-        standardInputs.forEach(el => {
-            if(el.id !== "dm-media-picker" && !el.classList.contains("tg-input-area")) {
-                el.style.display = "none";
-            }
-        });
-        
-        const pinHtml = `
+DirectMessages.openChat = function (targetUid, targetName) {
+  tgOldOpenChat.call(this, targetUid, targetName);
+
+  // Inject Telegram Input UI if not exists
+  if (!document.getElementById("tg-bar-injected")) {
+    const standardInputs = document.querySelectorAll(
+      "#dm-messages ~ div:not(#dm-media-picker), #dm-messages ~ input, #dm-messages ~ button",
+    );
+    standardInputs.forEach((el) => {
+      if (
+        el.id !== "dm-media-picker" &&
+        !el.classList.contains("tg-input-area")
+      ) {
+        el.style.display = "none";
+      }
+    });
+
+    const pinHtml = `
         <div class="tg-pinned-bar" id="tg-pinned-bar" style="display:none; background:#17212b; padding:8px 15px; border-bottom:1px solid #101921; cursor:pointer;" onclick="if(window._tgPinnedId) Utils.$('msg-'+window._tgPinnedId)?.scrollIntoView({behavior:'smooth'})">
             <div style="border-left:2px solid #5288c1; padding-left:8px; display:flex; justify-content:space-between; align-items:center;">
                 <div style="flex:1; overflow:hidden;">
@@ -17425,9 +18231,11 @@ DirectMessages.openChat = function(targetUid, targetName) {
             </div>
         </div>
         `;
-        document.getElementById("dm-messages").insertAdjacentHTML("beforebegin", pinHtml);
+    document
+      .getElementById("dm-messages")
+      .insertAdjacentHTML("beforebegin", pinHtml);
 
-        const myHtml = `
+    const myHtml = `
         <div class="tg-input-area" id="tg-bar-injected">
            <div id="tg-reply-bar" class="tg-reply-bar" style="display:none">
               <div style="flex:1">
@@ -17449,322 +18257,371 @@ DirectMessages.openChat = function(targetUid, targetName) {
            </div>
         </div>
         `;
-        
-        document.querySelector(".dm-main").insertAdjacentHTML("beforeend", myHtml);
-        
-        document.getElementById("tg-btn-send-msg").onclick = () => this.sendTGMessage();
-        
-        let dmTypingTimeout = null;
-        document.getElementById("tg-textarea").oninput = () => {
-            const chatId = DirectMessages.getChatId(AppState.currentUser.uid, AppState.currentDirectChat.targetUid);
-            set(ref(db, `direct-messages/${chatId}/typing/${AppState.currentUser.uid}`), true);
-            
-            if(dmTypingTimeout) clearTimeout(dmTypingTimeout);
-            dmTypingTimeout = setTimeout(() => {
-                set(ref(db, `direct-messages/${chatId}/typing/${AppState.currentUser.uid}`), null);
-            }, 3000);
-        };
-        
-        document.getElementById("tg-textarea").onkeydown = (e) => {
-           if(e.key === "Enter" && !e.shiftKey) {
-               e.preventDefault();
-               this.sendTGMessage();
-           }
-        };
-        
-        document.getElementById("tg-btn-clip").onclick = () => {
-            const inputImg = document.createElement("input");
-            inputImg.type = "file";
-            inputImg.accept = "image/*";
-            inputImg.onchange = async (e) => {
-              const file = e.target.files[0];
-              if (!file) return;
-              Utils.toast("Обработка картинки...", "info");
-              const reader = new FileReader();
-              reader.onload = (re) => {
-                const img = new Image();
-                img.onload = async () => {
-                  const canvas = document.createElement("canvas");
-                  canvas.width = img.width;
-                  canvas.height = img.height;
-                  canvas.getContext("2d").drawImage(img, 0, 0);
-                  const compressedBase64 = canvas.toDataURL("image/jpeg", 0.6);
-                  
-                  const myProfile = AppState.usersCache.get(AppState.currentUser.uid);
-                  const myName = myProfile?.name || AppState.currentUser.displayName || "User";
-                  const payload = {
-                    type: "media",
-                    fromUid: AppState.currentUser.uid,
-                    fromName: myName,
-                    url: compressedBase64,
-                    ts: Date.now()
-                  };
-                  
-                  try {
-                      const chatId = DirectMessages.getChatId(AppState.currentUser.uid, AppState.currentDirectChat.targetUid);
-                      await push(ref(db, `direct-messages/${chatId}/messages`), payload);
-                      await update(ref(db, `direct-messages/${chatId}`), {
-                          lastMessage: payload
-                      });
-                      Utils.toast("Медиа отправлено!", "success");
-                  } catch (err) {
-                      console.error(err);
-                  }
-                };
-                img.src = re.target.result;
-              };
-              reader.readAsDataURL(file);
+
+    document.querySelector(".dm-main").insertAdjacentHTML("beforeend", myHtml);
+
+    document.getElementById("tg-btn-send-msg").onclick = () =>
+      this.sendTGMessage();
+
+    let dmTypingTimeout = null;
+    document.getElementById("tg-textarea").oninput = () => {
+      const chatId = DirectMessages.getChatId(
+        AppState.currentUser.uid,
+        AppState.currentDirectChat.targetUid,
+      );
+      set(
+        ref(db, `direct-messages/${chatId}/typing/${AppState.currentUser.uid}`),
+        true,
+      );
+
+      if (dmTypingTimeout) clearTimeout(dmTypingTimeout);
+      dmTypingTimeout = setTimeout(() => {
+        set(
+          ref(
+            db,
+            `direct-messages/${chatId}/typing/${AppState.currentUser.uid}`,
+          ),
+          null,
+        );
+      }, 3000);
+    };
+
+    document.getElementById("tg-textarea").onkeydown = (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        this.sendTGMessage();
+      }
+    };
+
+    document.getElementById("tg-btn-clip").onclick = () => {
+      const inputImg = document.createElement("input");
+      inputImg.type = "file";
+      inputImg.accept = "image/*";
+      inputImg.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        Utils.toast("Обработка картинки...", "info");
+        const reader = new FileReader();
+        reader.onload = (re) => {
+          const img = new Image();
+          img.onload = async () => {
+            const canvas = document.createElement("canvas");
+            canvas.width = img.width;
+            canvas.height = img.height;
+            canvas.getContext("2d").drawImage(img, 0, 0);
+            const compressedBase64 = canvas.toDataURL("image/jpeg", 0.6);
+
+            const myProfile = AppState.usersCache.get(AppState.currentUser.uid);
+            const myName =
+              myProfile?.name || AppState.currentUser.displayName || "User";
+            const payload = {
+              type: "media",
+              fromUid: AppState.currentUser.uid,
+              fromName: myName,
+              url: compressedBase64,
+              ts: Date.now(),
             };
-            inputImg.click();
-        };
-        
-        document.getElementById("tg-btn-smile").onclick = () => {
-            const picker = document.getElementById("dm-media-picker");
-            if(picker) {
-                picker.style.display = "flex";
+
+            try {
+              const chatId = DirectMessages.getChatId(
+                AppState.currentUser.uid,
+                AppState.currentDirectChat.targetUid,
+              );
+              await push(
+                ref(db, `direct-messages/${chatId}/messages`),
+                payload,
+              );
+              await update(ref(db, `direct-messages/${chatId}`), {
+                lastMessage: payload,
+              });
+              Utils.toast("Медиа отправлено!", "success");
+            } catch (err) {
+              console.error(err);
             }
+          };
+          img.src = re.target.result;
         };
+        reader.readAsDataURL(file);
+      };
+      inputImg.click();
+    };
+
+    document.getElementById("tg-btn-smile").onclick = () => {
+      const picker = document.getElementById("dm-media-picker");
+      if (picker) {
+        picker.style.display = "flex";
+      }
+    };
+  }
+
+  this.cancelReply();
+
+  // Pinned message listener
+  const chatId = DirectMessages.getChatId(AppState.currentUser.uid, targetUid);
+  const chatRef = ref(db, `direct-messages/${chatId}`);
+  if (this.tgPinUnsub) this.tgPinUnsub();
+  this.tgPinUnsub = onValue(chatRef, (snap) => {
+    const data = snap.val() || {};
+    const pinBar = document.getElementById("tg-pinned-bar");
+    if (pinBar) {
+      if (data.pinnedMessage) {
+        pinBar.style.display = "block";
+        document.getElementById("tg-pinned-text").innerText = data.pinnedMessage
+          .name
+          ? data.pinnedMessage.name + ": " + data.pinnedMessage.text
+          : data.pinnedMessage.text;
+        window._tgPinnedId = data.pinnedMessage.id;
+      } else {
+        pinBar.style.display = "none";
+        window._tgPinnedId = null;
+      }
     }
-    
-    this.cancelReply();
-    
-    // Pinned message listener
-    const chatId = DirectMessages.getChatId(AppState.currentUser.uid, targetUid);
-    const chatRef = ref(db, `direct-messages/${chatId}`);
-    if(this.tgPinUnsub) this.tgPinUnsub();
-    this.tgPinUnsub = onValue(chatRef, (snap) => {
-        const data = snap.val() || {};
-        const pinBar = document.getElementById("tg-pinned-bar");
-        if(pinBar) {
-            if(data.pinnedMessage) {
-                pinBar.style.display = "block";
-                document.getElementById("tg-pinned-text").innerText = data.pinnedMessage.name ? (data.pinnedMessage.name + ": " + data.pinnedMessage.text) : data.pinnedMessage.text;
-                window._tgPinnedId = data.pinnedMessage.id;
-            } else {
-                pinBar.style.display = "none";
-                window._tgPinnedId = null;
-            }
-        }
-    });
+  });
 };
 
-DirectMessages.cancelReply = function() {
-    this.EDITING_MSG_ID = null;
-    this.REPLY_TO_MSG = null;
-    const bar = document.getElementById("tg-reply-bar");
-    if(bar) bar.style.display = "none";
-    const ta = document.getElementById("tg-textarea");
-    if(ta) ta.value = "";
-}
+DirectMessages.cancelReply = function () {
+  this.EDITING_MSG_ID = null;
+  this.REPLY_TO_MSG = null;
+  const bar = document.getElementById("tg-reply-bar");
+  if (bar) bar.style.display = "none";
+  const ta = document.getElementById("tg-textarea");
+  if (ta) ta.value = "";
+};
 
-DirectMessages.setReplyOrEdit = function(msg, mode) {
-    if (mode === "edit") {
-        this.EDITING_MSG_ID = msg.id;
-        document.getElementById("tg-reply-name").innerText = "Редактирование";
-        document.getElementById("tg-reply-text").innerText = msg.text || "Медиа";
-        document.getElementById("tg-textarea").value = msg.text || "";
-    } else {
-        this.REPLY_TO_MSG = { id: msg.id, name: msg.fromName, text: msg.text || "Медиа" };
-        document.getElementById("tg-reply-name").innerText = "В ответ: " + msg.fromName;
-        document.getElementById("tg-reply-text").innerText = msg.text || "Медиа";
-        document.getElementById("tg-textarea").value = "";
-    }
-    document.getElementById("tg-reply-bar").style.display = "flex";
-    document.getElementById("tg-textarea").focus();
-}
-
-DirectMessages.sendTGMessage = async function() {
-    if (!AppState.currentDirectChat) return;
-    const chatId = AppState.currentDirectChat.id;
-    const targetUid = AppState.currentDirectChat.uid;
-    const ta = document.getElementById("tg-textarea");
-    const text = ta.value.trim();
-    if (!text) return;
-    
-    if (this.EDITING_MSG_ID) {
-        await update(ref(db, `direct-messages/${chatId}/messages/${this.EDITING_MSG_ID}`), {
-            text: text,
-            isEdited: true
-        });
-        this.cancelReply();
-        return;
-    }
-    
-    const myName = AppState.usersCache.get(AppState.currentUser.uid)?.name || AppState.currentUser.displayName || "User";
-    
-    const payload = {
-        type: "text",
-        fromUid: AppState.currentUser.uid,
-        fromName: myName,
-        text: text,
-        ts: Date.now()
+DirectMessages.setReplyOrEdit = function (msg, mode) {
+  if (mode === "edit") {
+    this.EDITING_MSG_ID = msg.id;
+    document.getElementById("tg-reply-name").innerText = "Редактирование";
+    document.getElementById("tg-reply-text").innerText = msg.text || "Медиа";
+    document.getElementById("tg-textarea").value = msg.text || "";
+  } else {
+    this.REPLY_TO_MSG = {
+      id: msg.id,
+      name: msg.fromName,
+      text: msg.text || "Медиа",
     };
-    
-    if (this.REPLY_TO_MSG) {
-        payload.replyToId = this.REPLY_TO_MSG.id;
-        payload.replyToName = this.REPLY_TO_MSG.name;
-        payload.replyToText = this.REPLY_TO_MSG.text;
-    }
-    
-    ta.value = "";
+    document.getElementById("tg-reply-name").innerText =
+      "В ответ: " + msg.fromName;
+    document.getElementById("tg-reply-text").innerText = msg.text || "Медиа";
+    document.getElementById("tg-textarea").value = "";
+  }
+  document.getElementById("tg-reply-bar").style.display = "flex";
+  document.getElementById("tg-textarea").focus();
+};
+
+DirectMessages.sendTGMessage = async function () {
+  if (!AppState.currentDirectChat) return;
+  const chatId = AppState.currentDirectChat.id;
+  const targetUid = AppState.currentDirectChat.uid;
+  const ta = document.getElementById("tg-textarea");
+  const text = ta.value.trim();
+  if (!text) return;
+
+  if (this.EDITING_MSG_ID) {
+    await update(
+      ref(db, `direct-messages/${chatId}/messages/${this.EDITING_MSG_ID}`),
+      {
+        text: text,
+        isEdited: true,
+      },
+    );
     this.cancelReply();
-    
-    await update(ref(db, `direct-messages/${chatId}`), {
-        participants: { [AppState.currentUser.uid]: true, [targetUid]: true },
-        updatedAt: payload.ts,
-        lastMessage: payload
-    });
-    await push(ref(db, `direct-messages/${chatId}/messages`), payload);
-}
+    return;
+  }
 
-DirectMessages.toggleReaction = async function(msgId, emojiIdx) {
-    if (!AppState.currentDirectChat) return;
-    const emoji = DirectMessages.EMOJIS[emojiIdx];
-    const chatId = AppState.currentDirectChat.id;
-    const myUid = AppState.currentUser.uid;
-    const rRef = ref(db, `direct-messages/${chatId}/messages/${msgId}/reactions/${myUid}`);
-    
-    const snap = await get(rRef);
-    if (snap.exists() && snap.val() === emoji) {
-        await remove(rRef);
-    } else {
-        await set(rRef, emoji);
-    }
-    
-    const ctx = document.getElementById("tg-context-menu");
-    if(ctx) ctx.remove();
-}
+  const myName =
+    AppState.usersCache.get(AppState.currentUser.uid)?.name ||
+    AppState.currentUser.displayName ||
+    "User";
 
-DirectMessages.pinMsg = async function(msgId) {
-    if (!AppState.currentDirectChat) return;
-    const msg = window._curMessagesMap && window._curMessagesMap[msgId];
-    if (!msg) return;
-    const chatId = AppState.currentDirectChat.id;
-    await update(ref(db, `direct-messages/${chatId}`), {
-        pinnedMessage: {
-            id: msg.id,
-            text: msg.text || "Медиа",
-        }
-    });
-    const ctx = document.getElementById("tg-context-menu");
-    if(ctx) ctx.remove();
-}
+  const payload = {
+    type: "text",
+    fromUid: AppState.currentUser.uid,
+    fromName: myName,
+    text: text,
+    ts: Date.now(),
+  };
 
-DirectMessages.unpinMsg = async function() {
-    if (!AppState.currentDirectChat) return;
-    const chatId = AppState.currentDirectChat.id;
-    await update(ref(db, `direct-messages/${chatId}`), {
-        pinnedMessage: null
-    });
-}
+  if (this.REPLY_TO_MSG) {
+    payload.replyToId = this.REPLY_TO_MSG.id;
+    payload.replyToName = this.REPLY_TO_MSG.name;
+    payload.replyToText = this.REPLY_TO_MSG.text;
+  }
 
-DirectMessages.deleteMsg = async function(msgId) {
-    if (!AppState.currentDirectChat) return;
-    const chatId = AppState.currentDirectChat.id;
-    await remove(ref(db, `direct-messages/${chatId}/messages/${msgId}`));
-    const ctx = document.getElementById("tg-context-menu");
-    if(ctx) ctx.remove();
-}
+  ta.value = "";
+  this.cancelReply();
 
-DirectMessages.showContextMenu = function(e, msg) {
-    e.preventDefault();
-    const oldCtx = document.getElementById("tg-context-menu");
-    if(oldCtx) oldCtx.remove();
-    
-    const isSelf = msg.fromUid === AppState.currentUser.uid;
-    const isEditingAllowed = isSelf && msg.type === "text";
-    
-    const emojiReply = '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Backhand%20Index%20Pointing%20Left.webp" style="width:18px;height:18px;vertical-align:bottom;margin-right:5px;">';
-    const emojiEdit = '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Pencil.webp" style="width:18px;height:18px;vertical-align:bottom;margin-right:5px;">';
-    const emojiTrash = '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Cross%20Mark.webp" style="width:18px;height:18px;vertical-align:bottom;margin-right:5px;">';
-    const emojiPin = '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Reminder%20Ribbon.webp" style="width:18px;height:18px;vertical-align:bottom;margin-right:5px;">';
+  await update(ref(db, `direct-messages/${chatId}`), {
+    participants: { [AppState.currentUser.uid]: true, [targetUid]: true },
+    updatedAt: payload.ts,
+    lastMessage: payload,
+  });
+  await push(ref(db, `direct-messages/${chatId}/messages`), payload);
+};
 
-    let html = `
+DirectMessages.toggleReaction = async function (msgId, emojiIdx) {
+  if (!AppState.currentDirectChat) return;
+  const emoji = DirectMessages.EMOJIS[emojiIdx];
+  const chatId = AppState.currentDirectChat.id;
+  const myUid = AppState.currentUser.uid;
+  const rRef = ref(
+    db,
+    `direct-messages/${chatId}/messages/${msgId}/reactions/${myUid}`,
+  );
+
+  const snap = await get(rRef);
+  if (snap.exists() && snap.val() === emoji) {
+    await remove(rRef);
+  } else {
+    await set(rRef, emoji);
+  }
+
+  const ctx = document.getElementById("tg-context-menu");
+  if (ctx) ctx.remove();
+};
+
+DirectMessages.pinMsg = async function (msgId) {
+  if (!AppState.currentDirectChat) return;
+  const msg = window._curMessagesMap && window._curMessagesMap[msgId];
+  if (!msg) return;
+  const chatId = AppState.currentDirectChat.id;
+  await update(ref(db, `direct-messages/${chatId}`), {
+    pinnedMessage: {
+      id: msg.id,
+      text: msg.text || "Медиа",
+    },
+  });
+  const ctx = document.getElementById("tg-context-menu");
+  if (ctx) ctx.remove();
+};
+
+DirectMessages.unpinMsg = async function () {
+  if (!AppState.currentDirectChat) return;
+  const chatId = AppState.currentDirectChat.id;
+  await update(ref(db, `direct-messages/${chatId}`), {
+    pinnedMessage: null,
+  });
+};
+
+DirectMessages.deleteMsg = async function (msgId) {
+  if (!AppState.currentDirectChat) return;
+  const chatId = AppState.currentDirectChat.id;
+  await remove(ref(db, `direct-messages/${chatId}/messages/${msgId}`));
+  const ctx = document.getElementById("tg-context-menu");
+  if (ctx) ctx.remove();
+};
+
+DirectMessages.showContextMenu = function (e, msg) {
+  e.preventDefault();
+  const oldCtx = document.getElementById("tg-context-menu");
+  if (oldCtx) oldCtx.remove();
+
+  const isSelf = msg.fromUid === AppState.currentUser.uid;
+  const isEditingAllowed = isSelf && msg.type === "text";
+
+  const emojiReply =
+    '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Backhand%20Index%20Pointing%20Left.webp" style="width:18px;height:18px;vertical-align:bottom;margin-right:5px;">';
+  const emojiEdit =
+    '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Pencil.webp" style="width:18px;height:18px;vertical-align:bottom;margin-right:5px;">';
+  const emojiTrash =
+    '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Cross%20Mark.webp" style="width:18px;height:18px;vertical-align:bottom;margin-right:5px;">';
+  const emojiPin =
+    '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Reminder%20Ribbon.webp" style="width:18px;height:18px;vertical-align:bottom;margin-right:5px;">';
+
+  let html = `
     <div id="tg-context-menu" class="tg-context-menu" style="left: ${e.pageX}px; top: ${e.pageY - 50}px;">
        <div class="tg-quick-emojis">
-          ${this.EMOJIS.map((em, idx) => `<div class="tg-reaction" onclick="DirectMessages.toggleReaction('${msg.id}', ${idx})">${em}</div>`).join('')}
+          ${this.EMOJIS.map((em, idx) => `<div class="tg-reaction" onclick="DirectMessages.toggleReaction('${msg.id}', ${idx})">${em}</div>`).join("")}
        </div>
        <div class="tg-ctx-item" onclick="DirectMessages.setReplyOrEdit(${JSON.stringify(msg).replace(/"/g, "&quot;")}, 'reply')">${emojiReply} Ответить</div>
        <div class="tg-ctx-item" onclick="DirectMessages.pinMsg('${msg.id}')">${emojiPin} Закрепить</div>
-       ${isEditingAllowed ? `<div class="tg-ctx-item" onclick="DirectMessages.setReplyOrEdit(${JSON.stringify(msg).replace(/"/g, "&quot;")}, 'edit')">${emojiEdit} Изменить</div>` : ''}
-       ${isSelf ? `<div class="tg-ctx-item" style="color:#ff5555" onclick="DirectMessages.deleteMsg('${msg.id}')">${emojiTrash} Удалить</div>` : ''}
+       ${isEditingAllowed ? `<div class="tg-ctx-item" onclick="DirectMessages.setReplyOrEdit(${JSON.stringify(msg).replace(/"/g, "&quot;")}, 'edit')">${emojiEdit} Изменить</div>` : ""}
+       ${isSelf ? `<div class="tg-ctx-item" style="color:#ff5555" onclick="DirectMessages.deleteMsg('${msg.id}')">${emojiTrash} Удалить</div>` : ""}
     </div>
     `;
-    
-    document.body.insertAdjacentHTML("beforeend", html);
-    
-    const closeListener = (evt) => {
-        if (!evt.target.closest("#tg-context-menu")) {
-            const m = document.getElementById("tg-context-menu");
-            if(m) m.remove();
-            document.removeEventListener("click", closeListener);
-        }
-    };
-    setTimeout(() => document.addEventListener("click", closeListener), 10);
+
+  document.body.insertAdjacentHTML("beforeend", html);
+
+  const closeListener = (evt) => {
+    if (!evt.target.closest("#tg-context-menu")) {
+      const m = document.getElementById("tg-context-menu");
+      if (m) m.remove();
+      document.removeEventListener("click", closeListener);
+    }
+  };
+  setTimeout(() => document.addEventListener("click", closeListener), 10);
 };
 
-DirectMessages.renderMessages = function(messages) {
-    const list = Utils.$("dm-messages");
-    if (!messages.length) {
-      list.innerHTML = `<div style="color:var(--text-muted); text-align:center; padding:20px;">Нет сообщений</div>`;
-      return;
-    }
-    
-    window._curMessagesMap = {};
-    let _lastDateStr = null;
+DirectMessages.renderMessages = function (messages) {
+  const list = Utils.$("dm-messages");
+  if (!messages.length) {
+    list.innerHTML = `<div style="color:var(--text-muted); text-align:center; padding:20px;">Нет сообщений</div>`;
+    return;
+  }
 
-    const newHtml = messages
-      .map((m) => {
-        window._curMessagesMap[m.id] = m;
-      
-        const isSelf = m.fromUid === AppState.currentUser.uid;
-        let dateHeaderHtml = "";
-        
-        if (m.type !== "system") {
-            const dateObj = new Date(m.ts);
-            const dateStr = dateObj.toLocaleDateString();
-            if (dateStr !== _lastDateStr) {
-                dateHeaderHtml = `\n<div style="text-align:center; margin: 15px 0;"><span style="background:rgba(255,255,255,0.1); padding:4px 12px; border-radius:12px; font-size:12px; color:var(--text-muted);">${dateStr}</span></div>\n`;
-                _lastDateStr = dateStr;
-            }
-        }
+  window._curMessagesMap = {};
+  let _lastDateStr = null;
 
-        if (m.type === "system") {
-          return dateHeaderHtml + `<div class="sys-msg">${Utils.escapeHtml(m.fromName || "Пользователь")} ${Utils.escapeHtml(m.text || "")}</div>`;
+  const newHtml = messages
+    .map((m) => {
+      window._curMessagesMap[m.id] = m;
+
+      const isSelf = m.fromUid === AppState.currentUser.uid;
+      let dateHeaderHtml = "";
+
+      if (m.type !== "system") {
+        const dateObj = new Date(m.ts);
+        const dateStr = dateObj.toLocaleDateString();
+        if (dateStr !== _lastDateStr) {
+          dateHeaderHtml = `\n<div style="text-align:center; margin: 15px 0;"><span style="background:rgba(255,255,255,0.1); padding:4px 12px; border-radius:12px; font-size:12px; color:var(--text-muted);">${dateStr}</span></div>\n`;
+          _lastDateStr = dateStr;
         }
-        
-        let replyHtml = "";
-        if (m.replyToId) {
-            replyHtml = `
+      }
+
+      if (m.type === "system") {
+        return (
+          dateHeaderHtml +
+          `<div class="sys-msg">${Utils.escapeHtml(m.fromName || "Пользователь")} ${Utils.escapeHtml(m.text || "")}</div>`
+        );
+      }
+
+      let replyHtml = "";
+      if (m.replyToId) {
+        replyHtml = `
                <div style="border-left: 2px solid #5288c1; padding-left: 8px; margin-bottom: 5px; cursor: pointer; opacity: 0.8;" onclick="Utils.$('msg-${m.replyToId}')?.scrollIntoView({behavior:'smooth'})">
                   <div style="color: #5288c1; font-weight: bold; font-size: 12px;">${Utils.escapeHtml(m.replyToName || "Пользователь")}</div>
                   <div style="font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;">${Utils.escapeHtml(m.replyToText || "Медиа")}</div>
                </div>
             `;
-        }
+      }
 
-        let reactionsHtml = "";
-        if (m.reactions) {
-            let grouped = {};
-            Object.entries(m.reactions).forEach(([uid, em]) => {
-                if(!grouped[em]) grouped[em] = { count: 0, me: false };
-                grouped[em].count++;
-                if (uid === AppState.currentUser.uid) grouped[em].me = true;
-            });
-            let items = Object.entries(grouped).map(([em, data]) => {
-               const idx = DirectMessages.EMOJIS.indexOf(em);
-               return `<div class="tg-reaction ${data.me ? 'me' : ''}" onclick="DirectMessages.toggleReaction('${m.id}', ${idx > -1 ? idx : -1})">${em} ${data.count}</div>`;
-            });
-            if (items.length) {
-               reactionsHtml = `<div class="tg-reactions">${items.join('')}</div>`;
-            }
+      let reactionsHtml = "";
+      if (m.reactions) {
+        let grouped = {};
+        Object.entries(m.reactions).forEach(([uid, em]) => {
+          if (!grouped[em]) grouped[em] = { count: 0, me: false };
+          grouped[em].count++;
+          if (uid === AppState.currentUser.uid) grouped[em].me = true;
+        });
+        let items = Object.entries(grouped).map(([em, data]) => {
+          const idx = DirectMessages.EMOJIS.indexOf(em);
+          return `<div class="tg-reaction ${data.me ? "me" : ""}" onclick="DirectMessages.toggleReaction('${m.id}', ${idx > -1 ? idx : -1})">${em} ${data.count}</div>`;
+        });
+        if (items.length) {
+          reactionsHtml = `<div class="tg-reactions">${items.join("")}</div>`;
         }
-        
-        const timestamp = new Date(m.ts).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-        const editedStr = m.isEdited ? "изменено" : "";
+      }
 
-        if (m.type === "invite") {
-            return dateHeaderHtml + `
+      const timestamp = new Date(m.ts).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      const editedStr = m.isEdited ? "изменено" : "";
+
+      if (m.type === "invite") {
+        return (
+          dateHeaderHtml +
+          `
                 <div class="m-line ${isSelf ? "self" : ""}" id="msg-${m.id}">
                     <div class="tg-bubble" style="border: 1px solid var(--accent); background: rgba(46,213,115,0.1);" oncontextmenu="DirectMessages.showContextMenu(event, window._curMessagesMap['${m.id}'])">
                         <div style="font-weight:bold; margin-bottom:5px;">Привет! Заходи к нам:</div>
@@ -17774,32 +18631,46 @@ DirectMessages.renderMessages = function(messages) {
                         <div class="tg-time">${timestamp}</div>
                     </div>
                 </div>
-            `;
-        }
+            `
+        );
+      }
 
-        if (m.type === "file" || m.type === "gif" || m.type === "media" || m.url) {
-          const isImg =
-            m.type === "gif" ||
-            String(m.url).match(/\.(gif|jpe?g|png|webp|bmp)$/i) ||
-            String(m.url).match(/tenor\.com|giphy\.com|imgur\.com/i) ||
-            String(m.url).startsWith("data:image/");
-            
-          const isPackEmoji = m.url && String(m.url).includes("Telegram-Animated-Emojis");
-          const sizeStyle = isPackEmoji ? "width: 48px; height: 48px;" : "max-width: 250px; max-height: 250px;";
-            
-          return dateHeaderHtml + `
+      if (
+        m.type === "file" ||
+        m.type === "gif" ||
+        m.type === "media" ||
+        m.url
+      ) {
+        const isImg =
+          m.type === "gif" ||
+          String(m.url).match(/\.(gif|jpe?g|png|webp|bmp)$/i) ||
+          String(m.url).match(/tenor\.com|giphy\.com|imgur\.com/i) ||
+          String(m.url).startsWith("data:image/");
+
+        const isPackEmoji =
+          m.url && String(m.url).includes("Telegram-Animated-Emojis");
+        const sizeStyle = isPackEmoji
+          ? "width: 48px; height: 48px;"
+          : "max-width: 250px; max-height: 250px;";
+
+        return (
+          dateHeaderHtml +
+          `
             <div class="m-line ${isSelf ? "self" : ""}" id="msg-${m.id}">
                 <div class="tg-bubble" oncontextmenu="DirectMessages.showContextMenu(event, window._curMessagesMap['${m.id}'])">
                     ${replyHtml}
-                    ${isImg ? `<img src="${Utils.escapeHtml(m.url)}" style="${sizeStyle} object-fit: contain; border-radius: 8px; display: block;" onerror="this.onerror=null; this.src='https://via.placeholder.com/200x150?text=Error';" />` : `<a href="${Utils.escapeHtml(m.url)}" target="_blank" style="color: #999; padding: 8px; display: inline-block;">📎 Прикрепленный файл</a>`}
+                    ${isImg ? `<img src="${Utils.escapeHtml(m.url)}" style="${sizeStyle} object-fit: contain; border-radius: 8px; display: block;" onerror="this.onerror=null; this.src='https://via.placeholder.com/200x150?text=Error';" />` : `<a href="${Utils.escapeHtml(m.url)}" target="_blank" style="color: #999; padding: 8px; display: inline-block;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Paperclip.webp" style="width:18px;height:18px;vertical-align:bottom;margin-right:5px;">Прикрепленный файл</a>`}
                     <div class="tg-time">${editedStr} ${timestamp}</div>
                     ${reactionsHtml}
                 </div>
             </div>
-          `;
-        }
+          `
+        );
+      }
 
-        return dateHeaderHtml + `
+      return (
+        dateHeaderHtml +
+        `
             <div class="m-line ${isSelf ? "self" : ""}" id="msg-${m.id}">
                 <div class="tg-bubble" oncontextmenu="DirectMessages.showContextMenu(event, window._curMessagesMap['${m.id}'])">
                     ${replyHtml}
@@ -17808,75 +18679,80 @@ DirectMessages.renderMessages = function(messages) {
                     ${reactionsHtml}
                 </div>
             </div>
-        `;
-      })
-      .join("");
-      
-    const isAtBottom = (list.scrollHeight - list.scrollTop - list.clientHeight) <= 150;
-    const oldScroll = list.scrollTop;
+        `
+      );
+    })
+    .join("");
 
-    const tempDiv = document.createElement("div");
-    tempDiv.innerHTML = newHtml;
-    
-    if (list.innerHTML === "") {
-        list.innerHTML = newHtml;
-    } else {
-        Array.from(tempDiv.children).forEach(newChild => {
-            const id = newChild.id;
-            if (id) {
-                const oldChild = document.getElementById(id);
-                if (oldChild) {
-                    if (oldChild.innerHTML !== newChild.innerHTML || oldChild.className !== newChild.className) {
-                        oldChild.innerHTML = newChild.innerHTML;
-                        oldChild.className = newChild.className;
-                    }
-                } else {
-                    list.appendChild(newChild);
-                }
-            } else if (newChild.classList.contains('date-header')) {
-                const date = newChild.getAttribute('data-date');
-                if (!list.querySelector(`.date-header[data-date="${date}"]`)) {
-                    list.appendChild(newChild);
-                }
-            } else {
-                list.appendChild(newChild);
-            }
-        });
-        
-        // Remove deleted messages
-        Array.from(list.children).forEach(oldChild => {
-            if (oldChild.id && !tempDiv.querySelector('#' + oldChild.id)) {
-                oldChild.remove();
-            }
-        });
-    }
+  const isAtBottom =
+    list.scrollHeight - list.scrollTop - list.clientHeight <= 150;
+  const oldScroll = list.scrollTop;
 
-    if (isAtBottom) {
-        list.scrollTop = list.scrollHeight;
-    } else {
-        list.scrollTop = oldScroll;
-    }
-    
-    if (this.theme === "love") this.startLoveHearts();
-}
+  const tempDiv = document.createElement("div");
+  tempDiv.innerHTML = newHtml;
+
+  if (list.innerHTML === "") {
+    list.innerHTML = newHtml;
+  } else {
+    Array.from(tempDiv.children).forEach((newChild) => {
+      const id = newChild.id;
+      if (id) {
+        const oldChild = document.getElementById(id);
+        if (oldChild) {
+          if (
+            oldChild.innerHTML !== newChild.innerHTML ||
+            oldChild.className !== newChild.className
+          ) {
+            oldChild.innerHTML = newChild.innerHTML;
+            oldChild.className = newChild.className;
+          }
+        } else {
+          list.appendChild(newChild);
+        }
+      } else if (newChild.classList.contains("date-header")) {
+        const date = newChild.getAttribute("data-date");
+        if (!list.querySelector(`.date-header[data-date="${date}"]`)) {
+          list.appendChild(newChild);
+        }
+      } else {
+        list.appendChild(newChild);
+      }
+    });
+
+    // Remove deleted messages
+    Array.from(list.children).forEach((oldChild) => {
+      if (oldChild.id && !tempDiv.querySelector("#" + oldChild.id)) {
+        oldChild.remove();
+      }
+    });
+  }
+
+  if (isAtBottom) {
+    list.scrollTop = list.scrollHeight;
+  } else {
+    list.scrollTop = oldScroll;
+  }
+
+  if (this.theme === "love") this.startLoveHearts();
+};
 
 class RewardsPath {
-    static init() {
-        const btn = document.getElementById("btn-show-rewards-path");
-        if (btn) {
-            btn.addEventListener("click", () => {
-                this.showModal();
-            });
-        }
+  static init() {
+    const btn = document.getElementById("btn-show-rewards-path");
+    if (btn) {
+      btn.addEventListener("click", () => {
+        this.showModal();
+      });
     }
-    
-    static showModal() {
-        let modal = document.getElementById("modal-rewards-path");
-        if (!modal) {
-            modal = document.createElement("div");
-            modal.className = "modal";
-            modal.id = "modal-rewards-path";
-            modal.innerHTML = `
+  }
+
+  static showModal() {
+    let modal = document.getElementById("modal-rewards-path");
+    if (!modal) {
+      modal = document.createElement("div");
+      modal.className = "modal";
+      modal.id = "modal-rewards-path";
+      modal.innerHTML = `
                 <div class="modal-content glass-panel" style="max-width: 500px; padding: 0; display:flex; flex-direction:column; overflow:hidden;">
                     <div style="padding: 20px; border-bottom: 1px solid var(--border-light); display:flex; justify-content:space-between; align-items:center;">
                         <h2 style="margin:0;">Путь наград за уровень</h2>
@@ -17889,81 +18765,120 @@ class RewardsPath {
                     </div>
                 </div>
             `;
-            document.body.appendChild(modal);
-            modal.querySelector("#btn-close-rewards").onclick = () => {
-                modal.classList.remove("active");
-            };
-        }
-        modal.classList.add("active");
+      document.body.appendChild(modal);
+      modal.querySelector("#btn-close-rewards").onclick = () => {
+        modal.classList.remove("active");
+      };
     }
+    modal.classList.add("active");
+  }
 
-    static generatePathHtml() {
-        let html = "";
-        const rewards = [
-            { level: 10, icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/1st%20Place%20Medal.webp", title: "Каталог косметики", desc: "Открывает доступ к магазину косметики, рамок, корон и бейджей профиля за COWCoins" },
-            { level: 30, icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Label.webp", title: "Дополнительное Имя (1 Слот)", desc: "Позволяет установить дополнительное юзернейм/титул, видимый в карточке профиля" },
-            { level: 50, icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Label.webp", title: "Дополнительное Имя (2 Слота)", desc: "Расширяет лимит до двух дополнительных кастомных имен профиля" },
-            { level: 100, icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp", title: "Дополнительное Имя (3 Слота)", desc: "Открывает максимальный лимит из трех дополнительных кастомных имен профиля" }
-        ];
+  static generatePathHtml() {
+    let html = "";
+    const rewards = [
+      {
+        level: 10,
+        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/1st%20Place%20Medal.webp",
+        title: "Каталог косметики",
+        desc: "Открывает доступ к магазину косметики, рамок, корон и бейджей профиля за COWCoins",
+      },
+      {
+        level: 30,
+        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Label.webp",
+        title: "Дополнительное Имя (1 Слот)",
+        desc: "Позволяет установить дополнительное юзернейм/титул, видимый в карточке профиля",
+      },
+      {
+        level: 50,
+        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Label.webp",
+        title: "Дополнительное Имя (2 Слота)",
+        desc: "Расширяет лимит до двух дополнительных кастомных имен профиля",
+      },
+      {
+        level: 100,
+        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp",
+        title: "Дополнительное Имя (3 Слота)",
+        desc: "Открывает максимальный лимит из трех дополнительных кастомных имен профиля",
+      },
+    ];
 
-        let currentUid = window.AppState?.currentUser?.uid;
-        let currentProfile = currentUid ? window.AppState.usersCache.get(currentUid) : null;
-        let currentXp = currentProfile?.xp || 0;
-        let currentLevelInfo = window.ProfileManager?.getExpMath ? window.ProfileManager.getExpMath(currentXp) : {level: 0};
-        let currentLvl = currentLevelInfo.level;
+    let currentUid = window.AppState?.currentUser?.uid;
+    let currentProfile = currentUid
+      ? window.AppState.usersCache.get(currentUid)
+      : null;
+    let currentXp = currentProfile?.xp || 0;
+    let currentLevelInfo = window.ProfileManager?.getExpMath
+      ? window.ProfileManager.getExpMath(currentXp)
+      : { level: 0 };
+    let currentLvl = currentLevelInfo.level;
 
-        html += `<div style="position:relative; margin-top:10px; margin-bottom: 20px;">
+    html += `<div style="position:relative; margin-top:10px; margin-bottom: 20px;">
                     <!-- Line connecting all nodes -->
                     <div style="position:absolute; left:24px; top:30px; bottom:30px; width:4px; background:linear-gradient(to bottom, var(--accent), rgba(255,255,255,0.05)); border-radius:4px; z-index:0;"></div>
         `;
 
-        rewards.forEach((r, i) => {
-            const isUnlocked = currentLvl >= r.level;
-            const op = isUnlocked ? "1.0" : "0.5";
-            const bg = isUnlocked ? "linear-gradient(135deg, rgba(255,143,198,0.15) 0%, rgba(255,255,255,0.02) 100%)" : "rgba(255,255,255,0.02)";
-            const border = isUnlocked ? "1px solid rgba(255,143,198,0.5)" : "1px solid rgba(255,255,255,0.05)";
-            const titleColor = isUnlocked ? "var(--brand, #ff8fc6)" : "#ffffff";
-            const glow = isUnlocked ? "0 8px 32px rgba(255,143,198,0.2)" : "0 4px 15px rgba(0,0,0,0.5)";
+    rewards.forEach((r, i) => {
+      const isUnlocked = currentLvl >= r.level;
+      const op = isUnlocked ? "1.0" : "0.5";
+      const bg = isUnlocked
+        ? "linear-gradient(135deg, rgba(255,143,198,0.15) 0%, rgba(255,255,255,0.02) 100%)"
+        : "rgba(255,255,255,0.02)";
+      const border = isUnlocked
+        ? "1px solid rgba(255,143,198,0.5)"
+        : "1px solid rgba(255,255,255,0.05)";
+      const titleColor = isUnlocked ? "var(--brand, #ff8fc6)" : "#ffffff";
+      const glow = isUnlocked
+        ? "0 8px 32px rgba(255,143,198,0.2)"
+        : "0 4px 15px rgba(0,0,0,0.5)";
 
-            // Check if it's the specific currently next achievable (or recently unlocked)
-            let isNext = false;
-            if (!isUnlocked && (i === 0 || (rewards[i-1] && currentLvl >= rewards[i-1].level))) isNext = true;
-            
-            const nodeGlow = isUnlocked ? `box-shadow: 0 0 16px var(--accent);` : (isNext ? `box-shadow: 0 0 16px rgba(255,255,255,0.5); border-color:#fff !important;` : '');
+      // Check if it's the specific currently next achievable (or recently unlocked)
+      let isNext = false;
+      if (
+        !isUnlocked &&
+        (i === 0 || (rewards[i - 1] && currentLvl >= rewards[i - 1].level))
+      )
+        isNext = true;
 
-            html += `
+      const nodeGlow = isUnlocked
+        ? `box-shadow: 0 0 16px var(--accent);`
+        : isNext
+          ? `box-shadow: 0 0 16px rgba(255,255,255,0.5); border-color:#fff !important;`
+          : "";
+
+      html += `
                 <div style="position:relative; margin-bottom:30px; opacity:${op}; z-index:1;">
-                    <div style="position:absolute; left:9px; top:18px; width:34px; height:34px; border-radius:50%; background:${isUnlocked ? 'var(--accent)' : 'var(--panel)'}; border:3px solid ${isUnlocked ? 'var(--accent)' : 'rgba(255,255,255,0.1)'}; display:flex; align-items:center; justify-content:center; color:${isUnlocked ? '#000' : '#fff'}; font-weight:800; font-size:12px; ${nodeGlow}">
-                        ${isUnlocked ? '✓' : ''}
-                        ${!isUnlocked && isNext ? '<div style="position:absolute; width:100%; height:100%; border-radius:50%; border:2px solid #fff; animation: ping 2s infinite cubic-bezier(0, 0, 0.2, 1); opacity:0.5;"></div>' : ''}
+                    <div style="position:absolute; left:9px; top:18px; width:34px; height:34px; border-radius:50%; background:${isUnlocked ? "var(--accent)" : "var(--panel)"}; border:3px solid ${isUnlocked ? "var(--accent)" : "rgba(255,255,255,0.1)"}; display:flex; align-items:center; justify-content:center; color:${isUnlocked ? "#000" : "#fff"}; font-weight:800; font-size:12px; ${nodeGlow}">
+                        ${isUnlocked ? "✓" : ""}
+                        ${!isUnlocked && isNext ? '<div style="position:absolute; width:100%; height:100%; border-radius:50%; border:2px solid #fff; animation: ping 2s infinite cubic-bezier(0, 0, 0.2, 1); opacity:0.5;"></div>' : ""}
                     </div>
                     
                     <div style="background:${bg}; border:${border}; border-radius: 20px; padding: 20px; margin-left: 60px; display:flex; gap:20px; box-shadow: ${glow}; transition: all 0.3s ease; align-items:center; position:relative; overflow:hidden;">
-                        ${isUnlocked ? '<div style="position:absolute; top:-60px; right:-60px; width:120px; height:120px; background:radial-gradient(circle, rgba(255,143,198,0.2) 0%, transparent 70%); border-radius:50%; pointer-events:none;"></div>' : ''}
+                        ${isUnlocked ? '<div style="position:absolute; top:-60px; right:-60px; width:120px; height:120px; background:radial-gradient(circle, rgba(255,143,198,0.2) 0%, transparent 70%); border-radius:50%; pointer-events:none;"></div>' : ""}
                         <div style="width:56px; height:56px; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.2); border-radius:14px; flex-shrink:0; border:1px solid rgba(255,255,255,0.05);">
-                            <img src="${r.icon}" style="width:40px; height:40px; object-fit:contain; filter:${isUnlocked ? 'drop-shadow(0 4px 6px rgba(0,0,0,0.3))' : 'grayscale(100%) opacity(0.5)'};" />
+                            <img src="${r.icon}" style="width:40px; height:40px; object-fit:contain; filter:${isUnlocked ? "drop-shadow(0 4px 6px rgba(0,0,0,0.3))" : "grayscale(100%) opacity(0.5)"};" />
                         </div>
                         <div style="flex:1;">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                                 <div style="font-size:13px; text-transform:uppercase; font-weight:800; letter-spacing:1px; color:${titleColor};">${r.title}</div>
-                                <div style="font-size:11px; font-weight:800; color:${isUnlocked?'#000':'var(--text-muted)'}; background:${isUnlocked?'var(--accent)':'rgba(255,255,255,0.1)'}; padding:4px 10px; border-radius:12px; letter-spacing:0.5px;">УРОВЕНЬ ${r.level}</div>
+                                <div style="font-size:11px; font-weight:800; color:${isUnlocked ? "#000" : "var(--text-muted)"}; background:${isUnlocked ? "var(--accent)" : "rgba(255,255,255,0.1)"}; padding:4px 10px; border-radius:12px; letter-spacing:0.5px;">УРОВЕНЬ ${r.level}</div>
                             </div>
                             <div style="font-size:14px; font-weight:500; color:rgba(255,255,255,0.85); line-height:1.4;">${r.desc}</div>
                         </div>
                     </div>
                 </div>
             `;
-        });
-        
-        html += `</div>`;
+    });
 
-        return html;
-    }
+    html += `</div>`;
+
+    return html;
+  }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-    setTimeout(() => {
-        RewardsPath.init();
-    }, 1000);
+document.addEventListener("DOMContentLoaded", async () => {
+  setTimeout(() => {
+    RewardsPath.init();
+  }, 1000);
+  // [INJECT TELEGRAM DM]
+  await import("./telegram_dm_inject.js");
 });
-

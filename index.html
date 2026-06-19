@@ -9,55 +9,8 @@
     <title>COWIO - Online Cinema Together</title>
     <!-- // [NEW] THEME PERSISTENCE BOOTSTRAP -->
     <script>
-      let emojiMap = {};
-      fetch("/generated_emojis.json")
-        .then((r) => r.json())
-        .then((d) => {
-          emojiMap = d;
-          if (localStorage.getItem("staticEmojis") === "true")
-            toggleStaticEmojis(true);
-        });
-
-      const applyStaticEmoji = (img) => {
-        if (localStorage.getItem("staticEmojis") !== "true") return;
-        if (img.dataset.staticApplied) return;
-        const urlOriginal = img.src.replace(".png", ".webp");
-        const emojiStr = emojiMap[urlOriginal] || "✨";
-
-        const span = document.createElement("span");
-        span.textContent = emojiStr;
-        span.className = "static-emoji-text";
-        span.style.fontSize = img.style.height || "1.2em";
-        span.style.verticalAlign = "bottom";
-        span.dataset.originalSrc = urlOriginal;
-
-        img.style.display = "none";
-        img.dataset.staticApplied = "true";
-        img.parentNode.insertBefore(span, img.nextSibling);
-      };
-
-      const revertStaticEmoji = (img) => {
-        img.style.display = "";
-        delete img.dataset.staticApplied;
-        if (
-          img.nextSibling &&
-          img.nextSibling.className === "static-emoji-text"
-        ) {
-          img.parentNode.removeChild(img.nextSibling);
-        }
-      };
-
-      function toggleStaticEmojis(enabled) {
-        localStorage.setItem("staticEmojis", enabled ? "true" : "false");
-        const imgs = document.querySelectorAll(
-          'img[src*="Telegram-Animated-Emojis"]',
-        );
-        if (enabled) {
-          imgs.forEach(applyStaticEmoji);
-        } else {
-          imgs.forEach(revertStaticEmoji);
-        }
-      }
+      // Force animated emojis by default - removed static emojis toggle
+      localStorage.setItem("staticEmojis", "false");
 
       window.toggleSiteParticlesSetting = function (enabled) {
         localStorage.setItem("siteParticles", enabled ? "true" : "false");
@@ -88,13 +41,6 @@
       };
 
       document.addEventListener("DOMContentLoaded", () => {
-        if (localStorage.getItem("staticEmojis") === "true") {
-          const seCheckbox = document.getElementById(
-            "site-settings-static-emojis",
-          );
-          if (seCheckbox) seCheckbox.checked = true;
-        }
-
         const pVal = localStorage.getItem("siteParticles");
         if (pVal === "false") {
           const cb = document.getElementById("site-settings-particle");
@@ -125,27 +71,6 @@
           const bg = document.getElementById("premium-black-bg");
           if (bg) bg.style.setProperty("display", "none", "important");
         }
-
-        const observer = new MutationObserver((mutations) => {
-          if (localStorage.getItem("staticEmojis") !== "true") return;
-          mutations.forEach((m) => {
-            if (m.type === "childList") {
-              m.addedNodes.forEach((node) => {
-                if (
-                  node.nodeName === "IMG" &&
-                  node.src.includes("Telegram-Animated-Emojis")
-                ) {
-                  applyStaticEmoji(node);
-                } else if (node.querySelectorAll) {
-                  node
-                    .querySelectorAll('img[src*="Telegram-Animated-Emojis"]')
-                    .forEach(applyStaticEmoji);
-                }
-              });
-            }
-          });
-        });
-        observer.observe(document.body, { childList: true, subtree: true });
       });
     </script>
     <script>
@@ -407,6 +332,7 @@
           -apple-system,
           sans-serif;
         -webkit-tap-highlight-color: transparent;
+        outline: none !important;
       }
       html,
       body {
@@ -419,10 +345,6 @@
         background: var(--bg);
         color: var(--text-main);
         overflow: hidden;
-      }
-      body.auth-loading {
-        visibility: hidden;
-        background: #000;
       }
       /* // [NEW] GLOBAL THEME TOGGLE + PERSISTED LIGHT OVERRIDES */
       html.theme-light-global {
@@ -4085,7 +4007,7 @@
     </style>
     <meta name="lava-verify" content="b588132fc91334f7" />
   </head>
-  <body class="auth-loading">
+  <body>
     <!-- Neural Network & Premium Black Background -->
     <div id="premium-black-bg"></div>
     <canvas id="particle-canvas"></canvas>
@@ -5108,23 +5030,86 @@
         </main>
 
         <main class="rooms-main" id="section-library" style="display: none">
-          <div class="lobby-top-bar" style="justify-content:space-between; margin-bottom: 20px;">
-              <h2 style="font-size: 24px; display:flex; align-items:center; gap:10px;">
-                  <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Open%20Book.webp" style="width: 32px; height: 32px;" />
-                  Библиотека
-              </h2>
+          <div
+            class="lobby-top-bar"
+            style="justify-content: space-between; margin-bottom: 20px"
+          >
+            <h2
+              style="
+                font-size: 24px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+              "
+            >
+              <img
+                src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Open%20Book.webp"
+                style="width: 32px; height: 32px"
+              />
+              Библиотека
+            </h2>
           </div>
-          <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-            <button class="primary-btn" id="btn-lib-public" style="flex: 1; border-radius: 12px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Globe%20Showing%20Americas.webp" style="width: 20px; height: 20px; vertical-align: middle; margin-right: 8px;" /> Публичная библиотека</button>
-            <button class="secondary-btn" id="btn-lib-my" style="flex: 1; border-radius: 12px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Bust%20In%20Silhouette.webp" style="width: 20px; height: 20px; vertical-align: middle; margin-right: 8px;" /> Моя библиотека</button>
-          </div>
-          <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-            <input type="text" id="library-search" placeholder="Поиск видео..." class="settings-input" style="flex: 1; border-radius: 12px; padding-left: 15px;" />
-            <button class="primary-btn" id="btn-lib-add-video" style="border-radius: 12px; width:auto; padding:0 20px;">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Plus.webp" style="width: 20px; height: 20px; vertical-align: middle; margin-right: 5px; filter: invert(1);" /> Добавить видео
+          <div style="display: flex; gap: 10px; margin-bottom: 20px">
+            <button
+              class="primary-btn"
+              id="btn-lib-public"
+              style="flex: 1; border-radius: 12px"
+            >
+              <img
+                src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Globe%20Showing%20Americas.webp"
+                style="
+                  width: 20px;
+                  height: 20px;
+                  vertical-align: middle;
+                  margin-right: 8px;
+                "
+              />
+              Публичная библиотека
+            </button>
+            <button
+              class="secondary-btn"
+              id="btn-lib-my"
+              style="flex: 1; border-radius: 12px"
+            >
+              <img
+                src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Bust%20In%20Silhouette.webp"
+                style="
+                  width: 20px;
+                  height: 20px;
+                  vertical-align: middle;
+                  margin-right: 8px;
+                "
+              />
+              Моя библиотека
             </button>
           </div>
-          
+          <div style="display: flex; gap: 10px; margin-bottom: 20px">
+            <input
+              type="text"
+              id="library-search"
+              placeholder="Поиск видео..."
+              class="settings-input"
+              style="flex: 1; border-radius: 12px; padding-left: 15px"
+            />
+            <button
+              class="primary-btn"
+              id="btn-lib-add-video"
+              style="border-radius: 12px; width: auto; padding: 0 20px"
+            >
+              <img
+                src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Plus.webp"
+                style="
+                  width: 20px;
+                  height: 20px;
+                  vertical-align: middle;
+                  margin-right: 5px;
+                  filter: invert(1);
+                "
+              />
+              Добавить видео
+            </button>
+          </div>
+
           <div id="library-grid" class="rooms-grid">
             <!-- Videos inject here -->
           </div>
@@ -6021,7 +6006,20 @@
               ⬅️ Выйти
             </button>
             <div class="room-title-wrapper">
-              <h2 id="room-title-text">Загрузка комнаты... <span id="room-typing-status" style="font-size: 13px; color: var(--text-muted); display:inline-block; margin-left: 10px; font-weight:normal; animation: pulse 1.5s infinite;"></span></h2>
+              <h2 id="room-title-text">
+                Загрузка комнаты...
+                <span
+                  id="room-typing-status"
+                  style="
+                    font-size: 13px;
+                    color: var(--text-muted);
+                    display: inline-block;
+                    margin-left: 10px;
+                    font-weight: normal;
+                    animation: pulse 1.5s infinite;
+                  "
+                ></span>
+              </h2>
             </div>
             <div
               style="
@@ -6087,7 +6085,19 @@
                 justify-content: center;
               "
             >
-              <div id="yt-player" style="width: 100%; height: 100%; max-width: 100%; max-height: 100%; aspect-ratio: 16/9; display: flex; justify-content: center; align-items: center;"></div>
+              <div
+                id="yt-player"
+                style="
+                  width: 100%;
+                  height: 100%;
+                  max-width: 100%;
+                  max-height: 100%;
+                  aspect-ratio: 16/9;
+                  display: flex;
+                  justify-content: center;
+                  align-items: center;
+                "
+              ></div>
             </div>
             <div
               id="room-video-overlay"
@@ -6363,45 +6373,85 @@
               <!-- JS injected -->
             </div>
           </div>
-          <div style="margin-bottom: 12px; text-align: left;">
-            <label for="edit-name" style="display:block; font-size: 13px; color: var(--text-muted); margin-bottom: 4px; font-weight: 500;">Отображаемое имя</label>
-            <input
-              type="text"
-              id="edit-name"
-              placeholder="Напр. Алексей"
-            />
+          <div style="margin-bottom: 12px; text-align: left">
+            <label
+              for="edit-name"
+              style="
+                display: block;
+                font-size: 13px;
+                color: var(--text-muted);
+                margin-bottom: 4px;
+                font-weight: 500;
+              "
+              >Отображаемое имя</label
+            >
+            <input type="text" id="edit-name" placeholder="Напр. Алексей" />
           </div>
-          <div style="margin-bottom: 12px; text-align: left;">
-            <label for="edit-username-input" style="display:block; font-size: 13px; color: var(--text-muted); margin-bottom: 4px; font-weight: 500;">Уникальный ID</label>
+          <div style="margin-bottom: 12px; text-align: left">
+            <label
+              for="edit-username-input"
+              style="
+                display: block;
+                font-size: 13px;
+                color: var(--text-muted);
+                margin-bottom: 4px;
+                font-weight: 500;
+              "
+              >Уникальный ID</label
+            >
             <input
               type="text"
               id="edit-username-input"
               placeholder="Напр. alexey99 (без @)"
             />
           </div>
-          <div id="extra-usernames-container" style="display:none; margin-bottom: 12px; text-align: left;">
-             <label style="display:block; font-size: 13px; color: var(--text-muted); margin-bottom: 4px; font-weight: 500;">Дополнительные ID</label>
-             <input
+          <div
+            id="extra-usernames-container"
+            style="display: none; margin-bottom: 12px; text-align: left"
+          >
+            <label
+              style="
+                display: block;
+                font-size: 13px;
+                color: var(--text-muted);
+                margin-bottom: 4px;
+                font-weight: 500;
+              "
+              >Дополнительные ID</label
+            >
+            <input
               type="text"
               id="edit-extra-username-input-1"
               placeholder="+ ID (с 30 уровня)"
-              style="margin-top: 5px; border-color: rgba(255, 200, 100, 0.4);"
+              style="margin-top: 5px; border-color: rgba(255, 200, 100, 0.4)"
             />
-             <input
+            <input
               type="text"
               id="edit-extra-username-input-2"
               placeholder="+ ID (с 50 уровня)"
-              style="margin-top: 5px; border-color: rgba(255, 200, 100, 0.4);"
+              style="margin-top: 5px; border-color: rgba(255, 200, 100, 0.4)"
             />
-             <input
+            <input
               type="text"
               id="edit-extra-username-input-3"
               placeholder="+ ID (со 100 уровня)"
-              style="margin-top: 5px; border-color: rgba(255, 200, 100, 0.4);"
+              style="margin-top: 5px; border-color: rgba(255, 200, 100, 0.4)"
             />
           </div>
-          <div style="position: relative; margin-bottom: 12px; text-align: left;">
-            <label for="edit-bio" style="display:block; font-size: 13px; color: var(--text-muted); margin-bottom: 4px; font-weight: 500;">О себе</label>
+          <div
+            style="position: relative; margin-bottom: 12px; text-align: left"
+          >
+            <label
+              for="edit-bio"
+              style="
+                display: block;
+                font-size: 13px;
+                color: var(--text-muted);
+                margin-bottom: 4px;
+                font-weight: 500;
+              "
+              >О себе</label
+            >
             <textarea
               id="edit-bio"
               placeholder="Расскажите немного о себе..."
@@ -6908,7 +6958,13 @@
         <div class="dm-sidebar">
           <div class="dm-sidebar-header">
             <span>Чаты</span>
-            <button class="secondary-btn btn-close-modal" style="display:none; width:auto; padding:6px 10px;" id="btn-dm-sidebar-close">✕</button>
+            <button
+              class="secondary-btn btn-close-modal"
+              style="display: none; width: auto; padding: 6px 10px"
+              id="btn-dm-sidebar-close"
+            >
+              ✕
+            </button>
           </div>
           <div class="dm-sidebar-list" id="dm-sidebar-list">
             <!-- Populated by JS -->
@@ -6917,10 +6973,37 @@
 
         <!-- Right Main Area for Chat -->
         <div class="dm-main">
-          <div class="dm-modal-header" style="display:flex; align-items:center; gap:10px;">
-            <button class="secondary-btn" id="btn-dm-back" style="display:none; width:auto; padding:8px 12px; border-radius:10px; font-size:18px;">‹</button>
-            <div style="flex:1;">
-              <h2 id="dm-chat-title" style="margin-bottom: 5px">Личный чат <span id="dm-typing-status" style="font-size: 12px; color: var(--text-muted); display:inline-block; margin-left: 10px; font-weight:normal;"></span></h2>
+          <div
+            class="dm-modal-header"
+            style="display: flex; align-items: center; gap: 10px"
+          >
+            <button
+              class="secondary-btn"
+              id="btn-dm-back"
+              style="
+                display: none;
+                width: auto;
+                padding: 8px 12px;
+                border-radius: 10px;
+                font-size: 18px;
+              "
+            >
+              ‹
+            </button>
+            <div style="flex: 1">
+              <h2 id="dm-chat-title" style="margin-bottom: 5px">
+                Личный чат
+                <span
+                  id="dm-typing-status"
+                  style="
+                    font-size: 12px;
+                    color: var(--text-muted);
+                    display: inline-block;
+                    margin-left: 10px;
+                    font-weight: normal;
+                  "
+                ></span>
+              </h2>
               <p style="font-size: 12px; color: var(--text-muted)">
                 Приватные сообщения
               </p>
@@ -7006,7 +7089,7 @@
                 ✕
               </button>
             </div>
-            
+
             <div
               id="dm-emoji-categories"
               style="
@@ -7015,7 +7098,7 @@
                 overflow-x: auto;
                 padding-bottom: 5px;
                 margin-bottom: 5px;
-                border-bottom: 1px solid rgba(255,255,255,0.1);
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
                 flex-shrink: 0;
               "
             >
@@ -7653,7 +7736,13 @@
               "
             ></div>
           </div>
-          <button class="primary-btn" id="btn-show-rewards-path" style="width: 100%; font-size: 14px; padding: 10px;">Путь наград</button>
+          <button
+            class="primary-btn"
+            id="btn-show-rewards-path"
+            style="width: 100%; font-size: 14px; padding: 10px"
+          >
+            Путь наград
+          </button>
         </div>
 
         <button

@@ -110,22 +110,6 @@ const SettingSections = [
     icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Keyboard.webp",
     items: [
       {
-        id: "site-settings-static-emojis",
-        type: "toggle",
-        title: "Статичные эмодзи",
-        desc: "Снижает нагрузку на ПК",
-        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Telephone.webp",
-        default: false,
-        onChange: (val) => {
-          localStorage.setItem("staticEmojis", val);
-          const imgs = document.querySelectorAll(
-            'img[src*="Telegram-Animated-Emojis"]',
-          );
-          if (val) imgs.forEach(applyStaticEmoji);
-          else imgs.forEach(revertStaticEmoji);
-        },
-      },
-      {
         id: "site-set-dyslexia",
         type: "toggle",
         title: "Шрифт для дислексиков",
