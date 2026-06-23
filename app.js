@@ -1153,6 +1153,11 @@ class Utils {
             .room-card { animation-delay: 1s; }
             .user-card { animation-delay: 2s; }
             
+            @keyframes pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.5; }
+            }
+
             /* Фикс размеров плеера и Ambilight стили */
             .video-container {
                 position: relative;
@@ -16561,7 +16566,7 @@ class MobileSwipeManager {
 // 10. ЗАПУСК ПРИЛОЖЕНИЯ
 // ============================================================================
 
-window.onload = () => {
+const runApp = () => {
   const initSystem = (name, initFn) => {
     try {
       if (initFn) initFn();
@@ -16627,6 +16632,12 @@ window.onload = () => {
     });
   });
 };
+
+if (document.readyState === "complete" || document.readyState === "interactive") {
+  setTimeout(runApp, 1);
+} else {
+  window.addEventListener("DOMContentLoaded", runApp);
+}
 
 class CatalogManager {
   static items = [];
@@ -18947,10 +18958,16 @@ class RewardsPath {
   }
 }
 
-document.addEventListener("DOMContentLoaded", async () => {
+const initTelegram = async () => {
   setTimeout(() => {
     RewardsPath.init();
   }, 1000);
   // [INJECT TELEGRAM DM]
   await import("./telegram_dm_inject.js");
-});
+};
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initTelegram);
+} else {
+  initTelegram();
+}

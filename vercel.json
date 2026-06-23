@@ -20,11 +20,14 @@
   ],
   "routes": [
     {
+      "handle": "filesystem"
+    },
+    {
       "src": "/api/(.*)",
       "dest": "/server.js"
     },
     {
-      "src": "/((?!api/).*[^.]*)",
+      "src": "/(.*)",
       "dest": "/index.html"
     }
   ]
