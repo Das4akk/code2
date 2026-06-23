@@ -340,6 +340,10 @@
         height: 100%;
         margin: 0;
         padding: 0;
+        outline: none !important;
+      }
+      img, svg, canvas {
+        outline: none !important;
       }
       body {
         background: var(--bg);
@@ -2858,115 +2862,7 @@
           border-color 0.8s ease,
           box-shadow 0.8s ease;
       }
-      #modal-dm-chat.theme-love .modal-content {
-        background: rgba(20, 6, 14, 0.9);
-        border-color: rgba(226, 120, 169, 0.22);
-        box-shadow: 0 12px 35px rgba(66, 15, 42, 0.55);
-      }
-      #modal-dm-chat.theme-love .dm-messages,
-      #modal-dm-chat.theme-love .dm-compose {
-        background: rgba(23, 7, 16, 0.65);
-        border-radius: 12px;
-        padding: 8px;
-      }
-      #modal-dm-chat.theme-love .dm-bubble,
-      #modal-dm-chat.theme-love .bubble {
-        background: rgba(214, 92, 150, 0.12);
-        border-color: rgba(214, 120, 166, 0.28);
-        color: #fff;
-      }
-      #modal-dm-chat.theme-default .modal-content {
-        background: radial-gradient(
-          circle at top,
-          rgba(255, 255, 255, 0.09),
-          rgba(9, 9, 9, 0.98)
-        ) !important;
-      }
-      #modal-dm-chat.theme-light .modal-content {
-        background: rgba(255, 255, 255, 0.97);
-        border-color: #d8dbe2;
-        box-shadow: 0 12px 35px rgba(15, 23, 42, 0.14);
-        color: #0b0d12;
-      }
-      #modal-dm-chat.theme-light .dm-messages,
-      #modal-dm-chat.theme-light .dm-compose {
-        background: rgba(249, 250, 252, 0.95);
-        border-radius: 12px;
-        padding: 8px;
-      }
-      #modal-dm-chat.theme-light .bubble {
-        background: #ffffff;
-        border-color: #d6dae2;
-        color: #0b0d12;
-      }
-      #modal-dm-chat.theme-light .self .bubble {
-        background: #111111;
-        border-color: #111111;
-        color: #fff;
-      }
-      #modal-dm-chat.theme-aurora .modal-content {
-        background: radial-gradient(
-          circle at 20% 15%,
-          rgba(43, 104, 255, 0.22),
-          rgba(8, 18, 36, 0.95) 54%,
-          rgba(4, 8, 18, 0.98) 100%
-        );
-        border-color: rgba(95, 145, 255, 0.34);
-        box-shadow: 0 16px 42px rgba(19, 53, 117, 0.45);
-      }
-      #modal-dm-chat.theme-aurora .dm-messages,
-      #modal-dm-chat.theme-aurora .dm-compose {
-        background: rgba(11, 20, 39, 0.78);
-        border-radius: 12px;
-        padding: 8px;
-      }
-      #modal-dm-chat.theme-aurora .bubble {
-        background: rgba(63, 110, 218, 0.22);
-        border-color: rgba(108, 154, 255, 0.36);
-        color: #e8f1ff;
-      }
-      #modal-dm-chat.theme-sunset .modal-content {
-        background: radial-gradient(
-          circle at 18% 18%,
-          rgba(255, 120, 76, 0.26),
-          rgba(38, 10, 18, 0.92) 50%,
-          rgba(17, 5, 11, 0.98) 100%
-        );
-        border-color: rgba(255, 133, 94, 0.34);
-        box-shadow: 0 16px 42px rgba(97, 32, 26, 0.52);
-      }
-      #modal-dm-chat.theme-sunset .dm-messages,
-      #modal-dm-chat.theme-sunset .dm-compose {
-        background: rgba(30, 9, 15, 0.82);
-        border-radius: 12px;
-        padding: 8px;
-      }
-      #modal-dm-chat.theme-sunset .bubble {
-        background: rgba(255, 128, 92, 0.16);
-        border-color: rgba(255, 162, 130, 0.36);
-        color: #ffe8df;
-      }
-      #modal-dm-chat.theme-ocean .modal-content {
-        background: radial-gradient(
-          circle at 72% 12%,
-          rgba(65, 170, 198, 0.24),
-          rgba(8, 24, 30, 0.95) 52%,
-          rgba(4, 12, 16, 0.99) 100%
-        );
-        border-color: rgba(93, 199, 224, 0.34);
-        box-shadow: 0 16px 42px rgba(18, 66, 77, 0.5);
-      }
-      #modal-dm-chat.theme-ocean .dm-messages,
-      #modal-dm-chat.theme-ocean .dm-compose {
-        background: rgba(8, 24, 31, 0.82);
-        border-radius: 12px;
-        padding: 8px;
-      }
-      #modal-dm-chat.theme-ocean .bubble {
-        background: rgba(83, 199, 227, 0.14);
-        border-color: rgba(126, 228, 252, 0.34);
-        color: #e6fdff;
-      }
+      /* DM Theme rules extracted to telegram_dm_inject.js */
 
       #toast-container {
         position: fixed;
@@ -4019,10 +3915,12 @@
     </div>
     <div id="remote-audio-container"></div>
 
+    <!-- SPLASH SCREEN REMOVED -->
+
     <!-- ========================================================================= -->
     <!-- AUTH SCREEN -->
     <!-- ========================================================================= -->
-    <section id="auth-screen" class="screen active">
+    <section id="auth-screen" class="screen">
       <style>
         #auth-screen.active {
           display: flex !important;

@@ -74,16 +74,26 @@ import { registerPremiumRoutes } from './src/routes/premium.js';
 // ----------------------------------------------------
 // НАСТРОЙКА FIREBASE ADMIN И ПОЧТЫ (ДЛЯ СБРОСА ПАРОЛЯ)
 // ----------------------------------------------------
+let smtpUser = process.env.SMTP_USER || 'cowiosupport@gmail.com';
+let smtpPass = process.env.SMTP_PASS || 'qbkeftvifbqyicyx';
+
 try {
     // Внимание для создателя: чтобы это заработало, нужно поместить файл serviceAccountKey.json в корень проекта.
     // Если его нет, firebase-admin не запустится, но сервер не упадет (будет ошибка при попытке сброса).
     if (fs.existsSync('./serviceAccountKey.json')) {
         const serviceAccount = JSON.parse(fs.readFileSync('./serviceAccountKey.json', 'utf8'));
-        admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount),
-            databaseURL: process.env.FIREBASE_DATABASE_URL || 'https://das4akk-1-default-rtdb.firebaseio.com'
-        });
-        console.log('[COWIO] Firebase Admin SDK успешно запущен!');
+        
+        if (serviceAccount.SMTP_USER) smtpUser = serviceAccount.SMTP_USER;
+        if (serviceAccount.SMTP_PASS) smtpPass = serviceAccount.SMTP_PASS;
+        if (serviceAccount.SMTp_USER) smtpUser = serviceAccount.SMTp_USER;
+
+        if (serviceAccount.project_id) {
+            admin.initializeApp({
+                credential: admin.credential.cert(serviceAccount),
+                databaseURL: process.env.FIREBASE_DATABASE_URL || 'https://das4akk-1-default-rtdb.firebaseio.com'
+            });
+            console.log('[COWIO] Firebase Admin SDK успешно запущен!');
+        }
     } else {
         console.warn('[COWIO] ВНИМАНИЕ: serviceAccountKey.json не найден. Сброс пароля/почты работать не будет!');
     }
@@ -96,8 +106,8 @@ try {
 const mailTransporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
-        user: process.env.SMTP_USER || 'cowiosupport@gmail.com',
-        pass: process.env.SMTP_PASS || 'qbkeftvifbqyicyx'
+        user: smtpUser,
+        pass: smtpPass
     }
 });
 

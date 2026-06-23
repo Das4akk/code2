@@ -4,47 +4,74 @@ console.log("[Telegram Patch] Loading...");
 
 const TELEGRAM_CSS = `
 .dm-modal-content {
-    background: linear-gradient(135deg, #2c2c2c, #000) !important;
-    color: #f5f5f5;
+    background: #09090b !important;
+    color: #f4f4f5;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05);
 }
 .dm-sidebar {
-    background: linear-gradient(180deg, #1a1a1a, #0a0a0a) !important;
-    border-right: 1px solid rgba(255,255,255,0.05) !important;
+    background: #09090b !important;
+    border-right: 1px solid rgba(255,255,255,0.04) !important;
 }
 .dm-sidebar-header {
-    background: linear-gradient(90deg, #2a2a2a, #111) !important;
-    padding: 10px 15px !important;
-    border-bottom: 1px solid rgba(255,255,255,0.05) !important;
+    background: #09090b !important;
+    padding: 20px 24px !important;
+    border-bottom: 1px solid rgba(255,255,255,0.03) !important;
 }
 .dm-chat-item {
-    padding: 10px 15px !important;
+    padding: 14px 18px !important;
     border-bottom: none !important;
-    border-radius: 6px;
-    margin: 2px 5px !important;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.02)) !important;
+    border-radius: 12px;
+    margin: 6px 12px !important;
+    background: transparent !important;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
 }
-.dm-chat-item:hover { background: linear-gradient(90deg, #333, #222) !important; }
-.dm-chat-item.active { background: linear-gradient(90deg, #555, #333) !important; }
+.dm-chat-item:after {
+    content: '';
+    position: absolute;
+    bottom: -3px;
+    left: 18px;
+    right: 18px;
+    height: 1px;
+    background: rgba(255,255,255,0.02);
+}
+.dm-chat-item:hover { 
+    background: rgba(255,255,255,0.03) !important; 
+    transform: translateX(2px);
+}
+.dm-chat-item.active { 
+    background: rgba(255,255,255,0.08) !important; 
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05);
+}
 
 .dm-main {
-    background: linear-gradient(135deg, #1c1c1c, #050505) !important;
+    background: #000000 !important;
     position: relative;
     overflow: hidden;
 }
 .dm-modal-header {
-    background: linear-gradient(90deg, #222, #000) !important;
-    border-bottom: 1px solid rgba(255,255,255,0.05) !important;
-    height: 60px;
-    padding: 10px 20px !important;
+    background: rgba(9, 9, 11, 0.8) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255,255,255,0.03) !important;
+    height: 70px;
+    padding: 0 28px !important;
+    display: flex;
+    align-items: center;
+    position: relative;
+    z-index: 10;
 }
 .dm-messages {
-    padding: 20px !important;
+    padding: 28px !important;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 12px;
     overflow-y: auto;
     position: relative;
     z-index: 2;
+    scroll-behavior: smooth;
 }
 .dm-messages::-webkit-scrollbar,
 .dm-sidebar::-webkit-scrollbar,
@@ -61,8 +88,8 @@ const TELEGRAM_CSS = `
 #dm-theme-carousel::-webkit-scrollbar-thumb,
 .theme-folders::-webkit-scrollbar-thumb,
 .theme-preview-track::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
 }
 .dm-messages::-webkit-scrollbar-track,
 .dm-sidebar::-webkit-scrollbar-track,
@@ -74,37 +101,45 @@ const TELEGRAM_CSS = `
 }
 .tg-bubble {
     max-width: 65%;
-    padding: 8px 12px;
-    border-radius: 12px;
+    padding: 10px 16px;
+    border-radius: 20px;
     position: relative;
     word-break: break-word;
-    font-size: 14px;
-    line-height: 1.4;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    font-size: 15px;
+    line-height: 1.5;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.05);
+    letter-spacing: -0.1px;
 }
 .m-line {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    margin-bottom: 2px;
+    margin-bottom: 4px;
 }
 .m-line.self {
     align-items: flex-end;
 }
 .m-line .tg-bubble {
-    background: linear-gradient(135deg, #3a3a3a, #1f1f1f);
-    border-bottom-left-radius: 4px;
+    background: #18181b;
+    border-bottom-left-radius: 6px;
+    color: #e4e4e7;
+    border: 1px solid rgba(255,255,255,0.02);
 }
 .m-line.self .tg-bubble {
-    background: linear-gradient(135deg, #666, #333);
-    border-bottom-right-radius: 4px;
+    background: #fafafa;
+    border-bottom-right-radius: 6px;
+    color: #09090b;
 }
 .tg-bubble .tg-time {
-    font-size: 10px;
-    color: rgba(255,255,255,0.5);
+    font-size: 11px;
+    color: rgba(255,255,255,0.3);
     float: right;
-    margin-top: 5px;
-    margin-left: 10px;
+    margin-top: 6px;
+    margin-left: 12px;
+    font-variant-numeric: tabular-nums;
+}
+.m-line.self .tg-bubble .tg-time {
+    color: rgba(0,0,0,0.4);
 }
 .tg-reactions {
     position: absolute;
@@ -132,76 +167,87 @@ const TELEGRAM_CSS = `
 
 /* Telegram Input Area */
 .tg-input-area {
-    background: linear-gradient(0deg, #111, #222);
-    padding: 10px 15px;
+    background: #000000;
+    padding: 12px 20px;
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 8px;
     position: relative;
-    border-top: 1px solid rgba(255,255,255,0.05);
+    border-top: 1px solid rgba(255,255,255,0.04);
     z-index: 2;
 }
 .tg-reply-bar {
     display: flex;
     align-items: center;
-    border-left: 2px solid #fff;
-    padding-left: 10px;
+    border-left: 3px solid #ffffff;
+    padding-left: 12px;
     margin-bottom: 5px;
 }
 .tg-input-row {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
 }
 .tg-input-box {
     flex: 1;
-    background: linear-gradient(90deg, #333, #222);
+    background: #181818;
     border-radius: 20px;
     display: flex;
     align-items: center;
-    padding: 8px 15px;
-    box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
+    padding: 8px 16px;
+    transition: background 0.2s;
+}
+.tg-input-box:focus-within {
+    background: #202020;
 }
 .tg-input-box textarea {
     flex: 1;
     background: transparent;
     border: none;
-    color: #fff;
+    color: #ffffff;
     outline: none;
     font-family: inherit;
     resize: none;
     max-height: 150px;
     min-height: 20px;
+    font-size: 15px;
+    line-height: 1.4;
 }
 .tg-btn {
     background: transparent;
     border: none;
-    color: #6b7d8d;
+    color: #888888;
     cursor: pointer;
     font-size: 20px;
-    padding: 5px;
+    padding: 6px;
+    outline: none !important;
+    -webkit-tap-highlight-color: transparent;
     transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s, color 0.2s;
     display: flex;
     align-items: center;
     justify-content: center;
+    border-radius: 50%;
+}
+.tg-btn:focus, .tg-btn:active {
+    outline: none !important;
 }
 .tg-btn:hover { 
-    color: #5288c1; 
-    transform: scale(1.15) translateY(-2px);
-    filter: brightness(1.2);
+    color: #ffffff; 
+    transform: scale(1.1) translateY(-1px);
+    background: rgba(255,255,255,0.1);
 }
 .tg-btn:active {
     transform: scale(0.95);
 }
 .tg-btn-send {
-    background: linear-gradient(135deg, #444, #222);
-    color: #fff;
+    background: #ffffff;
+    color: #000000;
     border-radius: 50%;
     width: 44px;
     height: 44px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
     transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s;
-    animation: sendPulse 2s infinite ease-in-out;
+    animation: sendPulse 2.5s infinite ease-in-out;
 }
 @keyframes sendPulse {
     0% { transform: scale(1); box-shadow: 0 0 10px rgba(255,255,255,0.1); }
@@ -209,8 +255,8 @@ const TELEGRAM_CSS = `
     100% { transform: scale(1); box-shadow: 0 0 10px rgba(255,255,255,0.1); }
 }
 .tg-btn-send:hover { 
-    background: linear-gradient(135deg, #666, #444); 
-    color: #fff; 
+    background: #eeeeee; 
+    color: #000000; 
     transform: scale(1.1) rotate(-5deg);
     box-shadow: 0 6px 14px rgba(255,255,255,0.3);
 }
@@ -256,8 +302,7 @@ const TELEGRAM_CSS = `
     font-size: clamp(40px, 8vw, 100px);
     font-weight: 900;
     letter-spacing: clamp(5px, 2vw, 20px);
-    color: rgba(255,255,255,0.02);
-    z-index: 1;
+    z-index: 0;
     pointer-events: none;
     display: flex;
     user-select: none;
@@ -271,10 +316,77 @@ const TELEGRAM_CSS = `
 .cowio-dm-bg span:nth-child(4) { animation-delay: 0.6s; }
 .cowio-dm-bg span:nth-child(5) { animation-delay: 0.8s; }
 
-@keyframes cowioLoad {
-    0%, 100% { opacity: 0.2; transform: translateY(0); filter: blur(2px); color: rgba(255,255,255,0.02); }
-    50% { opacity: 0.6; transform: translateY(-15px); filter: blur(0px); color: rgba(255,255,255,0.06); }
+@keyframes dmFadeIn {
+    from { opacity: 0; transform: translateY(10px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
 }
+.m-line {
+    animation: dmFadeIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+@keyframes cowioLoad {
+    0%, 100% { opacity: 0.05; transform: translateY(0); color: #888888; }
+    50% { opacity: 0.15; transform: translateY(-8px); color: #ffffff; text-shadow: 0 0 10px rgba(255, 255, 255, 0.2); }
+}
+
+/* THEMES FOR DM OVERHAUL */
+#modal-dm-chat[class*="theme-"]:not(.theme-default) .dm-sidebar,
+#modal-dm-chat[class*="theme-"]:not(.theme-default) .dm-main,
+#modal-dm-chat[class*="theme-"]:not(.theme-default) .dm-modal-header,
+#modal-dm-chat[class*="theme-"]:not(.theme-default) .tg-input-area,
+#modal-dm-chat[class*="theme-"]:not(.theme-default) .dm-sidebar-header,
+#modal-dm-chat[class*="theme-"]:not(.theme-default) .dm-modal-content {
+    background: transparent !important;
+}
+
+#modal-dm-chat.theme-love { background: rgba(20, 6, 14, 0.95) !important; }
+#modal-dm-chat.theme-love .dm-modal-content { border-color: rgba(226, 120, 169, 0.22) !important; }
+#modal-dm-chat.theme-love .m-line .tg-bubble { background: rgba(214, 92, 150, 0.12) !important; border-color: rgba(214, 120, 166, 0.28) !important; color: #fff !important; }
+#modal-dm-chat.theme-love .m-line.self .tg-bubble { background: rgba(255, 120, 180, 0.2) !important; color: #fff !important; }
+
+#modal-dm-chat.theme-light { background: #f0f2f5 !important; }
+#modal-dm-chat.theme-light .dm-modal-content { background: rgba(255, 255, 255, 0.9) !important; border-color: #d8dbe2 !important; color: #0b0d12 !important; }
+#modal-dm-chat.theme-light .m-line .tg-bubble { background: #ffffff !important; border-color: #d6dae2 !important; color: #0b0d12 !important; }
+#modal-dm-chat.theme-light .m-line.self .tg-bubble { background: #111111 !important; border-color: #111111 !important; color: #fff !important; }
+#modal-dm-chat.theme-light .dm-sidebar-header .text-lg, #modal-dm-chat.theme-light .dm-modal-header .text-lg { color: #0b0d12 !important; }
+#modal-dm-chat.theme-light .tg-input-box { background: rgba(0,0,0,0.05) !important; }
+#modal-dm-chat.theme-light .tg-input-box textarea { color: #000 !important; }
+#modal-dm-chat.theme-light .tg-btn:not(.tg-btn-send) { color: #555 !important; }
+#modal-dm-chat.theme-light .tg-btn:not(.tg-btn-send):hover { background: rgba(0,0,0,0.1) !important; color: #000 !important; }
+#modal-dm-chat.theme-light .dm-chat-item { color: #000 !important; }
+#modal-dm-chat.theme-light .dm-chat-item:hover { background: rgba(0,0,0,0.05) !important; }
+#modal-dm-chat.theme-light .dm-chat-item.active { background: rgba(0,0,0,0.1) !important; }
+
+#modal-dm-chat.theme-inverted { background: #e0e4eb !important; }
+#modal-dm-chat.theme-inverted .dm-modal-content { background: rgba(248, 248, 248, 0.9) !important; border-color: #d9dce2 !important; color: #050505 !important; }
+#modal-dm-chat.theme-inverted .m-line .tg-bubble { background: #ffffff !important; border-color: #d9dce2 !important; color: #050505 !important; }
+#modal-dm-chat.theme-inverted .m-line.self .tg-bubble { background: #222222 !important; border-color: #222222 !important; color: #fff !important; }
+#modal-dm-chat.theme-inverted .dm-sidebar-header .text-lg, #modal-dm-chat.theme-inverted .dm-modal-header .text-lg { color: #050505 !important; }
+#modal-dm-chat.theme-inverted .tg-input-box { background: rgba(0,0,0,0.06) !important; }
+#modal-dm-chat.theme-inverted .tg-input-box textarea { color: #000 !important; }
+#modal-dm-chat.theme-inverted .tg-btn:not(.tg-btn-send) { color: #444 !important; }
+#modal-dm-chat.theme-inverted .tg-btn:not(.tg-btn-send):hover { background: rgba(0,0,0,0.1) !important; color: #000 !important; }
+#modal-dm-chat.theme-inverted .dm-chat-item { color: #000 !important; }
+#modal-dm-chat.theme-inverted .dm-chat-item:hover { background: rgba(0,0,0,0.06) !important; }
+#modal-dm-chat.theme-inverted .dm-chat-item.active { background: rgba(0,0,0,0.12) !important; }
+
+#modal-dm-chat.theme-aurora { background: radial-gradient(circle at 20% 15%, rgba(43, 104, 255, 0.22), rgba(8, 18, 36, 0.95) 54%, rgba(4, 8, 18, 0.98) 100%) !important; }
+#modal-dm-chat.theme-aurora .dm-modal-content { border-color: rgba(95, 145, 255, 0.34) !important; }
+#modal-dm-chat.theme-aurora .m-line .tg-bubble { background: rgba(63, 110, 218, 0.22) !important; border-color: rgba(108, 154, 255, 0.36) !important; color: #e8f1ff !important; }
+#modal-dm-chat.theme-aurora .m-line.self .tg-bubble { background: rgba(63, 110, 218, 0.35) !important; color: #e8f1ff !important;}
+
+#modal-dm-chat.theme-sunset { background: radial-gradient(circle at 18% 18%, rgba(255, 120, 76, 0.26), rgba(38, 10, 18, 0.92) 50%, rgba(17, 5, 11, 0.98) 100%) !important; }
+#modal-dm-chat.theme-sunset .dm-modal-content { border-color: rgba(255, 133, 94, 0.34) !important; }
+#modal-dm-chat.theme-sunset .m-line .tg-bubble { background: rgba(255, 128, 92, 0.16) !important; border-color: rgba(255, 162, 130, 0.36) !important; color: #ffe8df !important; }
+#modal-dm-chat.theme-sunset .m-line.self .tg-bubble { background: rgba(255, 128, 92, 0.3) !important; color: #ffe8df !important;}
+
+#modal-dm-chat.theme-ocean { background: radial-gradient(circle at 72% 12%, rgba(65, 170, 198, 0.24), rgba(8, 24, 30, 0.95) 52%, rgba(4, 12, 16, 0.99) 100%) !important; }
+#modal-dm-chat.theme-ocean .dm-modal-content { border-color: rgba(93, 199, 224, 0.34) !important; }
+#modal-dm-chat.theme-ocean .m-line .tg-bubble { background: rgba(83, 199, 227, 0.14) !important; border-color: rgba(126, 228, 252, 0.34) !important; color: #e6fdff !important; }
+#modal-dm-chat.theme-ocean .m-line.self .tg-bubble { background: rgba(83, 199, 227, 0.25) !important; color: #e6fdff !important; }
+
+#modal-dm-chat.theme-default { background: rgba(0, 0, 0, 0.85) !important; }
+#modal-dm-chat.theme-default .dm-modal-content { background: radial-gradient(circle at top, rgba(255, 255, 255, 0.09), #09090b) !important; }
+#modal-dm-chat.theme-default .dm-sidebar, #modal-dm-chat.theme-default .dm-main, #modal-dm-chat.theme-default .dm-modal-header, #modal-dm-chat.theme-default .tg-input-area, #modal-dm-chat.theme-default .dm-sidebar-header { background: transparent !important; }
 `;
 
 document.head.insertAdjacentHTML("beforeend", `<style>${TELEGRAM_CSS}</style>`);
@@ -291,6 +403,19 @@ DirectMessages.EMOJIS = [
   "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Clapping%20Hands.webp' style='width:24px;height:24px;vertical-align:middle;'>",
   "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Pile%20Of%20Poo.webp' style='width:24px;height:24px;vertical-align:middle;'>",
 ];
+
+setTimeout(() => {
+  if (!document.querySelector(".cowio-dm-bg") && document.querySelector(".dm-main")) {
+    document.querySelector(".dm-main").insertAdjacentHTML(
+      "afterbegin",
+      `
+          <div class="cowio-dm-bg">
+              <span>C</span><span>O</span><span>W</span><span>I</span><span>O</span>
+          </div>
+      `,
+    );
+  }
+}, 1000);
 
 const tgOldOpenChat = DirectMessages.openChat;
 DirectMessages.openChat = function (targetUid, targetName) {
@@ -333,16 +458,6 @@ DirectMessages.openChat = function (targetUid, targetName) {
         </div>
         `;
 
-    if (!document.querySelector(".cowio-dm-bg")) {
-      document.querySelector(".dm-main").insertAdjacentHTML(
-        "afterbegin",
-        `
-            <div class="cowio-dm-bg">
-                <span>C</span><span>O</span><span>W</span><span>I</span><span>O</span>
-            </div>
-        `,
-      );
-    }
     document.querySelector(".dm-main").insertAdjacentHTML("beforeend", myHtml);
 
     document.getElementById("tg-btn-send-msg").onclick = () =>
@@ -663,7 +778,7 @@ DirectMessages.showContextMenu = function (e, msg) {
 DirectMessages.renderMessages = function (messages) {
   const list = Utils.$("dm-messages");
   if (!messages.length) {
-    list.innerHTML = `<div style="color:var(--text-muted); text-align:center; padding:20px;">Нет сообщений</div>`;
+    list.innerHTML = `<div style="color:var(--text-muted); text-align:center; padding:20px;" class="no-msgs-placeholder">Нет сообщений</div>`;
     return;
   }
 
@@ -773,53 +888,53 @@ DirectMessages.renderMessages = function (messages) {
     list.scrollHeight - list.scrollTop - list.clientHeight <= 150;
   const oldScroll = list.scrollTop;
 
-  // To prevent flicker, we use morphdom like approach or just innerHTML if empty, else simple diff.
-  // For simplicity, we just check if it's identical HTML. If not, replace and restore scroll.
-  // But replacing all HTML still flickers images! Let's do simple DOM patch by ID for existing messages.
+  // Find what has changed instead of recreating everything
+  // We can just inject new items.
   const tempDiv = document.createElement("div");
   tempDiv.innerHTML = newHtml;
 
-  if (list.innerHTML === "") {
+  if (list.innerHTML.trim() === "") {
     list.innerHTML = newHtml;
   } else {
-    Array.from(tempDiv.children).forEach((newChild) => {
-      const id = newChild.id;
-      if (id) {
-        const oldChild = document.getElementById(id);
-        if (oldChild) {
-          if (
-            oldChild.innerHTML !== newChild.innerHTML ||
-            oldChild.className !== newChild.className
-          ) {
-            oldChild.innerHTML = newChild.innerHTML;
-            oldChild.className = newChild.className;
-          }
+    const newItems = Array.from(tempDiv.children);
+    
+    // Linear synchronization
+    newItems.forEach((newChild, index) => {
+        const existingChild = list.children[index];
+        if (!existingChild) {
+            list.appendChild(newChild);
+        } else if (existingChild.id === newChild.id && newChild.id) {
+            if (existingChild.className !== newChild.className) existingChild.className = newChild.className;
+            if (existingChild.innerHTML !== newChild.innerHTML) {
+                existingChild.innerHTML = newChild.innerHTML;
+            }
+        } else if (!existingChild.id && !newChild.id && existingChild.getAttribute('data-date') === newChild.getAttribute('data-date')) {
+            // Same date header, do nothing
         } else {
-          list.appendChild(newChild);
+            // Mismatch, replace it
+            existingChild.replaceWith(newChild);
         }
-      } else if (newChild.classList.contains("date-header")) {
-        const date = newChild.getAttribute("data-date");
-        if (!list.querySelector(`.date-header[data-date="${date}"]`)) {
-          list.appendChild(newChild);
-        }
-      } else {
-        list.appendChild(newChild);
-      }
     });
 
-    // Remove deleted messages
-    Array.from(list.children).forEach((oldChild) => {
-      if (oldChild.id && !tempDiv.querySelector("#" + oldChild.id)) {
-        oldChild.remove();
-      }
-    });
+    // Remove any extra items
+    while (list.children.length > newItems.length) {
+        list.lastChild.remove();
+    }
   }
 
-  if (isAtBottom) {
-    list.scrollTop = list.scrollHeight;
-  } else {
-    list.scrollTop = oldScroll;
+  let forceScroll = false;
+  if (messages.length > 0) {
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg.fromUid === AppState.currentUser.uid && Date.now() - lastMsg.ts < 5000) {
+      forceScroll = true;
+    }
   }
+
+  setTimeout(() => {
+     if (isAtBottom || forceScroll) {
+       list.scrollTop = list.scrollHeight;
+     }
+  }, 10);
 
   if (this.theme === "love") this.startLoveHearts();
 };

@@ -8068,9 +8068,9 @@ class ProfileManager {
     if (AppState.usersCache.has(uid)) return AppState.usersCache.get(uid);
     try {
       const snap = await get(ref(db, `users/${uid}`));
-      if (!snap.exists()) return null;
+      if (!snap.exists()) return { name: "Unknown", username: "unknown" };
       const node = snap.val();
-      const data = node.profile || null;
+      const data = node.profile || { name: "Unknown", username: "unknown" };
 
       const eqFrame = node.equippedFrame;
       if (
@@ -8113,16 +8113,36 @@ class ProfileManager {
   }
 
   static async openViewProfileModal(targetUid) {
-    // Show modal immediately with loading UX
     const vModal = Utils.$("modal-view-profile");
-    if (vModal) vModal.classList.add("active");
-    Utils.$("view-name").innerHTML = "Загрузка...";
-    Utils.$("view-username").innerHTML = "@...";
-    Utils.$("view-bio").innerHTML = "";
+    if (!vModal) return;
 
-    const profile = await this.loadUser(targetUid);
+    let profile = AppState.usersCache.get(targetUid);
+    
+    // Мгновенный рендер если данные есть в кэше, чтобы избежать мерцания текста
+    if (profile) {
+      Utils.$("view-name").innerHTML = `${window.PremiumManager ? PremiumManager.getStatusEmojiHtml(profile, targetUid) : ""}${Utils.escapeHtml(profile.name)}`;
+      Utils.$("view-username").innerHTML = `@${Utils.escapeHtml(profile.username)}`;
+      if (Utils.$("view-avatar")) Utils.$("view-avatar").innerHTML = ProfileManager.getAvatarHtml(profile);
+      this.applyProfileBackground(vModal.querySelector(".modal-content"), profile.background);
+    } else {
+      // Иначе показываем заглушки
+      Utils.$("view-name").innerHTML = "Загрузка...";
+      Utils.$("view-username").innerHTML = "@...";
+      Utils.$("view-bio").innerHTML = "";
+      if (Utils.$("view-avatar")) Utils.$("view-avatar").innerHTML = "";
+      if (Utils.$("view-badges-collection")) Utils.$("view-badges-collection").innerHTML = "";
+      if (Utils.$("view-status")) Utils.$("view-status").innerHTML = "...";
+      if (Utils.$("view-streak")) Utils.$("view-streak").style.display = "none";
+    }
+    
+    vModal.classList.add("active");
+
     if (!profile) {
-      if (vModal) vModal.classList.remove("active");
+      profile = await this.loadUser(targetUid);
+    }
+    
+    if (!profile) {
+      vModal.classList.remove("active");
       return Utils.toast("Пользователь не найден", "error");
     }
 
@@ -8291,17 +8311,12 @@ class ProfileManager {
       : false;
     const bioLayoutClass = "premium-bio-layout";
 
-    // Логика разделения строки пополам при превышении лимита:
-    // Мы задаем ограничение в 200 символов. Если биография больше, мы визуально ограничиваем её высоту
-    // с помощью CSS (max-height) и эффекта постепенного затухания, но мы также можем концептуально
-    // разделить текст пополам, если бы использовали строгие подстроки (substring).
-    // Однако для плавных анимаций max-height (а не мгновенного display: none) лучше рендерить
-    // строку целиком в контейнере, высота которого анимируется, а класс 'collapsed' добавляет fade-out.
+    // Убираем баг с пропаданием информации. Даем height: auto при разворачивании. 
     const LIMIT = 200;
     const needsExpansion = safeBio.length > LIMIT;
 
     Utils.$("view-bio").innerHTML = `
-            <div class="${bioLayoutClass} ${needsExpansion ? "collapsed" : ""}" id="profile-bio-content" style="position: relative; overflow: hidden; transition: max-height 0.4s ease-in-out; ${needsExpansion ? "max-height: 75px;" : "max-height: 1000px;"}">
+            <div class="${bioLayoutClass} ${needsExpansion ? "collapsed" : ""}" id="profile-bio-content" style="position: relative; transition: max-height 0.3s ease-out; ${needsExpansion ? "max-height: 75px; overflow: hidden;" : "max-height: none; overflow: visible;"}">
               ${safeBio}
             </div>
             ${needsExpansion ? `<button id="btn-expand-bio" style="background:none;border:none;color:var(--primary);font-size:12px;cursor:pointer;padding:0;margin: 8px auto 0; display:block; text-align:center;">Развернуть</button>` : ""}
@@ -8322,9 +8337,19 @@ class ProfileManager {
           if (isCollapsed) {
             bioContent.classList.remove("collapsed");
             bioContent.style.maxHeight = bioContent.scrollHeight + "px";
+            // Wait for transition to complete then remove overflow hiding to prevent text cutoff issues
+            setTimeout(() => {
+               if(!bioContent.classList.contains("collapsed")) {
+                  bioContent.style.maxHeight = "none";
+                  bioContent.style.overflow = "visible";
+               }
+            }, 350);
             expandBtn.innerText = "Свернуть";
           } else {
             bioContent.classList.add("collapsed");
+            bioContent.style.overflow = "hidden";
+            // Force reflow
+            void bioContent.offsetWidth;
             bioContent.style.maxHeight = "75px";
             expandBtn.innerText = "Развернуть";
           }
@@ -9600,6 +9625,11 @@ class DirectMessages {
 
   static openChat(targetUid, targetName) {
     if (this.unsubCurrent) this.unsubCurrent();
+    
+    // Clear the chat view before rendering a new chat
+    const msgList = document.getElementById("dm-messages");
+    if (msgList) msgList.innerHTML = "";
+
     const chatId = this.getChatId(AppState.currentUser.uid, targetUid);
     AppState.currentDirectChat = {
       uid: targetUid,
@@ -15442,9 +15472,11 @@ class RoomManager {
         if (friendsIds.length > 0) {
           let inviteHtml = `<div style="font-size:11px; color:var(--text-muted); margin: 15px 0 5px; text-transform:uppercase;">Друзья вне комнаты</div>`;
           friendsIds.forEach((fid) => {
+            const cachedP = AppState.usersCache.get(fid);
+            const initName = cachedP ? Utils.escapeHtml(cachedP.name) : "Загрузка...";
             inviteHtml += `
                             <div class="user-item" style="background: rgba(46,213,115,0.05); border: 1px solid rgba(46,213,115,0.2);">
-                                <div class="user-main" style="flex:1;"><span class="user-name" id="inv-name-${fid}">Загрузка...</span></div>
+                                <div class="user-main" style="flex:1;"><span class="user-name" id="inv-name-${fid}">${initName}</span></div>
                                 <button class="primary-btn" style="width:auto; padding:4px 8px; font-size:11px;" onclick="DirectMessages.sendRoomInvite('${fid}')">Пригласить</button>
                             </div>
                         `;
@@ -18119,10 +18151,15 @@ const TELEGRAM_CSS = `
     cursor: pointer;
     font-size: 20px;
     padding: 5px;
+    outline: none !important;
+    -webkit-tap-highlight-color: transparent;
     transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s, color 0.2s;
     display: flex;
     align-items: center;
     justify-content: center;
+}
+.tg-btn:focus, .tg-btn:active {
+    outline: none !important;
 }
 .tg-btn:hover { 
     color: var(--text-main); 
@@ -18267,7 +18304,7 @@ DirectMessages.openChat = function (targetUid, targetName) {
     document.getElementById("tg-textarea").oninput = () => {
       const chatId = DirectMessages.getChatId(
         AppState.currentUser.uid,
-        AppState.currentDirectChat.targetUid,
+        AppState.currentDirectChat.uid,
       );
       set(
         ref(db, `direct-messages/${chatId}/typing/${AppState.currentUser.uid}`),
@@ -18325,7 +18362,7 @@ DirectMessages.openChat = function (targetUid, targetName) {
             try {
               const chatId = DirectMessages.getChatId(
                 AppState.currentUser.uid,
-                AppState.currentDirectChat.targetUid,
+                AppState.currentDirectChat.uid,
               );
               await push(
                 ref(db, `direct-messages/${chatId}/messages`),
@@ -18688,50 +18725,53 @@ DirectMessages.renderMessages = function (messages) {
     list.scrollHeight - list.scrollTop - list.clientHeight <= 150;
   const oldScroll = list.scrollTop;
 
+  // Find what has changed instead of recreating everything
+  // We can just inject new items.
   const tempDiv = document.createElement("div");
   tempDiv.innerHTML = newHtml;
 
-  if (list.innerHTML === "") {
+  const placeholder = list.querySelector('.no-msgs-placeholder');
+  if (placeholder) {
+      list.innerHTML = "";
+  }
+
+  if (list.innerHTML.trim() === "") {
     list.innerHTML = newHtml;
   } else {
+    // Simplified, fail-proof sync loop
     Array.from(tempDiv.children).forEach((newChild) => {
-      const id = newChild.id;
-      if (id) {
-        const oldChild = document.getElementById(id);
+      if (newChild.id) {
+        const oldChild = list.querySelector('#' + CSS.escape(newChild.id));
         if (oldChild) {
-          if (
-            oldChild.innerHTML !== newChild.innerHTML ||
-            oldChild.className !== newChild.className
-          ) {
-            oldChild.innerHTML = newChild.innerHTML;
-            oldChild.className = newChild.className;
-          }
+           if (oldChild.className !== newChild.className) oldChild.className = newChild.className;
+           if (oldChild.innerHTML !== newChild.innerHTML) {
+               oldChild.innerHTML = newChild.innerHTML;
+           }
         } else {
-          list.appendChild(newChild);
-        }
-      } else if (newChild.classList.contains("date-header")) {
-        const date = newChild.getAttribute("data-date");
-        if (!list.querySelector(`.date-header[data-date="${date}"]`)) {
-          list.appendChild(newChild);
+           list.appendChild(newChild);
         }
       } else {
-        list.appendChild(newChild);
-      }
-    });
-
-    // Remove deleted messages
-    Array.from(list.children).forEach((oldChild) => {
-      if (oldChild.id && !tempDiv.querySelector("#" + oldChild.id)) {
-        oldChild.remove();
+         const date = newChild.getAttribute('data-date');
+         if (date && !list.querySelector(`.date-header[data-date="${CSS.escape(date)}"]`)) {
+             list.appendChild(newChild);
+         }
       }
     });
   }
 
-  if (isAtBottom) {
-    list.scrollTop = list.scrollHeight;
-  } else {
-    list.scrollTop = oldScroll;
+  let forceScroll = false;
+  if (messages.length > 0) {
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg.fromUid === AppState.currentUser.uid && Date.now() - lastMsg.ts < 5000) {
+      forceScroll = true;
+    }
   }
+
+  setTimeout(() => {
+     if (isAtBottom || forceScroll) {
+       list.scrollTop = list.scrollHeight;
+     }
+  }, 10);
 
   if (this.theme === "love") this.startLoveHearts();
 };
