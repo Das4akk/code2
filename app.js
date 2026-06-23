@@ -8118,28 +8118,62 @@ class ProfileManager {
 
     let profile = AppState.usersCache.get(targetUid);
     
-    // Мгновенный рендер если данные есть в кэше, чтобы избежать мерцания текста
+    // Скелетон UI
+    const renderSkeleton = () => {
+      Utils.$("view-name").innerHTML = `<div style="width: 150px; height: 20px; background: rgba(255,255,255,0.1); border-radius: 6px; animation: pulse 1.5s infinite;"></div>`;
+      Utils.$("view-username").innerHTML = `<div style="width: 100px; height: 14px; background: rgba(255,255,255,0.05); border-radius: 4px; margin-top: 6px; animation: pulse 1.5s infinite;"></div>`;
+      Utils.$("view-bio").innerHTML = `
+        <div style="width: 100%; height: 12px; background: rgba(255,255,255,0.08); border-radius: 4px; margin-bottom: 6px; animation: pulse 1.5s infinite;"></div>
+        <div style="width: 80%; height: 12px; background: rgba(255,255,255,0.06); border-radius: 4px; margin-bottom: 12px; animation: pulse 1.5s infinite;"></div>
+        <div style="width: 100px; height: 12px; background: rgba(255,255,255,0.05); border-radius: 4px; margin-top: 10px; animation: pulse 1.5s infinite;"></div>
+      `;
+      if (Utils.$("view-avatar")) Utils.$("view-avatar").innerHTML = `<div style="width: 100%; height: 100%; background: rgba(255,255,255,0.1); border-radius: 50%; animation: pulse 1.5s infinite;"></div>`;
+      if (Utils.$("view-badges-collection")) Utils.$("view-badges-collection").innerHTML = "";
+      if (Utils.$("view-status")) Utils.$("view-status").innerHTML = `<div style="width: 80px; height: 14px; background: rgba(255,255,255,0.08); border-radius: 4px; display: inline-block; animation: pulse 1.5s infinite;"></div>`;
+      if (Utils.$("view-streak")) Utils.$("view-streak").style.display = "none";
+    };
+
     if (profile) {
       Utils.$("view-name").innerHTML = `${window.PremiumManager ? PremiumManager.getStatusEmojiHtml(profile, targetUid) : ""}${Utils.escapeHtml(profile.name)}`;
       Utils.$("view-username").innerHTML = `@${Utils.escapeHtml(profile.username)}`;
       if (Utils.$("view-avatar")) Utils.$("view-avatar").innerHTML = ProfileManager.getAvatarHtml(profile);
       this.applyProfileBackground(vModal.querySelector(".modal-content"), profile.background);
+      
+      const safeBioPreview = Utils.escapeHtml(profile.bio || "Пользователь не добавил описание.");
+      const needsExpansion = safeBioPreview.length > 200;
+      Utils.$("view-bio").innerHTML = `
+        <div class="premium-bio-layout ${needsExpansion ? "collapsed" : ""}" id="profile-bio-content" style="position: relative; transition: max-height 0.3s ease-out; ${needsExpansion ? "max-height: 75px; overflow: hidden;" : "max-height: none; overflow: visible;"}">
+          ${safeBioPreview}
+        </div>
+        ${needsExpansion ? `<button id="btn-expand-bio" style="background:none;border:none;color:var(--primary);font-size:12px;cursor:pointer;padding:0;margin: 8px auto 0; display:block; text-align:center;">Развернуть</button>` : ""}
+        <div style="margin-top:12px;"></div>
+        <div style="width: 150px; height: 14px; background: rgba(255,255,255,0.08); border-radius: 4px; animation: pulse 1.5s infinite; margin-top: 10px;"></div>
+        <div style="width: 100px; height: 14px; background: rgba(255,255,255,0.08); border-radius: 4px; animation: pulse 1.5s infinite; margin-top: 6px;"></div>
+      `;
+      if (Utils.$("view-status")) Utils.$("view-status").innerHTML = `<div style="width: 80px; height: 14px; background: rgba(255,255,255,0.08); border-radius: 4px; display: inline-block; animation: pulse 1.5s infinite;"></div>`;
     } else {
-      // Иначе показываем заглушки
-      Utils.$("view-name").innerHTML = "Загрузка...";
-      Utils.$("view-username").innerHTML = "@...";
-      Utils.$("view-bio").innerHTML = "";
-      if (Utils.$("view-avatar")) Utils.$("view-avatar").innerHTML = "";
-      if (Utils.$("view-badges-collection")) Utils.$("view-badges-collection").innerHTML = "";
-      if (Utils.$("view-status")) Utils.$("view-status").innerHTML = "...";
-      if (Utils.$("view-streak")) Utils.$("view-streak").style.display = "none";
+      renderSkeleton();
     }
     
     vModal.classList.add("active");
 
-    if (!profile) {
-      profile = await this.loadUser(targetUid);
+    const fetchPromises = [
+      profile ? Promise.resolve(profile) : this.loadUser(targetUid),
+      get(ref(db, `users/${targetUid}/friends`)),
+      get(ref(db, `users/${targetUid}/status`))
+    ];
+
+    const [loadedProfile, friendsSnap, statusSnap] = await Promise.all(fetchPromises);
+    
+    // Если профиля не было в кеше, обновляем шапку
+    if (!profile && loadedProfile) {
+      Utils.$("view-name").innerHTML = `${window.PremiumManager ? PremiumManager.getStatusEmojiHtml(loadedProfile, targetUid) : ""}${Utils.escapeHtml(loadedProfile.name)}`;
+      Utils.$("view-username").innerHTML = `@${Utils.escapeHtml(loadedProfile.username)}`;
+      if (Utils.$("view-avatar")) Utils.$("view-avatar").innerHTML = ProfileManager.getAvatarHtml(loadedProfile);
+      this.applyProfileBackground(vModal.querySelector(".modal-content"), loadedProfile.background);
     }
+    
+    profile = loadedProfile;
     
     if (!profile) {
       vModal.classList.remove("active");
@@ -8260,7 +8294,6 @@ class ProfileManager {
     if (bottomSheetOverlay) bottomSheetOverlay.onclick = closeDrawer;
     if (closeBtn) closeBtn.onclick = closeDrawer;
 
-    const friendsSnap = await get(ref(db, `users/${targetUid}/friends`));
     const friendsCount = friendsSnap.exists()
       ? Object.values(friendsSnap.val()).filter((f) => f.status === "accepted")
           .length
@@ -8269,7 +8302,6 @@ class ProfileManager {
       ? new Date(profile.createdAt).toLocaleDateString()
       : "Неизвестно";
 
-    const statusSnap = await get(ref(db, `users/${targetUid}/status`));
     const st = statusSnap.val() || {};
     const isOnline = st.online;
     const statusText = isOnline
