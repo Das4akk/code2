@@ -1096,6 +1096,48 @@ class Utils {
     });
   }
 
+  // [ADD] Banner File to Base64 (Full HD quality - uncompressed lossless or 2560px QHD)
+  static bannerFileToBase64(file) {
+    return new Promise((resolve) => {
+      if (!file) return resolve("");
+      // For images up to 8MB, keep 100% original lossless data URL without downsampling/compression
+      if (file.size && file.size <= 8 * 1024 * 1024) {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = () => resolve("");
+        reader.readAsDataURL(file);
+        return;
+      }
+      // For extremely massive files (>8MB), scale to pristine 2560px QHD at 0.95 quality
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          let w = img.width,
+            h = img.height;
+          const maxWidth = 2560;
+          if (w > maxWidth) {
+            h = Math.round((h * maxWidth) / w);
+            w = maxWidth;
+          }
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d");
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = "high";
+          ctx.drawImage(img, 0, 0, w, h);
+          const mime = file.type === "image/png" ? "image/png" : "image/jpeg";
+          resolve(canvas.toDataURL(mime, 0.95));
+        };
+        img.onerror = () => resolve("");
+        img.src = e.target.result;
+      };
+      reader.onerror = () => resolve("");
+      reader.readAsDataURL(file);
+    });
+  }
+
   static heartDistributionState = new WeakMap(); // [NEW]
 
   static getGreatestCommonDivisor(a, b) {
@@ -4982,6 +5024,30 @@ class EasterEggManager {
 // ============================================================================
 
 class BadgeManager {
+  static isRelationshipBadge(id, b) {
+    if (!id && !b) return false;
+    const strId = String(id || "").toLowerCase();
+    if (strId.startsWith("rel_") || strId.startsWith("partner_")) return true;
+    if (b) {
+      const name = String(b.name || "").toLowerCase();
+      const desc = String(b.desc || "").toLowerCase();
+      if (
+        name.includes("неделя") ||
+        name.includes("месяц") ||
+        name.includes("полгода") ||
+        name.includes("отношен") ||
+        name.includes("брак") ||
+        name.includes("серьезка") ||
+        desc.includes("вместе") ||
+        desc.includes("отношен") ||
+        desc.includes("любви")
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   static async checkLevelBadges(uid, xpVal) {
     if (!uid) return;
     const math = ProfileManager.getExpMath(xpVal);
@@ -5027,43 +5093,8 @@ class BadgeManager {
   }
 
   static async checkRelationshipBadges(uid) {
-    if (!uid) return;
-    const pSinceSnap = await get(ref(db, `users/${uid}/partnerSince`));
-    if (!pSinceSnap.exists()) return;
-    const sinceTs = parseInt(pSinceSnap.val());
-    if (!sinceTs) return;
-
-    const now = Date.now();
-    const diffMs = now - sinceTs;
-    const diffDays = diffMs / (1000 * 60 * 60 * 24);
-
-    const relBadges = [];
-    if (diffDays >= 7) relBadges.push("rel_1week");
-    if (diffDays >= 30) relBadges.push("rel_1month");
-    if (diffDays >= 180) relBadges.push("rel_6months");
-    if (diffDays >= 365) relBadges.push("rel_1year");
-
-    if (relBadges.length > 0) {
-      const profSnap = await get(
-        ref(db, `users/${uid}/profile/assignedBadges`),
-      );
-      let assigned = profSnap.val() || [];
-      if (!Array.isArray(assigned)) assigned = [];
-
-      let changed = false;
-      relBadges.forEach((bId) => {
-        if (!assigned.includes(bId)) {
-          assigned.push(bId);
-          changed = true;
-        }
-      });
-
-      if (changed) {
-        await update(ref(db, `users/${uid}/profile`), {
-          assignedBadges: assigned,
-        });
-      }
-    }
+    // Partner-related badges removed
+    return;
   }
 
   static async grantEventBadgeToOnline() {
@@ -5175,38 +5206,6 @@ class BadgeManager {
   static async generateSystemBadges() {
     if (!AdminPanel.requireAdmin()) return;
     const badges = {
-      rel_1week: {
-        name: "1 Неделя",
-        desc: "Вместе уже неделю!",
-        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Growing%20Heart.webp",
-        color: "#ffffff",
-        bg: "#d81b60",
-        border: "#ff4081",
-      },
-      rel_1month: {
-        name: "1 Месяц",
-        desc: "Первый совместный месяц!",
-        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Sparkling%20Heart.webp",
-        color: "#ffffff",
-        bg: "#c2185b",
-        border: "#f50057",
-      },
-      rel_6months: {
-        name: "Полгода",
-        desc: "Связь крепчает. 6 месяцев!",
-        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Two%20Hearts.webp",
-        color: "#ffffff",
-        bg: "#ad1457",
-        border: "#c51162",
-      },
-      rel_1year: {
-        name: "1 Год",
-        desc: "Юбилей любви! 1 год",
-        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Revolving%20Hearts.webp",
-        color: "#ffffff",
-        bg: "#880e4f",
-        border: "#f50057",
-      },
       lvl_10: {
         name: "Ветеран",
         desc: "Достиг 10 уровня",
@@ -5266,7 +5265,7 @@ class BadgeManager {
     if (!container) return;
     container.innerHTML = "";
     const badges = AppState.customBadges || {};
-    const entries = Object.entries(badges);
+    const entries = Object.entries(badges).filter(([id, bdg]) => !this.isRelationshipBadge(id, bdg));
     if (entries.length === 0) {
       container.innerHTML = `<div style="color:var(--text-muted); font-size:12px;">Нет бейджей</div>`;
       return;
@@ -5342,7 +5341,7 @@ class BadgeManager {
     if (!container) return;
     container.innerHTML = "";
     const allBadges = AppState.customBadges || {};
-    const entries = Object.entries(allBadges);
+    const entries = Object.entries(allBadges).filter(([id, b]) => !this.isRelationshipBadge(id, b));
     if (entries.length === 0) {
       container.innerHTML = `<div style="font-size:11px; color:var(--text-muted);">Нет созданных бейджей</div>`;
       return;
@@ -6905,6 +6904,7 @@ class ProfileManager {
             `</span>`
           : "");
       Utils.$("my-avatar-display").innerHTML = ProfileManager.getAvatarHtml(p);
+      if(Utils.$("lobby-app-bar-avatar")) Utils.$("lobby-app-bar-avatar").innerHTML = ProfileManager.getAvatarHtml(p);
 
       if (window.PremiumManager) PremiumManager.syncFromProfile(p, uid);
 
@@ -6924,6 +6924,83 @@ class ProfileManager {
     document.addEventListener("click", () => {
       Utils.$("profile-menu-dropdown")?.classList.remove("active");
     });
+  }
+
+  static syncBannerCropPreview(url, pos, dimming) {
+    const container = Utils.$("banner-position-container");
+    const previewImg = Utils.$("banner-crop-preview-img");
+    const cropDimOverlay = Utils.$("banner-crop-dimming-overlay");
+    const slider = Utils.$("edit-banner-pos");
+    const valText = Utils.$("banner-pos-val");
+    const removeBtn = Utils.$("btn-remove-banner");
+
+    if (!url || typeof url !== "string" || !url.trim()) {
+      if (container) container.style.display = "none";
+      if (previewImg) {
+        previewImg.removeAttribute("src");
+        previewImg.style.display = "none";
+      }
+      if (cropDimOverlay) cropDimOverlay.style.display = "none";
+      if (removeBtn) removeBtn.style.display = "none";
+      return;
+    }
+
+    if (container) container.style.display = "block";
+    if (previewImg) {
+      previewImg.src = url.trim();
+      previewImg.style.display = "block";
+    }
+    if (cropDimOverlay) cropDimOverlay.style.display = "block";
+    if (removeBtn) removeBtn.style.display = "inline-flex";
+
+    const currentPos = pos !== undefined ? pos : (slider ? parseInt(slider.value, 10) : 50);
+    if (previewImg) previewImg.style.objectPosition = `center ${currentPos}%`;
+    if (slider) slider.value = currentPos;
+    if (valText) valText.innerText = currentPos + "%";
+
+    const dimSlider = Utils.$("edit-banner-dimming");
+    const currentDim = dimming !== undefined ? dimming : (dimSlider ? parseInt(dimSlider.value, 10) : 30);
+    if (cropDimOverlay) {
+      cropDimOverlay.style.backgroundColor = `rgba(0, 0, 0, ${currentDim / 100})`;
+    }
+  }
+
+  static applyProfileBanner(containerOrModal, profData) {
+    const wrap = Utils.$("profile-banner-wrapper");
+    const img = Utils.$("profile-banner-img");
+    const overlay = Utils.$("profile-banner-overlay");
+    const profContainer = containerOrModal ? (containerOrModal.classList && containerOrModal.classList.contains("tiktok-profile-container") ? containerOrModal : containerOrModal.querySelector ? containerOrModal.querySelector(".tiktok-profile-container") : null) : null;
+
+    const hasBanner = Boolean(profData && profData.bannerUrl && String(profData.bannerUrl).trim());
+
+    if (wrap && img) {
+      if (hasBanner) {
+        wrap.style.display = "block";
+        wrap.classList.remove("is-hidden");
+        img.style.display = "block";
+        img.src = String(profData.bannerUrl).trim();
+        img.style.objectPosition = `center ${profData.bannerPositionY !== undefined ? profData.bannerPositionY : 50}%`;
+        wrap.style.background = "transparent";
+        if (overlay) {
+          overlay.style.display = "block";
+          overlay.style.backgroundColor = `rgba(0,0,0,${(profData.bannerDimming !== undefined ? profData.bannerDimming : 30) / 100})`;
+        }
+        if (profContainer) {
+          profContainer.classList.add("has-banner");
+          profContainer.classList.remove("no-banner");
+        }
+      } else {
+        wrap.style.display = "none";
+        wrap.classList.add("is-hidden");
+        img.style.display = "none";
+        img.removeAttribute("src");
+        if (overlay) overlay.style.display = "none";
+        if (profContainer) {
+          profContainer.classList.remove("has-banner");
+          profContainer.classList.add("no-banner");
+        }
+      }
+    }
   }
 
   static openEditProfileModal() {
@@ -6986,6 +7063,14 @@ class ProfileManager {
       ? p.hashtags.join(" ")
       : "";
     Utils.$("edit-avatar-url").value = p.avatar || "";
+    Utils.$("edit-banner-url").value = p.bannerUrl || "";
+    const currentBannerPos = p.bannerPositionY !== undefined ? p.bannerPositionY : 50;
+    if (Utils.$("edit-banner-pos")) Utils.$("edit-banner-pos").value = currentBannerPos;
+    if (Utils.$("banner-pos-val")) Utils.$("banner-pos-val").innerText = currentBannerPos + "%";
+    const currentBannerDimming = p.bannerDimming !== undefined ? p.bannerDimming : 30;
+    Utils.$("edit-banner-dimming").value = currentBannerDimming;
+    if (Utils.$("banner-dimming-val")) Utils.$("banner-dimming-val").innerText = currentBannerDimming + "%";
+    this.syncBannerCropPreview(p.bannerUrl, currentBannerPos, currentBannerDimming);
 
     let selectedFrame = p.frame || null;
 
@@ -7085,6 +7170,180 @@ class ProfileManager {
     Utils.$("modal-edit-profile").classList.add("active");
 
     // [ADD] Файловые инпуты в Base64 с превью
+    
+    if (Utils.$("btn-remove-banner")) {
+      Utils.$("btn-remove-banner").onclick = () => {
+        if (Utils.$("edit-banner-url")) Utils.$("edit-banner-url").value = "";
+        if (Utils.$("edit-banner-file")) Utils.$("edit-banner-file").value = "";
+        this.syncBannerCropPreview("", 50, 30);
+        const bImg = Utils.$("profile-banner-img");
+        const bWrap = Utils.$("profile-banner-wrapper");
+        const sProf = Utils.$("section-profile");
+        const pCont = sProf ? sProf.querySelector(".tiktok-profile-container") : null;
+        if (bImg) {
+          bImg.style.display = "none";
+          bImg.removeAttribute("src");
+        }
+        if (bWrap) {
+          bWrap.style.display = "none";
+          bWrap.classList.add("is-hidden");
+        }
+        if (pCont) {
+          pCont.classList.remove("has-banner");
+          pCont.classList.add("no-banner");
+        }
+        Utils.toast("Баннер удален. Нажмите «Сохранить», чтобы применить изменения.", "info");
+      };
+    }
+
+    if (Utils.$("edit-banner-file")) {
+      Utils.$("edit-banner-file").onchange = async (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (file) {
+          const b64 = await Utils.bannerFileToBase64(file);
+          if (Utils.$("edit-banner-url")) Utils.$("edit-banner-url").value = b64;
+          const pos = Utils.$("edit-banner-pos") ? parseInt(Utils.$("edit-banner-pos").value, 10) : 50;
+          const dim = Utils.$("edit-banner-dimming") ? parseInt(Utils.$("edit-banner-dimming").value, 10) : 30;
+          this.syncBannerCropPreview(b64, pos, dim);
+          const bImg = Utils.$("profile-banner-img");
+          const bWrap = Utils.$("profile-banner-wrapper");
+          const sProf = Utils.$("section-profile");
+          const pCont = sProf ? sProf.querySelector(".tiktok-profile-container") : null;
+          if (bImg) {
+            bImg.src = b64;
+            bImg.style.display = "block";
+            bImg.style.objectPosition = `center ${pos}%`;
+          }
+          if (bWrap) {
+            bWrap.style.display = "block";
+            bWrap.classList.remove("is-hidden");
+            bWrap.style.background = "transparent";
+          }
+          if (pCont) {
+            pCont.classList.add("has-banner");
+            pCont.classList.remove("no-banner");
+          }
+        }
+      };
+    }
+    const triggerBannerPreview = () => {
+      const val = Utils.$("edit-banner-url") ? Utils.$("edit-banner-url").value.trim() : "";
+      const pos = Utils.$("edit-banner-pos") ? parseInt(Utils.$("edit-banner-pos").value, 10) : 50;
+      const dim = Utils.$("edit-banner-dimming") ? parseInt(Utils.$("edit-banner-dimming").value, 10) : 30;
+      this.syncBannerCropPreview(val, pos, dim);
+      const bImg = Utils.$("profile-banner-img");
+      const bWrap = Utils.$("profile-banner-wrapper");
+      const sProf = Utils.$("section-profile");
+      const pCont = sProf ? sProf.querySelector(".tiktok-profile-container") : null;
+
+      if (val) {
+        if (bImg) {
+          bImg.src = val;
+          bImg.style.display = "block";
+          bImg.style.objectPosition = `center ${pos}%`;
+        }
+        if (bWrap) {
+          bWrap.style.display = "block";
+          bWrap.classList.remove("is-hidden");
+          bWrap.style.background = "transparent";
+        }
+        if (pCont) {
+          pCont.classList.add("has-banner");
+          pCont.classList.remove("no-banner");
+        }
+      } else {
+        if (bImg) {
+          bImg.style.display = "none";
+          bImg.removeAttribute("src");
+        }
+        if (bWrap) {
+          bWrap.style.display = "none";
+          bWrap.classList.add("is-hidden");
+        }
+        if (pCont) {
+          pCont.classList.remove("has-banner");
+          pCont.classList.add("no-banner");
+        }
+      }
+    };
+    if (Utils.$("edit-banner-url")) {
+      Utils.$("edit-banner-url").oninput = triggerBannerPreview;
+      Utils.$("edit-banner-url").onchange = triggerBannerPreview;
+      Utils.$("edit-banner-url").onpaste = () => setTimeout(triggerBannerPreview, 30);
+    }
+    if (Utils.$("edit-banner-pos")) {
+      Utils.$("edit-banner-pos").oninput = (e) => {
+        const val = e.target.value;
+        if (Utils.$("banner-pos-val")) Utils.$("banner-pos-val").innerText = val + "%";
+        if (Utils.$("banner-crop-preview-img")) {
+          Utils.$("banner-crop-preview-img").style.objectPosition = `center ${val}%`;
+        }
+        if (Utils.$("profile-banner-img")) {
+          Utils.$("profile-banner-img").style.objectPosition = `center ${val}%`;
+        }
+      };
+    }
+    const cropWrap = Utils.$("banner-crop-preview-wrap");
+    if (cropWrap && !cropWrap._dragInitialized) {
+      cropWrap._dragInitialized = true;
+      let isDragging = false;
+      let startY = 0;
+      let startVal = 50;
+      const onStart = (clientY) => {
+        isDragging = true;
+        startY = clientY;
+        startVal = Utils.$("edit-banner-pos") ? parseInt(Utils.$("edit-banner-pos").value, 10) : 50;
+        cropWrap.style.cursor = "grabbing";
+      };
+      const onMove = (clientY) => {
+        if (!isDragging) return;
+        const dy = clientY - startY;
+        const rect = cropWrap.getBoundingClientRect();
+        const deltaPercent = Math.round((dy / Math.max(rect.height, 60)) * 100);
+        let newVal = Math.max(0, Math.min(100, startVal - deltaPercent));
+        if (Utils.$("edit-banner-pos")) Utils.$("edit-banner-pos").value = newVal;
+        if (Utils.$("banner-pos-val")) Utils.$("banner-pos-val").innerText = newVal + "%";
+        if (Utils.$("banner-crop-preview-img")) {
+          Utils.$("banner-crop-preview-img").style.objectPosition = `center ${newVal}%`;
+        }
+        if (Utils.$("profile-banner-img")) {
+          Utils.$("profile-banner-img").style.objectPosition = `center ${newVal}%`;
+        }
+      };
+      const onEnd = () => {
+        if (isDragging) {
+          isDragging = false;
+          cropWrap.style.cursor = "ns-resize";
+        }
+      };
+      cropWrap.addEventListener("mousedown", (e) => onStart(e.clientY));
+      window.addEventListener("mousemove", (e) => onMove(e.clientY));
+      window.addEventListener("mouseup", onEnd);
+      cropWrap.addEventListener("touchstart", (e) => {
+        if (e.touches.length === 1) onStart(e.touches[0].clientY);
+      }, { passive: true });
+      window.addEventListener("touchmove", (e) => {
+        if (isDragging && e.touches.length === 1) onMove(e.touches[0].clientY);
+      }, { passive: true });
+      window.addEventListener("touchend", onEnd);
+    }
+    if (Utils.$("edit-banner-dimming")) {
+      Utils.$("edit-banner-dimming").oninput = (e) => {
+        const val = parseInt(e.target.value, 10) || 0;
+        if (Utils.$("banner-dimming-val")) Utils.$("banner-dimming-val").innerText = val + "%";
+        // Live update dimming in visible crop preview
+        const cropDimOverlay = Utils.$("banner-crop-dimming-overlay");
+        if (cropDimOverlay) {
+          cropDimOverlay.style.backgroundColor = `rgba(0, 0, 0, ${val / 100})`;
+        }
+        // Live update dimming on actual profile banner
+        const profBannerOverlay = Utils.$("profile-banner-overlay");
+        if (profBannerOverlay) {
+          profBannerOverlay.style.backgroundColor = `rgba(0, 0, 0, ${val / 100})`;
+        }
+      };
+    }
+
     if (Utils.$("edit-avatar-file")) {
       Utils.$("edit-avatar-file").onchange = async (e) => {
         const file = e.target.files[0];
@@ -7128,6 +7387,10 @@ class ProfileManager {
         await this.saveProfile();
         Utils.$("modal-edit-profile").classList.remove("active");
         Utils.toast("Профиль сохранен");
+        const uid = AppState.currentUser?.uid;
+        if (uid) {
+          this.openViewProfileModal(uid).catch(() => {});
+        }
       } catch (e) {
         Utils.toast(e.message, "error");
       } finally {
@@ -7565,33 +7828,11 @@ class ProfileManager {
   } // [NEW]
 
   static applyProfileBackground(panel, background = "") {
-    // [UPDATE]
-    if (!panel) return; // [UPDATE]
-    const data = this.normalizeProfileBackground(background); // [UPDATE]
-    const colors = this.getReadableProfileColors(data.color); // [NEW]
-    panel.style.setProperty("--profile-bg", data.color); // [NEW]
-    panel.style.setProperty("--profile-text", colors.text); // [NEW]
-    panel.style.setProperty("--profile-muted", colors.muted); // [NEW]
-    panel.style.setProperty("--profile-border", colors.border); // [NEW]
-    panel.style.setProperty("background", data.color, "important"); // [UPDATE]
-    panel.style.setProperty("color", colors.text, "important"); // [NEW]
-    panel.style.setProperty("border-color", colors.border, "important"); // [NEW]
-    panel.style.removeProperty("background-image"); // [UPDATE]
-    panel.style.removeProperty("background-size"); // [UPDATE]
-    panel.style.removeProperty("background-position"); // [UPDATE]
-    if (data.url) {
-      // [UPDATE]
-      const dimValue = data.dim !== undefined ? data.dim : 0.5; // [ADD] Apply custom dim
-      const overlay = `rgba(0,0,0,${dimValue})`;
-      panel.style.setProperty(
-        "background-image",
-        `linear-gradient(${overlay}, ${overlay}), url("${data.url.replace(/"/g, "%22")}")`,
-        "important",
-      ); // [UPDATE]
-      panel.style.setProperty("background-size", "cover", "important"); // [UPDATE]
-      panel.style.setProperty("background-position", "center", "important"); // [UPDATE]
-    } // [UPDATE]
-  } // [UPDATE]
+    // Disabled profile backgrounds per user request
+    if (panel) {
+       panel.style.background = 'transparent';
+    }
+  }
 
   static async getPartnerUid(uid) {
     // [NEW]
@@ -7869,8 +8110,7 @@ class ProfileManager {
 
   static async updateLoveProfileActions(targetUid, isFriend = false) {
     // [NEW]
-    const loveBtn = Utils.$("btn-love-proposal"); // [NEW]
-    const removeBtn = Utils.$("btn-remove-partner"); // [NEW]
+        const removeBtn = Utils.$("btn-remove-partner"); // [NEW]
     const myUid = AppState.currentUser?.uid; // [NEW]
     if (!loveBtn || !removeBtn || !myUid) return; // [NEW]
     loveBtn.style.display = "none"; // [NEW]
@@ -7952,6 +8192,9 @@ class ProfileManager {
       false,
     );
     const avatar = Utils.$("edit-avatar-url").value.trim();
+    const bannerUrl = Utils.$("edit-banner-url") ? Utils.$("edit-banner-url").value.trim() : "";
+    const bannerDimming = Utils.$("edit-banner-dimming") ? parseInt(Utils.$("edit-banner-dimming").value, 10) : 30;
+    const bannerPositionY = Utils.$("edit-banner-pos") ? parseInt(Utils.$("edit-banner-pos").value, 10) : 50;
     const background = this.readProfileBackgroundInput(); // [NEW]
     const gender =
       document.querySelector('input[name="edit-gender"]:checked')?.value ||
@@ -8028,7 +8271,7 @@ class ProfileManager {
       updates[`usernames/${eu}`] = uid;
     });
 
-    updates[`users/${uid}/profile`] = {
+    const nextProfile = {
       ...oldProfile,
       name,
       username,
@@ -8039,8 +8282,35 @@ class ProfileManager {
       background,
       gender,
       frame,
-    }; // [UPDATE]
+      bannerUrl,
+      bannerDimming,
+      bannerPositionY,
+    };
+    updates[`users/${uid}/profile`] = nextProfile; // [UPDATE]
     await update(ref(db), updates);
+
+    // Update local cache immediately
+    AppState.usersCache.set(uid, nextProfile);
+
+    // Live update profile UI instantly without requiring a page refresh
+    const sProfile = document.getElementById("section-profile");
+    if (sProfile) {
+      ProfileManager.applyProfileBanner(sProfile, nextProfile);
+
+      if (Utils.$("view-name")) {
+        Utils.$("view-name").innerHTML = `${window.PremiumManager ? PremiumManager.getStatusEmojiHtml(nextProfile, uid) : ""}${Utils.escapeHtml(name)}`;
+      }
+      if (Utils.$("view-username")) {
+        Utils.$("view-username").innerHTML = `@${Utils.escapeHtml(username)}`;
+      }
+      if (Utils.$("view-avatar")) {
+        Utils.$("view-avatar").innerHTML = ProfileManager.getAvatarHtml(nextProfile);
+      }
+      if (Utils.$("view-gender")) {
+        Utils.$("view-gender").innerHTML = `${gender === "female" ? "♀ Женский" : "♂ Мужской"}`;
+      }
+      this.applyProfileBackground(sProfile.querySelector(".tiktok-profile-container") || sProfile, background);
+    }
 
     if (uid === AppState.currentUser?.uid) {
       await updateProfile(AppState.currentUser, {
@@ -8118,7 +8388,24 @@ class ProfileManager {
   }
 
   static async openViewProfileModal(targetUid) {
-    const vModal = Utils.$("modal-view-profile");
+    // Show section-profile instead of modal
+    document.querySelectorAll('.rooms-main').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    
+    // If viewing our own profile, highlight the nav-profile item
+    if (targetUid === AppState.currentUser?.uid) {
+       const navMy = document.getElementById('nav-profile');
+       if (navMy) navMy.classList.add('active');
+    }
+    
+    const sProfile = document.getElementById("section-profile");
+    if (sProfile) {
+        sProfile.style.display = "flex";
+    }
+    
+    // We don't have vModal anymore, so we remove the check for it
+
+    const vModal = Utils.$("section-profile");
     if (!vModal) return;
 
     let profile = AppState.usersCache.get(targetUid);
@@ -8136,13 +8423,17 @@ class ProfileManager {
       if (Utils.$("view-badges-collection")) Utils.$("view-badges-collection").innerHTML = "";
       if (Utils.$("view-status")) Utils.$("view-status").innerHTML = `<div style="width: 80px; height: 14px; background: rgba(255,255,255,0.08); border-radius: 4px; display: inline-block; animation: pulse 1.5s infinite;"></div>`;
       if (Utils.$("view-streak")) Utils.$("view-streak").style.display = "none";
+      if (Utils.$("view-gender")) Utils.$("view-gender").style.display = "none";
+      ProfileManager.applyProfileBanner(vModal, null);
     };
 
     if (profile) {
       Utils.$("view-name").innerHTML = `${window.PremiumManager ? PremiumManager.getStatusEmojiHtml(profile, targetUid) : ""}${Utils.escapeHtml(profile.name)}`;
       Utils.$("view-username").innerHTML = `@${Utils.escapeHtml(profile.username)}`;
       if (Utils.$("view-avatar")) Utils.$("view-avatar").innerHTML = ProfileManager.getAvatarHtml(profile);
-      this.applyProfileBackground(vModal.querySelector(".modal-content"), profile.background);
+      this.applyProfileBackground(vModal.querySelector(".tiktok-profile-container") || vModal, profile.background);
+      ProfileManager.applyProfileBanner(vModal, profile);
+
       
       const safeBioPreview = Utils.escapeHtml(profile.bio || "Пользователь не добавил описание.");
       const needsExpansion = safeBioPreview.length > 200;
@@ -8175,7 +8466,8 @@ class ProfileManager {
       Utils.$("view-name").innerHTML = `${window.PremiumManager ? PremiumManager.getStatusEmojiHtml(loadedProfile, targetUid) : ""}${Utils.escapeHtml(loadedProfile.name)}`;
       Utils.$("view-username").innerHTML = `@${Utils.escapeHtml(loadedProfile.username)}`;
       if (Utils.$("view-avatar")) Utils.$("view-avatar").innerHTML = ProfileManager.getAvatarHtml(loadedProfile);
-      this.applyProfileBackground(vModal.querySelector(".modal-content"), loadedProfile.background);
+      this.applyProfileBackground(vModal.querySelector(".tiktok-profile-container") || vModal, loadedProfile.background);
+      ProfileManager.applyProfileBanner(vModal, loadedProfile);
     }
     
     profile = loadedProfile;
@@ -8187,11 +8479,13 @@ class ProfileManager {
 
     const activeStreak = this.getActiveStreak(profile);
     const streakEl = Utils.$("view-streak");
-    if (activeStreak > 0) {
-      streakEl.style.display = "flex";
-      Utils.$("view-streak-count").innerText = activeStreak;
-    } else {
-      streakEl.style.display = "none";
+    if (streakEl) {
+      if (activeStreak > 0) {
+        streakEl.style.display = "inline-flex";
+        if (Utils.$("view-streak-count")) Utils.$("view-streak-count").innerText = activeStreak;
+      } else {
+        streakEl.style.display = "none";
+      }
     }
 
     // New math logic
@@ -8303,6 +8597,7 @@ class ProfileManager {
       ? Object.values(friendsSnap.val()).filter((f) => f.status === "accepted")
           .length
       : 0;
+    if (Utils.$("view-friends-count")) Utils.$("view-friends-count").innerText = "Друзей: " + friendsCount;
     const joinDate = profile.createdAt
       ? new Date(profile.createdAt).toLocaleDateString()
       : "Неизвестно";
@@ -8322,10 +8617,14 @@ class ProfileManager {
     let genderString = "";
     if (profile.gender === "female") {
       genderString =
-        'Пол: Женский <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Woman%20Technologist.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;" alt="Женщина"><br>';
+        'Пол: Женский <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Woman%20Technologist.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;" alt="Женщина">';
     } else if (profile.gender === "male") {
       genderString =
-        'Пол: Мужской <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Man%20Technologist.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;" alt="Мужчина"><br>';
+        'Пол: Мужской <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Man%20Technologist.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;" alt="Мужчина">';
+    }
+    if (Utils.$("view-gender")) {
+      Utils.$("view-gender").innerHTML = genderString;
+      Utils.$("view-gender").style.display = genderString ? "block" : "none";
     }
 
     Utils.$("view-name").innerHTML =
@@ -8358,10 +8657,6 @@ class ProfileManager {
             </div>
             ${needsExpansion ? `<button id="btn-expand-bio" style="background:none;border:none;color:var(--primary);font-size:12px;cursor:pointer;padding:0;margin: 8px auto 0; display:block; text-align:center;">Развернуть</button>` : ""}
             <div style="margin-top:12px;"></div>
-            ${genderString}
-            <strong style="color:var(--text-main);">Статистика:</strong><br>
-            Друзей: ${friendsCount}<br>
-            На платформе с: ${joinDate}
         `;
 
     setTimeout(() => {
@@ -8437,86 +8732,16 @@ class ProfileManager {
             bg: "rgba(255, 235, 59, 0.2)",
             border: "#ffeb3b",
           },
-          rel_1week: {
-            name: "1 Неделя",
-            desc: "Вместе уже неделю!",
-            icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Growing%20Heart.webp",
-            color: "#ffffff",
-            bg: "#d81b60",
-            border: "#ff4081",
-          },
-          rel_1month: {
-            name: "1 Месяц",
-            desc: "Первый совместный месяц!",
-            icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Sparkling%20Heart.webp",
-            color: "#ffffff",
-            bg: "#c2185b",
-            border: "#f50057",
-          },
-          rel_6months: {
-            name: "Полгода",
-            desc: "Связь крепчает. 6 месяцев!",
-            icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Two%20Hearts.webp",
-            color: "#ffffff",
-            bg: "#ad1457",
-            border: "#c51162",
-          },
-          rel_1year: {
-            name: "1 Год",
-            desc: "Юбилей любви! 1 год",
-            icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Revolving%20Hearts.webp",
-            color: "#ffffff",
-            bg: "#880e4f",
-            border: "#f50057",
-          },
         };
         profile.assignedBadges.forEach((bId) => {
+          if (BadgeManager.isRelationshipBadge(bId)) return;
           const b =
             (AppState.customBadges && AppState.customBadges[bId]) ||
             systemFallbacks[bId];
-          if (b) userBadges.push({ ...b, _id: bId });
+          if (b && !BadgeManager.isRelationshipBadge(bId, b)) {
+            userBadges.push({ ...b, _id: bId });
+          }
         });
-      }
-
-      // Partner dynamic badges
-      const partnerUid = await this.getPartnerUid(targetUid);
-      if (partnerUid) {
-        const partnerProfile = await this.loadUser(partnerUid);
-        const partnerName = partnerProfile ? partnerProfile.name : "Неизвестно";
-        const sinceSnap = await get(ref(db, `users/${targetUid}/partnerSince`));
-        const sinceTs = sinceSnap.exists()
-          ? Number(sinceSnap.val())
-          : Date.now();
-        const days = Math.floor((Date.now() - sinceTs) / (1000 * 60 * 60 * 24));
-
-        if (days >= 7) {
-          userBadges.push({
-            _id: "partner_7",
-            name: "И Долго это будет?",
-            desc: `Первая неделя отношений с ${partnerName}`,
-            icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Smiling%20Face%20With%20Hearts.webp",
-            color: "#ffffff",
-          });
-        }
-
-        if (days >= 30) {
-          userBadges.push({
-            name: "Ну врооде бы серьезка",
-            desc: `Первый месяц отношений вместе с ${partnerName}`,
-            icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Smiling%20Face%20With%20Hearts.webp",
-            color: "#ffffff",
-          });
-        }
-
-        if (days >= 100) {
-          userBadges.push({
-            _id: "partner_100",
-            name: "Брак",
-            desc: `100 Дней отношений с ${partnerName}`,
-            icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Smiling%20Face%20With%20Hearts.webp",
-            color: "#ffffff",
-          });
-        }
       }
 
       // Put selected badge first
@@ -8575,18 +8800,18 @@ class ProfileManager {
           .join("");
 
         badgesContainer.innerHTML = `
-                    <div style="width:100%; font-size:12px; color:var(--text-muted); font-weight:700; margin-bottom:10px; text-align:center; opacity:0.7; letter-spacing:0.5px;">ПОСТИЖЕНИЯ И АЧИВКИ</div>
+                    <div style="width:100%; font-size:12px; color:var(--text-muted); font-weight:700; margin-bottom:8px; text-align:left; opacity:0.7; letter-spacing:0.5px;">ПОСТИЖЕНИЯ И АЧИВКИ</div>
                     <div style="position:relative; width:100%; height:200px; display:flex; align-items:center; justify-content:center; overflow:hidden;">
-                        <button id="badge-prev" style="position:absolute; left:10px; z-index:10; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.2); color:white; border-radius:50%; width:36px; height:36px; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.2s;">‹</button>
-                        <div class="badge-carousel-wrap" style="width:100%; max-width:500px; height:100%; position:relative; overflow:hidden; mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent); -webkit-mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);">
-                            <div id="badge-track" style="display:flex; height:100%; align-items:center; transition:transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform:translateX(0px); gap:20px; width:max-content; box-sizing:content-box;">
+                        <button id="badge-prev" style="position:absolute; left:6px; z-index:10; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.2); color:white; border-radius:50%; width:34px; height:34px; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.2s;">‹</button>
+                        <div class="badge-carousel-wrap" style="width:100%; max-width:480px; height:100%; position:relative; overflow:hidden; mask-image: linear-gradient(to right, transparent, black 12%, black 88%, transparent); -webkit-mask-image: linear-gradient(to right, transparent, black 12%, black 88%, transparent);">
+                            <div id="badge-track" style="display:flex; height:100%; align-items:center; transition:transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform:translateX(0px); gap:16px; width:max-content; box-sizing:content-box;">
                                 ${badgesHtml}
                             </div>
                         </div>
-                        <button id="badge-next" style="position:absolute; right:10px; z-index:10; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.2); color:white; border-radius:50%; width:36px; height:36px; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.2s;">›</button>
+                        <button id="badge-next" style="position:absolute; right:6px; z-index:10; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.2); color:white; border-radius:50%; width:34px; height:34px; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.2s;">›</button>
                     </div>
                     <!-- Action for selected badge -->
-                    <div id="badge-action-container" style="text-align:center; height:30px; margin-top:10px;"></div>
+                    <div id="badge-action-container" style="text-align:left; height:30px; margin-top:8px;"></div>
                 `;
 
         const updateBadgeCarousel = () => {
@@ -8729,8 +8954,6 @@ class ProfileManager {
                   badgeCounts[bId] = (badgeCounts[bId] || 0) + 1;
                 });
               }
-              if (u.partnerSince && u.partner)
-                badgeCounts["rel_1week"] = (badgeCounts["rel_1week"] || 0) + 1; // Simplified fallback for dynamic ones
             }
 
             userBadges.forEach((bdg, i) => {
@@ -8757,54 +8980,59 @@ class ProfileManager {
       )
       .join("");
     this.applyProfileBackground(
-      Utils.$("modal-view-profile")?.querySelector(".modal-content"),
+      Utils.$("section-profile"),
       profile.background,
     ); // [NEW]
-    const targetPartnerUid = await this.getPartnerUid(targetUid); // [NEW]
-    await this.renderPartnerContainer(
-      "view-partner-container",
-      targetPartnerUid,
-      targetUid === AppState.currentUser.uid,
-      targetUid,
-    ); // [UPDATE]
+    
 
     const avatarEl = Utils.$("view-avatar");
     avatarEl.innerHTML = ProfileManager.getAvatarHtml(profile);
 
     const actionBtn = Utils.$("btn-dm-modal");
-    const loveBtn = Utils.$("btn-love-proposal"); // [NEW]
-    const removePartnerBtn = Utils.$("btn-remove-partner"); // [NEW]
-    if (loveBtn) loveBtn.style.display = "none"; // [NEW]
-    if (removePartnerBtn) removePartnerBtn.style.display = "none"; // [NEW]
-    let isFriendForLove = false; // [NEW]
-    if (targetUid === AppState.currentUser.uid) {
-      actionBtn.style.display = "none";
-    } else {
-      actionBtn.style.display = "block";
-
+                        if (targetUid === AppState.currentUser.uid) {
+      actionBtn.style.display = "inline-flex";
+      actionBtn.innerText = "Изменить профиль";
+      actionBtn.className = "primary-btn";
+      actionBtn.style.color = "#FFFFFF";
+      actionBtn.style.background = "rgba(255, 255, 255, 0.1)";
+      actionBtn.style.border = "none";
+      actionBtn.style.padding = "6px 16px";
+      actionBtn.style.fontSize = "14px";
+      actionBtn.onclick = () => {
+         
+         ProfileManager.openEditProfileModal();
+      };
+      
+          } else {
+      actionBtn.style.display = "inline-flex";
+      actionBtn.className = "primary-btn";
+      actionBtn.style.background = "#FFFFFF"; actionBtn.style.color = "#000000";
+      actionBtn.style.padding = "6px 16px";
+      actionBtn.style.fontSize = "14px";
+      actionBtn.innerText = "Написать сообщение";
+      actionBtn.style.border = "none";
+      
       const myFriendsSnap = await get(
         ref(db, `users/${AppState.currentUser.uid}/friends/${targetUid}`),
       );
       const isFriend =
         myFriendsSnap.exists() && myFriendsSnap.val().status === "accepted";
-      isFriendForLove = isFriend; // [NEW]
-
+      
       if (isFriend) {
         actionBtn.innerText = "Написать сообщение";
         actionBtn.onclick = () => {
-          Utils.$("modal-view-profile").classList.remove("active");
+          
           DirectMessages.openChat(targetUid, profile.name);
         };
       } else {
         actionBtn.innerText = "Добавить в друзья";
         actionBtn.onclick = () => {
           FriendsManager.sendFriendRequest(targetUid);
-          Utils.$("modal-view-profile").classList.remove("active");
+          
         };
       }
     }
-    await this.updateLoveProfileActions(targetUid, isFriendForLove); // [NEW]
-
+    
     const vAvatar = Utils.$("view-avatar");
 
     if (
@@ -8815,22 +9043,25 @@ class ProfileManager {
       if (!inspector) {
         inspector = document.createElement("div");
         inspector.id = "live-user-inspector";
-        inspector.style.position = "absolute";
+        inspector.style.position = "fixed";
         inspector.style.bottom = "20px";
         inspector.style.left = "20px";
-        inspector.style.padding = "16px";
-        inspector.style.background = "rgba(0,0,0,0.85)";
-        inspector.style.backdropFilter = "blur(10px)";
-        inspector.style.border = "1px solid var(--border-light)";
+        inspector.style.padding = "16px 20px";
+        inspector.style.background = "rgba(10, 10, 14, 0.94)";
+        inspector.style.backdropFilter = "blur(14px)";
+        inspector.style.border = "1px solid rgba(255, 255, 255, 0.15)";
         inspector.style.borderRadius = "16px";
         inspector.style.color = "#fff";
-        inspector.style.zIndex = "999";
-        inspector.style.pointerEvents = "none";
+        inspector.style.zIndex = "9999";
+        inspector.style.pointerEvents = "auto";
         inspector.style.fontFamily = "Consolas, monospace";
         inspector.style.fontSize = "12px";
-        inspector.style.boxShadow = "0 8px 32px rgba(0,0,0,0.5)";
+        inspector.style.boxShadow = "0 12px 40px rgba(0,0,0,0.8)";
         inspector.style.textAlign = "left";
+        inspector.style.minWidth = "260px";
         vModal.appendChild(inspector);
+      } else {
+        inspector.style.display = "block";
       }
 
       const userData = await get(ref(db, `users/${targetUid}`)).then(
@@ -8842,16 +9073,29 @@ class ProfileManager {
         : profile.lastLoginDate || "unknown";
 
       inspector.innerHTML = `
-          <div style="font-weight:800; font-family:var(--font-sans); font-size:14px; margin-bottom:8px; color:var(--accent);">Live Inspector</div>
-          <div>UID: ${targetUid}</div>
-          <div>Current IP: <span style="color:#0ff">${Utils.escapeHtml(userData?.status?.ip || "unavailable")}</span></div>
-          <div>Reg IP: <span style="color:#0ff">${Utils.escapeHtml(profile.registeredIp || "unknown")}</span></div>
-          <div>Last Active: <span style="color:#0f0">${lastSessionDate}</span></div>
-          <div>Reg: ${profile.createdAt ? Utils.formatExactDate(profile.createdAt) : "unknown"}</div>
-          <div>Bans: ${Array.isArray(moderation.banHistory) ? moderation.banHistory.length : 0}</div>
-          <div>Muted: ${moderation.muted ? "Yes" : "No"}</div>
-          <div>Shadowban: ${moderation.shadowban ? "Yes" : "No"}</div>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.12); padding-bottom:6px;">
+            <div style="font-weight:800; font-family:var(--font-sans); font-size:14px; color:var(--accent);">Live Inspector</div>
+            <button id="btn-close-live-inspector" style="background:rgba(255,255,255,0.1); border:none; color:#fff; cursor:pointer; width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; line-height:1; transition:0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'" title="Закрыть">✕</button>
+          </div>
+          <div style="line-height: 1.6;">
+            <div>UID: <span style="color:#aaa;">${targetUid}</span></div>
+            <div>Current IP: <span style="color:#0ff">${Utils.escapeHtml(userData?.status?.ip || "unavailable")}</span></div>
+            <div>Reg IP: <span style="color:#0ff">${Utils.escapeHtml(profile.registeredIp || "unknown")}</span></div>
+            <div>Last Active: <span style="color:#0f0">${lastSessionDate}</span></div>
+            <div>Reg: <span style="color:#ddd">${profile.createdAt ? Utils.formatExactDate(profile.createdAt) : "unknown"}</span></div>
+            <div>Bans: <span style="color:${Array.isArray(moderation.banHistory) && moderation.banHistory.length > 0 ? '#ff4757' : '#aaa'}">${Array.isArray(moderation.banHistory) ? moderation.banHistory.length : 0}</span></div>
+            <div>Muted: <span style="color:${moderation.muted ? '#ff4757' : '#0f0'}">${moderation.muted ? "Yes" : "No"}</span></div>
+            <div>Shadowban: <span style="color:${moderation.shadowban ? '#ff4757' : '#0f0'}">${moderation.shadowban ? "Yes" : "No"}</span></div>
+          </div>
       `;
+
+      const closeBtn = inspector.querySelector("#btn-close-live-inspector");
+      if (closeBtn) {
+        closeBtn.onclick = (e) => {
+          e.stopPropagation();
+          inspector.style.display = "none";
+        };
+      }
     }
   }
 }
@@ -8988,88 +9232,26 @@ class FriendsManager {
         setNavActive("nav-support-staff");
         if (window.SupportSystem) SupportSystem.renderTickets();
       };
-    if (Utils.$("nav-profile"))
-      Utils.$("nav-profile").onclick = async () => {
-        setNavActive("nav-profile");
-        const uid = AppState.currentUser?.uid;
-        const profile = await ProfileManager.loadUser(uid);
-        const c = Utils.$("my-profile-container");
-        if (c && profile) {
-          const friendsSnap =
-            await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(
-              ({ get, ref }) => get(ref(db, `users/${uid}/friends`)),
-            );
-          const friendsCount = friendsSnap.exists()
-            ? Object.values(friendsSnap.val()).filter(
-                (f) => f.status === "accepted",
-              ).length
-            : 0;
-          const joinDate = profile.createdAt
-            ? new Date(profile.createdAt).toLocaleDateString()
-            : "Неизвестно";
-
-          let avatarStrStr = ProfileManager.getAvatarHtml(profile);
-          const isUserPremium =
-            window.PremiumManager &&
-            PremiumManager.isPremiumActive(profile, uid);
-          const isStaff =
-            window.PremiumManager && PremiumManager.isStaff(profile, uid);
-          let premiumStatusHtml = "";
-          if (isStaff) {
-            premiumStatusHtml = `<div style="background:rgba(255,179,71,0.1); border:1px solid rgba(255,200,100,0.2); padding:15px; border-radius:12px; margin-top:20px; color:#ffb347; font-weight:600;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" style="width:1.2em;vertical-align:bottom;margin-right:8px;">Персонал: Все премиум функции доступны навсегда</div>`;
-          } else if (isUserPremium) {
-            const expStr = profile?.premium?.expiresAt
-              ? new Date(profile.premium.expiresAt).toLocaleDateString()
-              : "Неограниченно";
-            premiumStatusHtml = `<div style="background:rgba(255,179,71,0.1); border:1px solid rgba(255,200,100,0.2); padding:15px; border-radius:12px; margin-top:20px; color:#ffb347;">
-                 <h4 style="margin:0 0 10px; font-weight:800; font-size:16px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" style="width:1.2em;vertical-align:bottom;margin-right:6px;">COWIO Premium активен</h4>
-                 <div style="font-size:14px; opacity:0.9; margin-bottom:12px;">Вы можете наслаждаться анимированными плашками, кастомными темами, приоритетной поддержкой и x2 опытом.</div>
-                 <div style="font-size:13px; opacity:0.8;">Действителен до: <b>${expStr}</b></div>
-             </div>`;
-          } else {
-            premiumStatusHtml = `<div style="background:rgba(255,255,255,0.03); border:1px dashed rgba(255,255,255,0.1); padding:15px; border-radius:12px; margin-top:20px; color:var(--text-main);">
-                 <h4 style="margin:0 0 10px; font-weight:700; font-size:16px;">Управление подпиской</h4>
-                 <div style="font-size:14px; color:var(--text-muted); margin-bottom:12px;">Подписка COWIO Premium неактивна. Получите доступ к эксклюзивным темам, х2 опыту и рамкам.</div>
-                 <button class="primary-btn" id="btn-profile-go-premium" style="width:auto; padding: 10px 20px; background:linear-gradient(135deg,#ffe6a0,#ffb347); color:#1a1208;">Оформить Premium</button>
-             </div>`;
-          }
-
-          c.innerHTML = `
-                    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 40px; text-align: center; position: relative;">
-                        <div style="width: 120px; height: 120px; font-size: 48px; margin: 0 auto 20px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow: 0 10px 20px rgba(0,0,0,0.5);">
-                            ${avatarStrStr}
-                        </div>
-                        <h3 style="font-size:28px; margin-bottom:5px;">${Utils.escapeHtml(profile.name)} ${ProfileManager.getRoleBadgeHtml(profile, uid)}</h3>
-                        <div style="color:var(--accent); font-weight:600; font-size:16px; margin-bottom:20px;">@${Utils.escapeHtml(profile.username)}</div>
-                        <p style="color:var(--text-muted); font-size:15px; margin-bottom:20px;">Для просмотра полной статистики, отношений и ачивок, откройте карточку профиля.</p>
-                        <div style="display:flex; justify-content:center; gap: 15px;">
-                            <button class="primary-btn" id="btn-open-full-profile-inline" style="width:auto; padding: 12px 24px;">Посмотреть в полном виде</button>
-                            <button class="secondary-btn" id="btn-edit-my-profile-inline" style="width:auto; padding: 12px 24px;">Редактировать</button>
-                        </div>
-                        ${premiumStatusHtml}
-                    </div>
-                `;
-
-          if (Utils.$("btn-profile-go-premium")) {
-            Utils.$("btn-profile-go-premium").onclick = () => {
-              Utils.$("nav-premium").click();
-            };
-          }
-
-          Utils.$("btn-open-full-profile-inline").onclick = async () => {
-            try {
-              await ProfileManager.openViewProfileModal(uid);
-            } catch (e) {
-              Utils.toast("Ошибка: " + (e.message || e), "error");
-              console.error("Profile Modal error:", e);
-            }
-          };
-
-          Utils.$("btn-edit-my-profile-inline").onclick = () => {
-            ProfileManager.openEditProfileModal();
-          };
-        }
+    
+    if (Utils.$("lobby-app-bar-profile")) {
+      Utils.$("lobby-app-bar-profile").onclick = () => {
+         const uid = AppState.currentUser?.uid;
+         if (uid) {
+    ProfileManager.openViewProfileModal(uid).catch(err => {
+      Utils.toast("Error opening profile: " + err.message, "error");
+      console.error(err);
+    });
+  }
       };
+    }
+    if (Utils.$("nav-profile")) {
+      Utils.$("nav-profile").onclick = () => {
+         const uid = AppState.currentUser?.uid;
+         if (uid) {
+             ProfileManager.openViewProfileModal(uid);
+         }
+      };
+    }
     if (Utils.$("btn-switch-account")) {
       Utils.$("btn-switch-account").onclick = async () => {
         setNavActive("nav-switch-account");
@@ -18819,149 +19001,7 @@ DirectMessages.renderMessages = function (messages) {
   if (this.theme === "love") this.startLoveHearts();
 };
 
-class RewardsPath {
-  static init() {
-    const btn = document.getElementById("btn-show-rewards-path");
-    if (btn) {
-      btn.addEventListener("click", () => {
-        this.showModal();
-      });
-    }
-  }
-
-  static showModal() {
-    let modal = document.getElementById("modal-rewards-path");
-    if (!modal) {
-      modal = document.createElement("div");
-      modal.className = "modal";
-      modal.id = "modal-rewards-path";
-      modal.innerHTML = `
-                <div class="modal-content glass-panel" style="max-width: 500px; padding: 0; display:flex; flex-direction:column; overflow:hidden;">
-                    <div style="padding: 20px; border-bottom: 1px solid var(--border-light); display:flex; justify-content:space-between; align-items:center;">
-                        <h2 style="margin:0;">Путь наград за уровень</h2>
-                        <button class="secondary-btn" id="btn-close-rewards" style="width:auto; padding:5px 10px;">✕</button>
-                    </div>
-                    <div style="padding: 20px; flex:1; overflow-y:auto; max-height:400px; background:rgba(0,0,0,0.2);">
-                        <div style="display:flex; flex-direction:column; gap:10px;">
-                            ${this.generatePathHtml()}
-                        </div>
-                    </div>
-                </div>
-            `;
-      document.body.appendChild(modal);
-      modal.querySelector("#btn-close-rewards").onclick = () => {
-        modal.classList.remove("active");
-      };
-    }
-    modal.classList.add("active");
-  }
-
-  static generatePathHtml() {
-    let html = "";
-    const rewards = [
-      {
-        level: 10,
-        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/1st%20Place%20Medal.webp",
-        title: "Каталог косметики",
-        desc: "Открывает доступ к магазину косметики, рамок, корон и бейджей профиля за COWCoins",
-      },
-      {
-        level: 30,
-        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Label.webp",
-        title: "Дополнительное Имя (1 Слот)",
-        desc: "Позволяет установить дополнительное юзернейм/титул, видимый в карточке профиля",
-      },
-      {
-        level: 50,
-        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Label.webp",
-        title: "Дополнительное Имя (2 Слота)",
-        desc: "Расширяет лимит до двух дополнительных кастомных имен профиля",
-      },
-      {
-        level: 100,
-        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp",
-        title: "Дополнительное Имя (3 Слота)",
-        desc: "Открывает максимальный лимит из трех дополнительных кастомных имен профиля",
-      },
-    ];
-
-    let currentUid = window.AppState?.currentUser?.uid;
-    let currentProfile = currentUid
-      ? window.AppState.usersCache.get(currentUid)
-      : null;
-    let currentXp = currentProfile?.xp || 0;
-    let currentLevelInfo = window.ProfileManager?.getExpMath
-      ? window.ProfileManager.getExpMath(currentXp)
-      : { level: 0 };
-    let currentLvl = currentLevelInfo.level;
-
-    html += `<div style="position:relative; margin-top:10px; margin-bottom: 20px;">
-                    <!-- Line connecting all nodes -->
-                    <div style="position:absolute; left:24px; top:30px; bottom:30px; width:4px; background:linear-gradient(to bottom, var(--accent), rgba(255,255,255,0.05)); border-radius:4px; z-index:0;"></div>
-        `;
-
-    rewards.forEach((r, i) => {
-      const isUnlocked = currentLvl >= r.level;
-      const op = isUnlocked ? "1.0" : "0.5";
-      const bg = isUnlocked
-        ? "linear-gradient(135deg, rgba(255,143,198,0.15) 0%, rgba(255,255,255,0.02) 100%)"
-        : "rgba(255,255,255,0.02)";
-      const border = isUnlocked
-        ? "1px solid rgba(255,143,198,0.5)"
-        : "1px solid rgba(255,255,255,0.05)";
-      const titleColor = isUnlocked ? "var(--brand, #ff8fc6)" : "#ffffff";
-      const glow = isUnlocked
-        ? "0 8px 32px rgba(255,143,198,0.2)"
-        : "0 4px 15px rgba(0,0,0,0.5)";
-
-      // Check if it's the specific currently next achievable (or recently unlocked)
-      let isNext = false;
-      if (
-        !isUnlocked &&
-        (i === 0 || (rewards[i - 1] && currentLvl >= rewards[i - 1].level))
-      )
-        isNext = true;
-
-      const nodeGlow = isUnlocked
-        ? `box-shadow: 0 0 16px var(--accent);`
-        : isNext
-          ? `box-shadow: 0 0 16px rgba(255,255,255,0.5); border-color:#fff !important;`
-          : "";
-
-      html += `
-                <div style="position:relative; margin-bottom:30px; opacity:${op}; z-index:1;">
-                    <div style="position:absolute; left:9px; top:18px; width:34px; height:34px; border-radius:50%; background:${isUnlocked ? "var(--accent)" : "var(--panel)"}; border:3px solid ${isUnlocked ? "var(--accent)" : "rgba(255,255,255,0.1)"}; display:flex; align-items:center; justify-content:center; color:${isUnlocked ? "#000" : "#fff"}; font-weight:800; font-size:12px; ${nodeGlow}">
-                        ${isUnlocked ? "✓" : ""}
-                        ${!isUnlocked && isNext ? '<div style="position:absolute; width:100%; height:100%; border-radius:50%; border:2px solid #fff; animation: ping 2s infinite cubic-bezier(0, 0, 0.2, 1); opacity:0.5;"></div>' : ""}
-                    </div>
-                    
-                    <div style="background:${bg}; border:${border}; border-radius: 20px; padding: 20px; margin-left: 60px; display:flex; gap:20px; box-shadow: ${glow}; transition: all 0.3s ease; align-items:center; position:relative; overflow:hidden;">
-                        ${isUnlocked ? '<div style="position:absolute; top:-60px; right:-60px; width:120px; height:120px; background:radial-gradient(circle, rgba(255,143,198,0.2) 0%, transparent 70%); border-radius:50%; pointer-events:none;"></div>' : ""}
-                        <div style="width:56px; height:56px; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.2); border-radius:14px; flex-shrink:0; border:1px solid rgba(255,255,255,0.05);">
-                            <img src="${r.icon}" style="width:40px; height:40px; object-fit:contain; filter:${isUnlocked ? "drop-shadow(0 4px 6px rgba(0,0,0,0.3))" : "grayscale(100%) opacity(0.5)"};" />
-                        </div>
-                        <div style="flex:1;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                                <div style="font-size:13px; text-transform:uppercase; font-weight:800; letter-spacing:1px; color:${titleColor};">${r.title}</div>
-                                <div style="font-size:11px; font-weight:800; color:${isUnlocked ? "#000" : "var(--text-muted)"}; background:${isUnlocked ? "var(--accent)" : "rgba(255,255,255,0.1)"}; padding:4px 10px; border-radius:12px; letter-spacing:0.5px;">УРОВЕНЬ ${r.level}</div>
-                            </div>
-                            <div style="font-size:14px; font-weight:500; color:rgba(255,255,255,0.85); line-height:1.4;">${r.desc}</div>
-                        </div>
-                    </div>
-                </div>
-            `;
-    });
-
-    html += `</div>`;
-
-    return html;
-  }
-}
-
 const initTelegram = async () => {
-  setTimeout(() => {
-    RewardsPath.init();
-  }, 1000);
   // [INJECT TELEGRAM DM]
   await import("./telegram_dm_inject.js");
 };

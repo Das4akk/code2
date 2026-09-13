@@ -1,6 +1,6 @@
 {
-  "name": "",
-  "description": "",
+  "name": "COWIO",
+  "description": "Платформа совместного просмотра видео и онлайн-кинотеатр",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
