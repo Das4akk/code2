@@ -311,6 +311,35 @@
   }
 </style>
     <style>
+      
+      .oled-scrollbar::-webkit-scrollbar {
+        width: 8px;
+      }
+      .oled-scrollbar::-webkit-scrollbar-track {
+        background: #000000;
+        border-radius: 4px;
+      }
+      .oled-scrollbar::-webkit-scrollbar-thumb {
+        background: #ffffff;
+        border-radius: 4px;
+      }
+      .oled-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #e0e0e0;
+      }
+
+      
+      #btn-like-profile:hover #like-icon {
+        transform: scale(1.15) !important;
+        filter: grayscale(0%) opacity(100%) !important;
+      }
+      #btn-like-profile:active #like-icon {
+        transform: scale(0.9) !important;
+      }
+      #btn-like-profile.liked #like-icon {
+        filter: grayscale(0%) opacity(100%) !important;
+        transform: scale(1.1) !important;
+      }
+
       /* ========================================================= */
       /* AMOLED THEME VARIABLES & RESET */
       /* ========================================================= */
@@ -3899,62 +3928,7 @@
       }
 
       /* Soundpad & Shop Styles */
-      .glass-panel.rare-sound-common {
-        border-color: rgba(255, 255, 255, 0.2) !important;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-      }
-      .glass-panel.rare-sound-epic {
-        border-color: #a335ee !important;
-        box-shadow: 0 0 15px rgba(163, 53, 238, 0.5);
-      }
-      .glass-panel.rare-sound-legendary {
-        border-color: #ff8000 !important;
-        box-shadow: 0 0 20px rgba(255, 128, 0, 0.6);
-      }
-
-      .sound-btn {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 12px;
-        gap: 5px;
-        cursor: pointer;
-        border-radius: 12px;
-        transition:
-          transform 0.2s,
-          box-shadow 0.2s;
-        position: relative;
-        overflow: hidden;
-        background: rgba(0, 0, 0, 0.3);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-      }
-      .sound-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 0 15px var(--accent);
-      }
-      .sound-btn:active {
-        transform: translateY(0);
-      }
-      .sound-btn .sound-icon {
-        font-size: 24px;
-      }
-      .sound-btn .sound-name {
-        font-size: 11px;
-        font-weight: 600;
-        text-align: center;
-        color: var(--text-main);
-      }
-      .sound-btn .sound-hotkey {
-        position: absolute;
-        top: 4px;
-        right: 4px;
-        font-size: 9px;
-        opacity: 0.5;
-        background: rgba(0, 0, 0, 0.5);
-        padding: 2px 4px;
-        border-radius: 4px;
-      }
+      
 
       @keyframes frameGlow {
         0% {
@@ -5790,7 +5764,7 @@
         </main>
 
         <main class="rooms-main" id="section-leaderboard" style="display: none">
-          <div class="leaderboard-container" style="max-width: 900px; width: 100%; margin: 0 auto; padding-top: 20px;">
+          <div class="leaderboard-container" style="width: 100%; margin: 0 auto; padding: 20px 40px; box-sizing: border-box;">
             <div class="section-title" style="font-size: 28px; margin-bottom: 24px; text-align: center; color: var(--accent);">
               Список лучших
             </div>
@@ -6342,8 +6316,8 @@
          </div>
         </div>
 
-        <div class="mobile-only-description" style="width: 100%;">
-          <div class="view-bio" style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px; line-height: 1.5;"></div>
+        <div class="profile-bio-wrapper" style="width: 100%;">
+          <div class="view-bio" style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px; line-height: 1.5; padding-top: 15px;"></div>
         </div>
       </div>
 
@@ -6365,9 +6339,7 @@
             <div id="view-badges-collection" style="width: 100%; margin-bottom: 15px;"></div>
             <div class="hashtags-list" id="view-hashtags"></div>
             
-            <div class="desktop-only-description" style="margin-top: 15px;">
-              <div class="view-bio" style="color: var(--text-muted); font-size: 14px; line-height: 1.5;"></div>
-            </div>
+            
           </div>
           <div style="flex: 0 0 200px;" class="profile-stats-container">
             <div id="view-profile-stats" style="padding: 12px; background: rgba(34,34,34,0.5); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); width: 100%;">
@@ -8188,4 +8160,25 @@
     </script>
   
 
+
+    <!-- Like Stats Modal -->
+    <div class="modal" id="modal-like-stats">
+      <div class="modal-content glass-panel" style="max-width: 800px; padding: 24px; position: relative; text-align: left;">
+        <button class="modal-close" onclick="document.getElementById('modal-like-stats').classList.remove('active')" style="position:absolute; top:15px; right:15px; background:none; border:none; color:#fff; font-size:24px; cursor:pointer; line-height: 1;">&times;</button>
+        <h2 style="margin-top:0; font-size:20px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+          Статистика лайков
+          <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Heart.webp" style="width: 24px; height: 24px;" alt="Heart">
+        </h2>
+        <div style="margin: 15px 0; font-size: 16px;">
+          Всего лайков: <strong id="like-stats-total" style="color:var(--primary); font-size: 18px;">0</strong>
+        </div>
+        <div style="font-size: 14px; margin-bottom: 10px; color: var(--text-muted); font-weight: 500;">
+          Последние 10 лайков:
+          <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Eyes.webp" style="width: 18px; height: 18px; vertical-align: bottom; margin-left: 4px;">
+        </div>
+        <div id="like-stats-list" class="oled-scrollbar" style="max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 5px;">
+          <!-- list -->
+        </div>
+      </div>
+    </div>
 </body></html>

@@ -5514,7 +5514,7 @@ class AuthManager {
           DirectMessages.startNotifications();
           AdminPanel.init();
           if (window.SupportSystem) window.SupportSystem.initGlobalListener();
-          if (window.AdminSoundManager) window.AdminSoundManager.initAdmin();
+          if (false) 
           if (Utils.$("nav-rooms")) Utils.$("nav-rooms").click();
           this.bindGlobalPresence();
         } else {
@@ -8495,17 +8495,20 @@ class ProfileManager {
        // Helper to update UI
        const updateLikeUI = (p) => {
           if (!p) return;
-          const likedBy = p.likedBy || {};
+          const likedBy = profile.likedBy || {};
           const count = Object.keys(likedBy).length;
           if (likesCount) likesCount.innerText = count;
-          if (likeIcon) {
-             if (AppState.currentUser && likedBy[AppState.currentUser.uid]) {
-                likeIcon.style.filter = "none";
-                likeIcon.style.transform = "scale(1.15)";
-             } else {
-                likeIcon.style.filter = "grayscale(100%) opacity(50%)";
-                likeIcon.style.transform = "scale(1)";
-             }
+          if (likeIcon && AppState.currentUser) {
+            const btn = document.getElementById("btn-like-profile");
+            if (likedBy[AppState.currentUser.uid]) {
+                if (btn) btn.classList.add("liked");
+                likeIcon.style.filter = "";
+                likeIcon.style.transform = "";
+            } else {
+                if (btn) btn.classList.remove("liked");
+                likeIcon.style.filter = "";
+                likeIcon.style.transform = "";
+            }
           }
        };
        
@@ -8515,7 +8518,7 @@ class ProfileManager {
           if (isSelf) {
               // Open Like Stats Modal
               Utils.$("modal-like-stats").classList.add("active");
-              const likedBy = p.likedBy || {};
+              const likedBy = profile.likedBy || {};
               Utils.$("like-stats-total").innerText = Object.keys(likedBy).length;
               
               const listEl = Utils.$("like-stats-list");
@@ -8612,16 +8615,19 @@ class ProfileManager {
        const likesCount = document.getElementById("view-likes-count");
        const updateLikeUI = (p) => {
           if (!p) return;
-          const likedBy = p.likedBy || {};
+          const likedBy = profile.likedBy || {};
           const count = Object.keys(likedBy).length;
           if (likesCount) likesCount.innerText = count;
-          if (likeIcon) {
-            if (AppState.currentUser && likedBy[AppState.currentUser.uid]) {
-               likeIcon.style.filter = "none";
-               likeIcon.style.transform = "scale(1.15)";
+          if (likeIcon && AppState.currentUser) {
+            const btn = document.getElementById("btn-like-profile");
+            if (likedBy[AppState.currentUser.uid]) {
+                if (btn) btn.classList.add("liked");
+                likeIcon.style.filter = "";
+                likeIcon.style.transform = "";
             } else {
-               likeIcon.style.filter = "grayscale(100%) opacity(50%)";
-               likeIcon.style.transform = "scale(1)";
+                if (btn) btn.classList.remove("liked");
+                likeIcon.style.filter = "";
+                likeIcon.style.transform = "";
             }
           }
        };
@@ -9393,6 +9399,12 @@ class FriendsManager {
         setNavActive("nav-shop");
         window.ShopController?.loadShop();
       };
+    if (Utils.$("nav-leaderboard"))
+      Utils.$("nav-leaderboard").onclick = () => {
+        setNavActive("nav-leaderboard");
+        if (window.loadLeaderboard) window.loadLeaderboard();
+      };
+    
     if (Utils.$("nav-settings"))
       Utils.$("nav-settings").onclick = () => setNavActive("nav-settings");
     if (Utils.$("nav-premium"))
@@ -13206,18 +13218,8 @@ class AdminPanel {
             <input type="text" id="admin-edit-username" placeholder="ID" value="${Utils.escapeHtml(profile.username || "")}">
             <input type="text" id="admin-edit-avatar" placeholder="URL аватарки" value="${Utils.escapeHtml(profile.avatar || "")}">
             <div class="admin-editor-block">
-                <div class="admin-form-label">Фон профиля</div>
-                <div class="admin-color-grid" style="margin-top:0;">
-                    <div class="admin-color-field">
-                        <label class="admin-form-label" for="admin-edit-bg-color">Цвет фона</label>
-                        <input type="color" id="admin-edit-bg-color" value="${Utils.escapeHtml(ProfileManager.normalizeProfileBackground(profile.background).color)}" title="Цвет фона профиля">
-                    </div>
-                    <div class="admin-color-field">
-                        <label class="admin-form-label" for="admin-edit-bg-dim">Затемнение</label>
-                        <input type="number" id="admin-edit-bg-dim" min="0" max="1" step="0.05" value="${Utils.escapeHtml(String(ProfileManager.normalizeProfileBackground(profile.background).dim ?? 0.5))}" placeholder="0..1">
-                    </div>
-                </div>
-                <input type="text" id="admin-edit-bg-url" placeholder="URL фона профиля" value="${Utils.escapeHtml(ProfileManager.normalizeProfileBackground(profile.background).url || "")}">
+                <div class="admin-form-label">Баннер профиля</div>
+                <input type="text" id="admin-edit-banner" placeholder="URL баннера (изображение)" value="${Utils.escapeHtml(profile.banner || "")}">
             </div>
             <textarea id="admin-edit-bio" rows="4" placeholder="Описание">${Utils.escapeHtml(profile.bio || "")}</textarea>
             <div style="margin-top:8px;">
@@ -13672,9 +13674,7 @@ class AdminPanel {
     const avatar = Utils.$("admin-edit-avatar").value.trim();
     const bio = Utils.$("admin-edit-bio").value.trim();
     let streak = parseInt(Utils.$("admin-edit-streak")?.value || 0, 10);
-    const bgColor = Utils.$("admin-edit-bg-color")?.value || "#111111";
-    const bgUrl = Utils.$("admin-edit-bg-url")?.value.trim() || "";
-    const bgDim = Number(Utils.$("admin-edit-bg-dim")?.value || 0.5);
+    const banner = Utils.$("admin-edit-banner")?.value.trim() || "";
     let targetLikes = parseInt(Utils.$("admin-edit-likes")?.value || 0, 10);
     
     // Process likes
@@ -13743,14 +13743,7 @@ class AdminPanel {
       streak,
       level,
       xp,
-      background: ProfileManager.normalizeProfileBackground({
-        color: bgColor,
-        index:
-          ProfileManager.normalizeProfileBackground(oldProfile.background)
-            .index || 10,
-        url: bgUrl,
-        dim: Math.max(0, Math.min(1, bgDim)),
-      }),
+      banner: banner,
     };
     updates[`users/${uid}/profile`] = nextProfile;
 
@@ -15807,18 +15800,14 @@ class RoomManager {
         const setRoomTab = (name) => {
       if (rbChat) rbChat.classList.toggle("active", name === "chat");
       if (rbUsers) rbUsers.classList.toggle("active", name === "users");
-      if (rbSound) rbSound.classList.toggle("active", name === "sound");
+      
       if (rcChat) rcChat.style.display = name === "chat" ? "flex" : "none";
       if (rcUsers) rcUsers.style.display = name === "users" ? "flex" : "none";
-      if (rcSound) rcSound.style.display = name === "sound" ? "block" : "none";
+      
     };
     if (rbChat) rbChat.onclick = () => setRoomTab("chat");
     if (rbUsers) rbUsers.onclick = () => setRoomTab("users");
-    if (rbSound)
-      rbSound.onclick = () => {
-        setRoomTab("sound");
-        window.SoundpadController?.loadPad();
-      };
+    
   }
 
   static hasPerm(permName) {
@@ -15853,18 +15842,7 @@ class RoomManager {
       else b.classList.add("disabled");
     });
 
-    const soundpadBtn = Utils.$("tab-soundpad-btn");
-    if (soundpadBtn) {
-      const isHost = AppState.isHost || AdminPanel.isCurrentUserCreator();
-      soundpadBtn.style.display = isHost ? "flex" : "none";
-      if (!isHost) {
-        const spList = Utils.$("soundpad-list");
-        if (spList && spList.style.display !== "none") {
-          if (typeof setRoomTab === "function") setRoomTab("chat");
-          else if (Utils.$("tab-chat-btn")) Utils.$("tab-chat-btn").click();
-        }
-      }
-    }
+    
 
     if (!pVoice && RTCManager.isMicActive) RTCManager.toggleMic(true);
   }
@@ -17308,24 +17286,18 @@ class CatalogManager {
                         ${isHot ? `<div class="catalog-hot-badge"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" alt=""> Акция</div>` : ""}
                         
                         ${
-                          item.type === "sound"
-                            ? `
-                            <div style="width: 100%; display:flex; align-items:center; justify-content:center; position:relative; z-index:2; padding: 0 16px;">
-                                <audio controls src="${item.image}" style="width:100%; height: 35px; border-radius: 8px; outline:none;" onclick="event.stopPropagation();"></audio>
-                            </div>
-                        `
-                            : `
+`
                             <div style="width: 90px; height: 90px; display:flex; align-items:center; justify-content:center; position:relative; z-index:2;">
                                 <div style="width:90px; height:90px; border-radius:50%; position:absolute; top:0; left:0; z-index:1; box-shadow: inset 0 0 10px rgba(0,0,0,0.4); background:#111214; color:#fff; font-size:40px; font-weight:bold;">${userAvatarInner}</div>
                                 <img src="${item.image}" style="width:130%;height:130%;object-fit:contain; position:absolute; top:-15%; left:-15%; z-index:2; pointer-events:none;"/>
                             </div>
                         `
-                        }
+}
                     </div>
                     
                     <div class="catalog-card-info">
                         <div class="catalog-card-title">${item.title}</div>
-                        <div class="catalog-card-type">${item.type === "sound" ? "ЗВУК" : "УКРАШЕНИЕ АВАТАРА"}</div>
+                        <div class="catalog-card-type"></div>
                         
                         <div class="catalog-card-bottom">
                             <div class="catalog-card-price">${item.priceType === "free" ? "БЕСПЛАТНО" : item.price + " ур."}</div>
@@ -17394,7 +17366,7 @@ class CatalogManager {
                 <input type="text" id="admin-cat-img-${item.id}" value="${item.image}" class="admin-form-input" placeholder="URL Картинки/Рамки/Звука" style="margin-bottom: 4px;"/>
                 <select id="admin-cat-type-${item.id}" class="admin-form-input" style="margin-bottom: 4px;">
                     <option value="frame" ${item.type === "frame" ? "selected" : ""}>Рамка</option>
-                    <option value="sound" ${item.type === "sound" ? "selected" : ""}>Звук</option>
+                    
                 </select>
                 <div style="display:flex; align-items:center; gap: 8px; margin-bottom: 8px;">
                     <input type="checkbox" id="admin-cat-ishot-${item.id}" ${item.isHot === true || item.isHot === "true" ? "checked" : ""} style="margin:0; width:16px; height:16px;">
@@ -17448,7 +17420,7 @@ window.openCatalogItemModal = function (itemId) {
   Utils.$("catalog-item-price").innerText =
     item.priceType === "free" ? "БЕСПЛАТНО" : item.price + " ур.";
   Utils.$("catalog-item-type-label").innerText =
-    item.type === "sound" ? "ЗВУК" : "УКРАШЕНИЕ АВАТАРА";
+    "УКРАШЕНИЕ АВАТАРА";
 
   const imageSolo = Utils.$("catalog-item-image-solo");
   const avatarBg = Utils.$("catalog-item-avatar-bg");
@@ -17468,17 +17440,7 @@ window.openCatalogItemModal = function (itemId) {
       };
   let userAvatarInner = ProfileManager.getAvatarHtml(fakeProf);
 
-  if (item.type === "sound") {
-    if (imageSolo) imageSolo.style.display = "none";
-    if (avatarBg) avatarBg.style.display = "none";
-    if (audioSolo) {
-      audioSolo.style.display = "block";
-      audioSolo.src = item.image;
-    }
-    if (blurObj) {
-      blurObj.style.backgroundImage = "none";
-    }
-  } else {
+  if (false) { } else {
     if (imageSolo) {
       imageSolo.style.display = "block";
       imageSolo.src = item.image;
@@ -17542,12 +17504,7 @@ window.openCatalogItemModal = function (itemId) {
               }),
           );
           Utils.toast("Рамка применена!", "success");
-        } else if (item.type === "sound") {
-          Utils.toast(
-            "Звук выбран, но применение профильного звука пока в разработке",
-            "info",
-          );
-        }
+        } 
         modal.classList.remove("active");
       } else {
         const isFree =
@@ -18159,12 +18116,8 @@ window.addEventListener("pagehide", () => {
 });
 
 // ============================================================================
-// MARKETPLACE & SOUNDPAD
+// MARKETPLACE
 // ============================
-window.AdminSoundManager = class {
-  static renderAdminSoundCatalog() {}
-  static initAdmin() {}
-};
 
 window.MysteryEventManager = class MysteryEventManager {
   static RELEASE_AT = Date.parse("2026-06-10T19:46:00+03:00");
@@ -19047,3 +19000,124 @@ if (document.readyState === "loading") {
 } else {
   initTelegram();
 }
+
+
+window.loadLeaderboard = async function() {
+    const listEl = Utils.$("leaderboard-list");
+    if (!listEl) return;
+    
+    listEl.innerHTML = '<div style="color:var(--text-muted); text-align:center;">Загрузка...</div>';
+    
+    try {
+        const { get, ref, getDatabase, set } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
+        const db = getDatabase();
+        
+        // Fetch dual caches
+        const [top3Snap, restSnap] = await Promise.all([
+            get(ref(db, "leaderboard/likes_top3")),
+            get(ref(db, "leaderboard/likes_rest"))
+        ]);
+        
+        const top3Cache = top3Snap.val() || {};
+        const restCache = restSnap.val() || {};
+        
+        const now = Date.now();
+        const ONE_MINUTE = 60 * 1000;
+        const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+        
+        const top3Fresh = top3Cache.lastUpdate && (now - top3Cache.lastUpdate < ONE_MINUTE) && top3Cache.users;
+        const restFresh = restCache.lastUpdate && (now - restCache.lastUpdate < TWENTY_FOUR_HOURS) && restCache.users;
+        
+        let usersArray = [];
+        
+        if (top3Fresh && restFresh) {
+            usersArray = [...top3Cache.users, ...restCache.users];
+        } else {
+            // Need to recalculate
+            const snap = await get(ref(db, "users"));
+            if (!snap.exists()) {
+                listEl.innerHTML = '<div style="color:var(--text-muted); text-align:center;">Пока нет данных.</div>';
+                return;
+            }
+            
+            const allUsers = snap.val();
+            let allLikes = [];
+            
+            for (const [uid, uData] of Object.entries(allUsers)) {
+                if (!uData.profile) continue;
+                const likedBy = uData.profile.likedBy || {};
+                const likesCount = Object.keys(likedBy).length;
+                if (likesCount > 0) {
+                    allLikes.push({ uid, profile: uData.profile, likes: likesCount });
+                }
+            }
+            
+            allLikes.sort((a, b) => b.likes - a.likes);
+            
+            const newTop3 = allLikes.slice(0, 3);
+            const newRest = allLikes.slice(3, 50);
+            
+            if (!top3Fresh) {
+                await set(ref(db, "leaderboard/likes_top3"), {
+                    lastUpdate: now,
+                    users: newTop3
+                });
+                top3Cache.users = newTop3;
+            }
+            
+            if (!restFresh) {
+                await set(ref(db, "leaderboard/likes_rest"), {
+                    lastUpdate: now,
+                    users: newRest
+                });
+                restCache.users = newRest;
+            }
+            
+            usersArray = [...(top3Cache.users || []), ...(restCache.users || [])];
+        }
+        
+        if (!usersArray || usersArray.length === 0) {
+            listEl.innerHTML = '<div style="color:var(--text-muted); text-align:center;">Пока ни у кого нет лайков.</div>';
+            return;
+        }
+        
+        let html = "";
+        usersArray.forEach((u, idx) => {
+            let placeStyle = "color: var(--text-muted); font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center;";
+            let placeText = `${idx + 1}`;
+            
+            if (idx === 0) { 
+                placeStyle = "color: #FFD700; font-size: 20px; font-weight: 900; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); display: flex; align-items: center; justify-content: center; gap: 4px;"; 
+                placeText = '1 <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp" style="width: 28px; height: 28px;" alt="1">'; 
+            }
+            if (idx === 1) { 
+                placeStyle = "color: #C0C0C0; font-size: 18px; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 4px;"; 
+                placeText = '2 <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Gem%20Stone.webp" style="width: 26px; height: 26px;" alt="2">'; 
+            }
+            if (idx === 2) { 
+                placeStyle = "color: #CD7F32; font-size: 18px; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 4px;"; 
+                placeText = '3 <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" style="width: 24px; height: 24px;" alt="3">'; 
+            }
+            
+            const avHtml = ProfileManager.getAvatarHtml(u.profile);
+            
+            html += `<div style="display:flex;align-items:center;padding:12px 16px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:12px;cursor:pointer;transition:transform 0.2s, background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='rgba(255,255,255,0.03)'" onclick="ProfileManager.openViewProfileModal('${u.uid}')">
+                <div style="width: 60px; text-align:center; margin-right:16px; font-weight:bold; ${placeStyle}">${placeText}</div>
+                <div style="width:46px;height:46px;margin-right:16px;border-radius:50%;overflow:visible;">${avHtml}</div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:2px;">
+                    <span style="font-weight:700;font-size:16px;color:var(--text-main);">${Utils.escapeHtml(u.profile.name || "Пользователь")}</span>
+                    <span style="font-size:12px;color:var(--text-muted);">@${Utils.escapeHtml(u.profile.username || "")}</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;font-weight:700;font-size:16px;">
+                    ${u.likes} <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Heart.webp" style="width: 20px; height: 20px;">
+                </div>
+            </div>`;
+        });
+        
+        listEl.innerHTML = html;
+        
+    } catch (e) {
+        console.error(e);
+        listEl.innerHTML = '<div style="color:red; text-align:center;">Ошибка загрузки.</div>';
+    }
+};
