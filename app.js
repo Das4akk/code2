@@ -5424,6 +5424,26 @@ class AuthManager {
             TutorialManager.markDeviceUsed();
           }
           AppState.currentUser = user;
+          
+          // --- Like Notifications ---
+          let initialLikesLoad = true;
+          import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(({ onChildAdded, ref, get, getDatabase }) => {
+              const dbase = getDatabase();
+              onChildAdded(ref(dbase, `users/${user.uid}/profile/likedBy`), (snap) => {
+                  if (initialLikesLoad) return;
+                  const likerUid = snap.key;
+                  get(ref(dbase, `users/${likerUid}/profile/name`)).then(nameSnap => {
+                      const likerName = nameSnap.val() || "Кто-то";
+                      get(ref(dbase, `users/${user.uid}/profile/likedBy`)).then(likesSnap => {
+                          const count = likesSnap.exists() ? Object.keys(likesSnap.val()).length : 1;
+                          Utils.toast(`Вы получили лайк от ${likerName} - теперь у вас ${count} лайков в профиле`, "info");
+                      });
+                  });
+              });
+              setTimeout(() => initialLikesLoad = false, 3000);
+          });
+          // --------------------------
+          
           const savedAccounts = JSON.parse(
             localStorage.getItem("cowio_saved_accounts") || "[]",
           );
@@ -8414,14 +8434,14 @@ class ProfileManager {
     const renderSkeleton = () => {
       Utils.$("view-name").innerHTML = `<div style="width: 150px; height: 20px; background: rgba(255,255,255,0.1); border-radius: 6px; animation: pulse 1.5s infinite;"></div>`;
       Utils.$("view-username").innerHTML = `<div style="width: 100px; height: 14px; background: rgba(255,255,255,0.05); border-radius: 4px; margin-top: 6px; animation: pulse 1.5s infinite;"></div>`;
-      Utils.$("view-bio").innerHTML = `
+      document.querySelectorAll(".view-bio").forEach(el => el.innerHTML = `
         <div style="width: 100%; height: 12px; background: rgba(255,255,255,0.08); border-radius: 4px; margin-bottom: 6px; animation: pulse 1.5s infinite;"></div>
         <div style="width: 80%; height: 12px; background: rgba(255,255,255,0.06); border-radius: 4px; margin-bottom: 12px; animation: pulse 1.5s infinite;"></div>
         <div style="width: 100px; height: 12px; background: rgba(255,255,255,0.05); border-radius: 4px; margin-top: 10px; animation: pulse 1.5s infinite;"></div>
-      `;
+      `);
       if (Utils.$("view-avatar")) Utils.$("view-avatar").innerHTML = `<div style="width: 100%; height: 100%; background: rgba(255,255,255,0.1); border-radius: 50%; animation: pulse 1.5s infinite;"></div>`;
       if (Utils.$("view-badges-collection")) Utils.$("view-badges-collection").innerHTML = "";
-      if (Utils.$("view-status")) Utils.$("view-status").innerHTML = `<div style="width: 80px; height: 14px; background: rgba(255,255,255,0.08); border-radius: 4px; display: inline-block; animation: pulse 1.5s infinite;"></div>`;
+      document.querySelectorAll(".view-status").forEach(el => el.innerHTML = `<div style="width: 80px; height: 14px; background: rgba(255,255,255,0.08); border-radius: 4px; display: inline-block; animation: pulse 1.5s infinite;"></div>`);
       if (Utils.$("view-streak")) Utils.$("view-streak").style.display = "none";
       if (Utils.$("view-gender")) Utils.$("view-gender").style.display = "none";
       ProfileManager.applyProfileBanner(vModal, null);
@@ -8437,7 +8457,7 @@ class ProfileManager {
       
       const safeBioPreview = Utils.escapeHtml(profile.bio || "Пользователь не добавил описание.");
       const needsExpansion = safeBioPreview.length > 200;
-      Utils.$("view-bio").innerHTML = `
+      document.querySelectorAll(".view-bio").forEach(el => el.innerHTML = `
         <div class="premium-bio-layout ${needsExpansion ? "collapsed" : ""}" id="profile-bio-content" style="position: relative; transition: max-height 0.3s ease-out; ${needsExpansion ? "max-height: 75px; overflow: hidden;" : "max-height: none; overflow: visible;"}">
           ${safeBioPreview}
         </div>
@@ -8445,12 +8465,126 @@ class ProfileManager {
         <div style="margin-top:12px;"></div>
         <div style="width: 150px; height: 14px; background: rgba(255,255,255,0.08); border-radius: 4px; animation: pulse 1.5s infinite; margin-top: 10px;"></div>
         <div style="width: 100px; height: 14px; background: rgba(255,255,255,0.08); border-radius: 4px; animation: pulse 1.5s infinite; margin-top: 6px;"></div>
-      `;
-      if (Utils.$("view-status")) Utils.$("view-status").innerHTML = `<div style="width: 80px; height: 14px; background: rgba(255,255,255,0.08); border-radius: 4px; display: inline-block; animation: pulse 1.5s infinite;"></div>`;
+      `);
+      document.querySelectorAll(".view-status").forEach(el => el.innerHTML = `<div style="width: 80px; height: 14px; background: rgba(255,255,255,0.08); border-radius: 4px; display: inline-block; animation: pulse 1.5s infinite;"></div>`);
     } else {
       renderSkeleton();
     }
     
+    
+    const likeBtn = document.getElementById("btn-like-profile");
+    if (likeBtn) {
+       likeBtn.style.display = "flex";
+       
+       // Remove previous listener to avoid duplicates
+       const newLikeBtn = likeBtn.cloneNode(true);
+       likeBtn.parentNode.replaceChild(newLikeBtn, likeBtn);
+       
+       const likeIcon = newLikeBtn.querySelector("#like-icon") || document.getElementById("like-icon");
+       const likesCount = newLikeBtn.querySelector("#view-likes-count") || document.getElementById("view-likes-count");
+
+       const isSelf = targetUid === AppState.currentUser?.uid;
+       if (isSelf) {
+          newLikeBtn.style.opacity = "0.5";
+          newLikeBtn.style.cursor = "not-allowed";
+       } else {
+          newLikeBtn.style.opacity = "1";
+          newLikeBtn.style.cursor = "pointer";
+       }
+
+       // Helper to update UI
+       const updateLikeUI = (p) => {
+          if (!p) return;
+          const likedBy = p.likedBy || {};
+          const count = Object.keys(likedBy).length;
+          if (likesCount) likesCount.innerText = count;
+          if (likeIcon) {
+             if (AppState.currentUser && likedBy[AppState.currentUser.uid]) {
+                likeIcon.style.filter = "none";
+                likeIcon.style.transform = "scale(1.15)";
+             } else {
+                likeIcon.style.filter = "grayscale(100%) opacity(50%)";
+                likeIcon.style.transform = "scale(1)";
+             }
+          }
+       };
+       
+       updateLikeUI(profile);
+       
+       newLikeBtn.addEventListener("click", async () => {
+          if (isSelf) {
+              // Open Like Stats Modal
+              Utils.$("modal-like-stats").classList.add("active");
+              const likedBy = p.likedBy || {};
+              Utils.$("like-stats-total").innerText = Object.keys(likedBy).length;
+              
+              const listEl = Utils.$("like-stats-list");
+              listEl.innerHTML = '<div style="text-align:center;color:var(--text-muted);">Загрузка...</div>';
+              
+              const likesArray = Object.entries(likedBy)
+                .map(([uid, ts]) => ({ uid, ts }))
+                .sort((a, b) => b.ts - a.ts)
+                .slice(0, 10);
+                
+              if (likesArray.length === 0) {
+                 listEl.innerHTML = '<div style="text-align:center;color:var(--text-muted);">Пока никто не поставил вам лайк.</div>';
+                 return;
+              }
+              
+              Promise.all(likesArray.map(async (likeObj) => {
+                  if (likeObj.uid.startsWith("fake_like_")) {
+                      return `<div style="display:flex;align-items:center;padding:10px;background:rgba(255,255,255,0.05);border-radius:8px;">
+                          <div style="flex:1;display:flex;flex-direction:column;">
+                              <span style="font-weight:600;">Неизвестный пользователь</span>
+                              <span style="font-size:11px;color:var(--text-muted);">${new Date(likeObj.ts).toLocaleString("ru-RU")}</span>
+                          </div>
+                      </div>`;
+                  }
+                  
+                  const snap = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(({get, ref, getDatabase}) => get(ref(getDatabase(), `users/${likeObj.uid}/profile`)));
+                  const prof = snap.val() || {};
+                  const avHtml = ProfileManager.getAvatarHtml(prof);
+                  return `<div style="display:flex;align-items:center;padding:10px;background:rgba(255,255,255,0.05);border-radius:8px;cursor:pointer;transition:background 0.2s;" onclick="ProfileManager.openViewProfileModal('${likeObj.uid}')">
+                      <div style="width:36px;height:36px;margin-right:12px;border-radius:50%;overflow:visible;">${avHtml}</div>
+                      <div style="flex:1;display:flex;flex-direction:column;">
+                          <span style="font-weight:600;">${Utils.escapeHtml(prof.name || "Пользователь")}</span>
+                          <span style="font-size:11px;color:var(--text-muted);">${new Date(likeObj.ts).toLocaleString("ru-RU")}</span>
+                      </div>
+                  </div>`;
+              })).then(htmlArr => {
+                  listEl.innerHTML = htmlArr.join("");
+              });
+              
+              return;
+          }
+          if (!AppState.currentUser) return;
+          
+          try {
+             const myUid = AppState.currentUser.uid;
+             const likedRef = ref(db, `users/${targetUid}/profile/likedBy/${myUid}`);
+             
+             // Check current state from cache or fetch
+             const profSnap = await get(ref(db, `users/${targetUid}/profile/likedBy/${myUid}`));
+             if (profSnap.exists()) {
+                await remove(likedRef);
+             } else {
+                await set(likedRef, Date.now());
+                Utils.toast(`Вы поставили лайк пользователю ${profile.name || "Пользователь"}`, "success");
+             }
+             
+             // Refresh profile
+             const freshProfSnap = await get(ref(db, `users/${targetUid}/profile`));
+             if (freshProfSnap.exists()) {
+                const freshP = freshProfSnap.val();
+                AppState.usersCache.set(targetUid, freshP);
+                updateLikeUI(freshP);
+             }
+          } catch (err) {
+             console.error("Like error", err); Utils.toast(err.message, "error");
+          }
+       });
+    }
+
     vModal.classList.add("active");
 
     const fetchPromises = [
@@ -8470,9 +8604,32 @@ class ProfileManager {
       ProfileManager.applyProfileBanner(vModal, loadedProfile);
     }
     
-    profile = loadedProfile;
     
+    profile = loadedProfile;
+    if (document.getElementById("btn-like-profile")) {
+       
+       const likeIcon = document.getElementById("like-icon");
+       const likesCount = document.getElementById("view-likes-count");
+       const updateLikeUI = (p) => {
+          if (!p) return;
+          const likedBy = p.likedBy || {};
+          const count = Object.keys(likedBy).length;
+          if (likesCount) likesCount.innerText = count;
+          if (likeIcon) {
+            if (AppState.currentUser && likedBy[AppState.currentUser.uid]) {
+               likeIcon.style.filter = "none";
+               likeIcon.style.transform = "scale(1.15)";
+            } else {
+               likeIcon.style.filter = "grayscale(100%) opacity(50%)";
+               likeIcon.style.transform = "scale(1)";
+            }
+          }
+       };
+       updateLikeUI(profile);
+    }
+
     if (!profile) {
+
       vModal.classList.remove("active");
       return Utils.toast("Пользователь не найден", "error");
     }
@@ -8609,8 +8766,7 @@ class ProfileManager {
       : st.lastSeen
         ? `Был(а) ${Utils.formatLastSeen(st.lastSeen)}`
         : "Офлайн";
-    Utils.$("view-status").innerHTML =
-      `<div class="indicator ${isOnline ? "online" : ""}" style="width:8px;height:8px;border-radius:50%;background:${isOnline ? "#4caf50" : "#888"};display:inline-block;margin-right:6px;"></div>${statusText}`;
+    document.querySelectorAll(".view-status").forEach(el => el.innerHTML = `<div class="indicator ${isOnline ? "online" : ""}" style="width:8px;height:8px;border-radius:50%;background:${isOnline ? "#4caf50" : "#888"};display:inline-block;margin-right:6px;"></div>${statusText}`);
 
     const badgeHtml = this.getRoleBadgeHtml(profile, targetUid);
 
@@ -8649,15 +8805,29 @@ class ProfileManager {
 
     // Убираем баг с пропаданием информации. Даем height: auto при разворачивании. 
     const LIMIT = 200;
+
+    const statCreated = document.getElementById("view-stat-created");
+    if (statCreated) {
+       statCreated.innerText = profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() : "Неизвестно";
+    }
+    const statUid = document.getElementById("view-stat-uid");
+    if (statUid) {
+       statUid.innerText = targetUid || "Неизвестно";
+    }
+    const statLastLogin = document.getElementById("view-stat-login");
+    if (statLastLogin) {
+       statLastLogin.innerText = profile.lastLoginDate || "Неизвестно";
+    }
+
     const needsExpansion = safeBio.length > LIMIT;
 
-    Utils.$("view-bio").innerHTML = `
+    document.querySelectorAll(".view-bio").forEach(el => el.innerHTML = `
             <div class="${bioLayoutClass} ${needsExpansion ? "collapsed" : ""}" id="profile-bio-content" style="position: relative; transition: max-height 0.3s ease-out; ${needsExpansion ? "max-height: 75px; overflow: hidden;" : "max-height: none; overflow: visible;"}">
               ${safeBio}
             </div>
             ${needsExpansion ? `<button id="btn-expand-bio" style="background:none;border:none;color:var(--primary);font-size:12px;cursor:pointer;padding:0;margin: 8px auto 0; display:block; text-align:center;">Развернуть</button>` : ""}
             <div style="margin-top:12px;"></div>
-        `;
+        `);
 
     setTimeout(() => {
       const bioContent = Utils.$("profile-bio-content");
@@ -8910,10 +9080,15 @@ class ProfileManager {
             "touchstart",
             (e) => {
               badgeStartX = e.touches[0].clientX;
+              window.isDraggingBadge = false;
             },
             { passive: true },
           );
+          trackElem.addEventListener("touchmove", () => {
+              window.isDraggingBadge = true;
+          }, { passive: true });
           trackElem.addEventListener("touchend", (e) => {
+            setTimeout(() => { window.isDraggingBadge = false; }, 50);
             badgeEndX = e.changedTouches[0].clientX;
             const diff = badgeEndX - badgeStartX;
             if (diff > 40 && window.ProfileBadgesState.index > 0) {
@@ -8931,6 +9106,10 @@ class ProfileManager {
 
         badgesContainer.querySelectorAll(".ach-card").forEach((card, i) => {
           card.onclick = () => {
+            if (window.isDraggingBadge) {
+                window.isDraggingBadge = false;
+                return;
+            }
             window.ProfileBadgesState.index = i;
             updateBadgeCarousel();
           };
@@ -9134,6 +9313,7 @@ class FriendsManager {
       "nav-rooms",
       "nav-friends",
       "nav-find-friend",
+      "nav-leaderboard",
       "nav-catalog",
       "nav-premium",
       "nav-mystery",
@@ -9159,6 +9339,9 @@ class FriendsManager {
         id === "nav-friends" ? "flex" : "none";
       Utils.$("section-find-friend").style.display =
         id === "nav-find-friend" ? "flex" : "none";
+      if (Utils.$("section-leaderboard"))
+        Utils.$("section-leaderboard").style.display =
+          id === "nav-leaderboard" ? "flex" : "none";
       Utils.$("section-rooms").style.display =
         id === "nav-rooms" ? "flex" : "none";
       Utils.$("section-catalog").style.display =
@@ -13037,6 +13220,10 @@ class AdminPanel {
                 <input type="text" id="admin-edit-bg-url" placeholder="URL фона профиля" value="${Utils.escapeHtml(ProfileManager.normalizeProfileBackground(profile.background).url || "")}">
             </div>
             <textarea id="admin-edit-bio" rows="4" placeholder="Описание">${Utils.escapeHtml(profile.bio || "")}</textarea>
+            <div style="margin-top:8px;">
+                <label class="admin-form-label" for="admin-edit-likes">Лайки профиля</label>
+                <input type="number" id="admin-edit-likes" min="0" value="${Object.keys(profile.likedBy || {}).length}">
+            </div>
             
             <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
                 <div style="font-weight:700; margin-bottom:6px;">Premium подписка</div>
@@ -13488,6 +13675,28 @@ class AdminPanel {
     const bgColor = Utils.$("admin-edit-bg-color")?.value || "#111111";
     const bgUrl = Utils.$("admin-edit-bg-url")?.value.trim() || "";
     const bgDim = Number(Utils.$("admin-edit-bg-dim")?.value || 0.5);
+    let targetLikes = parseInt(Utils.$("admin-edit-likes")?.value || 0, 10);
+    
+    // Process likes
+    let likedBy = oldProfile.likedBy ? { ...oldProfile.likedBy } : {};
+    let currentLikes = Object.keys(likedBy).length;
+    if (targetLikes !== currentLikes) {
+        if (targetLikes < currentLikes) {
+            // Remove some keys
+            let keys = Object.keys(likedBy);
+            while (keys.length > targetLikes) {
+                let toRemove = keys.pop();
+                delete likedBy[toRemove];
+            }
+        } else {
+            // Add fake keys
+            let diff = targetLikes - currentLikes;
+            for (let i = 0; i < diff; i++) {
+                likedBy[`fake_like_${Utils.generateCryptoId(8)}`] = Date.now();
+            }
+        }
+        oldProfile.likedBy = likedBy;
+    }
     let xp = Number(Utils.$("admin-edit-xp")?.value || 0);
     let level = ProfileManager.getExpMath(xp).level;
 
@@ -14985,7 +15194,7 @@ class RoomManager {
 
     this.initRoomServicesFinal(roomId);
     RTCManager.init(roomId);
-    if (window.SoundpadController) window.SoundpadController.loadPad();
+    
   }
 
   static getDefaultPerms() {
@@ -15593,11 +15802,9 @@ class RoomManager {
 
     const rbChat = Utils.$("tab-chat-btn");
     const rbUsers = Utils.$("tab-users-btn");
-    const rbSound = Utils.$("tab-soundpad-btn");
-    const rcChat = Utils.$("chat-messages");
+        const rcChat = Utils.$("chat-messages");
     const rcUsers = Utils.$("users-list");
-    const rcSound = Utils.$("soundpad-list");
-    const setRoomTab = (name) => {
+        const setRoomTab = (name) => {
       if (rbChat) rbChat.classList.toggle("active", name === "chat");
       if (rbUsers) rbUsers.classList.toggle("active", name === "users");
       if (rbSound) rbSound.classList.toggle("active", name === "sound");
@@ -17360,7 +17567,7 @@ window.openCatalogItemModal = function (itemId) {
 
           currentProf.inventory = inv;
           AppState.usersCache.set(uid, currentProf);
-          if (window.SoundpadController) window.SoundpadController.renderGrid();
+          
         } else {
           let cost = parseInt(item.price, 10) || 0;
           let curLevel = Number(currentProf?.level) || 0;
@@ -17378,8 +17585,7 @@ window.openCatalogItemModal = function (itemId) {
 
             currentProf.inventory = inv;
             AppState.usersCache.set(uid, currentProf);
-            if (window.SoundpadController)
-              window.SoundpadController.renderGrid();
+            
           } else {
             Utils.toast("Недостаточно уровней (нужно: " + cost + ")", "error");
           }
@@ -17955,176 +18161,6 @@ window.addEventListener("pagehide", () => {
 // ============================================================================
 // MARKETPLACE & SOUNDPAD
 // ============================
-window.SoundpadController = class SoundpadController {
-  static loadPad() {
-    if (!AppState.currentRoomId) return;
-    const triggerRef = ref(db, `rooms/${AppState.currentRoomId}/soundTrigger`);
-    onValue(triggerRef, (snap) => {
-      const data = snap.val();
-      if (data && data.timestamp && Date.now() - data.timestamp < 5000) {
-        if (data.triggeredBy === AppState.currentUser?.uid) return;
-
-        // prevent re-playing the same event
-        const marker = `sound:${data.timestamp}:${data.triggeredBy}`;
-        if (sessionStorage.getItem(marker)) return;
-        sessionStorage.setItem(marker, "1");
-
-        this.playAudio(data.url);
-        const senderName =
-          AppState.currentPresenceCache?.[data.triggeredBy]?.name || "Хост";
-        Utils.toast(`${senderName} запустил звук`, "info");
-      }
-    });
-    this.renderGrid();
-  }
-  static playAudio(url) {
-    if (!url) return;
-    const volSlider = Utils.$("soundpad-vol-slider");
-    const vol = volSlider ? parseFloat(volSlider.value) : 0.8;
-    const a = new Audio(url);
-    a.volume = vol;
-    a.play().catch(() => {});
-  }
-  static async renderGrid() {
-    const grid = Utils.$("soundpad-grid");
-    if (!grid) return;
-    const uid = AppState.currentUser?.uid;
-    if (!uid) return;
-    const currentProf = AppState.usersCache.get(uid);
-    const ownedIds = currentProf?.inventory || [];
-    const sounds = [];
-    if (window.CatalogManager && CatalogManager.items) {
-      ownedIds.forEach((id) => {
-        const snd = CatalogManager.items.find(
-          (i) => i.id === id && i.type === "sound",
-        );
-        if (snd)
-          sounds.push({
-            id: snd.id,
-            name: snd.title,
-            url: snd.image,
-            hotkey: "",
-          });
-      });
-    }
-
-    if (sounds.length === 0) {
-      grid.innerHTML =
-        '<div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); font-size: 14px; padding: 20px;">Нет звуков.<br>Приобретайте их в Каталоге!</div>';
-      return;
-    }
-
-    grid.innerHTML =
-      `
-      <style>
-        .sound-grid .sound-btn {
-          background: linear-gradient(135deg, rgba(80, 80, 80, 0.2) 0%, rgba(20, 20, 20, 0.4) 100%);
-          border: 1px solid rgba(255, 255, 255, 0.05);
-          border-radius: 16px;
-          padding: 14px 20px;
-          display: flex;
-          flex-direction: row;
-          align-items: center;
-          justify-content: flex-start;
-          gap: 16px;
-          transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-          cursor: pointer;
-          position: relative;
-          overflow: hidden;
-          box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-        .sound-grid .sound-btn::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
-          transform: translateX(-100%);
-          transition: 0.5s;
-        }
-        .sound-grid .sound-btn:hover {
-          background: linear-gradient(135deg, rgba(120, 120, 120, 0.3) 0%, rgba(50, 50, 50, 0.5) 100%);
-          border-color: rgba(255,255,255,0.25);
-          transform: translateY(-3px) scale(1.02);
-          box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-        }
-        .sound-grid .sound-btn:hover::before {
-          transform: translateX(100%);
-        }
-        .sound-grid .sound-btn:active {
-          transform: translateY(0) scale(0.98);
-        }
-        .sound-grid .sound-btn .sound-icon {
-          transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 44px;
-          height: 44px;
-          border-radius: 50%;
-          background: rgba(255,255,255,0.06);
-          box-shadow: inset 0 2px 4px rgba(255,255,255,0.1);
-          flex-shrink: 0;
-        }
-        .sound-grid .sound-btn:hover .sound-icon {
-          transform: scale(1.2) rotate(10deg);
-          box-shadow: inset 0 2px 10px rgba(255,255,255,0.2);
-        }
-        .sound-grid .sound-btn .sound-name {
-          font-size: 15px;
-          font-weight: 700;
-          color: rgba(255, 255, 255, 0.85);
-          text-shadow: 0 2px 4px rgba(0,0,0,0.4);
-          text-align: left;
-          flex: 1;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          transition: color 0.2s;
-        }
-        .sound-grid .sound-btn:hover .sound-name {
-          color: #fff;
-        }
-      </style>
-    ` +
-      sounds
-        .map((s, idx) => {
-          const emojis = [
-            "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Musical%20Notes.webp",
-            "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Musical%20Note.webp",
-            "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Microphone.webp",
-            "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Headphone.webp",
-            "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Radio.webp",
-          ];
-          const emo = emojis[idx % emojis.length];
-          return `
-            <div class="sound-btn" onclick="SoundpadController.triggerSound('${s.url}')">
-                <div class="sound-icon"><img src="${emo}" style="width:28px; height:28px; object-fit:contain;"></div>
-                <div class="sound-name">
-                    ${s.name}
-                </div>
-                <div style="flex-shrink:0; opacity:0.6; transform: scale(0.9); transition: transform 0.3s;">
-                   <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Play%20Button.webp" style="width:24px; height:24px; pointer-events:none;">
-                </div>
-            </div>
-        `;
-        })
-        .join("");
-  }
-  static triggerSound(url) {
-    if (!AppState.currentRoomId) return;
-    if (this.lastTrigger && Date.now() - this.lastTrigger < 3000)
-      return Utils.toast("Не спамьте!", "error");
-    this.lastTrigger = Date.now();
-    this.playAudio(url);
-    set(ref(db, `rooms/${AppState.currentRoomId}/soundTrigger`), {
-      url,
-      timestamp: Date.now(),
-      triggeredBy: AppState.currentUser?.uid,
-    });
-  }
-};
 window.AdminSoundManager = class {
   static renderAdminSoundCatalog() {}
   static initAdmin() {}

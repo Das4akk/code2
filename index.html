@@ -300,7 +300,16 @@
         color: #000 !important;
       }
     
-  </style>
+  
+  .mobile-only-description { display: none; }
+  .desktop-only-description { display: block; }
+  @media (max-width: 768px) {
+    .mobile-only-description { display: block; }
+    .desktop-only-description { display: none; }
+    .profile-right-content-wrap { flex-direction: column; gap: 10px !important; }
+    .profile-stats-container { flex: 1 1 100% !important; width: 100%; }
+  }
+</style>
     <style>
       /* ========================================================= */
       /* AMOLED THEME VARIABLES & RESET */
@@ -4228,6 +4237,7 @@
   }
 
   #view-avatar {
+     position: relative !important;
      width: 120px !important;
      height: 120px !important;
      margin: 0 !important;
@@ -4654,12 +4664,13 @@
   }
 
   #view-avatar {
+    position: relative !important;
     width: 110px !important;
     height: 110px !important;
     border-radius: 50% !important;
     border: 6px solid #101116 !important;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6) !important;
-    overflow: hidden !important;
+    overflow: visible !important;
     background: #0e0f14 !important;
     display: flex !important;
     align-items: center !important;
@@ -4933,6 +4944,7 @@
     }
 
     #view-avatar {
+      position: relative !important;
       width: 90px !important;
       height: 90px !important;
       border: 5px solid #101116 !important;
@@ -4965,10 +4977,11 @@
     }
 
     .tiktok-profile-side-col .tiktok-profile-actions-wrap {
-      position: absolute !important;
-      top: 10px !important;
-      right: 8px !important;
-      width: auto !important;
+      position: static !important;
+      margin-top: 16px !important;
+      margin-bottom: 16px !important;
+      justify-content: flex-start !important;
+      width: 100% !important;
     }
 
     .tiktok-profile-side-col #view-hashtags {
@@ -5648,6 +5661,10 @@
               <span><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Magnifying%20Glass%20Tilted%20Left.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
                 Найти друга</span>
             </div>
+            <div class="nav-item" id="nav-leaderboard">
+              <span><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+                Список лучших</span>
+            </div>
             <div class="nav-item" id="nav-support" style="display: none">
               <span><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Woman%20Technologist.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
                 Поддержка</span>
@@ -5772,6 +5789,20 @@
           </div>
         </main>
 
+        <main class="rooms-main" id="section-leaderboard" style="display: none">
+          <div class="leaderboard-container" style="max-width: 900px; width: 100%; margin: 0 auto; padding-top: 20px;">
+            <div class="section-title" style="font-size: 28px; margin-bottom: 24px; text-align: center; color: var(--accent);">
+              Список лучших
+            </div>
+            <div style="display: flex; gap: 10px; margin-bottom: 20px; justify-content: center; flex-wrap: wrap;">
+               <button class="primary-btn" style="width: auto; padding: 8px 16px;">Любимчики (Топ Лайков)</button>
+               <!-- Future categories can go here -->
+            </div>
+            <div id="leaderboard-list" style="display: flex; flex-direction: column; gap: 10px;">
+               <div style="color:var(--text-muted); text-align:center;">Загрузка...</div>
+            </div>
+          </div>
+        </main>
         <main class="rooms-main" id="section-friends" style="display: none">
           <div class="friends-container" style="
               max-width: 800px;
@@ -6224,7 +6255,7 @@
     <div class="tiktok-profile-container" style="position: relative; z-index: 2; height: auto !important; overflow-y: visible !important;">
   <div class="tiktok-profile-header">
     <div class="tiktok-profile-avatar-wrap">
-       <div class="avatar" id="view-avatar" style="
+       <div class="avatar" id="view-avatar" style="position: relative;
             width: 90px;
             height: 90px;
             font-size: 32px;
@@ -6251,6 +6282,7 @@
            ">
            @user
          </div>
+         <div id="view-status" style="font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 12px; display: flex; align-items: center;"></div>
          <div id="view-friends-count" style="color: var(--text-muted); font-size: 14px; margin-bottom: 6px; font-weight: 500;">Друзей: 0</div>
          <div id="view-gender" style="color: var(--text-muted); font-size: 14px; margin-bottom: 12px; font-weight: 500; display: none;"></div>
          <div class="tiktok-profile-badges-row" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;">
@@ -6309,15 +6341,10 @@
            </div>
          </div>
         </div>
-        
-        <div id="view-status" style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px"></div>
 
-        <div id="view-bio" style="
-             color: var(--text-muted);
-             font-size: 14px;
-             margin-bottom: 25px;
-             line-height: 1.5;
-           "></div>
+        <div class="mobile-only-description" style="width: 100%;">
+          <div class="view-bio" style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px; line-height: 1.5;"></div>
+        </div>
       </div>
 
       <div class="tiktok-profile-side-col">
@@ -6325,15 +6352,41 @@
           <div id="view-profile-actions" style="display: flex; flex-direction: row; gap: 8px; align-items: center;">
             <button class="primary-btn" id="btn-dm-modal" style="background-color: #FFFFFF !important; color: #000000 !important; border: none; font-weight: 600;">
               Написать сообщение
+            </button> 
+            <button class="secondary-btn" id="btn-like-profile" style="display: flex; align-items: center; gap: 6px; padding: 6px 14px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); border-radius: 8px; color: #fff; cursor: pointer; transition: 0.2s;">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Heart.webp" style="width: 22px; height: 22px; object-fit: contain; filter: grayscale(100%) opacity(50%); transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);" id="like-icon" alt="Like">
+              <span id="view-likes-count" style="font-weight: 600;">0</span>
             </button>
           </div>
         </div>
 
-        <div id="view-badges-collection" style="
-             width: 100%;
-             margin-bottom: 15px;
-           "></div>
-        <div class="hashtags-list" id="view-hashtags"></div>
+        <div style="display: flex; gap: 20px; width: 100%; flex-wrap: wrap;" class="profile-right-content-wrap">
+          <div style="flex: 1; min-width: 200px;">
+            <div id="view-badges-collection" style="width: 100%; margin-bottom: 15px;"></div>
+            <div class="hashtags-list" id="view-hashtags"></div>
+            
+            <div class="desktop-only-description" style="margin-top: 15px;">
+              <div class="view-bio" style="color: var(--text-muted); font-size: 14px; line-height: 1.5;"></div>
+            </div>
+          </div>
+          <div style="flex: 0 0 200px;" class="profile-stats-container">
+            <div id="view-profile-stats" style="padding: 12px; background: rgba(34,34,34,0.5); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); width: 100%;">
+              <div style="font-size: 14px; color: var(--text-muted); font-weight: 500; margin-bottom: 8px;">Статистика</div>
+              <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+                 <span style="color: var(--text-muted);">Регистрация:</span>
+                 <span id="view-stat-created" style="color: #fff; font-weight: 600;">Неизвестно</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+                 <span style="color: var(--text-muted);">Вход:</span>
+                 <span id="view-stat-login" style="color: #fff; font-weight: 600;">Неизвестно</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+                 <span style="color: var(--text-muted);">ID:</span>
+                 <span id="view-stat-uid" style="color: #fff; font-weight: 600; font-family: monospace; font-size: 11px;"></span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -6602,40 +6655,12 @@
               <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
               Люди (<span id="users-count">0</span>)
             </button>
-            <button id="tab-soundpad-btn">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Musical%20Notes.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
-              Soundpad
-            </button>
-          </div>
+                      </div>
 
           <div class="chat-content-area" id="chat-messages"></div>
           <div class="chat-content-area" id="users-list" style="display: none"></div>
-          <div class="chat-content-area" id="soundpad-list" style="display: none; padding: 10px; overflow-y: auto">
-            <div style="
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 10px;
-              ">
-              <input type="range" id="soundpad-vol-slider" min="0" max="1" step="0.05" value="0.8" style="width: 100px">
-              <span style="font-size: 12px; color: var(--text-muted)">VOL</span>
-            </div>
-            <div class="sound-grid" id="soundpad-grid" style="display: grid; grid-template-columns: 1fr; gap: 12px"></div>
           </div>
-
-          <div class="chat-input-area" id="chat-input-container">
-            <div class="input-wrapper">
-              <button class="mic-icon-btn" id="btn-room-attach" title="Прикрепить фото">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/File%20Folder.webp" style="width: 1.2em; height: 1.2em">
-              </button>
-              <button class="mic-icon-btn" id="mic-btn" title="Микрофон">
-                🎤
-              </button>
-              <input type="text" id="chat-input" placeholder="Написать..." autocomplete="off">
-              <button class="send-btn" id="send-btn">↑</button>
-            </div>
           </div>
-        </div>
       </div>
     </div></section>
 
