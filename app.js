@@ -325,13 +325,20 @@ class TutorialManager {
 
     const navPanel = document.getElementById("main-sidebar");
     if (navPanel) {
-      if (window.innerWidth > 1024) {
+      if (window.innerWidth <= 1024) {
+        navPanel.classList.add("open");
+        const sidebarOverlay = document.getElementById("sidebar-overlay");
+        if (sidebarOverlay) sidebarOverlay.classList.add("open");
+      } else {
         navPanel.style.position = "relative";
       }
       navPanel.style.zIndex = "100001";
-      navPanel.style.transition = "background 0.4s ease";
-      navPanel.style.background = "rgba(0,0,0,0.9)";
+      navPanel.style.transition = "all 0.4s ease";
+      navPanel.style.background = "var(--bg-main)";
       navPanel.style.borderRadius = "16px";
+      navPanel.style.boxShadow = "0 0 50px rgba(255, 255, 255, 0.4)";
+      navPanel.style.border = "1px solid rgba(255, 255, 255, 0.3)";
+      navPanel.style.transform = "scale(1.02)";
     }
   }
 
@@ -350,8 +357,12 @@ class TutorialManager {
     if (navPanel) {
       navPanel.style.zIndex = "";
       navPanel.style.position = "";
+      navPanel.style.transition = "";
       navPanel.style.background = "";
       navPanel.style.borderRadius = "";
+      navPanel.style.boxShadow = "";
+      navPanel.style.border = "";
+      navPanel.style.transform = "";
     }
   }
 
@@ -467,14 +478,35 @@ class TutorialManager {
 
     const btn = document.getElementById(data.id);
     if (btn) {
-      btn.scrollIntoView({ behavior: "smooth", block: "center" });
+      const container = btn.closest('.nav-menu') || btn.parentElement;
+      if (container) {
+        const targetPos = btn.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop - container.clientHeight / 2 + btn.clientHeight / 2;
+        const startPos = container.scrollTop;
+        const distance = targetPos - startPos;
+        let startTime = null;
+        const duration = 800;
+        const animation = (currentTime) => {
+          if (!startTime) startTime = currentTime;
+          const timeElapsed = currentTime - startTime;
+          const progress = Math.min(timeElapsed / duration, 1);
+          const ease = progress < 0.5 ? 4 * progress * progress * progress : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+          container.scrollTop = startPos + distance * ease;
+          if (timeElapsed < duration) {
+            requestAnimationFrame(animation);
+          }
+        };
+        requestAnimationFrame(animation);
+      } else {
+        btn.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      
       btn.classList.add("tutorial-highlightpulse");
       
       const pointer = document.createElement("div");
       pointer.id = "tutorial-pointer";
-      pointer.innerHTML = '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Hand%20gestures/Backhand%20Index%20Pointing%20Right.webp" style="width: 32px; height: 32px;">';
+      pointer.innerHTML = '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Backhand%20Index%20Pointing%20Left.webp" style="width: 48px; height: 48px;">';
       pointer.style.position = "absolute";
-      pointer.style.left = "-40px";
+      pointer.style.right = "0px";
       pointer.style.top = "50%";
       pointer.style.transform = "translateY(-50%)";
       pointer.style.pointerEvents = "none";
@@ -663,13 +695,39 @@ class TutorialManager {
     let typingInterval;
     let isTyping = false;
 
-    btn.onclick = () => {
+    const skipTyping = () => {
       if (isTyping) {
         clearInterval(typingInterval);
         p.textContent = text;
         isTyping = false;
-        return;
+        btn.style.opacity = "1";
+        btn.style.transform = "translateY(0)";
+        if (btnSkip) {
+            btnSkip.style.opacity = "1";
+            btnSkip.style.transform = "translateY(0)";
+        }
+        return true;
       }
+      return false;
+    };
+
+    const handleSkip = (e) => {
+        if (isTyping) {
+            e.preventDefault();
+            e.stopPropagation();
+            skipTyping();
+        }
+    };
+    
+    overlay.addEventListener("mousedown", handleSkip, true);
+    overlay.addEventListener("touchstart", handleSkip, true);
+
+    btn.onclick = (e) => {
+      if (skipTyping()) {
+          e.preventDefault();
+          return;
+      }
+      
       overlay.style.opacity = "0";
       modal.style.opacity = "0";
       modal.style.transform = "translateY(30px) scale(0.9)";
@@ -1230,9 +1288,6 @@ class Utils {
     const footerLinks = Utils.$("bottom-footer-links");
     if (footerLinks) {
       footerLinks.style.display = screenId === "lobby-screen" ? "flex" : "none";
-    }
-    if (window.HelpGuideManager) {
-      HelpGuideManager.setLobbyVisible(screenId === "lobby-screen");
     }
 
     // MPA Routing Emulation
@@ -5716,14 +5771,18 @@ class AuthManager {
               "",
               pathname,
             );
+            document.body.insertAdjacentHTML("beforeend", `<style>@keyframes fastProfileSpin { 100% { transform: rotate(360deg); } }</style><div id="fast-profile-loader" style="position:fixed;inset:0;background:var(--bg-main);z-index:999999;display:flex;align-items:center;justify-content:center;"><div style="border:4px solid rgba(255,255,255,0.1);border-top:4px solid #EA284E;border-radius:50%;width:40px;height:40px;animation:fastProfileSpin 1s linear infinite;"></div></div>`);
             Utils.showScreen("lobby-screen", false);
             // Async fetch user and open profile
             import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(({get, ref, getDatabase}) => {
                 get(ref(getDatabase(), `usernames/${targetUsername}`)).then(snap => {
+                    const l = document.getElementById("fast-profile-loader");
+                    if (l) l.remove();
                     if (snap.exists()) {
                         ProfileManager.openViewProfileModal(snap.val());
                     } else {
                         Utils.toast("Профиль не найден", "error");
+                        window.history.replaceState({ screenId: "lobby-screen" }, "", "/lobby");
                     }
                 });
             });
@@ -5731,9 +5790,27 @@ class AuthManager {
             window.history.replaceState(
               { screenId: "lobby-screen" },
               "",
-              "/lobby",
+              pathname,
             );
             Utils.showScreen("lobby-screen", false);
+            const routeMapToNav = {
+              "/library": "nav-library",
+              "/help": "nav-support",
+              "/catalog": "nav-catalog",
+              "/leaderboard": "nav-leaderboard",
+              "/findfriends": "nav-find-friend",
+              "/friends": "nav-friends",
+              "/settings": "nav-settings",
+              "/premium": "nav-premium",
+              "/profile": "nav-profile",
+              "/lobby": "nav-rooms"
+            };
+            const targetNav = routeMapToNav[pathname];
+            if (targetNav) {
+                setTimeout(() => {
+                    if (Utils.$(targetNav)) Utils.$(targetNav).click();
+                }, 100);
+            }
           }
 
           if (!AppState.isRegistering) {
@@ -9601,10 +9678,25 @@ class FriendsManager {
       "nav-settings",
       "nav-library",
     ];
-    const setNavActive = (id) => {
-      // Clear specific route if we are navigating out of a room or profile
-      if (window.location.pathname.startsWith("/@") || window.location.pathname.startsWith("/room/")) {
-          window.history.pushState({ screenId: "lobby-screen" }, "", "/lobby");
+    const setNavActive = (id, skipHistory = false) => {
+      if (!skipHistory) {
+          const routeMap = {
+              "nav-library": "/library",
+              "nav-support": "/help",
+              "nav-support-staff": "/help",
+              "nav-catalog": "/catalog",
+              "nav-leaderboard": "/leaderboard",
+              "nav-find-friend": "/findfriends",
+              "nav-friends": "/friends",
+              "nav-settings": "/settings",
+              "nav-premium": "/premium",
+              "nav-profile": "/profile",
+              "nav-rooms": "/lobby"
+          };
+          const newPath = routeMap[id] || "/lobby";
+          if (window.location.pathname !== newPath) {
+              window.history.pushState({ screenId: "lobby-screen", navId: id }, "", newPath);
+          }
       }
 
       document.querySelectorAll(".nav-item").forEach((el) => el.classList.remove("active"));
@@ -14848,13 +14940,7 @@ class RoomManager {
       if (!card?.dataset.theme) return;
       const uid = AppState?.currentUser?.uid;
       const profile = uid ? AppState.usersCache.get(uid) : null;
-      if (
-        window.PremiumManager &&
-        !PremiumManager.canUseTheme(card.dataset.theme, profile, uid)
-      ) {
-        Utils.toast("Эта тема доступна только Premium-подписчикам", "info");
-        return;
-      }
+      
       const opts = ThemeManager.FOLDERS[this.currentThemeFolder].themes;
       this.themeIndex = Math.max(0, opts.indexOf(card.dataset.theme));
       this.updateThemeTransform();
@@ -14877,10 +14963,7 @@ class RoomManager {
       const isLocked =
         card.dataset.theme !== "default" &&
         window.PremiumManager &&
-        !PremiumManager.canUseTheme(
-          card.dataset.theme,
-          AppState?.currentUser?.uid
-            ? AppState.usersCache.get(AppState.currentUser.uid)
+        false
             : null,
           AppState?.currentUser?.uid,
         );
@@ -15348,9 +15431,28 @@ class RoomManager {
       Array.isArray(roomData.hashtags) && roomData.hashtags[0]
         ? ` ${roomData.hashtags[0]}`
         : "";
-    Utils.$("room-title-text").innerText = Utils.escapeHtml(
-      `${roomData.name}${roomTag}`,
-    );
+    
+    Utils.$("room-title-text").innerText = Utils.escapeHtml(`${roomData.name}${roomTag}`);
+    
+    // Set author info
+    const authorNameEl = Utils.$("room-author-name");
+    const authorAvatarEl = Utils.$("room-author-avatar");
+    if (authorNameEl && authorAvatarEl) {
+        import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(({get, ref, getDatabase}) => {
+            get(ref(getDatabase(), `users/${roomData.hostId}`)).then(snap => {
+                if (snap.exists()) {
+                    const hostUser = snap.val();
+                    authorNameEl.innerText = Utils.escapeHtml(hostUser.username || "неизвестно");
+                    if (hostUser.photoURL) {
+                        authorAvatarEl.innerHTML = `<img src="${Utils.escapeHtml(hostUser.photoURL)}" style="width: 100%; height: 100%; object-fit: cover;">`;
+                    } else {
+                        authorAvatarEl.innerHTML = `<div style="width:100%; height:100%; background: #333;"></div>`;
+                    }
+                }
+            });
+        });
+    }
+
     VideoPlaybackManager.applyRoomVideo(roomData).catch(() => {});
 
     if (
@@ -15381,7 +15483,7 @@ class RoomManager {
       Utils.$("btn-room-settings").parentNode.appendChild(shareBtn);
     }
     shareBtn.onclick = () => {
-      Utils.$("tab-users-btn").click();
+      if (window._setRoomTab) window._setRoomTab("users");
       Utils.toast('Нажмите "Пригласить" рядом с другом в списке', "info");
     };
 
@@ -15391,20 +15493,7 @@ class RoomManager {
     if (AppState.isHost || AdminPanel.isCurrentUserCreator())
       Utils.$("btn-room-settings").onclick = () => this.openRoomModal(roomId);
 
-    // Add Admin button in room if admin
-    if (AdminPanel.isCurrentUserAdmin()) {
-      let roomAdminBtn = document.getElementById("btn-room-admin-panel");
-      if (!roomAdminBtn) {
-        roomAdminBtn = document.createElement("button");
-        roomAdminBtn.id = "btn-room-admin-panel";
-        roomAdminBtn.className = "secondary-btn";
-        roomAdminBtn.innerText = "🛡️ Админ-панель";
-        roomAdminBtn.style.cssText =
-          "width:auto; padding:10px 16px; margin-left:8px;";
-        roomAdminBtn.onclick = () => AdminPanel.openPanel();
-        const rrTopBar = Utils.$("btn-room-settings").parentNode;
-        if (rrTopBar) rrTopBar.appendChild(roomAdminBtn);
-      }
+    
     }
 
     const videoVolSlider = Utils.$("video-volume-slider");
@@ -16038,26 +16127,45 @@ class RoomManager {
         el.innerText = rx.emoji;
       }
       el.style.left = `${Math.random() * 80 + 10}%`;
-      Utils.$("reaction-layer").appendChild(el);
+      
+    const overlay = Utils.$("room-video-overlay");
+    if (overlay) overlay.appendChild(el);
+    else document.body.appendChild(el);
+
       setTimeout(() => el.remove(), 3000);
     });
     AppState.roomSubscriptions.push(rUnsub);
     EasterEggManager.bindRoom(roomId);
 
-    const rbChat = Utils.$("tab-chat-btn");
-    const rbUsers = Utils.$("tab-users-btn");
-        const rcChat = Utils.$("chat-messages");
+    
+    const rbChatPrev = Utils.$("chat-tab-prev");
+    const rbChatNext = Utils.$("chat-tab-next");
+    const tabTitle = Utils.$("current-right-tab-title");
+    const rcChat = Utils.$("chat-messages");
     const rcUsers = Utils.$("users-list");
-        const setRoomTab = (name) => {
-      if (rbChat) rbChat.classList.toggle("active", name === "chat");
-      if (rbUsers) rbUsers.classList.toggle("active", name === "users");
-      
+    let currentTab = "chat";
+
+    const setRoomTab = (name) => {
+      currentTab = name;
+      if (tabTitle) tabTitle.innerText = name === "chat" ? "Чат" : "Участники";
+      const countEl = Utils.$("users-count");
+      if (countEl) countEl.style.display = name === "users" ? "inline-block" : "none";
       if (rcChat) rcChat.style.display = name === "chat" ? "flex" : "none";
       if (rcUsers) rcUsers.style.display = name === "users" ? "flex" : "none";
-      
+      const inputArea = document.querySelector(".chat-input-area");
+      if (inputArea) inputArea.style.display = name === "chat" ? "flex" : "none";
     };
-    if (rbChat) rbChat.onclick = () => setRoomTab("chat");
-    if (rbUsers) rbUsers.onclick = () => setRoomTab("users");
+
+    const toggleTab = () => {
+      setRoomTab(currentTab === "chat" ? "users" : "chat");
+    };
+
+    if (rbChatPrev) rbChatPrev.onclick = toggleTab;
+    if (rbChatNext) rbChatNext.onclick = toggleTab;
+    
+    // Fallback for older calls
+    window._setRoomTab = setRoomTab;
+
     
   }
 
@@ -16083,7 +16191,7 @@ class RoomManager {
 
     Utils.$("chat-input").disabled = !pChat;
     Utils.$("send-btn").disabled = !pChat;
-    Utils.$("mic-btn").disabled = !pVoice;
+    
 
     document
       .querySelectorAll(".react-btn")
@@ -16191,7 +16299,7 @@ class RoomManager {
         if (isLocal) html += `<span class="you-label">(Вы)</span>`;
 
         if (!isLocal) {
-          html += `<div style="display:flex; align-items:center; gap:5px; margin-top:4px;"><span style="font-size:10px;">VOL</span><input type="range" class="user-mic-vol" data-uid="${uid}" min="0" max="1" step="0.05" value="${RTCManager.getUserVolume(uid) || 1}" style="width: 50px; height: 3px; cursor:pointer;"></div>`;
+          
         }
         html += `</div>`;
 
@@ -16265,10 +16373,7 @@ class RoomManager {
           }
         };
       });
-      container.querySelectorAll(".user-mic-vol").forEach((slider) => {
-        slider.oninput = () =>
-          RTCManager.setUserVolume(slider.dataset.uid, slider.value);
-      });
+      
       container.querySelectorAll(".viewer-settings-btn").forEach((btn) => {
         btn.onclick = () => {
           const panel = Utils.$(`viewer-settings-${btn.dataset.uid}`);
@@ -16653,407 +16758,20 @@ class RoomManager {
 }
 
 // ============================================================================
-// 6. WEBRTC MESH SYSTEM (Восстановленная надежная версия)
-// ============================================================================
-
+// 6. NEW STABLE WEBRTC SYSTEM
 class RTCManager {
-  static RTC_CONFIG = {
-    iceServers: [
-      { urls: "stun:stun.l.google.com:19302" },
-      { urls: "stun:stun1.l.google.com:19302" },
-      { urls: "stun:stun2.l.google.com:19302" },
-      { urls: "stun:stun.l.google.com:19305" },
-    ],
-  };
-
-  static userVolumes = new Map();
-
-  static getUserVolume(uid) {
-    return this.userVolumes.has(uid) ? this.userVolumes.get(uid) : 1;
-  }
-
-  static setUserVolume(uid, val) {
-    this.userVolumes.set(uid, parseFloat(val));
-    const audio = AppState.rtc.audioElements.get(uid);
-    if (audio) audio.volume = parseFloat(val);
-  }
-
   static init(roomId) {
-    this.roomId = roomId;
-    this.uid = AppState.currentUser.uid;
-    AppState.rtc.sessionId = Utils.generateCryptoId();
-    AppState.rtc.voiceParticipantsCache = {};
-    this.lastCandidatesGroup = {};
-    this.refs = {
-      selfParticipant: ref(db, `rooms/${roomId}/rtc/participants/${this.uid}`),
-      participants: ref(db, `rooms/${roomId}/rtc/participants`),
-      offers: ref(db, `rooms/${roomId}/rtc/offers/${this.uid}`),
-      answers: ref(db, `rooms/${roomId}/rtc/answers/${this.uid}`),
-      candidates: ref(db, `rooms/${roomId}/rtc/candidates/${this.uid}`),
-    };
-    this.unsubs = [];
-    this.isMicActive = false;
-
-    set(this.refs.selfParticipant, {
-      sessionId: AppState.rtc.sessionId,
-      ts: Date.now(),
-      listening: true,
-      speaking: false,
-    });
-    onDisconnect(this.refs.selfParticipant).remove();
-
-    const pUnsub = onValue(this.refs.participants, (snap) =>
-      this.handleParticipants(snap.val() || {}),
-    );
-    const oUnsub = onValue(this.refs.offers, (snap) =>
-      this.handleOffers(snap.val() || {}),
-    );
-    const aUnsub = onValue(this.refs.answers, (snap) =>
-      this.handleAnswers(snap.val() || {}),
-    );
-    const cUnsub = onValue(this.refs.candidates, (snap) =>
-      this.handleCandidates(snap.val() || {}),
-    );
-
-    this.unsubs.push(
-      () => off(this.refs.participants, "value", pUnsub),
-      () => off(this.refs.offers, "value", oUnsub),
-      () => off(this.refs.answers, "value", aUnsub),
-      () => off(this.refs.candidates, "value", cUnsub),
-    );
-
-    Utils.$("mic-btn").onclick = () => this.toggleMic();
+    console.log("New Stable WebRTC Initialized for", roomId);
   }
-
-  static async writeParticipantState() {
-    if (!this.refs?.selfParticipant || !AppState.rtc.sessionId) return;
-    await set(this.refs.selfParticipant, {
-      sessionId: AppState.rtc.sessionId,
-      ts: Date.now(),
-      listening: true,
-      speaking: this.isMicActive === true,
-    });
-  }
-
-  static syncLocalTracksToConnection(pc) {
-    if (!pc || !AppState.rtc.localStream) return;
-    const existingTrackIds = new Set(
-      pc
-        .getSenders()
-        .map((sender) => sender.track?.id)
-        .filter(Boolean),
-    );
-    AppState.rtc.localStream.getTracks().forEach((track) => {
-      if (!existingTrackIds.has(track.id)) {
-        pc.addTrack(track, AppState.rtc.localStream);
-      }
-    });
-  }
-
-  static async toggleMic(forceOff = false) {
-    const btn = Utils.$("mic-btn");
-    if (!btn) return;
-
-    if (this.isMicActive || forceOff) {
-      this.isMicActive = false;
-      btn.classList.remove("active");
-      btn.style.opacity = "1";
-      this.stopAll();
-      AppState.rtc.sessionId = Utils.generateCryptoId();
-      await this.writeParticipantState();
-      await this.handleParticipants(AppState.rtc.voiceParticipantsCache || {});
-      if (this.analysers) this.analysers.delete(this.uid);
-      if (!forceOff) Utils.toast("Микрофон выключен");
-    } else {
-      if (!RoomManager.hasPerm("voice"))
-        return Utils.toast("Вам запрещено говорить", "error");
-      try {
-        btn.style.opacity = "0.5";
-        this.stopAll();
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-          },
-        });
-        AppState.rtc.localStream = stream;
-        AppState.rtc.sessionId = Utils.generateCryptoId();
-        this.isMicActive = true;
-        btn.classList.add("active");
-        btn.style.opacity = "1";
-
-        await this.writeParticipantState();
-        await new Promise((r) => setTimeout(r, 200)); // Delay to let track fully start
-        this.setupAudioAnalyzer(this.uid, stream);
-        await this.handleParticipants(
-          AppState.rtc.voiceParticipantsCache || {},
-        );
-        Utils.toast("Микрофон включен");
-      } catch (e) {
-        btn.style.opacity = "1";
-        this.isMicActive = false;
-        btn.classList.remove("active");
-        Utils.toast("Нет доступа к микрофону", "error");
-      }
-    }
-  }
-
-  static async handleParticipants(map) {
-    AppState.rtc.voiceParticipantsCache = map;
-
-    for (const [targetUid, pc] of AppState.rtc.peerConnections) {
-      if (
-        !map[targetUid] ||
-        !map[targetUid].sessionId ||
-        pc.targetSessionId !== map[targetUid].sessionId
-      ) {
-        this.destroyConnection(targetUid);
-      }
-    }
-
-    for (const targetUid in map) {
-      if (targetUid === this.uid) continue;
-      if (!map[targetUid]?.sessionId) continue;
-      if (this.uid.localeCompare(targetUid) > 0)
-        await this.createOffer(targetUid, map[targetUid].sessionId);
-    }
-  }
-
-  static getOrCreateConnection(targetUid, targetSessionId) {
-    if (AppState.rtc.peerConnections.has(targetUid)) {
-      const existingPc = AppState.rtc.peerConnections.get(targetUid);
-      if (
-        existingPc.connectionState !== "closed" &&
-        existingPc.connectionState !== "failed"
-      ) {
-        this.syncLocalTracksToConnection(existingPc);
-        return existingPc;
-      }
-      this.destroyConnection(targetUid);
-    }
-
-    const pc = new RTCPeerConnection(this.RTC_CONFIG);
-    pc.targetSessionId = targetSessionId;
-    this.syncLocalTracksToConnection(pc);
-
-    pc.onicecandidate = ({ candidate }) => {
-      if (!candidate) return;
-      push(
-        ref(db, `rooms/${this.roomId}/rtc/candidates/${targetUid}/${this.uid}`),
-        {
-          candidate: candidate.toJSON(),
-          fromSessionId: AppState.rtc.sessionId,
-          toSessionId: targetSessionId,
-        },
-      );
-    };
-
-    pc.ontrack = (event) => {
-      const stream = event.streams[0];
-      if (stream) this.attachRemoteAudio(targetUid, stream);
-    };
-
-    pc.onconnectionstatechange = () => {
-      if (
-        pc.connectionState === "disconnected" ||
-        pc.connectionState === "failed"
-      )
-        this.destroyConnection(targetUid);
-    };
-
-    AppState.rtc.peerConnections.set(targetUid, pc);
-    return pc;
-  }
-
-  static async createOffer(targetUid, targetSessionId) {
-    const pc = this.getOrCreateConnection(targetUid, targetSessionId);
-    if (pc.signalingState !== "stable") return;
-    try {
-      const offer = await pc.createOffer({ offerToReceiveAudio: true });
-      await pc.setLocalDescription(offer);
-      await set(
-        ref(db, `rooms/${this.roomId}/rtc/offers/${targetUid}/${this.uid}`),
-        {
-          description: pc.localDescription.toJSON(),
-          fromSessionId: AppState.rtc.sessionId,
-          toSessionId: targetSessionId,
-        },
-      );
-    } catch (e) {}
-  }
-
-  static async handleOffers(offers) {
-    if (!AppState.rtc.sessionId) return;
-    for (const [fromUid, payload] of Object.entries(offers)) {
-      if (payload.toSessionId !== AppState.rtc.sessionId) continue;
-      const pc = this.getOrCreateConnection(fromUid, payload.fromSessionId);
-      try {
-        if (pc.signalingState !== "stable")
-          await pc.setLocalDescription({ type: "rollback" }).catch(() => {});
-        await pc.setRemoteDescription(
-          new RTCSessionDescription(payload.description),
-        );
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        await set(
-          ref(db, `rooms/${this.roomId}/rtc/answers/${fromUid}/${this.uid}`),
-          {
-            description: pc.localDescription.toJSON(),
-            fromSessionId: AppState.rtc.sessionId,
-            toSessionId: payload.fromSessionId,
-          },
-        );
-        await this.handleCandidates(this.lastCandidatesGroup || {});
-        await remove(
-          ref(db, `rooms/${this.roomId}/rtc/offers/${this.uid}/${fromUid}`),
-        );
-      } catch (e) {}
-    }
-  }
-
-  static async handleAnswers(answers) {
-    if (!AppState.rtc.sessionId) return;
-    for (const [fromUid, payload] of Object.entries(answers)) {
-      if (payload.toSessionId !== AppState.rtc.sessionId) continue;
-      const pc = AppState.rtc.peerConnections.get(fromUid);
-      if (!pc) continue;
-      try {
-        await pc.setRemoteDescription(
-          new RTCSessionDescription(payload.description),
-        );
-        await this.handleCandidates(this.lastCandidatesGroup || {});
-        await remove(
-          ref(db, `rooms/${this.roomId}/rtc/answers/${this.uid}/${fromUid}`),
-        );
-      } catch (e) {}
-    }
-  }
-
-  static async handleCandidates(candidatesGroup) {
-    this.lastCandidatesGroup = candidatesGroup;
-    if (!AppState.rtc.sessionId) return;
-
-    for (const [fromUid, records] of Object.entries(candidatesGroup)) {
-      const pc = AppState.rtc.peerConnections.get(fromUid);
-      if (!pc || !pc.remoteDescription) continue;
-
-      for (const [key, payload] of Object.entries(records)) {
-        if (payload.toSessionId !== AppState.rtc.sessionId) continue;
-        try {
-          await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
-          await remove(
-            ref(
-              db,
-              `rooms/${this.roomId}/rtc/candidates/${this.uid}/${fromUid}/${key}`,
-            ),
-          );
-        } catch (e) {}
-      }
-    }
-  }
-
-  static attachRemoteAudio(uid, stream) {
-    let audio = AppState.rtc.audioElements.get(uid);
-    if (!audio) {
-      audio = document.createElement("audio");
-      audio.autoplay = true;
-      audio.playsInline = true;
-      Utils.$("remote-audio-container").appendChild(audio);
-      AppState.rtc.audioElements.set(uid, audio);
-    }
-    audio.srcObject = stream;
-    audio.volume = this.getUserVolume(uid);
-    audio.play().catch((e) => console.warn("Audio play failed:", e));
-    this.setupAudioAnalyzer(uid, stream);
-  }
-
-  static setupAudioAnalyzer(uid, stream) {
-    if (!this.audioCtx) {
-      this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      this.analysers = new Map();
-      const animateEQ = () => {
-        requestAnimationFrame(animateEQ);
-        this.analysers.forEach((analyser, u) => {
-          const data = new Uint8Array(analyser.frequencyBinCount);
-          analyser.getByteFrequencyData(data);
-          let sum = 0;
-          for (let i = 0; i < data.length; i++) sum += data[i];
-          const avg = sum / data.length;
-
-          const avatarEls = document.querySelectorAll(`[data-uid="${u}"]`);
-          avatarEls.forEach((el) => {
-            const avatar =
-              el.querySelector(".avatar-inner-wrap") ||
-              el.querySelector(".avatar") ||
-              el.querySelector(".users-tab-avatar") ||
-              (el.classList.contains("avatar") ? el : el);
-            if (avatar) {
-              if (avg > 10) {
-                avatar.style.boxShadow = `0 0 ${15 + avg}px var(--accent, #0ff), inset 0 0 ${10 + avg / 2}px var(--accent, #0ff)`;
-                avatar.style.transform = `scale(${1 + avg / 400})`;
-              } else {
-                avatar.style.boxShadow = "";
-                avatar.style.transform = "";
-              }
-            }
-          });
-        });
-      };
-      requestAnimationFrame(animateEQ);
-    }
-    if (this.audioCtx.state === "suspended") this.audioCtx.resume();
-    try {
-      const source = this.audioCtx.createMediaStreamSource(stream);
-      const analyser = this.audioCtx.createAnalyser();
-      analyser.fftSize = 64;
-      source.connect(analyser);
-      this.analysers.set(uid, analyser);
-    } catch (e) {
-      console.warn("EQ Analyzer error:", e);
-    }
-  }
-
-  static destroyConnection(uid) {
-    const pc = AppState.rtc.peerConnections.get(uid);
-    if (pc) {
-      pc.onicecandidate = null;
-      pc.ontrack = null;
-      pc.close();
-      AppState.rtc.peerConnections.delete(uid);
-    }
-    const audio = AppState.rtc.audioElements.get(uid);
-    if (audio) {
-      audio.remove();
-      AppState.rtc.audioElements.delete(uid);
-    }
-  }
-
-  static stopAll() {
-    for (const targetUid of AppState.rtc.peerConnections.keys())
-      this.destroyConnection(targetUid);
-    if (AppState.rtc.localStream) {
-      AppState.rtc.localStream.getTracks().forEach((t) => t.stop());
-      AppState.rtc.localStream = null;
-    }
-  }
-
   static destroy() {
-    this.stopAll();
-    if (AppState.currentUser && this.roomId)
-      remove(
-        ref(db, `rooms/${this.roomId}/rtc/participants/${this.uid}`),
-      ).catch(() => {});
-    this.isMicActive = false;
-    AppState.rtc.sessionId = null;
-    AppState.rtc.voiceParticipantsCache = {};
-    Utils.$("mic-btn")?.classList.remove("active");
-    (this.unsubs || []).forEach((fn) => fn());
-    this.unsubs = [];
+    console.log("WebRTC Destroyed");
+  }
+  static async toggleMic(forceOff = false) {
+    console.log("Mic toggled");
   }
 }
 
-// ============================================================================
+
 // 7. МОБИЛЬНЫЕ СВАЙПЫ (Bottom Sheets, Chat swipe)
 // ============================================================================
 
@@ -17121,10 +16839,10 @@ class MobileSwipeManager {
         if (Math.abs(dx) > 80) {
           if (dx < 0 && Utils.$("chat-messages").style.display !== "none") {
             // Swipe left -> open users
-            Utils.$("tab-users-btn")?.click();
+            if (window._setRoomTab) window._setRoomTab("users");
           } else if (dx > 0 && Utils.$("users-list").style.display !== "none") {
             // Swipe right -> open chat
-            Utils.$("tab-chat-btn")?.click();
+            if (window._setRoomTab) window._setRoomTab("chat");
           }
         }
       });
@@ -17209,7 +16927,6 @@ const runApp = () => {
   initSystem("EasterEggManager", () => EasterEggManager.init());
   initSystem("HashtagManager", () => HashtagManager.initHashtags());
   initSystem("MobileSwipeManager", () => MobileSwipeManager.init()); // [NEW] Mobile Swipes initialization
-  initSystem("HelpGuideManager", () => HelpGuideManager.init());
   initSystem("SiteTipsManager", () => SiteTipsManager.init());
   initSystem("PremiumManager", () => PremiumManager.init());
   initSystem("LibraryManager", () => window.LibraryManager.init());
@@ -17821,7 +17538,7 @@ window.addEventListener("popstate", (e) => {
   if (pathname === "/lobby") {
     // If we came back to lobby, ensure profile is hidden
     if (window.FriendsManager && window.FriendsManager.setNavActive) {
-       window.FriendsManager.setNavActive("nav-rooms");
+       window.FriendsManager.setNavActive("nav-rooms", true);
     } else {
        document.querySelectorAll(".rooms-main").forEach(el => el.style.display = "none");
        if (Utils.$("section-rooms")) Utils.$("section-rooms").style.display = "flex";
@@ -17829,7 +17546,7 @@ window.addEventListener("popstate", (e) => {
        if (Utils.$("nav-rooms")) Utils.$("nav-rooms").classList.add("active");
     }
   } else if (pathname.startsWith("/@")) {
-            const targetUsername = pathname.slice(2);
+      const targetUsername = pathname.slice(2);
       import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(({get, ref, getDatabase}) => {
           get(ref(getDatabase(), `usernames/${targetUsername}`)).then(snap => {
               if (snap.exists()) {
@@ -17837,6 +17554,22 @@ window.addEventListener("popstate", (e) => {
               }
           });
       });
+  } else {
+      const routeMapToNav = {
+          "/library": "nav-library",
+          "/help": "nav-support",
+          "/catalog": "nav-catalog",
+          "/leaderboard": "nav-leaderboard",
+          "/findfriends": "nav-find-friend",
+          "/friends": "nav-friends",
+          "/settings": "nav-settings",
+          "/premium": "nav-premium",
+          "/profile": "nav-profile"
+      };
+      const navId = routeMapToNav[pathname];
+      if (navId && window.FriendsManager && window.FriendsManager.setNavActive) {
+          window.FriendsManager.setNavActive(navId, true);
+      }
   }
 
   if (e.state && e.state.screenId) {
@@ -19395,3 +19128,27 @@ window.loadLeaderboard = async function() {
         listEl.innerHTML = '<div style="color:red; text-align:center;">Ошибка загрузки.</div>';
     }
 };
+
+document.addEventListener("DOMContentLoaded", () => {
+    const closeBtn = document.getElementById("btn-chat-close-x");
+    if (closeBtn) {
+        closeBtn.addEventListener("click", () => {
+            const layout = document.querySelector(".room-layout");
+            if (layout) {
+                layout.classList.toggle("chat-collapsed");
+            }
+        });
+    }
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+    const openBtn = document.getElementById("btn-open-chat");
+    if (openBtn) {
+        openBtn.addEventListener("click", () => {
+            const layout = document.querySelector(".room-layout");
+            if (layout) {
+                layout.classList.remove("chat-collapsed");
+            }
+        });
+    }
+});

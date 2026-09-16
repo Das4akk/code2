@@ -6,7 +6,6 @@ import rateLimit from 'express-rate-limit';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
-import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import {
     CORS_ORIGIN,
     RATE_LIMIT_MAX,
