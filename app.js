@@ -302,6 +302,7 @@ class TutorialManager {
       "Хей, добро пожаловать! Спасибо, что решил(а) присоединиться к нашей платформе. Мы тут постарались создать уютное место для общения, поиска друзей и просто хорошего времяпровождения. Давай я быстро покажу тебе, что к чему? Это не займёт много времени!",
       "Поехали!",
       () => this.startNavigationTour(),
+      true
     );
   }
 
@@ -361,6 +362,13 @@ class TutorialManager {
         "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Bust%20In%20Silhouette.webp",
       title: "Твой профиль",
       text: "Твоя личная крепость! Здесь ты можешь красиво оформить свою страничку - поставить крутую аватарку, написать пару слов о себе и даже поменять фон. Люди любят, когда профиль заполнен с душой, так проще найти общие интересы.",
+      next: "settings",
+    },
+    settings: {
+      id: "nav-settings",
+      emoji: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Toolbox.webp",
+      title: "Настройки",
+      text: "Здесь ты можешь настроить свой аккаунт, сменить пароль или добавить дополнительные юзернеймы.",
       next: "friends",
     },
     friends: {
@@ -377,6 +385,13 @@ class TutorialManager {
         "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Magnifying%20Glass%20Tilted%20Left.webp",
       title: "Найти друга",
       text: "Не с кем поболтать? Загляни сюда. Здесь можно найти других ребят, посмотреть их профили и отправить запрос в друзья. Если кто-то показался интересным - смело пиши, тут все рады новому общению.",
+      next: "leaderboard",
+    },
+    leaderboard: {
+      id: "nav-leaderboard",
+      emoji: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp",
+      title: "Список лучших",
+      text: "В этом разделе собираются самые активные ребята нашего комьюнити! Смотри топы лайков и стремись занять первые места на доске почета.",
       next: "catalog",
     },
     catalog: {
@@ -401,10 +416,16 @@ class TutorialManager {
         "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/House.webp",
       title: "Комнаты",
       text: "А вот здесь происходит магия общения! Заходи в комнаты чтобы общаться с людьми, смотреть видео вместе или обмениваться сообщениями вживую. Можешь даже создать свою уютную комнату и собрать там компанию!",
+      next: "support",
+    },
+    support: {
+      id: "nav-support",
+      emoji: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Woman%20Technologist.webp",
+      title: "Поддержка",
+      text: "Возникли проблемы или есть предложения? Смело пиши в поддержку! Наши администраторы всегда на связи и готовы помочь с любым вопросом.",
       next: null,
     },
   };
-
   static currentHole = null;
 
   static startNavigationTour() {
@@ -422,6 +443,10 @@ class TutorialManager {
   static highlightNav(step) {
     if (this.currentHole)
       this.currentHole.classList.remove("tutorial-highlightpulse");
+      
+    const oldPointer = document.getElementById("tutorial-pointer");
+    if (oldPointer) oldPointer.remove();
+
     const data = this.navPointers[step];
     if (!data) return this.endTutorial();
 
@@ -442,12 +467,31 @@ class TutorialManager {
 
     const btn = document.getElementById(data.id);
     if (btn) {
+      btn.scrollIntoView({ behavior: "smooth", block: "center" });
       btn.classList.add("tutorial-highlightpulse");
+      
+      const pointer = document.createElement("div");
+      pointer.id = "tutorial-pointer";
+      pointer.innerHTML = '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Hand%20gestures/Backhand%20Index%20Pointing%20Right.webp" style="width: 32px; height: 32px;">';
+      pointer.style.position = "absolute";
+      pointer.style.left = "-40px";
+      pointer.style.top = "50%";
+      pointer.style.transform = "translateY(-50%)";
+      pointer.style.pointerEvents = "none";
+      pointer.style.zIndex = "100002";
+      pointer.style.animation = "tutorialPointerAnim 0.6s infinite alternate";
+      
+      if (window.getComputedStyle(btn).position === "static") {
+          btn.style.position = "relative";
+      }
+      btn.appendChild(pointer);
+
       this.currentHole = btn;
 
       const handler = (e) => {
         if (!e.isTrusted) return;
         btn.classList.remove("tutorial-highlightpulse");
+        if (pointer) pointer.remove();
         btn.removeEventListener("click", handler);
         setTimeout(() => this.showStepModal(step), 300);
       };
@@ -469,31 +513,36 @@ class TutorialManager {
     });
   }
 
-  static endTutorial() {
+  static endTutorial(showFinal = true) {
     localStorage.removeItem("tutorial_active");
     localStorage.removeItem("tutorial_step");
     this.removeBlur();
 
-    // Unlock all nav items
     document.querySelectorAll(".nav-item").forEach((item) => {
       item.style.pointerEvents = "";
       item.style.opacity = "";
       item.style.filter = "";
     });
 
+    const oldPointer = document.getElementById("tutorial-pointer");
+    if (oldPointer) oldPointer.remove();
+
     if (this.currentHole)
       this.currentHole.classList.remove("tutorial-highlightpulse");
 
-    this.renderModal(
-      "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Party%20Popper.webp",
-      "Готово!",
-      "Вот и всё! Теперь ты знаешь самое важное. Желаем отличного настроения и классного общения на нашей платформе!",
-      "Завершить",
-      () => {},
-    );
+    if (showFinal) {
+        this.renderModal(
+          "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Party%20Popper.webp",
+          "Готово!",
+          "Вот и всё! Теперь ты знаешь самое важное. Желаем отличного настроения и классного общения на нашей платформе!",
+          "Завершить",
+          () => {},
+          false
+        );
+    }
   }
 
-  static renderModal(emojiSrc, title, text, btnText, onConfirm) {
+  static renderModal(emojiSrc, title, text, btnText, onConfirm, showSkip = false) {
     const existing = document.getElementById("tutorial-modal-overlay");
     if (existing) existing.remove();
 
@@ -501,8 +550,8 @@ class TutorialManager {
     overlay.id = "tutorial-modal-overlay";
     overlay.style.position = "fixed";
     overlay.style.inset = "0";
-    overlay.style.backgroundColor = "rgba(0,0,0,0.6)";
-    overlay.style.backdropFilter = "blur(10px)";
+    overlay.style.backgroundColor = "rgba(0,0,0,0.7)";
+    overlay.style.backdropFilter = "blur(12px)";
     overlay.style.zIndex = "100005";
     overlay.style.display = "flex";
     overlay.style.alignItems = "center";
@@ -512,67 +561,110 @@ class TutorialManager {
     overlay.style.transition = "opacity 0.6s ease";
 
     const modal = document.createElement("div");
-    modal.style.background =
-      "linear-gradient(145deg, #2a2a2a 0%, #151515 100%)";
-    modal.style.border = "1px solid rgba(255,255,255,0.1)";
-    modal.style.borderRadius = "24px";
-    modal.style.padding = "35px 30px";
-    modal.style.maxWidth = "380px";
+    modal.style.background = "linear-gradient(145deg, #222222 0%, #111111 100%)";
+    modal.style.border = "1px solid rgba(255,255,255,0.08)";
+    modal.style.borderRadius = "28px";
+    modal.style.padding = "40px 30px";
+    modal.style.maxWidth = "400px";
     modal.style.width = "100%";
     modal.style.display = "flex";
     modal.style.flexDirection = "column";
     modal.style.alignItems = "center";
     modal.style.textAlign = "center";
-    modal.style.boxShadow = "0 25px 60px rgba(0,0,0,0.6)";
-    modal.style.transform = "translateY(30px) scale(0.9)";
+    modal.style.boxShadow = "0 30px 80px rgba(0,0,0,0.8), inset 0 2px 20px rgba(255,255,255,0.05)";
+    modal.style.transform = "translateY(40px) scale(0.9)";
     modal.style.opacity = "0";
-    modal.style.transition =
-      "transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.6s ease";
+    modal.style.transition = "transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.6s ease";
 
     const emoji = document.createElement("img");
     emoji.src = emojiSrc;
-    emoji.style.width = "72px";
-    emoji.style.height = "72px";
+    emoji.style.width = "80px";
+    emoji.style.height = "80px";
     emoji.style.marginBottom = "20px";
-    emoji.style.animation = "pulse 2s infinite alternate";
+    emoji.style.animation = "pulse 1.5s infinite alternate ease-in-out";
+    emoji.style.filter = "drop-shadow(0 10px 20px rgba(0,0,0,0.5))";
 
     const h2 = document.createElement("h2");
     h2.textContent = title;
-    h2.style.margin = "0 0 10px 0";
-    h2.style.fontSize = "22px";
+    h2.style.margin = "0 0 12px 0";
+    h2.style.fontSize = "26px";
+    h2.style.fontWeight = "800";
     h2.style.color = "#ffffff";
+    h2.style.letterSpacing = "-0.5px";
 
     const p = document.createElement("p");
-    p.style.margin = "0 0 25px 0";
-    p.style.fontSize = "14px";
-    p.style.lineHeight = "1.5";
-    p.style.color = "rgba(255,255,255,0.7)";
-    p.style.minHeight = "120px"; // enough space for longest tutorial text to avoid layout shift
+    p.style.margin = "0 0 30px 0";
+    p.style.fontSize = "15px";
+    p.style.lineHeight = "1.6";
+    p.style.color = "rgba(255,255,255,0.75)";
+    p.style.minHeight = "140px";
 
     const btn = document.createElement("button");
     btn.textContent = btnText;
     btn.style.width = "100%";
-    btn.style.padding = "12px 20px";
-    btn.style.borderRadius = "12px";
-    btn.style.fontSize = "14px";
+    btn.style.padding = "14px 20px";
+    btn.style.borderRadius = "14px";
+    btn.style.fontSize = "16px";
     btn.style.fontWeight = "bold";
-    btn.style.background = "linear-gradient(90deg, #ffffff, #e0e0e0)";
+    btn.style.background = "linear-gradient(135deg, #ffffff, #d0d0d0)";
     btn.style.color = "#000000";
     btn.style.border = "none";
     btn.style.cursor = "pointer";
     btn.style.opacity = "0";
-    btn.style.transition = "opacity 0.4s ease";
-
-    btn.onmouseover = () => (btn.style.background = "#ffffff");
-    btn.onmouseout = () =>
-      (btn.style.background = "linear-gradient(90deg, #ffffff, #e0e0e0)");
+    btn.style.transform = "translateY(10px)";
+    btn.style.transition = "all 0.4s ease";
+    btn.style.boxShadow = "0 8px 20px rgba(255,255,255,0.2)";
+    btn.onmouseover = () => {
+        btn.style.background = "#ffffff";
+        btn.style.transform = "translateY(-2px)";
+        btn.style.boxShadow = "0 12px 25px rgba(255,255,255,0.3)";
+    };
+    btn.onmouseout = () => {
+        btn.style.background = "linear-gradient(135deg, #ffffff, #d0d0d0)";
+        btn.style.transform = "translateY(0)";
+        btn.style.boxShadow = "0 8px 20px rgba(255,255,255,0.2)";
+    };
+    
+    let btnSkip;
+    if (showSkip) {
+        btnSkip = document.createElement("button");
+        btnSkip.textContent = "Пропустить туториал";
+        btnSkip.style.width = "100%";
+        btnSkip.style.padding = "12px 20px";
+        btnSkip.style.borderRadius = "14px";
+        btnSkip.style.fontSize = "14px";
+        btnSkip.style.fontWeight = "600";
+        btnSkip.style.background = "rgba(255,255,255,0.05)";
+        btnSkip.style.color = "rgba(255,255,255,0.5)";
+        btnSkip.style.border = "1px solid rgba(255,255,255,0.1)";
+        btnSkip.style.cursor = "pointer";
+        btnSkip.style.opacity = "0";
+        btnSkip.style.transform = "translateY(10px)";
+        btnSkip.style.transition = "all 0.3s ease";
+        btnSkip.style.marginTop = "10px";
+        btnSkip.onmouseover = () => {
+            btnSkip.style.background = "rgba(255,255,255,0.1)";
+            btnSkip.style.color = "rgba(255,255,255,0.8)";
+        };
+        btnSkip.onmouseout = () => {
+            btnSkip.style.background = "rgba(255,255,255,0.05)";
+            btnSkip.style.color = "rgba(255,255,255,0.5)";
+        };
+        btnSkip.onclick = () => {
+            overlay.style.opacity = "0";
+            modal.style.transform = "translateY(30px) scale(0.9)";
+            setTimeout(() => {
+                overlay.remove();
+                this.endTutorial(false);
+            }, 500);
+        };
+    }
 
     let typingInterval;
     let isTyping = false;
 
     btn.onclick = () => {
       if (isTyping) {
-        // If clicked while typing, skip to the end
         clearInterval(typingInterval);
         p.textContent = text;
         isTyping = false;
@@ -584,7 +676,248 @@ class TutorialManager {
       setTimeout(() => {
         overlay.remove();
         if (onConfirm) onConfirm();
-      }, 600);
+      }, 500);
+    };
+
+    modal.appendChild(emoji);
+    modal.appendChild(h2);
+    modal.appendChild(p);
+    modal.appendChild(btn);
+    if (btnSkip) modal.appendChild(btnSkip);
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    requestAnimationFrame(() => {
+      overlay.style.opacity = "1";
+      modal.style.transform = "translateY(0) scale(1)";
+      modal.style.opacity = "1";
+      setTimeout(() => {
+        let i = 0;
+        isTyping = true;
+        typingInterval = setInterval(() => {
+          if (i < text.length) {
+            p.textContent += text.charAt(i);
+            i++;
+          } else {
+            clearInterval(typingInterval);
+            isTyping = false;
+            btn.style.opacity = "1";
+            btn.style.transform = "translateY(0)";
+            if (btnSkip) {
+                btnSkip.style.opacity = "1";
+                btnSkip.style.transform = "translateY(0)";
+            }
+          }
+        }, 12);
+      }, 400); 
+    });
+  }
+}
+
+class Utils {
+  static $(id) {
+    return document.getElementById(id);
+  }
+
+  static escapeHtml(str) {
+    if (!str) return "";
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  static toast(msg, type = "info") {
+    let container = document.getElementById("toast-container");
+    if (!container) {
+      container = document.createElement("div");
+      container.id = "toast-container";
+      container.style.position = "fixed";
+      container.style.bottom = "20px";
+      container.style.right = "20px";
+      container.style.zIndex = "999999";
+      container.style.display = "flex";
+      container.style.flexDirection = "column";
+      container.style.gap = "10px";
+      document.body.appendChild(container);
+    }
+    const t = document.createElement("div");
+    t.style.background = type === "error" ? "#e74c3c" : type === "success" ? "#2ecc71" : "#3498db";
+    t.style.color = "#fff";
+    t.style.padding = "10px 20px";
+    t.style.borderRadius = "8px";
+    t.style.boxShadow = "0 4px 6px rgba(0,0,0,0.1)";
+    t.style.fontSize = "14px";
+    t.style.opacity = "0";
+    t.style.transition = "opacity 0.3s";
+    t.textContent = msg;
+    container.appendChild(t);
+    requestAnimationFrame(() => t.style.opacity = "1");
+    setTimeout(() => {
+        t.style.opacity = "0";
+        setTimeout(() => t.remove(), 300);
+    }, 3000);
+  }
+
+  static generateCryptoId(len = 20) {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < len; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  }
+
+  static formatExactDate(ts) {
+    return new Date(ts).toLocaleString();
+  }
+
+  static formatLastSeen(ts) {
+    if (!ts) return "Давно";
+    const diff = Date.now() - ts;
+    if (diff < 60000) return "Только что";
+    if (diff < 3600000) return `${Math.floor(diff / 60000)} мин. назад`;
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)} ч. назад`;
+    return new Date(ts).toLocaleDateString();
+  }
+
+  static getDistributedHeartLeft(x) {
+    return x;
+  }
+
+  static fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+  }
+
+  static bannerFileToBase64(file) {
+      return this.fileToBase64(file);
+  }
+
+  static debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+  }
+
+  static hashPassword(pwd) {
+      // Very simple polyfill if needed, hopefully not used for real security client-side
+      return btoa(encodeURIComponent(pwd));
+  }
+
+  static injectFixes() {
+      // Stub
+  }
+
+  static hasInjectedAuthStyles() {
+      return true;
+  }
+
+  static showBadgeModal(title, text, emojiSrc) {
+    const existing = document.getElementById("tutorial-modal-overlay");
+    if (existing) existing.remove();
+
+    const overlay = document.createElement("div");
+    overlay.id = "tutorial-modal-overlay";
+    overlay.style.position = "fixed";
+    overlay.style.inset = "0";
+    overlay.style.backgroundColor = "rgba(0,0,0,0.7)";
+    overlay.style.backdropFilter = "blur(12px)";
+    overlay.style.zIndex = "100005";
+    overlay.style.display = "flex";
+    overlay.style.alignItems = "center";
+    overlay.style.justifyContent = "center";
+    overlay.style.padding = "20px";
+    overlay.style.opacity = "0";
+    overlay.style.transition = "opacity 0.6s ease";
+    
+    // allow closing by clicking overlay
+    overlay.onclick = (e) => {
+        if(e.target === overlay) {
+            overlay.style.opacity = "0";
+            setTimeout(() => overlay.remove(), 400);
+        }
+    };
+
+    const modal = document.createElement("div");
+    modal.style.background = "linear-gradient(145deg, #222222 0%, #111111 100%)";
+    modal.style.border = "1px solid rgba(255,255,255,0.08)";
+    modal.style.borderRadius = "28px";
+    modal.style.padding = "40px 30px";
+    modal.style.maxWidth = "400px";
+    modal.style.width = "100%";
+    modal.style.display = "flex";
+    modal.style.flexDirection = "column";
+    modal.style.alignItems = "center";
+    modal.style.textAlign = "center";
+    modal.style.boxShadow = "0 30px 80px rgba(0,0,0,0.8), inset 0 2px 20px rgba(255,255,255,0.05)";
+    modal.style.transform = "translateY(40px) scale(0.9)";
+    modal.style.opacity = "0";
+    modal.style.transition = "transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.6s ease";
+
+    const emoji = document.createElement("img");
+    emoji.src = emojiSrc;
+    emoji.style.width = "80px";
+    emoji.style.height = "80px";
+    emoji.style.marginBottom = "20px";
+    emoji.style.animation = "pulse 1.5s infinite alternate ease-in-out";
+    emoji.style.filter = "drop-shadow(0 10px 20px rgba(0,0,0,0.5))";
+
+    const h2 = document.createElement("h2");
+    h2.textContent = title;
+    h2.style.margin = "0 0 12px 0";
+    h2.style.fontSize = "26px";
+    h2.style.fontWeight = "800";
+    h2.style.color = "#ffffff";
+    h2.style.letterSpacing = "-0.5px";
+
+    const p = document.createElement("p");
+    p.style.margin = "0 0 30px 0";
+    p.style.fontSize = "15px";
+    p.style.lineHeight = "1.6";
+    p.style.color = "rgba(255,255,255,0.75)";
+    p.textContent = text;
+
+    const btn = document.createElement("button");
+    btn.textContent = "Понятно";
+    btn.style.width = "100%";
+    btn.style.padding = "14px 20px";
+    btn.style.borderRadius = "14px";
+    btn.style.fontSize = "16px";
+    btn.style.fontWeight = "bold";
+    btn.style.background = "linear-gradient(135deg, #ffffff, #d0d0d0)";
+    btn.style.color = "#000000";
+    btn.style.border = "none";
+    btn.style.cursor = "pointer";
+    btn.style.transition = "all 0.4s ease";
+    btn.style.boxShadow = "0 8px 20px rgba(255,255,255,0.2)";
+    btn.onmouseover = () => {
+        btn.style.background = "#ffffff";
+        btn.style.transform = "translateY(-2px)";
+        btn.style.boxShadow = "0 12px 25px rgba(255,255,255,0.3)";
+    };
+    btn.onmouseout = () => {
+        btn.style.background = "linear-gradient(135deg, #ffffff, #d0d0d0)";
+        btn.style.transform = "translateY(0)";
+        btn.style.boxShadow = "0 8px 20px rgba(255,255,255,0.2)";
+    };
+    
+    btn.onclick = () => {
+      overlay.style.opacity = "0";
+      modal.style.transform = "translateY(30px) scale(0.9)";
+      setTimeout(() => overlay.remove(), 400);
     };
 
     modal.appendChild(emoji);
@@ -598,170 +931,63 @@ class TutorialManager {
       overlay.style.opacity = "1";
       modal.style.transform = "translateY(0) scale(1)";
       modal.style.opacity = "1";
-
-      setTimeout(() => {
-        let i = 0;
-        isTyping = true;
-        typingInterval = setInterval(() => {
-          if (i < text.length) {
-            p.textContent += text.charAt(i);
-            i++;
-          } else {
-            clearInterval(typingInterval);
-            isTyping = false;
-            btn.style.opacity = "1";
-          }
-        }, 15);
-      }, 400); // Start typing after modal enters
     });
   }
-}
 
-class Utils {
-  static showBadgeModal(title, desc, iconSrc) {
-    const m = document.getElementById("modal-badge-info");
-    if (!m) return;
-    document.getElementById("badge-modal-title").innerText = title;
-    document.getElementById("badge-modal-desc").innerText = desc;
-    document.getElementById("badge-modal-icon").src = iconSrc;
-    m.classList.add("active");
+  static showScreen(id, push = true) {
+      document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+      const screen = document.getElementById(id);
+      if (screen) screen.classList.add("active");
   }
 
-  static getAppleEmojiHtml(char) {
-    const appleMap = {
-      "💋": "1f48b",
-      '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">':
-        "2728",
-      "💞": "1f49e",
-      '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">':
-        "1f525",
-      "🐄": "1f404",
-      "🍿": "1f37f",
-      "🐱": "1f431",
-      "🌈": "1f308",
-      "🥛": "1f95b",
-      "📀": "1f4c0",
-      '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Up%20Button.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">':
-        "1f504",
-      "💻": "1f4bb",
-      "🤫": "1f92b",
-      "⚔️": "2694-fe0f",
-      "🔒": "1f512",
-      '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">':
-        "1f465",
-      '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Television.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">':
-        "1f4fa",
-      "📎": "1f4ce",
-      '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Reminder%20Ribbon.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">':
-        "1f4cc",
-      "📍": "1f4cd",
-      "💗": "1f497",
-      "💘": "1f498",
-      "💕": "1f495",
-      '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Heart.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">':
-        "2764-fe0f",
-      "🔴": "1f534",
-      '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Tears%20Of%20Joy.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">':
-        "1f602",
-      '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20Screaming%20In%20Fear.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">':
-        "1f631",
-      '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Clapping%20Hands.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">':
-        "1f44f",
-      '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Musical%20Note.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">':
-        "1f3b5",
-      '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Reminder%20Ribbon.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">':
-        "1f4cc",
-      "📍": "1f4cd",
-      '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">':
-        "1f451",
-      "✅": "2705",
-      "❌": "274c",
-      "⚠️": "26a0-fe0f",
-      '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Speech%20Balloon.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">':
-        "1f4ac",
-      "💎": "1f48e",
-      '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Toolbox.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">':
-        "2699-fe0f",
-      '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">':
-        "2b50",
-      "🌟": "1f31f",
-      "🎮": "1f3ae",
-      "🎧": "1f3a7",
-      "🎉": "1f389",
-      "💰": "1f4b0",
-    };
-    const codepoint = appleMap[char] || char.codePointAt(0).toString(16);
-    return `<img src="https://emojigraph.org/media/144/apple/${codepoint}.png" style="width: 1.25em; height: 1.25em; vertical-align: middle; display: inline-block; object-fit: contain;" alt="${char}" onerror="this.onerror=null; this.src=''; this.alt='${char}';"/>`;
-  }
-
-  static formatLastSeen(ts) {
-    if (!ts) return "Ещё не заходил";
-    const diff = Date.now() - ts;
-    if (diff < 60000) return "Только что";
-    const mins = Math.floor(diff / 60000);
-    if (mins < 60) return `${mins} мин. назад`;
-    const hours = Math.floor(mins / 60);
-    if (hours < 24) return `${hours} ч. назад`;
-    const days = Math.floor(hours / 24);
-    return `${days} д. назад`;
-  }
-
-  static $(id) {
-    return document.getElementById(id);
-  }
-
-  static formatExactDate(ts) {
-    if (!ts) return "unknown";
-    const d = new Date(Number(ts));
-    if (isNaN(d.getTime())) return "unknown";
-    return `${d.getDate().toString().padStart(2, "0")}.${(d.getMonth() + 1).toString().padStart(2, "0")}.${d.getFullYear()} ${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}:${d.getSeconds().toString().padStart(2, "0")}`;
-  }
-
-  static toast(msg, type = "info") {
-    let container = Utils.$("toast-container");
-    if (!container) {
-      container = document.createElement("div");
-      container.id = "toast-container";
-      document.body.appendChild(container);
-    }
-    const div = document.createElement("div");
-    div.className = "toast";
-    div.style.borderLeft = `4px solid ${type === "error" ? "var(--danger)" : "var(--accent)"}`;
-    div.innerText = msg;
-    container.appendChild(div);
-    setTimeout(() => {
-      div.style.opacity = "0";
-      setTimeout(() => div.remove(), 300);
-    }, 4000);
+  static alert(msg) {
+    return new Promise((resolve) => {
+      const modal = document.createElement("div");
+      modal.className = "modal active";
+      modal.style.zIndex = "99999";
+      modal.innerHTML = `
+        <div class="modal-content glass-panel" style="max-width: 400px; text-align: center; border-radius: 20px; padding: 30px;">
+          <h3 style="margin-bottom: 12px; font-weight: 800; font-size: 22px;">Внимание</h3>
+          <p style="margin-bottom: 24px; color: var(--text-muted); font-size: 15px; line-height: 1.5;">${this.escapeHtml(msg)}</p>
+          <button class="primary-btn" id="custom-alert-ok" style="width: 100%; border-radius: 12px; padding: 14px;">ОК</button>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      const cleanup = () => {
+        modal.classList.remove("active");
+        setTimeout(() => modal.remove(), 400);
+      };
+      modal.querySelector("#custom-alert-ok").onclick = () => {
+        cleanup();
+        resolve();
+      };
+    });
   }
 
   static confirm(msg) {
     return new Promise((resolve) => {
       const modal = document.createElement("div");
       modal.className = "modal active";
-      modal.style.zIndex = "99999"; // Ensure it's above other modals
+      modal.style.zIndex = "99999";
       modal.innerHTML = `
         <div class="modal-content glass-panel" style="max-width: 400px; text-align: center; border-radius: 20px; padding: 30px;">
           <h3 style="margin-bottom: 12px; font-weight: 800; font-size: 22px;">Подтверждение</h3>
-          <p style="margin-bottom: 0px; color: var(--text-muted); font-size: 15px; line-height: 1.5;">${Utils.escapeHtml(msg)}</p>
-          <div style="display: flex; gap: 10px; margin-top: 24px;">
-            <button class="secondary-btn" id="custom-confirm-cancel" style="flex: 1;">Отмена</button>
-            <button class="primary-btn" id="custom-confirm-ok" style="flex: 1;">ОК</button>
+          <p style="margin-bottom: 24px; color: var(--text-muted); font-size: 15px; line-height: 1.5;">${this.escapeHtml(msg)}</p>
+          <div style="display: flex; gap: 10px;">
+            <button class="secondary-btn" id="custom-confirm-cancel" style="flex: 1; border-radius: 12px; padding: 14px;">Отмена</button>
+            <button class="primary-btn" id="custom-confirm-ok" style="flex: 1; border-radius: 12px; padding: 14px;">Да</button>
           </div>
         </div>
       `;
       document.body.appendChild(modal);
-
       const cleanup = () => {
         modal.classList.remove("active");
         setTimeout(() => modal.remove(), 400);
       };
-
       modal.querySelector("#custom-confirm-cancel").onclick = () => {
         cleanup();
         resolve(false);
       };
-
       modal.querySelector("#custom-confirm-ok").onclick = () => {
         cleanup();
         resolve(true);
@@ -5483,6 +5709,24 @@ class AuthManager {
               );
               Utils.showScreen("lobby-screen", false);
             }
+          } else if (pathname.startsWith("/@")) {
+            const targetUsername = pathname.slice(2);
+            window.history.replaceState(
+              { screenId: "lobby-screen" },
+              "",
+              pathname,
+            );
+            Utils.showScreen("lobby-screen", false);
+            // Async fetch user and open profile
+            import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(({get, ref, getDatabase}) => {
+                get(ref(getDatabase(), `usernames/${targetUsername}`)).then(snap => {
+                    if (snap.exists()) {
+                        ProfileManager.openViewProfileModal(snap.val());
+                    } else {
+                        Utils.toast("Профиль не найден", "error");
+                    }
+                });
+            });
           } else {
             window.history.replaceState(
               { screenId: "lobby-screen" },
@@ -5710,7 +5954,7 @@ class AuthManager {
     TutorialManager.startTutorial();
     AppState.isRegistering = false;
     AuthManager.hideRegVerifyPanel();
-    Utils.toast("Аккаунт создан! Добро пожаловать в COWIO", "success");
+    Utils.toast("Аккаунт создан! Добро пожаловать", "success");
   }
 
   static bindUI() {
@@ -8495,7 +8739,7 @@ class ProfileManager {
        // Helper to update UI
        const updateLikeUI = (p) => {
           if (!p) return;
-          const likedBy = profile.likedBy || {};
+          const likedBy = p.likedBy || {};
           const count = Object.keys(likedBy).length;
           if (likesCount) likesCount.innerText = count;
           if (likeIcon && AppState.currentUser) {
@@ -8573,6 +8817,26 @@ class ProfileManager {
              } else {
                 await set(likedRef, Date.now());
                 Utils.toast(`Вы поставили лайк пользователю ${profile.name || "Пользователь"}`, "success");
+                
+                const layer = Utils.$("reaction-layer");
+                if (layer) {
+                    for (let i = 0; i < 8; i++) {
+                        const heart = document.createElement("div");
+                        heart.className = "floating-emoji";
+                        heart.innerHTML = '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Heart.webp" style="width: 48px; height: 48px; filter: drop-shadow(0 4px 12px rgba(255, 0, 0, 0.4));">';
+                        
+                        // Start position around bottom center of screen or button
+                        heart.style.left = `${Math.random() * 40 + 30}%`; // 30% to 70%
+                        heart.style.bottom = "-50px";
+                        
+                        // Custom animation delay and duration
+                        heart.style.animationDelay = `${Math.random() * 0.3}s`;
+                        heart.style.animationDuration = `${2 + Math.random() * 1}s`;
+                        
+                        layer.appendChild(heart);
+                        setTimeout(() => heart.remove(), 3500);
+                    }
+                }
              }
              
              // Refresh profile
@@ -8609,13 +8873,20 @@ class ProfileManager {
     
     
     profile = loadedProfile;
+    if (profile && profile.username) {
+       const expectedPath = `/@${profile.username}`;
+       if (window.location.pathname !== expectedPath) {
+           window.history.pushState({ screenId: "profile-screen" }, "", expectedPath);
+       }
+    }
+    
     if (document.getElementById("btn-like-profile")) {
        
        const likeIcon = document.getElementById("like-icon");
        const likesCount = document.getElementById("view-likes-count");
        const updateLikeUI = (p) => {
           if (!p) return;
-          const likedBy = profile.likedBy || {};
+          const likedBy = p.likedBy || {};
           const count = Object.keys(likedBy).length;
           if (likesCount) likesCount.innerText = count;
           if (likeIcon && AppState.currentUser) {
@@ -9331,47 +9602,27 @@ class FriendsManager {
       "nav-library",
     ];
     const setNavActive = (id) => {
-      navItems.forEach((n) => {
-        const el = Utils.$(n);
-        if (el) el.classList.remove("active");
-      });
+      // Clear specific route if we are navigating out of a room or profile
+      if (window.location.pathname.startsWith("/@") || window.location.pathname.startsWith("/room/")) {
+          window.history.pushState({ screenId: "lobby-screen" }, "", "/lobby");
+      }
+
+      document.querySelectorAll(".nav-item").forEach((el) => el.classList.remove("active"));
       if (Utils.$(id)) Utils.$(id).classList.add("active");
-
-      if (Utils.$("section-library"))
-        Utils.$("section-library").style.display =
-          id === "nav-library" ? "flex" : "none";
-
-      Utils.$("section-friends").style.display =
-        id === "nav-friends" ? "flex" : "none";
-      Utils.$("section-find-friend").style.display =
-        id === "nav-find-friend" ? "flex" : "none";
-      if (Utils.$("section-leaderboard"))
-        Utils.$("section-leaderboard").style.display =
-          id === "nav-leaderboard" ? "flex" : "none";
-      Utils.$("section-rooms").style.display =
-        id === "nav-rooms" ? "flex" : "none";
-      Utils.$("section-catalog").style.display =
-        id === "nav-catalog" ? "flex" : "none";
-      if (Utils.$("section-shop"))
-        Utils.$("section-shop").style.display =
-          id === "nav-shop" ? "flex" : "none";
-      if (Utils.$("section-settings"))
-        Utils.$("section-settings").style.display =
-          id === "nav-settings" ? "flex" : "none";
-      if (Utils.$("section-premium"))
-        Utils.$("section-premium").style.display =
-          id === "nav-premium" ? "flex" : "none";
-      if (Utils.$("section-mystery"))
-        Utils.$("section-mystery").style.display =
-          id === "nav-mystery" ? "flex" : "none";
-      if (Utils.$("section-support"))
-        Utils.$("section-support").style.display =
-          id === "nav-support" || id === "nav-support-staff" ? "flex" : "none";
-      if (Utils.$("section-profile"))
-        Utils.$("section-profile").style.display =
-          id === "nav-profile" ? "flex" : "none";
-      Utils.$("section-switch-account").style.display =
-        id === "nav-switch-account" ? "flex" : "none";
+      document.querySelectorAll(".rooms-main").forEach((el) => (el.style.display = "none"));
+      if (Utils.$("section-friends")) Utils.$("section-friends").style.display = id === "nav-friends" ? "flex" : "none";
+      if (Utils.$("section-find-friend")) Utils.$("section-find-friend").style.display = id === "nav-find-friend" ? "flex" : "none";
+      if (Utils.$("section-rooms")) Utils.$("section-rooms").style.display = id === "nav-rooms" ? "flex" : "none";
+      if (Utils.$("section-library")) Utils.$("section-library").style.display = id === "nav-library" ? "flex" : "none";
+      if (Utils.$("section-leaderboard")) Utils.$("section-leaderboard").style.display = id === "nav-leaderboard" ? "block" : "none";
+      if (Utils.$("section-catalog")) Utils.$("section-catalog").style.display = id === "nav-catalog" ? "flex" : "none";
+      if (Utils.$("section-shop")) Utils.$("section-shop").style.display = id === "nav-shop" ? "flex" : "none";
+      if (Utils.$("section-settings")) Utils.$("section-settings").style.display = id === "nav-settings" ? "flex" : "none";
+      if (Utils.$("section-premium")) Utils.$("section-premium").style.display = id === "nav-premium" ? "flex" : "none";
+      if (Utils.$("section-mystery")) Utils.$("section-mystery").style.display = id === "nav-mystery" ? "flex" : "none";
+      if (Utils.$("section-support")) Utils.$("section-support").style.display = id === "nav-support" || id === "nav-support-staff" ? "flex" : "none";
+      if (Utils.$("section-profile")) Utils.$("section-profile").style.display = id === "nav-profile" ? "flex" : "none";
+      Utils.$("section-switch-account").style.display = id === "nav-switch-account" ? "flex" : "none";
     };
     FriendsManager.setNavActive = setNavActive;
 
@@ -17565,6 +17816,29 @@ window.addEventListener("popstate", (e) => {
   if (window.AppState && AppState.currentRoomId) {
     RoomManager.leaveRoom();
   }
+  
+  const pathname = window.location.pathname;
+  if (pathname === "/lobby") {
+    // If we came back to lobby, ensure profile is hidden
+    if (window.FriendsManager && window.FriendsManager.setNavActive) {
+       window.FriendsManager.setNavActive("nav-rooms");
+    } else {
+       document.querySelectorAll(".rooms-main").forEach(el => el.style.display = "none");
+       if (Utils.$("section-rooms")) Utils.$("section-rooms").style.display = "flex";
+       document.querySelectorAll(".nav-item").forEach(el => el.classList.remove("active"));
+       if (Utils.$("nav-rooms")) Utils.$("nav-rooms").classList.add("active");
+    }
+  } else if (pathname.startsWith("/@")) {
+            const targetUsername = pathname.slice(2);
+      import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(({get, ref, getDatabase}) => {
+          get(ref(getDatabase(), `usernames/${targetUsername}`)).then(snap => {
+              if (snap.exists()) {
+                  ProfileManager.openViewProfileModal(snap.val());
+              }
+          });
+      });
+  }
+
   if (e.state && e.state.screenId) {
     if (e.state.screenId === "room-screen") {
       Utils.showScreen("lobby-screen", false);
