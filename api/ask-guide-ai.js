@@ -98,7 +98,8 @@ export default async function handler(req, res) {
         if (!answer) {
             try {
                 console.log(`[Diagnostics] Attempting Gemini for question: "${query}"`);
-                const response = await generateGeminiContent({ contents: prompt });
+                const isComplex = query.length > 40 || query.split(' ').length > 8 || /почему|как|зачем|объясни/i.test(query);
+                const response = await generateGeminiContent({ contents: prompt, isComplex });
                 answer = response?.text?.trim() || "";
                 source = answer ? "gemini" : source;
             } catch (e) {

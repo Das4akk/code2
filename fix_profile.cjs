@@ -1,53 +1,92 @@
 const fs = require('fs');
-let html = fs.readFileSync('index.html', 'utf8');
+let js = fs.readFileSync('app.js', 'utf8');
 
-const originalMain = `        <div id="view-status" style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px"></div>
+const oldLogic = `  static async openViewProfileModal(targetUid) {
+    // Show section-profile instead of modal
+    document.querySelectorAll('.rooms-main').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    
+    // If viewing our own profile, highlight the nav-profile item
+    if (targetUid === AppState.currentUser?.uid) {
+       const navMy = document.getElementById('nav-profile');
+       if (navMy) navMy.classList.add('active');
+    }
+    
+    const sProfile = document.getElementById("section-profile");
+    if (sProfile) {
+        sProfile.style.display = "flex";
+    }
+    
+    // We don't have vModal anymore, so we remove the check for it
 
-        <div id="view-bio" style="
-             color: var(--text-muted);
-             font-size: 14px;
-             margin-bottom: 25px;
-             line-height: 1.5;
-           "></div>`;
+    const vModal = Utils.$("section-profile");
+    if (!vModal) return;`;
 
-const replaceMain = `        <div class="mobile-only-description">
-          <div class="view-status" style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px"></div>
-          <div class="view-bio" style="
-               color: var(--text-muted);
-               font-size: 14px;
-               margin-bottom: 25px;
-               line-height: 1.5;
-             "></div>
-        </div>`;
+const newLogic = `  static async openViewProfileModal(targetUid) {
+    const sProfile = document.getElementById("section-profile");
+    if (!sProfile) return;
+    const vModal = sProfile;
 
-html = html.replace(originalMain, replaceMain);
+    const isRoom = document.getElementById("room-screen")?.classList.contains("active");
 
-const originalSide = `        <div class="hashtags-list" id="view-hashtags"></div>`;
-const replaceSide = `        <div class="hashtags-list" id="view-hashtags"></div>
+    if (isRoom) {
+       // Make it a modal overlay
+       sProfile.style.setProperty("position", "fixed", "important");
+       sProfile.style.setProperty("top", "10%", "important");
+       sProfile.style.setProperty("left", "50%", "important");
+       sProfile.style.setProperty("transform", "translateX(-50%)", "important");
+       sProfile.style.setProperty("width", "90%", "important");
+       sProfile.style.setProperty("max-width", "800px", "important");
+       sProfile.style.setProperty("height", "80%", "important");
+       sProfile.style.setProperty("z-index", "9999", "important");
+       sProfile.style.setProperty("background", "rgba(20, 20, 20, 0.95)", "important");
+       sProfile.style.setProperty("border-radius", "24px", "important");
+       sProfile.style.setProperty("box-shadow", "0 20px 60px rgba(0,0,0,0.8)", "important");
+       sProfile.style.setProperty("border", "1px solid rgba(255,255,255,0.1)", "important");
+       sProfile.style.setProperty("backdrop-filter", "blur(20px)", "important");
+       sProfile.style.display = "flex";
+       
+       if (!document.getElementById("profile-overlay-close")) {
+           const btn = document.createElement("button");
+           btn.id = "profile-overlay-close";
+           btn.innerHTML = "✖";
+           btn.style.cssText = "position: absolute; top: 16px; right: 16px; background: rgba(255,255,255,0.1); border: none; color: white; border-radius: 50%; width: 36px; height: 36px; cursor: pointer; z-index: 1000; font-size: 16px; display: flex; align-items: center; justify-content: center; transition: background 0.2s;";
+           btn.onmouseover = () => btn.style.background = "rgba(255,255,255,0.2)";
+           btn.onmouseout = () => btn.style.background = "rgba(255,255,255,0.1)";
+           btn.onclick = () => {
+               sProfile.style.display = "none";
+           };
+           sProfile.appendChild(btn);
+       } else {
+           document.getElementById("profile-overlay-close").style.display = "flex";
+       }
+    } else {
+        // Normal lobby behavior
+        sProfile.style.position = "relative";
+        sProfile.style.top = "auto";
+        sProfile.style.left = "auto";
+        sProfile.style.transform = "none";
+        sProfile.style.width = "100%";
+        sProfile.style.maxWidth = "none";
+        sProfile.style.height = "100%";
+        sProfile.style.zIndex = "1";
+        sProfile.style.background = "transparent";
+        sProfile.style.borderRadius = "0";
+        sProfile.style.boxShadow = "none";
+        sProfile.style.border = "none";
+        sProfile.style.backdropFilter = "none";
+        if (document.getElementById("profile-overlay-close")) {
+            document.getElementById("profile-overlay-close").style.display = "none";
+        }
         
-        <div class="desktop-only-description">
-          <div class="view-status" style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px"></div>
-          <div class="view-bio" style="
-               color: var(--text-muted);
-               font-size: 14px;
-               margin-bottom: 25px;
-               line-height: 1.5;
-             "></div>
-        </div>
+        document.querySelectorAll('.rooms-main').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        if (targetUid === AppState.currentUser?.uid) {
+           const navMy = document.getElementById('nav-profile');
+           if (navMy) navMy.classList.add('active');
+        }
+        sProfile.style.display = "flex";
+    }`;
 
-        <div id="view-profile-stats" style="margin-top: 15px; padding: 12px; background: rgba(34,34,34,0.5); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); width: 100%;">
-          <div style="font-size: 14px; color: var(--text-muted); font-weight: 500; margin-bottom: 8px;">Статистика профиля</div>
-          <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
-             <span style="color: var(--text-muted);">Дата регистрации:</span>
-             <span id="view-stat-created" style="color: #fff; font-weight: 600;">Неизвестно</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
-             <span style="color: var(--text-muted);">ID пользователя:</span>
-             <span id="view-stat-uid" style="color: #fff; font-weight: 600; font-family: monospace; font-size: 11px;"></span>
-          </div>
-        </div>`;
-
-html = html.replace(originalSide, replaceSide);
-
-fs.writeFileSync('index.html', html);
-console.log("Replaced DOM elements.");
+js = js.replace(oldLogic, newLogic);
+fs.writeFileSync('app.js', js);

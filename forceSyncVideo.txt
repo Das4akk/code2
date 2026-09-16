@@ -1,0 +1,101 @@
+
+  static forceSyncVideo(d = AppState.lastKnownSyncState) {
+    if (!d) return;
+    const vid = Utils.$("native-player");
+
+    const ageSec = (Date.now() - d.ts) / 1000;
+    let state = d.state || (d.type === "play" ? "playing" : "paused");
+    let targetTime = d.time;
+
+    if (state === "playing" && ageSec > 1.0) {
+      targetTime += ageSec;
+    }
+
+    const currentRoom = AppState.roomsCache.get(AppState.currentRoomId) || {};
+    const isYt = MediaResolverClient.extractYouTubeId(
+      currentRoom.videoSourceUrl || currentRoom.videoUrl,
+    );
+    const isRt = MediaResolverClient.extractRutubeId(
+      currentRoom.videoSourceUrl || currentRoom.videoUrl,
+    );
+
+    if (
+      (YouTubePlayerManager.player && isYt) ||
+      (RutubePlayerManager.player && isRt)
+    ) {
+      // Unconditionally apply sync from server, but ignore the resulting local video events
+      window._isSyncingVideo = true;
+      AppState.ignoreVideoEvents = true;
+      const Manager = isYt ? YouTubePlayerManager : RutubePlayerManager;
+      const currentState = Manager.getState ? Manager.getState() : null;
+
+      if (Math.abs(Manager.getCurrentTime() - targetTime) > 1.5) {
+        Manager.seek(targetTime);
+      }
+      if (state === "playing" && currentState !== "playing") Manager.play();
+      if (state === "paused" && currentState !== "paused") {
+        if (!currentState) Manager.play(); // Buffer on init
+        setTimeout(
+          () => {
+            if (AppState.currentRoomId) Manager.pause();
+          },
+          currentState ? 0 : 500,
+        );
+      }
+
+      setTimeout(() => {
+        AppState.ignoreVideoEvents = false;
+        window._isSyncingVideo = false;
+      }, 1500);
+      return;
+    }
+
+    if (!vid) return;
+
+    const executeNativeSync = () => {
+      window._isSyncingVideo = true;
+      AppState.ignoreVideoEvents = true;
+
+      if (Math.abs(vid.currentTime - targetTime) > 1.5) {
+        vid.currentTime = targetTime;
+      }
+
+      if (state === "playing" && vid.paused) {
+        vid.play().catch(() => {
+          vid.muted = true;
+          vid.play().catch(() => {});
+          Utils.toast(
+            "Браузер заблокировал автовоспроизведение со звуком. Звук отключен.",
+            "warn",
+          );
+        });
+      } else if (state === "paused" && !vid.paused) {
+        vid.pause();
+      }
+
+      setTimeout(() => {
+        AppState.ignoreVideoEvents = false;
+        window._isSyncingVideo = false;
+      }, 1500);
+    };
+
+    if (vid.readyState >= 1) {
+      executeNativeSync();
+    } else {
+      const onLoadedMetadata = () => {
+        executeNativeSync();
+        vid.removeEventListener("loadedmetadata", onLoadedMetadata);
+      };
+      vid.addEventListener("loadedmetadata", onLoadedMetadata);
+    }
+  }
+
+  static startRoomExperienceTimer() {
+    if (AppState.roomExpTimer) clearInterval(AppState.roomExpTimer);
+
+    AppState.roomExpTimer = setInterval(async () => {
+      if (!AppState.currentRoomId || !AppState.currentUser) return;
+
+      const uid = AppState.currentUser.uid;
+      if (!AppState.pendingRoomExp) AppState.pendingRoomExp = 0;
+      AppState.pendingRoomExp += 1;

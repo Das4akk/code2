@@ -8729,25 +8729,70 @@ class ProfileManager {
   }
 
   static async openViewProfileModal(targetUid) {
-    // Show section-profile instead of modal
-    document.querySelectorAll('.rooms-main').forEach(el => el.style.display = 'none');
-    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-    
-    // If viewing our own profile, highlight the nav-profile item
-    if (targetUid === AppState.currentUser?.uid) {
-       const navMy = document.getElementById('nav-profile');
-       if (navMy) navMy.classList.add('active');
-    }
-    
     const sProfile = document.getElementById("section-profile");
-    if (sProfile) {
+    if (!sProfile) return;
+    const vModal = sProfile;
+
+    const isRoom = document.getElementById("room-screen")?.classList.contains("active");
+
+    if (isRoom) {
+       // Make it a modal overlay
+       sProfile.style.setProperty("position", "fixed", "important");
+       sProfile.style.setProperty("top", "10%", "important");
+       sProfile.style.setProperty("left", "50%", "important");
+       sProfile.style.setProperty("transform", "translateX(-50%)", "important");
+       sProfile.style.setProperty("width", "90%", "important");
+       sProfile.style.setProperty("max-width", "800px", "important");
+       sProfile.style.setProperty("height", "80%", "important");
+       sProfile.style.setProperty("z-index", "9999", "important");
+       sProfile.style.setProperty("background", "rgba(20, 20, 20, 0.95)", "important");
+       sProfile.style.setProperty("border-radius", "24px", "important");
+       sProfile.style.setProperty("box-shadow", "0 20px 60px rgba(0,0,0,0.8)", "important");
+       sProfile.style.setProperty("border", "1px solid rgba(255,255,255,0.1)", "important");
+       sProfile.style.setProperty("backdrop-filter", "blur(20px)", "important");
+       sProfile.style.display = "flex";
+       
+       if (!document.getElementById("profile-overlay-close")) {
+           const btn = document.createElement("button");
+           btn.id = "profile-overlay-close";
+           btn.innerHTML = "✖";
+           btn.style.cssText = "position: absolute; top: 16px; right: 16px; background: rgba(255,255,255,0.1); border: none; color: white; border-radius: 50%; width: 36px; height: 36px; cursor: pointer; z-index: 1000; font-size: 16px; display: flex; align-items: center; justify-content: center; transition: background 0.2s;";
+           btn.onmouseover = () => btn.style.background = "rgba(255,255,255,0.2)";
+           btn.onmouseout = () => btn.style.background = "rgba(255,255,255,0.1)";
+           btn.onclick = () => {
+               sProfile.style.display = "none";
+           };
+           sProfile.appendChild(btn);
+       } else {
+           document.getElementById("profile-overlay-close").style.display = "flex";
+       }
+    } else {
+        // Normal lobby behavior
+        sProfile.style.position = "relative";
+        sProfile.style.top = "auto";
+        sProfile.style.left = "auto";
+        sProfile.style.transform = "none";
+        sProfile.style.width = "100%";
+        sProfile.style.maxWidth = "none";
+        sProfile.style.height = "100%";
+        sProfile.style.zIndex = "1";
+        sProfile.style.background = "transparent";
+        sProfile.style.borderRadius = "0";
+        sProfile.style.boxShadow = "none";
+        sProfile.style.border = "none";
+        sProfile.style.backdropFilter = "none";
+        if (document.getElementById("profile-overlay-close")) {
+            document.getElementById("profile-overlay-close").style.display = "none";
+        }
+        
+        document.querySelectorAll('.rooms-main').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        if (targetUid === AppState.currentUser?.uid) {
+           const navMy = document.getElementById('nav-profile');
+           if (navMy) navMy.classList.add('active');
+        }
         sProfile.style.display = "flex";
     }
-    
-    // We don't have vModal anymore, so we remove the check for it
-
-    const vModal = Utils.$("section-profile");
-    if (!vModal) return;
 
     let profile = AppState.usersCache.get(targetUid);
     
@@ -14907,6 +14952,21 @@ class RoomManager {
           document.exitFullscreen();
         }
       };
+      
+      const exitFsBtn = Utils.$("btn-exit-fullscreen");
+      if (exitFsBtn) {
+        exitFsBtn.onclick = () => document.exitFullscreen();
+      }
+
+      document.onfullscreenchange = () => {
+        if (exitFsBtn) {
+           exitFsBtn.style.display = document.fullscreenElement ? "flex" : "none";
+        }
+        const vidContainer = Utils.$("native-player")?.parentElement;
+        if (vidContainer) {
+            vidContainer.style.borderRadius = document.fullscreenElement ? "0" : "20px";
+        }
+      };
     }
     this.initThemes();
     MediaResolverClient.bindRoomUrlInput();
@@ -14963,8 +15023,9 @@ class RoomManager {
       const isLocked =
         card.dataset.theme !== "default" &&
         window.PremiumManager &&
-        false
-            : null,
+        !PremiumManager.canUseTheme(
+          card.dataset.theme,
+          AppState?.currentUser?.profile || null,
           AppState?.currentUser?.uid,
         );
       card.classList.toggle("locked", !!isLocked);
@@ -15438,19 +15499,53 @@ class RoomManager {
     const authorNameEl = Utils.$("room-author-name");
     const authorAvatarEl = Utils.$("room-author-avatar");
     if (authorNameEl && authorAvatarEl) {
+        // Reset and add pointer cursor
+        authorNameEl.style.cursor = "pointer";
+        authorAvatarEl.style.cursor = "pointer";
+        const openHostProfile = () => {
+            if (typeof window.showProfileModal === "function") window.showProfileModal(roomData.hostId);
+            else if (window.ProfileManager) ProfileManager.showProfile(roomData.hostId);
+        };
+        authorNameEl.onclick = openHostProfile;
+        authorAvatarEl.onclick = openHostProfile;
+
         import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(({get, ref, getDatabase}) => {
-            get(ref(getDatabase(), `users/${roomData.hostId}`)).then(snap => {
+            // First check profile, then fallback
+            get(ref(getDatabase(), `users/${roomData.hostId}/profile`)).then(snap => {
+                let name = "Неизвестно";
+                let photo = "";
+                let pData = {};
                 if (snap.exists()) {
-                    const hostUser = snap.val();
-                    authorNameEl.innerText = Utils.escapeHtml(hostUser.username || "неизвестно");
-                    if (hostUser.photoURL) {
-                        authorAvatarEl.innerHTML = `<img src="${Utils.escapeHtml(hostUser.photoURL)}" style="width: 100%; height: 100%; object-fit: cover;">`;
-                    } else {
-                        authorAvatarEl.innerHTML = `<div style="width:100%; height:100%; background: #333;"></div>`;
-                    }
+                    const p = snap.val();
+                    name = p.name || p.username || "Неизвестно";
+                    photo = p.photoURL || p.avatar || "";
+                    pData = p;
+                } else {
+                    // Fallback to top level
+                    get(ref(getDatabase(), `users/${roomData.hostId}`)).then(snap2 => {
+                        if (snap2.exists()) {
+                            const p2 = snap2.val();
+                            name = p2.name || p2.username || "Неизвестно";
+                            photo = p2.photoURL || p2.avatar || "";
+                            pData = p2;
+                        }
+                        renderHost(name, photo, pData);
+                    });
+                    return;
                 }
+                renderHost(name, photo, pData);
             });
         });
+        
+        function renderHost(name, photo) {
+            authorNameEl.innerText = Utils.escapeHtml(name);
+            
+            if (photo) {
+                authorAvatarEl.innerHTML = `<img src="${Utils.escapeHtml(photo)}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+            } else {
+                authorAvatarEl.innerHTML = `<div style="width:100%; height:100%; background: #555; border-radius: 50%;"></div>`;
+            }
+        }
     }
 
     VideoPlaybackManager.applyRoomVideo(roomData).catch(() => {});
@@ -15494,7 +15589,6 @@ class RoomManager {
       Utils.$("btn-room-settings").onclick = () => this.openRoomModal(roomId);
 
     
-    }
 
     const videoVolSlider = Utils.$("video-volume-slider");
     if (videoVolSlider) {
@@ -16138,32 +16232,33 @@ class RoomManager {
     EasterEggManager.bindRoom(roomId);
 
     
-    const rbChatPrev = Utils.$("chat-tab-prev");
-    const rbChatNext = Utils.$("chat-tab-next");
-    const tabTitle = Utils.$("current-right-tab-title");
     const rcChat = Utils.$("chat-messages");
     const rcUsers = Utils.$("users-list");
+    const btnTabChat = Utils.$("btn-tab-chat");
+    const btnTabUsers = Utils.$("btn-tab-users");
     let currentTab = "chat";
 
     const setRoomTab = (name) => {
       currentTab = name;
-      if (tabTitle) tabTitle.innerText = name === "chat" ? "Чат" : "Участники";
-      const countEl = Utils.$("users-count");
-      if (countEl) countEl.style.display = name === "users" ? "inline-block" : "none";
       if (rcChat) rcChat.style.display = name === "chat" ? "flex" : "none";
       if (rcUsers) rcUsers.style.display = name === "users" ? "flex" : "none";
+      
       const inputArea = document.querySelector(".chat-input-area");
       if (inputArea) inputArea.style.display = name === "chat" ? "flex" : "none";
-    };
 
-    const toggleTab = () => {
-      setRoomTab(currentTab === "chat" ? "users" : "chat");
+      if (btnTabChat) {
+          btnTabChat.style.background = name === "chat" ? "rgba(255,255,255,0.1)" : "transparent";
+          btnTabChat.style.color = name === "chat" ? "#fff" : "rgba(255,255,255,0.6)";
+      }
+      if (btnTabUsers) {
+          btnTabUsers.style.background = name === "users" ? "rgba(255,255,255,0.1)" : "transparent";
+          btnTabUsers.style.color = name === "users" ? "#fff" : "rgba(255,255,255,0.6)";
+      }
     };
-
-    if (rbChatPrev) rbChatPrev.onclick = toggleTab;
-    if (rbChatNext) rbChatNext.onclick = toggleTab;
     
-    // Fallback for older calls
+    if (btnTabChat) btnTabChat.onclick = () => setRoomTab("chat");
+    if (btnTabUsers) btnTabUsers.onclick = () => setRoomTab("users");
+
     window._setRoomTab = setRoomTab;
 
     
@@ -16414,29 +16509,14 @@ class RoomManager {
   }
 
   static updateUsersTabButton(ids = [], cache = {}) {
-    const btn = Utils.$("tab-users-btn");
-    if (!btn) return;
-
     const list = Array.isArray(ids) ? ids : [];
     const count = list.length;
-    const shuffled = [...list].sort(() => Math.random() - 0.5).slice(0, 3);
-    const avatarsHtml = shuffled
-      .map((uid) => {
-        const profile = AppState.usersCache.get(uid) || {};
-        const displayName = profile.name || cache?.[uid]?.name || "User";
-        const safeName = Utils.escapeHtml(displayName);
-        const initial = Utils.escapeHtml((displayName[0] || "U").toUpperCase());
-        return `<span class=\"users-tab-avatar\" title=\"${safeName}\">${ProfileManager.getAvatarHtml(profile)}</span>`;
-      })
-      .join("");
-
-    btn.innerHTML = `
-            <span class="users-tab-inner">
-                <span class="users-tab-left"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Люди (<span id="users-count">${count}</span>)</span>
-                <span class="users-tab-avatars">${avatarsHtml}</span>
-            </span>
-        `;
+    const countEl = document.getElementById("users-count");
+    if (countEl) {
+       countEl.innerText = count.toString();
+    }
   }
+
 
   static forceSyncVideo(d = AppState.lastKnownSyncState) {
     if (!d) return;
@@ -16528,6 +16608,7 @@ class RoomManager {
       vid.addEventListener("loadedmetadata", onLoadedMetadata);
     }
   }
+
 
   static startRoomExperienceTimer() {
     if (AppState.roomExpTimer) clearInterval(AppState.roomExpTimer);
@@ -17787,28 +17868,6 @@ setTimeout(() => {
     };
     window.addEventListener("resize", rs);
     rs();
-
-    // Add toggle button to top bar
-    const rtb = document.querySelector(".room-top-bar");
-    if (rtb) {
-      const dbg = document.createElement("button");
-      dbg.className = "secondary-btn draw-toggle-btn";
-      dbg.innerText = "Рисовать Маркером";
-      dbg.style.width = "auto";
-      dbg.style.padding = "8px 12px";
-      dbg.style.marginLeft = "10px";
-      rtb.appendChild(dbg);
-      dbg.onclick = () => {
-        drawMode = !drawMode;
-        dbg.classList.toggle("active", drawMode);
-        drawLayer.style.display = drawMode ? "block" : "none";
-        drawLayer.style.pointerEvents = drawMode ? "auto" : "none";
-        if (drawMode) {
-          drawLayer.width = vc.clientWidth;
-          drawLayer.height = vc.clientHeight;
-        }
-      };
-    }
 
     const ctx = drawLayer.getContext("2d");
     const drawPx = (e) => {
