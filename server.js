@@ -73,7 +73,7 @@ import { registerPremiumRoutes } from './src/routes/premium.js';
 // ----------------------------------------------------
 // НАСТРОЙКА FIREBASE ADMIN И ПОЧТЫ (ДЛЯ СБРОСА ПАРОЛЯ)
 // ----------------------------------------------------
-let smtpUser = process.env.SMTP_USER || 'cowiosupport@gmail.com';
+let smtpUser = process.env.SMTP_USER || 'support@cowio.com';
 let smtpPass = process.env.SMTP_PASS || 'qbkeftvifbqyicyx';
 
 try {
