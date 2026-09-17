@@ -1,0 +1,31 @@
+    }
+});
+
+// Хранилище кодов в памяти (в реальном проекте лучше использовать Redis)
+const verificationCodes = new Map();
+
+
+// Отправка 6-значного кода
+app.post('/api/custom-auth/send-code', async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) return res.status(400).json({ error: 'Email не указан' });
+
+        const profileData = {
+            name,
+            username: cleanName,
+            email,
+            bio: "",
+            avatar: "",
+            gender: gender || "male",
+            registeredIp: "created_by_admin",
+            background: { color: "#111111", index: 1, url: "", dim: 0.5 },
+            hashtags: [],
+            createdAt: Date.now(),
+            provider: "email",
+            emailVerified: true
+        };
+
+        await admin.database().ref(`users/${userRecord.uid}/profile`).set(profileData);
+        await admin.database().ref(`usernames/${cleanName}`).set(userRecord.uid);
+        

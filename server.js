@@ -113,71 +113,13 @@ const mailTransporter = nodemailer.createTransport({
 // Хранилище кодов в памяти (в реальном проекте лучше использовать Redis)
 const verificationCodes = new Map();
 
-// АДМИН: Создание пользователя
-app.post('/api/admin/create-user', async (req, res) => {
-    try {
-        const { idToken, email, password, name, username, gender } = req.body;
-        if (!idToken || !email || !password || !name || !username) {
-            return res.status(400).json({ error: 'Не все поля заполнены' });
-        }
-        if (!admin.apps.length) {
-            return res.status(500).json({ error: 'Firebase Admin не инициализирован' });
-        }
-        
-        // Верификация админа
-        const decodedToken = await admin.auth().verifyIdToken(idToken);
-        const adminProfileSnap = await admin.database().ref(`users/${decodedToken.uid}/profile`).once('value');
-        const adminProfile = adminProfileSnap.val();
-        if (!adminProfile || (adminProfile.role !== 'admin' && adminProfile.role !== 'creator' && adminProfile.role !== 'developer')) {
-            return res.status(403).json({ error: 'Доступ запрещен' });
-        }
 
-        const cleanName = username.toLowerCase().trim();
-        const existingUsername = await admin.database().ref(`usernames/${cleanName}`).once('value');
-        if (existingUsername.exists()) {
-            return res.status(400).json({ error: 'Имя пользователя уже занято' });
-        }
-
-        const userRecord = await admin.auth().createUser({
-            email,
-            password,
-            displayName: name
-        });
-
-
+// Отправка 6-значного кода
 // Отправка 6-значного кода
 app.post('/api/custom-auth/send-code', async (req, res) => {
     try {
         const { email } = req.body;
         if (!email) return res.status(400).json({ error: 'Email не указан' });
-
-        const profileData = {
-            name,
-            username: cleanName,
-            email,
-            bio: "",
-            avatar: "",
-            gender: gender || "male",
-            registeredIp: "created_by_admin",
-            background: { color: "#111111", index: 1, url: "", dim: 0.5 },
-            hashtags: [],
-            createdAt: Date.now(),
-            provider: "email",
-            emailVerified: true
-        };
-
-        await admin.database().ref(`users/${userRecord.uid}/profile`).set(profileData);
-        await admin.database().ref(`usernames/${cleanName}`).set(userRecord.uid);
-        
-        // Для туториала:
-        await admin.database().ref(`users/${userRecord.uid}/force_tutorial`).set(true);
-
-        res.json({ success: true, uid: userRecord.uid });
-    } catch (e) {
-        console.error('Ошибка создания пользователя:', e);
-        res.status(500).json({ error: e.message || 'Ошибка создания' });
-    }
-});
 
         const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6 digits
         
@@ -223,9 +165,9 @@ app.post('/api/custom-auth/send-code', async (req, res) => {
             console.log(`[COWIO MOCK EMAIL] To: ${email}, Verification Code: ${code}`);
             return res.status(400).json({ error: 'Для отправки писем необходимо УКАЗАТЬ ВАШУ ПОЧТУ (SMTP_USER) и ПАРОЛЬ ПРИЛОЖЕНИЯ (SMTP_PASS) в настройках переменных окружения проекта' });
         }
+
         await mailTransporter.sendMail(mailOptions);
         res.json({ success: true, message: 'Код отправлен' });
-
     } catch (e) {
         console.error('Ошибка отправки email:', e);
         res.status(500).json({ error: `Ошибка SMTP: ${e.message}` });
