@@ -2122,6 +2122,65 @@ class MediaResolverClient {
     el.style.display = message ? "block" : "none";
   }
 
+  static async fetchVideoInfo(url) {
+    const normalized = String(url || "").trim();
+    if (!normalized) return null;
+    try {
+      const res = await fetch(`/api/video/info?url=${encodeURIComponent(normalized)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.success) return data;
+      }
+    } catch (e) {
+      console.warn("[MediaResolver] fetchVideoInfo failed:", e);
+    }
+    return null;
+  }
+
+  static async autoFetchAndSetRoomName(url, notify = true) {
+    const trimmed = String(url || "").trim();
+    if (!trimmed) return;
+    if (!this.needsResolve(trimmed) && !this.isDirectMedia(trimmed)) return;
+
+    const nameInput = Utils.$("room-input-name");
+    const indicator = Utils.$("room-url-loading-indicator");
+    const hint = Utils.$("room-name-autofill-hint");
+    const statusText = Utils.$("room-fetch-status-text");
+
+    if (indicator) indicator.style.display = "inline-flex";
+    if (statusText) statusText.textContent = "Извлекаем название...";
+
+    try {
+      const info = await this.fetchVideoInfo(trimmed);
+      if (info && info.title) {
+        if (nameInput) {
+          nameInput.value = info.title;
+          nameInput.classList.remove("room-input-highlight");
+          void nameInput.offsetWidth;
+          nameInput.classList.add("room-input-highlight");
+          setTimeout(() => nameInput.classList.remove("room-input-highlight"), 2500);
+        }
+        if (hint) {
+          hint.style.display = "inline-flex";
+          hint.innerHTML = `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;"><span>Скопировано: ${Utils.escapeHtml(info.platformLabel || info.platform || "Видео")}</span>`;
+        }
+        if (statusText) statusText.textContent = "Название скопировано!";
+        this.setModalStatus(
+          "success",
+          `${info.platformLabel || info.platform || "Видео"}: ${info.title}`,
+        );
+        if (notify) {
+          Utils.toast(`Название комнаты скопировано: "${info.title}"`, "info");
+        }
+      }
+    } catch (err) {
+      console.warn("[MediaResolver] autoFetchAndSetRoomName error:", err);
+      if (statusText) statusText.textContent = "";
+    } finally {
+      if (indicator) indicator.style.display = "none";
+    }
+  }
+
   static bindRoomUrlInput() {
     const input = Utils.$("room-input-url");
     const previewBtn = Utils.$("btn-preview-media");
@@ -2148,19 +2207,18 @@ class MediaResolverClient {
         this.setModalStatus("idle", "Ссылка будет сохранена как есть");
         return;
       }
-      try {
-        const data = await this.resolve(url);
-        const dur = data.duration
-          ? ` · ${Math.floor(data.duration / 60)}:${String(Math.floor(data.duration % 60)).padStart(2, "0")}`
-          : "";
-        this.setModalStatus(
-          "success",
-          `${data.platform}: ${data.title || "Видео"}${dur}`,
-        );
-      } catch (err) {
-        this.setModalStatus("error", err.message);
-      }
-    }, 700);
+      await this.autoFetchAndSetRoomName(url, false);
+    }, 300);
+
+    input.addEventListener("paste", () => {
+      setTimeout(() => {
+        const val = input.value.trim();
+        if (val) {
+          checkYt();
+          this.autoFetchAndSetRoomName(val, true);
+        }
+      }, 25);
+    });
 
     input.addEventListener("input", () => {
       checkYt();
@@ -2180,19 +2238,11 @@ class MediaResolverClient {
       previewBtn.onclick = async () => {
         const url = input.value.trim();
         if (!url) return Utils.toast("Вставьте ссылку на видео", "error");
-        try {
-          const data = await this.resolve(url);
-          Utils.toast(`Готово: ${data.title || data.platform}`);
-          this.setModalStatus(
-            "success",
-            `${data.platform}: ${data.title || "Видео"}`,
-          );
-        } catch (err) {
-          Utils.toast(err.message, "error");
-          this.setModalStatus("error", err.message);
-        }
+        await this.autoFetchAndSetRoomName(url, true);
       };
     }
+
+    RoomVideoSearchManager.init();
   }
 
   static async resolve(url) {
@@ -2202,13 +2252,16 @@ class MediaResolverClient {
     }
     if (this.pending.has(normalized)) return this.pending.get(normalized);
 
+    const info = await this.fetchVideoInfo(normalized);
+
     const ytId = this.extractYouTubeId(normalized);
     if (ytId) {
       return {
         source: normalized,
-        title: "YouTube Video",
+        title: info?.title || "YouTube Video",
+        author: info?.author || "YouTube",
         duration: 0,
-        thumbnail: `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`,
+        thumbnail: info?.thumbnail || `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`,
         platform: "youtube",
         isHls: false,
         ext: "youtube",
@@ -2220,9 +2273,10 @@ class MediaResolverClient {
     if (rutubeId) {
       return {
         source: normalized,
-        title: "Rutube Video",
+        title: info?.title || "Rutube Video",
+        author: info?.author || "Rutube",
         duration: 0,
-        thumbnail: `https://rutube.ru/api/video/${rutubeId}/thumbnail/?format=json`,
+        thumbnail: info?.thumbnail || `https://rutube.ru/api/video/${rutubeId}/thumbnail/?format=json`,
         platform: "rutube",
         isHls: false,
         ext: "rutube",
@@ -2233,10 +2287,11 @@ class MediaResolverClient {
     const vkId = this.extractVkId(normalized);
     if (vkId) {
       return {
-        source: `https://vk.com/video_ext.php?oid=${vkId.split("_")[0]}&id=${vkId.split("_")[1]}&hd=2&js_api=1`,
-        title: "VK Video",
+        source: info?.url || `https://vk.com/video_ext.php?oid=${vkId.split("_")[0]}&id=${vkId.split("_")[1]}&hd=2&js_api=1`,
+        title: info?.title || "VK Video",
+        author: info?.author || "VK",
         duration: 0,
-        thumbnail: "",
+        thumbnail: info?.thumbnail || "",
         platform: "vk",
         isHls: false,
         ext: "vk",
@@ -2248,9 +2303,10 @@ class MediaResolverClient {
     if (vimeoId) {
       return {
         source: `https://player.vimeo.com/video/${vimeoId}?api=1`,
-        title: "Vimeo Video",
+        title: info?.title || "Vimeo Video",
+        author: info?.author || "Vimeo",
         duration: 0,
-        thumbnail: "",
+        thumbnail: info?.thumbnail || "",
         platform: "vimeo",
         isHls: false,
         ext: "vimeo",
@@ -2262,12 +2318,27 @@ class MediaResolverClient {
     if (twitchId) {
       return {
         source: `https://player.twitch.tv/?channel=${twitchId}&parent=localhost`,
-        title: "Twitch Stream",
+        title: info?.title || `Стрим ${twitchId}`,
+        author: twitchId,
         duration: 0,
-        thumbnail: "",
+        thumbnail: info?.thumbnail || "",
         platform: "twitch",
         isHls: false,
         ext: "twitch",
+        resolvedAt: Date.now(),
+      };
+    }
+
+    if (info && info.title) {
+      return {
+        source: info.url || normalized,
+        title: info.title,
+        author: info.author || "",
+        duration: 0,
+        thumbnail: info.thumbnail || "",
+        platform: info.platform || "external",
+        isHls: /\.m3u8/i.test(info.url || normalized),
+        ext: info.platform || "",
         resolvedAt: Date.now(),
       };
     }
@@ -2372,6 +2443,218 @@ class MediaResolverClient {
     const resolvedAt = Number(room.videoResolvedAt || 0);
     if (!resolvedAt) return true;
     return Date.now() - resolvedAt > this.RESOLVE_STALE_MS;
+  }
+}
+
+class RoomVideoSearchManager {
+  static currentPlatform = "all";
+  static lastQuery = "";
+  static isSearching = false;
+
+  static init() {
+    const searchInput = Utils.$("room-search-video-input");
+    const searchBtn = Utils.$("btn-room-search-video");
+    const chips = Utils.$("room-search-platform-chips");
+
+    if (!searchInput) return;
+
+    if (chips) {
+      chips.querySelectorAll(".platform-chip").forEach((chip) => {
+        chip.onclick = () => {
+          chips.querySelectorAll(".platform-chip").forEach((c) => c.classList.remove("active"));
+          chip.classList.add("active");
+          this.currentPlatform = chip.dataset.platform || "all";
+          const q = searchInput.value.trim();
+          if (q.length >= 2) {
+            this.search(q, this.currentPlatform);
+          }
+        };
+      });
+    }
+
+    const doDebouncedSearch = Utils.debounce(() => {
+      const q = searchInput.value.trim();
+      if (q.length >= 2) {
+        this.search(q, this.currentPlatform);
+      } else if (!q) {
+        this.clearResults();
+      }
+    }, 450);
+
+    searchInput.addEventListener("input", doDebouncedSearch);
+    searchInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        const q = searchInput.value.trim();
+        if (q) this.search(q, this.currentPlatform);
+      }
+    });
+
+    if (searchBtn) {
+      searchBtn.onclick = () => {
+        const q = searchInput.value.trim();
+        if (q) this.search(q, this.currentPlatform);
+      };
+    }
+  }
+
+  static clearResults() {
+    const resultsContainer = Utils.$("room-video-search-results");
+    const loading = Utils.$("room-search-loading");
+    const empty = Utils.$("room-search-empty");
+    if (resultsContainer) {
+      resultsContainer.style.display = "none";
+      resultsContainer.innerHTML = "";
+    }
+    if (loading) loading.style.display = "none";
+    if (empty) empty.style.display = "none";
+  }
+
+  static reset() {
+    const searchInput = Utils.$("room-search-video-input");
+    if (searchInput) searchInput.value = "";
+    this.currentPlatform = "all";
+    const chips = Utils.$("room-search-platform-chips");
+    if (chips) {
+      chips.querySelectorAll(".platform-chip").forEach((c) => {
+        c.classList.toggle("active", c.dataset.platform === "all");
+      });
+    }
+    this.clearResults();
+  }
+
+  static async search(query, platform = "all") {
+    const trimmed = String(query || "").trim();
+    if (!trimmed) return;
+    this.lastQuery = trimmed;
+
+    const resultsContainer = Utils.$("room-video-search-results");
+    const loading = Utils.$("room-search-loading");
+    const empty = Utils.$("room-search-empty");
+
+    if (loading) loading.style.display = "flex";
+    if (empty) empty.style.display = "none";
+    if (resultsContainer) resultsContainer.style.display = "none";
+
+    try {
+      const res = await fetch(
+        `/api/video/search?q=${encodeURIComponent(trimmed)}&platform=${encodeURIComponent(platform)}`,
+      );
+      if (!res.ok) throw new Error("Ошибка поиска видео");
+      const data = await res.json();
+      const items = data.results || [];
+
+      if (loading) loading.style.display = "none";
+
+      if (!items.length) {
+        if (empty) {
+          empty.style.display = "flex";
+          empty.innerHTML = `<span>По запросу «${Utils.escapeHtml(trimmed)}» ничего не найдено</span>`;
+        }
+        if (resultsContainer) resultsContainer.style.display = "none";
+        return;
+      }
+
+      if (resultsContainer) {
+        resultsContainer.innerHTML = "";
+        items.forEach((item) => {
+          const card = document.createElement("div");
+          card.className = "video-search-card";
+          card.dataset.url = item.url;
+          card.dataset.title = item.title;
+          card.dataset.platform = item.platform;
+
+          let platformBadgeHtml = "";
+          if (item.platform === "youtube") {
+            platformBadgeHtml = `<span class="video-platform-badge badge-youtube" title="YouTube"><img src="https://cdn-icons-png.flaticon.com/128/1384/1384060.png" alt="YouTube" style="width: 14px; height: 14px; object-fit: contain; display: block;"></span>`;
+          } else if (item.platform === "rutube") {
+            platformBadgeHtml = `<span class="video-platform-badge badge-rutube" title="Rutube"><img src="https://static.rtbcdn.ru/static/img/favicon-icons/v3/icon_180x180.png" alt="Rutube" style="width: 13px; height: 13px; border-radius: 2px; object-fit: contain; display: block;"></span>`;
+          } else {
+            platformBadgeHtml = `<span class="video-platform-badge badge-vk">${Utils.escapeHtml(item.platformLabel || item.platform)}</span>`;
+          }
+
+          const durBadge = item.duration
+            ? `<span class="video-search-dur">${Utils.escapeHtml(item.duration)}</span>`
+            : "";
+
+          const authorAvatarHtml = item.authorAvatar
+            ? `<img src="${Utils.escapeHtml(item.authorAvatar)}" alt="" class="video-channel-avatar" onerror="this.onerror=null; this.src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Bust%20In%20Silhouette.webp';">`
+            : `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Bust%20In%20Silhouette.webp" class="video-channel-avatar" style="border:none; background:transparent;" alt="">`;
+
+          card.innerHTML = `
+            <div class="video-search-thumb-wrap">
+              <img src="${Utils.escapeHtml(item.thumbnail || "")}" alt="" class="video-search-thumb" loading="lazy" onerror="this.style.opacity='0.4'">
+              ${durBadge}
+              ${platformBadgeHtml}
+            </div>
+            <div class="video-search-details">
+              <div class="video-search-title">${Utils.escapeHtml(item.title)}</div>
+              <div class="video-search-author">${authorAvatarHtml}<span>${Utils.escapeHtml(item.author || item.platformLabel || "Автор неизвестен")}</span></div>
+            </div>
+            <button type="button" class="video-search-select-btn">Выбрать</button>
+          `;
+
+          card.onclick = () => {
+            this.selectVideo(item, card);
+          };
+
+          resultsContainer.appendChild(card);
+        });
+
+        resultsContainer.style.display = "flex";
+      }
+    } catch (err) {
+      console.warn("[RoomVideoSearch] search error:", err);
+      if (loading) loading.style.display = "none";
+      if (empty) {
+        empty.style.display = "flex";
+        empty.innerHTML = `<span>Не удалось получить результаты поиска. Проверьте соединение.</span>`;
+      }
+    }
+  }
+
+  static selectVideo(video, cardEl) {
+    const urlInput = Utils.$("room-input-url");
+    const nameInput = Utils.$("room-input-name");
+    const hint = Utils.$("room-name-autofill-hint");
+
+    if (urlInput) urlInput.value = video.url;
+    if (nameInput) {
+      nameInput.value = video.title;
+      nameInput.classList.remove("room-input-highlight");
+      void nameInput.offsetWidth;
+      nameInput.classList.add("room-input-highlight");
+      setTimeout(() => nameInput.classList.remove("room-input-highlight"), 2500);
+    }
+    if (hint) {
+      hint.style.display = "inline-flex";
+      hint.innerHTML = `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;"><span>Скопировано: ${Utils.escapeHtml(video.platformLabel || video.platform || "Видео")}</span>`;
+    }
+
+    const resultsContainer = Utils.$("room-video-search-results");
+    if (resultsContainer) {
+      resultsContainer.querySelectorAll(".video-search-card").forEach((c) => {
+        c.classList.remove("selected");
+        const btn = c.querySelector(".video-search-select-btn");
+        if (btn) btn.textContent = "Выбрать";
+      });
+      if (cardEl) {
+        cardEl.classList.add("selected");
+        const btn = cardEl.querySelector(".video-search-select-btn");
+        if (btn) btn.textContent = "✓ Выбрано";
+      }
+    }
+
+    MediaResolverClient.setModalStatus(
+      "success",
+      `${video.platformLabel || video.platform || "Видео"}: ${video.title}`,
+    );
+    Utils.toast(`✨ Выбрано: "${video.title}". Название и ссылка скопированы!`, "info");
+
+    const ytNote = Utils.$("yt-create-note");
+    if (ytNote) {
+      ytNote.style.display = video.platform === "youtube" ? "block" : "none";
+    }
   }
 }
 
@@ -5811,6 +6094,7 @@ class AuthManager {
               "/findfriends": "nav-find-friend",
               "/friends": "nav-friends",
               "/settings": "nav-settings",
+              "/other": "nav-other",
               "/premium": "nav-premium",
               "/profile": "nav-profile",
               "/lobby": "nav-rooms"
@@ -8787,6 +9071,36 @@ class ProfileManager {
     return streak;
   }
 
+  static closeProfileOverlay() {
+    const sProfile = document.getElementById("section-profile");
+    const backdrop = document.getElementById("profile-overlay-backdrop");
+    if (backdrop) backdrop.style.display = "none";
+    if (sProfile) {
+      sProfile.style.display = "none";
+      if (sProfile.__originalParent) {
+        sProfile.__originalParent.insertBefore(sProfile, sProfile.__originalSibling);
+        sProfile.__originalParent = null;
+        sProfile.__originalSibling = null;
+      }
+      sProfile.style.position = "relative";
+      sProfile.style.top = "auto";
+      sProfile.style.left = "auto";
+      sProfile.style.transform = "none";
+      sProfile.style.width = "100%";
+      sProfile.style.maxWidth = "none";
+      sProfile.style.maxHeight = "none";
+      sProfile.style.height = "100%";
+      sProfile.style.zIndex = "1";
+      sProfile.style.background = "transparent";
+      sProfile.style.borderRadius = "0";
+      sProfile.style.boxShadow = "none";
+      sProfile.style.border = "none";
+      sProfile.style.backdropFilter = "none";
+      const closeBtn = document.getElementById("profile-overlay-close");
+      if (closeBtn) closeBtn.style.display = "none";
+    }
+  }
+
   static async openViewProfileModal(targetUid) {
     const sProfile = document.getElementById("section-profile");
     if (!sProfile) return;
@@ -8795,31 +9109,57 @@ class ProfileManager {
     const isRoom = document.getElementById("room-screen")?.classList.contains("active");
 
     if (isRoom) {
-       // Make it a modal overlay
+       // Save original location in lobby DOM
+       if (!sProfile.__originalParent && sProfile.parentElement !== document.body) {
+         sProfile.__originalParent = sProfile.parentElement;
+         sProfile.__originalSibling = sProfile.nextSibling;
+       }
+       // Move out of hidden #lobby-screen directly into body
+       if (sProfile.parentElement !== document.body) {
+         document.body.appendChild(sProfile);
+       }
+
+       let backdrop = document.getElementById("profile-overlay-backdrop");
+       if (!backdrop) {
+         backdrop = document.createElement("div");
+         backdrop.id = "profile-overlay-backdrop";
+         backdrop.style.cssText = "position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); z-index: 99998; display: block;";
+         backdrop.onclick = () => ProfileManager.closeProfileOverlay();
+         document.body.appendChild(backdrop);
+       } else {
+         backdrop.style.display = "block";
+       }
+
+       // Make it a modal overlay on top of the room
        sProfile.style.setProperty("position", "fixed", "important");
-       sProfile.style.setProperty("top", "10%", "important");
+       sProfile.style.setProperty("top", "50%", "important");
        sProfile.style.setProperty("left", "50%", "important");
-       sProfile.style.setProperty("transform", "translateX(-50%)", "important");
-       sProfile.style.setProperty("width", "90%", "important");
-       sProfile.style.setProperty("max-width", "800px", "important");
-       sProfile.style.setProperty("height", "80%", "important");
-       sProfile.style.setProperty("z-index", "9999", "important");
-       sProfile.style.setProperty("background", "rgba(20, 20, 20, 0.95)", "important");
+       sProfile.style.setProperty("transform", "translate(-50%, -50%)", "important");
+       sProfile.style.setProperty("width", "92%", "important");
+       sProfile.style.setProperty("max-width", "820px", "important");
+       sProfile.style.setProperty("max-height", "88vh", "important");
+       sProfile.style.setProperty("height", "auto", "important");
+       sProfile.style.setProperty("overflow-y", "auto", "important");
+       sProfile.style.setProperty("overflow-x", "hidden", "important");
+       sProfile.style.setProperty("z-index", "99999", "important");
+       sProfile.style.setProperty("background", "rgba(18, 18, 22, 0.97)", "important");
        sProfile.style.setProperty("border-radius", "24px", "important");
-       sProfile.style.setProperty("box-shadow", "0 20px 60px rgba(0,0,0,0.8)", "important");
-       sProfile.style.setProperty("border", "1px solid rgba(255,255,255,0.1)", "important");
-       sProfile.style.setProperty("backdrop-filter", "blur(20px)", "important");
+       sProfile.style.setProperty("box-shadow", "0 25px 80px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.12)", "important");
+       sProfile.style.setProperty("border", "1px solid rgba(255,255,255,0.12)", "important");
+       sProfile.style.setProperty("backdrop-filter", "blur(24px)", "important");
        sProfile.style.display = "flex";
+       sProfile.style.flexDirection = "column";
        
        if (!document.getElementById("profile-overlay-close")) {
            const btn = document.createElement("button");
            btn.id = "profile-overlay-close";
            btn.innerHTML = "✖";
-           btn.style.cssText = "position: absolute; top: 16px; right: 16px; background: rgba(255,255,255,0.1); border: none; color: white; border-radius: 50%; width: 36px; height: 36px; cursor: pointer; z-index: 1000; font-size: 16px; display: flex; align-items: center; justify-content: center; transition: background 0.2s;";
-           btn.onmouseover = () => btn.style.background = "rgba(255,255,255,0.2)";
-           btn.onmouseout = () => btn.style.background = "rgba(255,255,255,0.1)";
+           btn.title = "Закрыть профиль";
+           btn.style.cssText = "position: absolute; top: 16px; right: 16px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 50%; width: 38px; height: 38px; cursor: pointer; z-index: 100000; font-size: 16px; display: flex; align-items: center; justify-content: center; transition: background 0.2s, transform 0.2s;";
+           btn.onmouseover = () => { btn.style.background = "rgba(255,255,255,0.25)"; btn.style.transform = "scale(1.05)"; };
+           btn.onmouseout = () => { btn.style.background = "rgba(255,255,255,0.15)"; btn.style.transform = "scale(1)"; };
            btn.onclick = () => {
-               sProfile.style.display = "none";
+               ProfileManager.closeProfileOverlay();
            };
            sProfile.appendChild(btn);
        } else {
@@ -8827,12 +9167,20 @@ class ProfileManager {
        }
     } else {
         // Normal lobby behavior
+        if (sProfile.__originalParent && sProfile.parentElement === document.body) {
+          sProfile.__originalParent.insertBefore(sProfile, sProfile.__originalSibling);
+          sProfile.__originalParent = null;
+          sProfile.__originalSibling = null;
+        }
+        const backdrop = document.getElementById("profile-overlay-backdrop");
+        if (backdrop) backdrop.style.display = "none";
         sProfile.style.position = "relative";
         sProfile.style.top = "auto";
         sProfile.style.left = "auto";
         sProfile.style.transform = "none";
         sProfile.style.width = "100%";
         sProfile.style.maxWidth = "none";
+        sProfile.style.maxHeight = "none";
         sProfile.style.height = "100%";
         sProfile.style.zIndex = "1";
         sProfile.style.background = "transparent";
@@ -9780,6 +10128,7 @@ class FriendsManager {
       "nav-support",
       "nav-support-staff",
       "nav-settings",
+      "nav-other",
       "nav-library",
     ];
     const setNavActive = (id, skipHistory = false) => {
@@ -9793,6 +10142,7 @@ class FriendsManager {
               "nav-find-friend": "/findfriends",
               "nav-friends": "/friends",
               "nav-settings": "/settings",
+              "nav-other": "/other",
               "nav-premium": "/premium",
               "nav-profile": "/profile",
               "nav-rooms": "/lobby"
@@ -9814,6 +10164,7 @@ class FriendsManager {
       if (Utils.$("section-catalog")) Utils.$("section-catalog").style.display = id === "nav-catalog" ? "flex" : "none";
       if (Utils.$("section-shop")) Utils.$("section-shop").style.display = id === "nav-shop" ? "flex" : "none";
       if (Utils.$("section-settings")) Utils.$("section-settings").style.display = id === "nav-settings" ? "flex" : "none";
+      if (Utils.$("section-other")) Utils.$("section-other").style.display = id === "nav-other" ? "flex" : "none";
       if (Utils.$("section-premium")) Utils.$("section-premium").style.display = id === "nav-premium" ? "flex" : "none";
       if (Utils.$("section-mystery")) Utils.$("section-mystery").style.display = id === "nav-mystery" ? "flex" : "none";
       if (Utils.$("section-support")) Utils.$("section-support").style.display = id === "nav-support" || id === "nav-support-staff" ? "flex" : "none";
@@ -9854,6 +10205,8 @@ class FriendsManager {
     
     if (Utils.$("nav-settings"))
       Utils.$("nav-settings").onclick = () => setNavActive("nav-settings");
+    if (Utils.$("nav-other"))
+      Utils.$("nav-other").onclick = () => setNavActive("nav-other");
     if (Utils.$("nav-premium"))
       Utils.$("nav-premium").onclick = () => {
         setNavActive("nav-premium");
@@ -15370,6 +15723,9 @@ class RoomManager {
         : "";
       this.setRoomModalTheme(r.theme || "default");
       Utils.$("room-theme-carousel").classList.remove("active");
+      RoomVideoSearchManager.reset();
+      const hint = Utils.$("room-name-autofill-hint");
+      if (hint) hint.style.display = "none";
       Utils.$("btn-delete-room").onclick = async () => {
         if (await Utils.confirm("Точно удалить комнату навсегда?")) {
           modal.classList.remove("active");
@@ -15387,6 +15743,13 @@ class RoomManager {
       MediaResolverClient.setModalStatus("idle", "");
       this.setRoomModalTheme("default");
       Utils.$("room-theme-carousel").classList.remove("active");
+      RoomVideoSearchManager.reset();
+      const hint = Utils.$("room-name-autofill-hint");
+      if (hint) hint.style.display = "none";
+      const statusText = Utils.$("room-fetch-status-text");
+      if (statusText) statusText.textContent = "";
+      const indicator = Utils.$("room-url-loading-indicator");
+      if (indicator) indicator.style.display = "none";
     }
     modal.classList.add("active");
     modal.dataset.editingId = isEdit ? roomId : "";
@@ -16846,6 +17209,9 @@ class RoomManager {
     AppState.isHost = false;
     if (Utils.$("users-list")) Utils.$("users-list").innerHTML = "";
     this.updateUsersTabButton([], {});
+    if (window.ProfileManager && ProfileManager.closeProfileOverlay) {
+      ProfileManager.closeProfileOverlay();
+    }
     Utils.showScreen("lobby-screen");
   }
 
@@ -17132,7 +17498,6 @@ const runApp = () => {
   initSystem("EasterEggManager", () => EasterEggManager.init());
   initSystem("HashtagManager", () => HashtagManager.initHashtags());
   initSystem("MobileSwipeManager", () => MobileSwipeManager.init()); // [NEW] Mobile Swipes initialization
-  initSystem("SiteTipsManager", () => SiteTipsManager.init());
   initSystem("PremiumManager", () => PremiumManager.init());
   initSystem("LibraryManager", () => window.LibraryManager.init());
   initSystem("MysteryEventManager", () => MysteryEventManager.init());
@@ -17769,6 +18134,7 @@ window.addEventListener("popstate", (e) => {
           "/findfriends": "nav-find-friend",
           "/friends": "nav-friends",
           "/settings": "nav-settings",
+          "/other": "nav-other",
           "/premium": "nav-premium",
           "/profile": "nav-profile"
       };

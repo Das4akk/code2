@@ -247,8 +247,76 @@ app.post('/api/custom-auth/change-email', async (req, res) => {
 
 
 // API temporary disabled due to missing files in repo
-app.get('/api/resolve-media', (req, res) => {
-    res.status(500).json({ error: 'Backend media resolver not found' });
+import { getVideoInfo, searchVideos } from './api/video-service.js';
+
+app.get('/api/video/info', async (req, res) => {
+    const url = req.query.url;
+    if (!url) return res.status(400).json({ success: false, error: 'Parameter url is required' });
+    try {
+        const info = await getVideoInfo(url);
+        res.json(info);
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+app.post('/api/video/info', async (req, res) => {
+    const url = req.body?.url || req.query.url;
+    if (!url) return res.status(400).json({ success: false, error: 'Field url is required' });
+    try {
+        const info = await getVideoInfo(url);
+        res.json(info);
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+app.get('/api/video/search', async (req, res) => {
+    const q = req.query.q || req.query.query || '';
+    const platform = req.query.platform || 'all';
+    if (!q) return res.json({ success: true, results: [] });
+    try {
+        const results = await searchVideos(q, platform);
+        res.json(results);
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+app.post('/api/video/search', async (req, res) => {
+    const q = req.body?.q || req.body?.query || req.query.q || '';
+    const platform = req.body?.platform || req.query.platform || 'all';
+    if (!q) return res.json({ success: true, results: [] });
+    try {
+        const results = await searchVideos(q, platform);
+        res.json(results);
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+app.all('/api/resolve-media', async (req, res) => {
+    const url = req.body?.url || req.query?.url;
+    if (!url) return res.status(400).json({ success: false, error: 'url required' });
+    try {
+        const info = await getVideoInfo(url);
+        if (!info || !info.success) {
+            return res.status(400).json({ success: false, error: 'Could not resolve media' });
+        }
+        return res.json({
+            success: true,
+            source: info.url || url,
+            title: info.title || '',
+            duration: 0,
+            thumbnail: info.thumbnail || '',
+            platform: info.platform || 'unknown',
+            isHls: /\.m3u8/i.test(info.url || url),
+            ext: info.platform || '',
+            resolvedAt: Date.now()
+        });
+    } catch (err) {
+        return res.status(500).json({ success: false, error: err.message });
+    }
 });
 
 registerPremiumRoutes(app, admin);

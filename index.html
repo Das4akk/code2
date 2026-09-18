@@ -313,19 +313,277 @@
 </style>
     <style>
       
-      .oled-scrollbar::-webkit-scrollbar {
-        width: 8px;
+      .oled-scrollbar::-webkit-scrollbar,
+      .oled-scroll::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
       }
-      .oled-scrollbar::-webkit-scrollbar-track {
+      .oled-scrollbar::-webkit-scrollbar-track,
+      .oled-scroll::-webkit-scrollbar-track {
         background: #000000;
         border-radius: 4px;
       }
-      .oled-scrollbar::-webkit-scrollbar-thumb {
+      .oled-scrollbar::-webkit-scrollbar-thumb,
+      .oled-scroll::-webkit-scrollbar-thumb {
         background: #ffffff;
         border-radius: 4px;
+        border: 1px solid #000000;
       }
-      .oled-scrollbar::-webkit-scrollbar-thumb:hover {
+      .oled-scrollbar::-webkit-scrollbar-thumb:hover,
+      .oled-scroll::-webkit-scrollbar-thumb:hover {
         background: #e0e0e0;
+      }
+
+      /* Room Video Autofill & Search Styles */
+      .room-field-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 4px;
+      }
+      .room-field-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-muted);
+      }
+      .room-autofill-hint {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 11px;
+        font-weight: 600;
+        color: #10b981;
+        background: rgba(16, 185, 129, 0.12);
+        padding: 2px 8px;
+        border-radius: 999px;
+        border: 1px solid rgba(16, 185, 129, 0.28);
+        animation: fadeIn 0.25s ease;
+      }
+      .room-input-highlight {
+        border-color: #10b981 !important;
+        box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3) !important;
+        transition: border-color 0.4s ease, box-shadow 0.4s ease;
+      }
+      .room-search-card {
+        border: 1px solid var(--border-light);
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 12px;
+        padding: 12px;
+        margin-top: 2px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .room-search-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .room-search-title {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--text-main);
+      }
+      .room-search-badge {
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text-muted);
+        border: 1px solid var(--border-light);
+      }
+      .room-search-input-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .room-search-btn {
+        width: auto !important;
+        padding: 8px 16px !important;
+        font-size: 12px !important;
+        font-weight: 600 !important;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+      .room-search-platforms {
+        display: flex;
+        gap: 6px;
+        overflow-x: auto;
+      }
+      .platform-chip {
+        font-size: 11px;
+        padding: 4px 10px;
+        border-radius: 8px;
+        border: 1px solid var(--border-light);
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--text-muted);
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+      }
+      .platform-chip:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: var(--text-main);
+      }
+      .platform-chip.active {
+        background: rgba(255, 255, 255, 0.16);
+        color: #ffffff;
+        border-color: rgba(255, 255, 255, 0.4);
+        font-weight: 600;
+      }
+      .room-search-results-list {
+        max-height: 220px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-top: 4px;
+        padding-right: 4px;
+      }
+      .video-search-card {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        padding: 8px 10px;
+        border-radius: 10px;
+        border: 1px solid var(--border-light);
+        background: rgba(255, 255, 255, 0.03);
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .video-search-card:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.25);
+        transform: translateY(-1px);
+      }
+      .video-search-card.selected {
+        border-color: #10b981;
+        background: rgba(16, 185, 129, 0.1);
+      }
+      .video-search-thumb-wrap {
+        width: 80px;
+        height: 48px;
+        border-radius: 6px;
+        overflow: hidden;
+        position: relative;
+        flex-shrink: 0;
+        background: #000;
+      }
+      .video-search-thumb {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+      .video-search-dur {
+        position: absolute;
+        bottom: 2px;
+        right: 2px;
+        background: rgba(0, 0, 0, 0.85);
+        color: #fff;
+        font-size: 9px;
+        padding: 1px 4px;
+        border-radius: 3px;
+        font-weight: 700;
+      }
+      .video-platform-badge {
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        padding: 3px;
+        border-radius: 5px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+        backdrop-filter: blur(4px);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.6);
+      }
+      .badge-youtube {
+        background: rgba(15, 15, 15, 0.88);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+      }
+      .badge-rutube {
+        background: rgba(15, 15, 15, 0.88);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+      }
+      .badge-vk {
+        background: #0077ff;
+        color: #fff;
+        font-size: 8px;
+        padding: 2px 4px;
+        font-weight: 800;
+      }
+      .video-channel-avatar {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        object-fit: cover;
+        flex-shrink: 0;
+        display: inline-block;
+        vertical-align: middle;
+        margin-right: 5px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        background: rgba(255, 255, 255, 0.08);
+      }
+      .video-search-details {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+      .video-search-title {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-main);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        line-height: 1.35;
+      }
+      .video-search-author {
+        font-size: 11px;
+        color: var(--text-muted);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        display: flex;
+        align-items: center;
+      }
+      .video-search-select-btn {
+        width: auto !important;
+        padding: 6px 12px !important;
+        font-size: 11px !important;
+        font-weight: 600 !important;
+        border-radius: 6px !important;
+        border: 1px solid var(--border-light) !important;
+        background: rgba(255, 255, 255, 0.08) !important;
+        color: var(--text-main) !important;
+        cursor: pointer;
+        transition: 0.2s;
+        flex-shrink: 0;
+      }
+      .video-search-select-btn:hover {
+        background: #10b981 !important;
+        color: #ffffff !important;
+        border-color: #10b981 !important;
+      }
+      .room-search-loading,
+      .room-search-empty {
+        font-size: 12px;
+        color: var(--text-muted);
+        text-align: center;
+        padding: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
       }
 
       
@@ -1454,7 +1712,7 @@
       }
       .room-layout {
         display: grid;
-        grid-template-columns: 1fr 260px;
+        grid-template-columns: 1fr 364px;
         gap: 0;
         padding: 0;
         flex: 1;
@@ -1464,6 +1722,11 @@
         width: 100%;
         position: relative;
         transition: grid-template-columns 0.3s ease;
+      }
+      @media (max-width: 1150px) and (min-width: 901px) {
+        .room-layout {
+          grid-template-columns: 1fr 310px;
+        }
       }
       .room-layout.chat-collapsed {
         grid-template-columns: 1fr;
@@ -5665,6 +5928,10 @@
               <span><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Toolbox.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
                 Настройки</span>
             </div>
+            <div class="nav-item" id="nav-other">
+              <span><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Bookmark%20Tabs.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+                Прочее</span>
+            </div>
           </nav>
 
           <div id="lobby-sidebar-actions" style="
@@ -6510,6 +6777,48 @@
             <!-- Rendered by JS -->
           </div>
         </main>
+
+        <main class="rooms-main" id="section-other" style="display: none; overflow-y: auto;">
+          <div class="lobby-header">
+            <h2>
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Bookmark%20Tabs.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+              Прочее
+            </h2>
+            <p style="color: var(--text-muted); font-size: 14px; margin-top: 4px;">
+              Информационный блок и полезные сведения
+            </p>
+          </div>
+          <div style="padding: 24px; display: flex; flex-direction: column; gap: 20px; max-width: 860px;">
+            <div class="glass-panel" style="padding: 24px; border-radius: 16px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08);">
+              <h3 style="display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; margin-bottom: 14px; color: var(--text-main);">
+                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Information.webp" style="width: 24px; height: 24px;">
+                О проекте и информация
+              </h3>
+              <p style="color: var(--text-muted); font-size: 14px; line-height: 1.7; margin-bottom: 16px;">
+                Здесь расположен информационный блок сервиса. Вы можете заменить этот текст на правила комнаты, ссылки на ваши каналы, описание сообщества или любую другую информацию, которая будет полезна пользователям.
+              </p>
+              <div style="background: rgba(0, 0, 0, 0.25); border: 1px dashed rgba(255, 255, 255, 0.15); border-radius: 12px; padding: 18px; font-size: 13px; color: var(--text-muted); line-height: 1.6;">
+                <div style="font-weight: 600; color: var(--text-main); margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                  <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Light%20Bulb.webp" style="width: 18px; height: 18px;">
+                  Пользовательская заметка:
+                </div>
+                Добро пожаловать в COWIO! Здесь вы можете смотреть любимые видео вместе с друзьями синхронно в реальном времени, общаться в чате, делиться эмодзи и реакциями.
+              </div>
+            </div>
+
+            <div class="glass-panel" style="padding: 24px; border-radius: 16px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08);">
+              <h3 style="display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; margin-bottom: 14px; color: var(--text-main);">
+                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Scroll.webp" style="width: 24px; height: 24px;">
+                Правила и рекомендации
+              </h3>
+              <ul style="color: var(--text-muted); font-size: 14px; line-height: 1.7; margin: 0; padding-left: 20px;">
+                <li>Уважайте других участников совместного просмотра.</li>
+                <li>Не включайте неподобающий контент в открытых комнатах.</li>
+                <li>Для комфортного просмотра используйте наушники или настройте звук.</li>
+              </ul>
+            </div>
+          </div>
+        </main>
         </div>
       </div>
     </section>
@@ -6537,7 +6846,7 @@
           <div style="display: flex; align-items: center; gap: 12px;" id="room-top-actions">
             <!-- Share btn added from JS goes here -->
             <button class="secondary-btn" title="На весь экран" id="btn-fullscreen-toggle" style="background: transparent; border: none; font-size: 22px; cursor: pointer; padding: 8px;">⛶</button>
-            <button class="secondary-btn" id="btn-room-settings" style="background: transparent; border: none; color: #fff; font-size: 16px; font-weight: 500; cursor: pointer; display: none; padding: 8px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Nut%20And%20Bolt.webp" style="width:28px;height:28px;"></button>
+            <button class="secondary-btn" id="btn-room-settings" title="Настройки комнаты" style="background: transparent; border: none; color: #fff; font-size: 16px; font-weight: 500; cursor: pointer; display: none; padding: 8px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Toolbox.webp" style="width:26px;height:26px;vertical-align:middle;"></button>
           </div>
         </div>
 
@@ -7094,8 +7403,28 @@
           Создать комнату
         </h2>
         <div style="display: flex; flex-direction: column; gap: 12px">
-          <input type="text" id="room-input-name" placeholder="Название комнаты">
-          <input type="url" id="room-input-url" placeholder="Rutube, YouTube, VK, Vimeo, Twitch или прямая ссылка (mp4, m3u8)">
+          <div>
+            <div class="room-field-header">
+              <span class="room-field-label">Название комнаты</span>
+              <span id="room-name-autofill-hint" class="room-autofill-hint" style="display: none;">
+                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 14px; height: 14px; vertical-align: middle;">
+                <span>Скопировано из видео</span>
+              </span>
+            </div>
+            <input type="text" id="room-input-name" placeholder="Название комнаты (заполнится автоматически при вставке ссылки)">
+          </div>
+
+          <div>
+            <div class="room-field-header">
+              <span class="room-field-label">Ссылка на видео</span>
+              <span id="room-url-loading-indicator" style="display: none; font-size: 11px; color: #10b981; font-weight: 600; align-items: center; gap: 4px;">
+                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 14px; height: 14px; vertical-align: middle;">
+                <span>Получаем название...</span>
+              </span>
+            </div>
+            <input type="url" id="room-input-url" placeholder="Rutube, YouTube, VK, Vimeo, Twitch или прямая ссылка (mp4, m3u8)">
+          </div>
+
           <div id="yt-create-note" style="
               display: none;
               font-size: 11px;
@@ -7105,16 +7434,54 @@
               padding: 6px;
               border-radius: 6px;
             ">
-            ⚠️ <b>Внимание:</b> При использовании ссылок YouTube может
+            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Warning.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom; margin-right: 4px;"><b>Внимание:</b> При использовании ссылок YouTube может
             потребоваться включенный ВПН (VPN) для корректной синхронизации и
             воспроизведения из-за региональных ограничений.
           </div>
-          <div class="room-media-actions">
-            <button type="button" class="secondary-btn" id="btn-preview-media" style="width: auto; padding: 8px 12px; font-size: 12px">
-              Проверить ссылку
-            </button>
-          </div>
           <div id="room-media-status" class="room-media-status state-idle" style="display: none" aria-live="polite"></div>
+
+          <!-- Поиск видео по названию и платформе -->
+          <div class="room-search-card" id="room-video-search-container">
+            <div class="room-search-header">
+              <div class="room-search-title">
+                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Magnifying%20Glass%20Tilted%20Right.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+                <span>Поиск по названию и платформе</span>
+              </div>
+              <span class="room-search-badge">YouTube & Rutube</span>
+            </div>
+
+            <div class="room-search-input-row">
+              <input type="text" id="room-search-video-input" placeholder="Напишите название видео для поиска..." autocomplete="off">
+              <button type="button" id="btn-room-search-video" class="secondary-btn room-search-btn">
+                Найти
+              </button>
+            </div>
+
+            <div class="room-search-platforms" id="room-search-platform-chips">
+              <button type="button" class="platform-chip active" data-platform="all" id="chip-plat-all">
+                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Globe%20With%20Meridians.webp" style="width: 15px; height: 15px; vertical-align: middle; margin-right: 4px;">Все
+              </button>
+              <button type="button" class="platform-chip" data-platform="youtube" id="chip-plat-yt">
+                <img src="https://cdn-icons-png.flaticon.com/128/1384/1384060.png" style="width: 16px; height: 16px; object-fit: contain; vertical-align: middle; margin-right: 4px;">YouTube
+              </button>
+              <button type="button" class="platform-chip" data-platform="rutube" id="chip-plat-rt">
+                <img src="https://static.rtbcdn.ru/static/img/favicon-icons/v3/icon_180x180.png" style="width: 15px; height: 15px; border-radius: 3px; object-fit: contain; vertical-align: middle; margin-right: 4px;">Rutube
+              </button>
+            </div>
+
+            <div id="room-search-loading" class="room-search-loading" style="display: none;">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Magnifying%20Glass%20Tilted%20Right.webp" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 6px;">
+              <span>Ищем видео на платформах...</span>
+            </div>
+            <div id="room-search-empty" class="room-search-empty" style="display: none;">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Thinking%20Face.webp" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 6px;">
+              <span>Ничего не найдено</span>
+            </div>
+
+            <div id="room-video-search-results" class="room-search-results-list oled-scrollbar" style="display: none;">
+              <!-- Results rendered via JS -->
+            </div>
+          </div>
 
           <label style="
               display: flex;
@@ -7532,7 +7899,6 @@
       window.COWIO_MEDIA_API = window.COWIO_MEDIA_API || "";
     </script>
     <script src="emojis_registry.js?v=2"></script>
-    <script src="siteTips.js?v=2"></script>
     <script src="libraryManager.js?v=2"></script>
     <script src="premiumManager.js?v=2"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.7/dist/hls.min.js"></script>
