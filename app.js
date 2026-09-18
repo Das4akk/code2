@@ -19693,7 +19693,7 @@ class RoomManager {
         const isSpeaking =
           user.speaking ||
           (typeof RTCManager !== "undefined" &&
-            RTCManager.currentSpeakerUid === uid);
+            (RTCManager.isUserSpeaking(uid) || RTCManager.currentSpeakerUid === uid));
         let speakingClass = isSpeaking ? " speaking" : "";
         html += `<div class="user-item${speakingClass}" data-uid="${uid}" style="${premiumStyle}">`;
         html += `<div class="indicator online" style="margin-right:8px;"></div>`;
@@ -20172,19 +20172,16 @@ class RTCManager {
   static watchdogTimer = null;
   static activeSessionId = null;
 
-  // Speaker side
-  static peerConnections = new Map(); // listenerUid -> { pc, dc }
+  // Active speakers cache: Map<uid, speakerData> (supports up to 2 simultaneous speakers)
+  static activeSpeakers = new Map();
 
-  // Listener side
-  static listenerPc = null;
-  static currentSpeakerUid = null;
-  static currentSpeakerSessionId = null;
-  static lastSpeakerPing = 0;
+  // Speaker side: listenerUid -> { pc, dc }
+  static peerConnections = new Map();
+
+  // Listener side: speakerUid -> { speakerUid, sessionId, pc, dc, incomingOfferUnsub, candidateUnsubs, queuedCandidates, handledCandidateKeys, audioEl }
+  static listenerSessions = new Map();
+
   static speakerListenerUnsub = null;
-  static incomingOfferUnsub = null;
-  static candidateUnsubs = [];
-  static queuedCandidates = [];
-  static handledCandidateKeys = new Set();
   static audioCtx = null;
 
   static iceServers = [
@@ -20204,6 +20201,20 @@ class RTCManager {
     rtcpMuxPolicy: "require",
   };
 
+  static isUserSpeaking(uid) {
+    if (this.isMicActive && AppState.currentUser?.uid === uid) return true;
+    return this.activeSpeakers.has(uid);
+  }
+
+  static get currentSpeakerUid() {
+    const keys = Array.from(this.activeSpeakers.keys());
+    return keys.length > 0 ? keys[0] : null;
+  }
+
+  static getActiveSpeakers() {
+    return Array.from(this.activeSpeakers.values());
+  }
+
   static init(roomId) {
     this.destroy();
     this.roomId = roomId;
@@ -20216,18 +20227,23 @@ class RTCManager {
   static startWatchdog() {
     if (this.watchdogTimer) clearInterval(this.watchdogTimer);
     this.watchdogTimer = setInterval(() => {
-      // If we are a listener and haven't heard a ping from speaker for > 25 seconds, clean up
-      if (this.currentSpeakerUid && !this.isMicActive) {
-        const now = Date.now();
-        if (now - this.lastSpeakerPing > 25000) {
-          console.warn("[RTCManager] Speaker heartbeat timeout (25s expired)");
-          this.currentSpeakerUid = null;
-          this.currentSpeakerSessionId = null;
-          this.updateSpeakerUI(null);
-          this.closeListenerConnection();
-          if (typeof RoomManager !== "undefined" && RoomManager.rerenderUsersList) {
-            RoomManager.rerenderUsersList();
-          }
+      const now = Date.now();
+      let changed = false;
+
+      this.activeSpeakers.forEach((speaker, uid) => {
+        const lastPing = speaker.lastPing || speaker.startedAt || 0;
+        if (now - lastPing > 25000) {
+          console.warn(`[RTCManager] Speaker ${uid} timeout (25s expired)`);
+          this.activeSpeakers.delete(uid);
+          this.closeSingleListenerSession(uid);
+          changed = true;
+        }
+      });
+
+      if (changed) {
+        this.updateSpeakerUI(Array.from(this.activeSpeakers.values()));
+        if (typeof RoomManager !== "undefined" && RoomManager.rerenderUsersList) {
+          RoomManager.rerenderUsersList();
         }
       }
     }, 3000);
@@ -20235,69 +20251,95 @@ class RTCManager {
 
   static bindSpeakerListener() {
     if (!this.roomId) return;
-    const speakerRef = ref(db, `rooms/${this.roomId}/voice/speaker`);
+    const speakersRef = ref(db, `rooms/${this.roomId}/voice/speakers`);
 
-    this.speakerListenerUnsub = onValue(speakerRef, (snap) => {
-      const speaker = snap.val();
+    this.speakerListenerUnsub = onValue(speakersRef, (snap) => {
+      const rawSpeakers = snap.val() || {};
+      const now = Date.now();
       const currentUid = AppState.currentUser?.uid;
 
-      if (!speaker || !speaker.uid || !speaker.sessionId) {
-        if (this.currentSpeakerUid) {
-          this.currentSpeakerUid = null;
-          this.currentSpeakerSessionId = null;
-          this.updateSpeakerUI(null);
-          if (!this.isMicActive) {
-            this.closeListenerConnection();
-          }
-          if (typeof RoomManager !== "undefined" && RoomManager.rerenderUsersList) {
-            RoomManager.rerenderUsersList();
-          }
+      const newActiveMap = new Map();
+      Object.keys(rawSpeakers).forEach((uid) => {
+        const item = rawSpeakers[uid];
+        if (!item || !item.sessionId) return;
+        const lastPing = item.lastPing || item.startedAt || 0;
+        if (now - lastPing < 20000) {
+          newActiveMap.set(uid, item);
         }
-        return;
-      }
+      });
 
-      this.lastSpeakerPing = speaker.lastPing || speaker.startedAt || Date.now();
-      const isNewSpeaker = this.currentSpeakerUid !== speaker.uid;
-      const isNewSession = this.currentSpeakerSessionId !== speaker.sessionId;
+      this.activeSpeakers = newActiveMap;
+      const activeArray = Array.from(newActiveMap.values());
 
-      this.currentSpeakerUid = speaker.uid;
-      this.updateSpeakerUI(speaker);
+      this.updateSpeakerUI(activeArray);
 
       if (typeof RoomManager !== "undefined" && RoomManager.rerenderUsersList) {
         RoomManager.rerenderUsersList();
       }
 
-      // If we are the speaker or mic is active on self, we don't listen to ourselves
-      if (speaker.uid === currentUid || this.isMicActive) {
-        return;
+      // If we are actively speaking, broadcast to any new participants or the other speaker
+      if (this.isMicActive && this.localStream) {
+        this.broadcastToParticipants();
       }
 
-      // CRITICAL FIX: If we are already connected or connecting to this active session,
-      // DO NOT DESTROY OR RE-CREATE the connection on every heartbeat!
-      if (!isNewSession && !isNewSpeaker) {
-        if (
-          this.listenerPc &&
-          (this.listenerPc.connectionState === "connected" ||
-            this.listenerPc.connectionState === "connecting")
-        ) {
-          return; // Connection is healthy and persistent!
+      // 1. Remove sessions for speakers that are no longer active
+      this.listenerSessions.forEach((session, spUid) => {
+        if (!newActiveMap.has(spUid)) {
+          this.closeSingleListenerSession(spUid);
         }
-      }
+      });
 
-      // New voice broadcast session started -> connect as listener
-      this.currentSpeakerSessionId = speaker.sessionId;
-      this.setupAsListener(speaker.uid, speaker.sessionId);
+      // 2. Setup or maintain sessions for active speakers (other than self)
+      newActiveMap.forEach((spData, spUid) => {
+        if (spUid === currentUid) return; // Never listen to self
+
+        const existingSession = this.listenerSessions.get(spUid);
+        if (existingSession) {
+          // If sessionId is identical and connection is healthy, keep it intact
+          if (
+            existingSession.sessionId === spData.sessionId &&
+            existingSession.pc &&
+            (existingSession.pc.connectionState === "connected" ||
+              existingSession.pc.connectionState === "connecting" ||
+              existingSession.pc.connectionState === "new")
+          ) {
+            return;
+          }
+          this.closeSingleListenerSession(spUid);
+        }
+
+        // Establish connection to hear this speaker
+        this.setupListenerSession(spUid, spData.sessionId);
+      });
     });
 
     AppState.roomSubscriptions.push(this.speakerListenerUnsub);
   }
 
-  static updateSpeakerUI(speaker) {
+  static updateSpeakerUI(activeSpeakers = []) {
     const badge = Utils.$("room-voice-speaker-badge");
     const text = Utils.$("room-voice-speaker-text");
     const micBtn = Utils.$("btn-toggle-mic");
+    const currentUid = AppState.currentUser?.uid;
 
-    if (!speaker) {
+    let effectiveSpeakers = Array.isArray(activeSpeakers) ? [...activeSpeakers] : [];
+    if (this.isMicActive && currentUid) {
+      if (!effectiveSpeakers.some((s) => s.uid === currentUid)) {
+        const myProfile = AppState.usersCache.get(currentUid) || {};
+        effectiveSpeakers.unshift({
+          uid: currentUid,
+          name: myProfile.name || AppState.currentUser.displayName || "Вы",
+          avatar: myProfile.avatar || AppState.currentUser.photoURL || "",
+          sessionId: this.activeSessionId,
+        });
+      }
+    } else if (!this.isMicActive && currentUid) {
+      effectiveSpeakers = effectiveSpeakers.filter((s) => s.uid !== currentUid);
+    }
+
+    this.updatePlayerSpeakerAvatars(effectiveSpeakers);
+
+    if (effectiveSpeakers.length === 0) {
       if (badge) badge.style.display = "none";
       if (micBtn && !this.isMicActive) {
         micBtn.classList.remove("active");
@@ -20306,23 +20348,85 @@ class RTCManager {
       return;
     }
 
-    const currentUid = AppState.currentUser?.uid;
-    const isSelf = speaker.uid === currentUid;
+    const isSelfSpeaking = this.isMicActive || effectiveSpeakers.some((s) => s.uid === currentUid);
 
     if (badge && text) {
       badge.style.display = "inline-flex";
-      text.innerText = isSelf ? "Вы в эфире" : `Говорит: ${speaker.name || "пользователь"}`;
+      if (effectiveSpeakers.length === 1) {
+        const s = effectiveSpeakers[0];
+        const sName = s.name || (s.uid === currentUid ? (AppState.currentUser?.displayName || "Вы") : "пользователь");
+        text.innerText = `Говорит: ${sName}`;
+      } else {
+        const name1 = effectiveSpeakers[0]?.name || (effectiveSpeakers[0]?.uid === currentUid ? (AppState.currentUser?.displayName || "Вы") : "пользователь");
+        const name2 = effectiveSpeakers[1]?.name || (effectiveSpeakers[1]?.uid === currentUid ? (AppState.currentUser?.displayName || "Вы") : "пользователь");
+        text.innerText = `Говорят: ${name1} и ${name2}`;
+      }
     }
 
     if (micBtn) {
-      if (isSelf) {
+      if (isSelfSpeaking) {
         micBtn.classList.add("active");
         micBtn.title = "Микрофон включен (нажмите, чтобы выключить)";
       } else {
         micBtn.classList.remove("active");
-        micBtn.title = `Говорит ${speaker.name || "пользователь"}`;
+        if (effectiveSpeakers.length >= 2) {
+          micBtn.title = "Микрофон занят: говорят двое (максимум)";
+        } else if (effectiveSpeakers.length === 1) {
+          micBtn.title = `Говорит ${effectiveSpeakers[0].name || "участник"} (нажмите, чтобы говорить вдвоём)`;
+        } else {
+          micBtn.title = "Микрофон (нажмите, чтобы говорить)";
+        }
       }
     }
+  }
+
+  static updatePlayerSpeakerAvatars(activeSpeakers = []) {
+    const container = Utils.$("room-player-speakers-overlay");
+    if (!container) return;
+
+    if (!activeSpeakers || activeSpeakers.length === 0) {
+      container.innerHTML = "";
+      container.style.display = "none";
+      return;
+    }
+
+    container.style.display = "flex";
+    const currentUid = AppState.currentUser?.uid;
+    // Display up to two speaking users in the corner of the player
+    const speakersToShow = activeSpeakers.slice(0, 2);
+
+    let html = "";
+    speakersToShow.forEach((sp) => {
+      const cached = AppState.usersCache.get(sp.uid) || {};
+      const name = sp.name || cached.name || (sp.uid === currentUid ? (AppState.currentUser?.displayName || "Вы") : "Пользователь");
+      const avatar = sp.avatar || cached.avatar || (sp.uid === currentUid ? (AppState.currentUser?.photoURL || "") : "");
+
+      const initial = (name[0] || "?").toUpperCase();
+      let avatarContent = "";
+      if (avatar) {
+        avatarContent = `<img src="${Utils.escapeHtml(avatar)}" alt="${Utils.escapeHtml(name)}" class="player-speaker-avatar-img" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'player-speaker-avatar-fallback\\'>${Utils.escapeHtml(initial)}</div>';">`;
+      } else {
+        avatarContent = `<div class="player-speaker-avatar-fallback">${Utils.escapeHtml(initial)}</div>`;
+      }
+
+      html += `
+        <div class="player-speaker-item" data-uid="${Utils.escapeHtml(sp.uid)}" title="Говорит: ${Utils.escapeHtml(name)}">
+          <div class="player-speaker-avatar-wrap">
+            ${avatarContent}
+            <div class="player-speaker-mic-badge">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+              </svg>
+            </div>
+          </div>
+          <span class="player-speaker-name">${Utils.escapeHtml(name)}</span>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
   }
 
   static async toggleMic(forceOff = false) {
@@ -20338,24 +20442,34 @@ class RTCManager {
     }
 
     const currentUid = AppState.currentUser.uid;
-    const speakerRef = ref(db, `rooms/${this.roomId}/voice/speaker`);
+    const speakersRef = ref(db, `rooms/${this.roomId}/voice/speakers`);
 
-    // Verify nobody else is speaking (single speaker enforcement)
+    // Verify how many participants are speaking (maximum 2 simultaneously)
     try {
-      const snap = await get(speakerRef);
-      const activeSpeaker = snap.val();
-      if (activeSpeaker && activeSpeaker.uid && activeSpeaker.uid !== currentUid) {
-        const now = Date.now();
-        const lastActive = activeSpeaker.lastPing || activeSpeaker.startedAt || 0;
-        if (now - lastActive < 20000) {
-          return Utils.toast(
-            `Микрофон занят: сейчас говорит ${activeSpeaker.name || "другой участник"}`,
-            "warning",
-          );
+      const snap = await get(speakersRef);
+      const rawSpeakers = snap.val() || {};
+      const now = Date.now();
+      const activeList = [];
+
+      Object.keys(rawSpeakers).forEach((uid) => {
+        const item = rawSpeakers[uid];
+        if (!item) return;
+        const lastPing = item.lastPing || item.startedAt || 0;
+        if (now - lastPing < 20000) {
+          activeList.push(item);
         }
+      });
+
+      const isAlreadyActive = activeList.some((s) => s.uid === currentUid);
+      if (!isAlreadyActive && activeList.length >= 2) {
+        const names = activeList.map((s) => s.name || "участник").join(" и ");
+        return Utils.toast(
+          `Микрофон занят: уже говорят ${names} (максимум 2 человека одновременно)`,
+          "warning",
+        );
       }
     } catch (e) {
-      console.warn("[RTCManager] Check speaker error:", e);
+      console.warn("[RTCManager] Check speakers error:", e);
     }
 
     // Request microphone access with professional audio filters
@@ -20370,7 +20484,7 @@ class RTCManager {
         },
         video: false,
       });
-      // Ensure all tracks are unmuted and enabled
+      // Ensure all tracks are unmuted and active
       this.localStream.getAudioTracks().forEach((track) => {
         track.enabled = true;
       });
@@ -20390,32 +20504,39 @@ class RTCManager {
     this.savedVolumeBeforeMic = RoomManager.getPlayerVolume();
     RoomManager.setPlayerVolume(0);
 
+    const myProfile = AppState.usersCache.get(currentUid) || {};
     const myName =
-      AppState.usersCache.get(currentUid)?.name ||
+      myProfile.name ||
       AppState.currentUser.displayName ||
       "Пользователь";
+    const myAvatar =
+      myProfile.avatar ||
+      AppState.currentUser.photoURL ||
+      "";
 
-    // Clean any old signals from previous sessions
+    // Clean any old signals from previous sessions for self
     const mySignalsRef = ref(db, `rooms/${this.roomId}/voice/signals/${currentUid}`);
     await set(mySignalsRef, null);
 
     const speakerData = {
       uid: currentUid,
       name: myName,
+      avatar: myAvatar,
       sessionId: this.activeSessionId,
       startedAt: Date.now(),
       lastPing: Date.now(),
     };
 
-    await set(speakerRef, speakerData);
-    onDisconnect(speakerRef).remove();
+    const mySpeakerRef = ref(db, `rooms/${this.roomId}/voice/speakers/${currentUid}`);
+    await set(mySpeakerRef, speakerData);
+    onDisconnect(mySpeakerRef).remove();
     onDisconnect(mySignalsRef).remove();
 
     // Heartbeat to keep speaker lease alive every 3 seconds
     if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
     this.heartbeatTimer = setInterval(() => {
       if (!this.isMicActive || !this.roomId) return;
-      set(ref(db, `rooms/${this.roomId}/voice/speaker/lastPing`), Date.now());
+      set(ref(db, `rooms/${this.roomId}/voice/speakers/${currentUid}/lastPing`), Date.now());
     }, 3000);
 
     // NAT keepalive timer across all active data channels
@@ -20435,11 +20556,12 @@ class RTCManager {
     if (micBtn) micBtn.classList.add("active");
     Utils.toast("Микрофон включен (звук видео у вас приглушён)", "success");
 
-    // Close listener if we had one
-    this.closeListenerConnection();
+    // Close any listener session for self
+    this.closeSingleListenerSession(currentUid);
 
-    // Broadcast audio to all listeners currently in room
+    // Broadcast audio to all participants (listeners + other active speaker)
     this.broadcastToParticipants();
+    this.updateSpeakerUI(Array.from(this.activeSpeakers.values()));
   }
 
   static broadcastToParticipants() {
@@ -20448,9 +20570,17 @@ class RTCManager {
     const currentUid = AppState.currentUser?.uid;
     if (!currentUid) return;
 
+    // Connect to all users in room presence
     Object.keys(cache).forEach((uid) => {
       if (uid !== currentUid && !this.peerConnections.has(uid)) {
         this.initiateSpeakerPeer(uid);
+      }
+    });
+
+    // Also ensure connection to the other active speaker if present
+    this.activeSpeakers.forEach((spData, spUid) => {
+      if (spUid !== currentUid && !this.peerConnections.has(spUid)) {
+        this.initiateSpeakerPeer(spUid);
       }
     });
   }
@@ -20587,7 +20717,7 @@ class RTCManager {
 
     const currentUid = AppState.currentUser?.uid;
     if (this.roomId && currentUid) {
-      set(ref(db, `rooms/${this.roomId}/voice/speaker`), null);
+      set(ref(db, `rooms/${this.roomId}/voice/speakers/${currentUid}`), null);
       set(ref(db, `rooms/${this.roomId}/voice/signals/${currentUid}`), null);
     }
 
@@ -20606,37 +20736,49 @@ class RTCManager {
       micBtn.title = "Микрофон (нажмите, чтобы говорить)";
     }
 
+    this.updateSpeakerUI(Array.from(this.activeSpeakers.values()));
     Utils.toast("Микрофон выключен (громкость видео восстановлена)", "info");
   }
 
-  static setupAsListener(speakerUid, sessionId) {
+  static setupListenerSession(speakerUid, sessionId) {
     if (!this.roomId || !AppState.currentUser) return;
     const currentUid = AppState.currentUser.uid;
     if (speakerUid === currentUid) return;
 
-    this.closeListenerConnection();
-    this.queuedCandidates = [];
-    this.handledCandidateKeys = new Set();
+    this.closeSingleListenerSession(speakerUid);
+
+    const session = {
+      speakerUid,
+      sessionId,
+      pc: null,
+      incomingOfferUnsub: null,
+      candidateUnsubs: [],
+      queuedCandidates: [],
+      handledCandidateKeys: new Set(),
+      audioEl: null,
+    };
+
+    this.listenerSessions.set(speakerUid, session);
 
     const offerRef = ref(
       db,
       `rooms/${this.roomId}/voice/signals/${speakerUid}/${currentUid}/offer`,
     );
 
-    this.incomingOfferUnsub = onValue(offerRef, async (snap) => {
+    session.incomingOfferUnsub = onValue(offerRef, async (snap) => {
       const offer = snap.val();
       if (!offer || !offer.sdp) return;
       if (offer.sessionId && offer.sessionId !== sessionId) return;
 
       try {
-        if (this.listenerPc) {
+        if (session.pc) {
           try {
-            this.listenerPc.close();
+            session.pc.close();
           } catch (e) {}
         }
 
         const pc = new RTCPeerConnection(this.rtcConfig);
-        this.listenerPc = pc;
+        session.pc = pc;
 
         // DataChannel for continuous NAT keep-alive
         pc.ondatachannel = (e) => {
@@ -20651,23 +20793,22 @@ class RTCManager {
         };
 
         pc.ontrack = (event) => {
-          console.log("[RTCManager] Audio track received from speaker");
+          console.log(`[RTCManager] Audio track received from speaker ${speakerUid}`);
           if (event.streams && event.streams[0]) {
-            RTCManager.playRemoteAudio(event.streams[0]);
+            RTCManager.playRemoteAudio(event.streams[0], speakerUid);
           }
         };
 
         pc.onconnectionstatechange = () => {
-          console.log("[RTCManager] Listener connection state:", pc.connectionState);
+          console.log(`[RTCManager] Listener peer for ${speakerUid} state:`, pc.connectionState);
           if (pc.connectionState === "failed") {
-            console.warn("[RTCManager] Listener peer connection failed, attempting reconnection...");
+            console.warn(`[RTCManager] Connection to speaker ${speakerUid} failed, reconnecting...`);
             setTimeout(() => {
               if (
-                this.currentSpeakerUid === speakerUid &&
-                this.currentSpeakerSessionId === sessionId &&
-                !this.isMicActive
+                this.activeSpeakers.has(speakerUid) &&
+                this.activeSpeakers.get(speakerUid)?.sessionId === sessionId
               ) {
-                this.setupAsListener(speakerUid, sessionId);
+                this.setupListenerSession(speakerUid, sessionId);
               }
             }, 1000);
           }
@@ -20694,24 +20835,24 @@ class RTCManager {
           const candidate = snapVal.val();
           if (!candidate) return;
           const candKey = candidate.candidate || JSON.stringify(candidate);
-          if (this.handledCandidateKeys.has(candKey)) return;
-          this.handledCandidateKeys.add(candKey);
+          if (session.handledCandidateKeys.has(candKey)) return;
+          session.handledCandidateKeys.add(candKey);
 
           if (pc.remoteDescription) {
             try {
               await pc.addIceCandidate(new RTCIceCandidate(candidate));
             } catch (e) {}
           } else {
-            this.queuedCandidates.push(candidate);
+            session.queuedCandidates.push(candidate);
           }
         });
-        this.candidateUnsubs.push(unsubSpCand);
+        session.candidateUnsubs.push(unsubSpCand);
 
         await pc.setRemoteDescription(new RTCSessionDescription(offer));
 
         // Flush any queued candidates
-        while (this.queuedCandidates.length > 0) {
-          const cand = this.queuedCandidates.shift();
+        while (session.queuedCandidates.length > 0) {
+          const cand = session.queuedCandidates.shift();
           try {
             await pc.addIceCandidate(new RTCIceCandidate(cand));
           } catch (e) {}
@@ -20733,18 +20874,19 @@ class RTCManager {
           },
         );
       } catch (err) {
-        console.warn("[RTCManager] Error setting up listener peer:", err);
+        console.warn(`[RTCManager] Error setting up listener peer for ${speakerUid}:`, err);
       }
     });
 
-    AppState.roomSubscriptions.push(this.incomingOfferUnsub);
+    AppState.roomSubscriptions.push(session.incomingOfferUnsub);
   }
 
-  static playRemoteAudio(stream) {
-    let audio = document.getElementById("room-webrtc-audio");
+  static playRemoteAudio(stream, speakerUid) {
+    const audioId = `room-webrtc-audio-${speakerUid}`;
+    let audio = document.getElementById(audioId);
     if (!audio) {
       audio = document.createElement("audio");
-      audio.id = "room-webrtc-audio";
+      audio.id = audioId;
       audio.autoplay = true;
       audio.playsInline = true;
       audio.muted = false;
@@ -20754,7 +20896,7 @@ class RTCManager {
       document.body.appendChild(audio);
 
       audio.onpause = () => {
-        if (RTCManager.currentSpeakerUid && !RTCManager.isMicActive && audio.srcObject) {
+        if (RTCManager.activeSpeakers.has(speakerUid) && audio.srcObject) {
           audio.play().catch(() => {});
         }
       };
@@ -20779,7 +20921,7 @@ class RTCManager {
     const playPromise = audio.play();
     if (playPromise !== undefined) {
       playPromise.catch((err) => {
-        console.warn("[RTCManager] Audio autoplay blocked, waiting for user gesture:", err);
+        console.warn(`[RTCManager] Audio autoplay blocked for speaker ${speakerUid}:`, err);
         const unblock = () => {
           if (audio) audio.play().catch(() => {});
           if (this.audioCtx && this.audioCtx.state === "suspended") {
@@ -20796,29 +20938,43 @@ class RTCManager {
     }
   }
 
-  static closeListenerConnection() {
-    if (this.incomingOfferUnsub) {
-      if (typeof this.incomingOfferUnsub === "function") {
-        this.incomingOfferUnsub();
-      }
-      this.incomingOfferUnsub = null;
+  static closeSingleListenerSession(speakerUid) {
+    const session = this.listenerSessions.get(speakerUid);
+    if (!session) return;
+
+    if (session.incomingOfferUnsub && typeof session.incomingOfferUnsub === "function") {
+      session.incomingOfferUnsub();
+      session.incomingOfferUnsub = null;
     }
-    if (this.listenerPc) {
+
+    if (session.candidateUnsubs) {
+      session.candidateUnsubs.forEach((unsub) => {
+        if (typeof unsub === "function") unsub();
+      });
+      session.candidateUnsubs = [];
+    }
+
+    if (session.pc) {
       try {
-        this.listenerPc.close();
+        session.pc.close();
       } catch (e) {}
-      this.listenerPc = null;
+      session.pc = null;
     }
-    const audio = document.getElementById("room-webrtc-audio");
+
+    const audio = document.getElementById(`room-webrtc-audio-${speakerUid}`);
     if (audio) {
       audio.srcObject = null;
+      audio.remove();
     }
-    this.candidateUnsubs.forEach((unsub) => {
-      if (typeof unsub === "function") unsub();
+
+    this.listenerSessions.delete(speakerUid);
+  }
+
+  static closeAllListenerConnections() {
+    Array.from(this.listenerSessions.keys()).forEach((spUid) => {
+      this.closeSingleListenerSession(spUid);
     });
-    this.candidateUnsubs = [];
-    this.queuedCandidates = [];
-    this.handledCandidateKeys = new Set();
+    this.listenerSessions.clear();
   }
 
   static destroy() {
@@ -20835,11 +20991,10 @@ class RTCManager {
       }
       this.speakerListenerUnsub = null;
     }
-    this.closeListenerConnection();
+    this.closeAllListenerConnections();
+    this.activeSpeakers.clear();
     this.roomId = null;
-    this.currentSpeakerUid = null;
-    this.currentSpeakerSessionId = null;
-    this.updateSpeakerUI(null);
+    this.updateSpeakerUI([]);
     console.log("[RTCManager] WebRTC Subsystem Destroyed");
   }
 }

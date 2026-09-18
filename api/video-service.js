@@ -19,6 +19,18 @@ function decodeHtml(str = '') {
     .trim();
 }
 
+function formatSeconds(totalSec) {
+  const sec = Math.max(0, Math.floor(Number(totalSec) || 0));
+  if (sec <= 0) return '';
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = String(sec % 60).padStart(2, '0');
+  if (h > 0) {
+    return `${h}:${String(m).padStart(2, '0')}:${s}`;
+  }
+  return `${m}:${s}`;
+}
+
 // Priority Rutube Channels requested by user:
 // 1) 32869212: https://rutube.ru/channel/32869212/ ("Смотри кино!")
 // 2) 32181632: https://rutube.ru/channel/32181632/ ("Фильмач — фильмы и сериалы онлайн")
@@ -88,9 +100,7 @@ export async function syncPriorityChannels() {
         if (!item || !item.id || priorityCatalogById.has(item.id)) continue;
         let dur = '';
         if (item.duration) {
-          const m = Math.floor(item.duration / 60);
-          const s = String(item.duration % 60).padStart(2, '0');
-          dur = `${m}:${s}`;
+          dur = formatSeconds(item.duration);
         }
         const vObj = {
           id: item.id,
@@ -714,16 +724,26 @@ export async function searchVK(query, limit = 18) {
       const vid = item[1];
       const thumb = item[2] || '';
       const rawTitle = decodeHtml(item[3] || '');
-      const durSec = item[4];
 
+      // In VK internal payload:
+      // item[4] is a bitmask/flag integer (16384 = 0x4000), NOT duration!
+      // item[5] is the human-readable formatted duration string (e.g. "2:01:16" or "14:20").
+      // item[19] is the duration in seconds (e.g. 7276).
       let dur = '';
-      if (typeof durSec === 'number' && durSec > 0 && durSec < 86400) {
-        const m = Math.floor(durSec / 60);
-        const s = String(durSec % 60).padStart(2, '0');
-        dur = `${m}:${s}`;
+      if (typeof item[5] === 'string' && item[5].trim()) {
+        dur = item[5].trim();
+      } else if (typeof item[19] === 'number' && item[19] > 0) {
+        dur = formatSeconds(item[19]);
       }
 
-      const score = scoreVideoRelevance(rawTitle, parsed, 'VK Video');
+      // item[8] contains the author link/name, item[35] contains author avatar
+      let author = 'VK Video';
+      if (item[8]) {
+        author = String(item[8]).replace(/<[^>]+>/g, '').trim() || 'VK Video';
+      }
+      const authorAvatar = item[35] || 'https://cdn-icons-png.flaticon.com/128/145/145813.png';
+
+      const score = scoreVideoRelevance(rawTitle, parsed, author);
       if (score === 0 && parsed.coreWords.length > 0) continue;
 
       const videoUrl = `https://vk.com/video${oid}_${vid}`;
@@ -734,8 +754,8 @@ export async function searchVK(query, limit = 18) {
         title: rawTitle || 'VK Video',
         url: videoUrl,
         thumbnail: thumb,
-        author: 'VK Video',
-        authorAvatar: 'https://cdn-icons-png.flaticon.com/128/145/145813.png',
+        author: author,
+        authorAvatar: authorAvatar,
         duration: dur,
         _score: score
       };
@@ -811,9 +831,7 @@ export async function searchRutube(query, limit = 18) {
           if (title && item.video_url) {
             let dur = '';
             if (item.duration) {
-              const m = Math.floor(item.duration / 60);
-              const s = String(item.duration % 60).padStart(2, '0');
-              dur = `${m}:${s}`;
+              dur = formatSeconds(item.duration);
             }
             const itemId = item.id || item.video_url;
             const authorName = decodeHtml(item.author?.name || 'Rutube');

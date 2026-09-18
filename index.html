@@ -1837,6 +1837,118 @@
         outline: none;
       }
 
+      /* Speaking Avatars in Video Player Corner */
+      .room-player-speakers-overlay {
+        position: absolute;
+        top: 14px;
+        left: 14px;
+        z-index: 28;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        pointer-events: none;
+        transition: opacity 0.25s ease;
+      }
+
+      .player-speaker-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(14, 18, 26, 0.82);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        border: 1.5px solid rgba(46, 213, 115, 0.45);
+        padding: 4px 10px 4px 4px;
+        border-radius: 30px;
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.55), 0 0 14px rgba(46, 213, 115, 0.3);
+        animation: speakerItemEnter 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        pointer-events: auto;
+        max-width: 190px;
+      }
+
+      @keyframes speakerItemEnter {
+        from {
+          opacity: 0;
+          transform: translateY(-6px) scale(0.92);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      .player-speaker-avatar-wrap {
+        position: relative;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+
+      .player-speaker-avatar-img,
+      .player-speaker-avatar-fallback {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        object-fit: cover;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid #2ed573;
+        box-shadow: 0 0 10px rgba(46, 213, 115, 0.8), inset 0 0 4px rgba(46, 213, 115, 0.4);
+        animation: speakerRingPulse 1.8s infinite ease-in-out;
+        background: #1e2430;
+        color: #2ed573;
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .player-speaker-mic-badge {
+        position: absolute;
+        bottom: -2px;
+        right: -2px;
+        width: 15px;
+        height: 15px;
+        background: #2ed573;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 0 6px rgba(46, 213, 115, 0.85);
+        border: 1.5px solid #0e121a;
+      }
+
+      .player-speaker-mic-badge svg {
+        width: 8.5px;
+        height: 8.5px;
+        stroke: #ffffff;
+      }
+
+      .player-speaker-name {
+        font-size: 12px;
+        font-weight: 600;
+        color: #ffffff;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        letter-spacing: 0.2px;
+      }
+
+      @keyframes speakerRingPulse {
+        0% {
+          box-shadow: 0 0 0 0 rgba(46, 213, 115, 0.75), 0 0 8px rgba(46, 213, 115, 0.5);
+          border-color: #2ed573;
+        }
+        50% {
+          box-shadow: 0 0 0 5px rgba(46, 213, 115, 0), 0 0 16px rgba(46, 213, 115, 0.9);
+          border-color: #26af5f;
+        }
+        100% {
+          box-shadow: 0 0 0 0 rgba(46, 213, 115, 0.75), 0 0 8px rgba(46, 213, 115, 0.5);
+          border-color: #2ed573;
+        }
+      }
+
       /* Reactions Layer */
       .reaction-bar {
         display: flex;
@@ -7092,6 +7204,7 @@
             </div>
             <div id="room-video-overlay" style="position: absolute; inset: 0; z-index: 8; pointer-events: none; overflow: hidden;"></div>
             <div id="chat-overlay-container" style="position: absolute; top: 15%; left: 50%; transform: translateX(-50%); width: 80%; pointer-events: none; z-index: 10; display: flex; flex-direction: column; gap: 8px;"></div>
+            <div id="room-player-speakers-overlay" class="room-player-speakers-overlay" style="display: none;"></div>
           </div>
         </div>
         <div class="chat-section glass-panel">
