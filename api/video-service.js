@@ -872,24 +872,23 @@ export async function searchVideos(query, platform = 'all') {
     return { success: true, results: yt };
   }
 
+  if (normPlat === 'vk') {
+    const vk = await searchVK(q, 20);
+    return { success: true, results: vk };
+  }
+
   if (normPlat === 'rutube') {
     const rt = await searchRutube(q, 18);
     return { success: true, results: rt };
   }
 
-  if (normPlat === 'vk') {
-    const vk = await searchVK(q, 18);
-    return { success: true, results: vk };
-  }
-
-  // 'all': Search Rutube, VK Video, and YouTube simultaneously
-  const [rt, vk, yt] = await Promise.all([
-    searchRutube(q, 16).catch(() => []),
-    searchVK(q, 16).catch(() => []),
-    searchYouTube(q, 12).catch(() => [])
+  // 'all': Search VK Video and YouTube simultaneously
+  const [vk, yt] = await Promise.all([
+    searchVK(q, 20).catch(() => []),
+    searchYouTube(q, 16).catch(() => [])
   ]);
 
-  const all = [...rt, ...vk, ...yt];
+  const all = [...vk, ...yt];
   const seen = new Set();
   const unique = [];
 
