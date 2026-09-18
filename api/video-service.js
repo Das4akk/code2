@@ -1,3 +1,10 @@
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 function decodeHtml(str = '') {
   if (!str) return '';
   return str
@@ -12,23 +19,147 @@ function decodeHtml(str = '') {
     .trim();
 }
 
+// Priority Rutube Channels requested by user:
+// 1) 32869212: https://rutube.ru/channel/32869212/ ("Смотри кино!")
+// 2) 32181632: https://rutube.ru/channel/32181632/ ("Фильмач — фильмы и сериалы онлайн")
+const PRIORITY_CHANNEL_IDS = ['32869212', '32181632'];
+
+// In-memory catalog of priority channel videos
+let priorityCatalog = [];
+const priorityCatalogById = new Map();
+
+// In-memory cache of recent search results to instantly resolve rich metadata
+const recentSearchCache = new Map();
+function rememberSearchItem(item) {
+  if (!item || !item.url) return;
+  recentSearchCache.set(item.url, item);
+  if (item.id) recentSearchCache.set(item.id, item);
+  const norm = item.url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  recentSearchCache.set(norm, item);
+
+  if (recentSearchCache.size > 1000) {
+    const firstKey = recentSearchCache.keys().next().value;
+    recentSearchCache.delete(firstKey);
+  }
+}
+
+function loadPriorityCatalog() {
+  try {
+    const jsonPath = path.join(__dirname, 'rutube_priority_channels.json');
+    if (fs.existsSync(jsonPath)) {
+      const data = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+      if (Array.isArray(data)) {
+        priorityCatalog = data;
+        priorityCatalogById.clear();
+        for (const item of priorityCatalog) {
+          if (item.id) priorityCatalogById.set(item.id, item);
+          if (item.url) priorityCatalogById.set(item.url, item);
+        }
+        console.log(`[Rutube] Loaded ${priorityCatalog.length} priority channel videos into catalog.`);
+      }
+    }
+  } catch (err) {
+    console.warn('[Rutube] Failed to load priority channels catalog:', err.message);
+  }
+}
+
+// Initial load
+loadPriorityCatalog();
+
+// Background sync for newly uploaded videos on these channels
+export async function syncPriorityChannels() {
+  const browserHeaders = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    'Accept': 'application/json, text/plain, */*',
+    'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7'
+  };
+
+  for (const chId of PRIORITY_CHANNEL_IDS) {
+    try {
+      const res = await fetch(`https://rutube.ru/api/video/person/${chId}/?page=1&format=json`, {
+        headers: browserHeaders,
+        signal: AbortSignal.timeout(10000)
+      });
+      if (!res.ok) continue;
+      const data = await res.json();
+      const results = data.results || [];
+      let added = 0;
+      for (const item of results) {
+        if (!item || !item.id || priorityCatalogById.has(item.id)) continue;
+        let dur = '';
+        if (item.duration) {
+          const m = Math.floor(item.duration / 60);
+          const s = String(item.duration % 60).padStart(2, '0');
+          dur = `${m}:${s}`;
+        }
+        const vObj = {
+          id: item.id,
+          platform: 'rutube',
+          platformLabel: 'Rutube',
+          title: decodeHtml(item.title || ''),
+          url: item.video_url || `https://rutube.ru/video/${item.id}/`,
+          thumbnail: item.thumbnail_url || (item.picture_thumbnail ? item.picture_thumbnail.replace('{width}x{height}', '640x360') : ''),
+          author: decodeHtml(item.author?.name || (chId === '32869212' ? 'Смотри кино!' : 'Фильмач')),
+          authorAvatar: item.author?.avatar_url || '',
+          duration: dur
+        };
+        priorityCatalog.unshift(vObj);
+        priorityCatalogById.set(vObj.id, vObj);
+        if (vObj.url) priorityCatalogById.set(vObj.url, vObj);
+        added++;
+      }
+      if (added > 0) {
+        console.log(`[Rutube] Synced ${added} new videos from channel ${chId}`);
+      }
+    } catch (e) {
+      // ignore transient network errors during background sync
+    }
+  }
+}
+
+// Run sync after server starts, and periodically every 30 minutes
+const initialSync = setTimeout(() => {
+  syncPriorityChannels().catch(() => {});
+}, 3000);
+if (initialSync.unref) initialSync.unref();
+
+const syncInterval = setInterval(() => {
+  syncPriorityChannels().catch(() => {});
+}, 30 * 60 * 1000);
+if (syncInterval.unref) syncInterval.unref();
+
 export async function getVideoInfo(url) {
   if (!url || typeof url !== 'string') {
     return { success: false, error: 'Empty URL' };
   }
   const trimmed = url.trim();
 
+  // Instant check in recent search cache (guaranteed 100% correct metadata for clicked items)
+  const normUrl = trimmed.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  const cached = recentSearchCache.get(trimmed) || recentSearchCache.get(normUrl);
+  if (cached) {
+    return {
+      success: true,
+      title: cached.title,
+      author: cached.author || cached.platformLabel || 'Видео',
+      authorAvatar: cached.authorAvatar || '',
+      thumbnail: cached.thumbnail || '',
+      duration: cached.duration || '',
+      platform: cached.platform || 'unknown',
+      platformLabel: cached.platformLabel || 'Видео',
+      url: cached.url || trimmed
+    };
+  }
+
   // 1. YouTube
   if (/youtube\.com|youtu\.be/i.test(trimmed)) {
     try {
       let watchUrl = trimmed;
-      // Convert shorts or embed to watch?v=
       const shortsMatch = trimmed.match(/\/shorts\/([a-zA-Z0-9_-]{11})/);
       const embedMatch = trimmed.match(/\/embed\/([a-zA-Z0-9_-]{11})/);
       const shortMatch = trimmed.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
       const watchMatch = trimmed.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
       const ytId = shortsMatch?.[1] || embedMatch?.[1] || shortMatch?.[1] || watchMatch?.[1];
-
       if (ytId) {
         watchUrl = `https://www.youtube.com/watch?v=${ytId}`;
       }
@@ -68,7 +199,6 @@ export async function getVideoInfo(url) {
         let title = titleMatch ? decodeHtml(titleMatch[1].replace(/- YouTube$/i, '')) : '';
         const imgMatch = html.match(/<meta\s+property="og:image"\s+content="([^"]*)"/i);
         const authorMatch = html.match(/<link\s+itemprop="name"\s+content="([^"]*)"/i);
-
         if (title) {
           return {
             success: true,
@@ -88,9 +218,39 @@ export async function getVideoInfo(url) {
 
   // 2. Rutube
   if (/rutube\.ru/i.test(trimmed)) {
+    // Check if it's already in our priority channels catalog
+    const idMatch = trimmed.match(/rutube\.ru\/(?:video|play\/embed)\/([a-zA-Z0-9]+)/i);
+    const rtId = idMatch?.[1];
+    if (rtId && priorityCatalogById.has(rtId)) {
+      const cached = priorityCatalogById.get(rtId);
+      return {
+        success: true,
+        title: cached.title,
+        author: cached.author,
+        authorAvatar: cached.authorAvatar,
+        thumbnail: cached.thumbnail,
+        platform: 'rutube',
+        platformLabel: 'Rutube',
+        url: cached.url || trimmed
+      };
+    }
+    if (priorityCatalogById.has(trimmed)) {
+      const cached = priorityCatalogById.get(trimmed);
+      return {
+        success: true,
+        title: cached.title,
+        author: cached.author,
+        authorAvatar: cached.authorAvatar,
+        thumbnail: cached.thumbnail,
+        platform: 'rutube',
+        platformLabel: 'Rutube',
+        url: cached.url || trimmed
+      };
+    }
+
     try {
       const oembedRes = await fetch(`https://rutube.ru/api/oembed/?url=${encodeURIComponent(trimmed)}&format=json`, {
-        headers: { 'User-Agent': 'Mozilla/5.0' },
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
         signal: AbortSignal.timeout(4500)
       });
       if (oembedRes.ok) {
@@ -109,11 +269,9 @@ export async function getVideoInfo(url) {
         }
       }
 
-      // Try video ID API
-      const idMatch = trimmed.match(/rutube\.ru\/(?:video|play\/embed)\/([a-zA-Z0-9]+)/i);
-      if (idMatch && idMatch[1]) {
-        const apiRes = await fetch(`https://rutube.ru/api/video/${idMatch[1]}/`, {
-          headers: { 'User-Agent': 'Mozilla/5.0' },
+      if (rtId) {
+        const apiRes = await fetch(`https://rutube.ru/api/video/${rtId}/`, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
           signal: AbortSignal.timeout(4500)
         });
         if (apiRes.ok) {
@@ -141,7 +299,8 @@ export async function getVideoInfo(url) {
   if (/vimeo\.com/i.test(trimmed)) {
     try {
       const oembedRes = await fetch(`https://vimeo.com/api/oembed.json?url=${encodeURIComponent(trimmed)}`, {
-        signal: AbortSignal.timeout(4000)
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+        signal: AbortSignal.timeout(4500)
       });
       if (oembedRes.ok) {
         const data = await oembedRes.json();
@@ -163,59 +322,48 @@ export async function getVideoInfo(url) {
   // 4. VK Video
   if (/vk\.com|vkvideo\.ru/i.test(trimmed)) {
     try {
-      let embedUrl = trimmed;
-      const vkMatch = trimmed.match(/(?:video|video_ext\.php\?).*(?:oid=|video-?)(-?\d+)[_]([A-Za-z0-9]+)/i) ||
-                      trimmed.match(/video-?(\d+)_([A-Za-z0-9]+)/i);
-      if (vkMatch) {
-        const oid = vkMatch[1];
-        const vid = vkMatch[2];
-        embedUrl = `https://vk.com/video_ext.php?oid=${oid}&id=${vid}&hd=2&js_api=1`;
-      }
-
-      // Try open page
       const pageRes = await fetch(trimmed, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
           'Accept-Language': 'ru-RU,ru;q=0.9'
         },
-        signal: AbortSignal.timeout(4000)
+        redirect: 'manual',
+        signal: AbortSignal.timeout(3500)
       });
       if (pageRes.ok) {
         const html = await pageRes.text();
         const titleMatch = html.match(/<meta\s+property="og:title"\s+content="([^"]*)"/i) ||
                            html.match(/<title>([^<]*)<\/title>/i);
         const imgMatch = html.match(/<meta\s+property="og:image"\s+content="([^"]*)"/i);
-        let title = titleMatch ? decodeHtml(titleMatch[1].replace(/ - ВКонтакте$/i, '')) : '';
-        if (title) {
-          return {
-            success: true,
-            title,
-            author: 'VK',
-            thumbnail: imgMatch ? imgMatch[1] : '',
-            platform: 'vk',
-            platformLabel: 'VK Video',
-            url: embedUrl
-          };
-        }
+        let title = titleMatch ? decodeHtml(titleMatch[1].replace(/\|\s*ВКонтакте$/i, '')) : 'VK Video';
+        return {
+          success: true,
+          title,
+          author: 'VK Video',
+          thumbnail: imgMatch ? imgMatch[1] : '',
+          platform: 'vk',
+          platformLabel: 'VK Video',
+          url: trimmed
+        };
       }
-      return {
-        success: true,
-        title: 'VK Video',
-        author: 'VK',
-        thumbnail: '',
-        platform: 'vk',
-        platformLabel: 'VK Video',
-        url: embedUrl
-      };
     } catch (err) {
-      console.warn('[VideoInfo] VK error:', err.message);
+      // ignore
     }
+    return {
+      success: true,
+      title: 'VK Video',
+      author: 'VK Video',
+      thumbnail: '',
+      platform: 'vk',
+      platformLabel: 'VK Video',
+      url: trimmed
+    };
   }
 
   // 5. Twitch
   if (/twitch\.tv/i.test(trimmed)) {
-    const channelMatch = trimmed.match(/twitch\.tv\/([^/?]+)/i);
-    const channel = channelMatch ? channelMatch[1] : 'streamer';
+    const channelMatch = trimmed.match(/twitch\.tv\/([a-zA-Z0-9_]+)/i);
+    const channel = channelMatch ? channelMatch[1] : 'Twitch';
     return {
       success: true,
       title: `Стрим ${channel}`,
@@ -227,142 +375,182 @@ export async function getVideoInfo(url) {
     };
   }
 
-  // 6. Generic web page / Direct stream
-  try {
-    const pageRes = await fetch(trimmed, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
-      signal: AbortSignal.timeout(4500)
-    });
-    if (pageRes.ok) {
-      const contentType = pageRes.headers.get('content-type') || '';
-      if (contentType.includes('text/html')) {
-        const html = await pageRes.text();
-        const titleMatch = html.match(/<meta\s+property="og:title"\s+content="([^"]*)"/i) ||
-                           html.match(/<title>([^<]*)<\/title>/i);
-        const imgMatch = html.match(/<meta\s+property="og:image"\s+content="([^"]*)"/i);
-        const authorMatch = html.match(/<meta\s+name="author"\s+content="([^"]*)"/i);
-
-        let title = titleMatch ? decodeHtml(titleMatch[1]) : '';
-        if (title) {
-          return {
-            success: true,
-            title,
-            author: decodeHtml(authorMatch ? authorMatch[1] : ''),
-            thumbnail: imgMatch ? imgMatch[1] : '',
-            platform: 'web',
-            platformLabel: 'Веб',
-            url: trimmed
-          };
-        }
-      }
-    }
-  } catch (err) {}
-
-  // 7. Fallback direct media file
-  const filename = trimmed.split('/').pop().split('?')[0] || '';
-  const cleanName = decodeURIComponent(filename)
-    .replace(/\.[a-zA-Z0-9]{2,5}$/, '')
-    .replace(/[_-]+/g, ' ')
-    .trim();
+  // 6. Direct file / HLS m3u8
+  if (/\.(mp4|webm|ogg|m3u8|mpd)(\?.*)?$/i.test(trimmed)) {
+    const filename = trimmed.split('/').pop().split('?')[0] || 'Видео файл';
+    return {
+      success: true,
+      title: decodeURIComponent(filename),
+      author: 'Direct URL',
+      thumbnail: '',
+      platform: 'direct',
+      platformLabel: 'Прямая ссылка',
+      url: trimmed
+    };
+  }
 
   return {
     success: true,
-    title: cleanName || 'Медиа комната',
-    author: '',
+    title: 'Видео',
+    author: 'Интернет',
     thumbnail: '',
-    platform: /\.(mp4|webm|m4v|mov|mkv|m3u8)(\?|#|$)/i.test(trimmed) ? 'direct' : 'custom',
-    platformLabel: 'Прямой поток',
+    platform: 'unknown',
+    platformLabel: 'Видео',
     url: trimmed
   };
 }
 
-function scoreVideoRelevance(itemTitle, originalQuery) {
-  const t = (itemTitle || '').toLowerCase();
-  const q = (originalQuery || '').toLowerCase().trim();
-  if (!t || !q) return 0;
+export function parseSearchQuery(rawQuery = '') {
+  let q = String(rawQuery || '').trim();
 
-  let score = 0;
+  // Normalize S01E02 or 1x02 into "1 сезон 2 серия"
+  q = q.replace(/s(\d{1,2})\s*e(\d{1,2})/giu, (_, s, e) => `${parseInt(s, 10)} сезон ${parseInt(e, 10)} серия`);
+  q = q.replace(/(\d{1,2})\s*x\s*(\d{1,2})/giu, (_, s, e) => `${parseInt(s, 10)} сезон ${parseInt(e, 10)} серия`);
 
-  // Exact full query match
-  if (t.includes(q)) score += 60;
+  const qLower = q.toLowerCase();
 
-  // Word token matches
-  const words = q.split(/\s+/).filter((w) => w.length > 1);
-  let matchedCount = 0;
-  for (const w of words) {
-    if (t.includes(w)) {
-      matchedCount++;
-      score += 8;
-    }
-  }
-  if (words.length > 0 && matchedCount === words.length) {
-    score += 30; // All search words present in title
+  // Season extraction: handles "3 сезон", "3-й сезон", "сезон 3", "season 3"
+  let season = null;
+  const sBefore = qLower.match(/(\d+)\s*(?:-?й\s*)?(?:сезон|season)/iu);
+  if (sBefore) {
+    season = parseInt(sBefore[1], 10);
+  } else {
+    const sAfter = qLower.match(/(?:сезон|season)\s*[:#-]?\s*(\d+)/iu);
+    if (sAfter) season = parseInt(sAfter[1], 10);
   }
 
-  // Season match
-  const sMatch =
-    q.match(/(\d+)\s*(?:сезон|season)/i) ||
-    q.match(/(?:сезон|season)\s*(\d+)/i) ||
-    q.match(/\bs(\d{1,2})\b/i);
-  if (sMatch) {
-    const sNum = parseInt(sMatch[1], 10);
-    const sRegex = new RegExp(
-      `(?:${sNum}\\s*(?:сезон|season|s)|(?:сезон|season)\\s*${sNum})`,
-      'i'
-    );
-    if (sRegex.test(t)) {
-      score += 45; // Exact matching season!
-    } else if (/(?:сезон|season)/i.test(t)) {
-      score -= 25; // Wrong season penalty
-    }
+  // Episode extraction: handles "5 серия", "5-я серия", "серия 5", "5 эпизод", "эпизод 5"
+  let episode = null;
+  const eBefore = qLower.match(/(\d+)\s*(?:-?[яеи]\s*)?(?:сери[яиюе]|эпизод|episode|ep|eps)/iu);
+  if (eBefore) {
+    episode = parseInt(eBefore[1], 10);
+  } else {
+    const eAfter = qLower.match(/(?:сери[яиюе]|эпизод|episode|ep)\s*[:#-]?\s*(\d+)/iu);
+    if (eAfter) episode = parseInt(eAfter[1], 10);
   }
 
-  // Episode match
-  const eMatch =
-    q.match(/(\d+)\s*(?:сери[яию]|серия|эпизод|серии|ep|eps)/i) ||
-    q.match(/(?:сери[яию]|эпизод|ep)\s*(\d+)/i) ||
-    q.match(/\be(\d{1,2})\b/i);
-  if (eMatch) {
-    const eNum = parseInt(eMatch[1], 10);
-    const eRegex = new RegExp(
-      `(?:${eNum}\\s*(?:сери|эпизод|ep)|(?:сери|эпизод|ep)\\s*${eNum})`,
-      'i'
-    );
-    if (eRegex.test(t)) {
-      score += 45; // Exact matching episode!
-    } else if (/(?:сери[яию]|эпизод)/i.test(t)) {
-      score -= 20; // Wrong episode penalty
-    }
-  }
+  // Extract core show title
+  let core = qLower
+    // Remove season phrases
+    .replace(/\d+\s*(?:-?й\s*)?(?:сезон|season)/giu, ' ')
+    .replace(/(?:сезон|season)\s*[:#-]?\s*\d+/giu, ' ')
+    .replace(/(?:сезон|season)/giu, ' ')
+    // Remove episode phrases
+    .replace(/\d+\s*(?:-?[яеи]\s*)?(?:сери[яиюе]|эпизод|episode|ep|eps)/giu, ' ')
+    .replace(/(?:сери[яиюе]|эпизод|episode|ep)\s*[:#-]?\s*\d+/giu, ' ')
+    .replace(/(?:сери[яиюе]|эпизод|episode|ep|eps)/giu, ' ')
+    // Remove common search noise phrases
+    .replace(/(?:все\s+серии(?:\s+подряд)?|смотреть\s+онлайн|в\s+хорошем\s+качестве|на\s+русском|дубляж|full\s*hd|1080p|720p|бесплатно)/giu, ' ')
+    .replace(/[«»""'()\[\],.!?:;\/\\-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
-  // Demote recaps/trailers/teasers/reactions unless user specifically searched for them
-  if (
-    !/(?:трейлер|тизер|teaser|trailer)/i.test(q) &&
-    /(?:трейлер|тизер|teaser|trailer|анонс)/i.test(t)
-  ) {
-    score -= 40;
-  }
-  if (
-    !/(?:обзор|разбор|recap|reaction|реакци)/i.test(q) &&
-    /(?:обзор|разбор|recap|реакция|reaction)/i.test(t)
-  ) {
-    score -= 30;
-  }
-  if (
-    !/(?:клип|музыка|music|clip)/i.test(q) &&
-    /(?:клип|музыка|ost|soundtrack)/i.test(t)
-  ) {
-    score -= 15;
-  }
+  const coreWords = core.split(/\s+/).filter((w) => w.length >= 2);
 
-  return score;
+  return {
+    season,
+    episode,
+    core,
+    coreWords,
+    original: String(rawQuery || '').trim()
+  };
 }
 
-function cleanSearchQuery(query = '') {
+export function scoreVideoRelevance(itemTitle, rawQueryOrParsed, itemAuthor = '') {
+  const t = (itemTitle || '').toLowerCase();
+  const a = (itemAuthor || '').toLowerCase();
+  if (!t) return 0;
+
+  const parsed =
+    typeof rawQueryOrParsed === 'object' && rawQueryOrParsed !== null && 'coreWords' in rawQueryOrParsed
+      ? rawQueryOrParsed
+      : parseSearchQuery(String(rawQueryOrParsed || ''));
+
+  const { season, episode, core, coreWords, original } = parsed;
+  const origLower = (original || '').toLowerCase().trim();
+  if (!origLower) return 0;
+
+  // CRITICAL: If query has core words (e.g. series or film title), at least ONE word
+  // or root stem MUST match in the video title, or author MUST match.
+  // Otherwise, it is an unrelated show and score MUST be 0!
+  if (coreWords.length > 0) {
+    let matchedCore = 0;
+    for (const w of coreWords) {
+      const stem = w.length >= 5 ? w.slice(0, -1) : w;
+      if (t.includes(w) || t.includes(stem)) {
+        matchedCore++;
+      }
+    }
+    const authorMatches = coreWords.some((w) => a.includes(w));
+    if (matchedCore === 0 && !authorMatches) {
+      return 0; // Completely unrelated show/series!
+    }
+  }
+
+  let score = 50;
+
+  // Match core title phrase
+  if (core && t.includes(core)) {
+    score += 50;
+  }
+
+  // Exact original query match
+  if (t.includes(origLower)) {
+    score += 60;
+  }
+
+  // Season check
+  if (season !== null) {
+    const sRegex = new RegExp(
+      `(?:${season}\\s*(?:-?й\\s*)?(?:сезон|season)|(?:сезон|season)\\s*[:#-]?\\s*${season}|\\bs0*${season}\\b)`,
+      'iu'
+    );
+    if (sRegex.test(t)) {
+      score += 60; // Exact matching season!
+    } else {
+      const otherS =
+        t.match(/(\d+)\s*(?:-?й\s*)?(?:сезон|season)/iu) ||
+        t.match(/(?:сезон|season)\s*[:#-]?\s*(\d+)/iu);
+      if (otherS && parseInt(otherS[1], 10) !== season) {
+        score -= 50; // Heavy penalty for wrong season
+      }
+    }
+  }
+
+  // Episode check
+  if (episode !== null) {
+    const eRegex = new RegExp(
+      `(?:${episode}\\s*(?:-?[яеи]\\s*)?(?:сери|эпизод|ep)|(?:сери|эпизод|ep)\\s*[:#-]?\\s*${episode}|\\be0*${episode}\\b)`,
+      'iu'
+    );
+    const isAllSeries = /(?:все\s+серии|весь\s+сезон)/iu.test(t);
+    if (eRegex.test(t)) {
+      score += 70; // Exact matching episode!
+    } else if (isAllSeries) {
+      score += 30; // Contains all series of the season
+    } else {
+      const otherE =
+        t.match(/(\d+)\s*(?:-?[яеи]\s*)?(?:сери|эпизод)/iu) ||
+        t.match(/(?:сери|эпизод)\s*[:#-]?\s*(\d+)/iu);
+      if (otherE && parseInt(otherE[1], 10) !== episode) {
+        score -= 40; // Penalty for wrong episode
+      }
+    }
+  }
+
+  // Penalty for trailers / teasers / reviews unless explicitly searched
+  const isTrailer = /(?:трейлер|тизер|обзор|отрывок|реакция|фрагмент|trailer|teaser|review|клип)/iu.test(t);
+  const wantsTrailer = /(?:трейлер|тизер|trailer|teaser)/iu.test(origLower);
+  if (isTrailer && !wantsTrailer) {
+    score -= 40;
+  }
+
+  return Math.max(0, score);
+}
+
+export function cleanSearchQuery(query = '') {
   let cleaned = query
-    // Normalize S01E01 -> 1 сезон 1 серия
     .replace(/\bs(\d{1,2})e(\d{1,2})\b/gi, (_, s, e) => `${parseInt(s, 10)} сезон ${parseInt(e, 10)} серия`)
-    // Remove common search noise phrases that cause 0 results
     .replace(/(?:смотреть\s+онлайн|в\s+хорошем\s+качестве|full\s*hd|1080p|720p|бесплатно|на\s+русском|все\s+серии\s+подряд)/gi, ' ')
     .replace(/[«»""'']/g, ' ')
     .replace(/\s+/g, ' ')
@@ -371,6 +559,10 @@ function cleanSearchQuery(query = '') {
 }
 
 export async function searchYouTube(query, limit = 16) {
+  const q = String(query || '').trim();
+  if (!q) return [];
+  const parsed = parseSearchQuery(q);
+
   const trySearch = async (qText) => {
     const res = await fetch('https://www.youtube.com/results?search_query=' + encodeURIComponent(qText), {
       headers: {
@@ -385,25 +577,35 @@ export async function searchYouTube(query, limit = 16) {
     if (!match) return [];
     const data = JSON.parse(match[1]);
     const contents = data.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents?.[0]?.itemSectionRenderer?.contents || [];
+
     const list = [];
     for (const item of contents) {
       const vr = item.videoRenderer;
       if (vr && vr.videoId) {
-        const title = decodeHtml(vr.title?.runs?.[0]?.text || '');
+        const title = decodeHtml(vr.title?.runs?.[0]?.text || vr.title?.simpleText || '');
         if (title) {
+          const author = decodeHtml(vr.ownerText?.runs?.[0]?.text || vr.longBylineText?.runs?.[0]?.text || 'YouTube');
           const authorAvatar = vr.channelThumbnailSupportedRenderers?.channelThumbnailWithLinkRenderer?.thumbnail?.thumbnails?.[0]?.url || '';
-          list.push({
+          const thumb = vr.thumbnail?.thumbnails?.pop()?.url || `https://i.ytimg.com/vi/${vr.videoId}/hqdefault.jpg`;
+          const dur = vr.lengthText?.simpleText || vr.lengthText?.runs?.[0]?.text || '';
+          const score = scoreVideoRelevance(title, parsed, author);
+
+          if (score === 0 && parsed.coreWords.length > 0) continue;
+
+          const videoObj = {
             id: vr.videoId,
             platform: 'youtube',
             platformLabel: 'YouTube',
             title,
             url: `https://www.youtube.com/watch?v=${vr.videoId}`,
-            thumbnail: vr.thumbnail?.thumbnails?.[0]?.url || `https://i.ytimg.com/vi/${vr.videoId}/hqdefault.jpg`,
-            author: decodeHtml(vr.ownerText?.runs?.[0]?.text || 'YouTube'),
-            authorAvatar: authorAvatar,
-            duration: vr.lengthText?.simpleText || '',
-            _score: scoreVideoRelevance(title, query)
-          });
+            thumbnail: thumb,
+            author,
+            authorAvatar,
+            duration: dur,
+            _score: score
+          };
+          rememberSearchItem(videoObj);
+          list.push(videoObj);
         }
       }
     }
@@ -416,7 +618,6 @@ export async function searchYouTube(query, limit = 16) {
     if ((!list || list.length < 3) && cleaned && cleaned !== query) {
       const fallbackList = await trySearch(cleaned);
       if (fallbackList.length > 0) {
-        // Merge without duplicates
         const seen = new Set(list.map((x) => x.id));
         for (const item of fallbackList) {
           if (!seen.has(item.id)) {
@@ -426,8 +627,7 @@ export async function searchYouTube(query, limit = 16) {
         }
       }
     }
-
-    list.sort((a, b) => b._score - a._score);
+    list.sort((a, b) => (b._score || 0) - (a._score || 0));
     return list.slice(0, limit);
   } catch (err) {
     console.warn('[Search] YouTube error:', err.message);
@@ -435,8 +635,106 @@ export async function searchYouTube(query, limit = 16) {
   }
 }
 
-export async function searchRutube(query, limit = 16) {
-  const trySearch = async (qText) => {
+export async function searchVK(query, limit = 18) {
+  const q = String(query || '').trim();
+  if (!q) return [];
+  const parsed = parseSearchQuery(q);
+
+  try {
+    const res = await fetch('https://vk.com/al_video.php?act=search_video', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-Requested-With': 'XMLHttpRequest',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7'
+      },
+      body: 'al=1&q=' + encodeURIComponent(q),
+      signal: AbortSignal.timeout(7000)
+    });
+
+    if (!res.ok) return [];
+    const buf = await res.arrayBuffer();
+    const text = new TextDecoder('windows-1251').decode(buf);
+    const json = JSON.parse(text);
+    const rawList = json?.payload?.[1]?.[2]?.list || [];
+
+    const list = [];
+    for (const item of rawList) {
+      const oid = item[0];
+      const vid = item[1];
+      const thumb = item[2] || '';
+      const rawTitle = decodeHtml(item[3] || '');
+      const durSec = item[4];
+
+      let dur = '';
+      if (typeof durSec === 'number' && durSec > 0 && durSec < 86400) {
+        const m = Math.floor(durSec / 60);
+        const s = String(durSec % 60).padStart(2, '0');
+        dur = `${m}:${s}`;
+      }
+
+      const score = scoreVideoRelevance(rawTitle, parsed, 'VK Video');
+      if (score === 0 && parsed.coreWords.length > 0) continue;
+
+      const videoUrl = `https://vk.com/video${oid}_${vid}`;
+      const videoObj = {
+        id: `vk_${oid}_${vid}`,
+        platform: 'vk',
+        platformLabel: 'VK Video',
+        title: rawTitle || 'VK Video',
+        url: videoUrl,
+        thumbnail: thumb,
+        author: 'VK Video',
+        authorAvatar: 'https://cdn-icons-png.flaticon.com/128/145/145813.png',
+        duration: dur,
+        _score: score
+      };
+
+      rememberSearchItem(videoObj);
+      list.push(videoObj);
+    }
+
+    list.sort((a, b) => (b._score || 0) - (a._score || 0));
+    return list.slice(0, limit);
+  } catch (err) {
+    console.warn('[Search] VK error:', err.message);
+    return [];
+  }
+}
+
+export async function searchRutube(query, limit = 18) {
+  const q = String(query || '').trim();
+  if (!q) return [];
+  const parsed = parseSearchQuery(q);
+  const qClean = cleanSearchQuery(query);
+  const qLower = q.toLowerCase();
+
+  // 1. Search priority channel catalog first
+  const priorityMatches = [];
+  const seenIds = new Set();
+
+  for (const item of priorityCatalog) {
+    const score = scoreVideoRelevance(item.title, parsed, item.author);
+
+    // Only include if score > 0 (strictly matching show/title/author)
+    if (score > 0) {
+      const boostedScore = score + 50; // VIP Priority Channel bonus
+      const videoObj = {
+        ...item,
+        _score: boostedScore
+      };
+      rememberSearchItem(videoObj);
+      priorityMatches.push(videoObj);
+      seenIds.add(item.id);
+      if (item.url) seenIds.add(item.url);
+    }
+  }
+
+  priorityMatches.sort((a, b) => b._score - a._score);
+
+  // 2. Live Rutube API search to find global videos
+  const tryLiveSearch = async (qText) => {
     const urls = [
       'https://rutube.ru/api/search/video/?query=' + encodeURIComponent(qText) + '&format=json',
       'https://rutube.ru/api/search/video/?query=' + encodeURIComponent(qText)
@@ -447,20 +745,14 @@ export async function searchRutube(query, limit = 16) {
       'Accept': 'application/json, text/plain, */*',
       'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
       'Referer': 'https://rutube.ru/',
-      'Origin': 'https://rutube.ru',
-      'Sec-Ch-Ua': '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
-      'Sec-Ch-Ua-Mobile': '?0',
-      'Sec-Ch-Ua-Platform': '"Windows"',
-      'Sec-Fetch-Dest': 'empty',
-      'Sec-Fetch-Mode': 'cors',
-      'Sec-Fetch-Site': 'same-site'
+      'Origin': 'https://rutube.ru'
     };
 
     for (const u of urls) {
       try {
         const res = await fetch(u, {
           headers: browserHeaders,
-          signal: AbortSignal.timeout(9000)
+          signal: AbortSignal.timeout(7000)
         });
         if (!res.ok) continue;
         const data = await res.json();
@@ -474,71 +766,105 @@ export async function searchRutube(query, limit = 16) {
               const s = String(item.duration % 60).padStart(2, '0');
               dur = `${m}:${s}`;
             }
-            list.push({
-              id: item.id || item.video_url,
+            const itemId = item.id || item.video_url;
+            const authorName = decodeHtml(item.author?.name || 'Rutube');
+            let itemScore = scoreVideoRelevance(title, parsed, authorName);
+
+            // If score is 0 and query specifies a show, reject unrelated videos
+            if (itemScore === 0 && parsed.coreWords.length > 0) continue;
+
+            if (authorName.includes('Смотри кино') || authorName.includes('Фильмач')) {
+              itemScore += 50;
+            }
+
+            const videoObj = {
+              id: itemId,
               platform: 'rutube',
               platformLabel: 'Rutube',
               title,
               url: item.video_url,
               thumbnail: item.thumbnail_url || (item.picture_thumbnail ? item.picture_thumbnail.replace('{width}x{height}', '640x360') : ''),
-              author: decodeHtml(item.author?.name || 'Rutube'),
+              author: authorName,
               authorAvatar: item.author?.avatar_url || '',
               duration: dur,
-              _score: scoreVideoRelevance(title, query)
-            });
+              _score: itemScore
+            };
+            rememberSearchItem(videoObj);
+            list.push(videoObj);
           }
         }
         if (list.length > 0) return list;
       } catch (e) {
-        // continue to next url or retry
+        // continue
       }
     }
     return [];
   };
 
+  let liveList = [];
   try {
-    let list = await trySearch(query);
-    const cleaned = cleanSearchQuery(query);
+    liveList = await tryLiveSearch(query);
 
-    // If initial query returned 0 or very few results, fallback to cleaned query
-    if ((!list || list.length < 3) && cleaned && cleaned !== query) {
-      const fallbackList = await trySearch(cleaned);
+    // If few results and query has season/episode, also query smart variations
+    if (liveList.length < 5 && (parsed.season !== null || parsed.episode !== null)) {
+      const variations = [];
+      if (parsed.core && parsed.season !== null) {
+        variations.push(`${parsed.core} ${parsed.season} сезон`);
+      }
+      if (parsed.core && parsed.core !== query.toLowerCase()) {
+        variations.push(parsed.core);
+      }
+      for (const v of variations) {
+        const vList = await tryLiveSearch(v);
+        if (vList.length > 0) {
+          const seenLive = new Set(liveList.map((x) => x.id));
+          for (const item of vList) {
+            if (!seenLive.has(item.id)) {
+              seenLive.add(item.id);
+              liveList.push(item);
+            }
+          }
+        }
+      }
+    } else if (liveList.length < 3 && qClean && qClean !== query) {
+      const fallbackList = await tryLiveSearch(qClean);
       if (fallbackList.length > 0) {
-        const seen = new Set(list.map((x) => x.id));
+        const seenLive = new Set(liveList.map((x) => x.id));
         for (const item of fallbackList) {
-          if (!seen.has(item.id)) {
-            seen.add(item.id);
-            list.push(item);
+          if (!seenLive.has(item.id)) {
+            seenLive.add(item.id);
+            liveList.push(item);
           }
         }
       }
     }
-
-    // If still 0 results and query mentions a season/episode, try series title + season
-    if ((!list || list.length === 0)) {
-      const sMatch = query.match(/(\d+)\s*(?:сезон|season)/i) || query.match(/(?:сезон|season)\s*(\d+)/i);
-      const titleMatch = query.replace(/(?:сезон|season|серия|эпизод|\d+)/gi, '').trim();
-      if (titleMatch.length > 2 && sMatch) {
-        const broadQuery = `${titleMatch} ${sMatch[1]} сезон`;
-        const broadList = await trySearch(broadQuery);
-        if (broadList.length > 0) {
-          list = broadList;
-        }
-      }
-    }
-
-    list.sort((a, b) => b._score - a._score);
-    return list.slice(0, limit);
   } catch (err) {
-    console.warn('[Search] Rutube error:', err.message);
-    return [];
+    console.warn('[Search] Rutube live search error:', err.message);
   }
+
+  // 3. Merge priority channel matches with live search results
+  const merged = [...priorityMatches];
+  for (const item of liveList) {
+    if (!seenIds.has(item.id) && !seenIds.has(item.url)) {
+      seenIds.add(item.id);
+      if (item.url) seenIds.add(item.url);
+      merged.push(item);
+    }
+  }
+
+  merged.sort((a, b) => (b._score || 0) - (a._score || 0));
+
+  // Fallback if 0 results and user specifically queried channel name
+  if (merged.length === 0 && (qLower.includes('смотри кино') || qLower.includes('фильмач'))) {
+    return priorityCatalog.slice(0, limit);
+  }
+
+  return merged.slice(0, limit);
 }
 
 export async function searchVideos(query, platform = 'all') {
   const q = String(query || '').trim();
   if (!q) return { success: true, results: [] };
-
   const normPlat = String(platform || 'all').toLowerCase();
 
   if (normPlat === 'youtube') {
@@ -551,18 +877,30 @@ export async function searchVideos(query, platform = 'all') {
     return { success: true, results: rt };
   }
 
-  // Interleave 'all' (YouTube + Rutube)
-  const [yt, rt] = await Promise.all([
-    searchYouTube(q, 10),
-    searchRutube(q, 10)
-  ]);
-
-  const combined = [];
-  const maxLen = Math.max(yt.length, rt.length);
-  for (let i = 0; i < maxLen; i++) {
-    if (yt[i]) combined.push(yt[i]);
-    if (rt[i]) combined.push(rt[i]);
+  if (normPlat === 'vk') {
+    const vk = await searchVK(q, 18);
+    return { success: true, results: vk };
   }
 
-  return { success: true, results: combined };
+  // 'all': Search Rutube, VK Video, and YouTube simultaneously
+  const [rt, vk, yt] = await Promise.all([
+    searchRutube(q, 16).catch(() => []),
+    searchVK(q, 16).catch(() => []),
+    searchYouTube(q, 12).catch(() => [])
+  ]);
+
+  const all = [...rt, ...vk, ...yt];
+  const seen = new Set();
+  const unique = [];
+
+  for (const item of all) {
+    const key = item.url || item.id;
+    if (!seen.has(key)) {
+      seen.add(key);
+      unique.push(item);
+    }
+  }
+
+  unique.sort((a, b) => (b._score || 0) - (a._score || 0));
+  return { success: true, results: unique.slice(0, 24) };
 }

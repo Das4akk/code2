@@ -1,6 +1,6 @@
 {
-  "name": "COWIO",
-  "description": "Платформа совместного просмотра видео и онлайн-кинотеатр",
+  "name": "COWIO - Онлайн Кинотеатр Вместе",
+  "description": "Платформа совместного просмотра видео и фильмов с синхронизацией Rutube и YouTube, поддержкой комнат и чата.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

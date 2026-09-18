@@ -1,3 +1,2509 @@
+/* ===== CONSOLIDATED MODULE: emojis_registry.js ===== */
+const ANIMATED_EMOJIS = [
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/1st%20Place%20Medal.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/2nd%20Place%20Medal.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/3rd%20Place%20Medal.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Admission%20Tickets.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Artist%20Palette.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Balloon.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Basketball.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Christmas%20Tree.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Confetti%20Ball.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Crystal%20Ball.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Firecracker.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Fireworks.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Jack%20O%20Lantern.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Magic%20Wand.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Military%20Medal.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Mirror%20Ball.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Party%20Popper.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Performing%20Arts.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Soccer%20Ball.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkler.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sports%20Medal.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Ticket.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Trophy.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Video%20Game.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Ant.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Baby%20Chick.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Bat.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Bear.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Beetle.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Bird.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Bison.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Black%20Cat.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Blossom.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Bouquet.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Bug.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Butterfly.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Cactus.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Cat%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Cat.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Cherry%20Blossom.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Chicken.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Cloud%20With%20Lightning%20And%20Rain.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Cloud%20With%20Lightning.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Cloud%20With%20Rain.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Cloud%20With%20Snow.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Cloud.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Cockroach.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Cow.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Cricket.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Deciduous%20Tree.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Deer.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Dog%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Dove.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Duck.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Evergreen%20Tree.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/First%20Quarter%20Moon%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/First%20Quarter%20Moon.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fish.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Flamingo.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Four%20Leaf%20Clover.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fox.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Frog.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Front%20Facing%20Baby%20Chick.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Full%20Moon%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Full%20Moon.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Giraffe.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Glowing%20Star.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Gorilla.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Hamster.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Hatching%20Chick.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Hedgehog.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Herb.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Hibiscus.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/High%20Voltage.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Honeybee.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Horse%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Horse.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Kangaroo.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Koala.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Lady%20Beetle.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Last%20Quarter%20Moon%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Last%20Quarter%20Moon.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Leopard.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Lion.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Llama.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Lobster.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Microbe.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Monkey%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Mosquito.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Mouse%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/New%20Moon%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/New%20Moon.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Octopus.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Owl.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Ox.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Palm%20Tree.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Panda.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Parrot.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Paw%20Prints.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Penguin.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Pig%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Pig%20Nose.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Polar%20Bear.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Rabbit%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Rabbit.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Raccoon.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Rainbow.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Rose.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Rosette.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Sauropod.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Seal.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Seedling.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Shamrock.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Shrimp.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Snail.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Snake.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Snowflake.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Snowman%20Without%20Snow.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Snowman.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Spider%20Web.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Spider.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Spouting%20Whale.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Squid.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Sun%20Behind%20Cloud.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Sun%20Behind%20Large%20Cloud.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Sun%20Behind%20Rain%20Cloud.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Sun%20Behind%20Small%20Cloud.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Sun%20With%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Sun.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Swan.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/T%20Rex.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Tiger%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Tiger.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Tropical%20Fish.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Tulip.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Turkey.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Turtle.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Unicorn.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Waning%20Crescent%20Moon.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Waxing%20Crescent%20Moon.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Waxing%20Gibbous%20Moon.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Zebra.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Black%20Flag.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Chequered%20Flag.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Argentina.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Armenia.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Austria.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Bahamas.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Belarus.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Belgium.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Benin.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Brazil.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Bulgaria.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Burkina%20Faso.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Cameroon.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Chad.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20China.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Cote%20Divoire.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Croatia.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Czechia.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Djibouti.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Equatorial%20Guinea.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Estonia.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20France.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Gabon.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Germany.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Ghana.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Guinea%20Bissau.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Guinea.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Hungary.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20India.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Indonesia.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Ireland.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Italy.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Japan.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Jordan.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Lithuania.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Luxembourg.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Madagascar.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Mali.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Monaco.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Morocco.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Mozambique.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Myanmar%20Burma.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Netherlands.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Nigeria.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Palestinian%20Territories.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Peru.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Philippines.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Poland.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Romania.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Russia.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Sao%20Tome%20Principe.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Saudi%20Arabia.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Senegal.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Sierra%20Leone.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Singapore.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Sint%20Maarten.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Somalia.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20South%20Korea.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20South%20Sudan.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Spain.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Sudan.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Ukraine.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20United%20Arab%20Emirates.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20United%20Kingdom.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20United%20States.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Uzbekistan.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Vietnam.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Western%20Sahara.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Flag%20Yemen.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Pirate%20Flag.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Triangular%20Flag.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/White%20Flag.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Baby%20Bottle.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Banana.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Bento%20Box.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Beverage%20Box.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Birthday%20Cake.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Bottle%20With%20Popping%20Cork.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Bubble%20Tea.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Canned%20Food.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Chocolate%20Bar.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Clinking%20Glasses.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Cocktail%20Glass.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Cookie.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Cooking.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Cup%20With%20Straw.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Cupcake.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Custard.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Dango.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Doughnut.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Fish%20Cake%20With%20Swirl.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Fork%20And%20Knife%20With%20Plate.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/French%20Fries.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Glass%20Of%20Milk.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Hamburger.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Hot%20Beverage.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Hot%20Dog.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Lollipop.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Mate.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Meat%20On%20Bone.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Oden.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Pancakes.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Pie.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Pizza.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Popcorn.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Poultry%20Leg.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Pouring%20Liquid.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Pretzel.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Rice%20Ball.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Rice%20Cracker.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Sandwich.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Shortcake.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Soft%20Ice%20Cream.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Strawberry.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Stuffed%20Flatbread.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Sushi.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Taco.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Tropical%20Drink.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Tumbler%20Glass.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Wine%20Glass.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Abacus.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Ballot%20Box%20With%20Ballot.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Bar%20Chart.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Bomb.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Books.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Briefcase.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Card%20Index%20Dividers.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Chart%20Decreasing.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Chart%20Increasing.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Clapper%20Board.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Coffin.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Coin.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/File%20Folder.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Gem%20Stone.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Graduation%20Cap.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Handbag.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/High%20Heeled%20Shoe.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Hourglass%20Done.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Hourglass%20Not%20Done.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Identification%20Card.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Inbox%20Tray.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Incoming%20Envelope.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Key.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Keyboard.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Laptop.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Light%20Bulb.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Luggage.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Magnifying%20Glass%20Tilted%20Left.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Magnifying%20Glass%20Tilted%20Right.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Megaphone.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Microphone.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Microscope.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Military%20Helmet.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Mobile%20Phone%20With%20Arrow.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Mobile%20Phone.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Money%20Bag.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Money%20With%20Wings.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Musical%20Note.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Musical%20Notes.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Newspaper.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Old%20Key.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Open%20Book.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Outbox%20Tray.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Pencil.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Pill.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Printer.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Purse.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Reminder%20Ribbon.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Roll%20Of%20Paper.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Shopping%20Bags.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Shopping%20Cart.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Soap.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Sponge.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Stethoscope.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Studio%20Microphone.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Syringe.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Tear%20Off%20Calendar.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Telephone%20Receiver.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Telephone.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Telescope.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Television.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Test%20Tube.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Thermometer.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Toolbox.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Top%20Hat.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Baby.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Backhand%20Index%20Pointing%20Down.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Backhand%20Index%20Pointing%20Left.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Backhand%20Index%20Pointing%20Right.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Backhand%20Index%20Pointing%20Up.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Biting%20Lip.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Bone.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Bust%20In%20Silhouette.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Call%20Me%20Hand.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Clapping%20Hands.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Crossed%20Fingers.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Ear%20With%20Hearing%20Aid.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Ear.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Eyes.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Family%20Man%20Woman%20Girl%20Boy.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Flexed%20Biceps.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Folded%20Hands.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Foot.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Footprints.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Hand%20With%20Fingers%20Splayed.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Hand%20With%20Index%20Finger%20And%20Thumb%20Crossed.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Handshake.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Heart%20Hands.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Index%20Pointing%20At%20The%20Viewer.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Index%20Pointing%20Up.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Left%20Facing%20Fist.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Leftwards%20Hand.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Leg.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Love%20You%20Gesture.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Man%20Dancing.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Man%20Facepalming.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Man%20Health%20Worker.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Man%20Police%20Officer.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Man%20Shrugging.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Man%20Teacher.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Man%20Technologist.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Man%20Vampire.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Man%20Zombie.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Mechanical%20Arm.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Mechanical%20Leg.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Middle%20Finger.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Mouth.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Mrs%20Claus.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Mx%20Claus.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Nail%20Polish.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Nose.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Ok%20Hand.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Old%20Woman.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Oncoming%20Fist.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Open%20Hands.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Palm%20Down%20Hand.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Palm%20Up%20Hand.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Palms%20Up%20Together.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/People%20Hugging.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Person%20Facepalming.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Person%20Shrugging.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Pinched%20Fingers.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Pinching%20Hand.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Pregnant%20Woman.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Raised%20Back%20Of%20Hand.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Raised%20Fist.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Raised%20Hand.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Raising%20Hands.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Right%20Facing%20Fist.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Rightwards%20Hand.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Santa%20Claus.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Sign%20Of%20The%20Horns.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Speaking%20Head.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Technologist.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Thumbs%20Down.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Thumbs%20Up.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Tongue.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Tooth.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Vampire.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Victory%20Hand.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Vulcan%20Salute.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Waving%20Hand.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Woman%20Dancing.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Woman%20Facepalming.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Woman%20Health%20Worker.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Woman%20Police%20Officer.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Woman%20Shrugging.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Woman%20Technologist.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Woman%20Vampire.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Woman%20Zombie.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Writing%20Hand.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Zombie.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Alien%20Monster.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Alien.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Angry%20Face%20With%20Horns.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Angry%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Anguished%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Anxious%20Face%20With%20Sweat.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Astonished%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Beaming%20Face%20With%20Smiling%20Eyes.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Cat%20With%20Tears%20Of%20Joy.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Cat%20With%20Wry%20Smile.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Clown%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Cold%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Confounded%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Confused%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Cowboy%20Hat%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Crying%20Cat.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Crying%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Disappointed%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Disguised%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Dizzy%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Dotted%20Line%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Downcast%20Face%20With%20Sweat.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Drooling%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Exploding%20Head.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Expressionless%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20Blowing%20A%20Kiss.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20Exhaling.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20Holding%20Back%20Tears.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20In%20Clouds.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20Savoring%20Food.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20Screaming%20In%20Fear.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20Vomiting.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Diagonal%20Mouth.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Hand%20Over%20Mouth.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Head%20Bandage.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Medical%20Mask.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Monocle.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Open%20Eyes%20And%20Hand%20Over%20Mouth.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Open%20Mouth.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Peeking%20Eye.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Raised%20Eyebrow.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Rolling%20Eyes.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Spiral%20Eyes.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Steam%20From%20Nose.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Symbols%20On%20Mouth.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Tears%20Of%20Joy.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Thermometer.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Tongue.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20Without%20Mouth.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Fearful%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Flushed%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Frowning%20Face%20With%20Open%20Mouth.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Frowning%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Ghost.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Goblin.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Grimacing%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Grinning%20Cat%20With%20Smiling%20Eyes.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Grinning%20Cat.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Grinning%20Face%20With%20Big%20Eyes.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Grinning%20Face%20With%20Smiling%20Eyes.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Grinning%20Face%20With%20Sweat.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Grinning%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Grinning%20Squinting%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Hear%20No%20Evil%20Monkey.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Hot%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Hugging%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Hushed%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Kissing%20Cat.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Kissing%20Face%20With%20Closed%20Eyes.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Kissing%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Loudly%20Crying%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Lying%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Melting%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Money%20Mouth%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Nauseated%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Nerd%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Neutral%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Ogre.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Partying%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Pensive%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Persevering%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Pile%20Of%20Poo.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Pleading%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Pouting%20Cat.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Pouting%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Relieved%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Robot.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Rolling%20On%20The%20Floor%20Laughing.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Sad%20But%20Relieved%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Saluting%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/See%20No%20Evil%20Monkey.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Shushing%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Skull%20And%20Crossbones.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Skull.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Sleeping%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Sleepy%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Slightly%20Frowning%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Slightly%20Smiling%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Smiling%20Cat%20With%20Heart%20Eyes.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Smiling%20Face%20With%20Halo.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Smiling%20Face%20With%20Hearts.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Smiling%20Face%20With%20Horns.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Smiling%20Face%20With%20Smiling%20Eyes.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Smiling%20Face%20With%20Sunglasses.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Smiling%20Face%20With%20Tear.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Smiling%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Smirking%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Sneezing%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Speak%20No%20Evil%20Monkey.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Squinting%20Face%20With%20Tongue.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Star%20Struck.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Thinking%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Tired%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Unamused%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Upside%20Down%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Weary%20Cat.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Weary%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Winking%20Face%20With%20Tongue.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Winking%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Woozy%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Worried%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Yawning%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Zany%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Zipper%20Mouth%20Face.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Anger%20Symbol.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Aquarius.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Aries.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Baby%20Symbol.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Baggage%20Claim.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Beating%20Heart.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Black%20Heart.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Blue%20Heart.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Broken%20Heart.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Brown%20Heart.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Cancer.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Capricorn.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Check%20Box%20With%20Check.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Check%20Mark%20Button.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Check%20Mark.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Collision.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Cool%20Button.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Cross%20Mark.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Currency%20Exchange.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Customs.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Dizzy.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Double%20Exclamation%20Mark.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Exclamation%20Mark.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Exclamation%20Question%20Mark.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Free%20Button.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Gemini.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Green%20Heart.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Growing%20Heart.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Heart%20Decoration.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Heart%20Exclamation.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Heart%20On%20Fire.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Heart%20With%20Arrow.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Heart%20With%20Ribbon.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Hundred%20Points.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Kiss%20Mark.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Left%20Luggage.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Leo.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Libra.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Love%20Letter.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Mending%20Heart.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Mens%20Room.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/New%20Button.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/No%20One%20Under%20Eighteen.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Ok%20Button.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Ophiuchus.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Orange%20Heart.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Passport%20Control.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Pisces.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Purple%20Heart.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Question%20Mark.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Heart.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Revolving%20Hearts.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Right%20Anger%20Bubble.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Sagittarius.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Scorpio.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Sparkling%20Heart.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Speech%20Balloon.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Taurus.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Thought%20Balloon.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Top%20Arrow.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Two%20Hearts.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Up%20Button.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Virgo.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/White%20Exclamation%20Mark.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/White%20Heart.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/White%20Question%20Mark.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Womens%20Room.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Yellow%20Heart.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Zzz.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Airplane.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Ambulance.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Automobile.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Beach%20With%20Umbrella.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Camping.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Classical%20Building.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Compass.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Desert%20Island.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Hot%20Springs.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/House.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Locomotive.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Moai.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Motor%20Boat.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Police%20Car.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Rocket.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Roller%20Coaster.webp",
+    "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Taxi.webp"
+];
+
+
+/* ===== CONSOLIDATED MODULE: libraryManager.js ===== */
+// libraryManager.js
+class LibraryManager {
+  static currentTab = "public";
+  static allVideos = [];
+  
+  static async getDb() {
+      const fb = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
+      return { ...fb, db: window.db };
+  }
+
+  static init() {
+    this.bindEvents();
+    this.startListening();
+  }
+
+  static bindEvents() {
+    const btnNavLib = document.getElementById("nav-library");
+    if (btnNavLib) {
+      btnNavLib.addEventListener("click", () => {
+        if (window.FriendsManager && window.FriendsManager.setNavActive) {
+            window.FriendsManager.setNavActive("nav-library");
+            window.Utils.showScreen("lobby-screen");
+        }
+        this.renderGrid();
+      });
+    }
+
+    const btnLibPub = document.getElementById("btn-lib-public");
+    const btnLibMy = document.getElementById("btn-lib-my");
+    if (btnLibPub && btnLibMy) {
+      btnLibPub.onclick = () => {
+        this.currentTab = "public";
+        btnLibPub.className = "primary-btn";
+        btnLibMy.className = "secondary-btn";
+        this.renderGrid();
+      };
+      btnLibMy.onclick = () => {
+        this.currentTab = "my";
+        btnLibPub.className = "secondary-btn";
+        btnLibMy.className = "primary-btn";
+        this.renderGrid();
+      };
+    }
+
+    const searchInput = document.getElementById("library-search");
+    if (searchInput) {
+      searchInput.addEventListener("input", () => this.renderGrid());
+    }
+
+    const btnAdd = document.getElementById("btn-lib-add-video");
+    if (btnAdd) {
+      btnAdd.onclick = () => this.showAddModal();
+    }
+  }
+
+  static async startListening() {
+    // Listen to library db
+    try {
+        const { ref: dbRef, onValue, db } = await this.getDb();
+        
+        onValue(dbRef(db, "library"), (snap) => {
+            const data = snap.val() || {};
+            const parsed = [];
+            // public
+            if (data.public) {
+                for (let [id, val] of Object.entries(data.public)) {
+                    parsed.push({ ...val, id, isPublic: true });
+                }
+            }
+            // users (my library)
+            if (data.users && window.AppState && window.AppState.currentUser) {
+                const myData = data.users[window.AppState.currentUser.uid];
+                if (myData) {
+                    for (let [id, val] of Object.entries(myData)) {
+                        parsed.push({ ...val, id, isPublic: false });
+                    }
+                }
+            }
+            this.allVideos = parsed.sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
+            this.renderGrid();
+        });
+    } catch(e) {
+        console.error("[LibraryManager] DB listening error:", e);
+    }
+  }
+
+  static getYoutubeThumb(url) {
+    if(!url) return "";
+    let vidIdLine = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))((\w|-){11})/);
+    let vidId = vidIdLine && vidIdLine[1] ? vidIdLine[1] : null;
+    if (url.includes("rutube.ru/video/")) {
+        vidIdLine = url.match(/rutube\.ru\/video\/([a-zA-Z0-9]+)/);
+        vidId = vidIdLine && vidIdLine[1] ? vidIdLine[1] : null;
+        if(vidId) return "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Television.webp"; // fallback for rutube
+    }
+    return vidId ? `https://i.ytimg.com/vi/${vidId}/hqdefault.jpg` : "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Television.webp";
+  }
+
+  static renderGrid() {
+    const grid = document.getElementById("library-grid");
+    if (!grid) return;
+    grid.innerHTML = "";
+
+    const searchQ = (document.getElementById("library-search")?.value || "").toLowerCase();
+
+    let filtered = this.allVideos.filter(v => {
+        if (this.currentTab === "public" && !v.isPublic) return false;
+        if (this.currentTab === "my" && v.isPublic) return false;
+        
+        if (searchQ) {
+            const t = (v.title || "").toLowerCase();
+            const d = (v.description || "").toLowerCase();
+            return t.includes(searchQ) || d.includes(searchQ);
+        }
+        return true;
+    });
+
+    if (filtered.length === 0) {
+        grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 40px;">В этой библиотеке пока ничего нет.</div>`;
+        return;
+    }
+
+    filtered.forEach(v => {
+        const card = document.createElement("div");
+        card.className = "room-card";
+        const thumbUrl = this.getYoutubeThumb(v.url);
+        
+        card.innerHTML = `
+            <div class="room-preview">
+                <img src="${thumbUrl}" style="width:100%; height:100%; object-fit:cover;">
+                <div class="room-preview-overlay"></div>
+                ${v.isPublic ? '' : '<div style="position:absolute; top:8px; right:8px; background:rgba(0,0,0,0.7); padding:4px 8px; border-radius:6px; font-size:11px; display:flex; align-items:center; gap:4px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width:1.2em;height:1.2em;" /> Личное</div>'}
+            </div>
+            <div class="room-info">
+                <h4 class="rm-title">${window.Utils.escapeHtml(v.title || "Без названия")}</h4>
+                <div class="room-meta">
+                    <span class="rm-host" style="max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                        Добавлено: ${window.Utils.escapeHtml(v.addedByName || "Аноним")}
+                    </span>
+                </div>
+            </div>
+        `;
+        card.onclick = () => this.showViewModal(v);
+        grid.appendChild(card);
+    });
+  }
+
+  // MODALS GENERATION
+  static getOrCreateModal(id) {
+    let m = document.getElementById(id);
+    if (!m) {
+        m = document.createElement("div");
+        m.id = id;
+        m.className = "modal";
+        document.body.appendChild(m);
+    }
+    return m;
+  }
+
+  static closeModal(id) {
+    const m = document.getElementById(id);
+    if (m) m.classList.remove("active");
+  }
+
+  static showAddModal() {
+    const modal = this.getOrCreateModal("modal-lib-add");
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 500px">
+            <div class="modal-header">
+                <h2>Добавить видео в библиотеку</h2>
+            </div>
+            <div style="margin-bottom: 15px">
+                <label style="display:block; margin-bottom:5px; color:var(--text-muted); font-size:13px;">Ссылка на видео (YouTube/Rutube)</label>
+                <input type="text" id="lib-add-url" class="settings-input" placeholder="https://..." />
+            </div>
+            <div id="lib-ai-fields-container" style="position:relative;">
+                <div id="lib-ai-lock-overlay" style="display:none; position:absolute; inset:-10px; background:rgba(10,10,15,0.7); backdrop-filter:blur(8px); z-index:10; border-radius:16px; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
+                    <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width:48px;height:48px;margin-bottom:10px;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.5));" />
+                    <div style="color:#fff; font-weight:600; font-size:14px;">Получение информации...</div>
+                    <div style="color:var(--text-muted); font-size:12px; margin-top:4px;">Пожалуйста, подождите</div>
+                </div>
+                <div style="margin-bottom: 15px">
+                    <label style="display:block; margin-bottom:5px; color:var(--text-muted); font-size:13px;">Название</label>
+                    <input type="text" id="lib-add-title" class="settings-input" placeholder="Точное название" />
+                </div>
+                <div style="margin-bottom: 20px">
+                    <label style="display:block; margin-bottom:5px; color:var(--text-muted); font-size:13px;">Описание (авто-заполнение)</label>
+                    <textarea id="lib-add-desc" class="settings-input" rows="4" placeholder="Полное описание..."></textarea>
+                </div>
+            </div>
+            <div style="margin-bottom: 20px; display:flex; gap:10px; align-items:center;">
+                <input type="checkbox" id="lib-add-public" checked style="width:18px; height:18px;" />
+                <label for="lib-add-public" style="font-size:14px;">Опубликовать в общую библиотеку</label>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <button class="secondary-btn" id="lib-add-cancel" style="flex:1">Отмена</button>
+                <button class="primary-btn" id="lib-add-submit" style="flex:1">Далее</button>
+            </div>
+        </div>
+    `;
+    modal.classList.add("active");
+
+    const inputUrl = modal.querySelector("#lib-add-url");
+    const inputTitle = modal.querySelector("#lib-add-title");
+    const inputDesc = modal.querySelector("#lib-add-desc");
+    const lockOverlay = modal.querySelector("#lib-ai-lock-overlay");
+    
+    let fetchTimeout;
+    inputUrl.addEventListener('input', () => {
+        clearTimeout(fetchTimeout);
+        fetchTimeout = setTimeout(async () => {
+            const val = inputUrl.value.trim();
+            if(!val || val.length < 5) return;
+            // Fetch metadata
+            try {
+                if (lockOverlay) lockOverlay.style.display = "flex";
+                inputTitle.disabled = true;
+                inputDesc.disabled = true;
+                
+                const res = await fetch("/api/library/fetch-metadata", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({ url: val })
+                });
+                const data = await res.json();
+                if(data.success) {
+                    if (data.title && !inputTitle.value) inputTitle.value = data.title;
+                    if (data.description && !inputDesc.value) inputDesc.value = data.description;
+                }
+            } catch(e) {
+                console.error("fetch metadata failed", e);
+            } finally {
+                if (lockOverlay) lockOverlay.style.display = "none";
+                inputTitle.disabled = false;
+                inputDesc.disabled = false;
+            }
+        }, 1000);
+    });
+
+    const btnCancel = modal.querySelector("#lib-add-cancel");
+    btnCancel.onclick = () => this.closeModal("modal-lib-add");
+
+    const btnSubmit = modal.querySelector("#lib-add-submit");
+    btnSubmit.onclick = async () => {
+        if (!window.AppState || !window.AppState.currentUser) return window.Utils.toast("Вы не авторизованы!", "error");
+        const url = document.getElementById("lib-add-url").value.trim();
+        const title = document.getElementById("lib-add-title").value.trim();
+        const desc = document.getElementById("lib-add-desc").value.trim();
+        const isPublic = document.getElementById("lib-add-public").checked;
+
+        if (!url) return window.Utils.toast("Введите ссылку");
+        if (!title) return window.Utils.toast("Введите название");
+
+        this.closeModal("modal-lib-add");
+
+        const uid = window.AppState.currentUser.uid;
+        const uProfile = window.AppState.usersCache.get(uid);
+        const name = uProfile?.name || window.AppState.currentUser.displayName || "User";
+
+        const thumb = this.getYoutubeThumb(url);
+        
+        const videoData = {
+            url, title, description: desc,
+            addedByUid: uid,
+            addedByName: name,
+            timestamp: Date.now()
+        };
+
+        if (isPublic && thumb && !thumb.includes("Telegram-Animated-Emojis")) {
+            this.showAuthorsModal(videoData, thumb);
+        } else {
+            videoData.people = "Не определено";
+            this.saveVideo(videoData, isPublic);
+        }
+    };
+  }
+
+  static async showAuthorsModal(videoData, thumbUrl) {
+      const modal = this.getOrCreateModal("modal-lib-authors-verify");
+      modal.innerHTML = `
+          <div class="modal-content" style="max-width: 500px">
+              <div class="modal-header">
+                  <h2>Участники видео <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom" /></h2>
+              </div>
+              <div style="text-align:center; margin-bottom:15px;">
+                  <img src="${thumbUrl}" style="max-width:100%; border-radius:12px; max-height:200px; object-fit:cover;" />
+              </div>
+              <p style="font-size:14px; text-align:center; color:var(--text-muted); margin-bottom:15px;">
+                  Укажите, кто изображен или участвует в этом видео (можно выбрать нескольких)
+              </p>
+              <div id="ai-result-area">
+                <div style="margin-bottom: 20px; position:relative;">
+                   <div style="display:flex; gap:10px;">
+                       <input type="text" id="lib-add-people" class="settings-input" placeholder="Имена через запятую (начните вводить...)" style="flex:1;" autocomplete="off" />
+                       <button class="secondary-btn" id="btn-lib-add-author-from-list" style="width:auto; padding:0 15px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Man%20Student.webp" style="width: 20px; height: 20px; vertical-align: middle; margin-right: 5px;" /> Авторы</button>
+                   </div>
+                   <div id="lib-authors-dropdown" style="display:none; position:absolute; top:100%; left:0; right:0; background:var(--panel); border:1px solid rgba(255,255,255,0.1); border-radius:12px; max-height:200px; overflow-y:auto; z-index:100; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+                   </div>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button class="primary-btn" id="lib-verify-submit" style="flex:1">Подтвердить и Опубликовать</button>
+                </div>
+              </div>
+          </div>
+      `;
+      modal.classList.add("active");
+
+      const input = modal.querySelector("#lib-add-people");
+      const dropdown = modal.querySelector("#lib-authors-dropdown");
+      let allAuthors = [];
+      
+      try {
+          const { ref: dbRef, get, db } = await this.getDb();
+          const snap = await get(dbRef(db, "content_authors"));
+          if (snap.exists()) {
+             const data = snap.val();
+             allAuthors = Object.values(data);
+          }
+      } catch(e) {
+          console.error("Failed to load authors", e);
+      }
+
+      const btnAuthors = modal.querySelector("#btn-lib-add-author-from-list");
+      if (btnAuthors) {
+          btnAuthors.onclick = () => {
+              this.showAllAuthorsModal((selectedName) => {
+                  let currentParts = input.value.split(',').map(s => s.trim()).filter(Boolean);
+                  if (!currentParts.includes(selectedName)) currentParts.push(selectedName);
+                  input.value = currentParts.join(', ') + (currentParts.length ? ', ' : '');
+              });
+          };
+      }
+
+      input.addEventListener("input", () => {
+          const parts = input.value.split(',');
+          const val = parts[parts.length - 1].toLowerCase().trim();
+          dropdown.innerHTML = "";
+          if (!val) {
+              dropdown.style.display = "none";
+              return;
+          }
+          const matches = allAuthors.filter(a => a.name.toLowerCase().includes(val));
+          if (matches.length > 0) {
+              matches.forEach(m => {
+                  const item = document.createElement("div");
+                  item.style.cssText = "padding: 10px; display:flex; align-items:center; gap: 10px; cursor:pointer; border-bottom:1px solid rgba(255,255,255,0.05);";
+                  item.innerHTML = `
+                      <img src="${m.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + encodeURIComponent(m.name)}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;" />
+                      <span style="font-weight:600; font-size:14px;">${m.name}</span>
+                  `;
+                  item.onmouseover = () => item.style.background = "rgba(255,255,255,0.05)";
+                  item.onmouseout = () => item.style.background = "transparent";
+                  item.onclick = () => {
+                      parts[parts.length - 1] = " " + m.name;
+                      input.value = parts.join(',').trim() + ", ";
+                      dropdown.style.display = "none";
+                      input.focus();
+                  };
+                  dropdown.appendChild(item);
+              });
+              dropdown.style.display = "block";
+          } else {
+              dropdown.style.display = "none";
+          }
+      });
+
+      document.addEventListener("click", (e) => {
+          if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+              dropdown.style.display = "none";
+          }
+      });
+
+      modal.querySelector("#lib-verify-submit").onclick = () => {
+          const p = input.value.trim();
+          videoData.people = p || "Не определено";
+          this.closeModal("modal-lib-authors-verify");
+          this.saveVideo(videoData, true);
+      };
+  }
+
+  static async showAllAuthorsModal(onSelectCallback = null) {
+      const modal = this.getOrCreateModal("modal-all-authors");
+      modal.innerHTML = `
+          <div class="modal-content" style="max-width: 400px; padding: 0; display:flex; flex-direction:column; max-height:80vh;">
+              <div class="modal-header" style="padding: 20px; border-bottom: 1px solid var(--border-light); display:flex; justify-content:space-between; align-items:center;">
+                  <h2 style="margin:0;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom" /> Авторы библиотеки</h2>
+                  <button class="secondary-btn btn-close-modal" id="btn-close-all-authors" style="border:none; padding:4px 8px; width:auto; border-radius:8px;">✕</button>
+              </div>
+              <div class="modal-scrollable-content" style="flex-grow: 1; padding: 20px; overflow-y:auto;" id="all-authors-list-container">
+                  <div style="text-align:center; color:var(--text-muted); font-size:14px;">Загрузка...</div>
+              </div>
+          </div>
+      `;
+      modal.classList.add("active");
+      
+      modal.querySelector("#btn-close-all-authors").onclick = () => this.closeModal("modal-all-authors");
+
+      const container = modal.querySelector("#all-authors-list-container");
+      try {
+          const { ref: dbRef, get, db } = await this.getDb();
+          const snap = await get(dbRef(db, "content_authors"));
+          container.innerHTML = "";
+          
+          if (snap.exists()) {
+              const authors = Object.values(snap.val());
+              if (authors.length === 0) {
+                  container.innerHTML = "<div style='text-align:center; color:var(--text-muted); font-size:14px;'>Нет добавленных авторов</div>";
+                  return;
+              }
+              
+              authors.forEach(m => {
+                  const item = document.createElement("div");
+                  item.style.cssText = "padding: 12px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.05); background:rgba(255,255,255,0.02); border-radius:12px; margin-bottom:8px;";
+                  item.innerHTML = `
+                      <div style="display:flex; align-items:center; gap: 12px;">
+                          <img src="${m.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + encodeURIComponent(m.name)}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;" />
+                          <div style="display:flex; flex-direction:column;">
+                              <span style="font-weight:600; font-size:15px; color:#fff;">${window.Utils.escapeHtml(m.name)}</span>
+                          </div>
+                      </div>
+                      ${onSelectCallback ? '<button class="primary-btn" style="width:auto; padding:6px 12px; font-size:13px; border-radius:8px;">Выбрать</button>' : ''}
+                  `;
+                  if (onSelectCallback) {
+                     item.querySelector('button').onclick = () => {
+                         onSelectCallback(m.name);
+                         this.closeModal("modal-all-authors");
+                     }
+                  }
+                  container.appendChild(item);
+              });
+          } else {
+              container.innerHTML = "<div style='text-align:center; color:var(--text-muted); font-size:14px;'>Нет добавленных авторов</div>";
+          }
+      } catch (e) {
+          container.innerHTML = `<div style="text-align:center; color:var(--danger); font-size:14px;">Ошибка: ${e.message}</div>`;
+      }
+  }
+
+  static async saveVideo(videoData, isPublic) {
+      try {
+          const { ref: dbRef, push, db } = await this.getDb();
+          const basePath = isPublic ? "library/public" : `library/users/${videoData.addedByUid}`;
+          await push(dbRef(db, basePath), videoData);
+          window.Utils.toast("Видео успешно добавлено в библиотеку!", "success");
+      } catch (e) {
+          console.error(e);
+          window.Utils.toast("Ошибка при сохранении видео", "error");
+      }
+  }
+
+  static async showViewModal(v) {
+      const modal = this.getOrCreateModal("modal-lib-view");
+      const thumbUrl = this.getYoutubeThumb(v.url);
+
+      let authorHtml = '';
+      if (v.isPublic && v.people && v.people !== "Не определено") {
+          let authorsListHTML = "";
+          try {
+              const { ref: dbRef, get, db } = await this.getDb();
+              const snap = await get(dbRef(db, "content_authors"));
+              if (snap.exists()) {
+                  const dbAuthors = snap.val();
+                  const peopleArr = v.people.split(',').map(s => s.trim()).filter(Boolean);
+                  
+                  peopleArr.forEach(personName => {
+                      let avatarSrc = "";
+                      const match = Object.values(dbAuthors).find(a => a.name.toLowerCase() === personName.toLowerCase());
+                      if (match && (match.avatar || match.url)) {
+                          avatarSrc = match.avatar || match.url;
+                      }
+                      if (avatarSrc) {
+                          authorsListHTML += `<span style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.05);padding:4px 10px;border-radius:20px;"><img src="${avatarSrc}" style="width:20px;height:20px;border-radius:50%;object-fit:cover;"/> <strong style="color:var(--accent);font-size:13px;">${window.Utils.escapeHtml(personName)}</strong></span>`;
+                      } else {
+                          authorsListHTML += `<span style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.05);padding:4px 10px;border-radius:20px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width:1.2em;height:1.2em;"/> <strong style="color:var(--accent);font-size:13px;">${window.Utils.escapeHtml(personName)}</strong></span>`;
+                      }
+                  });
+              } else {
+                  // If no authors exist in db but there is people tag
+                  v.people.split(',').map(s => s.trim()).filter(Boolean).forEach(personName => {
+                      authorsListHTML += `<span style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.05);padding:4px 10px;border-radius:20px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width:1.2em;height:1.2em;"/> <strong style="color:var(--accent);font-size:13px;">${window.Utils.escapeHtml(personName)}</strong></span>`;
+                  });
+              }
+          } catch(e) {}
+
+          if (authorsListHTML) {
+              authorHtml = `<div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;">${authorsListHTML}</div>`;
+          }
+      }
+
+      modal.innerHTML = `
+          <div class="modal-content" style="max-width: 600px; padding: 0; overflow: hidden; position: relative; max-height:85vh; display:flex; flex-direction:column;">
+              <div style="height: 250px; flex-shrink: 0; background: #000; position:relative;">
+                   <button class="secondary-btn btn-close-modal" id="btn-lib-close-view" style="position:absolute; top:10px; right:10px; z-index:10; background:rgba(0,0,0,0.5); border:none; padding:8px 12px; width:auto;">✕</button>
+                   <img src="${thumbUrl}" style="width:100%; height:100%; object-fit:cover; opacity: 0.9;" />
+                   <div style="position:absolute; bottom:0; left:0; right:0; height:100px; background:linear-gradient(to top, var(--panel), transparent);"></div>
+              </div>
+              
+              <div class="modal-scrollable-content" style="flex-grow: 1; padding: 24px; position:relative; z-index:5; overflow-y:auto;">
+                  <h2 style="font-size:24px; margin-bottom:8px;">${window.Utils.escapeHtml(v.title)}</h2>
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; font-size:13px; color:var(--text-muted);">
+                      <span>Добавил(а): <strong style="color:var(--text-main);">${window.Utils.escapeHtml(v.addedByName)}</strong></span>
+                      ${authorHtml}
+                  </div>
+                  
+                  <div style="background:rgba(255,255,255,0.03); border-radius:12px; padding:16px; margin-bottom:24px; border:1px solid var(--border-light);">
+                      <div id="lib-view-desc-container" style="position:relative; max-height:120px; overflow:hidden; transition: max-height 0.3s ease;">
+                         <p style="font-size:14px; line-height:1.6; color:#ddd; white-space:pre-wrap;">${window.Utils.escapeHtml(v.description)}</p>
+                         <div id="lib-view-desc-gradient" style="position:absolute; bottom:0; left:0; right:0; height:40px; background:linear-gradient(to top, var(--panel), transparent);"></div>
+                      </div>
+                      <button id="btn-lib-desc-toggle" class="btn-text-link" style="display:none; margin-top:8px; font-size:13px; color:var(--accent);">Читать полностью</button>
+                  </div>
+
+                  <button class="primary-btn" id="btn-lib-create-room" style="font-size:16px; padding:16px; border-radius:12px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Popcorn.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom" /> Создать комнату с этим видео</button>
+              </div>
+          </div>
+      `;
+      modal.classList.add("active");
+
+      setTimeout(() => {
+          const descContainer = modal.querySelector("#lib-view-desc-container");
+          const descP = descContainer.querySelector("p");
+          const btnToggle = modal.querySelector("#btn-lib-desc-toggle");
+          const grad = modal.querySelector("#lib-view-desc-gradient");
+          if (descP.scrollHeight > 130) {
+              btnToggle.style.display = "block";
+              let expanded = false;
+              btnToggle.onclick = () => {
+                  if (!expanded) {
+                      descContainer.style.maxHeight = descP.scrollHeight + "px";
+                      grad.style.display = "none";
+                      btnToggle.innerText = "Свернуть";
+                  } else {
+                      descContainer.style.maxHeight = "120px";
+                      grad.style.display = "block";
+                      btnToggle.innerText = "Читать полностью";
+                  }
+                  expanded = !expanded;
+              };
+          } else {
+              grad.style.display = "none";
+          }
+      }, 50);
+
+      modal.querySelector("#btn-lib-close-view").onclick = () => this.closeModal("modal-lib-view");
+      
+      modal.querySelector("#btn-lib-create-room").onclick = () => {
+          this.closeModal("modal-lib-view");
+          // trigger create room mechanics
+          window.AppState.pendingLibraryVideoUrl = v.url;
+          if (document.getElementById("btn-open-create-room")) {
+              document.getElementById("btn-open-create-room").click();
+              setTimeout(() => {
+                  const urlInput = document.getElementById("room-input-url");
+                  if (urlInput) {
+                      urlInput.value = v.url;
+                      urlInput.dispatchEvent(new Event('input', { bubbles: true }));
+                  }
+                  const nameInput = document.getElementById("room-input-name");
+                  if (nameInput) {
+                      nameInput.value = v.title;
+                      nameInput.dispatchEvent(new Event('input', { bubbles: true }));
+                  }
+              }, 100);
+          }
+      };
+  }
+
+  static bindAdminPanel() {
+      const btnSearch = document.getElementById("btn-admin-lib-search");
+      if (btnSearch) {
+          btnSearch.onclick = () => this.searchAdminLibrary();
+      }
+      
+      const btnSave = document.getElementById("btn-admin-lib-save");
+      if (btnSave) {
+          btnSave.onclick = async () => {
+              const id = document.getElementById("admin-lib-edit-id").value;
+              const path = document.getElementById("admin-lib-edit-path").value;
+              if (!id || !path) return window.Utils.toast("Выберите видео для редактирования", "error");
+              
+              const title = document.getElementById("admin-lib-edit-title").value.trim();
+              const desc = document.getElementById("admin-lib-edit-desc").value.trim();
+              const url = document.getElementById("admin-lib-edit-url").value.trim();
+              const people = document.getElementById("admin-lib-edit-people").value.trim();
+              
+              try {
+                  const { ref: dbRef, update, db } = await this.getDb();
+                  await update(dbRef(db, path), { title, description: desc, url, people });
+                  window.Utils.toast("Изменения сохранены", "success");
+                  this.searchAdminLibrary();
+              } catch (e) {
+                  window.Utils.toast("Ошибка: " + e.message, "error");
+              }
+          }
+      }
+
+      const btnDel = document.getElementById("btn-admin-lib-delete");
+      if (btnDel) {
+          btnDel.onclick = async () => {
+              const id = document.getElementById("admin-lib-edit-id").value;
+              const path = document.getElementById("admin-lib-edit-path").value;
+              if (!id || !path) return window.Utils.toast("Выберите видео", "error");
+              
+              if(await window.Utils.confirm("Точно удалить это видео?")) {
+                  try {
+                      const { ref: dbRef, remove, db } = await this.getDb();
+                      await remove(dbRef(db, path));
+                      window.Utils.toast("Удалено", "success");
+                      
+                      document.getElementById("admin-lib-edit-id").value = "";
+                      document.getElementById("admin-lib-edit-path").value = "";
+                      document.getElementById("admin-lib-edit-title").value = "";
+                      document.getElementById("admin-lib-edit-desc").value = "";
+                      document.getElementById("admin-lib-edit-url").value = "";
+                      document.getElementById("admin-lib-edit-people").value = "";
+                      
+                      this.searchAdminLibrary();
+                  } catch (e) {}
+              }
+          }
+      }
+
+      this.loadAdminLibraryAuthors();
+      const btnAddAuthor = document.getElementById("btn-admin-lib-add-author");
+      if (btnAddAuthor) {
+          btnAddAuthor.onclick = async () => {
+              let name = document.getElementById("admin-lib-author-name").value.trim();
+              let url = document.getElementById("admin-lib-author-url").value.trim();
+              if (!url) return window.Utils.toast("Укажите URL аватара или YouTube канала", "error");
+              
+              const isYoutube = url.includes("youtube.com") || url.includes("youtu.be");
+              if (isYoutube && !name) {
+                  window.Utils.toast("Получение данных с YouTube...", "info");
+                  try {
+                      const res = await fetch("/api/library/fetch-metadata", {
+                          method: "POST", headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ url })
+                      });
+                      const data = await res.json();
+                      if (data.success && data.authorName) {
+                          name = data.authorName;
+                          if (data.authorAvatar) url = data.authorAvatar;
+                      }
+                  } catch(e) {
+                      console.error(e);
+                  }
+              }
+
+              if (!name) return window.Utils.toast("Заполните оба поля", "error");
+              try {
+                  const { ref: dbRef, set, update, push, db } = await this.getDb();
+                  
+                  if (btnAddAuthor.dataset.editId) {
+                      await update(dbRef(db, `content_authors/${btnAddAuthor.dataset.editId}`), { name, avatar: url });
+                      window.Utils.toast("Автор обновлен", "success");
+                      btnAddAuthor.dataset.editId = "";
+                      btnAddAuthor.innerText = "Добавить";
+                  } else {
+                      const newRef = push(dbRef(db, "content_authors"));
+                      await set(newRef, { id: newRef.key, name, avatar: url });
+                      window.Utils.toast("Автор добавлен", "success");
+                  }
+
+                  document.getElementById("admin-lib-author-name").value = "";
+                  document.getElementById("admin-lib-author-url").value = "";
+                  this.loadAdminLibraryAuthors();
+              } catch (e) {
+                  window.Utils.toast("Ошибка: " + e.message, "error");
+              }
+          };
+      }
+  }
+
+  static async loadAdminLibraryAuthors() {
+      const list = document.getElementById("admin-lib-authors-list");
+      if (!list) return;
+      
+      try {
+          const { ref: dbRef, get, db, remove } = await this.getDb();
+          const snap = await get(dbRef(db, "content_authors"));
+          list.innerHTML = "";
+          if (snap.exists()) {
+              const authors = snap.val();
+              for (const key in authors) {
+                  const data = authors[key];
+                  const div = document.createElement("div");
+                  div.style.cssText = "display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); padding:10px; border-radius:12px;";
+                  div.innerHTML = `
+                      <div style="display:flex; align-items:center; gap:10px;">
+                          <img src="${data.avatar || data.url}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;">
+                          <div style="display:flex; flex-direction:column;">
+                              <span style="font-size:14px; color:#fff;">${window.Utils.escapeHtml(data.name)}</span>
+                          </div>
+                      </div>
+                      <div style="display:flex; gap:5px;">
+                          <button class="secondary-btn btn-edit" style="width:auto; padding:4px 8px; font-size:12px;">Изменить</button>
+                          <button class="danger-btn btn-del" style="width:auto; padding:4px 8px; font-size:12px;">Удалить</button>
+                      </div>
+                  `;
+                  div.querySelector(".btn-del").onclick = async () => {
+                      if (await window.Utils.confirm("Удалить автора?")) {
+                          await remove(dbRef(db, `content_authors/${key}`));
+                          this.loadAdminLibraryAuthors();
+                      }
+                  };
+                  div.querySelector(".btn-edit").onclick = () => {
+                      document.getElementById("admin-lib-author-name").value = data.name || "";
+                      document.getElementById("admin-lib-author-url").value = data.avatar || data.url || "";
+                      const btnAdd = document.getElementById("btn-admin-lib-add-author");
+                      btnAdd.innerText = "Сохранить";
+                      btnAdd.dataset.editId = key;
+                  };
+                  list.appendChild(div);
+              }
+          } else {
+              list.innerHTML = "<div style='color:var(--text-muted); font-size:12px; text-align:center;'>Нет добавленных авторов</div>";
+          }
+      } catch (e) {}
+  }
+
+  static async searchAdminLibrary() {
+      const q = (document.getElementById("admin-lib-search").value || "").toLowerCase().trim();
+      const list = document.getElementById("admin-lib-list");
+      list.innerHTML = "Загрузка...";
+      
+      try {
+          const { ref: dbRef, get, db } = await this.getDb();
+          const snap = await get(dbRef(db, "library"));
+          const data = snap.val() || {};
+          
+          let results = [];
+          const addRes = (v, parentPath, isPublic) => {
+              if (!q || (v.title||"").toLowerCase().includes(q) || (v.description||"").toLowerCase().includes(q) || parentPath.includes(q)) {
+                  results.push({ ...v, path: parentPath, isPublic });
+              }
+          };
+
+          if (data.public) {
+              for (let id in data.public) addRes(data.public[id], `library/public/${id}`, true);
+          }
+          if (data.users) {
+              for (let uid in data.users) {
+                  for (let id in data.users[uid]) addRes(data.users[uid][id], `library/users/${uid}/${id}`, false);
+              }
+          }
+
+          list.innerHTML = "";
+          if (results.length === 0) {
+              list.innerHTML = "<div style='color:var(--text-muted); font-size:12px;'>Ничего не найдено</div>";
+              document.getElementById("btn-admin-lib-delete-all").style.display = "none";
+              return;
+          }
+          
+          document.getElementById("btn-admin-lib-delete-all").style.display = "block";
+          this.lastAdminSearchResults = results;
+          
+          const btnDelAll = document.getElementById("btn-admin-lib-delete-all");
+          btnDelAll.onclick = async () => {
+              if(await window.Utils.confirm("Удалить ВСЕ найденные видео? Это безвозвратно!")) {
+                  try {
+                      const { ref: dbRef, remove, db } = await this.getDb();
+                      for (let v of this.lastAdminSearchResults) {
+                          await remove(dbRef(db, v.path));
+                      }
+                      window.Utils.toast("Все найденные удалены", "success");
+                      this.searchAdminLibrary();
+                  } catch(e) { window.Utils.toast("Ошибка: " + e.message, "error"); }
+              }
+          };
+          
+          results.forEach(v => {
+              const item = document.createElement("div");
+              item.style = "background:rgba(0,0,0,0.3); padding:8px 12px; border-radius:8px; border:1px solid var(--border-light); display:flex; justify-content:space-between; align-items:center; cursor:pointer;";
+              item.innerHTML = `
+                <div style="font-size:13px; max-width:70%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; align-items:center; gap:4px;">
+                    ${v.isPublic===false?'<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width:1.2em;height:1.2em;" /> ':""} 
+                    <span>${window.Utils.escapeHtml(v.title||"Без названия")} <span style="opacity:0.5">(${v.addedByName})</span></span>
+                </div>
+                <button class="danger-btn btn-del-single" style="width:auto; padding:4px 8px; font-size:12px;">Удалить</button>
+              `;
+              
+              item.querySelector('.btn-del-single').onclick = async (e) => {
+                  e.stopPropagation();
+                  if(await window.Utils.confirm("Удалить это видео?")) {
+                      try {
+                          const { ref: dbRef, remove, db } = await this.getDb();
+                          await remove(dbRef(db, v.path));
+                          window.Utils.toast("Удалено", "success");
+                          this.searchAdminLibrary();
+                      } catch(e) {}
+                  }
+              };
+
+              item.onclick = () => {
+                  document.getElementById("admin-lib-edit-id").value = v.id || v.path;
+                  document.getElementById("admin-lib-edit-path").value = v.path;
+                  document.getElementById("admin-lib-edit-title").value = v.title || "";
+                  document.getElementById("admin-lib-edit-desc").value = v.description || "";
+                  document.getElementById("admin-lib-edit-url").value = v.url || "";
+                  document.getElementById("admin-lib-edit-people").value = v.people || "";
+              };
+              
+              list.appendChild(item);
+          });
+      } catch (e) {
+          list.innerHTML = "<div style='color:#ff5555; font-size:12px;'>Ошибка загрузки</div>";
+      }
+  }
+
+}
+window.LibraryManager = LibraryManager;
+
+
+/* ===== CONSOLIDATED MODULE: premiumManager.js ===== */
+/**
+ * COWIO Premium: доступ к каталогу, статус-эмодзи, привилегии, оплата
+ */
+class PremiumManager {
+  static PRICE_RUB = 179;
+  static PLAN_DAYS = 30;
+
+  static STATUS_EMOJIS = {
+    star: {
+      label: "Звезда",
+      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp",
+    },
+    sparkles: {
+      label: "Искры",
+      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp",
+    },
+    crown: {
+      label: "Корона",
+      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp",
+    },
+    gem: {
+      label: "Алмаз",
+      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Gem%20Stone.webp",
+    },
+    rocket: {
+      label: "Ракета",
+      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Rocket.webp",
+    },
+    fire: {
+      label: "Огонь",
+      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp",
+    },
+    butterfly: {
+      label: "Бабочка",
+      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Butterfly.webp",
+    },
+    rainbow: {
+      label: "Радуга",
+      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Rainbow.webp",
+    },
+    trophy: {
+      label: "Кубок",
+      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Trophy.webp",
+    },
+  };
+
+  static PREMIUM_DM_THEMES = [
+    "vault-gold",
+    "abyss-frost",
+    "crimson-chalk",
+    "noir-rose",
+  ];
+  static BIO_LIMIT_DEFAULT = 200;
+  static BIO_LIMIT_PREMIUM = 500;
+
+  static PERKS = [
+    {
+      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Shopping%20Bags.webp",
+      title: "Полный каталог",
+      desc: "Рамки, звуки и акции только для Premium",
+    },
+    {
+      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp",
+      title: "Статус-эмодзи",
+      desc: "10 эмодзи рядом с ником в чате и профиле",
+    },
+    {
+      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Military%20Medal.webp",
+      title: "10-й Уровень",
+      desc: "Автоматическое повышение до 10 уровня при покупке",
+    },
+    {
+      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkler.webp",
+      title: "x2 XP",
+      desc: "В два раза больше опыта за время в комнатах",
+    },
+    {
+      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Woman%20Technologist.webp",
+      title: "Приоритетная поддержка",
+      desc: "Тикеты помечаются и обрабатываются быстрее",
+    },
+    {
+      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Party%20Popper.webp",
+      title: "Ранний доступ",
+      desc: "Первыми видите горячие акции в каталоге",
+    },
+    {
+      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Artist%20Palette.webp",
+      title: "Эксклюзивные темы DM",
+      desc: "4 премиальные темы оформления личных сообщений",
+    },
+    {
+      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp",
+      title: "Расширенное био",
+      desc: "До 500 символов в описании профиля вместо 200",
+    },
+    {
+      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp",
+      title: "Premium-значок",
+      desc: "Особый бейдж Premium в профиле и списках",
+    },
+  ];
+
+  static init() {
+    this.injectStyles();
+    this.renderPremiumSection();
+    this.checkReturnFromPayment();
+    document.addEventListener("DOMContentLoaded", () =>
+      this.renderPremiumSection(),
+    );
+  }
+
+  static injectStyles() {
+    if (document.getElementById("cowio-premium-styles")) return;
+    const style = document.createElement("style");
+    style.id = "cowio-premium-styles";
+    style.textContent = `
+      .badge-premium {
+        background: linear-gradient(135deg, rgba(255, 200, 80, 0.25), rgba(255, 140, 40, 0.2));
+        color: #ffd56a;
+        border: 1px solid rgba(255, 200, 90, 0.55);
+        box-shadow: 0 4px 14px rgba(255, 170, 50, 0.22);
+      }
+      .premium-status-emoji {
+        width: 1.05em;
+        height: 1.05em;
+        vertical-align: -0.15em;
+        margin-right: 3px;
+        display: inline-block;
+        filter: drop-shadow(0 0 4px rgba(255, 200, 80, 0.45));
+      }
+      .nav-item.nav-locked {
+        opacity: 0.72;
+      }
+      .nav-lock-badge {
+        font-size: 10px;
+        margin-left: 6px;
+        opacity: 0.7;
+      }
+      .premium-hero {
+        position: relative;
+        overflow: hidden;
+        border-radius: 24px;
+        padding: 28px 26px;
+        margin-bottom: 22px;
+        border: 1px solid rgba(255, 200, 100, 0.22);
+        background:
+          radial-gradient(circle at 20% 0%, rgba(255, 180, 60, 0.18), transparent 45%),
+          radial-gradient(circle at 90% 100%, rgba(255, 120, 40, 0.12), transparent 40%),
+          linear-gradient(145deg, rgba(24, 20, 14, 0.96), rgba(10, 10, 12, 0.98));
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 220, 140, 0.08);
+      }
+      .premium-hero::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(105deg, transparent 40%, rgba(255, 220, 140, 0.06) 50%, transparent 60%);
+        animation: premiumHeroShine 5s ease-in-out infinite;
+        pointer-events: none;
+      }
+      @keyframes premiumHeroShine {
+        0%, 100% { transform: translateX(-30%); opacity: 0; }
+        50% { transform: translateX(30%); opacity: 1; }
+      }
+      .premium-price-tag {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 4px;
+        font-size: 32px;
+        font-weight: 900;
+        color: #ffe6a0;
+        letter-spacing: -0.5px;
+      }
+      .premium-price-tag small {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-muted);
+      }
+      .premium-perk-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 12px;
+        margin: 18px 0 22px;
+      }
+      .premium-perk-card {
+        padding: 14px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 200, 100, 0.12);
+        background: rgba(255, 255, 255, 0.03);
+      }
+      .premium-emoji-picker {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .premium-emoji-btn {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        border: 1px solid var(--border-light);
+        background: rgba(255,255,255,0.04);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: border-color 0.15s, transform 0.15s;
+      }
+      .premium-emoji-btn.active {
+        border-color: rgba(255, 200, 90, 0.8);
+        box-shadow: 0 0 12px rgba(255, 180, 60, 0.25);
+        transform: scale(1.05);
+      }
+      .premium-emoji-btn img { width: 24px; height: 24px; }
+      .catalog-lock-screen {
+        text-align: center;
+        padding: 48px 24px;
+        border-radius: 20px;
+        border: 1px dashed rgba(255, 200, 90, 0.35);
+        background: rgba(255, 200, 80, 0.04);
+      }
+      .catalog-card-wrapper.is-hot {
+        background: linear-gradient(135deg, #2a2218 0%, #aa8222 22%, #d4af37 50%, #aa8222 78%, #2a2218 100%);
+        background-size: 220% 220%;
+        animation: catalogFadeIn 0.45s ease forwards, premiumHotShimmer 7s ease-in-out infinite;
+        padding: 2px;
+        box-shadow: 0 16px 44px rgba(210, 140, 40, 0.25), 0 0 0 1px rgba(210, 180, 100, 0.12) inset;
+      }
+      .catalog-card-wrapper.is-hot .catalog-card-inner {
+        background: linear-gradient(180deg, rgba(28, 24, 18, 0.97) 0%, rgba(10, 10, 12, 0.99) 100%);
+        border: 1px solid rgba(210, 180, 100, 0.12);
+      }
+      .catalog-card-wrapper.is-hot:hover {
+        box-shadow: 0 20px 50px rgba(210, 140, 40, 0.4), 0 0 0 1px rgba(210, 180, 100, 0.2) inset;
+      }
+      .catalog-hot-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 6;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 5px 11px;
+        border-radius: 999px;
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: 0.9px;
+        text-transform: uppercase;
+        color: #fff8e7;
+        background: linear-gradient(135deg, rgba(140, 70, 15, 0.95), rgba(210, 140, 30, 0.9));
+        box-shadow: 0 4px 16px rgba(210, 120, 30, 0.25);
+        border: 1px solid rgba(210, 180, 120, 0.25);
+      }
+      .catalog-hot-badge img { width: 14px; height: 14px; }
+      @keyframes premiumHotShimmer {
+        0%, 100% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  static normalizePremium(profile) {
+    const p = profile?.premium;
+    if (!p) return null;
+    const expiresAt = Number(p.expiresAt) || 0;
+    const active = Boolean(
+      p.active && (!p.expiresAt || expiresAt > Date.now()),
+    );
+    return { ...p, expiresAt, active };
+  }
+
+  static isStaff(profile, uid) {
+    if (!window.AdminPanel) return false;
+    return (
+      AdminPanel.isCreatorProfile(profile, uid) ||
+      AdminPanel.isModeratorProfile(profile, uid) ||
+      AdminPanel.isAdminProfile(profile, uid)
+    );
+  }
+
+  static isPremiumActive(profile, uid) {
+    if (this.isStaff(profile, uid)) return true;
+    const prem = this.normalizePremium(profile);
+    return Boolean(prem?.active);
+  }
+
+  static getUserLevel(profile) {
+    if (!profile) return 0;
+    const totalXp = Number(profile.xp) || 0;
+    return Math.floor(Math.sqrt(totalXp / 240));
+  }
+
+  static hasCatalogAccess(profile, uid) {
+    if (!uid) return false;
+    if (window.AdminPanel) {
+      if (AdminPanel.isCreatorProfile(profile || {}, uid)) return true;
+      if (AdminPanel.isModeratorProfile(profile || {}, uid)) return true;
+    }
+    const level = this.getUserLevel(profile);
+    return level >= 10;
+  }
+
+  static hasPaidPremium(profile, uid) {
+    const prem = this.normalizePremium(profile);
+    return Boolean(prem?.active);
+  }
+
+  static getBioLimit(profile, uid) {
+    return this.isPremiumActive(profile, uid)
+      ? this.BIO_LIMIT_PREMIUM
+      : this.BIO_LIMIT_DEFAULT;
+  }
+
+  static canUseTheme(themeKey, profile, uid) {
+    if (themeKey === "default") return true;
+    return this.isPremiumActive(profile, uid);
+  }
+
+  static getXpMultiplier(profile, uid) {
+    if (this.isPremiumActive(profile, uid)) return 2;
+    return 1;
+  }
+
+  static getStatusEmojiHtml(profile, uid) {
+    if (!this.isPremiumActive(profile, uid)) return "";
+    const key = profile?.premium?.statusEmoji || "star";
+    const preset = this.STATUS_EMOJIS[key] || this.STATUS_EMOJIS.star;
+    return `<img class="premium-status-emoji" src="${preset.url}" alt="" title="Premium">`;
+  }
+
+  static getChatNameClass() {
+    return "";
+  }
+
+  static formatExpiry(profile) {
+    const prem = this.normalizePremium(profile);
+    if (!prem?.active) return "Не активен";
+    return new Date(prem.expiresAt).toLocaleDateString("ru-RU", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  }
+
+  static syncFromProfile(profile, uid) {
+    document.body.classList.remove("user-is-premium");
+    this.syncNav(profile, uid);
+    this.renderPremiumSection(profile, uid);
+  }
+
+  static syncNav(profile, uid) {
+    const catalogNav = document.getElementById("nav-catalog");
+    const hasAccess = this.hasCatalogAccess(profile, uid);
+    if (catalogNav) {
+      catalogNav.classList.toggle("nav-locked", !hasAccess);
+      let lock = catalogNav.querySelector(".nav-lock-badge");
+      if (!hasAccess) {
+        if (!lock) {
+          lock = document.createElement("span");
+          lock.className = "nav-lock-badge";
+          lock.textContent = "🔒";
+          catalogNav.querySelector("span")?.appendChild(lock);
+        }
+      } else if (lock) {
+        lock.remove();
+      }
+    }
+    const premNav = document.getElementById("nav-premium");
+    if (premNav) {
+      const active =
+        this.isPremiumActive(profile, uid) && !this.isStaff(profile, uid);
+      premNav.classList.toggle("premium-active-nav", active);
+    }
+  }
+
+  static renderPremiumSection(profile, uid) {
+    const container = document.getElementById("premium-dynamic-content");
+    if (!container) return;
+
+    const p =
+      profile ||
+      (window.AppState?.currentUser
+        ? AppState.usersCache.get(AppState.currentUser.uid)
+        : null);
+    const userId = uid || AppState?.currentUser?.uid;
+    const active = this.isPremiumActive(p, userId);
+    const staff = this.isStaff(p, userId);
+
+    const perksHtml = this.PERKS.map(
+      (perk) => `
+      <div class="premium-perk-card">
+        <img src="${perk.url}" style="width:22px;height:22px;margin-bottom:8px;">
+        <div style="font-weight:800;font-size:14px;margin-bottom:4px;">${perk.title}</div>
+        <div style="font-size:12px;color:var(--text-muted);line-height:1.45;">${perk.desc}</div>
+      </div>`,
+    ).join("");
+
+    const emojiPicker = active
+      ? `<div style="margin-top:20px;padding-top:18px;border-top:1px solid var(--border-light);">
+          <div style="font-weight:800;margin-bottom:6px;">Статус-эмодзи</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Выберите эмодзи, которое будет рядом с вашим именем</div>
+          <div class="premium-emoji-picker" id="premium-emoji-picker">
+            ${Object.entries(this.STATUS_EMOJIS)
+              .map(
+                ([key, val]) => `
+              <button type="button" class="premium-emoji-btn ${p?.premium?.statusEmoji === key || (!p?.premium?.statusEmoji && key === "star") ? "active" : ""}" data-emoji="${key}" title="${val.label}">
+                <img src="${val.url}" alt="">
+              </button>`,
+              )
+              .join("")}
+          </div>
+        </div>`
+      : "";
+
+    container.innerHTML = `
+      <div class="premium-hero">
+        <div style="position:relative;z-index:1;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" style="width:32px;height:32px;">
+              <div>
+                <div style="font-size:22px;font-weight:900;letter-spacing:0.3px;">COWIO Premium</div>
+                <div style="font-size:13px;color:var(--text-muted);">Месяц привилегий за ${this.PRICE_RUB} ₽</div>
+              </div>
+            </div>
+          </div>
+          <div style="margin-bottom:14px;display:flex;align-items:center;gap:6px;font-size:13px;color:#ffb347;background:rgba(255,179,71,0.1);padding:6px 12px;border-radius:12px;width:fit-content;">
+            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width:16px;height:16px;">
+            Уже владеют: <b id="premium-users-counter">загрузка...</b>
+          </div>
+          ${
+            staff
+              ? `<div style="padding:12px 14px;border-radius:12px;background:rgba(255,255,255,0.05);font-size:13px;color:var(--text-muted);margin-bottom:12px;">У вас доступ персонала: каталог и все Premium-функции уже открыты.</div>`
+              : active
+                ? `<div style="font-size:14px;color:#ffe6a0;margin-bottom:8px;">✓ Premium активен до ${this.formatExpiry(p)}</div>`
+                : `<div class="premium-price-tag">${this.PRICE_RUB} ₽ <small>/ ${this.PLAN_DAYS} дней</small></div>`
+          }
+          <div class="premium-perk-grid">${perksHtml}</div>
+          ${
+            !staff && !active
+              ? `<button class="primary-btn" id="btn-buy-premium" style="width:100%;max-width:320px;padding:14px;font-size:15px;border-radius:14px;background:linear-gradient(135deg,#ffe6a0,#ffb347);color:#1a1208;border:none;font-weight:800;">
+                  Оформить Premium
+                </button>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:10px;max-width:420px;line-height:1.5;">
+                  Оплата через LAVA. После успешной оплаты Premium активируется автоматически.
+                </div>`
+              : !staff && active
+                ? `<button class="secondary-btn" id="btn-extend-premium" style="width:auto;padding:10px 18px;">Продлить ещё на месяц (${this.PRICE_RUB} ₽)</button>`
+                : ""
+          }
+          ${emojiPicker}
+        </div>
+      </div>
+    `;
+
+    container
+      .querySelector("#btn-buy-premium")
+      ?.addEventListener("click", () => this.startPurchase());
+    container
+      .querySelector("#btn-extend-premium")
+      ?.addEventListener("click", () => this.startPurchase());
+    container.querySelectorAll(".premium-emoji-btn").forEach((btn) => {
+      btn.onclick = () => this.saveStatusEmoji(btn.dataset.emoji);
+    });
+
+    const counterSpan = container.querySelector("#premium-users-counter");
+    if (counterSpan) {
+      this.getPremiumUsersCount().then((count) => {
+        counterSpan.innerText = count;
+      });
+    }
+    this.updateThemeButtons();
+  }
+
+  static async getPremiumUsersCount() {
+    if (!window.db) return 0;
+    try {
+      let count = 0;
+      AppState.usersCache.forEach((u, uid) => {
+        if (this.isPremiumActive(u, uid) || this.isStaff(u, uid)) count++;
+      });
+      return count;
+    } catch (e) {
+      return "~";
+    }
+  }
+
+  static async saveStatusEmoji(key) {
+    const uid = AppState?.currentUser?.uid;
+    if (!uid) return;
+    const profile = AppState.usersCache.get(uid);
+    if (!this.isPremiumActive(profile, uid)) {
+      return Utils.toast("Статус-эмодзи доступны только Premium", "error");
+    }
+    if (!window.db || !window.firebaseRef || !window.firebaseUpdate) {
+      return Utils.toast("Подождите, сайт ещё загружается", "info");
+    }
+    await window.firebaseSet(
+      window.firebaseRef(window.db, `users/${uid}/profile/premium/statusEmoji`),
+      key,
+    );
+    document.querySelectorAll(".premium-emoji-btn").forEach((b) => {
+      b.classList.toggle("active", b.dataset.emoji === key);
+    });
+    if (profile?.premium) profile.premium.statusEmoji = key;
+    AppState.usersCache.set(uid, profile);
+    Utils.toast("Статус-эмодзи обновлён", "success");
+  }
+
+  static updateThemeButtons() {
+    setTimeout(() => {
+      const uid = window.AppState?.currentUser?.uid;
+      if (!uid) return;
+      const profile =
+        window.AppState?.usersCache?.get(uid) || window.AppState?.myProfile;
+      const isAdmin = this.isStaff(profile, uid);
+      const isPremium = profile
+        ? this.isPremiumActive(profile, uid) || isAdmin
+        : false;
+
+      ["btn-room-theme-toggle", "btn-dm-theme-toggle"].forEach((id) => {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+        if (isPremium) {
+          btn.classList.remove("premium-locked-theme");
+          btn.innerHTML = "Поменять тему";
+          btn.style.opacity = "1";
+        } else {
+          btn.classList.add("premium-locked-theme");
+          btn.innerHTML =
+            '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width:18px;height:18px;vertical-align:middle;margin-right:6px;"><span style="position:relative;display:inline-flex;align-items:center;justify-content:center;"><span style="filter:blur(3px);opacity:0.3;position:absolute;">Поменять тему</span><span style="font-size:11px;font-weight:700;white-space:nowrap;color:#ffe6a0;position:relative;z-index:1;">Приобретите Premium</span></span>';
+          btn.style.opacity = "0.9";
+        }
+      });
+    }, 1500);
+  }
+
+  static async startPurchase() {
+    const user = AppState?.currentUser;
+    if (!user) return Utils.toast("Войдите в аккаунт", "error");
+
+    const profile = AppState.usersCache.get(user.uid) || {};
+    const btn =
+      document.getElementById("btn-buy-premium") ||
+      document.getElementById("btn-extend-premium");
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Переход к оплате...";
+    }
+
+    try {
+      const res = await fetch("/api/premium/create-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          uid: user.uid,
+          email: profile.email || user.email,
+        }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Не удалось создать платёж");
+      }
+
+      if (data.sandbox && data.activated) {
+        Utils.toast("Premium активирован (sandbox)", "success");
+        await this.refreshStatus(user.uid);
+        return;
+      }
+
+      if (data.confirmationUrl) {
+        sessionStorage.setItem("cowio_pending_payment", data.paymentId || "");
+        window.location.href = data.confirmationUrl;
+        return;
+      }
+
+      throw new Error("Не получена ссылка на оплату");
+    } catch (e) {
+      Utils.toast(e.message || "Ошибка оплаты", "error");
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent =
+          btn.id === "btn-extend-premium"
+            ? `Продлить ещё на месяц (${this.PRICE_RUB} ₽)`
+            : "Оформить Premium";
+      }
+    }
+  }
+
+  static async refreshStatus(uid) {
+    const paymentId = sessionStorage.getItem("cowio_pending_payment") || "";
+    const q = new URLSearchParams({ uid });
+    if (paymentId) q.set("paymentId", paymentId);
+    const res = await fetch(`/api/premium/status?${q}`);
+    const data = await res.json();
+    if (data.active) {
+      sessionStorage.removeItem("cowio_pending_payment");
+      Utils.toast("Premium успешно активирован!", "success");
+      if (window.CatalogManager) CatalogManager.renderCatalog();
+    }
+    this.renderPremiumSection();
+    return data;
+  }
+
+  static checkReturnFromPayment() {
+    const params = new URLSearchParams(window.location.search);
+    if (!params.get("premium_return")) return;
+    const uidOverride = params.get("uid") || AppState?.currentUser?.uid || "";
+    sessionStorage.setItem(
+      "cowio_premium_return_uid",
+      JSON.stringify({ uid: uidOverride, ts: Date.now() }),
+    );
+    window.history.replaceState({}, "", window.location.pathname);
+    if (AppState?.currentUser) this.handlePostLoginReturn();
+  }
+
+  static handlePostLoginReturn() {
+    let data;
+    try {
+      data = JSON.parse(sessionStorage.getItem("cowio_premium_return_uid"));
+    } catch (e) {}
+
+    if (
+      !data ||
+      !data.uid ||
+      !AppState?.currentUser ||
+      data.uid !== AppState.currentUser.uid ||
+      Date.now() - data.ts > 60000
+    ) {
+      sessionStorage.removeItem("cowio_premium_return_uid");
+      return;
+    }
+    sessionStorage.removeItem("cowio_premium_return_uid");
+
+    if (window.Utils?.showScreen) Utils.showScreen("lobby-screen");
+    setTimeout(async () => {
+      document.getElementById("nav-premium")?.click();
+      await this.refreshStatus(data.uid);
+    }, 800);
+  }
+
+  static renderCatalogLock() {
+    const profile = AppState?.currentUser?.uid ? AppState.usersCache.get(AppState.currentUser.uid) : null;
+    const level = this.getUserLevel(profile);
+    return `
+      <div class="catalog-lock-screen">
+        <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width:48px;height:48px;margin-bottom:14px;opacity:0.9;">
+        <h3 style="margin:0 0 10px;font-size:20px;">Каталог с 10 Уровня</h3>
+        <p style="margin:0 0 20px;font-size:14px;color:var(--text-muted);max-width:420px;margin-left:auto;margin-right:auto;line-height:1.55;">
+          Рамки, звуки и горячие акции доступны игрокам, достигшим 10 уровня.
+          Ваш текущий уровень: <b>${level}</b>. Общайтесь в комнатах для получения опыта!
+        </p>
+      </div>`;
+  }
+
+  static openCatalogOrUpsell(navigate = true) {
+    const uid = AppState?.currentUser?.uid;
+    const profile = uid ? AppState.usersCache.get(uid) : null;
+    if (this.hasCatalogAccess(profile, uid)) {
+      if (navigate && window.FriendsManager?.setNavActive) {
+        FriendsManager.setNavActive("nav-catalog");
+        if (window.CatalogManager) CatalogManager.renderCatalog();
+      }
+      return true;
+    }
+    if (navigate && window.FriendsManager?.setNavActive) {
+      FriendsManager.setNavActive("nav-profile");
+    }
+    if (window.Utils?.toast)
+      Utils.toast("Достигните 10 уровня для доступа к каталогу", "info");
+    return false;
+  }
+}
+
+window.PremiumManager = PremiumManager;
+
+
+/* ===== CONSOLIDATED MODULE: settingsRenderer.js ===== */
+const SettingSections = [
+  {
+    title: "Внешний вид и лобби",
+    icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp",
+    items: [
+      {
+        id: "site-settings-theme",
+        type: "toggle",
+        title: "Светлая тема (Лобби)",
+        desc: "Альтернативное светлое оформление интерфейса",
+        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Sun.webp",
+        default: false,
+        onChange: (val) => {
+          localStorage.setItem("cowio:globalTheme", val ? "light" : "dark");
+          document.documentElement.dataset.globalTheme = val ? "light" : "dark";
+          document.documentElement.classList.toggle("theme-light-global", val);
+        },
+      },
+      {
+        id: "site-settings-particle",
+        type: "toggle",
+        title: "Анимации частиц",
+        desc: "Интерактивный летающий фон",
+        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkler.webp",
+        default: true,
+        onChange: (val) => {
+          localStorage.setItem("siteParticles", val ? "true" : "false");
+          const canvas = document.getElementById("particle-canvas");
+          if (canvas)
+            canvas.style.setProperty(
+              "display",
+              val ? "block" : "none",
+              "important",
+            );
+        },
+      },
+      {
+        id: "site-settings-particle-brightness",
+        type: "slider",
+        title: "Яркость частиц",
+        desc: "Видимость фона",
+        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Light%20Bulb.webp",
+        default: 1,
+        onChange: (val) => {
+          localStorage.setItem("siteParticleBrightness", val);
+          const canvas = document.getElementById("particle-canvas");
+          if (canvas) canvas.style.setProperty("opacity", val);
+        },
+      },
+      {
+        id: "site-settings-neuro",
+        type: "toggle",
+        title: "Черный фон",
+        desc: "Премиальное темное оформление (neuro-bg)",
+        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp",
+        default: true,
+        onChange: (val) => {
+          localStorage.setItem("siteNeuro", val ? "true" : "false");
+          const bg = document.getElementById("premium-black-bg");
+          if (bg)
+            bg.style.setProperty(
+              "display",
+              val ? "block" : "none",
+              "important",
+            );
+        },
+      },
+      {
+        id: "site-set-hide-counter",
+        type: "toggle",
+        title: "Скрывать онлайн",
+        desc: "Прячет счетчик онлайна в правом нижнем углу лобби",
+        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Eyes.webp",
+        default: false,
+        onChange: (val) => {
+          localStorage.setItem("hideOnlineCounter", val);
+          const counter = document.querySelector(".online-counter-badge");
+          if (counter) counter.style.display = val ? "none" : "flex";
+        },
+      },
+      {
+        id: "site-set-hide-recent",
+        type: "toggle",
+        title: "Скрывать недавние комнаты",
+        desc: "Очищает интерфейс от списка ваших комнат",
+        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Sponge.webp",
+        default: false,
+        onChange: (val) => {
+          localStorage.setItem("hideRecentRooms", val);
+          document.body.classList.toggle("hide-recent-rooms", val);
+        },
+      },
+      {
+        id: "site-set-monochrome",
+        type: "toggle",
+        title: "Черно-белый интерфейс",
+        desc: "Абсолютно 0 насыщенности",
+        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Full%20Moon.webp",
+        default: false,
+        onChange: (val) => {
+          localStorage.setItem("siteMonochrome", val);
+          document.documentElement.style.filter = val ? "grayscale(1)" : "";
+        },
+      },
+
+    ],
+  },
+  {
+    title: "Оптимизация и чат",
+    icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Keyboard.webp",
+    items: [
+      {
+        id: "site-set-dyslexia",
+        type: "toggle",
+        title: "Шрифт для дислексиков",
+        desc: "Включает monospace шрифт по всей системе",
+        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Abacus.webp",
+        default: false,
+        onChange: (val) => {
+          localStorage.setItem("siteDyslexia", val);
+          document.body.style.fontFamily = val ? "monospace" : "";
+        },
+      },
+      {
+        id: "site-set-disable-transitions",
+        type: "toggle",
+        title: "Отключить анимации окон",
+        desc: "Делает интерфейс резким",
+        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/High%20Speed%20Train.webp",
+        default: false,
+        onChange: (val) => {
+          localStorage.setItem("disableTransitions", val);
+          document.body.classList.toggle("disable-transitions", val);
+        },
+      },
+      {
+        id: "site-set-use-proxy",
+        type: "toggle",
+        title: "Включить прокси (Обход)",
+        desc: "Проксирует запрос ютуб видео для обхода блокировок",
+        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Satellite%20Antenna.webp",
+        default: false,
+        onChange: (val) => {
+          localStorage.setItem("useGlobalProxy", val);
+          if (window.AppState) window.AppState.useProxy = val;
+        },
+      },
+      {
+        id: "site-set-round-avatars",
+        type: "toggle",
+        title: "Круглые аватарки",
+        desc: "Сделать все аватары полностью круглыми",
+        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/New%20Moon.webp",
+        default: false,
+        onChange: (val) => {
+          localStorage.setItem("siteRoundAvars", val);
+          document.body.classList.toggle("round-avatars", val);
+        },
+      },
+      {
+        id: "site-set-compact-chat",
+        type: "toggle",
+        title: "Компактный чат",
+        desc: "Уменьшает отступы в сообщениях чата комнаты",
+        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Microscope.webp",
+        default: false,
+        onChange: (val) => {
+          localStorage.setItem("compactChat", val);
+          document.body.classList.toggle("compact-chat", val);
+        },
+      },
+      {
+        id: "site-set-hide-chat-time",
+        type: "toggle",
+        title: "Скрыть время сообщений",
+        desc: "Скрывает блок времени в чате",
+        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Hourglass%20Not%20Done.webp",
+        default: false,
+        onChange: (val) => {
+          localStorage.setItem("hideChatTime", val);
+          document.body.classList.toggle("hide-chat-time", val);
+        },
+      },
+    ],
+  },
+];
+
+function initSettingsRenderer() {
+  const container = document.getElementById("settings-dynamic-container");
+  if (!container) return;
+
+  let html = "";
+  SettingSections.forEach((section) => {
+    html += `
+      <div style="margin-bottom: 25px;">
+        <h3 style="font-size: 18px; margin-bottom: 15px; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+          <img src="${section.icon}" style="width: 24px;"> ${section.title}
+        </h3>
+        <div style="background: rgba(255,255,255,0.02); border-radius: 16px; border: 1px solid var(--border-light); overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+    `;
+
+    section.items.forEach((item) => {
+      let saved =
+        localStorage.getItem(item.id) ||
+        localStorage.getItem(item.id.replace("site-settings-", "site")); // backward compatibility
+      if (item.id === "site-settings-theme")
+        saved =
+          localStorage.getItem("cowio:globalTheme") === "light"
+            ? "true"
+            : "false";
+      if (item.id === "site-settings-particle")
+        saved = localStorage.getItem("siteParticles") || "true";
+      if (item.id === "site-settings-particle-brightness")
+        saved = localStorage.getItem("siteParticleBrightness") || "1";
+      if (item.id === "site-settings-neuro")
+        saved = localStorage.getItem("siteNeuro") || "true";
+      if (item.id === "site-settings-static-emojis")
+        saved = localStorage.getItem("staticEmojis") || "false";
+      if (item.id === "site-set-use-proxy")
+        saved = localStorage.getItem("useGlobalProxy") || "false";
+
+
+      if (saved === null) saved = item.default;
+      else if (item.type !== "slider") saved = saved === "true";
+      else if (item.type === "slider") saved = Number(saved);
+
+      // Setup initialization for CSS rules
+      try {
+        if (saved && item.type !== "slider") item.onChange(true);
+        if (item.type === "slider") item.onChange(saved);
+      } catch (e) {
+        console.warn("Setting init err", e);
+      }
+
+      if (item.type === "toggle") {
+        html += `
+          <label style="padding: 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
+            <div style="display: flex; align-items: center; gap: 12px;">
+               <div style="width: 40px; height: 40px; background: rgba(255,255,255,0.05); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                 <img src="${item.icon}" style="width: 24px;">
+               </div>
+               <div>
+                 <div style="font-weight: 700; font-size: 15px;">${item.title}</div>
+                 <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">${item.desc}</div>
+               </div>
+            </div>
+            <div class="st-switch">
+               <input type="checkbox" id="${item.id}" ${saved ? "checked" : ""}>
+               <span class="st-slider"></span>
+            </div>
+          </label>
+        `;
+      } else if (item.type === "slider") {
+        const min = item.min !== undefined ? item.min : 0;
+        const max = item.max !== undefined ? item.max : 1;
+        const step = item.step !== undefined ? item.step : 0.05;
+        const labelFn = item.labelFn || ((v) => Math.round(v * 100) + "%");
+
+        html += `
+          <div style="padding: 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center;">
+             <div style="display: flex; align-items: center; gap: 12px;">
+               <div style="width: 40px; height: 40px; background: rgba(255,255,255,0.05); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                 <img src="${item.icon}" style="width: 24px;">
+               </div>
+               <div>
+                 <div style="font-weight: 700; font-size: 15px;">${item.title}</div>
+                 <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">${item.desc}: <span id="${item.id}-val">${labelFn(saved)}</span></div>
+               </div>
+             </div>
+             <input type="range" id="${item.id}" min="${min}" max="${max}" step="${step}" value="${saved}" style="width: 100px; accent-color: #fff; cursor: pointer;">
+          </div>
+        `;
+      }
+    });
+
+    html += `</div></div>`;
+  });
+
+  // Account Security
+  html += `
+   <div style="margin-bottom: 20px;">
+      <h3 style="font-size: 18px; margin-bottom: 15px; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+        <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Key.webp" style="width: 24px;"> Аккаунт и Безопасность
+      </h3>
+      <div class="settings-security-card" id="security-email-card" style="background: rgba(255,255,255,0.02); border-radius: 16px; border: 1px solid var(--border-light); margin-bottom: 12px; overflow: hidden; transition: all 0.3s; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+        <div style="padding: 20px; display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="document.getElementById('security-email-form').style.display = document.getElementById('security-email-form').style.display === 'none' ? 'block' : 'none';">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 40px; height: 40px; background: rgba(255,143,198,0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Incoming%20Envelope.webp" style="width: 24px;">
+            </div>
+            <div>
+              <div style="font-weight: 700; font-size: 15px;">Сменить адрес почты</div>
+              <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Требует подтверждение текущего пароля</div>
+            </div>
+          </div>
+        </div>
+        
+        <div id="security-email-form" style="display: none; padding: 0 20px 20px 20px; border-top: 1px solid rgba(255,255,255,0.05); margin-top: 5px; padding-top: 20px;">
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            <label style="font-size: 12px; color: var(--text-muted); margin-bottom: -5px;">Текущий пароль для подтверждения личности</label>
+            <input type="password" id="settings-email-old-password" placeholder="Введите ваш текущий пароль" style="margin-bottom:0; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); padding:12px; border-radius:10px; color:#fff;" />
+            <label style="font-size: 12px; color: var(--text-muted); margin-top: 5px; margin-bottom: -5px;">Новый адрес электронной почты</label>
+            <input type="email" id="settings-new-email" placeholder="new@example.com" style="margin-bottom:0; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); padding:12px; border-radius:10px; color:#fff;" />
+            <button class="primary-btn" id="btn-settings-change-email" style="font-size: 14px; padding: 12px; border-radius: 10px; margin-top: 10px;">Продолжить <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Rightwards%20Hand.webp" style="width:16px;height:16px;vertical-align:text-bottom;"></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-security-card" id="security-password-card" style="background: rgba(255,255,255,0.02); border-radius: 16px; border: 1px solid var(--border-light); overflow: hidden; transition: all 0.3s; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+        <div style="padding: 20px; display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="document.getElementById('security-password-form').style.display = document.getElementById('security-password-form').style.display === 'none' ? 'block' : 'none';">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 40px; height: 40px; background: rgba(255,143,198,0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Key.webp" style="width: 24px;">
+            </div>
+            <div>
+              <div style="font-weight: 700; font-size: 15px;">Сменить пароль</div>
+              <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Задайте новый, более надежный пароль</div>
+            </div>
+          </div>
+        </div>
+        
+        <div id="security-password-form" style="display: none; padding: 0 20px 20px 20px; border-top: 1px solid rgba(255,255,255,0.05); margin-top: 5px; padding-top: 20px;">
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            <label style="font-size: 12px; color: var(--text-muted); margin-bottom: -5px;">Текущий пароль</label>
+            <input type="password" id="settings-password-old" placeholder="Введите текущий пароль" style="margin-bottom:0; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); padding:12px; border-radius:10px; color:#fff;" />
+            <label style="font-size: 12px; color: var(--text-muted); margin-top: 5px; margin-bottom: -5px;">Новый пароль (минимум 6 символов)</label>
+            <input type="password" id="settings-new-password" placeholder="Введите новый пароль" style="margin-bottom:0; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); padding:12px; border-radius:10px; color:#fff;" />
+            <label style="font-size: 12px; color: var(--text-muted); margin-top: 5px; margin-bottom: -5px;">Подтверждение нового пароля</label>
+            <input type="password" id="settings-new-password-confirm" placeholder="Повторите новый пароль" style="margin-bottom:0; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); padding:12px; border-radius:10px; color:#fff;" />
+            <button class="primary-btn" id="btn-settings-change-password" style="font-size: 14px; padding: 12px; border-radius: 10px; margin-top: 10px;">Продолжить <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Rightwards%20Hand.webp" style="width:16px;height:16px;vertical-align:text-bottom;"></button>
+          </div>
+        </div>
+      </div>
+   </div>
+  `;
+
+  container.innerHTML = html;
+
+  // Add event listeners
+  SettingSections.forEach((s) => {
+    s.items.forEach((item) => {
+      const el = document.getElementById(item.id);
+      if (el) {
+        if (item.type === "toggle") {
+          el.addEventListener("change", (e) => {
+            item.onChange(e.target.checked);
+          });
+        } else if (item.type === "slider") {
+          el.addEventListener("input", (e) => {
+            const labelFn = item.labelFn || ((v) => Math.round(v * 100) + "%");
+            document.getElementById(item.id + "-val").innerText = labelFn(
+              e.target.value,
+            );
+            item.onChange(e.target.value);
+          });
+        }
+      }
+    });
+  });
+}
+
+try {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initSettingsRenderer);
+  } else {
+    initSettingsRenderer();
+  }
+} catch (e) {
+  console.error(e);
+}
+
+
+/* ===== CONSOLIDATED MODULE: app.js ===== */
 /**
  * @fileoverview COWIO Core Engine v4.0 - The Ultimate Edition
  * @description Интегрированы все фиксы: MPA-подобная стабильность, обход пароля по инвайтам,
@@ -2569,8 +5075,10 @@ class RoomVideoSearchManager {
             platformBadgeHtml = `<span class="video-platform-badge badge-youtube" title="YouTube"><img src="https://cdn-icons-png.flaticon.com/128/1384/1384060.png" alt="YouTube" style="width: 14px; height: 14px; object-fit: contain; display: block;"></span>`;
           } else if (item.platform === "rutube") {
             platformBadgeHtml = `<span class="video-platform-badge badge-rutube" title="Rutube"><img src="https://static.rtbcdn.ru/static/img/favicon-icons/v3/icon_180x180.png" alt="Rutube" style="width: 13px; height: 13px; border-radius: 2px; object-fit: contain; display: block;"></span>`;
+          } else if (item.platform === "vk") {
+            platformBadgeHtml = `<span class="video-platform-badge badge-vk" title="VK Video"><img src="https://cdn-icons-png.flaticon.com/128/145/145813.png" alt="VK" style="width: 13px; height: 13px; border-radius: 2px; object-fit: contain; display: block;"></span>`;
           } else {
-            platformBadgeHtml = `<span class="video-platform-badge badge-vk">${Utils.escapeHtml(item.platformLabel || item.platform)}</span>`;
+            platformBadgeHtml = `<span class="video-platform-badge">${Utils.escapeHtml(item.platformLabel || item.platform)}</span>`;
           }
 
           const durBadge = item.duration
