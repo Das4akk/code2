@@ -2737,6 +2737,9 @@ class SecurityManager {
               const isAllowed =
                 isPlayerChild ||
                 src.includes("gstatic.com") ||
+                src.includes("googleapis.com") ||
+                src.includes("firebase") ||
+                src.includes("recaptcha") ||
                 src.includes("youtube.com") ||
                 src.includes("youtube-nocookie.com") ||
                 src.includes("hls.js") ||
@@ -2751,6 +2754,8 @@ class SecurityManager {
                 src.includes("run.app") ||
                 src.includes("ai.studio") ||
                 src.includes("localhost") ||
+                src.includes("about:blank") ||
+                src.startsWith("javascript:") ||
                 src.trim() === "";
 
               if (!isAllowed) {
@@ -20211,6 +20216,8 @@ class RTCManager {
     return keys.length > 0 ? keys[0] : null;
   }
 
+  static isGlobalUnblockerAttached = false;
+
   static getActiveSpeakers() {
     return Array.from(this.activeSpeakers.values());
   }
@@ -20220,8 +20227,53 @@ class RTCManager {
     this.roomId = roomId;
     console.log("[RTCManager] Initialized for room:", roomId);
 
+    this.attachUserInteractionUnblocker();
+    this.unlockAudio();
     this.bindSpeakerListener();
     this.startWatchdog();
+  }
+
+  static attachUserInteractionUnblocker() {
+    if (this.isGlobalUnblockerAttached) return;
+    this.isGlobalUnblockerAttached = true;
+    const unblock = () => {
+      RTCManager.unlockAudio();
+    };
+    window.addEventListener("click", unblock, { passive: true, capture: true });
+    window.addEventListener("touchstart", unblock, { passive: true, capture: true });
+    window.addEventListener("keydown", unblock, { passive: true, capture: true });
+    window.addEventListener("pointerdown", unblock, { passive: true, capture: true });
+  }
+
+  static unlockAudio() {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) {
+        if (!this.audioCtx || this.audioCtx.state === "closed") {
+          this.audioCtx = new AudioCtx();
+        }
+        if (this.audioCtx.state === "suspended") {
+          this.audioCtx.resume().catch(() => {});
+        }
+        if (this.audioCtx.state === "running") {
+          try {
+            const buffer = this.audioCtx.createBuffer(1, 1, 22050);
+            const source = this.audioCtx.createBufferSource();
+            source.buffer = buffer;
+            source.connect(this.audioCtx.destination);
+            source.start(0);
+          } catch (e) {}
+        }
+      }
+    } catch (e) {}
+
+    // Resume any remote audio elements that might be paused
+    this.listenerSessions.forEach((session, spUid) => {
+      const audio = document.getElementById(`room-webrtc-audio-${spUid}`);
+      if (audio && audio.srcObject && audio.paused) {
+        audio.play().catch(() => {});
+      }
+    });
   }
 
   static startWatchdog() {
@@ -20565,14 +20617,42 @@ class RTCManager {
 
     // Connect to all users in room presence
     Object.keys(cache).forEach((uid) => {
-      if (uid !== currentUid && !this.peerConnections.has(uid)) {
+      if (uid === currentUid) return;
+      const existing = this.peerConnections.get(uid);
+      const isDead =
+        !existing ||
+        !existing.pc ||
+        existing.pc.connectionState === "failed" ||
+        existing.pc.connectionState === "closed";
+
+      if (isDead) {
+        if (existing?.pc) {
+          try {
+            existing.pc.close();
+          } catch (e) {}
+        }
+        this.peerConnections.delete(uid);
         this.initiateSpeakerPeer(uid);
       }
     });
 
     // Also ensure connection to the other active speaker if present
     this.activeSpeakers.forEach((spData, spUid) => {
-      if (spUid !== currentUid && !this.peerConnections.has(spUid)) {
+      if (spUid === currentUid) return;
+      const existing = this.peerConnections.get(spUid);
+      const isDead =
+        !existing ||
+        !existing.pc ||
+        existing.pc.connectionState === "failed" ||
+        existing.pc.connectionState === "closed";
+
+      if (isDead) {
+        if (existing?.pc) {
+          try {
+            existing.pc.close();
+          } catch (e) {}
+        }
+        this.peerConnections.delete(spUid);
         this.initiateSpeakerPeer(spUid);
       }
     });
@@ -20622,6 +20702,19 @@ class RTCManager {
             pc.close();
           } catch (e) {}
           this.peerConnections.delete(listenerUid);
+        } else if (pc.connectionState === "disconnected") {
+          setTimeout(() => {
+            const entry = this.peerConnections.get(listenerUid);
+            if (entry && entry.pc && entry.pc.connectionState === "disconnected") {
+              try {
+                entry.pc.close();
+              } catch (e) {}
+              this.peerConnections.delete(listenerUid);
+              if (this.isMicActive) {
+                this.broadcastToParticipants();
+              }
+            }
+          }, 2500);
         }
       };
 
@@ -20644,6 +20737,9 @@ class RTCManager {
         },
       );
 
+      const queuedCandidates = [];
+      let isRemoteDescriptionSet = false;
+
       // Listen for remote answer
       const answerRef = ref(
         db,
@@ -20659,6 +20755,15 @@ class RTCManager {
         ) {
           try {
             await pc.setRemoteDescription(new RTCSessionDescription(answer));
+            isRemoteDescriptionSet = true;
+
+            // Flush any queued listener candidates that arrived before the answer
+            while (queuedCandidates.length > 0) {
+              const cand = queuedCandidates.shift();
+              try {
+                await pc.addIceCandidate(new RTCIceCandidate(cand));
+              } catch (e) {}
+            }
           } catch (e) {
             console.warn("[RTCManager] Set remote answer error:", e);
           }
@@ -20666,17 +20771,20 @@ class RTCManager {
       });
       AppState.roomSubscriptions.push(unsubAnswer);
 
-      // Listen for listener ICE candidates
+      // Listen for listener ICE candidates with queueing
       const candRef = ref(
         db,
         `rooms/${this.roomId}/voice/signals/${currentUid}/${listenerUid}/listenerCandidates`,
       );
-      const unsubCand = onChildAdded(candRef, async (snap) => {
-        const candidate = snap.val();
-        if (candidate && pc.remoteDescription) {
+      const unsubCand = onChildAdded(candRef, async (snapVal) => {
+        const candidate = snapVal.val();
+        if (!candidate) return;
+        if (pc.remoteDescription && isRemoteDescriptionSet) {
           try {
             await pc.addIceCandidate(new RTCIceCandidate(candidate));
           } catch (e) {}
+        } else {
+          queuedCandidates.push(candidate);
         }
       });
       AppState.roomSubscriptions.push(unsubCand);
@@ -20770,8 +20878,23 @@ class RTCManager {
           } catch (e) {}
         }
 
+        // Clean any previous candidate unsubs if offer changes
+        if (session.candidateUnsubs && session.candidateUnsubs.length > 0) {
+          session.candidateUnsubs.forEach((unsub) => {
+            if (typeof unsub === "function") unsub();
+          });
+          session.candidateUnsubs = [];
+        }
+        session.queuedCandidates = [];
+        session.handledCandidateKeys.clear();
+
         const pc = new RTCPeerConnection(this.rtcConfig);
         session.pc = pc;
+
+        // Ensure audio receiver transceiver is configured
+        try {
+          pc.addTransceiver("audio", { direction: "recvonly" });
+        } catch (e) {}
 
         // DataChannel for continuous NAT keep-alive
         pc.ondatachannel = (e) => {
@@ -20787,15 +20910,19 @@ class RTCManager {
 
         pc.ontrack = (event) => {
           console.log(`[RTCManager] Audio track received from speaker ${speakerUid}`);
-          if (event.streams && event.streams[0]) {
-            RTCManager.playRemoteAudio(event.streams[0], speakerUid);
+          let stream = event.streams && event.streams[0] ? event.streams[0] : null;
+          if (!stream && event.track) {
+            stream = new MediaStream([event.track]);
+          }
+          if (stream) {
+            RTCManager.playRemoteAudio(stream, speakerUid);
           }
         };
 
         pc.onconnectionstatechange = () => {
           console.log(`[RTCManager] Listener peer for ${speakerUid} state:`, pc.connectionState);
-          if (pc.connectionState === "failed") {
-            console.warn(`[RTCManager] Connection to speaker ${speakerUid} failed, reconnecting...`);
+          if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
+            console.warn(`[RTCManager] Connection to speaker ${speakerUid} ${pc.connectionState}, reconnecting...`);
             setTimeout(() => {
               if (
                 this.activeSpeakers.has(speakerUid) &&
@@ -20803,7 +20930,7 @@ class RTCManager {
               ) {
                 this.setupListenerSession(speakerUid, sessionId);
               }
-            }, 1000);
+            }, 1200);
           }
         };
 
@@ -20883,6 +21010,8 @@ class RTCManager {
       audio.autoplay = true;
       audio.playsInline = true;
       audio.muted = false;
+      audio.setAttribute("playsinline", "");
+      audio.setAttribute("autoplay", "");
       // Positioned offscreen without display:none so browser does not throttle audio decode
       audio.style.cssText =
         "position: fixed; left: -9999px; bottom: 0; width: 1px; height: 1px; opacity: 0.001; pointer-events: none; z-index: -100;";
@@ -20895,18 +21024,7 @@ class RTCManager {
       };
     }
 
-    // Resume AudioContext if suspended
-    try {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (AudioCtx) {
-        if (!this.audioCtx || this.audioCtx.state === "closed") {
-          this.audioCtx = new AudioCtx();
-        }
-        if (this.audioCtx.state === "suspended") {
-          this.audioCtx.resume().catch(() => {});
-        }
-      }
-    } catch (e) {}
+    this.unlockAudio();
 
     audio.srcObject = stream;
     audio.volume = 1.0;
@@ -20916,17 +21034,17 @@ class RTCManager {
       playPromise.catch((err) => {
         console.warn(`[RTCManager] Audio autoplay blocked for speaker ${speakerUid}:`, err);
         const unblock = () => {
+          RTCManager.unlockAudio();
           if (audio) audio.play().catch(() => {});
-          if (this.audioCtx && this.audioCtx.state === "suspended") {
-            this.audioCtx.resume().catch(() => {});
-          }
-          window.removeEventListener("click", unblock);
-          window.removeEventListener("touchstart", unblock);
-          window.removeEventListener("keydown", unblock);
+          window.removeEventListener("click", unblock, true);
+          window.removeEventListener("touchstart", unblock, true);
+          window.removeEventListener("keydown", unblock, true);
+          window.removeEventListener("pointerdown", unblock, true);
         };
-        window.addEventListener("click", unblock, { once: true });
-        window.addEventListener("touchstart", unblock, { once: true });
-        window.addEventListener("keydown", unblock, { once: true });
+        window.addEventListener("click", unblock, { once: true, capture: true });
+        window.addEventListener("touchstart", unblock, { once: true, capture: true });
+        window.addEventListener("keydown", unblock, { once: true, capture: true });
+        window.addEventListener("pointerdown", unblock, { once: true, capture: true });
       });
     }
   }
