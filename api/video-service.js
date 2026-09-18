@@ -320,14 +320,57 @@ export async function getVideoInfo(url) {
   }
 
   // 4. VK Video
-  if (/vk\.com|vkvideo\.ru/i.test(trimmed)) {
+  if (/vk\.com|vkvideo\.ru|vk\.ru/i.test(trimmed)) {
+    let clean = trimmed;
+    const iframeSrc = clean.match(/<iframe[^>]+src=["']([^"']+)["']/i);
+    if (iframeSrc) clean = iframeSrc[1];
+
+    let oid = null;
+    let vid = null;
+    let hash = null;
+
+    if (/video_ext\.php/i.test(clean)) {
+      const mOid = clean.match(/[?&]oid=(-?\d+)/i);
+      const mId = clean.match(/[?&]id=([A-Za-z0-9]+)/i);
+      const mHash = clean.match(/[?&]hash=([A-Za-z0-9]+)/i);
+      if (mOid) oid = mOid[1];
+      if (mId) vid = mId[1];
+      if (mHash) hash = mHash[1];
+    }
+
+    if (!oid || !vid) {
+      const vMatch = clean.match(/(?:video|clip)(-?\d+)_([A-Za-z0-9]+)/i);
+      if (vMatch) {
+        oid = vMatch[1];
+        vid = vMatch[2];
+      }
+    }
+
+    if (!oid || !vid) {
+      const zMatch = clean.match(/[?&]z=video(-?\d+)_([A-Za-z0-9]+)/i);
+      if (zMatch) {
+        oid = zMatch[1];
+        vid = zMatch[2];
+      }
+    }
+
+    if (!hash) {
+      const hashMatch = clean.match(/[?&]hash=([A-Za-z0-9]+)/i);
+      if (hashMatch) hash = hashMatch[1];
+    }
+
+    let title = 'VK Video';
+    let author = 'VK Video';
+    let thumbnail = '';
+
+    // Try to fetch metadata from mobile or desktop endpoint if possible
     try {
-      const pageRes = await fetch(trimmed, {
+      const targetUrl = oid && vid ? `https://m.vk.com/video${oid}_${vid}` : clean;
+      const pageRes = await fetch(targetUrl, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-          'Accept-Language': 'ru-RU,ru;q=0.9'
+          'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148',
+          'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7'
         },
-        redirect: 'manual',
         signal: AbortSignal.timeout(3500)
       });
       if (pageRes.ok) {
@@ -335,28 +378,34 @@ export async function getVideoInfo(url) {
         const titleMatch = html.match(/<meta\s+property="og:title"\s+content="([^"]*)"/i) ||
                            html.match(/<title>([^<]*)<\/title>/i);
         const imgMatch = html.match(/<meta\s+property="og:image"\s+content="([^"]*)"/i);
-        let title = titleMatch ? decodeHtml(titleMatch[1].replace(/\|\s*ВКонтакте$/i, '')) : 'VK Video';
-        return {
-          success: true,
-          title,
-          author: 'VK Video',
-          thumbnail: imgMatch ? imgMatch[1] : '',
-          platform: 'vk',
-          platformLabel: 'VK Video',
-          url: trimmed
-        };
+        const hashMatch = html.match(/hash=([a-zA-Z0-9]+)/i) || html.match(/"hash":"([a-zA-Z0-9]+)"/i);
+        if (!hash && hashMatch) hash = hashMatch[1];
+        if (titleMatch) {
+          const rawTitle = decodeHtml(titleMatch[1].replace(/\|\s*ВКонтакте$/i, '').trim());
+          if (rawTitle && !/^(VK\.com|ВКонтакте)$/i.test(rawTitle)) title = rawTitle;
+        }
+        if (imgMatch) thumbnail = imgMatch[1];
       }
     } catch (err) {
       // ignore
     }
+
+    const embedUrl = oid && vid
+      ? `https://vk.com/video_ext.php?oid=${oid}&id=${vid}${hash ? `&hash=${hash}` : ''}&hd=2&autoplay=1&js_api=1`
+      : clean;
+
     return {
       success: true,
-      title: 'VK Video',
-      author: 'VK Video',
-      thumbnail: '',
+      title: title || 'VK Video',
+      author: author || 'VK Video',
+      thumbnail: thumbnail || '',
       platform: 'vk',
       platformLabel: 'VK Video',
-      url: trimmed
+      url: embedUrl,
+      directUrl: clean,
+      oid,
+      vid,
+      hash
     };
   }
 

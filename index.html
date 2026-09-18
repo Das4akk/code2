@@ -1702,13 +1702,43 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 14px 20px;
+        padding: 14px 24px;
         flex-shrink: 0;
         border-radius: 0;
         border-bottom: 1px solid var(--border);
         border-top: none;
         border-left: none;
         border-right: none;
+      }
+      .room-top-left {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+      }
+      .room-title-wrapper {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+      }
+      .room-title-wrapper h2 {
+        font-size: 20px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-weight: 800;
+        margin: 0;
+        letter-spacing: -0.5px;
+      }
+      #room-top-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-shrink: 0;
       }
       .room-layout {
         display: grid;
@@ -1740,28 +1770,53 @@
 
       .player-section {
         display: flex;
-        flex-direction: column;
-        gap: 0;
+        flex-direction: row;
+        align-items: stretch;
+        justify-content: space-between;
+        gap: 16px;
+        height: 100%;
+        padding: 0 16px 24px 24px;
+        box-sizing: border-box;
         min-width: 0;
         position: relative;
-        padding: 16px;
         min-height: 0;
       }
       .player-section .video-container {
         flex: 1;
-        min-height: 0;
-      }
-      .room-title-wrapper {
-        flex: 1;
+        height: 100%;
+        position: relative;
+        border-radius: 24px;
         overflow: hidden;
-        margin: 0 15px;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        order: 1;
+        min-width: 0;
       }
-      .room-title-wrapper h2 {
-        font-size: 18px;
-        white-space: nowrap;
+      .player-section .reaction-bar {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        justify-content: center;
+        width: 44px;
+        flex-shrink: 0;
+        order: 2;
+        position: relative;
+        bottom: auto;
+        left: auto;
+        transform: none;
+        padding: 0;
+        background: transparent;
+        pointer-events: auto;
+      }
+      .chat-section {
+        display: flex;
+        flex-direction: column;
+        background: #000;
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 24px;
+        margin: 0 16px 24px 0;
         overflow: hidden;
-        text-overflow: ellipsis;
-        font-weight: 700;
+        max-height: calc(100vh - 80px);
+        box-sizing: border-box;
       }
 
       .video-container {
@@ -4067,55 +4122,210 @@
           padding: 0;
         }
         .room-shell {
-          height: 100%;
-        }
-        .room-layout {
-          grid-template-columns: 1fr;
-          padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0;
-          height: auto;
-          flex: 1;
-          min-height: 0;
-          display: flex;
-          flex-direction: column;
-        }
-        .room-layout.chat-collapsed {
-          grid-template-columns: 1fr;
-        }
-        .room-layout.chat-collapsed .chat-section {
-          display: none;
-        }
-        .player-section {
-          flex: none;
-          display: flex;
-          flex-direction: column;
-          padding: 8px;
-          border-right: none !important;
-        }
-        .video-container {
-          height: auto;
-          aspect-ratio: 16 / 9;
-          max-height: 40vh;
-          flex: none;
-        }
-        .chat-section {
-          flex: 1;
-          min-height: 0;
+          height: 100dvh;
+          max-height: 100dvh;
           display: flex;
           flex-direction: column;
           overflow: hidden;
-          margin-bottom: 2px;
-        }
-        .chat-messages {
-          flex: 1;
-          overflow-y: auto;
         }
         .room-top-bar {
-          padding: 10px;
-          flex: none;
+          padding: 8px 12px !important;
+          gap: 8px !important;
+          min-height: 50px !important;
+          flex: none !important;
+          background: transparent !important;
         }
-        .reaction-bar {
-          bottom: 10px;
-          padding: 6px 12px;
+        .room-top-bar #btn-leave-room {
+          width: 38px !important;
+          height: 38px !important;
+          flex-shrink: 0 !important;
+          padding: 6px !important;
+        }
+        .room-top-left {
+          display: flex !important;
+          align-items: center !important;
+          gap: 10px !important;
+          flex: 1 !important;
+          min-width: 0 !important;
+          overflow: hidden !important;
+        }
+        .room-title-wrapper {
+          flex: 1 !important;
+          min-width: 0 !important;
+          overflow: hidden !important;
+          margin: 0 !important;
+        }
+        #room-title-text {
+          font-size: 15px !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          max-width: 100% !important;
+        }
+        #room-author-info {
+          font-size: 11px !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          margin-top: 2px !important;
+        }
+        #room-top-actions {
+          display: flex !important;
+          align-items: center !important;
+          gap: 6px !important;
+          flex-shrink: 0 !important;
+        }
+        #btn-fullscreen-toggle {
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          width: 36px !important;
+          height: 36px !important;
+          font-size: 18px !important;
+          padding: 0 !important;
+          border-radius: 10px !important;
+          color: #fff !important;
+          background: transparent !important;
+        }
+        #btn-room-settings {
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          width: 36px !important;
+          height: 36px !important;
+          padding: 0 !important;
+          border-radius: 10px !important;
+          background: transparent !important;
+        }
+        #btn-room-settings img {
+          width: 24px !important;
+          height: 24px !important;
+        }
+        #btn-share-room {
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          height: 36px !important;
+          padding: 0 10px !important;
+          font-size: 12px !important;
+          font-weight: 600 !important;
+          border-radius: 10px !important;
+          width: auto !important;
+          white-space: nowrap !important;
+        }
+
+        /* Room Layout on Mobile: Player (top full width) -> Reactions -> Chat (full width) */
+        .room-layout {
+          display: flex !important;
+          flex-direction: column !important;
+          flex: 1 !important;
+          min-height: 0 !important;
+          height: 100% !important;
+          width: 100% !important;
+          overflow: hidden !important;
+          padding: 0 !important;
+          gap: 0 !important;
+        }
+        .room-layout.chat-collapsed .chat-section {
+          display: none !important;
+        }
+
+        /* 1. Player stretched wide at the top */
+        .player-section {
+          display: flex !important;
+          flex-direction: column !important;
+          flex: none !important;
+          width: 100% !important;
+          padding: 0 8px !important;
+          border-right: none !important;
+          gap: 0 !important;
+          box-sizing: border-box !important;
+          height: auto !important;
+        }
+        .player-section .video-container {
+          width: 100% !important;
+          aspect-ratio: 16 / 9 !important;
+          height: auto !important;
+          max-height: 36vh !important;
+          border-radius: 16px !important;
+          overflow: hidden !important;
+          flex: none !important;
+          order: 1 !important;
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
+        }
+
+        /* 2. Reaction block between player and chat (below player) */
+        .player-section .reaction-bar {
+          order: 2 !important;
+          display: flex !important;
+          flex-direction: row !important;
+          align-items: center !important;
+          justify-content: center !important;
+          gap: 12px !important;
+          width: 100% !important;
+          padding: 8px 0 !important;
+          margin: 0 !important;
+          position: static !important;
+          transform: none !important;
+          background: transparent !important;
+          pointer-events: auto !important;
+          flex-shrink: 0 !important;
+        }
+        .player-section .reaction-bar .react-btn {
+          width: 42px !important;
+          height: 42px !important;
+          background: rgba(255, 255, 255, 0.08) !important;
+          border: 1px solid rgba(255, 255, 255, 0.12) !important;
+          border-radius: 12px !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          cursor: pointer !important;
+          padding: 0 !important;
+          transition: transform 0.15s ease, background 0.15s ease !important;
+        }
+        .player-section .reaction-bar .react-btn:active {
+          transform: scale(1.18) !important;
+          background: rgba(255, 255, 255, 0.2) !important;
+        }
+        .player-section .reaction-bar .react-btn img {
+          width: 28px !important;
+          height: 28px !important;
+        }
+
+        /* 3. Chat stretched right to left, fills remaining screen below reactions */
+        .chat-section {
+          display: flex !important;
+          flex-direction: column !important;
+          flex: 1 !important;
+          min-height: 0 !important;
+          width: calc(100% - 16px) !important;
+          margin: 0 8px calc(8px + env(safe-area-inset-bottom)) 8px !important;
+          border-radius: 20px !important;
+          overflow: hidden !important;
+          height: auto !important;
+          max-height: none !important;
+          border: 1px solid rgba(255, 255, 255, 0.1) !important;
+          background: #000 !important;
+          box-sizing: border-box !important;
+        }
+        .chat-header {
+          padding: 10px 14px !important;
+          gap: 10px !important;
+        }
+        .chat-content-area {
+          flex: 1 !important;
+          overflow-y: auto !important;
+          padding: 12px !important;
+          min-height: 0 !important;
+        }
+        .chat-messages {
+          flex: 1 !important;
+          overflow-y: auto !important;
+        }
+        .chat-input-area {
+          padding: 10px 12px !important;
+          border-top: 1px solid rgba(255, 255, 255, 0.07) !important;
         }
         #chat-input-container {
           position: sticky;
@@ -6827,31 +7037,35 @@
     <!-- ========================================================================= -->
         <section id="room-screen" class="screen">
       <div class="room-shell">
-        <div class="room-top-bar glass-panel" style="display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 16px 24px; background: transparent; border-bottom: none;">
-          <div style="display: flex; align-items: center; gap: 16px;">
+        <div class="room-top-bar glass-panel">
+          <div class="room-top-left">
             <button class="icon-btn" id="btn-leave-room" aria-label="Выйти" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 50%; width: 44px; height: 44px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s;">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
             </button>
-            <div class="room-title-wrapper" style="display: flex; flex-direction: column;">
-              <h2 id="room-title-text" style="margin: 0; font-size: 24px; font-weight: 800; color: #fff; letter-spacing: -0.5px;">Загрузка комнаты...</h2>
+            <div class="room-title-wrapper">
+              <h2 id="room-title-text">Загрузка комнаты...</h2>
               <div id="room-author-info" style="display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-muted); margin-top: 4px;">
                   <div id="room-author-avatar" style="width: 24px; height: 24px; border-radius: 50%; overflow: hidden; background: rgba(255,255,255,0.1);"></div>
                   <span id="room-author-name" style="font-weight: 600; color: #eee;">автор комнаты</span>
                   <span id="room-typing-status" style="font-size: 13px; display: inline-block; animation: pulse 1.5s infinite;"></span>
+                  <div id="room-voice-speaker-badge" style="display: none; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: #2ed573; background: rgba(46, 213, 115, 0.12); padding: 2px 8px; border-radius: 12px; border: 1px solid rgba(46, 213, 115, 0.3);">
+                    <span style="width: 7px; height: 7px; border-radius: 50%; background: #2ed573; display: inline-block; box-shadow: 0 0 6px #2ed573;"></span>
+                    <span id="room-voice-speaker-text">Говорит: ...</span>
+                  </div>
               </div>
             </div>
           </div>
           
-          <div style="display: flex; align-items: center; gap: 12px;" id="room-top-actions">
+          <div id="room-top-actions">
             <!-- Share btn added from JS goes here -->
             <button class="secondary-btn" title="На весь экран" id="btn-fullscreen-toggle" style="background: transparent; border: none; font-size: 22px; cursor: pointer; padding: 8px;">⛶</button>
-            <button class="secondary-btn" id="btn-room-settings" title="Настройки комнаты" style="background: transparent; border: none; color: #fff; font-size: 16px; font-weight: 500; cursor: pointer; display: none; padding: 8px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Toolbox.webp" style="width:26px;height:26px;vertical-align:middle;"></button>
+            <button class="secondary-btn" id="btn-room-settings" title="Настройки комнаты" style="background: transparent; border: none; color: #fff; font-size: 16px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 8px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Toolbox.webp" style="width:26px;height:26px;vertical-align:middle;"></button>
           </div>
         </div>
 
       <div class="room-layout">
-        <div class="player-section" style="padding: 0 16px 24px 24px; display: flex; flex-direction: row; align-items: stretch; justify-content: space-between; gap: 16px; height: 100%; box-sizing: border-box;">
-          <div class="reaction-bar" style="display: flex; flex-direction: column; gap: 12px; justify-content: center; width: 44px; flex-shrink: 0; order: 2; position: relative; bottom: auto; left: auto; transform: none; padding: 0; background: transparent;">
+        <div class="player-section">
+          <div class="reaction-bar">
               <button class="react-btn" data-emoji="🔥">
                 <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" style="width: 36px; height: 36px; pointer-events: none">
               </button>
@@ -6868,7 +7082,7 @@
                 <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Clapping%20Hands.webp" style="width: 36px; height: 36px; pointer-events: none">
               </button>
           </div>
-          <div class="video-container glass-panel" style="flex: 1; height: 100%; position: relative; border-radius: 24px !important; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5); transition: border-radius 0.3s ease; order: 1;">
+          <div class="video-container glass-panel">
             <button id="btn-exit-fullscreen" style="display: none; position: absolute; top: 20px; right: 20px; z-index: 1000; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2); border-radius: 12px; width: 44px; height: 44px; color: #fff; cursor: pointer; align-items: center; justify-content: center; backdrop-filter: blur(10px); transition: all 0.3s ease;">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>
             </button>
@@ -6878,9 +7092,9 @@
             </div>
             <div id="room-video-overlay" style="position: absolute; inset: 0; z-index: 8; pointer-events: none; overflow: hidden;"></div>
             <div id="chat-overlay-container" style="position: absolute; top: 15%; left: 50%; transform: translateX(-50%); width: 80%; pointer-events: none; z-index: 10; display: flex; flex-direction: column; gap: 8px;"></div>
-                      </div>
+          </div>
         </div>
-        <div class="chat-section glass-panel" style="display: flex; flex-direction: column; background: #000; border: 1px solid rgba(255,255,255,0.1); border-radius: 24px !important; margin: 0 16px 24px 0; overflow: hidden; max-height: calc(100vh - 80px);">
+        <div class="chat-section glass-panel">
           <div class="panel-love-hearts" id="room-love-hearts"></div>
           
           <div class="chat-header" style="display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); gap: 12px;">
@@ -6891,6 +7105,14 @@
           <div class="chat-content-area" id="chat-messages" style="flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column;"></div>
           <div class="chat-content-area" id="users-list" style="display: none; flex: 1; overflow-y: auto; padding: 16px; flex-direction: column;"></div>
           <div class="chat-input-area" style="padding: 16px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; gap: 8px;">
+    <button id="btn-toggle-mic" class="mic-icon-btn" title="Микрофон (один говорит, все слушают)" aria-label="Включить микрофон" style="cursor: pointer; border: 1px solid rgba(255,255,255,0.1);">
+      <svg id="mic-icon-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+        <line x1="12" y1="19" x2="12" y2="23"></line>
+        <line x1="8" y1="23" x2="16" y2="23"></line>
+      </svg>
+    </button>
     <input type="text" id="chat-input" placeholder="Добавить сообщение..." style="flex: 1; background: rgba(255,255,255,0.05); border: none; border-radius: 20px; padding: 12px 16px; color: #fff; font-size: 14px; outline: none;">
     <button id="send-btn" style="background: rgba(255,255,255,0.1); border: none; border-radius: 50%; width: 40px; height: 40px; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer;">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>

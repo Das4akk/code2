@@ -2648,9 +2648,16 @@ class SecurityManager {
   static validateAction(
     actionName,
     limits = { count: 5, timeWindowMs: 10000 },
+    silent = false,
   ) {
+    const isSilent =
+      silent ||
+      actionName === "react_message" ||
+      actionName === "reaction" ||
+      actionName.startsWith("react");
+
     if (this.anomalyScore > 100) {
-      if (typeof Utils !== "undefined")
+      if (!isSilent && typeof Utils !== "undefined")
         Utils.toast(
           "Система безопасности временно заблокировала ваши действия из-за подозрительной активности",
           "error",
@@ -2665,15 +2672,17 @@ class SecurityManager {
     times = times.filter((t) => now - t < limits.timeWindowMs);
 
     if (times.length >= limits.count) {
-      this.anomalyScore += 10;
-      console.warn(
-        `[SECURITY] Action blocked: ${actionName} (Rate limit exceeded)`,
-      );
-      if (typeof Utils !== "undefined")
-        Utils.toast(
-          `Пожалуйста, помедленнее. Действие ${actionName} временно ограничено (DDoS защита).`,
-          "error",
+      if (!isSilent) {
+        this.anomalyScore += 10;
+        console.warn(
+          `[SECURITY] Action blocked: ${actionName} (Rate limit exceeded)`,
         );
+        if (typeof Utils !== "undefined")
+          Utils.toast(
+            `Пожалуйста, помедленнее. Действие ${actionName} временно ограничено (DDoS защита).`,
+            "error",
+          );
+      }
       return false;
     }
 
@@ -2713,19 +2722,38 @@ class SecurityManager {
         if (mutation.addedNodes) {
           mutation.addedNodes.forEach((node) => {
             if (node.tagName === "SCRIPT" || node.tagName === "IFRAME") {
-              if (
-                node.src &&
-                node.src.includes("gstatic.com") === false &&
-                node.src.includes("youtube.com") === false &&
-                node.src.includes("hls.js") === false &&
-                node.src.includes("rutube.ru") === false &&
-                node.src.includes("vercel") === false &&
-                node.src.includes("google") === false &&
-                node.src.includes("run.app") === false &&
-                node.src.includes("ai.studio") === false &&
-                node.src.includes("localhost") === false &&
-                node.src.trim() !== ""
-              ) {
+              const src = String(node.src || "").toLowerCase();
+              const isPlayerChild =
+                node.id === "vk-player-iframe" ||
+                (typeof node.closest === "function" &&
+                  (node.closest("#yt-player-container") ||
+                    node.closest("#yt-player") ||
+                    node.closest("#room-video-container"))) ||
+                (node.parentElement &&
+                  (node.parentElement.id === "yt-player" ||
+                    node.parentElement.id === "yt-player-container" ||
+                    node.parentElement.id === "room-video-container"));
+
+              const isAllowed =
+                isPlayerChild ||
+                src.includes("gstatic.com") ||
+                src.includes("youtube.com") ||
+                src.includes("youtube-nocookie.com") ||
+                src.includes("hls.js") ||
+                src.includes("rutube.ru") ||
+                src.includes("vk.com") ||
+                src.includes("vkvideo.ru") ||
+                src.includes("vk.ru") ||
+                src.includes("vimeo.com") ||
+                src.includes("twitch.tv") ||
+                src.includes("vercel") ||
+                src.includes("google") ||
+                src.includes("run.app") ||
+                src.includes("ai.studio") ||
+                src.includes("localhost") ||
+                src.trim() === "";
+
+              if (!isAllowed) {
                 console.error(
                   `[SECURITY] Blocked potentially unsafe DOM injection: ${node.tagName}`,
                 );
@@ -4567,15 +4595,72 @@ class MediaResolverClient {
     return null;
   }
 
-  static extractVkId(url) {
+  static extractVkInfo(url) {
     if (!url || typeof url !== "string") return null;
-    let match = url.match(
-      /vk\.(?:com|ru)\/(?:video|video_ext\.php\?).*(?:oid=|video-?)(-?\d+)[_]([A-Za-z0-9]+)/i,
-    );
-    if (!match) match = url.match(/vkvideo\.ru\/video-?(\d+)_([A-Za-z0-9]+)/i);
-    if (!match) match = url.match(/vk\.com\/video-?(\d+)_([A-Za-z0-9]+)/i);
-    if (match) return match[1] + "_" + match[2];
+    let clean = url.trim();
+    const iframeSrc = clean.match(/<iframe[^>]+src=["']([^"']+)["']/i);
+    if (iframeSrc) clean = iframeSrc[1];
+
+    let oid = null;
+    let vid = null;
+    let hash = null;
+
+    if (/video_ext\.php/i.test(clean)) {
+      const mOid = clean.match(/[?&]oid=(-?\d+)/i);
+      const mId = clean.match(/[?&]id=([A-Za-z0-9]+)/i);
+      const mHash = clean.match(/[?&]hash=([A-Za-z0-9]+)/i);
+      if (mOid) oid = mOid[1];
+      if (mId) vid = mId[1];
+      if (mHash) hash = mHash[1];
+    }
+
+    if (!oid || !vid) {
+      const vMatch = clean.match(/(?:video|clip)(-?\d+)_([A-Za-z0-9]+)/i);
+      if (vMatch) {
+        oid = vMatch[1];
+        vid = vMatch[2];
+      }
+    }
+
+    if (!oid || !vid) {
+      const zMatch = clean.match(/[?&]z=video(-?\d+)_([A-Za-z0-9]+)/i);
+      if (zMatch) {
+        oid = zMatch[1];
+        vid = zMatch[2];
+      }
+    }
+
+    if (!hash) {
+      const hashMatch = clean.match(/[?&]hash=([A-Za-z0-9]+)/i);
+      if (hashMatch) hash = hashMatch[1];
+    }
+
+    if (oid && vid) {
+      const vkId = `${oid}_${vid}`;
+      const embedUrl = `https://vk.com/video_ext.php?oid=${oid}&id=${vid}${hash ? `&hash=${hash}` : ""}&hd=2&autoplay=1&js_api=1`;
+      return { oid, vid, hash, vkId, embedUrl };
+    }
+
+    if (/vk\.com|vkvideo\.ru|vk\.ru/i.test(clean)) {
+      let embedUrl = clean;
+      if (!embedUrl.includes("js_api=")) {
+        embedUrl += (embedUrl.includes("?") ? "&" : "?") + "js_api=1&autoplay=1&hd=2";
+      }
+      return {
+        oid: "",
+        vid: "",
+        hash: "",
+        vkId: clean,
+        embedUrl,
+      };
+    }
+
     return null;
+  }
+
+  static extractVkId(url) {
+    const info = this.extractVkInfo(url);
+    return info ? info.vkId : null;
   }
 
   static extractVimeoId(url) {
@@ -4790,17 +4875,18 @@ class MediaResolverClient {
       };
     }
 
-    const vkId = this.extractVkId(normalized);
-    if (vkId) {
+    const vkInfo = this.extractVkInfo(normalized);
+    if (vkInfo) {
       return {
-        source: info?.url || `https://vk.com/video_ext.php?oid=${vkId.split("_")[0]}&id=${vkId.split("_")[1]}&hd=2&js_api=1`,
+        source: info?.url || vkInfo.embedUrl,
         title: info?.title || "VK Video",
-        author: info?.author || "VK",
+        author: info?.author || "VK Video",
         duration: 0,
         thumbnail: info?.thumbnail || "",
         platform: "vk",
         isHls: false,
         ext: "vk",
+        vkInfo,
         resolvedAt: Date.now(),
       };
     }
@@ -5169,6 +5255,12 @@ class RoomVideoSearchManager {
 class VkPlayerManager {
   static player = null;
   static iframe = null;
+  static currentTime = 0;
+  static duration = 0;
+  static state = "unstarted";
+  static isReady = false;
+  static onStateChange = null;
+  static pendingActions = [];
 
   static destroy() {
     if (this.iframe) {
@@ -5176,59 +5268,183 @@ class VkPlayerManager {
       this.iframe = null;
     }
     this.player = null;
+    this.currentTime = 0;
+    this.duration = 0;
+    this.state = "unstarted";
+    this.isReady = false;
+    this.pendingActions = [];
     window.removeEventListener("message", this.handleMessage);
+  }
+
+  static post(method, params = {}) {
+    if (!this.iframe || !this.iframe.contentWindow) return;
+    const payload = { method, ...params };
+    const payloadStr = JSON.stringify(payload);
+    try {
+      this.iframe.contentWindow.postMessage(payloadStr, "*");
+    } catch {}
+    try {
+      this.iframe.contentWindow.postMessage(payload, "*");
+    } catch {}
   }
 
   static handleMessage = (e) => {
     try {
-      const data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
-      if (data.event === "timeupdate") this.currentTime = data.time;
-      if (data.event === "onStateChange" && this.onStateChange)
-        this.onStateChange(data.state);
+      let data = e.data;
+      if (typeof data === "string") {
+        try {
+          data = JSON.parse(data);
+        } catch {
+          return;
+        }
+      }
+      if (!data || typeof data !== "object") return;
+
+      const evt = data.event || data.type || data.method;
+
+      if (evt === "inited" || evt === "ready" || evt === "init") {
+        this.isReady = true;
+        this.flushPendingActions();
+      }
+
+      if (typeof data.time === "number") {
+        this.currentTime = data.time;
+      }
+      if (typeof data.duration === "number") {
+        this.duration = data.duration;
+      }
+
+      if (evt === "timeupdate" || evt === "timeUpdate") {
+        if (typeof data.time === "number") this.currentTime = data.time;
+        if (typeof data.duration === "number") this.duration = data.duration;
+      }
+
+      let newState = null;
+      if (evt === "started" || evt === "resumed" || evt === "play" || evt === "playing") {
+        newState = "playing";
+      } else if (evt === "paused" || evt === "pause") {
+        newState = "paused";
+      } else if (evt === "ended") {
+        newState = "ended";
+      }
+
+      if (newState) {
+        this.state = newState;
+        if (typeof this.onStateChange === "function") {
+          this.onStateChange(newState);
+        }
+      }
     } catch {}
   };
+
+  static flushPendingActions() {
+    while (this.pendingActions.length > 0) {
+      const action = this.pendingActions.shift();
+      try {
+        action();
+      } catch {}
+    }
+  }
 
   static initPlayer(src, onStateChangeCallback) {
     this.destroy();
     this.onStateChange = onStateChangeCallback;
+
     const container = Utils.$("yt-player");
+    if (!container) return Promise.resolve(null);
     container.innerHTML = "";
+
+    let finalSrc = src;
+    if (!finalSrc.includes("js_api=")) {
+      finalSrc += (finalSrc.includes("?") ? "&" : "?") + "js_api=1";
+    }
+    if (!finalSrc.includes("autoplay=")) {
+      finalSrc += "&autoplay=1";
+    }
+    if (!finalSrc.includes("hd=")) {
+      finalSrc += "&hd=2";
+    }
+
     this.iframe = document.createElement("iframe");
-    this.iframe.src = src;
+    this.iframe.id = "vk-player-iframe";
+    this.iframe.src = finalSrc;
     this.iframe.frameBorder = "0";
+    this.iframe.setAttribute("allowfullscreen", "true");
     this.iframe.allow =
       "autoplay; encrypted-media; fullscreen; picture-in-picture;";
     this.iframe.style.width = "100%";
     this.iframe.style.height = "100%";
+    this.iframe.style.borderRadius = "16px";
+    this.iframe.style.border = "none";
+
+    const hasControl = RoomManager.hasPerm("player");
+    this.iframe.style.pointerEvents = hasControl ? "auto" : "none";
+
+    this.iframe.onload = () => {
+      this.isReady = true;
+      this.flushPendingActions();
+    };
+
     container.appendChild(this.iframe);
     window.addEventListener("message", this.handleMessage);
 
     this.player = {
-      postMessage: (method, args) => {
-        if (this.iframe && this.iframe.contentWindow) {
-          this.iframe.contentWindow.postMessage(
-            JSON.stringify({ method }),
-            "*",
-          );
-        }
-      },
+      postMessage: (method, args) => this.post(method, args),
+      setVolume: (vol) => this.setVolume(vol),
+      seek: (time) => this.seek(time),
+      play: () => this.play(),
+      pause: () => this.pause(),
+      setQuality: (q) => this.setQuality(q),
     };
+
     return Promise.resolve(this.player);
   }
+
   static play() {
-    if (this.player) this.player.postMessage("play");
+    if (!RoomManager.hasPerm("player") && !window._isSyncingVideo) return;
+    if (!this.isReady) {
+      this.pendingActions.push(() => this.play());
+      return;
+    }
+    this.post("play");
   }
+
   static pause() {
-    if (this.player) this.player.postMessage("pause");
+    if (!RoomManager.hasPerm("player") && !window._isSyncingVideo) return;
+    if (!this.isReady) {
+      this.pendingActions.push(() => this.pause());
+      return;
+    }
+    this.post("pause");
   }
+
   static seek(time) {
-    if (this.player) this.player.postMessage("seek", { time });
+    if (!RoomManager.hasPerm("player") && !window._isSyncingVideo) return;
+    const t = Number(time) || 0;
+    this.currentTime = t;
+    if (!this.isReady) {
+      this.pendingActions.push(() => this.seek(t));
+      return;
+    }
+    this.post("seek", { time: t });
   }
+
+  static setVolume(volume) {
+    const vol = Math.max(0, Math.min(1, Number(volume)));
+    this.post("set_volume", { volume: vol });
+  }
+
+  static setQuality(quality) {
+    if (!RoomManager.hasPerm("player") && !window._isSyncingVideo) return;
+    this.post("set_quality", { quality: String(quality) });
+  }
+
   static getCurrentTime() {
     return this.currentTime || 0;
   }
+
   static getState() {
-    return "unknown";
+    return this.state || "unknown";
   }
 }
 
@@ -5566,6 +5782,7 @@ class VideoPlaybackManager {
     }
     YouTubePlayerManager.destroy();
     RutubePlayerManager.destroy();
+    VkPlayerManager.destroy();
     this.lastSignature = "";
     Ambilight.stop();
   }
@@ -5588,6 +5805,8 @@ class VideoPlaybackManager {
     vid.onerror = null;
 
     YouTubePlayerManager.destroy();
+    RutubePlayerManager.destroy();
+    VkPlayerManager.destroy();
     this.lastSignature = "";
     Ambilight.stop();
     if (Utils.$("yt-player-container"))
@@ -5711,6 +5930,9 @@ class VideoPlaybackManager {
     const rtId = MediaResolverClient.extractRutubeId(
       room.videoSourceUrl || room.videoUrl,
     );
+    const vkInfo = MediaResolverClient.extractVkInfo(
+      room.videoSourceUrl || room.videoUrl,
+    );
 
     if (rtId && window.AppState && window.AppState.useProxy) {
       window.AppState.wasProxyEnabled = true;
@@ -5747,12 +5969,13 @@ class VideoPlaybackManager {
       signature === this.lastSignature &&
       (vid.dataset.playbackKey ||
         (YouTubePlayerManager.player && ytId) ||
-        (RutubePlayerManager.player && rtId))
+        (RutubePlayerManager.player && rtId) ||
+        (VkPlayerManager.player && vkInfo))
     )
       return;
 
     try {
-      if (ytId || rtId) {
+      if (ytId || rtId || vkInfo) {
         this.detach(vid);
         this.lastSignature = signature;
         if (Utils.$("yt-player-container"))
@@ -5763,6 +5986,8 @@ class VideoPlaybackManager {
           if (window._isSyncingVideo) return; // ignore events during forceSync
 
           const isYT = ytId;
+          const isRT = rtId;
+          const isVK = vkInfo;
           const state = isYT ? e.data : e;
           const playingState = isYT
             ? window.YT
@@ -5774,7 +5999,7 @@ class VideoPlaybackManager {
               ? window.YT.PlayerState.PAUSED
               : 2
             : "paused";
-          const Manager = isYT ? YouTubePlayerManager : RutubePlayerManager;
+          const Manager = isYT ? YouTubePlayerManager : (isRT ? RutubePlayerManager : VkPlayerManager);
 
           if (state === playingState) {
             if (AppState.ignoreVideoEvents) return;
@@ -5810,8 +6035,10 @@ class VideoPlaybackManager {
 
         if (ytId) {
           await YouTubePlayerManager.initPlayer(ytId, onStateChange);
-        } else {
+        } else if (rtId) {
           await RutubePlayerManager.initPlayer(rtId, onStateChange);
+        } else if (vkInfo) {
+          await VkPlayerManager.initPlayer(vkInfo.embedUrl, onStateChange);
         }
         vid.dataset.playbackKey = signature;
         return;
@@ -18578,29 +18805,18 @@ class RoomManager {
     };
 
     // Кнопка настроек доступна оригинальному хосту и Разработчику
-    Utils.$("btn-room-settings").style.display =
-      AppState.isHost || AdminPanel.isCurrentUserCreator() ? "block" : "none";
-    if (AppState.isHost || AdminPanel.isCurrentUserCreator())
-      Utils.$("btn-room-settings").onclick = () => this.openRoomModal(roomId);
-
-    
+    const settingsBtn = Utils.$("btn-room-settings");
+    if (settingsBtn) {
+      settingsBtn.style.display =
+        AppState.isHost || AdminPanel.isCurrentUserCreator() ? "inline-flex" : "none";
+      if (AppState.isHost || AdminPanel.isCurrentUserCreator())
+        settingsBtn.onclick = () => this.openRoomModal(roomId);
+    }
 
     const videoVolSlider = Utils.$("video-volume-slider");
     if (videoVolSlider) {
       videoVolSlider.oninput = () => {
-        const nativePlayer = Utils.$("native-player");
-        if (nativePlayer) nativePlayer.volume = videoVolSlider.value;
-        if (
-          YouTubePlayerManager.player &&
-          typeof YouTubePlayerManager.player.setVolume === "function"
-        ) {
-          YouTubePlayerManager.player.setVolume(videoVolSlider.value * 100);
-        }
-        if (RutubePlayerManager.player) {
-          RutubePlayerManager.player.postMessage("player:setVolume", {
-            volume: videoVolSlider.value,
-          });
-        }
+        this.setPlayerVolume(parseFloat(videoVolSlider.value) || 0);
       };
     }
 
@@ -18621,6 +18837,62 @@ class RoomManager {
 
   static getDefaultPerms() {
     return { chat: true, voice: true, player: true, reactions: true };
+  }
+
+  static getPlayerVolume() {
+    const videoVolSlider = Utils.$("video-volume-slider");
+    if (
+      videoVolSlider &&
+      videoVolSlider.value !== undefined &&
+      videoVolSlider.value !== ""
+    ) {
+      return parseFloat(videoVolSlider.value) || 0;
+    }
+    const nativePlayer = Utils.$("native-player");
+    if (nativePlayer) return nativePlayer.volume;
+    return 1;
+  }
+
+  static setPlayerVolume(vol) {
+    const clamped = Math.max(0, Math.min(1, vol));
+    const nativePlayer = Utils.$("native-player");
+    if (nativePlayer) {
+      nativePlayer.volume = clamped;
+      nativePlayer.muted = clamped === 0;
+    }
+    if (
+      YouTubePlayerManager.player &&
+      typeof YouTubePlayerManager.player.setVolume === "function"
+    ) {
+      try {
+        YouTubePlayerManager.player.setVolume(clamped * 100);
+        if (clamped === 0) {
+          if (typeof YouTubePlayerManager.player.mute === "function") {
+            YouTubePlayerManager.player.mute();
+          }
+        } else {
+          if (typeof YouTubePlayerManager.player.unMute === "function") {
+            YouTubePlayerManager.player.unMute();
+          }
+        }
+      } catch (e) {}
+    }
+    if (RutubePlayerManager.player) {
+      try {
+        RutubePlayerManager.player.postMessage("player:setVolume", {
+          volume: clamped,
+        });
+      } catch (e) {}
+    }
+    if (VkPlayerManager.player) {
+      try {
+        VkPlayerManager.setVolume(clamped);
+      } catch (e) {}
+    }
+    const videoVolSlider = Utils.$("video-volume-slider");
+    if (videoVolSlider) {
+      videoVolSlider.value = clamped;
+    }
   }
 
   static initRoomServicesFinal(roomId) {
@@ -18669,6 +18941,9 @@ class RoomManager {
       AppState.currentPresenceCache = snap.val() || {};
       this.rerenderUsersList();
       this.applyLocalPermissions();
+      if (RTCManager.isMicActive) {
+        RTCManager.broadcastToParticipants();
+      }
       if (!presenceBootstrapped) {
         presenceBootstrapped = true;
         return;
@@ -18973,10 +19248,21 @@ class RoomManager {
           const parts = btn.dataset.time.split(":");
           const secs = parseInt(parts[0]) * 60 + parseInt(parts[1]);
           AppState.ignoreVideoEvents = true;
-          vid.currentTime = secs;
-          vid.play().catch(() => {});
-          setTimeout(() => (AppState.ignoreVideoEvents = false), 300);
-          set(syncRef, { type: "seek", time: secs, ts: Date.now() });
+          if (YouTubePlayerManager.player) {
+            YouTubePlayerManager.seek(secs);
+            YouTubePlayerManager.play();
+          } else if (RutubePlayerManager.player) {
+            RutubePlayerManager.seek(secs);
+            RutubePlayerManager.play();
+          } else if (VkPlayerManager.player) {
+            VkPlayerManager.seek(secs);
+            VkPlayerManager.play();
+          } else if (vid) {
+            vid.currentTime = secs;
+            vid.play().catch(() => {});
+          }
+          setTimeout(() => (AppState.ignoreVideoEvents = false), 500);
+          set(syncRef, { type: "seek", state: "playing", time: secs, ts: Date.now() });
         };
       });
       line.querySelectorAll(".chat-profile-link").forEach((btn) => {
@@ -19181,10 +19467,14 @@ class RoomManager {
     document.querySelectorAll(".react-btn").forEach((btn) => {
       btn.onclick = () => {
         if (
-          !SecurityManager.validateAction("react_message", {
-            count: 12,
-            timeWindowMs: 5000,
-          })
+          !SecurityManager.validateAction(
+            "react_message",
+            {
+              count: 15,
+              timeWindowMs: 4000,
+            },
+            true,
+          )
         )
           return;
         if (!this.hasPerm("reactions")) return;
@@ -19254,6 +19544,13 @@ class RoomManager {
     if (btnTabChat) btnTabChat.onclick = () => setRoomTab("chat");
     if (btnTabUsers) btnTabUsers.onclick = () => setRoomTab("users");
 
+    const micBtn = Utils.$("btn-toggle-mic");
+    if (micBtn) {
+      micBtn.onclick = () => {
+        RTCManager.toggleMic();
+      };
+    }
+
     window._setRoomTab = setRoomTab;
 
     
@@ -19277,11 +19574,21 @@ class RoomManager {
     }
 
     const overlay = Utils.$("room-video-overlay");
-    if (overlay) overlay.style.pointerEvents = pPlayer ? "none" : "auto";
+    if (overlay) {
+      overlay.style.pointerEvents = pPlayer ? "none" : "auto";
+      overlay.style.cursor = pPlayer ? "default" : "not-allowed";
+    }
+
+    const ytContainer = Utils.$("yt-player-container");
+    if (ytContainer) {
+      const iframe = ytContainer.querySelector("iframe");
+      if (iframe) {
+        iframe.style.pointerEvents = pPlayer ? "auto" : "none";
+      }
+    }
 
     Utils.$("chat-input").disabled = !pChat;
     Utils.$("send-btn").disabled = !pChat;
-    
 
     document
       .querySelectorAll(".react-btn")
@@ -19291,7 +19598,10 @@ class RoomManager {
       else b.classList.add("disabled");
     });
 
-    
+    const micBtn = Utils.$("btn-toggle-mic");
+    if (micBtn) {
+      micBtn.style.display = pVoice ? "inline-flex" : "none";
+    }
 
     if (!pVoice && RTCManager.isMicActive) RTCManager.toggleMic(true);
   }
@@ -19380,7 +19690,11 @@ class RoomManager {
         if (isPremium) {
           premiumStyle = `background: radial-gradient(circle at 20% 0%, rgba(255, 180, 60, 0.18), transparent 45%), radial-gradient(circle at 90% 100%, rgba(255, 120, 40, 0.12), transparent 40%), linear-gradient(145deg, rgba(24, 20, 14, 0.96), rgba(10, 10, 12, 0.98)); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 220, 140, 0.08); border: 1px solid rgba(255, 200, 100, 0.22);`;
         }
-        let speakingClass = user.speaking ? " speaking" : "";
+        const isSpeaking =
+          user.speaking ||
+          (typeof RTCManager !== "undefined" &&
+            RTCManager.currentSpeakerUid === uid);
+        let speakingClass = isSpeaking ? " speaking" : "";
         html += `<div class="user-item${speakingClass}" data-uid="${uid}" style="${premiumStyle}">`;
         html += `<div class="indicator online" style="margin-right:8px;"></div>`;
         html += `<div style="width:24px;height:24px;flex-shrink:0;margin-right:8px;border-radius:50%;">${ProfileManager.getAvatarHtml(profile)}</div>`;
@@ -19532,15 +19846,23 @@ class RoomManager {
     const isRt = MediaResolverClient.extractRutubeId(
       currentRoom.videoSourceUrl || currentRoom.videoUrl,
     );
+    const isVk = MediaResolverClient.extractVkInfo(
+      currentRoom.videoSourceUrl || currentRoom.videoUrl,
+    );
 
     if (
       (YouTubePlayerManager.player && isYt) ||
-      (RutubePlayerManager.player && isRt)
+      (RutubePlayerManager.player && isRt) ||
+      (VkPlayerManager.player && isVk)
     ) {
       // Unconditionally apply sync from server, but ignore the resulting local video events
       window._isSyncingVideo = true;
       AppState.ignoreVideoEvents = true;
-      const Manager = isYt ? YouTubePlayerManager : RutubePlayerManager;
+      const Manager = isYt
+        ? YouTubePlayerManager
+        : isRt
+          ? RutubePlayerManager
+          : VkPlayerManager;
       const currentState = Manager.getState ? Manager.getState() : null;
 
       if (Math.abs(Manager.getCurrentTime() - targetTime) > 1.5) {
@@ -19672,8 +19994,10 @@ class RoomManager {
       let currentTime = 0;
       let isYt = !!YouTubePlayerManager.player;
       let isRt = !!RutubePlayerManager.player;
+      let isVk = !!VkPlayerManager.player;
       if (isYt) currentTime = YouTubePlayerManager.getCurrentTime();
       else if (isRt) currentTime = RutubePlayerManager.getCurrentTime();
+      else if (isVk) currentTime = VkPlayerManager.getCurrentTime();
       else {
         const vid = Utils.$("native-player");
         if (vid) currentTime = vid.currentTime;
@@ -19839,14 +20163,498 @@ class RoomManager {
 // ============================================================================
 // 6. NEW STABLE WEBRTC SYSTEM
 class RTCManager {
+  static isMicActive = false;
+  static roomId = null;
+  static localStream = null;
+  static savedVolumeBeforeMic = null;
+  static heartbeatTimer = null;
+  static peerConnections = new Map(); // speaker: listenerUid -> RTCPeerConnection
+  static listenerPc = null;           // listener: RTCPeerConnection
+  static currentSpeakerUid = null;
+  static speakerListenerUnsub = null;
+  static incomingOfferUnsub = null;
+  static candidateUnsubs = [];
+  static queuedCandidates = [];
+
+  static iceServers = [
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" },
+    { urls: "stun:stun2.l.google.com:19302" },
+    { urls: "stun:stun3.l.google.com:19302" },
+    { urls: "stun:stun4.l.google.com:19302" },
+    { urls: "stun:stun.cloudflare.com:3478" },
+  ];
+
   static init(roomId) {
-    console.log("New Stable WebRTC Initialized for", roomId);
+    this.destroy();
+    this.roomId = roomId;
+    console.log("[RTCManager] Initialized for room:", roomId);
+
+    this.bindSpeakerListener();
   }
-  static destroy() {
-    console.log("WebRTC Destroyed");
+
+  static bindSpeakerListener() {
+    if (!this.roomId) return;
+    const speakerRef = ref(db, `rooms/${this.roomId}/voice/speaker`);
+
+    this.speakerListenerUnsub = onValue(speakerRef, (snap) => {
+      const speaker = snap.val();
+      const currentUid = AppState.currentUser?.uid;
+
+      if (!speaker || !speaker.uid) {
+        this.currentSpeakerUid = null;
+        this.updateSpeakerUI(null);
+        if (!this.isMicActive) {
+          this.closeListenerConnection();
+        }
+        if (typeof RoomManager !== "undefined" && RoomManager.rerenderUsersList) {
+          RoomManager.rerenderUsersList();
+        }
+        return;
+      }
+
+      // Check heartbeat freshness (12 seconds lease)
+      const now = Date.now();
+      const lastActive = speaker.lastPing || speaker.startedAt || 0;
+      if (now - lastActive > 12000) {
+        this.currentSpeakerUid = null;
+        this.updateSpeakerUI(null);
+        if (!this.isMicActive) {
+          this.closeListenerConnection();
+        }
+        if (typeof RoomManager !== "undefined" && RoomManager.rerenderUsersList) {
+          RoomManager.rerenderUsersList();
+        }
+        return;
+      }
+
+      this.currentSpeakerUid = speaker.uid;
+      this.updateSpeakerUI(speaker);
+
+      if (typeof RoomManager !== "undefined" && RoomManager.rerenderUsersList) {
+        RoomManager.rerenderUsersList();
+      }
+
+      // If we are NOT the speaker, connect as listener to receive their voice
+      if (speaker.uid !== currentUid && !this.isMicActive) {
+        this.setupAsListener(speaker.uid);
+      }
+    });
+
+    AppState.roomSubscriptions.push(this.speakerListenerUnsub);
   }
+
+  static updateSpeakerUI(speaker) {
+    const badge = Utils.$("room-voice-speaker-badge");
+    const text = Utils.$("room-voice-speaker-text");
+    const micBtn = Utils.$("btn-toggle-mic");
+
+    if (!speaker) {
+      if (badge) badge.style.display = "none";
+      if (micBtn && !this.isMicActive) {
+        micBtn.classList.remove("active");
+        micBtn.title = "Микрофон (нажмите, чтобы говорить)";
+      }
+      return;
+    }
+
+    const currentUid = AppState.currentUser?.uid;
+    const isSelf = speaker.uid === currentUid;
+
+    if (badge && text) {
+      badge.style.display = "inline-flex";
+      text.innerText = isSelf ? "Вы в эфире" : `Говорит: ${speaker.name || "пользователь"}`;
+    }
+
+    if (micBtn) {
+      if (isSelf) {
+        micBtn.classList.add("active");
+        micBtn.title = "Микрофон включен (нажмите, чтобы выключить)";
+      } else {
+        micBtn.classList.remove("active");
+        micBtn.title = `Говорит ${speaker.name || "пользователь"}`;
+      }
+    }
+  }
+
   static async toggleMic(forceOff = false) {
-    console.log("Mic toggled");
+    if (!this.roomId || !AppState.currentUser) return;
+
+    if (this.isMicActive || forceOff) {
+      await this.stopBroadcasting();
+      return;
+    }
+
+    if (!RoomManager.hasPerm("voice")) {
+      return Utils.toast("У вас нет прав на использование микрофона", "error");
+    }
+
+    const currentUid = AppState.currentUser.uid;
+    const speakerRef = ref(db, `rooms/${this.roomId}/voice/speaker`);
+
+    // Verify nobody else is speaking (single speaker enforcement)
+    try {
+      const snap = await get(speakerRef);
+      const activeSpeaker = snap.val();
+      if (activeSpeaker && activeSpeaker.uid && activeSpeaker.uid !== currentUid) {
+        const now = Date.now();
+        const lastActive = activeSpeaker.lastPing || activeSpeaker.startedAt || 0;
+        if (now - lastActive < 12000) {
+          return Utils.toast(
+            `Микрофон занят: сейчас говорит ${activeSpeaker.name || "другой участник"}`,
+            "warning",
+          );
+        }
+      }
+    } catch (e) {
+      console.warn("[RTCManager] Check speaker error:", e);
+    }
+
+    // Request microphone access
+    try {
+      this.localStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1,
+          sampleRate: 48000,
+        },
+        video: false,
+      });
+    } catch (err) {
+      console.error("[RTCManager] Microphone access denied:", err);
+      return Utils.toast(
+        "Не удалось получить доступ к микрофону: " + (err.message || err.name),
+        "error",
+      );
+    }
+
+    this.isMicActive = true;
+
+    // USER REQUIREMENT:
+    // "Только во время использования микрофона необходимо убирать громкость на 0 плеера,у пользователя который пользуется микрофоном."
+    this.savedVolumeBeforeMic = RoomManager.getPlayerVolume();
+    RoomManager.setPlayerVolume(0);
+
+    const myName =
+      AppState.usersCache.get(currentUid)?.name ||
+      AppState.currentUser.displayName ||
+      "Пользователь";
+
+    const speakerData = {
+      uid: currentUid,
+      name: myName,
+      startedAt: Date.now(),
+      lastPing: Date.now(),
+    };
+
+    await set(speakerRef, speakerData);
+    onDisconnect(speakerRef).remove();
+
+    const mySignalsRef = ref(db, `rooms/${this.roomId}/voice/signals/${currentUid}`);
+    onDisconnect(mySignalsRef).remove();
+
+    // Heartbeat to refresh speaker lease
+    if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
+    this.heartbeatTimer = setInterval(() => {
+      if (!this.isMicActive || !this.roomId) return;
+      set(ref(db, `rooms/${this.roomId}/voice/speaker/lastPing`), Date.now());
+    }, 3000);
+
+    const micBtn = Utils.$("btn-toggle-mic");
+    if (micBtn) micBtn.classList.add("active");
+    Utils.toast("Микрофон включен (звук видео у вас приглушён)", "success");
+
+    // Close any previous listener connection on self
+    this.closeListenerConnection();
+
+    // Broadcast audio to all listeners currently in room
+    this.broadcastToParticipants();
+  }
+
+  static broadcastToParticipants() {
+    if (!this.isMicActive || !this.localStream || !this.roomId) return;
+    const cache = AppState.currentPresenceCache || {};
+    const currentUid = AppState.currentUser?.uid;
+    if (!currentUid) return;
+
+    Object.keys(cache).forEach((uid) => {
+      if (uid !== currentUid && !this.peerConnections.has(uid)) {
+        this.initiateSpeakerPeer(uid);
+      }
+    });
+  }
+
+  static async initiateSpeakerPeer(listenerUid) {
+    if (!this.isMicActive || !this.localStream || !this.roomId) return;
+    const currentUid = AppState.currentUser.uid;
+
+    try {
+      const pc = new RTCPeerConnection({ iceServers: this.iceServers });
+      this.peerConnections.set(listenerUid, pc);
+
+      this.localStream.getTracks().forEach((track) => {
+        pc.addTrack(track, this.localStream);
+      });
+
+      pc.onicecandidate = (event) => {
+        if (event.candidate && this.isMicActive) {
+          push(
+            ref(
+              db,
+              `rooms/${this.roomId}/voice/signals/${currentUid}/${listenerUid}/speakerCandidates`,
+            ),
+            event.candidate.toJSON(),
+          );
+        }
+      };
+
+      pc.onconnectionstatechange = () => {
+        if (pc.connectionState === "failed" || pc.connectionState === "closed") {
+          pc.close();
+          this.peerConnections.delete(listenerUid);
+        }
+      };
+
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      await set(
+        ref(
+          db,
+          `rooms/${this.roomId}/voice/signals/${currentUid}/${listenerUid}/offer`,
+        ),
+        {
+          sdp: offer.sdp,
+          type: offer.type,
+          ts: Date.now(),
+        },
+      );
+
+      const answerRef = ref(
+        db,
+        `rooms/${this.roomId}/voice/signals/${currentUid}/${listenerUid}/answer`,
+      );
+      const unsubAnswer = onValue(answerRef, async (snap) => {
+        const answer = snap.val();
+        if (answer && answer.sdp && pc.signalingState === "have-local-offer") {
+          try {
+            await pc.setRemoteDescription(new RTCSessionDescription(answer));
+          } catch (e) {}
+        }
+      });
+      AppState.roomSubscriptions.push(unsubAnswer);
+
+      const candRef = ref(
+        db,
+        `rooms/${this.roomId}/voice/signals/${currentUid}/${listenerUid}/listenerCandidates`,
+      );
+      const unsubCand = onChildAdded(candRef, async (snap) => {
+        const candidate = snap.val();
+        if (candidate) {
+          try {
+            await pc.addIceCandidate(new RTCIceCandidate(candidate));
+          } catch (e) {}
+        }
+      });
+      AppState.roomSubscriptions.push(unsubCand);
+    } catch (err) {
+      console.warn(`[RTCManager] Failed to connect to listener ${listenerUid}:`, err);
+    }
+  }
+
+  static async stopBroadcasting() {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
+
+    if (this.localStream) {
+      this.localStream.getTracks().forEach((track) => track.stop());
+      this.localStream = null;
+    }
+
+    this.peerConnections.forEach((pc) => {
+      try {
+        pc.close();
+      } catch (e) {}
+    });
+    this.peerConnections.clear();
+
+    const currentUid = AppState.currentUser?.uid;
+    if (this.roomId && currentUid) {
+      set(ref(db, `rooms/${this.roomId}/voice/speaker`), null);
+      set(ref(db, `rooms/${this.roomId}/voice/signals/${currentUid}`), null);
+    }
+
+    this.isMicActive = false;
+
+    // RESTORE PLAYER VOLUME FOR THE USER WHO WAS USING THE MICROPHONE
+    if (this.savedVolumeBeforeMic !== null) {
+      RoomManager.setPlayerVolume(this.savedVolumeBeforeMic);
+      this.savedVolumeBeforeMic = null;
+    }
+
+    const micBtn = Utils.$("btn-toggle-mic");
+    if (micBtn) {
+      micBtn.classList.remove("active");
+      micBtn.title = "Микрофон (нажмите, чтобы говорить)";
+    }
+
+    Utils.toast("Микрофон выключен (громкость видео восстановлена)", "info");
+  }
+
+  static setupAsListener(speakerUid) {
+    if (!this.roomId || !AppState.currentUser) return;
+    const currentUid = AppState.currentUser.uid;
+    if (speakerUid === currentUid) return;
+
+    this.closeListenerConnection();
+    this.queuedCandidates = [];
+
+    const offerRef = ref(
+      db,
+      `rooms/${this.roomId}/voice/signals/${speakerUid}/${currentUid}/offer`,
+    );
+
+    this.incomingOfferUnsub = onValue(offerRef, async (snap) => {
+      const offer = snap.val();
+      if (!offer || !offer.sdp) return;
+
+      try {
+        if (this.listenerPc) {
+          this.listenerPc.close();
+        }
+
+        const pc = new RTCPeerConnection({ iceServers: this.iceServers });
+        this.listenerPc = pc;
+
+        pc.ontrack = (event) => {
+          console.log("[RTCManager] Incoming voice stream connected");
+          if (event.streams && event.streams[0]) {
+            RTCManager.playRemoteAudio(event.streams[0]);
+          }
+        };
+
+        pc.onicecandidate = (event) => {
+          if (event.candidate) {
+            push(
+              ref(
+                db,
+                `rooms/${this.roomId}/voice/signals/${speakerUid}/${currentUid}/listenerCandidates`,
+              ),
+              event.candidate.toJSON(),
+            );
+          }
+        };
+
+        const speakerCandRef = ref(
+          db,
+          `rooms/${this.roomId}/voice/signals/${speakerUid}/${currentUid}/speakerCandidates`,
+        );
+        const unsubSpCand = onChildAdded(speakerCandRef, async (snapVal) => {
+          const candidate = snapVal.val();
+          if (!candidate) return;
+          if (pc.remoteDescription) {
+            try {
+              await pc.addIceCandidate(new RTCIceCandidate(candidate));
+            } catch (e) {}
+          } else {
+            this.queuedCandidates.push(candidate);
+          }
+        });
+        this.candidateUnsubs.push(unsubSpCand);
+
+        await pc.setRemoteDescription(new RTCSessionDescription(offer));
+
+        while (this.queuedCandidates.length > 0) {
+          const cand = this.queuedCandidates.shift();
+          try {
+            await pc.addIceCandidate(new RTCIceCandidate(cand));
+          } catch (e) {}
+        }
+
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+
+        await set(
+          ref(
+            db,
+            `rooms/${this.roomId}/voice/signals/${speakerUid}/${currentUid}/answer`,
+          ),
+          {
+            sdp: answer.sdp,
+            type: answer.type,
+            ts: Date.now(),
+          },
+        );
+      } catch (err) {
+        console.warn("[RTCManager] Error setting up listener peer:", err);
+      }
+    });
+
+    AppState.roomSubscriptions.push(this.incomingOfferUnsub);
+  }
+
+  static playRemoteAudio(stream) {
+    let audio = document.getElementById("room-webrtc-audio");
+    if (!audio) {
+      audio = document.createElement("audio");
+      audio.id = "room-webrtc-audio";
+      audio.autoplay = true;
+      audio.playsInline = true;
+      audio.style.display = "none";
+      document.body.appendChild(audio);
+    }
+
+    audio.srcObject = stream;
+    audio.volume = 1.0;
+
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch((err) => {
+        console.warn("[RTCManager] Audio autoplay blocked, waiting for user gesture:", err);
+        const unblock = () => {
+          audio.play().catch(() => {});
+          window.removeEventListener("click", unblock);
+          window.removeEventListener("touchstart", unblock);
+          window.removeEventListener("keydown", unblock);
+        };
+        window.addEventListener("click", unblock, { once: true });
+        window.addEventListener("touchstart", unblock, { once: true });
+        window.addEventListener("keydown", unblock, { once: true });
+      });
+    }
+  }
+
+  static closeListenerConnection() {
+    if (this.listenerPc) {
+      try {
+        this.listenerPc.close();
+      } catch (e) {}
+      this.listenerPc = null;
+    }
+    const audio = document.getElementById("room-webrtc-audio");
+    if (audio) {
+      audio.srcObject = null;
+    }
+    this.candidateUnsubs.forEach((unsub) => {
+      if (typeof unsub === "function") unsub();
+    });
+    this.candidateUnsubs = [];
+    this.queuedCandidates = [];
+  }
+
+  static destroy() {
+    if (this.isMicActive) {
+      this.stopBroadcasting();
+    }
+    this.closeListenerConnection();
+    this.roomId = null;
+    this.currentSpeakerUid = null;
+    this.updateSpeakerUI(null);
+    console.log("[RTCManager] WebRTC Subsystem Destroyed");
   }
 }
 
@@ -21163,8 +21971,10 @@ window.addEventListener("pagehide", () => {
     let currentTime = 0;
     let isYt = !!YouTubePlayerManager.player;
     let isRt = !!RutubePlayerManager.player;
+    let isVk = !!VkPlayerManager.player;
     if (isYt) currentTime = YouTubePlayerManager.getCurrentTime();
     else if (isRt) currentTime = RutubePlayerManager.getCurrentTime();
+    else if (isVk) currentTime = VkPlayerManager.getCurrentTime();
     else {
       const vid = Utils.$("native-player");
       if (vid) currentTime = vid.currentTime;
