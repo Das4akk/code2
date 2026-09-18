@@ -437,37 +437,63 @@ export async function searchYouTube(query, limit = 16) {
 
 export async function searchRutube(query, limit = 16) {
   const trySearch = async (qText) => {
-    const res = await fetch('https://rutube.ru/api/search/video/?query=' + encodeURIComponent(qText), {
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-      signal: AbortSignal.timeout(8500)
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    const list = [];
-    for (const item of data.results || []) {
-      const title = decodeHtml(item.title || '');
-      if (title && item.video_url) {
-        let dur = '';
-        if (item.duration) {
-          const m = Math.floor(item.duration / 60);
-          const s = String(item.duration % 60).padStart(2, '0');
-          dur = `${m}:${s}`;
-        }
-        list.push({
-          id: item.id || item.video_url,
-          platform: 'rutube',
-          platformLabel: 'Rutube',
-          title,
-          url: item.video_url,
-          thumbnail: item.thumbnail_url || (item.picture_thumbnail ? item.picture_thumbnail.replace('{width}x{height}', '640x360') : ''),
-          author: decodeHtml(item.author?.name || 'Rutube'),
-          authorAvatar: item.author?.avatar_url || '',
-          duration: dur,
-          _score: scoreVideoRelevance(title, query)
+    const urls = [
+      'https://rutube.ru/api/search/video/?query=' + encodeURIComponent(qText) + '&format=json',
+      'https://rutube.ru/api/search/video/?query=' + encodeURIComponent(qText)
+    ];
+
+    const browserHeaders = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      'Accept': 'application/json, text/plain, */*',
+      'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
+      'Referer': 'https://rutube.ru/',
+      'Origin': 'https://rutube.ru',
+      'Sec-Ch-Ua': '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+      'Sec-Ch-Ua-Mobile': '?0',
+      'Sec-Ch-Ua-Platform': '"Windows"',
+      'Sec-Fetch-Dest': 'empty',
+      'Sec-Fetch-Mode': 'cors',
+      'Sec-Fetch-Site': 'same-site'
+    };
+
+    for (const u of urls) {
+      try {
+        const res = await fetch(u, {
+          headers: browserHeaders,
+          signal: AbortSignal.timeout(9000)
         });
+        if (!res.ok) continue;
+        const data = await res.json();
+        const list = [];
+        for (const item of data.results || []) {
+          const title = decodeHtml(item.title || '');
+          if (title && item.video_url) {
+            let dur = '';
+            if (item.duration) {
+              const m = Math.floor(item.duration / 60);
+              const s = String(item.duration % 60).padStart(2, '0');
+              dur = `${m}:${s}`;
+            }
+            list.push({
+              id: item.id || item.video_url,
+              platform: 'rutube',
+              platformLabel: 'Rutube',
+              title,
+              url: item.video_url,
+              thumbnail: item.thumbnail_url || (item.picture_thumbnail ? item.picture_thumbnail.replace('{width}x{height}', '640x360') : ''),
+              author: decodeHtml(item.author?.name || 'Rutube'),
+              authorAvatar: item.author?.avatar_url || '',
+              duration: dur,
+              _score: scoreVideoRelevance(title, query)
+            });
+          }
+        }
+        if (list.length > 0) return list;
+      } catch (e) {
+        // continue to next url or retry
       }
     }
-    return list;
+    return [];
   };
 
   try {
