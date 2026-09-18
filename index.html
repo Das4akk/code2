@@ -2,7 +2,10 @@
     <link rel="icon" type="image/png" href="https://sun9-84.vkuserphoto.ru/s/v1/ig2/jTtFY4sN61sjV8m2sC_x71BvLxuiprqs7jQuk-j1aJ_FptikhjWKkZaRU51ox1ElLcAny0FplpQEqQ9Zs4CjHsD6.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,504x504&from=bu&u=eNz4gZZr3vbE9ZrTkr9Wx40QuBK1GSVIJkp_OCUMb0U&cs=504x0">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Online Cinema Together</title>
+    <title>COWIO - Онлайн Кинотеатр Вместе</title>
+    <meta name="description" content="Платформа совместного просмотра видео и фильмов с синхронизацией VK Video, Rutube и YouTube, поддержкой комнат и чата.">
+    <meta property="og:title" content="COWIO - Онлайн Кинотеатр Вместе">
+    <meta property="og:description" content="Платформа совместного просмотра видео и фильмов с синхронизацией VK Video, Rutube и YouTube, поддержкой комнат и чата.">
     <!-- // [NEW] THEME PERSISTENCE BOOTSTRAP -->
     <script>
       // Force animated emojis by default - removed static emojis toggle
@@ -1840,12 +1843,14 @@
       /* Speaking Avatars in Video Player Corner */
       .room-player-speakers-overlay {
         position: absolute;
-        top: 14px;
-        left: 14px;
+        top: 16px;
+        right: 16px;
+        left: auto;
         z-index: 28;
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        align-items: flex-end;
+        gap: 10px;
         pointer-events: none;
         transition: opacity 0.25s ease;
       }
@@ -1853,23 +1858,24 @@
       .player-speaker-item {
         display: inline-flex;
         align-items: center;
-        gap: 8px;
-        background: rgba(14, 18, 26, 0.82);
-        backdrop-filter: blur(14px);
-        -webkit-backdrop-filter: blur(14px);
-        border: 1.5px solid rgba(46, 213, 115, 0.45);
-        padding: 4px 10px 4px 4px;
-        border-radius: 30px;
-        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.55), 0 0 14px rgba(46, 213, 115, 0.3);
+        flex-direction: row-reverse;
+        gap: 9px;
+        background: transparent !important;
+        border: none !important;
+        outline: none !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        border-radius: 0 !important;
         animation: speakerItemEnter 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         pointer-events: auto;
-        max-width: 190px;
       }
 
       @keyframes speakerItemEnter {
         from {
           opacity: 0;
-          transform: translateY(-6px) scale(0.92);
+          transform: translateY(-4px) scale(0.95);
         }
         to {
           opacity: 1;
@@ -1883,10 +1889,55 @@
         height: 36px;
         border-radius: 50%;
         flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* Northern Lights (Aurora Borealis) Gradient Glow */
+      .player-speaker-avatar-wrap::before {
+        content: "";
+        position: absolute;
+        inset: -3.5px;
+        border-radius: 50%;
+        background: conic-gradient(
+          from 120deg,
+          #00f5a0 0%,
+          #00e5ff 28%,
+          #2ed573 52%,
+          #05dfd7 78%,
+          #00f5a0 100%
+        );
+        filter: blur(5px);
+        opacity: 0.9;
+        animation: auroraFlow 4s linear infinite, auroraPulse 2.4s ease-in-out infinite alternate;
+        z-index: 1;
+        pointer-events: none;
+      }
+
+      /* Soft ambient outer aurora glow dispersion */
+      .player-speaker-avatar-wrap::after {
+        content: "";
+        position: absolute;
+        inset: -6.5px;
+        border-radius: 50%;
+        background: radial-gradient(
+          circle,
+          rgba(0, 245, 160, 0.5) 0%,
+          rgba(0, 229, 255, 0.25) 45%,
+          rgba(46, 213, 115, 0) 75%
+        );
+        filter: blur(6px);
+        opacity: 0.75;
+        animation: auroraPulse 2.4s ease-in-out infinite alternate;
+        z-index: 1;
+        pointer-events: none;
       }
 
       .player-speaker-avatar-img,
       .player-speaker-avatar-fallback {
+        position: relative;
+        z-index: 2;
         width: 100%;
         height: 100%;
         border-radius: 50%;
@@ -1894,58 +1945,55 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        border: 2px solid #2ed573;
-        box-shadow: 0 0 10px rgba(46, 213, 115, 0.8), inset 0 0 4px rgba(46, 213, 115, 0.4);
-        animation: speakerRingPulse 1.8s infinite ease-in-out;
-        background: #1e2430;
-        color: #2ed573;
-        font-size: 14px;
+        border: none !important;
+        background: #0e131b;
+        color: #00f5a0;
+        font-size: 13px;
         font-weight: 700;
-      }
-
-      .player-speaker-mic-badge {
-        position: absolute;
-        bottom: -2px;
-        right: -2px;
-        width: 15px;
-        height: 15px;
-        background: #2ed573;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 0 6px rgba(46, 213, 115, 0.85);
-        border: 1.5px solid #0e121a;
-      }
-
-      .player-speaker-mic-badge svg {
-        width: 8.5px;
-        height: 8.5px;
-        stroke: #ffffff;
+        box-shadow: 0 0 0 1px rgba(0, 245, 160, 0.3);
       }
 
       .player-speaker-name {
-        font-size: 12px;
+        font-size: 13px;
         font-weight: 600;
         color: #ffffff;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        letter-spacing: 0.2px;
+        max-width: 130px;
+        letter-spacing: 0.25px;
+        text-shadow:
+          0 1px 3px rgba(0, 0, 0, 0.95),
+          0 2px 8px rgba(0, 0, 0, 0.85),
+          0 0 10px rgba(0, 245, 160, 0.35);
+        user-select: none;
+        pointer-events: none;
       }
 
-      @keyframes speakerRingPulse {
+      @keyframes auroraFlow {
         0% {
-          box-shadow: 0 0 0 0 rgba(46, 213, 115, 0.75), 0 0 8px rgba(46, 213, 115, 0.5);
-          border-color: #2ed573;
-        }
-        50% {
-          box-shadow: 0 0 0 5px rgba(46, 213, 115, 0), 0 0 16px rgba(46, 213, 115, 0.9);
-          border-color: #26af5f;
+          transform: rotate(0deg);
         }
         100% {
-          box-shadow: 0 0 0 0 rgba(46, 213, 115, 0.75), 0 0 8px rgba(46, 213, 115, 0.5);
-          border-color: #2ed573;
+          transform: rotate(360deg);
+        }
+      }
+
+      @keyframes auroraPulse {
+        0% {
+          opacity: 0.65;
+          transform: scale(0.96);
+          filter: blur(4px);
+        }
+        50% {
+          opacity: 0.95;
+          transform: scale(1.05);
+          filter: blur(6px);
+        }
+        100% {
+          opacity: 0.75;
+          transform: scale(0.99);
+          filter: blur(5px);
         }
       }
 
