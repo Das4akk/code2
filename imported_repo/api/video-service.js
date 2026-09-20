@@ -400,12 +400,9 @@ export async function getVideoInfo(url) {
       // ignore
     }
 
-    let embedUrl = oid && vid
+    const embedUrl = oid && vid
       ? `https://vk.com/video_ext.php?oid=${oid}&id=${vid}${hash ? `&hash=${hash}` : ''}&hd=2&autoplay=1&js_api=1`
       : clean;
-    if (!embedUrl.includes('js_api=')) {
-      embedUrl += (embedUrl.includes('?') ? '&' : '?') + 'js_api=1&autoplay=1&hd=2';
-    }
 
     return {
       success: true,

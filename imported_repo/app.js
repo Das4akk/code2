@@ -5266,13 +5266,8 @@ class VkPlayerManager {
   static isReady = false;
   static onStateChange = null;
   static pendingActions = [];
-  static _initPingTimer = null;
 
   static destroy() {
-    if (this._initPingTimer) {
-      clearInterval(this._initPingTimer);
-      this._initPingTimer = null;
-    }
     if (this.iframe) {
       this.iframe.remove();
       this.iframe = null;
@@ -5289,11 +5284,12 @@ class VkPlayerManager {
   static post(method, params = {}) {
     if (!this.iframe || !this.iframe.contentWindow) return;
     const payload = { method, ...params };
+    const payloadStr = JSON.stringify(payload);
     try {
-      this.iframe.contentWindow.postMessage(payload, "*");
+      this.iframe.contentWindow.postMessage(payloadStr, "*");
     } catch {}
     try {
-      this.iframe.contentWindow.postMessage(JSON.stringify(payload), "*");
+      this.iframe.contentWindow.postMessage(payload, "*");
     } catch {}
   }
 
@@ -5310,34 +5306,12 @@ class VkPlayerManager {
       if (!data || typeof data !== "object") return;
 
       const evt = data.event || data.type || data.method;
-      if (!evt) return;
 
       if (evt === "inited" || evt === "ready" || evt === "init") {
         this.isReady = true;
-        if (this._initPingTimer) {
-          clearInterval(this._initPingTimer);
-          this._initPingTimer = null;
-        }
         this.flushPendingActions();
-
-        RoomManager.applyLocalPermissions();
-
-        if (AppState.lastKnownSyncState) {
-          const sync = AppState.lastKnownSyncState;
-          const targetTime = Number(sync.time) || 0;
-          if (targetTime > 0) {
-            this.seek(targetTime);
-          }
-          if (sync.state === "paused") {
-            this.pause();
-          } else if (sync.state === "playing") {
-            this.play();
-          }
-        }
-        return;
       }
 
-      const prevTime = this.currentTime;
       if (typeof data.time === "number") {
         this.currentTime = data.time;
       }
@@ -5345,26 +5319,13 @@ class VkPlayerManager {
         this.duration = data.duration;
       }
 
-      // Check if seek event occurred or time jumped abnormally
-      const isSeekEvent = evt === "seeked" || evt === "seek";
-      const isTimeJump =
-        typeof data.time === "number" &&
-        Math.abs(data.time - prevTime) > 2.0 &&
-        this.state !== "unstarted";
-
-      if (isSeekEvent || isTimeJump) {
-        if (typeof this.onStateChange === "function") {
-          this.onStateChange("seeked", this.currentTime);
-        }
+      if (evt === "timeupdate" || evt === "timeUpdate") {
+        if (typeof data.time === "number") this.currentTime = data.time;
+        if (typeof data.duration === "number") this.duration = data.duration;
       }
 
       let newState = null;
-      if (
-        evt === "started" ||
-        evt === "resumed" ||
-        evt === "play" ||
-        evt === "playing"
-      ) {
+      if (evt === "started" || evt === "resumed" || evt === "play" || evt === "playing") {
         newState = "playing";
       } else if (evt === "paused" || evt === "pause") {
         newState = "paused";
@@ -5375,7 +5336,7 @@ class VkPlayerManager {
       if (newState) {
         this.state = newState;
         if (typeof this.onStateChange === "function") {
-          this.onStateChange(newState, this.currentTime);
+          this.onStateChange(newState);
         }
       }
     } catch {}
@@ -5414,10 +5375,8 @@ class VkPlayerManager {
     this.iframe.src = finalSrc;
     this.iframe.frameBorder = "0";
     this.iframe.setAttribute("allowfullscreen", "true");
-    this.iframe.setAttribute(
-      "allow",
-      "autoplay; encrypted-media; fullscreen; picture-in-picture; clipboard-write;",
-    );
+    this.iframe.allow =
+      "autoplay; encrypted-media; fullscreen; picture-in-picture;";
     this.iframe.style.width = "100%";
     this.iframe.style.height = "100%";
     this.iframe.style.borderRadius = "16px";
@@ -5426,36 +5385,13 @@ class VkPlayerManager {
     const hasControl = RoomManager.hasPerm("player");
     this.iframe.style.pointerEvents = hasControl ? "auto" : "none";
 
-    const overlay = Utils.$("room-video-overlay");
-    if (overlay) {
-      overlay.style.pointerEvents = hasControl ? "none" : "auto";
-      overlay.style.cursor = hasControl ? "default" : "not-allowed";
-    }
-
-    window.addEventListener("message", this.handleMessage);
-
-    let pingCount = 0;
-    const sendInit = () => {
-      this.post("init");
-      pingCount++;
-      if (pingCount > 12 && this._initPingTimer) {
-        clearInterval(this._initPingTimer);
-        this._initPingTimer = null;
-        if (!this.isReady) {
-          this.isReady = true;
-          this.flushPendingActions();
-        }
-      }
-    };
-
     this.iframe.onload = () => {
-      sendInit();
-      if (!this.isReady && !this._initPingTimer) {
-        this._initPingTimer = setInterval(sendInit, 400);
-      }
+      this.isReady = true;
+      this.flushPendingActions();
     };
 
     container.appendChild(this.iframe);
+    window.addEventListener("message", this.handleMessage);
 
     this.player = {
       postMessage: (method, args) => this.post(method, args),
@@ -5464,8 +5400,6 @@ class VkPlayerManager {
       play: () => this.play(),
       pause: () => this.pause(),
       setQuality: (q) => this.setQuality(q),
-      getState: () => this.getState(),
-      getCurrentTime: () => this.getCurrentTime(),
     };
 
     return Promise.resolve(this.player);
@@ -5473,7 +5407,6 @@ class VkPlayerManager {
 
   static play() {
     if (!RoomManager.hasPerm("player") && !window._isSyncingVideo) return;
-    this.state = "playing";
     if (!this.isReady) {
       this.pendingActions.push(() => this.play());
       return;
@@ -5483,7 +5416,6 @@ class VkPlayerManager {
 
   static pause() {
     if (!RoomManager.hasPerm("player") && !window._isSyncingVideo) return;
-    this.state = "paused";
     if (!this.isReady) {
       this.pendingActions.push(() => this.pause());
       return;
@@ -5493,7 +5425,7 @@ class VkPlayerManager {
 
   static seek(time) {
     if (!RoomManager.hasPerm("player") && !window._isSyncingVideo) return;
-    const t = Math.max(0, Number(time) || 0);
+    const t = Number(time) || 0;
     this.currentTime = t;
     if (!this.isReady) {
       this.pendingActions.push(() => this.seek(t));
@@ -5517,7 +5449,7 @@ class VkPlayerManager {
   }
 
   static getState() {
-    return this.state;
+    return this.state || "unknown";
   }
 }
 
@@ -6055,7 +5987,7 @@ class VideoPlaybackManager {
           Utils.$("yt-player-container").style.display = "block";
         vid.style.display = "none";
 
-        const onStateChange = (e, time) => {
+        const onStateChange = (e) => {
           if (window._isSyncingVideo) return; // ignore events during forceSync
 
           const isYT = ytId;
@@ -6074,21 +6006,7 @@ class VideoPlaybackManager {
             : "paused";
           const Manager = isYT ? YouTubePlayerManager : (isRT ? RutubePlayerManager : VkPlayerManager);
 
-          if (state === "seeked" || state === "seek") {
-            if (AppState.ignoreVideoEvents || window._isSyncingVideo) return;
-            if (!RoomManager.hasPerm("player")) return;
-            const curTime = typeof time === "number" ? time : Manager.getCurrentTime();
-            const curState = Manager.getState ? Manager.getState() : "playing";
-            const normState = curState === "paused" ? "paused" : "playing";
-            AppState.ignoreVideoEvents = true;
-            set(ref(db, `rooms/${AppState.currentRoomId}/sync`), {
-              type: "seek",
-              state: normState,
-              time: curTime,
-              ts: Date.now(),
-            }).catch(() => {});
-            setTimeout(() => (AppState.ignoreVideoEvents = false), 600);
-          } else if (state === playingState) {
+          if (state === playingState) {
             if (AppState.ignoreVideoEvents) return;
             if (!RoomManager.hasPerm("player")) return;
             if (
@@ -6128,7 +6046,6 @@ class VideoPlaybackManager {
           await VkPlayerManager.initPlayer(vkInfo.embedUrl, onStateChange);
         }
         vid.dataset.playbackKey = signature;
-        RoomManager.applyLocalPermissions();
         return;
       }
 
@@ -12086,19 +12003,6 @@ class ProfileManager {
        } else {
           newLikeBtn.style.opacity = "1";
           newLikeBtn.style.cursor = "pointer";
-       }
-
-       // Кнопка жалобы на профиль в модерацию
-       const reportBtn = document.getElementById("btn-report-profile");
-       if (reportBtn) {
-          if (isSelf) {
-             reportBtn.style.display = "none";
-          } else {
-             reportBtn.style.display = "inline-flex";
-             reportBtn.onclick = () => {
-                // Пока что кнопка ни за что не отвечает
-             };
-          }
        }
 
        // Helper to update UI
@@ -18936,8 +18840,8 @@ class RoomManager {
     
   }
 
-  static getDefaultPerms(isHost = false) {
-    return { chat: true, voice: true, player: !!isHost, reactions: true };
+  static getDefaultPerms() {
+    return { chat: true, voice: true, player: true, reactions: true };
   }
 
   static getPlayerVolume() {
@@ -19029,9 +18933,8 @@ class RoomManager {
       AppState.usersCache.get(AppState.currentUser.uid)?.name ||
       AppState.currentUser.displayName ||
       "Пользователь";
-    const isHostLike = AppState.isHost || AdminPanel.isCurrentUserCreator();
     if (!window.isIncognito) {
-      set(presenceRef, { uid, name: myName, perms: this.getDefaultPerms(isHostLike) });
+      set(presenceRef, { uid, name: myName, perms: this.getDefaultPerms() });
       onDisconnect(presenceRef).remove();
     } else {
       // Still allow chatting, just don't list presence
@@ -19116,6 +19019,7 @@ class RoomManager {
       };
     }
 
+    let hasHostRejoinedSync = false;
     const sUnsub = onValue(syncRef, (snap) => {
       const d = snap.val();
       if (!d) {
@@ -19123,61 +19027,23 @@ class RoomManager {
         return;
       }
 
+      if (AppState.isHost && !hasHostRejoinedSync) {
+        hasHostRejoinedSync = true;
+        if (d.state === "paused") {
+          set(syncRef, {
+            type: "play",
+            state: "playing",
+            time: d.time,
+            ts: Date.now(),
+          }).catch(() => {});
+          return;
+        }
+      }
+
       AppState.lastKnownSyncState = d;
       RoomManager.forceSyncVideo(d);
     });
     AppState.roomSubscriptions.push(sUnsub);
-
-    const hostHeartbeatTimer = setInterval(() => {
-      if (
-        !AppState.isHost ||
-        !AppState.currentRoomId ||
-        window._isSyncingVideo ||
-        AppState.ignoreVideoEvents
-      )
-        return;
-      const currentRoom =
-        AppState.roomsCache.get(AppState.currentRoomId) || {};
-      const isYt = MediaResolverClient.extractYouTubeId(
-        currentRoom.videoSourceUrl || currentRoom.videoUrl,
-      );
-      const isRt = MediaResolverClient.extractRutubeId(
-        currentRoom.videoSourceUrl || currentRoom.videoUrl,
-      );
-      const isVk = MediaResolverClient.extractVkInfo(
-        currentRoom.videoSourceUrl || currentRoom.videoUrl,
-      );
-      const Manager = isYt
-        ? YouTubePlayerManager
-        : isRt
-          ? RutubePlayerManager
-          : isVk
-            ? VkPlayerManager
-            : null;
-      const nativeVid = Utils.$("native-player");
-
-      let isPlaying = false;
-      let curTime = 0;
-      if (Manager && Manager.player) {
-        isPlaying = Manager.getState
-          ? Manager.getState() === "playing"
-          : false;
-        curTime = Manager.getCurrentTime ? Manager.getCurrentTime() : 0;
-      } else if (nativeVid && nativeVid.src) {
-        isPlaying = !nativeVid.paused;
-        curTime = nativeVid.currentTime || 0;
-      }
-
-      if (isPlaying && curTime > 0) {
-        set(syncRef, {
-          type: "heartbeat",
-          state: "playing",
-          time: curTime,
-          ts: Date.now(),
-        }).catch(() => {});
-      }
-    }, 3500);
-    AppState.roomSubscriptions.push(() => clearInterval(hostHeartbeatTimer));
 
     const chatActionRef = ref(db, `rooms/${roomId}/chatAction`);
     const caUnsub = onValue(chatActionRef, (snap) => {
@@ -19716,13 +19582,6 @@ class RoomManager {
     if (overlay) {
       overlay.style.pointerEvents = pPlayer ? "none" : "auto";
       overlay.style.cursor = pPlayer ? "default" : "not-allowed";
-      overlay.onclick = (e) => {
-        if (!this.hasPerm("player")) {
-          e.preventDefault();
-          e.stopPropagation();
-          Utils.toast("Управление воспроизведением доступно только хосту", "info");
-        }
-      };
     }
 
     const ytContainer = Utils.$("yt-player-container");
@@ -19731,9 +19590,6 @@ class RoomManager {
       if (iframe) {
         iframe.style.pointerEvents = pPlayer ? "auto" : "none";
       }
-    }
-    if (VkPlayerManager.iframe) {
-      VkPlayerManager.iframe.style.pointerEvents = pPlayer ? "auto" : "none";
     }
 
     Utils.$("chat-input").disabled = !pChat;
@@ -20004,10 +19860,7 @@ class RoomManager {
       (RutubePlayerManager.player && isRt) ||
       (VkPlayerManager.player && isVk)
     ) {
-      if (AppState.isHost && d.type !== "seek") {
-        return;
-      }
-
+      // Unconditionally apply sync from server, but ignore the resulting local video events
       window._isSyncingVideo = true;
       AppState.ignoreVideoEvents = true;
       const Manager = isYt
@@ -20016,23 +19869,25 @@ class RoomManager {
           ? RutubePlayerManager
           : VkPlayerManager;
       const currentState = Manager.getState ? Manager.getState() : null;
-      const curTime = Manager.getCurrentTime ? Manager.getCurrentTime() : 0;
-      const isDirectSeek = d.type === "seek";
-      const timeDiff = Math.abs(curTime - targetTime);
 
-      if (isDirectSeek || timeDiff > 1.2) {
+      if (Math.abs(Manager.getCurrentTime() - targetTime) > 1.5) {
         Manager.seek(targetTime);
       }
-      if (state === "playing" && currentState !== "playing") {
-        Manager.play();
-      } else if (state === "paused" && currentState !== "paused") {
-        Manager.pause();
+      if (state === "playing" && currentState !== "playing") Manager.play();
+      if (state === "paused" && currentState !== "paused") {
+        if (!currentState) Manager.play(); // Buffer on init
+        setTimeout(
+          () => {
+            if (AppState.currentRoomId) Manager.pause();
+          },
+          currentState ? 0 : 500,
+        );
       }
 
       setTimeout(() => {
         AppState.ignoreVideoEvents = false;
         window._isSyncingVideo = false;
-      }, 600);
+      }, 1500);
       return;
     }
 
@@ -21460,13 +21315,9 @@ if (document.readyState === "complete" || document.readyState === "interactive")
 class CatalogManager {
   static items = [];
   static activeFilter = "all";
-  static searchQuery = "";
-  static sortBy = "featured";
-  static filtersBound = false;
 
   static async init() {
     this.bindFilters();
-    this.bindSearchAndSort();
 
     try {
       onValue(ref(db, "catalog"), (snap) => {
@@ -21478,6 +21329,12 @@ class CatalogManager {
         } else {
           this.items = [];
         }
+
+        this.items.sort((a, b) => {
+          const aHot = a.isHot === true || a.isHot === "true" ? 1 : 0;
+          const bHot = b.isHot === true || b.isHot === "true" ? 1 : 0;
+          return bHot - aHot;
+        });
 
         this.renderCatalog();
         this.renderAdminCatalog();
@@ -21539,109 +21396,25 @@ class CatalogManager {
   }
 
   static bindFilters() {
-    const filterContainer = Utils.$("catalog-filters");
-    if (!filterContainer) return;
+    const filters = document.querySelectorAll(
+      "#catalog-filters .secondary-btn",
+    );
+    filters.forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        filters.forEach((b) => {
+          b.classList.remove("active-filter");
+          b.style.borderColor = "";
+          b.style.background = "";
+        });
+        const target = e.target;
+        target.classList.add("active-filter");
+        target.style.borderColor = "rgba(255,255,255,0.4)";
+        target.style.background = "rgba(255,255,255,0.1)";
 
-    const filterBtns = filterContainer.querySelectorAll("[data-filter]");
-    filterBtns.forEach((btn) => {
-      btn.addEventListener("click", () => {
-        filterBtns.forEach((b) => b.classList.remove("active-filter"));
-        btn.classList.add("active-filter");
-        this.activeFilter = btn.dataset.filter || "all";
+        this.activeFilter = target.dataset.filter;
         this.renderCatalog();
       });
     });
-  }
-
-  static bindSearchAndSort() {
-    if (this.filtersBound) return;
-    this.filtersBound = true;
-
-    const searchInput = Utils.$("catalog-search-input");
-    const searchClear = Utils.$("catalog-search-clear");
-    const sortWrapper = Utils.$("catalog-sort-custom");
-    const sortTrigger = Utils.$("catalog-sort-trigger");
-    const sortLabel = Utils.$("catalog-sort-label");
-    const sortMenu = Utils.$("catalog-sort-menu");
-
-    if (searchInput) {
-      searchInput.addEventListener("input", (e) => {
-        this.searchQuery = (e.target.value || "").trim().toLowerCase();
-        if (searchClear) {
-          searchClear.style.display = this.searchQuery ? "flex" : "none";
-        }
-        this.renderCatalog();
-      });
-    }
-
-    if (searchClear) {
-      searchClear.addEventListener("click", () => {
-        if (searchInput) searchInput.value = "";
-        this.searchQuery = "";
-        searchClear.style.display = "none";
-        this.renderCatalog();
-      });
-    }
-
-    // Custom Sort Dropdown Handler
-    if (sortWrapper && sortTrigger && sortMenu) {
-      sortTrigger.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const isOpen = sortWrapper.classList.toggle("open");
-        sortTrigger.setAttribute("aria-expanded", isOpen ? "true" : "false");
-      });
-
-      const options = sortMenu.querySelectorAll(".catalog-select-option");
-      options.forEach((opt) => {
-        opt.addEventListener("click", (e) => {
-          e.stopPropagation();
-          const val = opt.getAttribute("data-value") || "featured";
-          this.sortBy = val;
-
-          options.forEach((o) => {
-            o.classList.remove("active");
-            o.setAttribute("aria-selected", "false");
-          });
-          opt.classList.add("active");
-          opt.setAttribute("aria-selected", "true");
-
-          const textEl = opt.querySelector("span");
-          if (sortLabel && textEl) {
-            sortLabel.textContent = textEl.textContent;
-          }
-
-          sortWrapper.classList.remove("open");
-          sortTrigger.setAttribute("aria-expanded", "false");
-          this.renderCatalog();
-        });
-      });
-
-      // Close dropdown when clicking outside or pressing Escape
-      document.addEventListener("click", (e) => {
-        if (!sortWrapper.contains(e.target)) {
-          sortWrapper.classList.remove("open");
-          sortTrigger.setAttribute("aria-expanded", "false");
-        }
-      });
-
-      document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape" && sortWrapper.classList.contains("open")) {
-          sortWrapper.classList.remove("open");
-          sortTrigger.setAttribute("aria-expanded", "false");
-        }
-      });
-    }
-  }
-
-  static renderUserStatus() {
-    const uid = AppState.currentUser?.uid;
-    const currentProf = uid ? AppState.usersCache.get(uid) : null;
-    const levelEl = Utils.$("catalog-user-lvl-num");
-
-    if (levelEl) {
-      const userLevel = Number(currentProf?.level) || 0;
-      levelEl.innerText = `${userLevel} ур.`;
-    }
   }
 
   static renderCatalog() {
@@ -21650,10 +21423,8 @@ class CatalogManager {
 
     const uid = AppState.currentUser?.uid;
     const currentProf = uid ? AppState.usersCache.get(uid) : null;
-    const catalogVisible = Utils.$("section-catalog")?.style?.display === "flex";
-
-    this.renderUserStatus();
-
+    const catalogVisible =
+      Utils.$("section-catalog")?.style?.display === "flex";
     let hasAccess = true;
     if (
       window.PremiumManager &&
@@ -21662,307 +21433,223 @@ class CatalogManager {
       hasAccess = false;
     }
 
-    const inv = currentProf?.inventory || [];
-    const equippedFrame = currentProf?.frame || null;
-
-    // Обновление счетчиков на табах
-    const countAll = this.items.length;
-    const countHot = this.items.filter((i) => i.isHot === true || i.isHot === "true").length;
-    const countFree = this.items.filter(
-      (i) => i.priceType === "free" || i.price === "БЕСПЛАТНО" || i.price === "0" || String(i.price).trim().toUpperCase() === "FREE"
-    ).length;
-    const countPaid = this.items.filter(
-      (i) => i.priceType === "paid" && i.price !== "БЕСПЛАТНО" && i.price !== "0" && String(i.price).trim().toUpperCase() !== "FREE"
-    ).length;
-
-    if (Utils.$("cat-count-all")) Utils.$("cat-count-all").innerText = countAll;
-    if (Utils.$("cat-count-hot")) Utils.$("cat-count-hot").innerText = countHot;
-    if (Utils.$("cat-count-free")) Utils.$("cat-count-free").innerText = countFree;
-    if (Utils.$("cat-count-paid")) Utils.$("cat-count-paid").innerText = countPaid;
-
-    // Фильтрация по табам
     let filtered = [...this.items];
-    if (this.activeFilter === "hot") {
-      filtered = filtered.filter((i) => i.isHot === true || i.isHot === "true");
-    } else if (this.activeFilter === "free") {
+    filtered.sort((a, b) => {
+      const aHot = a.isHot === true || a.isHot === "true" ? 1 : 0;
+      const bHot = b.isHot === true || b.isHot === "true" ? 1 : 0;
+      return bHot - aHot;
+    });
+
+    if (this.activeFilter === "frames")
+      filtered = filtered.filter((i) => i.type === "frame");
+    if (this.activeFilter === "free")
       filtered = filtered.filter(
-        (i) => i.priceType === "free" || i.price === "БЕСПЛАТНО" || i.price === "0" || String(i.price).trim().toUpperCase() === "FREE"
+        (i) =>
+          i.priceType === "free" || i.price === "БЕСПЛАТНО" || i.price === "0",
       );
-    } else if (this.activeFilter === "paid") {
+    if (this.activeFilter === "paid")
       filtered = filtered.filter(
-        (i) => i.priceType === "paid" && i.price !== "БЕСПЛАТНО" && i.price !== "0" && String(i.price).trim().toUpperCase() !== "FREE"
+        (i) =>
+          i.priceType === "paid" ||
+          (i.price !== "БЕСПЛАТНО" && i.price !== "0"),
       );
-    }
 
-    // Фильтрация по поиску
-    if (this.searchQuery) {
-      const q = this.searchQuery;
-      filtered = filtered.filter((i) =>
-        (i.title && i.title.toLowerCase().includes(q)) ||
-        (i.desc && i.desc.toLowerCase().includes(q))
-      );
-    }
+    list.innerHTML =
+      `
+            <style>
+                @keyframes catalogFadeIn {
+                    from { opacity: 0; transform: translateY(15px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                .catalog-card-wrapper {
+                    position: relative;
+                    border-radius: 14px;
+                    padding: 2px;
+                    background: transparent;
+                    transition: transform 0.2s ease, box-shadow 0.2s ease;
+                    opacity: 0;
+                    animation: catalogFadeIn 0.4s ease forwards;
+                    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+                }
+                .catalog-card-wrapper.is-hot {
+                    box-shadow: 0 4px 12px rgba(255, 170, 60, 0.1), 0 0 0 1px rgba(255, 220, 140, 0.15) inset;
+                }
+                .catalog-card-wrapper.is-hot .catalog-card-inner {
+                    background: linear-gradient(135deg, rgba(255, 170, 60, 0.02), rgba(255, 220, 140, 0.05), rgba(255, 170, 60, 0.02));
+                    background-size: 200% 200%;
+                    background-position: 0% 50%;
+                }
+                .catalog-card-wrapper:hover {
+                    transform: translateY(-4px);
+                    box-shadow: 0 12px 24px rgba(0,0,0,0.3);
+                }
+                .catalog-card-wrapper.is-hot:hover {
+                    box-shadow: 0 20px 50px rgba(255, 170, 60, 0.5), 0 0 0 2px rgba(255, 220, 140, 0.8) inset;
+                }
+                @keyframes fireAnim {
+                    0% { background-position: 0% 50%; }
+                    50% { background-position: 100% 50%; }
+                    100% { background-position: 0% 50%; }
+                }
+                .catalog-card-wrapper.is-hot:hover .catalog-card-inner {
+                    animation: fireAnim 2s ease infinite;
+                }
+                .catalog-card-inner {
+                    background: rgba(17, 18, 20, 0.4);
+                    backdrop-filter: blur(8px);
+                    border: 1px solid rgba(255, 255, 255, 0.05);
+                    border-radius: 12px;
+                    width: 100%;
+                    height: 100%;
+                    min-height: 250px;
+                    display: flex;
+                    flex-direction: column;
+                    cursor: pointer;
+                    overflow: hidden;
+                    position: relative;
+                    transition: background 0.2s;
+                }
+                .catalog-card-wrapper:hover .catalog-card-inner {
+                    background: rgba(30, 31, 34, 0.5);
+                }
+                .catalog-card-banner {
+                    width: 100%;
+                    height: 140px;
+                    background: rgba(0, 0, 0, 0.2);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    position: relative;
+                }
+                .catalog-card-info {
+                    padding: 16px;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: flex-start;
+                    text-align: left;
+                    flex: 1;
+                }
+                .catalog-card-title {
+                    color: #fff;
+                    font-size: 16px;
+                    font-weight: 800;
+                    margin-bottom: 4px;
+                }
+                .catalog-card-type {
+                    color: #b5bac1;
+                    font-size: 12px;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    margin-bottom: 12px;
+                }
+                .catalog-card-bottom {
+                    width: 100%;
+                    display: flex;
+                    align-items: flex-end;
+                    justify-content: space-between;
+                    margin-top: auto;
+                }
+                .catalog-card-price {
+                    color: #f2f3f5;
+                    font-weight: 700;
+                    font-size: 14px;
+                }
+                .catalog-card-status {
+                    background: rgba(76, 209, 55, 0.15);
+                    color: #4cd137;
+                    padding: 4px 8px;
+                    border-radius: 4px;
+                    font-size: 10px;
+                    font-weight: 800;
+                }
+                .catalog-card-wrapper.is-owned .catalog-card-inner {
+                    border: 1px solid rgba(76, 209, 55, 0.3);
+                }
+            </style>
+        ` +
+      filtered
+        .map((item, i) => {
+          let currentProf =
+            window.AppState && AppState.currentUser
+              ? AppState.usersCache.get(AppState.currentUser.uid)
+              : null;
+          const inv = currentProf?.inventory || [];
+          const isOwned = inv.includes(item.id);
+          const isHot = item.isHot === true || item.isHot === "true";
 
-    // Сортировка
-    if (this.sortBy === "level-asc") {
-      filtered.sort((a, b) => {
-        const aLvl = a.priceType === "free" ? 0 : parseInt(a.price, 10) || 0;
-        const bLvl = b.priceType === "free" ? 0 : parseInt(b.price, 10) || 0;
-        return aLvl - bLvl;
-      });
-    } else if (this.sortBy === "level-desc") {
-      filtered.sort((a, b) => {
-        const aLvl = a.priceType === "free" ? 0 : parseInt(a.price, 10) || 0;
-        const bLvl = b.priceType === "free" ? 0 : parseInt(b.price, 10) || 0;
-        return bLvl - aLvl;
-      });
-    } else if (this.sortBy === "title-asc") {
-      filtered.sort((a, b) => (a.title || "").localeCompare(b.title || "", "ru"));
-    } else {
-      // featured
-      filtered.sort((a, b) => {
-        const aHot = a.isHot === true || a.isHot === "true" ? 1 : 0;
-        const bHot = b.isHot === true || b.isHot === "true" ? 1 : 0;
-        if (bHot !== aHot) return bHot - aHot;
-        return (b.id || "").localeCompare(a.id || "");
-      });
-    }
+          let fakeProf = currentProf
+            ? { ...currentProf, frame: null }
+            : {
+                name: "User",
+                avatar: "https://telegra.ph/file/0c9e88d184cf43b448f21.png",
+              };
+          let userAvatarInner = ProfileManager.getAvatarHtml(fakeProf);
 
-    // Рендеринг пустого состояния или карточек
-    if (filtered.length === 0) {
-      list.innerHTML = `
-        <div class="catalog-empty-state">
-          <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Shopping%20Bags.webp" alt="Empty" class="catalog-empty-emoji">
-          <h3 class="catalog-empty-title">Ничего не найдено</h3>
-          <p class="catalog-empty-desc">
-            ${this.searchQuery ? `По запросу "${Utils.escapeHtml(this.searchQuery)}" предложений не обнаружено.` : "В выбранном разделе каталога сейчас нет доступных предложений."}
-          </p>
-          ${this.searchQuery || this.activeFilter !== "all" ? `
-            <button class="secondary-btn" onclick="CatalogManager.resetFilters()" style="margin-top: 6px; padding: 8px 18px; border-radius: 10px; font-weight: 700; color: #fff; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);">
-              Сбросить фильтры
-            </button>
-          ` : ""}
-        </div>
-      `;
-    } else {
-      const userLevel = Number(currentProf?.level) || 0;
-      const fakeProf = currentProf
-        ? { ...currentProf, frame: null }
-        : {
-            name: "User",
-            avatar: "https://telegra.ph/file/0c9e88d184cf43b448f21.png",
-          };
-      const userAvatarInner = ProfileManager.getAvatarHtml(fakeProf);
-
-      list.innerHTML = filtered.map((item, idx) => {
-        const isOwned = inv.includes(item.id) || (item.image && inv.includes(item.image));
-        const isEquipped = equippedFrame === item.id || (item.image && equippedFrame === item.image);
-        const isHot = item.isHot === true || item.isHot === "true";
-        const isFree = item.priceType === "free" || item.price === "БЕСПЛАТНО" || item.price === "0" || String(item.price).trim().toUpperCase() === "FREE";
-        const requiredLvl = isFree ? 0 : parseInt(item.price, 10) || 0;
-        const canAfford = userLevel >= requiredLvl;
-
-        let actionBtnHtml = "";
-        if (isEquipped) {
-          actionBtnHtml = `
-            <button class="catalog-card-action-btn btn-equipped" onclick="event.stopPropagation(); window.openCatalogItemModal('${item.id}')">
-              ✓ Надето
-            </button>
-          `;
-        } else if (isOwned) {
-          actionBtnHtml = `
-            <button class="catalog-card-action-btn btn-apply" onclick="event.stopPropagation(); CatalogManager.equipItem('${item.id}')">
-              Надеть
-            </button>
-          `;
-        } else if (isFree) {
-          actionBtnHtml = `
-            <button class="catalog-card-action-btn btn-claim" onclick="event.stopPropagation(); window.openCatalogItemModal('${item.id}')">
-              Забрать
-            </button>
-          `;
-        } else if (canAfford) {
-          actionBtnHtml = `
-            <button class="catalog-card-action-btn btn-apply" onclick="event.stopPropagation(); window.openCatalogItemModal('${item.id}')">
-              Купить
-            </button>
-          `;
-        } else {
-          actionBtnHtml = `
-            <button class="catalog-card-action-btn btn-locked" onclick="event.stopPropagation(); window.openCatalogItemModal('${item.id}')">
-              С ${requiredLvl} ур.
-            </button>
-          `;
-        }
-
-        return `
-          <div class="catalog-item-card ${isHot ? "is-hot" : ""} ${isEquipped ? "is-equipped" : ""}"
-               onclick="window.openCatalogItemModal('${item.id}')"
-               style="animation: fadeIn 0.3s ease ${idx * 0.025}s both;">
-            
-            <div class="catalog-card-stage">
-              ${item.image ? `<div class="catalog-card-ambient-glow" style="background-image: url('${Utils.escapeHtml(item.image)}');"></div>` : ""}
-              
-              <div class="catalog-card-badges-top">
-                ${isHot ? `
-                  <div class="catalog-badge-fire">
-                    <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" alt="Акция">
-                    <span>Акция</span>
-                  </div>
-                ` : `<div></div>`}
-
-                ${isEquipped ? `
-                  <div class="catalog-badge-status equipped">Надето</div>
-                ` : isFree ? `
-                  <div class="catalog-badge-status free">Бесплатно</div>
-                ` : `<div></div>`}
-              </div>
-
-              <div class="catalog-avatar-showcase">
-                <div class="catalog-avatar-core">
-                  ${userAvatarInner}
+          return `
+            <div class="catalog-card-wrapper ${isHot ? "is-hot" : ""} ${isOwned ? "is-owned" : ""}" style="animation-delay: ${i * 0.05}s;">
+                <div class="catalog-card-inner" onclick="if(typeof openCatalogItemModal === 'function') openCatalogItemModal('${item.id}')">
+                    <div class="catalog-card-banner">
+                        ${isHot ? `<div class="catalog-hot-badge"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" alt=""> Акция</div>` : ""}
+                        
+                        ${
+`
+                            <div style="width: 90px; height: 90px; display:flex; align-items:center; justify-content:center; position:relative; z-index:2;">
+                                <div style="width:90px; height:90px; border-radius:50%; position:absolute; top:0; left:0; z-index:1; box-shadow: inset 0 0 10px rgba(0,0,0,0.4); background:#111214; color:#fff; font-size:40px; font-weight:bold;">${userAvatarInner}</div>
+                                <img src="${item.image}" style="width:130%;height:130%;object-fit:contain; position:absolute; top:-15%; left:-15%; z-index:2; pointer-events:none;"/>
+                            </div>
+                        `
+}
+                    </div>
+                    
+                    <div class="catalog-card-info">
+                        <div class="catalog-card-title">${item.title}</div>
+                        <div class="catalog-card-type"></div>
+                        
+                        <div class="catalog-card-bottom">
+                            <div class="catalog-card-price">${item.priceType === "free" ? "БЕСПЛАТНО" : item.price + " ур."}</div>
+                            ${isOwned ? `<div class="catalog-card-status">В КОЛЛЕКЦИИ</div>` : ""}
+                        </div>
+                    </div>
                 </div>
-                ${item.image ? `
-                  <img src="${Utils.escapeHtml(item.image)}" class="catalog-frame-overlay" alt="${Utils.escapeHtml(item.title || "Рамка")}" />
-                ` : ""}
-              </div>
             </div>
+            `;
+        })
+        .join("");
 
-            <div class="catalog-card-body">
-              <div class="catalog-card-text-group">
-                <span class="catalog-card-type-sub">Временный оффер</span>
-                <h3 class="catalog-card-title">${Utils.escapeHtml(item.title || "Без названия")}</h3>
-                <p class="catalog-card-desc">${Utils.escapeHtml(item.desc || "Эксклюзивный предмет каталога")}</p>
-              </div>
-
-              <div class="catalog-card-footer">
-                <div class="catalog-card-price-block">
-                  <div class="catalog-price-tag">
-                    ${isFree ? `
-                      <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" class="catalog-price-emoji" alt="Free">
-                      <span>Бесплатно</span>
-                    ` : `
-                      <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" class="catalog-price-emoji" alt="Star">
-                      <span>${requiredLvl} ур.</span>
-                    `}
-                  </div>
-                  <div class="catalog-price-status-hint ${canAfford ? "can-buy" : "need-lvl"}">
-                    ${canAfford ? "Доступно вам" : `Нужно еще ${requiredLvl - userLevel} ур.`}
-                  </div>
-                </div>
-
-                ${actionBtnHtml}
-              </div>
-            </div>
-          </div>
-        `;
-      }).join("");
-    }
-
-    // Проверка доступа к каталогу (уровень < 10)
-    const catalogSection = Utils.$("section-catalog");
     if (!hasAccess && catalogVisible) {
-      if (catalogSection.querySelector(".catalog-locked-overlay")) return;
+      if (Utils.$("section-catalog").querySelector(".catalog-locked-overlay"))
+        return; // already added
       const overlay = document.createElement("div");
       overlay.className = "catalog-locked-overlay";
       overlay.style =
-        "position:absolute; inset:0; background:rgba(8,8,10,0.85); backdrop-filter:blur(24px); -webkit-backdrop-filter:blur(24px); display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; z-index:50; padding:24px; box-sizing:border-box;";
-      
-      const curLvl = Number(currentProf?.level) || 0;
-      const progressPercent = Math.min(100, Math.max(0, (curLvl / 10) * 100));
-      const leftLvl = Math.max(0, 10 - curLvl);
-
+        "position:absolute; inset:0; background:rgba(10,10,12,0.4); backdrop-filter:blur(12px); border-radius:20px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; z-index:50;";
       overlay.innerHTML = `
-        <div style="background: rgba(16, 16, 20, 0.95); border: 1px solid rgba(255,255,255,0.12); border-radius: 24px; padding: 40px 32px; max-width: 440px; width: 100%; box-shadow: 0 24px 60px rgba(0,0,0,0.8); backdrop-filter: blur(28px);">
-          <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width:72px; height:72px; margin-bottom:16px; animation:mysteryFloat 3s infinite ease-in-out;" alt="Locked">
-          <h2 style="margin:0 0 10px; font-size:24px; font-weight:800; color:#fff;">Каталог закрыт до 10 уровня</h2>
-          <p style="color:var(--text-muted); font-size:14px; margin:0 0 22px; line-height:1.5;">
-            Эксклюзивные рамки и украшения профиля становятся доступны активным участникам при достижении 10 уровня.
-          </p>
-
-          <!-- Progress bar -->
-          <div style="background: rgba(255,255,255,0.04); border-radius: 12px; padding: 14px 16px; margin-bottom: 24px; border: 1px solid rgba(255,255,255,0.08); text-align: left;">
-            <div style="display:flex; justify-content:space-between; margin-bottom: 8px; font-size: 13px; font-weight: 700;">
-              <span style="color:#fff;">Ваш прогресс</span>
-              <span style="color:#ffffff;">${curLvl} / 10 ур.</span>
-            </div>
-            <div style="width: 100%; height: 8px; background: rgba(0,0,0,0.6); border-radius: 999px; overflow: hidden; border: 1px solid rgba(255,255,255,0.06);">
-              <div style="width: ${progressPercent}%; height: 100%; background: #ffffff; border-radius: 999px; transition: width 0.5s ease; box-shadow: 0 0 10px rgba(255,255,255,0.3);"></div>
-            </div>
-            <div style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">
-              Осталось набрать еще ${leftLvl} ур. Смотрите видео вместе с друзьями и общайтесь в комнатах!
-            </div>
-          </div>
-
-          <div style="display:flex; gap:10px;">
-            <button class="primary-btn" onclick="document.getElementById('nav-profile')?.click()" style="flex:1; padding:12px; background:#ffffff; color:#000000; font-weight:700; font-size:14px; border-radius:12px; border:none; cursor:pointer;">
-              Мой Профиль
-            </button>
-            <button class="secondary-btn" onclick="document.getElementById('nav-rooms')?.click()" style="flex:1; padding:12px; border-radius:12px; font-weight:700; font-size:14px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color:#ffffff;">
-              В комнаты
-            </button>
-          </div>
-        </div>
+          <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width:64px;height:64px;margin-bottom:20px;animation:levitate 3s infinite ease-in-out;">
+          <h2 style="margin:0 0 10px;font-size:24px;">Каталог заблокирован</h2>
+          <p style="color:var(--text-muted);font-size:15px;margin-bottom:25px;max-width:350px;line-height:1.5;">Извините, но у вас нет доступа к просмотру и приобретению вещей из каталога.<br><br>Доступ открывается только при достижении 10 уровня!</p>
+          <button class="primary-btn" onclick="document.getElementById('nav-profile').click()" style="width:auto;padding:12px 28px;background:#ffffff;color:#000000;font-weight:800;font-size:15px; border-radius: 20px;">Мой Профиль</button>
       `;
-      catalogSection.appendChild(overlay);
-      const container = catalogSection.querySelector(".catalog-container");
+      Utils.$("section-catalog").appendChild(overlay);
+      const container =
+        Utils.$("section-catalog").querySelector(".friends-container");
       if (container) {
-        container.style.filter = "blur(12px)";
+        container.style.filter = "blur(8px)";
         container.style.pointerEvents = "none";
         container.style.userSelect = "none";
       }
     } else {
-      const existing = catalogSection?.querySelector(".catalog-locked-overlay");
+      const existing = Utils.$("section-catalog")?.querySelector(
+        ".catalog-locked-overlay",
+      );
       if (existing) existing.remove();
-      const container = catalogSection?.querySelector(".catalog-container");
+      const container =
+        Utils.$("section-catalog")?.querySelector(".friends-container");
       if (container) {
         container.style.filter = "";
         container.style.pointerEvents = "";
         container.style.userSelect = "";
       }
     }
-  }
-
-  static resetFilters() {
-    this.searchQuery = "";
-    this.activeFilter = "all";
-    const searchInput = Utils.$("catalog-search-input");
-    if (searchInput) searchInput.value = "";
-    const searchClear = Utils.$("catalog-search-clear");
-    if (searchClear) searchClear.style.display = "none";
-
-    const filterContainer = Utils.$("catalog-filters");
-    if (filterContainer) {
-      filterContainer.querySelectorAll("[data-filter]").forEach((b) => {
-        if (b.dataset.filter === "all") b.classList.add("active-filter");
-        else b.classList.remove("active-filter");
-      });
-    }
-
-    this.renderCatalog();
-  }
-
-  static async equipItem(itemId) {
-    if (!AppState.currentUser) return Utils.toast("Авторизуйтесь в профиль", "error");
-    const item = this.items.find((i) => i.id === itemId);
-    if (!item) return;
-
-    const uid = AppState.currentUser.uid;
-    const currentProf = AppState.usersCache.get(uid) || {};
-    const frameVal = item.image || item.id;
-
-    await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(
-      ({ update, ref, getDatabase }) =>
-        update(ref(getDatabase()), {
-          [`users/${uid}/profile/frame`]: frameVal,
-        })
-    );
-
-    currentProf.frame = frameVal;
-    AppState.usersCache.set(uid, currentProf);
-
-    Utils.toast("Рамка аватара применена!", "success");
-    this.renderCatalog();
   }
 
   static renderAdminCatalog() {
@@ -21985,6 +21672,7 @@ class CatalogManager {
                 <input type="text" id="admin-cat-img-${item.id}" value="${item.image}" class="admin-form-input" placeholder="URL Картинки/Рамки/Звука" style="margin-bottom: 4px;"/>
                 <select id="admin-cat-type-${item.id}" class="admin-form-input" style="margin-bottom: 4px;">
                     <option value="frame" ${item.type === "frame" ? "selected" : ""}>Рамка</option>
+                    
                 </select>
                 <div style="display:flex; align-items:center; gap: 8px; margin-bottom: 8px;">
                     <input type="checkbox" id="admin-cat-ishot-${item.id}" ${item.isHot === true || item.isHot === "true" ? "checked" : ""} style="margin:0; width:16px; height:16px;">
@@ -22033,109 +21721,51 @@ window.openCatalogItemModal = function (itemId) {
   const modal = Utils.$("modal-catalog-item");
   if (!modal || !item) return;
 
-  Utils.$("catalog-item-title").innerText = item.title || "Без названия";
-  Utils.$("catalog-item-desc").innerText = item.desc || "Эксклюзивный предмет каталога";
-
-  const isFree =
-    item.priceType === "free" ||
-    item.price === "БЕСПЛАТНО" ||
-    item.price === "0" ||
-    String(item.price).trim().toUpperCase() === "FREE";
-
-  const requiredLvl = isFree ? 0 : parseInt(item.price, 10) || 0;
-  Utils.$("catalog-item-price").innerText = isFree ? "БЕСПЛАТНО" : `${requiredLvl} ур.`;
-  Utils.$("catalog-item-type-label").innerText = "УКРАШЕНИЕ АВАТАРА";
+  Utils.$("catalog-item-title").innerText = item.title;
+  Utils.$("catalog-item-desc").innerText = item.desc;
+  Utils.$("catalog-item-price").innerText =
+    item.priceType === "free" ? "БЕСПЛАТНО" : item.price + " ур.";
+  Utils.$("catalog-item-type-label").innerText =
+    "УКРАШЕНИЕ АВАТАРА";
 
   const imageSolo = Utils.$("catalog-item-image-solo");
   const avatarBg = Utils.$("catalog-item-avatar-bg");
   const audioSolo = Utils.$("catalog-item-audio-solo");
   const blurObj = Utils.$("catalog-item-bg-blur");
 
-  const uid = AppState.currentUser?.uid;
-  let currentProf = uid ? AppState.usersCache.get(uid) : null;
-  const userLevel = Number(currentProf?.level) || 0;
+  let currentProf =
+    window.AppState && AppState.currentUser
+      ? AppState.usersCache.get(AppState.currentUser.uid)
+      : null;
 
-  const fakeProf = currentProf
+  let fakeProf = currentProf
     ? { ...currentProf, frame: null }
     : {
         name: "User",
         avatar: "https://telegra.ph/file/0c9e88d184cf43b448f21.png",
       };
-  const userAvatarInner = ProfileManager.getAvatarHtml(fakeProf);
+  let userAvatarInner = ProfileManager.getAvatarHtml(fakeProf);
 
-  if (imageSolo) {
-    imageSolo.style.display = "block";
-    imageSolo.src = item.image || "";
-    imageSolo.style.transform = "scale(1)";
-  }
-
-  if (avatarBg) {
-    avatarBg.style.display = "flex";
-    avatarBg.innerHTML = userAvatarInner;
-  }
-
-  if (blurObj) {
-    blurObj.style.backgroundImage = item.image ? `url('${item.image}')` : "none";
-  }
-
-  if (audioSolo) {
-    audioSolo.style.display = "none";
-    audioSolo.src = "";
-  }
-
-  // Настройка тумблера "Примерить" / "Только рамка"
-  const btnTryOn = Utils.$("btn-modal-view-tryon");
-  const btnSolo = Utils.$("btn-modal-view-solo");
-
-  if (btnTryOn && btnSolo) {
-    btnTryOn.classList.add("active");
-    btnSolo.classList.remove("active");
-
-    btnTryOn.onclick = () => {
-      btnTryOn.classList.add("active");
-      btnSolo.classList.remove("active");
-      if (avatarBg) avatarBg.style.display = "flex";
-      if (imageSolo) {
-        imageSolo.style.width = "146px";
-        imageSolo.style.height = "146px";
-        imageSolo.style.transform = "scale(1)";
-      }
-    };
-
-    btnSolo.onclick = () => {
-      btnSolo.classList.add("active");
-      btnTryOn.classList.remove("active");
-      if (avatarBg) avatarBg.style.display = "none";
-      if (imageSolo) {
-        imageSolo.style.width = "170px";
-        imageSolo.style.height = "170px";
-        imageSolo.style.transform = "scale(1.15)";
-      }
-    };
-  }
-
-  // Обновление плашки уровня
-  const userLvlVal = Utils.$("catalog-modal-user-level-val");
-  const statusPill = Utils.$("catalog-item-status-pill");
-
-  const inv = currentProf?.inventory || [];
-  const isOwned = inv.includes(item.id) || (item.image && inv.includes(item.image));
-  const isEquipped = currentProf?.frame === item.id || (item.image && currentProf?.frame === item.image);
-
-  if (statusPill) {
-    statusPill.innerText = isEquipped ? "Надето" : item.isHot ? "Акция" : "Временный оффер";
-    statusPill.style.color = "#ffffff";
-    statusPill.style.background = isEquipped ? "rgba(255, 255, 255, 0.12)" : "rgba(255, 255, 255, 0.06)";
-    statusPill.style.border = "1px solid rgba(255, 255, 255, 0.1)";
-  }
-
-  if (userLvlVal) {
-    if (isFree || userLevel >= requiredLvl) {
-      userLvlVal.innerText = `${userLevel} ур. (Доступно)`;
-      userLvlVal.style.color = "#ffffff";
-    } else {
-      userLvlVal.innerText = `${userLevel} / ${requiredLvl} ур. (Не хватает)`;
-      userLvlVal.style.color = "var(--text-muted)";
+  if (false) { } else {
+    if (imageSolo) {
+      imageSolo.style.display = "block";
+      imageSolo.src = item.image;
+    }
+    if (avatarBg) {
+      avatarBg.style.display = "block";
+      avatarBg.style.backgroundImage = "none";
+      avatarBg.style.background = "#111214";
+      avatarBg.style.color = "#fff";
+      avatarBg.style.fontSize = "60px";
+      avatarBg.style.fontWeight = "bold";
+      avatarBg.innerHTML = userAvatarInner;
+    }
+    if (blurObj) {
+      blurObj.style.backgroundImage = `url('${item.image}')`;
+    }
+    if (audioSolo) {
+      audioSolo.style.display = "none";
+      audioSolo.src = "";
     }
   }
 
@@ -22143,94 +21773,88 @@ window.openCatalogItemModal = function (itemId) {
 
   const buyBtn = Utils.$("btn-buy-catalog-item");
   if (buyBtn) {
-    if (isEquipped) {
-      buyBtn.innerText = "✓ НАДЕТО";
-      buyBtn.style.background = "rgba(255, 255, 255, 0.1)";
-      buyBtn.style.color = "#ffffff";
-      buyBtn.style.border = "1px solid rgba(255, 255, 255, 0.2)";
-      buyBtn.style.cursor = "default";
-      buyBtn.onclick = null;
-    } else if (isOwned) {
-      buyBtn.innerText = "НАДЕТЬ РАМКУ";
-      buyBtn.style.background = "#ffffff";
-      buyBtn.style.color = "#000000";
-      buyBtn.style.border = "none";
-      buyBtn.style.cursor = "pointer";
+    const userProfile =
+      window.AppState && AppState.currentUser
+        ? AppState.usersCache.get(AppState.currentUser.uid)
+        : null;
+    const inventory = userProfile?.inventory || [];
+    const isOwned = inventory.includes(item.id);
+    buyBtn.innerText = isOwned
+      ? "В КОЛЛЕКЦИИ"
+      : item.priceType === "free" ||
+          String(item.price).trim().toUpperCase() === "БЕСПЛАТНО" ||
+          String(item.price).trim().toUpperCase() === "FREE" ||
+          item.price === "0"
+        ? "Получить"
+        : `Купить (${item.price} ур.)`;
+    buyBtn.style.background = isOwned
+      ? "rgba(255,255,255,0.05)"
+      : "var(--text-main)";
+    buyBtn.style.color = isOwned ? "var(--text-main)" : "var(--bg)";
+    if (isOwned) buyBtn.style.border = "1px solid var(--border-light)";
+    else buyBtn.style.border = "none";
 
-      buyBtn.onclick = async () => {
-        await CatalogManager.equipItem(item.id);
+    buyBtn.onclick = async () => {
+      if (!AppState.currentUser)
+        return Utils.toast("Авторизуйтесь для покупки", "error");
+      const uid = AppState.currentUser.uid;
+      const currentProf = AppState.usersCache.get(uid);
+      const inv = currentProf?.inventory ? [...currentProf.inventory] : [];
+
+      if (inv.includes(item.id)) {
+        if (item.type === "frame" || !item.type) {
+          await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(
+            ({ update, ref, getDatabase }) =>
+              update(ref(getDatabase()), {
+                [`users/${uid}/profile/frame`]: item.id,
+              }),
+          );
+          Utils.toast("Рамка применена!", "success");
+        } 
         modal.classList.remove("active");
-      };
-    } else if (isFree) {
-      buyBtn.innerText = "ЗАБРАТЬ БЕСПЛАТНО";
-      buyBtn.style.background = "#ffffff";
-      buyBtn.style.color = "#000000";
-      buyBtn.style.border = "none";
-      buyBtn.style.cursor = "pointer";
-
-      buyBtn.onclick = async () => {
-        if (!AppState.currentUser) return Utils.toast("Авторизуйтесь для получения", "error");
-        const currentInv = currentProf?.inventory ? [...currentProf.inventory] : [];
-        if (!currentInv.includes(item.id)) currentInv.push(item.id);
-        if (item.image && !currentInv.includes(item.image)) currentInv.push(item.image);
-
-        const frameVal = item.image || item.id;
-        const { update, ref, getDatabase } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
-        await update(ref(getDatabase()), {
-          [`users/${uid}/profile/inventory`]: currentInv,
-          [`users/${uid}/profile/frame`]: frameVal,
-        });
-
-        currentProf.inventory = currentInv;
-        currentProf.frame = frameVal;
-        AppState.usersCache.set(uid, currentProf);
-
-        Utils.toast("Товар получен и надет!", "success");
-        CatalogManager.renderCatalog();
-        modal.classList.remove("active");
-      };
-    } else {
-      const canAfford = userLevel >= requiredLvl;
-      if (canAfford) {
-        buyBtn.innerText = `КУПИТЬ (${requiredLvl} УР.)`;
-        buyBtn.style.background = "#ffffff";
-        buyBtn.style.color = "#000000";
-        buyBtn.style.border = "none";
-        buyBtn.style.cursor = "pointer";
-
-        buyBtn.onclick = async () => {
-          if (!AppState.currentUser) return Utils.toast("Авторизуйтесь для покупки", "error");
-          const currentInv = currentProf?.inventory ? [...currentProf.inventory] : [];
-          if (!currentInv.includes(item.id)) currentInv.push(item.id);
-          if (item.image && !currentInv.includes(item.image)) currentInv.push(item.image);
-
-          const frameVal = item.image || item.id;
-          const { update, ref, getDatabase } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
-          await update(ref(getDatabase()), {
-            [`users/${uid}/profile/inventory`]: currentInv,
-            [`users/${uid}/profile/frame`]: frameVal,
-          });
-
-          currentProf.inventory = currentInv;
-          currentProf.frame = frameVal;
-          AppState.usersCache.set(uid, currentProf);
-
-          Utils.toast("Поздравляем с покупкой! Рамка надета.", "success");
-          CatalogManager.renderCatalog();
-          modal.classList.remove("active");
-        };
       } else {
-        buyBtn.innerText = `НУЖЕН ${requiredLvl} УР. (У ВАС ${userLevel})`;
-        buyBtn.style.background = "rgba(255, 255, 255, 0.06)";
-        buyBtn.style.color = "rgba(255, 255, 255, 0.4)";
-        buyBtn.style.border = "1px solid rgba(255, 255, 255, 0.1)";
-        buyBtn.style.cursor = "pointer";
+        const isFree =
+          item.priceType === "free" ||
+          String(item.price).trim().toUpperCase() === "БЕСПЛАТНО" ||
+          String(item.price).trim().toUpperCase() === "FREE" ||
+          item.price === "0";
 
-        buyBtn.onclick = () => {
-          Utils.toast(`Для покупки необходимо достичь ${requiredLvl} уровня (сейчас: ${userLevel})`, "info");
-        };
+        if (isFree) {
+          inv.push(item.id);
+          await update(ref(db), { [`users/${uid}/profile/inventory`]: inv });
+          Utils.toast("Товар добавлен в инвентарь!", "success");
+          buyBtn.innerText = "Применить";
+          buyBtn.style.background = "var(--panel)";
+          buyBtn.style.color = "var(--text-main)";
+          buyBtn.style.border = "1px solid var(--border-light)";
+
+          currentProf.inventory = inv;
+          AppState.usersCache.set(uid, currentProf);
+          
+        } else {
+          let cost = parseInt(item.price, 10) || 0;
+          let curLevel = Number(currentProf?.level) || 0;
+          if (curLevel >= cost) {
+            inv.push(item.id);
+            await update(ref(db), { [`users/${uid}/profile/inventory`]: inv });
+            Utils.toast(
+              "Уровень подходит. Товар добавлен в инвентарь!",
+              "success",
+            );
+            buyBtn.innerText = "Применить";
+            buyBtn.style.background = "var(--panel)";
+            buyBtn.style.color = "var(--text-main)";
+            buyBtn.style.border = "1px solid var(--border-light)";
+
+            currentProf.inventory = inv;
+            AppState.usersCache.set(uid, currentProf);
+            
+          } else {
+            Utils.toast("Недостаточно уровней (нужно: " + cost + ")", "error");
+          }
+        }
       }
-    }
+    };
   }
 
   const previewBtn = Utils.$("btn-preview-catalog-item");

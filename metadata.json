@@ -1,6 +1,6 @@
 {
-  "name": "COWIO - Онлайн Кинотеатр Вместе",
-  "description": "Платформа совместного просмотра видео и фильмов с синхронизацией VK Video, Rutube и YouTube, поддержкой комнат и чата.",
-  "requestFramePermissions": ["microphone"],
+  "name": "COWIO",
+  "description": "Платформа совместного просмотра видео и синхронизированных комнат",
+  "requestFramePermissions": ["camera", "microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -6975,9 +6975,6 @@
               <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Heart.webp" style="width: 22px; height: 22px; object-fit: contain; filter: grayscale(100%) opacity(50%); transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);" id="like-icon" alt="Like">
               <span id="view-likes-count" style="font-weight: 600;">0</span>
             </button>
-            <button class="secondary-btn" id="btn-report-profile" title="Пожаловаться на профиль" aria-label="Пожаловаться на профиль">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Triangular%20Flag.webp" alt="Жалоба">
-            </button>
           </div>
         </div>
 
@@ -7061,74 +7058,34 @@
           </div>
         </main>
 
-        <main class="rooms-main" id="section-catalog" style="display: none; position: relative; width: 100%; min-height: 100%;">
-          <div class="catalog-container">
-            <!-- Toolbar: Search + Categories + Custom Sort -->
-            <div class="catalog-toolbar-panel">
-              <div class="catalog-search-box">
-                <svg class="catalog-search-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="11" cy="11" r="8"></circle>
-                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                </svg>
-                <input type="text" id="catalog-search-input" placeholder="Поиск рамки по названию..." autocomplete="off">
-                <button type="button" id="catalog-search-clear" style="display: none;">✕</button>
-              </div>
-
-              <div class="catalog-tabs" id="catalog-filters">
-                <button class="catalog-tab-btn active-filter" data-filter="all">
-                  <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Shopping%20Bags.webp" class="catalog-tab-emoji" alt="Все">
-                  <span>Все</span>
-                  <span class="catalog-tab-badge" id="cat-count-all">0</span>
-                </button>
-                <button class="catalog-tab-btn" data-filter="hot">
-                  <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" class="catalog-tab-emoji" alt="Акции">
-                  <span>Акции</span>
-                  <span class="catalog-tab-badge" id="cat-count-hot">0</span>
-                </button>
-                <button class="catalog-tab-btn" data-filter="free">
-                  <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" class="catalog-tab-emoji" alt="Бесплатные">
-                  <span>Бесплатные</span>
-                  <span class="catalog-tab-badge" id="cat-count-free">0</span>
-                </button>
-                <button class="catalog-tab-btn" data-filter="paid">
-                  <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" class="catalog-tab-emoji" alt="Уровни">
-                  <span>По уровню</span>
-                  <span class="catalog-tab-badge" id="cat-count-paid">0</span>
-                </button>
-              </div>
-
-              <div class="catalog-sort-box">
-                <div class="catalog-custom-select" id="catalog-sort-custom">
-                  <button type="button" class="catalog-custom-select-trigger" id="catalog-sort-trigger" aria-haspopup="listbox" aria-expanded="false">
-                    <span class="catalog-sort-trigger-label" id="catalog-sort-label">Сначала рекомендуемые</span>
-                    <svg class="catalog-sort-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <polyline points="6 9 12 15 18 9"></polyline>
-                    </svg>
-                  </button>
-                  <div class="catalog-custom-select-menu" id="catalog-sort-menu" role="listbox">
-                    <div class="catalog-select-option active" data-value="featured" role="option" aria-selected="true">
-                      <span>Сначала рекомендуемые</span>
-                      <svg class="catalog-option-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                    </div>
-                    <div class="catalog-select-option" data-value="level-asc" role="option" aria-selected="false">
-                      <span>Уровень: по возрастанию</span>
-                      <svg class="catalog-option-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                    </div>
-                    <div class="catalog-select-option" data-value="level-desc" role="option" aria-selected="false">
-                      <span>Уровень: по убыванию</span>
-                      <svg class="catalog-option-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                    </div>
-                    <div class="catalog-select-option" data-value="title-asc" role="option" aria-selected="false">
-                      <span>По названию (А–Я)</span>
-                      <svg class="catalog-option-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                    </div>
-                  </div>
-                </div>
-              </div>
+        <main class="rooms-main" id="section-catalog" style="display: none; position: relative">
+          <div class="friends-container" style="
+              max-width: 800px;
+              width: 100%;
+              margin: 0 auto;
+              padding-top: 20px;
+            ">
+            <div class="section-title" style="font-size: 24px; margin-bottom: 20px">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Shopping%20Bags.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+              Каталог
             </div>
 
-            <!-- Items Grid -->
-            <div id="catalog-list" class="catalog-items-grid"></div>
+            <div id="catalog-filters" style="
+                display: flex;
+                gap: 10px;
+                margin-bottom: 20px;
+                flex-wrap: wrap;
+              ">
+              <button class="secondary-btn active-filter" data-filter="all" style="width: auto; padding: 8px 16px; border-radius: 20px">
+                Все
+              </button>
+            </div>
+
+            <div id="catalog-list" style="
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                gap: 16px;
+              "></div>
           </div>
         </main>
 
@@ -7981,168 +7938,148 @@
 
     <!-- Catalog Item Modal -->
     <div class="modal" id="modal-catalog-item">
-      <div class="modal-content glass-panel" id="modal-catalog-content-panel">
-        <div style="position: absolute; top: 16px; right: 16px; z-index: 25">
+      <div class="modal-content glass-panel" id="modal-catalog-content-panel" style="
+          width: 420px;
+          max-width: calc(100% - 32px);
+          padding: 0;
+          border-radius: 20px;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+          position: relative;
+        ">
+        <div style="position: absolute; top: 16px; right: 16px; z-index: 20">
           <button class="secondary-btn btn-close-modal" style="
-              width: 34px;
-              height: 34px;
+              width: 32px;
+              height: 32px;
               padding: 0;
               display: flex;
               align-items: center;
               justify-content: center;
               border-radius: 50%;
-              font-size: 14px;
-              background: rgba(0, 0, 0, 0.4);
-              border: 1px solid rgba(255, 255, 255, 0.1);
-              color: #ffffff;
-              cursor: pointer;
+              font-size: 16px;
             ">
             ✕
           </button>
         </div>
 
-        <div class="catalog-modal-preview-stage" id="catalog-item-solo-preview">
+        <div id="catalog-item-solo-preview" style="
+            width: 100%;
+            height: 220px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background: linear-gradient(
+              to bottom,
+              rgba(255, 255, 255, 0.05),
+              transparent
+            );
+            border-bottom: 1px solid var(--border-light);
+            overflow: hidden;
+          ">
           <div id="catalog-item-bg-blur" style="
               position: absolute;
               inset: -20px;
               background-size: cover;
               background-position: center;
-              filter: blur(36px) opacity(0.28);
+              filter: blur(30px) opacity(0.3);
               z-index: 0;
               pointer-events: none;
             "></div>
-
-          <!-- Avatar Circle for Try-on -->
           <div id="catalog-item-avatar-bg" style="
-              width: 104px;
-              height: 104px;
+              width: 110px;
+              height: 110px;
               border-radius: 50%;
-              background: #111216;
+              background: #111214;
               position: absolute;
               top: 50%;
               left: 50%;
               transform: translate(-50%, -50%);
               z-index: 1;
-              box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6), inset 0 0 12px rgba(0, 0, 0, 0.8);
-              display: flex;
-              align-items: center;
-              justify-content: center;
+              box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
+              display: none;
               background-size: cover;
               background-position: center;
-              overflow: hidden;
-              color: #fff;
-              font-size: 40px;
-              font-weight: 800;
+              filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.3));
             "></div>
-
-          <!-- The Frame Image -->
           <img id="catalog-item-image-solo" src="" style="
-              width: 146px;
-              height: 146px;
+              width: 155px;
+              height: 155px;
               object-fit: contain;
-              filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.6));
+              filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.5));
               position: relative;
               z-index: 2;
               pointer-events: none;
-              transition: transform 0.25s ease;
             ">
-
           <audio id="catalog-item-audio-solo" controls="" style="display: none; width: 80%; outline: none; z-index: 2"></audio>
-
-          <!-- Try-on Mode Toggle -->
-          <div class="catalog-modal-preview-toggle">
-            <button type="button" class="catalog-modal-toggle-btn active" id="btn-modal-view-tryon">
-              Примерить
-            </button>
-            <button type="button" class="catalog-modal-toggle-btn" id="btn-modal-view-solo">
-              Только рамка
-            </button>
-          </div>
         </div>
 
-        <div class="catalog-modal-body">
-          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-            <span id="catalog-item-type-label" style="
-                font-size: 11px;
-                font-weight: 700;
-                color: var(--text-muted);
-                text-transform: uppercase;
-                letter-spacing: 0.05em;
-              ">
-              РАМКА АВАТАРА
-            </span>
-            <span id="catalog-item-status-pill" style="
-                font-size: 11px;
-                font-weight: 700;
-                padding: 3px 8px;
-                border-radius: 6px;
-                background: rgba(255, 255, 255, 0.06);
-                color: var(--text-muted);
-              ">
-              Каталог
-            </span>
+        <div style="padding: 24px; position: relative; background: var(--panel)">
+          <div style="
+              font-size: 12px;
+              font-weight: 600;
+              color: var(--text-muted);
+              text-transform: uppercase;
+              margin-bottom: 8px;
+            " id="catalog-item-type-label">
+            УКРАШЕНИЕ АВАТАРА
+          </div>
+          <h2 id="catalog-item-title" style="
+              margin: 0 0 16px 0;
+              font-weight: 800;
+              font-size: 24px;
+              color: var(--text-main);
+              line-height: 1.2;
+            ">
+            Название товара
+          </h2>
+          <p id="catalog-item-desc" style="
+              color: var(--text-muted);
+              font-size: 14px;
+              margin: 0 0 24px 0;
+              line-height: 1.5;
+            ">
+            Описание товара
+          </p>
+
+          <div style="
+              display: flex;
+              align-items: baseline;
+              gap: 8px;
+              margin-bottom: 24px;
+            ">
+            <span id="catalog-item-price" style="font-size: 24px; color: var(--text-main); font-weight: 800">БЕСПЛАТНО</span>
           </div>
 
-          <div>
-            <h2 id="catalog-item-title" style="
-                margin: 0 0 6px 0;
-                font-weight: 800;
-                font-size: 22px;
-                color: #ffffff;
-                line-height: 1.25;
-              ">
-              Название товара
-            </h2>
-            <p id="catalog-item-desc" style="
-                color: var(--text-muted);
-                font-size: 13.5px;
-                margin: 0;
-                line-height: 1.5;
-              ">
-              Описание товара
-            </p>
-          </div>
-
-          <!-- Price & Requirement Info Box -->
-          <div class="catalog-modal-lvl-badge">
-            <div style="display: flex; flex-direction: column; gap: 2px;">
-              <span style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Стоимость</span>
-              <span id="catalog-item-price" style="font-size: 20px; color: #ffffff; font-weight: 800;">БЕСПЛАТНО</span>
-            </div>
-            <div id="catalog-modal-user-level-info" style="display: flex; flex-direction: column; align-items: flex-end; gap: 2px;">
-              <span style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Ваш уровень</span>
-              <span id="catalog-modal-user-level-val" style="font-size: 14px; font-weight: 700; color: #34d399;">10 ур. (Доступно)</span>
-            </div>
-          </div>
-
-          <div style="display: flex; gap: 10px; width: 100%; margin-top: 4px;">
+          <div style="display: flex; gap: 8px; width: 100%">
             <button id="btn-buy-catalog-item" style="
                 flex: 1;
                 font-weight: 700;
-                font-size: 15px;
-                padding: 14px 20px;
-                background: #ffffff;
-                color: #000000;
+                font-size: 16px;
+                padding: 16px 20px;
+                background: var(--text-main);
+                color: var(--bg);
                 border-radius: 12px;
                 border: none;
                 cursor: pointer;
-                transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+                transition: opacity 0.2s;
               ">
               Купить
             </button>
             <button class="secondary-btn" id="btn-preview-catalog-item" style="
-                display: none;
-                width: 48px;
+                width: 54px;
+                display: flex;
                 align-items: center;
                 justify-content: center;
-                padding: 0;
+                padding: 12px;
                 background: rgba(255, 255, 255, 0.05);
-                border: 1px solid rgba(255, 255, 255, 0.1);
+                border: 1px solid var(--border-light);
                 border-radius: 12px;
-                color: #ffffff;
+                color: var(--text-main);
                 cursor: pointer;
               ">
-              <span style="font-size: 18px">👁</span>
+              <span style="font-size: 20px">👁</span>
             </button>
           </div>
         </div>
@@ -8565,861 +8502,6 @@
         50% {
           transform: translateY(-12px) rotate(3deg);
         }
-      }
-
-      /* ========================================================= */
-      /* REDESIGNED CATALOG (MONOCHROME / GLASS / UX) */
-      /* ========================================================= */
-      .catalog-container {
-        width: 100%;
-        max-width: 1320px;
-        margin: 0 auto;
-        padding: 24px 20px 60px;
-        box-sizing: border-box;
-      }
-
-      .catalog-header-card {
-        position: relative;
-        background: rgba(14, 14, 18, 0.65);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 20px;
-        padding: 24px 28px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 20px;
-        margin-bottom: 24px;
-        backdrop-filter: blur(24px);
-        -webkit-backdrop-filter: blur(24px);
-        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06);
-        overflow: hidden;
-      }
-
-      .catalog-header-glow {
-        position: absolute;
-        top: -60px;
-        left: -40px;
-        width: 260px;
-        height: 260px;
-        background: radial-gradient(circle, rgba(255, 255, 255, 0.06), transparent 70%);
-        filter: blur(40px);
-        pointer-events: none;
-      }
-
-      .catalog-header-left {
-        display: flex;
-        align-items: center;
-        gap: 20px;
-        position: relative;
-        z-index: 2;
-      }
-
-      .catalog-icon-badge {
-        width: 56px;
-        height: 56px;
-        border-radius: 16px;
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
-        flex-shrink: 0;
-        backdrop-filter: blur(12px);
-      }
-
-      .catalog-header-emoji {
-        width: 34px;
-        height: 34px;
-        object-fit: contain;
-      }
-
-      .catalog-header-info {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-      }
-
-      .catalog-header-title-row {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        flex-wrap: wrap;
-      }
-
-      .catalog-header-title {
-        font-size: 25px;
-        font-weight: 800;
-        color: #ffffff;
-        margin: 0;
-        letter-spacing: -0.02em;
-      }
-
-      .catalog-badge-pill {
-        display: inline-flex;
-        align-items: center;
-        padding: 3px 10px;
-        border-radius: 999px;
-        background: rgba(255, 255, 255, 0.06);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        color: rgba(255, 255, 255, 0.85);
-        font-size: 11px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        backdrop-filter: blur(8px);
-      }
-
-      .catalog-header-desc {
-        color: var(--text-muted);
-        font-size: 14px;
-        margin: 0;
-        line-height: 1.45;
-        max-width: 580px;
-      }
-
-      .catalog-header-user-status {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 14px;
-        padding: 10px 18px;
-        position: relative;
-        z-index: 2;
-        flex-shrink: 0;
-        backdrop-filter: blur(14px);
-      }
-
-      .catalog-status-item {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-      }
-
-      .catalog-status-label {
-        font-size: 11px;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        font-weight: 600;
-        letter-spacing: 0.04em;
-      }
-
-      .catalog-status-val {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 16px;
-        font-weight: 800;
-        color: #ffffff;
-      }
-
-      .catalog-status-emoji {
-        width: 18px;
-        height: 18px;
-        object-fit: contain;
-      }
-
-      /* Toolbar: Search, Filters, Custom Sort */
-      .catalog-toolbar-panel {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 14px;
-        margin-bottom: 24px;
-        flex-wrap: wrap;
-      }
-
-      .catalog-search-box {
-        position: relative;
-        flex: 1;
-        min-width: 220px;
-        max-width: 360px;
-        display: flex;
-        align-items: center;
-      }
-
-      .catalog-search-svg {
-        position: absolute;
-        left: 14px;
-        color: var(--text-muted);
-        pointer-events: none;
-      }
-
-      .catalog-search-box input {
-        width: 100%;
-        height: 42px;
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 12px;
-        padding: 0 36px 0 40px;
-        color: #ffffff;
-        font-size: 14px;
-        outline: none;
-        backdrop-filter: blur(14px);
-        -webkit-backdrop-filter: blur(14px);
-        transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
-      }
-
-      .catalog-search-box input:focus {
-        border-color: rgba(255, 255, 255, 0.25);
-        background: rgba(255, 255, 255, 0.06);
-        box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.04);
-      }
-
-      .catalog-search-box input::placeholder {
-        color: var(--text-muted);
-      }
-
-      #catalog-search-clear {
-        position: absolute;
-        right: 12px;
-        background: none;
-        border: none;
-        color: var(--text-muted);
-        font-size: 12px;
-        cursor: pointer;
-        padding: 4px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      #catalog-search-clear:hover {
-        color: #fff;
-      }
-
-      .catalog-tabs {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex-wrap: wrap;
-      }
-
-      .catalog-tab-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 7px;
-        height: 42px;
-        padding: 0 16px;
-        border-radius: 12px;
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        color: rgba(255, 255, 255, 0.7);
-        font-size: 13px;
-        font-weight: 600;
-        cursor: pointer;
-        backdrop-filter: blur(14px);
-        -webkit-backdrop-filter: blur(14px);
-        transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
-        white-space: nowrap;
-      }
-
-      .catalog-tab-btn:hover {
-        background: rgba(255, 255, 255, 0.08);
-        border-color: rgba(255, 255, 255, 0.16);
-        color: #ffffff;
-        transform: translateY(-1px);
-      }
-
-      .catalog-tab-btn.active-filter {
-        background: #ffffff !important;
-        color: #000000 !important;
-        border-color: #ffffff !important;
-        font-weight: 700;
-        box-shadow: 0 4px 16px rgba(255, 255, 255, 0.15);
-      }
-
-      .catalog-tab-btn.active-filter .catalog-tab-badge {
-        background: rgba(0, 0, 0, 0.12);
-        color: #000000;
-      }
-
-      .catalog-tab-emoji {
-        width: 17px;
-        height: 17px;
-        object-fit: contain;
-      }
-
-      .catalog-tab-badge {
-        font-size: 11px;
-        font-weight: 700;
-        padding: 2px 6px;
-        border-radius: 6px;
-        background: rgba(255, 255, 255, 0.07);
-        color: var(--text-muted);
-      }
-
-      /* Custom Sort Dropdown (Replaces system select) */
-      .catalog-sort-box {
-        position: relative;
-      }
-
-      .catalog-custom-select {
-        position: relative;
-        min-width: 220px;
-      }
-
-      .catalog-custom-select-trigger {
-        width: 100%;
-        height: 42px;
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 12px;
-        padding: 0 14px;
-        color: #ffffff;
-        font-size: 13px;
-        font-weight: 600;
-        cursor: pointer;
-        outline: none;
-        backdrop-filter: blur(14px);
-        -webkit-backdrop-filter: blur(14px);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-        transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
-      }
-
-      .catalog-custom-select-trigger:hover {
-        background: rgba(255, 255, 255, 0.07);
-        border-color: rgba(255, 255, 255, 0.16);
-      }
-
-      .catalog-custom-select.open .catalog-custom-select-trigger {
-        border-color: rgba(255, 255, 255, 0.3);
-        background: rgba(255, 255, 255, 0.08);
-        box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.04);
-      }
-
-      .catalog-sort-chevron {
-        color: var(--text-muted);
-        transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
-        flex-shrink: 0;
-      }
-
-      .catalog-custom-select.open .catalog-sort-chevron {
-        transform: rotate(180deg);
-        color: #ffffff;
-      }
-
-      .catalog-custom-select-menu {
-        position: absolute;
-        top: calc(100% + 6px);
-        right: 0;
-        left: 0;
-        background: rgba(16, 16, 20, 0.95);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 14px;
-        padding: 6px;
-        box-shadow: 0 20px 48px rgba(0, 0, 0, 0.7);
-        backdrop-filter: blur(28px);
-        -webkit-backdrop-filter: blur(28px);
-        z-index: 100;
-        display: none;
-        flex-direction: column;
-        gap: 2px;
-      }
-
-      .catalog-custom-select.open .catalog-custom-select-menu {
-        display: flex;
-        animation: fadeIn 0.18s ease forwards;
-      }
-
-      .catalog-select-option {
-        padding: 9px 12px;
-        border-radius: 9px;
-        font-size: 13px;
-        font-weight: 500;
-        color: rgba(255, 255, 255, 0.75);
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-        transition: all 0.15s ease;
-      }
-
-      .catalog-select-option:hover {
-        background: rgba(255, 255, 255, 0.08);
-        color: #ffffff;
-      }
-
-      .catalog-select-option.active {
-        background: rgba(255, 255, 255, 0.12);
-        color: #ffffff;
-        font-weight: 700;
-      }
-
-      .catalog-option-check {
-        opacity: 0;
-        color: #ffffff;
-        flex-shrink: 0;
-        transition: opacity 0.15s ease;
-      }
-
-      .catalog-select-option.active .catalog-option-check {
-        opacity: 1;
-      }
-
-      /* Grid & Modern Cards */
-      .catalog-items-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
-        gap: 20px;
-        width: 100%;
-      }
-
-      .catalog-item-card {
-        position: relative;
-        border-radius: 18px;
-        background: rgba(18, 18, 22, 0.55);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-        cursor: pointer;
-        transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1),
-                    box-shadow 0.25s cubic-bezier(0.2, 0.8, 0.2, 1),
-                    border-color 0.25s cubic-bezier(0.2, 0.8, 0.2, 1),
-                    background 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
-        backdrop-filter: blur(18px);
-        -webkit-backdrop-filter: blur(18px);
-      }
-
-      .catalog-item-card:hover {
-        transform: translateY(-5px);
-        background: rgba(24, 24, 30, 0.7);
-        border-color: rgba(255, 255, 255, 0.22);
-        box-shadow: 0 20px 48px rgba(0, 0, 0, 0.6), 0 0 20px rgba(255, 255, 255, 0.03);
-      }
-
-      /* Hot / Action Card Variant: Elegant Monochrome & Subtle Platinum Aura */
-      .catalog-item-card.is-hot {
-        border-color: rgba(255, 255, 255, 0.16);
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
-      }
-      .catalog-item-card.is-hot:hover {
-        border-color: rgba(255, 255, 255, 0.35);
-        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65), 0 0 25px rgba(255, 255, 255, 0.08);
-      }
-
-      /* Equipped Variant */
-      .catalog-item-card.is-equipped {
-        border-color: rgba(255, 255, 255, 0.28);
-      }
-
-      /* Stage / Preview Area */
-      .catalog-card-stage {
-        position: relative;
-        width: 100%;
-        height: 180px;
-        background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.04) 0%, rgba(0, 0, 0, 0.4) 100%);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        overflow: hidden;
-      }
-
-      .catalog-card-ambient-glow {
-        position: absolute;
-        inset: -20px;
-        background-size: cover;
-        background-position: center;
-        filter: blur(30px) opacity(0.18);
-        pointer-events: none;
-        transition: filter 0.3s, opacity 0.3s;
-      }
-      .catalog-item-card:hover .catalog-card-ambient-glow {
-        filter: blur(26px) opacity(0.32);
-      }
-
-      .catalog-card-badges-top {
-        position: absolute;
-        top: 12px;
-        left: 12px;
-        right: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        pointer-events: none;
-        z-index: 5;
-      }
-
-      .catalog-badge-fire {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        padding: 4px 9px;
-        border-radius: 8px;
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(255, 255, 255, 0.16);
-        color: #ffffff;
-        font-size: 11px;
-        font-weight: 800;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-        backdrop-filter: blur(10px);
-      }
-
-      .catalog-badge-fire img {
-        width: 14px;
-        height: 14px;
-        object-fit: contain;
-      }
-
-      .catalog-badge-status {
-        padding: 4px 9px;
-        border-radius: 8px;
-        font-size: 11px;
-        font-weight: 800;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-        backdrop-filter: blur(10px);
-      }
-      .catalog-badge-status.equipped {
-        background: rgba(255, 255, 255, 0.15);
-        border: 1px solid rgba(255, 255, 255, 0.28);
-        color: #ffffff;
-      }
-      .catalog-badge-status.free {
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        color: #ffffff;
-      }
-
-      /* Stage Avatar & Frame display */
-      .catalog-avatar-showcase {
-        position: relative;
-        width: 86px;
-        height: 86px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 3;
-        transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-      }
-
-      .catalog-item-card:hover .catalog-avatar-showcase {
-        transform: scale(1.08);
-      }
-
-      .catalog-avatar-core {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 86px;
-        height: 86px;
-        border-radius: 50%;
-        background: #111216;
-        color: #ffffff;
-        font-size: 36px;
-        font-weight: 800;
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6), inset 0 0 12px rgba(0, 0, 0, 0.8);
-        overflow: hidden;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-
-      .catalog-frame-overlay {
-        position: absolute;
-        top: -16px;
-        left: -16px;
-        width: 118px;
-        height: 118px;
-        object-fit: contain;
-        z-index: 4;
-        pointer-events: none;
-        filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.5));
-        transition: filter 0.3s;
-      }
-
-      .catalog-item-card:hover .catalog-frame-overlay {
-        filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.7));
-      }
-
-      /* Card Content & Action */
-      .catalog-card-body {
-        padding: 16px 18px 18px;
-        display: flex;
-        flex-direction: column;
-        flex: 1;
-        gap: 12px;
-      }
-
-      .catalog-card-text-group {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-      }
-
-      .catalog-card-type-sub {
-        font-size: 11px;
-        font-weight: 700;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-      }
-
-      .catalog-card-title {
-        font-size: 17px;
-        font-weight: 800;
-        color: #ffffff;
-        margin: 0;
-        line-height: 1.25;
-        display: -webkit-box;
-        -webkit-line-clamp: 1;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-      }
-
-      .catalog-card-desc {
-        font-size: 13px;
-        color: var(--text-muted);
-        line-height: 1.4;
-        margin: 0;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-        min-height: 36px;
-      }
-
-      .catalog-card-footer {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        margin-top: auto;
-        padding-top: 10px;
-        border-top: 1px solid rgba(255, 255, 255, 0.05);
-      }
-
-      .catalog-card-price-block {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-      }
-
-      .catalog-price-tag {
-        font-size: 15px;
-        font-weight: 800;
-        color: #ffffff;
-        display: flex;
-        align-items: center;
-        gap: 5px;
-      }
-
-      .catalog-price-emoji {
-        width: 16px;
-        height: 16px;
-        object-fit: contain;
-      }
-
-      .catalog-price-status-hint {
-        font-size: 11px;
-        font-weight: 600;
-        color: var(--text-muted);
-      }
-      .catalog-price-status-hint.can-buy {
-        color: rgba(255, 255, 255, 0.9);
-      }
-      .catalog-price-status-hint.need-lvl {
-        color: var(--text-muted);
-      }
-
-      /* Monochrome Buttons */
-      .catalog-card-action-btn {
-        padding: 8px 16px;
-        border-radius: 10px;
-        font-size: 13px;
-        font-weight: 700;
-        cursor: pointer;
-        border: none;
-        outline: none;
-        transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
-        white-space: nowrap;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-      }
-
-      .catalog-card-action-btn.btn-apply {
-        background: #ffffff;
-        color: #000000;
-      }
-      .catalog-card-action-btn.btn-apply:hover {
-        background: #e5e7eb;
-        transform: translateY(-1px);
-      }
-
-      .catalog-card-action-btn.btn-equipped {
-        background: rgba(255, 255, 255, 0.08);
-        color: #ffffff;
-        border: 1px solid rgba(255, 255, 255, 0.16);
-      }
-
-      .catalog-card-action-btn.btn-claim {
-        background: rgba(255, 255, 255, 0.12);
-        color: #ffffff;
-        border: 1px solid rgba(255, 255, 255, 0.22);
-      }
-      .catalog-card-action-btn.btn-claim:hover {
-        background: #ffffff;
-        color: #000000;
-        border-color: #ffffff;
-        transform: translateY(-1px);
-      }
-
-      .catalog-card-action-btn.btn-locked {
-        background: rgba(255, 255, 255, 0.03);
-        color: rgba(255, 255, 255, 0.4);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        cursor: pointer;
-      }
-      .catalog-card-action-btn.btn-locked:hover {
-        background: rgba(255, 255, 255, 0.08);
-        color: rgba(255, 255, 255, 0.8);
-      }
-
-      /* Empty State */
-      .catalog-empty-state {
-        grid-column: 1 / -1;
-        padding: 60px 20px;
-        text-align: center;
-        background: rgba(255, 255, 255, 0.02);
-        border: 1px dashed rgba(255, 255, 255, 0.08);
-        border-radius: 20px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 12px;
-        backdrop-filter: blur(16px);
-      }
-      .catalog-empty-emoji {
-        width: 50px;
-        height: 50px;
-        object-fit: contain;
-      }
-      .catalog-empty-title {
-        font-size: 18px;
-        font-weight: 700;
-        color: #fff;
-        margin: 0;
-      }
-      .catalog-empty-desc {
-        font-size: 14px;
-        color: var(--text-muted);
-        max-width: 380px;
-        line-height: 1.5;
-        margin: 0;
-      }
-
-      /* Redesigned Profile Report Button */
-      #btn-report-profile {
-        width: 38px;
-        height: 38px;
-        min-width: 38px;
-        padding: 0;
-        border-radius: 10px;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        color: #ffffff;
-        cursor: pointer;
-        transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
-      }
-      #btn-report-profile:hover {
-        background: rgba(239, 68, 68, 0.15) !important;
-        border-color: rgba(239, 68, 68, 0.4) !important;
-        transform: scale(1.06);
-      }
-      #btn-report-profile:active {
-        transform: scale(0.92);
-      }
-      #btn-report-profile img {
-        width: 20px;
-        height: 20px;
-        object-fit: contain;
-        pointer-events: none;
-      }
-
-      /* Redesigned Modal Styling */
-      #modal-catalog-item .modal-content {
-        width: 460px;
-        max-width: calc(100% - 24px);
-        background: rgba(14, 14, 18, 0.96) !important;
-        border: 1px solid rgba(255, 255, 255, 0.12) !important;
-        border-radius: 24px !important;
-        overflow: hidden;
-        box-shadow: 0 30px 90px rgba(0, 0, 0, 0.85);
-        backdrop-filter: blur(28px) !important;
-        -webkit-backdrop-filter: blur(28px) !important;
-      }
-
-      .catalog-modal-preview-stage {
-        width: 100%;
-        height: 230px;
-        position: relative;
-        background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.07) 0%, rgba(0, 0, 0, 0.4) 100%);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        overflow: hidden;
-      }
-
-      .catalog-modal-preview-toggle {
-        position: absolute;
-        bottom: 12px;
-        left: 50%;
-        transform: translateX(-50%);
-        display: flex;
-        background: rgba(0, 0, 0, 0.6);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 999px;
-        padding: 3px;
-        gap: 4px;
-        z-index: 10;
-        backdrop-filter: blur(8px);
-      }
-      .catalog-modal-toggle-btn {
-        background: none;
-        border: none;
-        color: var(--text-muted);
-        font-size: 11px;
-        font-weight: 700;
-        padding: 4px 10px;
-        border-radius: 999px;
-        cursor: pointer;
-        transition: 0.2s;
-      }
-      .catalog-modal-toggle-btn.active {
-        background: rgba(255, 255, 255, 0.2);
-        color: #ffffff;
-      }
-
-      .catalog-modal-body {
-        padding: 22px 24px 24px;
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-      }
-
-      .catalog-modal-lvl-badge {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 10px 14px;
-        border-radius: 12px;
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.07);
       }
     </style>
     <div class="modal" id="modal-badge-info">
