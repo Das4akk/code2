@@ -2626,6 +2626,9 @@ const AppState = {
     notificationMutedUntil: 0,
     roomUnsub: null,
   },
+  lumenTransactions: [],
+  roomWatchEarnings: 0,
+  roomWatchTicks: 0,
 };
 
 // ============================================================================
@@ -3842,6 +3845,16 @@ class Utils {
     const footerLinks = Utils.$("bottom-footer-links");
     if (footerLinks) {
       footerLinks.style.display = screenId === "lobby-screen" ? "flex" : "none";
+    }
+
+    if (screenId === "room-screen" || screenId === "lobby-screen") {
+      const uid = AppState.currentUser?.uid;
+      const prof = uid ? AppState.usersCache.get(uid) : null;
+      const lumens = Number(prof?.lumens) || 0;
+      const rPill = Utils.$("room-lumens-count");
+      if (rPill) rPill.textContent = lumens.toLocaleString();
+      const lPill = Utils.$("header-lumens-count");
+      if (lPill) lPill.textContent = lumens.toLocaleString();
     }
 
     // MPA Routing Emulation
@@ -10208,6 +10221,509 @@ class ThemeManager {
   }
 }
 
+// ============================================================================
+// LUMEN MANAGER (CURRENCY ENGINE, COUNTER ANIMATION, ROOM HUD & HISTORY)
+// ============================================================================
+class LumenManager {
+  static activeAnimations = new Map();
+  static currentFilter = "all";
+
+  static formatTxDate(timestamp) {
+    if (!timestamp) return "";
+    const date = new Date(timestamp);
+    const now = new Date();
+    const isToday =
+      date.getDate() === now.getDate() &&
+      date.getMonth() === now.getMonth() &&
+      date.getFullYear() === now.getFullYear();
+
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const isYesterday =
+      date.getDate() === yesterday.getDate() &&
+      date.getMonth() === yesterday.getMonth() &&
+      date.getFullYear() === yesterday.getFullYear();
+
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+
+    if (isToday) return `Сегодня в ${hours}:${minutes}`;
+    if (isYesterday) return `Вчера в ${hours}:${minutes}`;
+
+    const months = [
+      "янв", "фев", "мар", "апр", "май", "июн",
+      "июл", "авг", "сен", "окт", "ноя", "дек"
+    ];
+    return `${date.getDate()} ${months[date.getMonth()]}, ${hours}:${minutes}`;
+  }
+
+  // Smooth counter animation with ease-out cubic
+  static animateCounter(elementOrId, startVal, targetVal, duration = 650) {
+    const el = typeof elementOrId === "string" ? Utils.$(elementOrId) : elementOrId;
+    if (!el) return;
+
+    if (this.activeAnimations.has(el)) {
+      cancelAnimationFrame(this.activeAnimations.get(el));
+      this.activeAnimations.delete(el);
+    }
+
+    if (startVal === targetVal) {
+      el.textContent = targetVal.toLocaleString();
+      return;
+    }
+
+    const startTime = performance.now();
+    const diff = targetVal - startVal;
+
+    const step = (now) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const ease = 1 - Math.pow(1 - progress, 3);
+      const current = Math.round(startVal + diff * ease);
+      el.textContent = current.toLocaleString();
+
+      if (progress < 1) {
+        const handle = requestAnimationFrame(step);
+        this.activeAnimations.set(el, handle);
+      } else {
+        el.textContent = targetVal.toLocaleString();
+        this.activeAnimations.delete(el);
+      }
+    };
+
+    const handle = requestAnimationFrame(step);
+    this.activeAnimations.set(el, handle);
+  }
+
+  // Floating +N ✨ or -N ✨ delta badge over the pill
+  static spawnFloater(anchorEl, amount, isPositive = true) {
+    if (!anchorEl) return;
+    const floater = document.createElement("div");
+    floater.className = `lumen-floating-delta ${isPositive ? "positive" : "negative"}`;
+    const sign = isPositive ? "+" : "-";
+    floater.innerHTML = `${sign}${Math.abs(amount).toLocaleString()} <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 14px; height: 14px; vertical-align: middle; pointer-events: none;" alt="✨">`;
+
+    anchorEl.style.position = "relative";
+    anchorEl.appendChild(floater);
+
+    setTimeout(() => {
+      if (floater.parentNode) {
+        floater.parentNode.removeChild(floater);
+      }
+    }, 1500);
+  }
+
+  // Floating HUD toast inside active room
+  static showRoomHudReward(amount, reason = "Просмотр видео") {
+    const roomScreen = Utils.$("room-screen");
+    if (!roomScreen || !roomScreen.classList.contains("active")) return;
+
+    let container = Utils.$("room-lumen-hud-overlay");
+    if (!container) {
+      container = document.createElement("div");
+      container.id = "room-lumen-hud-overlay";
+      container.className = "room-lumen-hud-overlay";
+      const targetParent = Utils.$("room-screen");
+      if (targetParent) targetParent.appendChild(container);
+    }
+
+    const item = document.createElement("div");
+    item.className = "room-lumen-reward-toast";
+    const amountStr = Math.abs(amount).toLocaleString();
+    const absAmt = Math.abs(amount);
+    const suffix = absAmt === 1 ? "" : (absAmt % 10 >= 2 && absAmt % 10 <= 4 && (absAmt < 10 || absAmt > 20)) ? "а" : "ов";
+    item.innerHTML = `
+      <div class="reward-icon-wrap">
+        <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" alt="✨">
+      </div>
+      <div class="reward-info">
+        <div class="reward-tag">Награда за просмотр</div>
+        <div class="reward-amount">
+          <span>+${amountStr} Люмен${suffix}</span>
+          <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" class="inline-sparkles-icon" alt="✨">
+        </div>
+        <div class="reward-reason">${Utils.escapeHtml(reason)}</div>
+      </div>
+      <div class="reward-progress-bar"></div>
+    `;
+    container.appendChild(item);
+
+    setTimeout(() => {
+      item.classList.add("fade-out");
+      setTimeout(() => {
+        if (item.parentNode) item.parentNode.removeChild(item);
+      }, 400);
+    }, 3900);
+  }
+
+  // Central balance updater
+  static updateBalance(newLumens, options = {}) {
+    const {
+      diff = null,
+      reason = "",
+      source = "lobby",
+      animate = true,
+      showFloater = true,
+      saveTx = false,
+      txType = null,
+      txIcon = "sparkles"
+    } = options;
+
+    const uid = AppState.currentUser?.uid;
+    const cached = uid ? AppState.usersCache.get(uid) : null;
+    const oldLumens = cached && typeof cached.lumens === "number" ? cached.lumens : 0;
+    const numLumens = Math.max(0, Number(newLumens) || 0);
+    const calculatedDiff = diff !== null ? diff : (numLumens - oldLumens);
+
+    if (cached) {
+      cached.lumens = numLumens;
+    }
+
+    const targets = [
+      { el: Utils.$("header-lumens-count"), pill: Utils.$("lobby-header-lumens-pill") },
+      { el: Utils.$("room-lumens-count"), pill: Utils.$("room-header-lumens-pill") },
+      { el: Utils.$("my-lumens-val"), pill: null },
+      { el: Utils.$("modal-lumens-wallet-val"), pill: null }
+    ];
+
+    targets.forEach(({ el, pill }) => {
+      if (!el) return;
+      const currentDisplayed = parseInt(el.textContent.replace(/\D/g, ""), 10) || 0;
+      if (animate && Math.abs(numLumens - currentDisplayed) > 0) {
+        this.animateCounter(el, currentDisplayed, numLumens, 650);
+      } else {
+        el.textContent = numLumens.toLocaleString();
+      }
+
+      if (pill && calculatedDiff !== 0) {
+        const isPos = calculatedDiff > 0;
+        pill.classList.remove("glow-increase", "glow-decrease");
+        void pill.offsetWidth;
+        pill.classList.add(isPos ? "glow-increase" : "glow-decrease");
+
+        if (showFloater) {
+          this.spawnFloater(pill, calculatedDiff, isPos);
+        }
+
+        setTimeout(() => {
+          pill.classList.remove("glow-increase", "glow-decrease");
+        }, 1100);
+      }
+    });
+
+    const catalogUserVal = Utils.$("catalog-modal-user-lumens-val");
+    if (catalogUserVal) {
+      catalogUserVal.innerHTML = `${numLumens.toLocaleString()} <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" class="inline-sparkles-icon" alt="✨">`;
+    }
+
+    if (source === "room" && calculatedDiff > 0) {
+      this.showRoomHudReward(calculatedDiff, reason || "Просмотр видео");
+    }
+
+    if (saveTx && uid && calculatedDiff !== 0) {
+      this.recordTransaction(uid, {
+        type: txType || (calculatedDiff > 0 ? "income" : "expense"),
+        amount: Math.abs(calculatedDiff),
+        reason: reason || (calculatedDiff > 0 ? "Начисление Люменов" : "Списание Люменов"),
+        icon: txIcon
+      });
+    }
+  }
+
+  // Records transaction in Firebase RTDB, localStorage and AppState
+  static async recordTransaction(uid, { type, amount, reason, icon = "sparkles", meta = {} }) {
+    if (!uid || !amount) return;
+    const txId = "tx_" + Date.now() + "_" + Utils.generateCryptoId(4);
+    const txData = {
+      id: txId,
+      type: type || "income",
+      amount: Number(amount) || 0,
+      reason: reason || "Операция с Люменами",
+      icon: icon || "sparkles",
+      timestamp: Date.now(),
+      meta: meta || {}
+    };
+
+    if (!AppState.lumenTransactions) AppState.lumenTransactions = [];
+    AppState.lumenTransactions.unshift(txData);
+
+    try {
+      const localKey = "cowio_lumen_tx_" + uid;
+      const existing = JSON.parse(localStorage.getItem(localKey) || "[]");
+      existing.unshift(txData);
+      localStorage.setItem(localKey, JSON.stringify(existing.slice(0, 100)));
+    } catch (e) {}
+
+    try {
+      await set(ref(db, `users/${uid}/lumenTransactions/${txId}`), txData);
+    } catch (e) {
+      console.warn("Could not save lumen transaction in Firebase:", e);
+    }
+
+    const modal = Utils.$("modal-lumens-info");
+    if (modal && modal.classList.contains("active")) {
+      this.renderTransactions(uid, this.currentFilter);
+    }
+  }
+
+  // Fetches transaction history from RTDB & localStorage
+  static async getTransactions(uid) {
+    if (!uid) return [];
+    let localTxs = [];
+    try {
+      const localKey = "cowio_lumen_tx_" + uid;
+      localTxs = JSON.parse(localStorage.getItem(localKey) || "[]");
+    } catch (e) {}
+
+    try {
+      const snap = await get(ref(db, `users/${uid}/lumenTransactions`));
+      if (snap.exists()) {
+        const val = snap.val() || {};
+        const serverTxs = Object.values(val);
+        const map = new Map();
+        [...localTxs, ...serverTxs].forEach((tx) => {
+          if (tx && tx.id) map.set(tx.id, tx);
+        });
+        const merged = Array.from(map.values()).sort((a, b) => b.timestamp - a.timestamp);
+        AppState.lumenTransactions = merged;
+        return merged;
+      }
+    } catch (e) {
+      console.warn("Could not fetch lumen transactions:", e);
+    }
+
+    AppState.lumenTransactions = localTxs;
+    return localTxs;
+  }
+
+  // Modal tab switcher
+  static switchModalTab(tab) {
+    const tabHistory = Utils.$("lumens-tab-history");
+    const tabTop = Utils.$("lumens-tab-top");
+    const tabGuide = Utils.$("lumens-tab-guide");
+    const btnTx = Utils.$("tab-btn-lumens-tx");
+    const btnTop = Utils.$("tab-btn-lumens-top");
+    const btnEarn = Utils.$("tab-btn-lumens-earn");
+
+    const tabs = [
+      { id: "history", el: tabHistory, btn: btnTx },
+      { id: "leaderboard", el: tabTop, btn: btnTop },
+      { id: "guide", el: tabGuide, btn: btnEarn }
+    ];
+
+    tabs.forEach((t) => {
+      const isActive = t.id === tab;
+      if (t.el) t.el.style.display = isActive ? "flex" : "none";
+      if (t.btn) {
+        if (isActive) {
+          t.btn.classList.add("active");
+          t.btn.style.background = "rgba(255, 255, 255, 0.12)";
+          t.btn.style.color = "#ffffff";
+        } else {
+          t.btn.classList.remove("active");
+          t.btn.style.background = "transparent";
+          t.btn.style.color = "rgba(255, 255, 255, 0.55)";
+        }
+      }
+    });
+
+    if (tab === "history") {
+      this.renderTransactions(AppState.currentUser?.uid, this.currentFilter);
+    } else if (tab === "leaderboard") {
+      this.renderLumensLeaderboard();
+    }
+  }
+
+  // Render Top Lumens inside modal
+  static async renderLumensLeaderboard() {
+    const listEl = Utils.$("lumens-leaderboard-list");
+    if (!listEl) return;
+
+    listEl.innerHTML = `
+      <div style="text-align: center; padding: 26px 12px; color: rgba(255, 255, 255, 0.45); font-size: 13px;">
+        Загрузка рейтинга Люменов...
+      </div>
+    `;
+
+    try {
+      const { get, ref, getDatabase } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
+      const dbInstance = getDatabase();
+      const snap = await get(ref(dbInstance, "users"));
+      if (!snap.exists()) {
+        listEl.innerHTML = `<div style="text-align:center; padding:20px; color:rgba(255,255,255,0.4); font-size:13px;">Пока нет данных.</div>`;
+        return;
+      }
+
+      const allUsers = snap.val() || {};
+      const list = [];
+      for (const [uid, uData] of Object.entries(allUsers)) {
+        if (!uData.profile) continue;
+        const lumens = Number(uData.profile.lumens) || 0;
+        if (lumens > 0) {
+          list.push({ uid, profile: uData.profile, lumens });
+        }
+      }
+
+      list.sort((a, b) => b.lumens - a.lumens);
+      const topUsers = list.slice(0, 30);
+
+      if (topUsers.length === 0) {
+        listEl.innerHTML = `
+          <div style="text-align:center; padding:32px 16px; color:rgba(255,255,255,0.45);">
+            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 36px; height: 36px; margin: 0 auto 8px; display: block;" alt="✨">
+            <div style="font-weight: 700; color: #ffffff; font-size: 13.5px; margin-bottom: 4px;">Пока ни у кого нет Люменов</div>
+            <div style="font-size: 12px; color: rgba(255, 255, 255, 0.55);">Смотрите видео в комнатах, чтобы стать первым в рейтинге!</div>
+          </div>
+        `;
+        return;
+      }
+
+      const myUid = AppState.currentUser?.uid;
+
+      listEl.innerHTML = topUsers.map((item, idx) => {
+        const rank = idx + 1;
+        const isMe = item.uid === myUid;
+        let rankBadge = `<span style="font-weight: 800; font-size: 12px; color: rgba(255,255,255,0.5); width: 24px; text-align: center;">#${rank}</span>`;
+        if (rank === 1) {
+          rankBadge = `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp" style="width: 22px; height: 22px; object-fit: contain;" alt="1">`;
+        } else if (rank === 2) {
+          rankBadge = `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Gem%20Stone.webp" style="width: 20px; height: 20px; object-fit: contain;" alt="2">`;
+        } else if (rank === 3) {
+          rankBadge = `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" style="width: 20px; height: 20px; object-fit: contain;" alt="3">`;
+        }
+
+        const name = Utils.escapeHtml(item.profile.name || "Пользователь");
+        const username = item.profile.username ? `@${Utils.escapeHtml(item.profile.username)}` : "";
+        const avatar = item.profile.avatar || "assets/avatars/default.png";
+
+        return `
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; background: ${isMe ? 'rgba(255, 215, 0, 0.08)' : 'rgba(255, 255, 255, 0.03)'}; border: 1px solid ${isMe ? 'rgba(255, 215, 0, 0.3)' : 'rgba(255, 255, 255, 0.06)'}; border-radius: 12px; cursor: pointer; transition: all 0.15s ease;" onclick="Utils.closeModal('modal-lumens-info'); ProfileManager.openViewProfileModal('${item.uid}')">
+            <div style="display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
+              <div style="display: flex; align-items: center; justify-content: center; width: 24px; flex-shrink: 0;">
+                ${rankBadge}
+              </div>
+              <img src="${avatar}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid rgba(255,255,255,0.15); flex-shrink: 0;" onerror="this.src='assets/avatars/default.png'">
+              <div style="display: flex; flex-direction: column; min-width: 0;">
+                <div style="font-size: 13px; font-weight: 700; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px;">
+                  <span>${name}</span>
+                  ${isMe ? '<span style="font-size: 9.5px; padding: 1px 5px; background: rgba(255,215,0,0.2); color: #ffd700; border-radius: 4px; font-weight: 800;">ВЫ</span>' : ''}
+                </div>
+                ${username ? `<div style="font-size: 11px; color: rgba(255, 255, 255, 0.45); line-height: 1.1;">${username}</div>` : ''}
+              </div>
+            </div>
+            <div style="font-size: 13px; font-weight: 800; color: #ffd700; display: flex; align-items: center; gap: 5px; margin-left: 8px; flex-shrink: 0;">
+              <span>${item.lumens.toLocaleString()}</span>
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" class="inline-sparkles-icon" alt="✨">
+            </div>
+          </div>
+        `;
+      }).join("");
+    } catch (e) {
+      console.error(e);
+      listEl.innerHTML = `<div style="text-align: center; padding: 20px; color: #f87171; font-size: 12px;">Ошибка при загрузке рейтинга</div>`;
+    }
+  }
+
+  // Filter transactions
+  static filterTransactions(filter) {
+    this.currentFilter = filter;
+    ["all", "income", "expense"].forEach((f) => {
+      const chip = Utils.$(`lumen-filter-${f}`);
+      if (chip) {
+        if (f === filter) {
+          chip.classList.add("active");
+          chip.style.background = "rgba(255, 255, 255, 0.14)";
+          chip.style.borderColor = "rgba(255, 255, 255, 0.22)";
+          chip.style.color = "#ffffff";
+        } else {
+          chip.classList.remove("active");
+          chip.style.background = "rgba(255, 255, 255, 0.04)";
+          chip.style.borderColor = "rgba(255, 255, 255, 0.08)";
+          chip.style.color = "rgba(255, 255, 255, 0.6)";
+        }
+      }
+    });
+    this.renderTransactions(AppState.currentUser?.uid, filter);
+  }
+
+  // Render transactions inside modal
+  static async renderTransactions(uid, filter = "all") {
+    const listEl = Utils.$("lumens-transactions-list");
+    if (!listEl) return;
+
+    if (!uid) {
+      listEl.innerHTML = `
+        <div style="text-align: center; padding: 30px 10px; color: rgba(255, 255, 255, 0.4); font-size: 13px;">
+          Авторизуйтесь, чтобы видеть историю операций
+        </div>
+      `;
+      return;
+    }
+
+    const txs = await this.getTransactions(uid);
+
+    let filtered = txs;
+    if (filter === "income") {
+      filtered = txs.filter((t) => t.type === "income");
+    } else if (filter === "expense") {
+      filtered = txs.filter((t) => t.type === "expense");
+    }
+
+    if (!filtered || filtered.length === 0) {
+      listEl.innerHTML = `
+        <div style="text-align: center; padding: 32px 16px; color: rgba(255, 255, 255, 0.5);">
+          <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 36px; height: 36px; margin: 0 auto 8px; display: block;" alt="✨">
+          <div style="font-weight: 700; font-size: 13.5px; color: #ffffff; margin-bottom: 4px;">История пока пуста</div>
+          <div style="font-size: 12px; color: rgba(255, 255, 255, 0.55); line-height: 1.4;">Зарабатывайте Люмены за просмотр видео в комнатах, ежедневный вход или подарки от друзей!</div>
+        </div>
+      `;
+      return;
+    }
+
+    const iconMap = {
+      fire: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp",
+      tv: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Television.webp",
+      gift: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Wrapped%20Gift.webp",
+      bag: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Shopping%20Bags.webp",
+      crown: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp",
+      sparkles: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp"
+    };
+
+    listEl.innerHTML = filtered
+      .map((tx) => {
+        const isIncome = tx.type === "income";
+        const iconUrl = iconMap[tx.icon] || iconMap.sparkles;
+        const sign = isIncome ? "+" : "-";
+        const amtStr = (Number(tx.amount) || 0).toLocaleString();
+        const dateStr = this.formatTxDate(tx.timestamp);
+
+        return `
+          <div class="lumen-tx-item ${isIncome ? "income" : "expense"}">
+            <div style="display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1;">
+              <div class="lumen-tx-icon-wrap">
+                <img src="${iconUrl}" alt="" style="width: 20px; height: 20px; object-fit: contain;">
+              </div>
+              <div style="display: flex; flex-direction: column; min-width: 0;">
+                <div style="font-size: 13px; font-weight: 700; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                  ${Utils.escapeHtml(tx.reason || (isIncome ? "Начисление Люменов" : "Списание"))}
+                </div>
+                <div style="font-size: 11px; color: rgba(255, 255, 255, 0.5); margin-top: 1px;">
+                  ${dateStr}
+                </div>
+              </div>
+            </div>
+            <div class="lumen-tx-amount-badge ${isIncome ? "income" : "expense"}" style="flex-shrink: 0; margin-left: 12px;">
+              <span>${sign}${amtStr}</span>
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 15px; height: 15px; object-fit: contain;" alt="✨">
+            </div>
+          </div>
+        `;
+      })
+      .join("");
+  }
+}
+window.LumenManager = LumenManager;
+
 class ProfileManager {
   static backgroundPresets = [
     "#111111",
@@ -10311,7 +10827,7 @@ class ProfileManager {
       avatar: "",
       gender,
       registeredIp,
-      lumens: 25, // Приветственный бонус новичка
+      lumens: 1, // Приветственный бонус новичка
       background: { color: "#111111", index: 1, url: "", dim: 0.5 }, // [UPDATE]
       hashtags: [],
       createdAt: Date.now(),
@@ -10328,6 +10844,15 @@ class ProfileManager {
     updates[`users/${uid}/profile`] = profileData;
     if (isDeveloperProfile) updates["admin/creatorUid"] = uid;
     await update(ref(db), updates);
+
+    if (window.LumenManager) {
+      await LumenManager.recordTransaction(uid, {
+        type: "income",
+        amount: 1,
+        reason: "Приветственный бонус новичка",
+        icon: "sparkles"
+      });
+    }
   }
 
   static async updateDailyStreak(uid, profile) {
@@ -10352,7 +10877,8 @@ class ProfileManager {
     }
 
     const curLumens = Number(profile.lumens) || 0;
-    const bonusLumens = 10 + Math.min((streak - 1) * 3, 40);
+    // 100x harder economy: 1-3 Lumens daily bonus
+    const bonusLumens = streak >= 8 ? 3 : (streak >= 4 ? 2 : 1);
     const newLumens = curLumens + bonusLumens;
 
     await update(ref(db, `users/${uid}/profile`), {
@@ -10367,10 +10893,23 @@ class ProfileManager {
         p.lumens = newLumens;
         p.streak = streak;
       }
-      const hp = Utils.$("header-lumens-count");
-      if (hp) hp.textContent = newLumens.toLocaleString();
-      const myL = Utils.$("my-lumens-val");
-      if (myL) myL.textContent = newLumens.toLocaleString();
+      if (window.LumenManager) {
+        LumenManager.updateBalance(newLumens, {
+          diff: bonusLumens,
+          reason: `Ежедневный вход (Стрик ${streak} дн.)`,
+          source: "streak",
+          animate: true,
+          showFloater: true,
+          saveTx: true,
+          txType: "income",
+          txIcon: "fire"
+        });
+      } else {
+        const hp = Utils.$("header-lumens-count");
+        if (hp) hp.textContent = newLumens.toLocaleString();
+        const myL = Utils.$("my-lumens-val");
+        if (myL) myL.textContent = newLumens.toLocaleString();
+      }
       setTimeout(() => {
         Utils.toast(`✨ Ежедневный бонус: +${bonusLumens} Люменов (Стрик ${streak} дн.)!`, "success");
       }, 1500);
@@ -10449,10 +10988,19 @@ class ProfileManager {
       Utils.$("my-avatar-display").innerHTML = ProfileManager.getAvatarHtml(p);
       if(Utils.$("lobby-app-bar-avatar")) Utils.$("lobby-app-bar-avatar").innerHTML = ProfileManager.getAvatarHtml(p);
 
-      const headerLumens = Utils.$("header-lumens-count");
-      if (headerLumens) headerLumens.textContent = (Number(p.lumens) || 0).toLocaleString();
-      const myL = Utils.$("my-lumens-val");
-      if (myL) myL.textContent = (Number(p.lumens) || 0).toLocaleString();
+      const currentLumens = Number(p.lumens) || 0;
+      if (window.LumenManager) {
+        LumenManager.updateBalance(currentLumens, {
+          source: "sync",
+          animate: false,
+          showFloater: false
+        });
+      } else {
+        const headerLumens = Utils.$("header-lumens-count");
+        if (headerLumens) headerLumens.textContent = currentLumens.toLocaleString();
+        const myL = Utils.$("my-lumens-val");
+        if (myL) myL.textContent = currentLumens.toLocaleString();
+      }
 
       if (window.PremiumManager) PremiumManager.syncFromProfile(p, uid);
 
@@ -11970,29 +12518,53 @@ class ProfileManager {
     if (!currentUid) return Utils.toast("Авторизуйтесь, чтобы дарить Люмены", "error");
     if (currentUid === targetUid) return Utils.toast("Вы не можете подарить Люмены самому себе", "warn");
 
+    // Friends-only constraint
+    const isFriend = await FriendsManager.isFriendWith(targetUid);
+    if (!isFriend) {
+      return Utils.toast("Дарить Люмены можно только друзьям! Сначала добавьте пользователя в друзья.", "warn");
+    }
+
     const myProf = AppState.usersCache.get(currentUid) || {};
     const myLumens = Number(myProf.lumens) || 0;
     if (myLumens <= 0) {
       return Utils.toast("У вас 0 Люменов ✨. Смотрите видео в комнатах, чтобы заработать!", "warn");
     }
 
-    const targetName = targetProfile.name || targetProfile.username || "пользователю";
-    const amountStr = await Utils.prompt(
-      `Сколько Люменов ✨ подарить ${targetName}?\n(Ваш баланс: ${myLumens.toLocaleString()} ✨)`,
-      "10"
-    );
-    if (!amountStr) return;
-    const amount = parseInt(amountStr, 10);
-    if (isNaN(amount) || amount <= 0) {
-      return Utils.toast("Укажите положительное число Люменов", "error");
-    }
-    if (amount > myLumens) {
-      return Utils.toast(`Недостаточно Люменов! Доступно: ${myLumens.toLocaleString()} ✨`, "error");
-    }
-
     try {
       const { update, ref, getDatabase, get } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
       const dbInstance = getDatabase();
+
+      // Daily limit: max 10 Lumens per day
+      const todayKey = new Date().toISOString().slice(0, 10);
+      const dailySnap = await get(ref(dbInstance, `users/${currentUid}/dailyGiftLumens/${todayKey}`));
+      const giftedToday = Number(dailySnap.val()) || 0;
+      const remainingDaily = Math.max(0, 10 - giftedToday);
+
+      if (remainingDaily <= 0) {
+        return Utils.toast("Вы исчерпали дневной лимит подарков (10 Люменов в день). Приходите завтра!", "warn");
+      }
+
+      const targetName = targetProfile.name || targetProfile.username || "пользователю";
+      const maxAllowed = Math.min(remainingDaily, myLumens);
+
+      const amountStr = await Utils.prompt(
+        `Сколько Люменов подарить другу ${targetName}?\n\n` +
+        `• Ваш баланс: ${myLumens.toLocaleString()} ✨\n` +
+        `• Лимит на сегодня: ${remainingDaily} из 10 ✨\n` +
+        `(Люмены можно дарить только друзьям, не более 10 в день)`,
+        String(Math.min(maxAllowed, 5))
+      );
+      if (!amountStr) return;
+      const amount = parseInt(amountStr, 10);
+      if (isNaN(amount) || amount <= 0) {
+        return Utils.toast("Укажите корректное число Люменов (больше 0)", "error");
+      }
+      if (amount > myLumens) {
+        return Utils.toast(`Недостаточно Люменов! Доступно: ${myLumens.toLocaleString()} ✨`, "error");
+      }
+      if (amount > remainingDaily) {
+        return Utils.toast(`Превышен дневной лимит! Сегодня вы можете подарить максимум ${remainingDaily} ✨ (лимит 10 Люменов в день)`, "warn");
+      }
 
       const targetSnap = await get(ref(dbInstance, `users/${targetUid}/profile`));
       const targetData = targetSnap.val() || {};
@@ -12004,6 +12576,7 @@ class ProfileManager {
       await update(ref(dbInstance), {
         [`users/${currentUid}/profile/lumens`]: newMyLumens,
         [`users/${targetUid}/profile/lumens`]: newTargetLumens,
+        [`users/${currentUid}/dailyGiftLumens/${todayKey}`]: giftedToday + amount
       });
 
       myProf.lumens = newMyLumens;
@@ -12011,14 +12584,34 @@ class ProfileManager {
       targetProfile.lumens = newTargetLumens;
       AppState.usersCache.set(targetUid, targetProfile);
 
-      const hp = Utils.$("header-lumens-count");
-      if (hp) hp.textContent = newMyLumens.toLocaleString();
-      const myL = Utils.$("my-lumens-val");
-      if (myL) myL.textContent = newMyLumens.toLocaleString();
+      if (window.LumenManager) {
+        LumenManager.updateBalance(newMyLumens, {
+          diff: -amount,
+          reason: `Подарок для ${targetName}`,
+          source: "gift",
+          animate: true,
+          showFloater: true,
+          saveTx: true,
+          txType: "expense",
+          txIcon: "gift"
+        });
+        LumenManager.recordTransaction(targetUid, {
+          type: "income",
+          amount: amount,
+          reason: `Подарок от @${myProf.username || "друга"}`,
+          icon: "gift"
+        });
+      } else {
+        const hp = Utils.$("header-lumens-count");
+        if (hp) hp.textContent = newMyLumens.toLocaleString();
+        const myL = Utils.$("my-lumens-val");
+        if (myL) myL.textContent = newMyLumens.toLocaleString();
+      }
       const vlc = Utils.$("view-lumens-count");
       if (vlc) vlc.textContent = newTargetLumens.toLocaleString();
 
-      Utils.toast(`Вы подарили ${amount} ✨ ${targetName}!`, "success");
+      const newRemaining = remainingDaily - amount;
+      Utils.toast(`Вы подарили ${amount} ✨ другу ${targetName}! (Остаток лимита на сегодня: ${newRemaining} ✨)`, "success");
     } catch (err) {
       console.error(err);
       Utils.toast("Ошибка при отправке подарка", "error");
@@ -13053,6 +13646,21 @@ class ProfileManager {
 class FriendsManager {
   static sentFriendRequests = new Set();
   static pendingFriendRequestsMap = {};
+
+  static async isFriendWith(targetUid) {
+    if (!AppState.currentUser || !targetUid) return false;
+    const uid = AppState.currentUser.uid;
+    if (uid === targetUid) return false;
+    try {
+      const { get, ref, getDatabase } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
+      const dbInstance = getDatabase();
+      const snap = await get(ref(dbInstance, `users/${uid}/friends/${targetUid}`));
+      return snap.exists() && snap.val() !== null;
+    } catch (e) {
+      console.error(e);
+      return false;
+    }
+  }
 
   static initListeners() {
     const uid = AppState.currentUser.uid;
@@ -17079,13 +17687,46 @@ class AdminPanel {
                 <input type="number" id="admin-edit-streak" min="0" value="${Utils.escapeHtml(profile.streak || 0)}" placeholder="Количество дней подряд">
             </div>
 
-            <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
-                <div style="font-weight:700; margin-bottom:6px;">Люмены (✨), Уровень и XP</div>
-                <div style="display:flex; gap:10px;">
-                    <div style="flex:1;">
-                        <label for="admin-edit-lumens" class="admin-form-label">Люмены (✨)</label>
-                        <input type="number" id="admin-edit-lumens" value="${profile.lumens || 0}" placeholder="Люмены">
+            <div style="border:1px solid rgba(255, 215, 0, 0.35); border-radius:14px; padding:16px; background:linear-gradient(145deg, rgba(255, 215, 0, 0.1), rgba(0,0,0,0.45)); margin-top:12px; box-shadow:0 4px 16px rgba(0,0,0,0.3);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+                    <div style="font-weight:800; font-size:14px; color:#ffd700; display:flex; align-items:center; gap:8px;">
+                        <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width:20px; height:20px;" alt="✨">
+                        <span>Баланс Люменов</span>
                     </div>
+                    <div style="padding:6px 14px; background:rgba(255, 215, 0, 0.18); border:1px solid rgba(255, 215, 0, 0.45); border-radius:100px; font-size:13px; font-weight:800; color:#ffd700; display:flex; align-items:center; gap:6px;">
+                        <span style="color:rgba(255,255,255,0.75); font-weight:600; font-size:12px;">Текущий:</span>
+                        <span id="admin-user-current-lumens" style="color:#ffffff; font-size:14px; font-weight:900;">${Number(profile.lumens || 0).toLocaleString()}</span>
+                        <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" class="inline-sparkles-icon" alt="✨">
+                    </div>
+                </div>
+                
+                <div style="margin-bottom:10px;">
+                    <label for="admin-edit-lumens" style="display:block; font-size:12px; font-weight:600; color:rgba(255,255,255,0.7); margin-bottom:6px;">
+                        Установить точное значение баланса:
+                    </label>
+                    <input type="number" id="admin-edit-lumens" value="${profile.lumens || 0}" placeholder="Новый баланс Люменов" style="width:100%; box-sizing:border-box; height:42px; padding:10px 14px; font-size:15px; font-weight:700; color:#ffffff; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.22); border-radius:10px; outline:none;" min="0">
+                </div>
+
+                <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;">
+                    <button type="button" class="secondary-btn admin-lumens-quick-btn" data-delta="10" style="padding:6px 10px; font-size:11.5px; border-radius:8px;">+10</button>
+                    <button type="button" class="secondary-btn admin-lumens-quick-btn" data-delta="50" style="padding:6px 10px; font-size:11.5px; border-radius:8px;">+50</button>
+                    <button type="button" class="secondary-btn admin-lumens-quick-btn" data-delta="100" style="padding:6px 10px; font-size:11.5px; border-radius:8px;">+100</button>
+                    <button type="button" class="secondary-btn admin-lumens-quick-btn" data-delta="500" style="padding:6px 10px; font-size:11.5px; border-radius:8px;">+500</button>
+                    <button type="button" class="secondary-btn admin-lumens-quick-btn" data-delta="1000" style="padding:6px 10px; font-size:11.5px; border-radius:8px;">+1,000</button>
+                    <button type="button" class="secondary-btn admin-lumens-quick-btn" data-delta="-50" style="padding:6px 10px; font-size:11.5px; border-radius:8px;">-50</button>
+                    <button type="button" class="secondary-btn admin-lumens-quick-btn" data-delta="-100" style="padding:6px 10px; font-size:11.5px; border-radius:8px;">-100</button>
+                    <button type="button" class="secondary-btn admin-lumens-set-btn" data-val="0" style="padding:6px 10px; font-size:11.5px; border-radius:8px; color:#ff6b6b; border-color:rgba(239,68,68,0.3);">Сброс (0)</button>
+                </div>
+
+                <button type="button" class="primary-btn" id="btn-admin-apply-lumens-only" style="width:100%; height:40px; font-size:13px; font-weight:800; background:linear-gradient(135deg, #ffd700, #f59e0b); color:#000000; border:none; border-radius:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 4px 14px rgba(255, 215, 0, 0.3);">
+                    <span>Сохранить баланс Люменов</span>
+                    <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width:16px; height:16px;" alt="✨">
+                </button>
+            </div>
+
+            <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
+                <div style="font-weight:700; margin-bottom:6px;">Уровень и XP</div>
+                <div style="display:flex; gap:10px;">
                     <div style="flex:1;">
                         <label for="admin-edit-level" class="admin-form-label">Уровень</label>
                         <input type="number" id="admin-edit-level" value="${ProfileManager.getExpMath(profile.xp || 0).level}" placeholder="Уровень" min="0">
@@ -17163,6 +17804,35 @@ class AdminPanel {
         `;
 
     BadgeManager.renderUserEditorBadges(uid, profile.assignedBadges);
+
+    const lumensInput = Utils.$("admin-edit-lumens");
+    document.querySelectorAll(".admin-lumens-quick-btn").forEach((b) => {
+      b.onclick = () => {
+        if (!lumensInput) return;
+        const cur = Number(lumensInput.value) || 0;
+        const delta = Number(b.dataset.delta) || 0;
+        lumensInput.value = Math.max(0, cur + delta);
+      };
+    });
+    document.querySelectorAll(".admin-lumens-set-btn").forEach((b) => {
+      b.onclick = () => {
+        if (!lumensInput) return;
+        lumensInput.value = Number(b.dataset.val) || 0;
+      };
+    });
+
+    const applyLumensBtn = Utils.$("btn-admin-apply-lumens-only");
+    if (applyLumensBtn) {
+      applyLumensBtn.onclick = async () => {
+        if (!this.requireAdmin()) return;
+        if (!(await this.checkModRestrictionsForTarget(uid))) return;
+        const targetLumens = Number(lumensInput?.value);
+        if (isNaN(targetLumens) || targetLumens < 0) {
+          return Utils.toast("Укажите корректное число Люменов (>= 0)", "error");
+        }
+        await this.setCustomUserLumens(uid, targetLumens);
+      };
+    }
 
     const grantPremiumBtn = Utils.$("btn-admin-grant-premium");
     if (grantPremiumBtn) {
@@ -17531,15 +18201,21 @@ class AdminPanel {
     let level = ProfileManager.getExpMath(xp).level;
     let lumens = Number(Utils.$("admin-edit-lumens")?.value ?? (oldProfile.lumens || 0));
 
-    if (streak !== (oldProfile.streak || 0) || xp !== (oldProfile.xp || 0) || lumens !== (oldProfile.lumens || 0)) {
+    if (streak !== (oldProfile.streak || 0) || xp !== (oldProfile.xp || 0)) {
       if (!this.isCurrentUserCreator()) {
         Utils.toast(
-          "Изменять стрик, уровень(XP) и Люмены может только Создатель",
+          "Изменять стрик и уровень(XP) может только Создатель",
           "error",
         );
         streak = oldProfile.streak || 0;
         xp = oldProfile.xp || 0;
         level = ProfileManager.getExpMath(xp).level;
+      }
+    }
+
+    if (lumens !== (oldProfile.lumens || 0)) {
+      if (!this.requireAdmin()) {
+        Utils.toast("Недостаточно прав для изменения Люменов", "error");
         lumens = oldProfile.lumens || 0;
       }
     }
@@ -17584,10 +18260,82 @@ class AdminPanel {
     if (oldProfile.xp !== xp) {
       await BadgeManager.checkLevelBadges(uid, xp);
     }
+
+    if (lumens !== (oldProfile.lumens || 0)) {
+      const diff = lumens - (oldProfile.lumens || 0);
+      if (window.LumenManager) {
+        LumenManager.recordTransaction(uid, {
+          type: diff >= 0 ? "income" : "expense",
+          amount: Math.abs(diff),
+          reason: diff >= 0 ? "Начисление через админ-панель" : "Списание через админ-панель",
+          icon: "crown",
+          meta: { adminUid: AppState.currentUser?.uid }
+        });
+        if (uid === AppState.currentUser?.uid) {
+          LumenManager.updateBalance(lumens, {
+            diff,
+            reason: "Изменение баланса в панели управления",
+            source: "admin",
+            animate: true,
+            showFloater: true
+          });
+        }
+      }
+    }
+
     AppState.usersCache.set(uid, nextProfile);
-    Utils.toast("Профиль пользователя обновлён");
+    Utils.toast("Профиль пользователя обновлён", "success");
     await this.loadUserEditor(uid);
     this.renderIfOpen();
+  }
+
+  static async setCustomUserLumens(targetUid, newLumens) {
+    if (!this.requireAdmin()) return;
+    if (!(await this.checkModRestrictionsForTarget(targetUid))) return;
+
+    try {
+      const snap = await get(ref(db, `users/${targetUid}/profile`));
+      if (!snap.exists()) return Utils.toast("Профиль пользователя не найден", "error");
+      const prof = snap.val() || {};
+      const oldLumens = Number(prof.lumens) || 0;
+      const targetLumens = Math.max(0, Number(newLumens) || 0);
+      const diff = targetLumens - oldLumens;
+
+      await update(ref(db, `users/${targetUid}/profile`), {
+        lumens: targetLumens
+      });
+
+      prof.lumens = targetLumens;
+      AppState.usersCache.set(targetUid, prof);
+
+      const curLabel = Utils.$("admin-user-current-lumens");
+      if (curLabel) curLabel.textContent = targetLumens.toLocaleString();
+
+      if (window.LumenManager) {
+        LumenManager.recordTransaction(targetUid, {
+          type: diff >= 0 ? "income" : "expense",
+          amount: Math.abs(diff),
+          reason: diff >= 0 ? "Начисление через админ-панель" : "Списание через админ-панель",
+          icon: "crown",
+          meta: { adminUid: AppState.currentUser?.uid }
+        });
+
+        if (targetUid === AppState.currentUser?.uid) {
+          LumenManager.updateBalance(targetLumens, {
+            diff,
+            reason: "Изменение баланса в панели управления",
+            source: "admin",
+            animate: true,
+            showFloater: true
+          });
+        }
+      }
+
+      Utils.toast(`Баланс Люменов обновлён: ${targetLumens.toLocaleString()} ✨`, "success");
+    } catch (e) {
+      console.error(e);
+      Utils.toast("Ошибка при обновлении Люменов: " + e.message, "error");
+    }
   }
 
   static async resetUserProfile() {
@@ -20209,24 +20957,79 @@ class RoomManager {
   }
 
 
+  static isRoomVideoPlaying() {
+    if (!AppState.currentRoomId) return false;
+
+    // 1. YouTube Player
+    if (window.YouTubePlayerManager && YouTubePlayerManager.player) {
+      if (typeof YouTubePlayerManager.getState === "function") {
+        const st = YouTubePlayerManager.getState();
+        if (st === "playing") return true;
+      }
+      if (typeof YouTubePlayerManager.player.getPlayerState === "function") {
+        if (YouTubePlayerManager.player.getPlayerState() === 1) return true;
+      }
+    }
+
+    // 2. Rutube Player
+    if (window.RutubePlayerManager && RutubePlayerManager.player) {
+      if (typeof RutubePlayerManager.getState === "function" && RutubePlayerManager.getState() === "playing") {
+        return true;
+      }
+    }
+
+    // 3. VK Player
+    if (window.VkPlayerManager && VkPlayerManager.player) {
+      if (typeof VkPlayerManager.getState === "function" && VkPlayerManager.getState() === "playing") {
+        return true;
+      }
+    }
+
+    // 4. Native HTML5 Video (direct stream, mp4, screen share)
+    const nativeVid = Utils.$("native-player") || Utils.$("room-video-player");
+    if (nativeVid && nativeVid.src && !nativeVid.paused && !nativeVid.ended && nativeVid.readyState >= 2) {
+      return true;
+    }
+
+    // 5. Synced room player state in AppState
+    if (AppState.lastKnownSyncState && AppState.lastKnownSyncState.state === "playing") {
+      const ts = AppState.lastKnownSyncState.ts || 0;
+      if (Date.now() - ts < 25000) return true;
+    }
+
+    // 6. Current room data player status
+    if (AppState.currentRoomData?.player?.state === "playing") {
+      const lastUpdate = AppState.currentRoomData.player.updatedAt || 0;
+      if (Date.now() - lastUpdate < 45000) return true;
+    }
+
+    return false;
+  }
+
   static startRoomExperienceTimer() {
     if (AppState.roomExpTimer) clearInterval(AppState.roomExpTimer);
+
+    AppState.pendingRoomExp = 0;
+    AppState.pendingRoomPlaybackSeconds = 0;
 
     AppState.roomExpTimer = setInterval(async () => {
       if (!AppState.currentRoomId || !AppState.currentUser) return;
 
-      const uid = AppState.currentUser.uid;
+      const isPlaying = RoomManager.isRoomVideoPlaying();
+
+      // General room activity XP (awarded every 10s of being in room)
       if (!AppState.pendingRoomExp) AppState.pendingRoomExp = 0;
       AppState.pendingRoomExp += 1;
 
+      const uid = AppState.currentUser.uid;
+      const profile = AppState.usersCache.get(uid) || {};
+      const mult = window.PremiumManager
+        ? PremiumManager.getXpMultiplier(profile, uid)
+        : 1;
+
       if (AppState.pendingRoomExp >= 10) {
-        const profile = AppState.usersCache.get(uid) || {};
-        const mult = window.PremiumManager
-          ? PremiumManager.getXpMultiplier(profile, uid)
-          : 1;
         const addXp = AppState.pendingRoomExp * mult;
         AppState.pendingRoomExp = 0;
-
         try {
           const profRef = ref(db, `users/${uid}/profile`);
           const snap = await get(profRef);
@@ -20234,23 +21037,64 @@ class RoomManager {
             const data = snap.val() || {};
             let curXp = Number(data.xp) || 0;
             let newXp = curXp + addXp;
-            let curLumens = Number(data.lumens) || 0;
-            let addLumens = Math.max(1, Math.round(1 * mult));
-            let newLumens = curLumens + addLumens;
-            await update(profRef, { xp: newXp, lumens: newLumens });
+            await update(profRef, { xp: newXp });
             await BadgeManager.checkLevelBadges(uid, newXp);
-
             const cached = AppState.usersCache.get(uid);
-            if (cached) {
-              cached.xp = newXp;
-              cached.lumens = newLumens;
-            }
-            const hp = Utils.$("header-lumens-count");
-            if (hp) hp.textContent = newLumens.toLocaleString();
-            const myL = Utils.$("my-lumens-val");
-            if (myL) myL.textContent = newLumens.toLocaleString();
+            if (cached) cached.xp = newXp;
           }
         } catch (e) {}
+      }
+
+      // Lumens: 100x harder economy & STRICTLY ONLY WHEN VIDEO IS ACTIVELY PLAYING!
+      // 600 seconds (10 full minutes) of active video playback = 1 Lumen (or 2 with Premium)
+      if (isPlaying) {
+        if (!AppState.pendingRoomPlaybackSeconds) AppState.pendingRoomPlaybackSeconds = 0;
+        AppState.pendingRoomPlaybackSeconds += 1;
+
+        if (AppState.pendingRoomPlaybackSeconds >= 600) {
+          AppState.pendingRoomPlaybackSeconds = 0;
+
+          try {
+            const profRef = ref(db, `users/${uid}/profile`);
+            const snap = await get(profRef);
+            if (snap.exists()) {
+              const data = snap.val() || {};
+              let curLumens = Number(data.lumens) || 0;
+              let addLumens = Math.max(1, Math.round(1 * mult));
+              let newLumens = curLumens + addLumens;
+              await update(profRef, { lumens: newLumens });
+
+              const cached = AppState.usersCache.get(uid);
+              if (cached) cached.lumens = newLumens;
+
+              if (window.LumenManager) {
+                const reasonText = mult > 1
+                  ? `10 мин. просмотра (+${addLumens} x${mult} Premium)`
+                  : "10 мин. просмотра видео";
+
+                LumenManager.updateBalance(newLumens, {
+                  diff: addLumens,
+                  reason: reasonText,
+                  source: "room",
+                  animate: true,
+                  showFloater: true,
+                  saveTx: true,
+                  txType: "income",
+                  txIcon: "tv"
+                });
+
+                LumenManager.showRoomHudReward(addLumens, reasonText);
+              } else {
+                const hp = Utils.$("header-lumens-count");
+                if (hp) hp.textContent = newLumens.toLocaleString();
+                const rp = Utils.$("room-lumens-count");
+                if (rp) rp.textContent = newLumens.toLocaleString();
+                const myL = Utils.$("my-lumens-val");
+                if (myL) myL.textContent = newLumens.toLocaleString();
+              }
+            }
+          } catch (e) {}
+        }
       }
     }, 1000);
   }
@@ -20258,41 +21102,10 @@ class RoomManager {
   static stopRoomExperienceTimer() {
     if (AppState.roomExpTimer) clearInterval(AppState.roomExpTimer);
     AppState.roomExpTimer = null;
-
-    if (AppState.pendingRoomExp > 0 && AppState.currentUser) {
-      const uid = AppState.currentUser.uid;
-      const profile = AppState.usersCache.get(uid) || {};
-      const mult = window.PremiumManager
-        ? PremiumManager.getXpMultiplier(profile, uid)
-        : 1;
-      const addXp = AppState.pendingRoomExp * mult;
-      AppState.pendingRoomExp = 0;
-      const profRef = ref(db, `users/${uid}/profile`);
-      get(profRef)
-        .then((snap) => {
-          if (snap.exists()) {
-            const data = snap.val() || {};
-            let curXp = Number(data.xp) || 0;
-            let newXp = curXp + addXp;
-            let curLumens = Number(data.lumens) || 0;
-            let addLumens = Math.max(1, Math.round(1 * mult));
-            let newLumens = curLumens + addLumens;
-            update(profRef, { xp: newXp, lumens: newLumens });
-            BadgeManager.checkLevelBadges(uid, newXp);
-
-            const cached = AppState.usersCache.get(uid);
-            if (cached) {
-              cached.xp = newXp;
-              cached.lumens = newLumens;
-            }
-            const hp = Utils.$("header-lumens-count");
-            if (hp) hp.textContent = newLumens.toLocaleString();
-            const myL = Utils.$("my-lumens-val");
-            if (myL) myL.textContent = newLumens.toLocaleString();
-          }
-        })
-        .catch(() => {});
-    }
+    AppState.pendingRoomPlaybackSeconds = 0;
+    AppState.pendingRoomExp = 0;
+    AppState.roomWatchEarnings = 0;
+    AppState.roomWatchTicks = 0;
   }
 
   static leaveRoom() {
@@ -21634,6 +22447,9 @@ class CatalogManager {
     if (walletVal) {
       walletVal.textContent = lumens.toLocaleString();
     }
+    if (window.LumenManager) {
+      LumenManager.switchModalTab("history");
+    }
     modal.classList.add("active");
   }
   static items = [];
@@ -22401,10 +23217,23 @@ window.openCatalogItemModal = function (itemId) {
           freshProf.lumens = newLumens;
           AppState.usersCache.set(uid, freshProf);
 
-          const hp = Utils.$("header-lumens-count");
-          if (hp) hp.textContent = newLumens.toLocaleString();
-          const myL = Utils.$("my-lumens-val");
-          if (myL) myL.textContent = newLumens.toLocaleString();
+          if (window.LumenManager) {
+            LumenManager.updateBalance(newLumens, {
+              diff: -price,
+              reason: `Покупка: ${item.title || "Рамка в каталоге"}`,
+              source: "catalog",
+              animate: true,
+              showFloater: true,
+              saveTx: true,
+              txType: "expense",
+              txIcon: "bag"
+            });
+          } else {
+            const hp = Utils.$("header-lumens-count");
+            if (hp) hp.textContent = newLumens.toLocaleString();
+            const myL = Utils.$("my-lumens-val");
+            if (myL) myL.textContent = newLumens.toLocaleString();
+          }
 
           Utils.toast(`Поздравляем! Куплено за ${price} ✨. Рамка надета.`, "success");
           CatalogManager.renderCatalog();
@@ -23892,114 +24721,125 @@ if (document.readyState === "loading") {
 }
 
 
+window.activeLeaderboardCategory = "lumens";
+
+window.switchLeaderboardCategory = function(cat) {
+    window.activeLeaderboardCategory = cat;
+    const btnLumens = Utils.$("leaderboard-tab-lumens");
+    const btnLikes = Utils.$("leaderboard-tab-likes");
+
+    if (btnLumens) {
+        if (cat === "lumens") {
+            btnLumens.className = "primary-btn";
+            btnLumens.style.background = "linear-gradient(135deg, rgba(255, 215, 0, 0.25), rgba(255, 170, 0, 0.25))";
+            btnLumens.style.borderColor = "rgba(255, 215, 0, 0.4)";
+            btnLumens.style.color = "#ffd700";
+        } else {
+            btnLumens.className = "secondary-btn";
+            btnLumens.style.background = "transparent";
+            btnLumens.style.borderColor = "rgba(255, 255, 255, 0.1)";
+            btnLumens.style.color = "rgba(255, 255, 255, 0.6)";
+        }
+    }
+
+    if (btnLikes) {
+        if (cat === "likes") {
+            btnLikes.className = "primary-btn";
+            btnLikes.style.background = "rgba(255, 75, 75, 0.2)";
+            btnLikes.style.borderColor = "rgba(255, 75, 75, 0.4)";
+            btnLikes.style.color = "#ff6b6b";
+        } else {
+            btnLikes.className = "secondary-btn";
+            btnLikes.style.background = "transparent";
+            btnLikes.style.borderColor = "rgba(255, 255, 255, 0.1)";
+            btnLikes.style.color = "rgba(255, 255, 255, 0.6)";
+        }
+    }
+
+    window.loadLeaderboard();
+};
+
 window.loadLeaderboard = async function() {
     const listEl = Utils.$("leaderboard-list");
     if (!listEl) return;
     
-    listEl.innerHTML = '<div style="color:var(--text-muted); text-align:center;">Загрузка...</div>';
+    const cat = window.activeLeaderboardCategory || "lumens";
+    listEl.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding: 24px;">Загрузка рейтинга...</div>';
     
     try {
-        const { get, ref, getDatabase, set } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
+        const { get, ref, getDatabase } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
         const db = getDatabase();
+
+        const snap = await get(ref(db, "users"));
+        if (!snap.exists()) {
+            listEl.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding: 24px;">Пока нет данных.</div>';
+            return;
+        }
         
-        // Fetch dual caches
-        const [top3Snap, restSnap] = await Promise.all([
-            get(ref(db, "leaderboard/likes_top3")),
-            get(ref(db, "leaderboard/likes_rest"))
-        ]);
-        
-        const top3Cache = top3Snap.val() || {};
-        const restCache = restSnap.val() || {};
-        
-        const now = Date.now();
-        const ONE_MINUTE = 60 * 1000;
-        const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
-        
-        const top3Fresh = top3Cache.lastUpdate && (now - top3Cache.lastUpdate < ONE_MINUTE) && top3Cache.users;
-        const restFresh = restCache.lastUpdate && (now - restCache.lastUpdate < TWENTY_FOUR_HOURS) && restCache.users;
-        
+        const allUsers = snap.val() || {};
         let usersArray = [];
-        
-        if (top3Fresh && restFresh) {
-            usersArray = [...top3Cache.users, ...restCache.users];
-        } else {
-            // Need to recalculate
-            const snap = await get(ref(db, "users"));
-            if (!snap.exists()) {
-                listEl.innerHTML = '<div style="color:var(--text-muted); text-align:center;">Пока нет данных.</div>';
-                return;
+
+        if (cat === "lumens") {
+            for (const [uid, uData] of Object.entries(allUsers)) {
+                if (!uData.profile) continue;
+                const lumens = Number(uData.profile.lumens) || 0;
+                if (lumens > 0) {
+                    usersArray.push({ uid, profile: uData.profile, score: lumens, type: "lumens" });
+                }
             }
-            
-            const allUsers = snap.val();
-            let allLikes = [];
-            
+            usersArray.sort((a, b) => b.score - a.score);
+        } else {
             for (const [uid, uData] of Object.entries(allUsers)) {
                 if (!uData.profile) continue;
                 const likedBy = uData.profile.likedBy || {};
                 const likesCount = Object.keys(likedBy).length;
                 if (likesCount > 0) {
-                    allLikes.push({ uid, profile: uData.profile, likes: likesCount });
+                    usersArray.push({ uid, profile: uData.profile, score: likesCount, type: "likes" });
                 }
             }
-            
-            allLikes.sort((a, b) => b.likes - a.likes);
-            
-            const newTop3 = allLikes.slice(0, 3);
-            const newRest = allLikes.slice(3, 50);
-            
-            if (!top3Fresh) {
-                await set(ref(db, "leaderboard/likes_top3"), {
-                    lastUpdate: now,
-                    users: newTop3
-                });
-                top3Cache.users = newTop3;
-            }
-            
-            if (!restFresh) {
-                await set(ref(db, "leaderboard/likes_rest"), {
-                    lastUpdate: now,
-                    users: newRest
-                });
-                restCache.users = newRest;
-            }
-            
-            usersArray = [...(top3Cache.users || []), ...(restCache.users || [])];
+            usersArray.sort((a, b) => b.score - a.score);
         }
+
+        const topUsers = usersArray.slice(0, 50);
         
-        if (!usersArray || usersArray.length === 0) {
-            listEl.innerHTML = '<div style="color:var(--text-muted); text-align:center;">Пока ни у кого нет лайков.</div>';
+        if (topUsers.length === 0) {
+            listEl.innerHTML = `<div style="color:var(--text-muted); text-align:center; padding: 32px 16px;">Пока ни у кого нет ${cat === "lumens" ? "Люменов" : "лайков"}.</div>`;
             return;
         }
         
         let html = "";
-        usersArray.forEach((u, idx) => {
+        topUsers.forEach((u, idx) => {
             let placeStyle = "color: var(--text-muted); font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center;";
             let placeText = `${idx + 1}`;
             
             if (idx === 0) { 
                 placeStyle = "color: #FFD700; font-size: 20px; font-weight: 900; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); display: flex; align-items: center; justify-content: center; gap: 4px;"; 
                 placeText = '1 <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp" style="width: 28px; height: 28px;" alt="1">'; 
-            }
-            if (idx === 1) { 
+            } else if (idx === 1) { 
                 placeStyle = "color: #C0C0C0; font-size: 18px; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 4px;"; 
                 placeText = '2 <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Gem%20Stone.webp" style="width: 26px; height: 26px;" alt="2">'; 
-            }
-            if (idx === 2) { 
+            } else if (idx === 2) { 
                 placeStyle = "color: #CD7F32; font-size: 18px; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 4px;"; 
                 placeText = '3 <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" style="width: 24px; height: 24px;" alt="3">'; 
             }
             
             const avHtml = ProfileManager.getAvatarHtml(u.profile);
+            const isMe = AppState.currentUser?.uid === u.uid;
             
-            html += `<div style="display:flex;align-items:center;padding:12px 16px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:12px;cursor:pointer;transition:transform 0.2s, background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='rgba(255,255,255,0.03)'" onclick="ProfileManager.openViewProfileModal('${u.uid}')">
+            html += `<div style="display:flex;align-items:center;padding:12px 16px;background:${isMe ? 'rgba(255,215,0,0.08)' : 'rgba(255,255,255,0.03)'};border:1px solid ${isMe ? 'rgba(255,215,0,0.3)' : 'rgba(255,255,255,0.05)'};border-radius:12px;cursor:pointer;transition:transform 0.2s, background 0.2s;" onmouseover="this.style.background='${isMe ? 'rgba(255,215,0,0.14)' : 'rgba(255,255,255,0.08)'}'" onmouseout="this.style.background='${isMe ? 'rgba(255,215,0,0.08)' : 'rgba(255,255,255,0.03)'}'" onclick="ProfileManager.openViewProfileModal('${u.uid}')">
                 <div style="width: 60px; text-align:center; margin-right:16px; font-weight:bold; ${placeStyle}">${placeText}</div>
                 <div style="width:46px;height:46px;margin-right:16px;border-radius:50%;overflow:visible;">${avHtml}</div>
                 <div style="flex:1;display:flex;flex-direction:column;gap:2px;">
-                    <span style="font-weight:700;font-size:16px;color:var(--text-main);">${Utils.escapeHtml(u.profile.name || "Пользователь")}</span>
+                    <div style="font-weight:700;font-size:16px;color:var(--text-main);display:flex;align-items:center;gap:6px;">
+                        <span>${Utils.escapeHtml(u.profile.name || "Пользователь")}</span>
+                        ${isMe ? '<span style="font-size:10px;padding:2px 6px;background:rgba(255,215,0,0.2);color:#ffd700;border-radius:4px;font-weight:800;">ВЫ</span>' : ''}
+                    </div>
                     <span style="font-size:12px;color:var(--text-muted);">@${Utils.escapeHtml(u.profile.username || "")}</span>
                 </div>
-                <div style="display:flex;align-items:center;gap:6px;font-weight:700;font-size:16px;">
-                    ${u.likes} <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Heart.webp" style="width: 20px; height: 20px;">
+                <div style="display:flex;align-items:center;gap:6px;font-weight:700;font-size:16px;${cat === 'lumens' ? 'color:#ffd700;' : 'color:#ff4b4b;'}">
+                    ${u.score.toLocaleString()} ${cat === 'lumens' 
+                        ? '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 20px; height: 20px;" alt="✨">' 
+                        : '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Heart.webp" style="width: 20px; height: 20px;" alt="❤️">'}
                 </div>
             </div>`;
         });
@@ -24008,7 +24848,7 @@ window.loadLeaderboard = async function() {
         
     } catch (e) {
         console.error(e);
-        listEl.innerHTML = '<div style="color:red; text-align:center;">Ошибка загрузки.</div>';
+        listEl.innerHTML = '<div style="color:red; text-align:center; padding:24px;">Ошибка загрузки рейтинга.</div>';
     }
 };
 
