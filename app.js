@@ -1745,12 +1745,8 @@ class PremiumManager {
 
   static hasCatalogAccess(profile, uid) {
     if (!uid) return false;
-    if (window.AdminPanel) {
-      if (AdminPanel.isCreatorProfile(profile || {}, uid)) return true;
-      if (AdminPanel.isModeratorProfile(profile || {}, uid)) return true;
-    }
-    const level = this.getUserLevel(profile);
-    return level >= 10;
+    // Экономика Люменов: Каталог доступен всем зарегистрированным пользователям
+    return true;
   }
 
   static hasPaidPremium(profile, uid) {
@@ -3816,7 +3812,26 @@ class Utils {
     });
   }
 
+  static closeModal(modalId) {
+    const modal = typeof modalId === "string" ? Utils.$(modalId) : modalId;
+    if (modal) {
+      if (modal.id === "modal-dm-chat" && window.DirectMessages) DirectMessages.closeChat();
+      else modal.classList.remove("active");
+    }
+  }
+
   static showScreen(screenId, pushState = true) {
+    // Безопасный переход: если запрошена вкладка каталога или раздел внутри лобби
+    if (screenId === "section-catalog" || screenId === "nav-catalog") {
+      this.showScreen("lobby-screen", pushState);
+      if (window.FriendsManager && window.FriendsManager.setNavActive) {
+        FriendsManager.setNavActive("nav-catalog");
+      }
+      if (window.CatalogManager) {
+        CatalogManager.renderCatalog();
+      }
+      return;
+    }
     document
       .querySelectorAll(".screen")
       .forEach((s) => s.classList.remove("active"));
@@ -10296,6 +10311,7 @@ class ProfileManager {
       avatar: "",
       gender,
       registeredIp,
+      lumens: 25, // Приветственный бонус новичка
       background: { color: "#111111", index: 1, url: "", dim: 0.5 }, // [UPDATE]
       hashtags: [],
       createdAt: Date.now(),
@@ -10335,10 +10351,30 @@ class ProfileManager {
       streak = 1;
     }
 
+    const curLumens = Number(profile.lumens) || 0;
+    const bonusLumens = 10 + Math.min((streak - 1) * 3, 40);
+    const newLumens = curLumens + bonusLumens;
+
     await update(ref(db, `users/${uid}/profile`), {
       streak,
       lastLoginDate: todayStr,
+      lumens: newLumens,
     });
+
+    if (AppState.currentUser?.uid === uid) {
+      const p = AppState.usersCache.get(uid);
+      if (p) {
+        p.lumens = newLumens;
+        p.streak = streak;
+      }
+      const hp = Utils.$("header-lumens-count");
+      if (hp) hp.textContent = newLumens.toLocaleString();
+      const myL = Utils.$("my-lumens-val");
+      if (myL) myL.textContent = newLumens.toLocaleString();
+      setTimeout(() => {
+        Utils.toast(`✨ Ежедневный бонус: +${bonusLumens} Люменов (Стрик ${streak} дн.)!`, "success");
+      }, 1500);
+    }
   }
 
   static async ensureProfileExists(user) {
@@ -10412,6 +10448,11 @@ class ProfileManager {
           : "");
       Utils.$("my-avatar-display").innerHTML = ProfileManager.getAvatarHtml(p);
       if(Utils.$("lobby-app-bar-avatar")) Utils.$("lobby-app-bar-avatar").innerHTML = ProfileManager.getAvatarHtml(p);
+
+      const headerLumens = Utils.$("header-lumens-count");
+      if (headerLumens) headerLumens.textContent = (Number(p.lumens) || 0).toLocaleString();
+      const myL = Utils.$("my-lumens-val");
+      if (myL) myL.textContent = (Number(p.lumens) || 0).toLocaleString();
 
       if (window.PremiumManager) PremiumManager.syncFromProfile(p, uid);
 
@@ -11924,6 +11965,66 @@ class ProfileManager {
     }
   }
 
+  static async giftLumens(targetUid, targetProfile) {
+    const currentUid = AppState.currentUser?.uid;
+    if (!currentUid) return Utils.toast("Авторизуйтесь, чтобы дарить Люмены", "error");
+    if (currentUid === targetUid) return Utils.toast("Вы не можете подарить Люмены самому себе", "warn");
+
+    const myProf = AppState.usersCache.get(currentUid) || {};
+    const myLumens = Number(myProf.lumens) || 0;
+    if (myLumens <= 0) {
+      return Utils.toast("У вас 0 Люменов ✨. Смотрите видео в комнатах, чтобы заработать!", "warn");
+    }
+
+    const targetName = targetProfile.name || targetProfile.username || "пользователю";
+    const amountStr = await Utils.prompt(
+      `Сколько Люменов ✨ подарить ${targetName}?\n(Ваш баланс: ${myLumens.toLocaleString()} ✨)`,
+      "10"
+    );
+    if (!amountStr) return;
+    const amount = parseInt(amountStr, 10);
+    if (isNaN(amount) || amount <= 0) {
+      return Utils.toast("Укажите положительное число Люменов", "error");
+    }
+    if (amount > myLumens) {
+      return Utils.toast(`Недостаточно Люменов! Доступно: ${myLumens.toLocaleString()} ✨`, "error");
+    }
+
+    try {
+      const { update, ref, getDatabase, get } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
+      const dbInstance = getDatabase();
+
+      const targetSnap = await get(ref(dbInstance, `users/${targetUid}/profile`));
+      const targetData = targetSnap.val() || {};
+      const targetLumens = Number(targetData.lumens) || 0;
+
+      const newMyLumens = myLumens - amount;
+      const newTargetLumens = targetLumens + amount;
+
+      await update(ref(dbInstance), {
+        [`users/${currentUid}/profile/lumens`]: newMyLumens,
+        [`users/${targetUid}/profile/lumens`]: newTargetLumens,
+      });
+
+      myProf.lumens = newMyLumens;
+      AppState.usersCache.set(currentUid, myProf);
+      targetProfile.lumens = newTargetLumens;
+      AppState.usersCache.set(targetUid, targetProfile);
+
+      const hp = Utils.$("header-lumens-count");
+      if (hp) hp.textContent = newMyLumens.toLocaleString();
+      const myL = Utils.$("my-lumens-val");
+      if (myL) myL.textContent = newMyLumens.toLocaleString();
+      const vlc = Utils.$("view-lumens-count");
+      if (vlc) vlc.textContent = newTargetLumens.toLocaleString();
+
+      Utils.toast(`Вы подарили ${amount} ✨ ${targetName}!`, "success");
+    } catch (err) {
+      console.error(err);
+      Utils.toast("Ошибка при отправке подарка", "error");
+    }
+  }
+
   static async openViewProfileModal(targetUid) {
     const sProfile = document.getElementById("section-profile");
     if (!sProfile) return;
@@ -12349,6 +12450,27 @@ class ProfileManager {
 
     updateLevelUI(Number(profile.xp) || 0);
 
+    const lumensBadge = Utils.$("view-lumens-badge");
+    const lumensCount = Utils.$("view-lumens-count");
+    if (lumensBadge) {
+      lumensBadge.style.display = "inline-flex";
+      if (lumensCount) {
+        lumensCount.innerText = (Number(profile.lumens) || 0).toLocaleString();
+      }
+    }
+
+    const giftBtn = Utils.$("btn-gift-lumens");
+    const currentUid = AppState.currentUser?.uid;
+    if (giftBtn) {
+      if (currentUid && targetUid !== currentUid) {
+        giftBtn.style.display = "inline-flex";
+        giftBtn.onclick = () => ProfileManager.giftLumens(targetUid, profile);
+      } else {
+        giftBtn.style.display = "none";
+        giftBtn.onclick = null;
+      }
+    }
+
     if (this.viewUnsubs) {
       this.viewUnsubs.forEach((f) => f());
       this.viewUnsubs = [];
@@ -12361,6 +12483,9 @@ class ProfileManager {
       const val = snap.val();
       if (val) {
         updateLevelUI(Number(val.xp) || 0);
+        if (lumensCount) {
+          lumensCount.innerText = (Number(val.lumens) || 0).toLocaleString();
+        }
       }
     });
     this.viewUnsubs.push(() => off(profileRef, "value", pUnsub));
@@ -16955,8 +17080,12 @@ class AdminPanel {
             </div>
 
             <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
-                <div style="font-weight:700; margin-bottom:6px;">Уровень и XP (Стим-система)</div>
+                <div style="font-weight:700; margin-bottom:6px;">Люмены (✨), Уровень и XP</div>
                 <div style="display:flex; gap:10px;">
+                    <div style="flex:1;">
+                        <label for="admin-edit-lumens" class="admin-form-label">Люмены (✨)</label>
+                        <input type="number" id="admin-edit-lumens" value="${profile.lumens || 0}" placeholder="Люмены">
+                    </div>
                     <div style="flex:1;">
                         <label for="admin-edit-level" class="admin-form-label">Уровень</label>
                         <input type="number" id="admin-edit-level" value="${ProfileManager.getExpMath(profile.xp || 0).level}" placeholder="Уровень" min="0">
@@ -17400,16 +17529,18 @@ class AdminPanel {
     }
     let xp = Number(Utils.$("admin-edit-xp")?.value || 0);
     let level = ProfileManager.getExpMath(xp).level;
+    let lumens = Number(Utils.$("admin-edit-lumens")?.value ?? (oldProfile.lumens || 0));
 
-    if (streak !== (oldProfile.streak || 0) || xp !== (oldProfile.xp || 0)) {
+    if (streak !== (oldProfile.streak || 0) || xp !== (oldProfile.xp || 0) || lumens !== (oldProfile.lumens || 0)) {
       if (!this.isCurrentUserCreator()) {
         Utils.toast(
-          "Изменять стрик и уровень(XP) может только Создатель",
+          "Изменять стрик, уровень(XP) и Люмены может только Создатель",
           "error",
         );
         streak = oldProfile.streak || 0;
         xp = oldProfile.xp || 0;
         level = ProfileManager.getExpMath(xp).level;
+        lumens = oldProfile.lumens || 0;
       }
     }
 
@@ -17444,6 +17575,7 @@ class AdminPanel {
       streak,
       level,
       xp,
+      lumens,
       banner: banner,
     };
     updates[`users/${uid}/profile`] = nextProfile;
@@ -20099,10 +20231,24 @@ class RoomManager {
           const profRef = ref(db, `users/${uid}/profile`);
           const snap = await get(profRef);
           if (snap.exists()) {
-            let curXp = Number(snap.val().xp) || 0;
+            const data = snap.val() || {};
+            let curXp = Number(data.xp) || 0;
             let newXp = curXp + addXp;
-            await update(profRef, { xp: newXp });
+            let curLumens = Number(data.lumens) || 0;
+            let addLumens = Math.max(1, Math.round(1 * mult));
+            let newLumens = curLumens + addLumens;
+            await update(profRef, { xp: newXp, lumens: newLumens });
             await BadgeManager.checkLevelBadges(uid, newXp);
+
+            const cached = AppState.usersCache.get(uid);
+            if (cached) {
+              cached.xp = newXp;
+              cached.lumens = newLumens;
+            }
+            const hp = Utils.$("header-lumens-count");
+            if (hp) hp.textContent = newLumens.toLocaleString();
+            const myL = Utils.$("my-lumens-val");
+            if (myL) myL.textContent = newLumens.toLocaleString();
           }
         } catch (e) {}
       }
@@ -20125,10 +20271,24 @@ class RoomManager {
       get(profRef)
         .then((snap) => {
           if (snap.exists()) {
-            let curXp = Number(snap.val().xp) || 0;
+            const data = snap.val() || {};
+            let curXp = Number(data.xp) || 0;
             let newXp = curXp + addXp;
-            update(profRef, { xp: newXp });
+            let curLumens = Number(data.lumens) || 0;
+            let addLumens = Math.max(1, Math.round(1 * mult));
+            let newLumens = curLumens + addLumens;
+            update(profRef, { xp: newXp, lumens: newLumens });
             BadgeManager.checkLevelBadges(uid, newXp);
+
+            const cached = AppState.usersCache.get(uid);
+            if (cached) {
+              cached.xp = newXp;
+              cached.lumens = newLumens;
+            }
+            const hp = Utils.$("header-lumens-count");
+            if (hp) hp.textContent = newLumens.toLocaleString();
+            const myL = Utils.$("my-lumens-val");
+            if (myL) myL.textContent = newLumens.toLocaleString();
           }
         })
         .catch(() => {});
@@ -21458,6 +21618,24 @@ if (document.readyState === "complete" || document.readyState === "interactive")
 }
 
 class CatalogManager {
+  static openLumensModal() {
+    const modal = Utils.$("modal-lumens-info");
+    if (!modal) {
+      if (window.FriendsManager?.setNavActive) {
+        FriendsManager.setNavActive("nav-catalog");
+        if (window.CatalogManager) CatalogManager.renderCatalog();
+      }
+      return;
+    }
+    const uid = AppState.currentUser?.uid;
+    const prof = uid ? AppState.usersCache.get(uid) : null;
+    const lumens = Number(prof?.lumens) || 0;
+    const walletVal = Utils.$("modal-lumens-wallet-val");
+    if (walletVal) {
+      walletVal.textContent = lumens.toLocaleString();
+    }
+    modal.classList.add("active");
+  }
   static items = [];
   static activeFilter = "all";
   static searchQuery = "";
@@ -21479,12 +21657,65 @@ class CatalogManager {
           this.items = [];
         }
 
+        // Авто-инициализация красивых стартовых рамок, если каталог в базе пуст
+        if (this.items.length === 0 && AppState.currentUser) {
+          this.seedDefaultItems();
+        }
+
         this.renderCatalog();
         this.renderAdminCatalog();
       });
     } catch (e) {
       console.error(e);
     }
+  }
+
+  static async seedDefaultItems() {
+    try {
+      const { set, ref, getDatabase } = await import(
+        "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"
+      );
+      const dbRef = getDatabase();
+      const initial = {
+        item_neon_glow: {
+          title: "Неоновое сияние",
+          desc: "Футуристическая неоновая аура для активных зрителей комнат",
+          price: "50",
+          priceType: "paid",
+          image: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp",
+          type: "frame",
+          isHot: true,
+        },
+        item_star_crown: {
+          title: "Звёздная корона",
+          desc: "Анимированная золотая корона признанного лидера комнат",
+          price: "150",
+          priceType: "paid",
+          image: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Glowing%20Star.webp",
+          type: "frame",
+          isHot: true,
+        },
+        item_fire_aura: {
+          title: "Огненная аура",
+          desc: "Пламенное оформление для постоянных создателей стримов",
+          price: "300",
+          priceType: "paid",
+          image: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp",
+          type: "frame",
+          isHot: false,
+        },
+        item_welcome_gift: {
+          title: "Стартовая рамка COWIO",
+          desc: "Бесплатный подарок в честь знакомства с платформой COWIO",
+          price: "0",
+          priceType: "free",
+          image: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Partying%20Face.webp",
+          type: "frame",
+          isHot: false,
+        },
+      };
+      await set(ref(dbRef, "catalog"), initial);
+    } catch (e) {}
   }
 
   static addNewAdminItem() {
@@ -21510,7 +21741,7 @@ class CatalogManager {
 
     if (!frameUrl) return Utils.toast("Укажите изображение (URL)", "error");
 
-    if (!(await Utils.confirm(`Точно ВЫДАТЬ РАМКУ ВСЕМ, кто сейчас онлайн?`)))
+    if (!(await Utils.confirm("Точно ВЫДАТЬ РАМКУ ВСЕМ, кто сейчас онлайн?")))
       return;
 
     const usersSnap = await get(ref(db, "users"));
@@ -21637,11 +21868,15 @@ class CatalogManager {
     const uid = AppState.currentUser?.uid;
     const currentProf = uid ? AppState.usersCache.get(uid) : null;
     const levelEl = Utils.$("catalog-user-lvl-num");
-
     if (levelEl) {
       const userLevel = Number(currentProf?.level) || 0;
       levelEl.innerText = `${userLevel} ур.`;
     }
+    const lumens = Number(currentProf?.lumens) || 0;
+    const headerPill = Utils.$("header-lumens-count");
+    if (headerPill) headerPill.textContent = lumens.toLocaleString();
+    const myL = Utils.$("my-lumens-val");
+    if (myL) myL.textContent = lumens.toLocaleString();
   }
 
   static renderCatalog() {
@@ -21650,17 +21885,8 @@ class CatalogManager {
 
     const uid = AppState.currentUser?.uid;
     const currentProf = uid ? AppState.usersCache.get(uid) : null;
-    const catalogVisible = Utils.$("section-catalog")?.style?.display === "flex";
 
     this.renderUserStatus();
-
-    let hasAccess = true;
-    if (
-      window.PremiumManager &&
-      !PremiumManager.hasCatalogAccess(currentProf, uid)
-    ) {
-      hasAccess = false;
-    }
 
     const inv = currentProf?.inventory || [];
     const equippedFrame = currentProf?.frame || null;
@@ -21704,17 +21930,17 @@ class CatalogManager {
     }
 
     // Сортировка
-    if (this.sortBy === "level-asc") {
+    if (this.sortBy === "price-asc" || this.sortBy === "level-asc") {
       filtered.sort((a, b) => {
-        const aLvl = a.priceType === "free" ? 0 : parseInt(a.price, 10) || 0;
-        const bLvl = b.priceType === "free" ? 0 : parseInt(b.price, 10) || 0;
-        return aLvl - bLvl;
+        const aPrice = (a.priceType === "free" || a.price === "БЕСПЛАТНО" || a.price === "0" || String(a.price).trim().toUpperCase() === "FREE") ? 0 : parseInt(a.price, 10) || 0;
+        const bPrice = (b.priceType === "free" || b.price === "БЕСПЛАТНО" || b.price === "0" || String(b.price).trim().toUpperCase() === "FREE") ? 0 : parseInt(b.price, 10) || 0;
+        return aPrice - bPrice;
       });
-    } else if (this.sortBy === "level-desc") {
+    } else if (this.sortBy === "price-desc" || this.sortBy === "level-desc") {
       filtered.sort((a, b) => {
-        const aLvl = a.priceType === "free" ? 0 : parseInt(a.price, 10) || 0;
-        const bLvl = b.priceType === "free" ? 0 : parseInt(b.price, 10) || 0;
-        return bLvl - aLvl;
+        const aPrice = (a.priceType === "free" || a.price === "БЕСПЛАТНО" || a.price === "0" || String(a.price).trim().toUpperCase() === "FREE") ? 0 : parseInt(a.price, 10) || 0;
+        const bPrice = (b.priceType === "free" || b.price === "БЕСПЛАТНО" || b.price === "0" || String(b.price).trim().toUpperCase() === "FREE") ? 0 : parseInt(b.price, 10) || 0;
+        return bPrice - aPrice;
       });
     } else if (this.sortBy === "title-asc") {
       filtered.sort((a, b) => (a.title || "").localeCompare(b.title || "", "ru"));
@@ -21745,7 +21971,7 @@ class CatalogManager {
         </div>
       `;
     } else {
-      const userLevel = Number(currentProf?.level) || 0;
+      const userLumens = Number(currentProf?.lumens) || 0;
       const fakeProf = currentProf
         ? { ...currentProf, frame: null }
         : {
@@ -21759,8 +21985,8 @@ class CatalogManager {
         const isEquipped = equippedFrame === item.id || (item.image && equippedFrame === item.image);
         const isHot = item.isHot === true || item.isHot === "true";
         const isFree = item.priceType === "free" || item.price === "БЕСПЛАТНО" || item.price === "0" || String(item.price).trim().toUpperCase() === "FREE";
-        const requiredLvl = isFree ? 0 : parseInt(item.price, 10) || 0;
-        const canAfford = userLevel >= requiredLvl;
+        const price = isFree ? 0 : (parseInt(item.price, 10) || 0);
+        const canAfford = userLumens >= price;
 
         let actionBtnHtml = "";
         if (isEquipped) {
@@ -21790,7 +22016,7 @@ class CatalogManager {
         } else {
           actionBtnHtml = `
             <button class="catalog-card-action-btn btn-locked" onclick="event.stopPropagation(); window.openCatalogItemModal('${item.id}')">
-              С ${requiredLvl} ур.
+              ${price} <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" class="inline-sparkles-icon" alt="✨">
             </button>
           `;
         }
@@ -21842,12 +22068,12 @@ class CatalogManager {
                       <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" class="catalog-price-emoji" alt="Free">
                       <span>Бесплатно</span>
                     ` : `
-                      <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" class="catalog-price-emoji" alt="Star">
-                      <span>${requiredLvl} ур.</span>
+                      <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" class="catalog-price-emoji" alt="Люмены">
+                      <span>${price}</span>
                     `}
                   </div>
                   <div class="catalog-price-status-hint ${canAfford ? "can-buy" : "need-lvl"}">
-                    ${canAfford ? "Доступно вам" : `Нужно еще ${requiredLvl - userLevel} ур.`}
+                    ${canAfford ? "Доступно к покупке" : `Нужно еще ${price - userLumens} <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" class="inline-sparkles-icon" alt="✨">`}
                   </div>
                 </div>
 
@@ -21857,69 +22083,6 @@ class CatalogManager {
           </div>
         `;
       }).join("");
-    }
-
-    // Проверка доступа к каталогу (уровень < 10)
-    const catalogSection = Utils.$("section-catalog");
-    if (!hasAccess && catalogVisible) {
-      if (catalogSection.querySelector(".catalog-locked-overlay")) return;
-      const overlay = document.createElement("div");
-      overlay.className = "catalog-locked-overlay";
-      overlay.style =
-        "position:absolute; inset:0; background:rgba(8,8,10,0.85); backdrop-filter:blur(24px); -webkit-backdrop-filter:blur(24px); display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; z-index:50; padding:24px; box-sizing:border-box;";
-      
-      const curLvl = Number(currentProf?.level) || 0;
-      const progressPercent = Math.min(100, Math.max(0, (curLvl / 10) * 100));
-      const leftLvl = Math.max(0, 10 - curLvl);
-
-      overlay.innerHTML = `
-        <div style="background: rgba(16, 16, 20, 0.95); border: 1px solid rgba(255,255,255,0.12); border-radius: 24px; padding: 40px 32px; max-width: 440px; width: 100%; box-shadow: 0 24px 60px rgba(0,0,0,0.8); backdrop-filter: blur(28px);">
-          <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width:72px; height:72px; margin-bottom:16px; animation:mysteryFloat 3s infinite ease-in-out;" alt="Locked">
-          <h2 style="margin:0 0 10px; font-size:24px; font-weight:800; color:#fff;">Каталог закрыт до 10 уровня</h2>
-          <p style="color:var(--text-muted); font-size:14px; margin:0 0 22px; line-height:1.5;">
-            Эксклюзивные рамки и украшения профиля становятся доступны активным участникам при достижении 10 уровня.
-          </p>
-
-          <!-- Progress bar -->
-          <div style="background: rgba(255,255,255,0.04); border-radius: 12px; padding: 14px 16px; margin-bottom: 24px; border: 1px solid rgba(255,255,255,0.08); text-align: left;">
-            <div style="display:flex; justify-content:space-between; margin-bottom: 8px; font-size: 13px; font-weight: 700;">
-              <span style="color:#fff;">Ваш прогресс</span>
-              <span style="color:#ffffff;">${curLvl} / 10 ур.</span>
-            </div>
-            <div style="width: 100%; height: 8px; background: rgba(0,0,0,0.6); border-radius: 999px; overflow: hidden; border: 1px solid rgba(255,255,255,0.06);">
-              <div style="width: ${progressPercent}%; height: 100%; background: #ffffff; border-radius: 999px; transition: width 0.5s ease; box-shadow: 0 0 10px rgba(255,255,255,0.3);"></div>
-            </div>
-            <div style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">
-              Осталось набрать еще ${leftLvl} ур. Смотрите видео вместе с друзьями и общайтесь в комнатах!
-            </div>
-          </div>
-
-          <div style="display:flex; gap:10px;">
-            <button class="primary-btn" onclick="document.getElementById('nav-profile')?.click()" style="flex:1; padding:12px; background:#ffffff; color:#000000; font-weight:700; font-size:14px; border-radius:12px; border:none; cursor:pointer;">
-              Мой Профиль
-            </button>
-            <button class="secondary-btn" onclick="document.getElementById('nav-rooms')?.click()" style="flex:1; padding:12px; border-radius:12px; font-weight:700; font-size:14px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color:#ffffff;">
-              В комнаты
-            </button>
-          </div>
-        </div>
-      `;
-      catalogSection.appendChild(overlay);
-      const container = catalogSection.querySelector(".catalog-container");
-      if (container) {
-        container.style.filter = "blur(12px)";
-        container.style.pointerEvents = "none";
-        container.style.userSelect = "none";
-      }
-    } else {
-      const existing = catalogSection?.querySelector(".catalog-locked-overlay");
-      if (existing) existing.remove();
-      const container = catalogSection?.querySelector(".catalog-container");
-      if (container) {
-        container.style.filter = "";
-        container.style.pointerEvents = "";
-        container.style.userSelect = "";
-      }
     }
   }
 
@@ -21978,9 +22141,9 @@ class CatalogManager {
                 <div style="display:flex; gap: 4px; margin-bottom: 4px;">
                     <select id="admin-cat-pricetype-${item.id}" class="admin-form-input" style="flex:1;" onchange="document.getElementById('admin-cat-price-${item.id}').style.display = this.value === 'free' ? 'none' : 'block';">
                         <option value="free" ${item.priceType === "free" ? "selected" : ""}>Бесплатно</option>
-                        <option value="paid" ${item.priceType === "paid" ? "selected" : ""}>Уровень</option>
+                        <option value="paid" ${item.priceType === "paid" ? "selected" : ""}>За Люмены (✨)</option>
                     </select>
-                    <input type="text" id="admin-cat-price-${item.id}" value="${item.price}" class="admin-form-input" placeholder="Уровень" style="flex:1; display: ${item.priceType === "free" ? "none" : "block"};"/>
+                    <input type="text" id="admin-cat-price-${item.id}" value="${item.price}" class="admin-form-input" placeholder="Цена в Люменах (✨)" style="flex:1; display: ${item.priceType === "free" ? "none" : "block"};"/>
                 </div>
                 <input type="text" id="admin-cat-img-${item.id}" value="${item.image}" class="admin-form-input" placeholder="URL Картинки/Рамки/Звука" style="margin-bottom: 4px;"/>
                 <select id="admin-cat-type-${item.id}" class="admin-form-input" style="margin-bottom: 4px;">
@@ -22042,8 +22205,14 @@ window.openCatalogItemModal = function (itemId) {
     item.price === "0" ||
     String(item.price).trim().toUpperCase() === "FREE";
 
-  const requiredLvl = isFree ? 0 : parseInt(item.price, 10) || 0;
-  Utils.$("catalog-item-price").innerText = isFree ? "БЕСПЛАТНО" : `${requiredLvl} ур.`;
+  const price = isFree ? 0 : (parseInt(item.price, 10) || 0);
+
+  const priceEl = Utils.$("catalog-item-price");
+  if (priceEl) priceEl.innerHTML = isFree ? "БЕСПЛАТНО" : `${price} <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" class="inline-sparkles-icon large" alt="✨">`;
+
+  const priceIcon = Utils.$("catalog-item-price-icon");
+  if (priceIcon) priceIcon.style.display = isFree ? "none" : "inline-block";
+
   Utils.$("catalog-item-type-label").innerText = "УКРАШЕНИЕ АВАТАРА";
 
   const imageSolo = Utils.$("catalog-item-image-solo");
@@ -22053,7 +22222,7 @@ window.openCatalogItemModal = function (itemId) {
 
   const uid = AppState.currentUser?.uid;
   let currentProf = uid ? AppState.usersCache.get(uid) : null;
-  const userLevel = Number(currentProf?.level) || 0;
+  const userLumens = Number(currentProf?.lumens) || 0;
 
   const fakeProf = currentProf
     ? { ...currentProf, frame: null }
@@ -22114,29 +22283,34 @@ window.openCatalogItemModal = function (itemId) {
     };
   }
 
-  // Обновление плашки уровня
-  const userLvlVal = Utils.$("catalog-modal-user-level-val");
-  const statusPill = Utils.$("catalog-item-status-pill");
+  // Обновление плашки баланса в модалке
+  const userLumensVal = Utils.$("catalog-modal-user-lumens-val");
+  if (userLumensVal) {
+    userLumensVal.innerHTML = `${userLumens} <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" class="inline-sparkles-icon" alt="✨">`;
+    userLumensVal.style.color = (isFree || userLumens >= price) ? "#34d399" : "#f87171";
+  }
 
+  const userLvlVal = Utils.$("catalog-modal-user-level-val");
+  if (userLvlVal) {
+    if (isFree || userLumens >= price) {
+      userLvlVal.innerHTML = `${userLumens} <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" class="inline-sparkles-icon" alt="✨"> (Доступно)`;
+      userLvlVal.style.color = "#34d399";
+    } else {
+      userLvlVal.innerHTML = `${userLumens} / ${price} <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" class="inline-sparkles-icon" alt="✨"> (Не хватает)`;
+      userLvlVal.style.color = "var(--text-muted)";
+    }
+  }
+
+  const statusPill = Utils.$("catalog-item-status-pill");
   const inv = currentProf?.inventory || [];
   const isOwned = inv.includes(item.id) || (item.image && inv.includes(item.image));
   const isEquipped = currentProf?.frame === item.id || (item.image && currentProf?.frame === item.image);
 
   if (statusPill) {
-    statusPill.innerText = isEquipped ? "Надето" : item.isHot ? "Акция" : "Временный оффер";
+    statusPill.innerText = isEquipped ? "Надето" : item.isHot ? "Акция" : isFree ? "Бесплатно" : "Временный оффер";
     statusPill.style.color = "#ffffff";
     statusPill.style.background = isEquipped ? "rgba(255, 255, 255, 0.12)" : "rgba(255, 255, 255, 0.06)";
     statusPill.style.border = "1px solid rgba(255, 255, 255, 0.1)";
-  }
-
-  if (userLvlVal) {
-    if (isFree || userLevel >= requiredLvl) {
-      userLvlVal.innerText = `${userLevel} ур. (Доступно)`;
-      userLvlVal.style.color = "#ffffff";
-    } else {
-      userLvlVal.innerText = `${userLevel} / ${requiredLvl} ур. (Не хватает)`;
-      userLvlVal.style.color = "var(--text-muted)";
-    }
   }
 
   modal.classList.add("active");
@@ -22170,7 +22344,8 @@ window.openCatalogItemModal = function (itemId) {
 
       buyBtn.onclick = async () => {
         if (!AppState.currentUser) return Utils.toast("Авторизуйтесь для получения", "error");
-        const currentInv = currentProf?.inventory ? [...currentProf.inventory] : [];
+        const freshProf = AppState.usersCache.get(uid) || {};
+        const currentInv = freshProf?.inventory ? [...freshProf.inventory] : [];
         if (!currentInv.includes(item.id)) currentInv.push(item.id);
         if (item.image && !currentInv.includes(item.image)) currentInv.push(item.image);
 
@@ -22181,18 +22356,18 @@ window.openCatalogItemModal = function (itemId) {
           [`users/${uid}/profile/frame`]: frameVal,
         });
 
-        currentProf.inventory = currentInv;
-        currentProf.frame = frameVal;
-        AppState.usersCache.set(uid, currentProf);
+        freshProf.inventory = currentInv;
+        freshProf.frame = frameVal;
+        AppState.usersCache.set(uid, freshProf);
 
         Utils.toast("Товар получен и надет!", "success");
         CatalogManager.renderCatalog();
         modal.classList.remove("active");
       };
     } else {
-      const canAfford = userLevel >= requiredLvl;
+      const canAfford = userLumens >= price;
       if (canAfford) {
-        buyBtn.innerText = `КУПИТЬ (${requiredLvl} УР.)`;
+        buyBtn.innerHTML = `КУПИТЬ ЗА ${price} <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" class="inline-sparkles-icon" alt="✨">`;
         buyBtn.style.background = "#ffffff";
         buyBtn.style.color = "#000000";
         buyBtn.style.border = "none";
@@ -22200,34 +22375,51 @@ window.openCatalogItemModal = function (itemId) {
 
         buyBtn.onclick = async () => {
           if (!AppState.currentUser) return Utils.toast("Авторизуйтесь для покупки", "error");
-          const currentInv = currentProf?.inventory ? [...currentProf.inventory] : [];
+          
+          const freshProf = AppState.usersCache.get(uid) || {};
+          const curLumens = Number(freshProf.lumens) || 0;
+          if (curLumens < price) {
+            return Utils.toast(`Недостаточно Люменов! Нужно ${price} ✨ (у вас ${curLumens})`, "error");
+          }
+
+          const currentInv = freshProf?.inventory ? [...freshProf.inventory] : [];
           if (!currentInv.includes(item.id)) currentInv.push(item.id);
           if (item.image && !currentInv.includes(item.image)) currentInv.push(item.image);
 
           const frameVal = item.image || item.id;
+          const newLumens = curLumens - price;
+
           const { update, ref, getDatabase } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
           await update(ref(getDatabase()), {
             [`users/${uid}/profile/inventory`]: currentInv,
             [`users/${uid}/profile/frame`]: frameVal,
+            [`users/${uid}/profile/lumens`]: newLumens,
           });
 
-          currentProf.inventory = currentInv;
-          currentProf.frame = frameVal;
-          AppState.usersCache.set(uid, currentProf);
+          freshProf.inventory = currentInv;
+          freshProf.frame = frameVal;
+          freshProf.lumens = newLumens;
+          AppState.usersCache.set(uid, freshProf);
 
-          Utils.toast("Поздравляем с покупкой! Рамка надета.", "success");
+          const hp = Utils.$("header-lumens-count");
+          if (hp) hp.textContent = newLumens.toLocaleString();
+          const myL = Utils.$("my-lumens-val");
+          if (myL) myL.textContent = newLumens.toLocaleString();
+
+          Utils.toast(`Поздравляем! Куплено за ${price} ✨. Рамка надета.`, "success");
           CatalogManager.renderCatalog();
           modal.classList.remove("active");
         };
       } else {
-        buyBtn.innerText = `НУЖЕН ${requiredLvl} УР. (У ВАС ${userLevel})`;
+        const needMore = price - userLumens;
+        buyBtn.innerHTML = `НЕ ХВАТАЕТ ${needMore} <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" class="inline-sparkles-icon" alt="✨"> (У ВАС ${userLumens})`;
         buyBtn.style.background = "rgba(255, 255, 255, 0.06)";
         buyBtn.style.color = "rgba(255, 255, 255, 0.4)";
         buyBtn.style.border = "1px solid rgba(255, 255, 255, 0.1)";
         buyBtn.style.cursor = "pointer";
 
         buyBtn.onclick = () => {
-          Utils.toast(`Для покупки необходимо достичь ${requiredLvl} уровня (сейчас: ${userLevel})`, "info");
+          Utils.toast(`Для покупки нужно еще ${needMore} Люменов ✨. Смотрите видео в комнатах для заработка!`, "info");
         };
       }
     }
