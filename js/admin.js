@@ -124,15 +124,23 @@ class AdminPanel {
     );
   }
 
+  static isManagerProfile(profile = {}, uid = null) {
+    return (
+      profile?.role === "manager" && !this.isCreatorProfile(profile, uid)
+    );
+  }
+
   static isOperatorProfile(profile = {}, uid = null) {
     return profile?.role === "operator" && !this.isCreatorProfile(profile, uid);
   }
 
   static isAdminProfile(profile = {}, uid = null) {
     // Operators only have support access, not full admin access.
+    // Managers have read-only admin panel access.
     return (
       this.isCreatorProfile(profile, uid) ||
-      this.isModeratorProfile(profile, uid)
+      this.isModeratorProfile(profile, uid) ||
+      this.isManagerProfile(profile, uid)
     );
   }
 
@@ -154,6 +162,16 @@ class AdminPanel {
       AppState.usersCache.get(uid) ||
       {};
     return this.isAdminProfile(profile, uid);
+  }
+
+  static isCurrentUserReadOnly() {
+    const uid = AppState.currentUser?.uid || null;
+    const profile =
+      AppState.usersCache.get(AppState.currentUser?.uid) ||
+      {} ||
+      AppState.usersCache.get(uid) ||
+      {};
+    return this.isManagerProfile(profile, uid);
   }
 
   static isSystemReadOnlyForUser() {
@@ -218,6 +236,17 @@ class AdminPanel {
     return true;
   }
 
+  static requireWritePermission(silent = false) {
+    if (!this.requireAdmin()) return false;
+    if (this.isCurrentUserReadOnly()) {
+      if (!silent) {
+        Utils.toast("Действие недоступно: роль 'Менеджер' имеет права только на просмотр", "warning");
+      }
+      return false;
+    }
+    return true;
+  }
+
   static async checkModRestrictionsForTarget(targetUid) {
     if (this.isCurrentUserCreator()) return true;
     if (await this.isProtectedCreatorTarget(targetUid)) {
@@ -276,9 +305,19 @@ class AdminPanel {
                 <div style="display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:16px;">
                     <div>
                         <h2 style="margin:0;">Админ-панель</h2>
-                        <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">Доступ для Создателя и Модераторов</div>
+                        <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">Доступ для Создателя, Модераторов и Менеджеров</div>
                     </div>
                     <button class="secondary-btn" id="btn-close-admin-panel" style="width:auto; padding:8px 12px;">✕</button>
+                </div>
+
+                <div id="admin-manager-readonly-notice" style="display:none; padding:12px 16px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.18); border-radius:12px; margin-bottom:16px; backdrop-filter:blur(10px);">
+                    <div style="font-weight:700; font-size:13px; color:#ffffff; display:flex; align-items:center; gap:8px;">
+                        <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Eye.webp" style="width:18px; height:18px; vertical-align:middle;" alt="👁️" onerror="this.style.display='none'">
+                        <span>Режим просмотра (Роль: Менеджер)</span>
+                    </div>
+                    <div style="font-size:11px; color:rgba(255,255,255,0.7); margin-top:4px;">
+                        Вам разрешен только просмотр информации, списков и аналитики. Все действия по редактированию и модерации отключены.
+                    </div>
                 </div>
 
                 <div class="godmode-section" data-section="catalog" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02); margin-bottom: 16px;">
@@ -291,11 +330,12 @@ class AdminPanel {
 
                 <div class="godmode-section" data-section="settings" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02); margin-bottom: 16px;">
                     <div style="font-weight:700; margin-bottom:10px;">Управление правами (Только для Создателя)</div>
-                    <div style="display:flex; gap:8px;">
-                        <input type="text" id="admin-mod-username" placeholder="ID пользователя (без @)" style="margin:0; flex:1;">
-                        <button class="primary-btn" id="btn-admin-grant-mod" style="width:auto; padding:0 16px;">Мoдератор</button>
-                        <button class="primary-btn" id="btn-admin-grant-op" style="width:auto; padding:0 16px;">Оператор</button>
-                        <button class="danger-btn" id="btn-admin-revoke-mod" style="width:auto; padding:0 16px;">Снять права</button>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <input type="text" id="admin-mod-username" placeholder="ID пользователя (без @)" style="margin:0; flex:1; min-width:160px;">
+                        <button class="primary-btn" id="btn-admin-grant-mod" style="width:auto; padding:0 14px;">Модератор</button>
+                        <button class="primary-btn" id="btn-admin-grant-op" style="width:auto; padding:0 14px;">Оператор</button>
+                        <button class="primary-btn" id="btn-admin-grant-manager" style="width:auto; padding:0 14px; background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.25);">Менеджер</button>
+                        <button class="danger-btn" id="btn-admin-revoke-mod" style="width:auto; padding:0 14px;">Снять права</button>
                     </div>
                 </div>
 
@@ -852,6 +892,8 @@ class AdminPanel {
       this.toggleModRole("moderator");
     Utils.$("btn-admin-grant-op").onclick = () =>
       this.toggleModRole("operator");
+    Utils.$("btn-admin-grant-manager") && (Utils.$("btn-admin-grant-manager").onclick = () =>
+      this.toggleModRole("manager"));
     Utils.$("btn-admin-revoke-mod").onclick = () => this.toggleModRole(null);
     Utils.$("btn-admin-badge-developer").onclick = () =>
       this.setAdminBadgeForUser("developer");
@@ -1088,7 +1130,12 @@ class AdminPanel {
       role: roleName,
     });
     await this.pushAuditLog("role.change", { targetUid, role: roleName });
-    Utils.toast(roleName ? `Права ${roleName} выданы` : "Права сняты");
+    const roleTitles = {
+      moderator: "Модератор",
+      operator: "Оператор",
+      manager: "Менеджер (только просмотр)"
+    };
+    Utils.toast(roleName ? `Роль '${roleTitles[roleName] || roleName}' успешно выдана` : "Права сняты", "success");
     Utils.$("admin-mod-username").value = "";
   }
 
@@ -1722,8 +1769,14 @@ class AdminPanel {
     const roomMeta = this.getCurrentRoomForUid(uid);
     const editor = Utils.$("admin-user-editor");
 
+    const isReadOnly = this.isCurrentUserReadOnly();
     editor.dataset.targetUid = uid;
     editor.innerHTML = `
+            ${isReadOnly ? `
+            <div style="padding:10px 14px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.18); border-radius:10px; margin-bottom:12px; font-size:12px; color:#fff; display:flex; align-items:center; gap:8px;">
+                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Eye.webp" style="width:16px; height:16px;" alt="👁️" onerror="this.style.display='none'">
+                <span><strong>Режим только просмотра</strong> (Менеджер). Редактирование профиля недоступно.</span>
+            </div>` : ''}
             <div style="font-size:12px; color:var(--text-muted);">UID: ${uid}</div>
             <div style="font-size:12px; color:var(--text-muted); margin-top:-6px;">Комната: ${roomMeta ? Utils.escapeHtml(roomMeta.room.name || roomMeta.roomId) : "не находится в комнате"}</div>
             <input type="text" id="admin-edit-name" placeholder="Имя" value="${Utils.escapeHtml(profile.name || "")}">
@@ -1902,7 +1955,7 @@ class AdminPanel {
     const applyLumensBtn = Utils.$("btn-admin-apply-lumens-only");
     if (applyLumensBtn) {
       applyLumensBtn.onclick = async () => {
-        if (!this.requireAdmin()) return;
+        if (!this.requireWritePermission()) return;
         if (!(await this.checkModRestrictionsForTarget(uid))) return;
         const targetLumens = Number(lumensInput?.value);
         if (isNaN(targetLumens) || targetLumens < 0) {
@@ -1975,7 +2028,7 @@ class AdminPanel {
     Utils.$("btn-admin-reset-password").onclick = () =>
       this.issuePasswordReset(uid);
     Utils.$("btn-admin-cancel-tutorial").onclick = async () => {
-      if (!this.requireAdmin()) return;
+      if (!this.requireWritePermission()) return;
       if (!(await Utils.confirm(`Отозвать туториал для пользователя ${uid}?`)))
         return;
       await set(ref(db, `admin/actions/cancelTutorial/${uid}`), {
@@ -1984,6 +2037,17 @@ class AdminPanel {
       });
       Utils.toast("Сигнал на отмену туториала отправлен.");
     };
+
+    if (isReadOnly) {
+      editor.querySelectorAll("input, textarea, select").forEach((el) => {
+        el.disabled = true;
+        el.style.opacity = "0.7";
+      });
+      editor.querySelectorAll(".primary-btn, .danger-btn, .admin-lumens-quick-btn").forEach((btn) => {
+        btn.style.opacity = "0.5";
+        btn.style.pointerEvents = "none";
+      });
+    }
   }
 
   static async grantPremiumToUser(uid) {
@@ -2232,7 +2296,7 @@ class AdminPanel {
   }
 
   static async saveUserProfile() {
-    if (!this.requireAdmin()) return;
+    if (!this.requireWritePermission()) return;
 
     const editor = Utils.$("admin-user-editor");
     const uid = editor?.dataset.targetUid;
@@ -2368,7 +2432,7 @@ class AdminPanel {
   }
 
   static async setCustomUserLumens(targetUid, newLumens) {
-    if (!this.requireAdmin()) return;
+    if (!this.requireWritePermission()) return;
     if (!(await this.checkModRestrictionsForTarget(targetUid))) return;
 
     try {
@@ -2417,7 +2481,7 @@ class AdminPanel {
   }
 
   static async resetUserProfile() {
-    if (!this.requireAdmin()) return;
+    if (!this.requireWritePermission()) return;
 
     const editor = Utils.$("admin-user-editor");
     const uid = editor?.dataset.targetUid;
@@ -2459,7 +2523,7 @@ class AdminPanel {
   }
 
   static async sendAnnouncement() {
-    if (!this.requireAdmin()) return;
+    if (!this.requireWritePermission()) return;
 
     const text = Utils.$("admin-announcement-input")?.value.trim();
     if (!text) return Utils.toast("Введите текст оповещения", "error");
@@ -2479,7 +2543,7 @@ class AdminPanel {
   }
 
   static async sendLocalAnnouncementToSelectedUser() {
-    if (!this.requireAdmin()) return;
+    if (!this.requireWritePermission()) return;
     const targetUid = Utils.$("admin-user-editor")?.dataset?.targetUid || "";
     if (!targetUid)
       return Utils.toast(
@@ -2511,14 +2575,14 @@ class AdminPanel {
   }
 
   static async clearAnnouncement() {
-    if (!this.requireAdmin()) return;
+    if (!this.requireWritePermission()) return;
     await remove(ref(db, "admin/global-announcement"));
     await this.pushAuditLog("announcement.clear");
     Utils.toast("Глобальное оповещение очищено");
   }
 
   static async deleteRoom(roomId) {
-    if (!this.requireAdmin()) return;
+    if (!this.requireWritePermission()) return;
     if (!(await this.checkModRestrictionsForRoom(roomId))) return; // Защита комнат Создателя
 
     const roomData = AppState.roomsCache.get(roomId);
@@ -2536,7 +2600,7 @@ class AdminPanel {
   }
 
   static async deleteAllRooms() {
-    if (!this.requireAdmin()) return;
+    if (!this.requireWritePermission()) return;
     if (
       !(await Utils.confirm(
         "Удалить вообще все комнаты? Это действие необратимо.",
@@ -2569,7 +2633,7 @@ class AdminPanel {
   }
 
   static async purgeEmptyRooms() {
-    if (!this.requireAdmin()) return;
+    if (!this.requireWritePermission()) return;
 
     const devUid = await this.getDeveloperUid();
     const isModOnly = !this.isCurrentUserCreator();
@@ -2630,7 +2694,7 @@ class AdminPanel {
   }
 
   static async forceSignOut(uid) {
-    if (!this.requireAdmin()) return;
+    if (!this.requireWritePermission()) return;
     if (!uid) return;
     if (!(await this.checkModRestrictionsForTarget(uid))) return; // Защита Создателя
 
@@ -2651,7 +2715,7 @@ class AdminPanel {
   }
 
   static async forceLeaveRoom(uid) {
-    if (!this.requireAdmin()) return;
+    if (!this.requireWritePermission()) return;
     if (!uid) return;
     if (!(await this.checkModRestrictionsForTarget(uid))) return; // Защита Создателя
 
@@ -2703,6 +2767,24 @@ class AdminPanel {
   static async renderPanel() {
     if (!this.requireAdmin()) return;
 
+    const isReadOnly = this.isCurrentUserReadOnly();
+    const noticeEl = Utils.$("admin-manager-readonly-notice");
+    if (noticeEl) {
+      noticeEl.style.display = isReadOnly ? "block" : "none";
+    }
+
+    if (isReadOnly) {
+      const panel = Utils.$("modal-admin-panel");
+      if (panel) {
+        panel.querySelectorAll(".primary-btn, .danger-btn").forEach((btn) => {
+          if (btn.id !== "btn-close-admin-panel" && btn.id !== "btn-admin-refresh") {
+            btn.style.opacity = "0.55";
+            btn.title = "Только для чтения (роль Менеджер)";
+          }
+        });
+      }
+    }
+
     const stats = await this.collectDashboardData();
     if (AppState.admin.activeSection === "dashboard") {
       this.renderStats(stats);
@@ -2716,7 +2798,7 @@ class AdminPanel {
   }
 
   static async kickAllFromRoom() {
-    if (!this.requireAdmin()) return;
+    if (!this.requireWritePermission()) return;
     const roomId = this.getAdminRoomId();
     if (!roomId) return Utils.toast("Укажите ID комнаты", "error");
     const snap = await get(ref(db, `rooms/${roomId}/presence`));
@@ -2734,7 +2816,7 @@ class AdminPanel {
   }
 
   static async cloneRoomSettings() {
-    if (!this.requireAdmin()) return;
+    if (!this.requireWritePermission()) return;
     const roomId = this.getAdminRoomId();
     if (!roomId) return Utils.toast("Укажите ID комнаты", "error");
     const snap = await get(ref(db, `rooms/${roomId}`));
@@ -2754,7 +2836,7 @@ class AdminPanel {
   }
 
   static async setRoomMaxViewers() {
-    if (!this.requireAdmin()) return;
+    if (!this.requireWritePermission()) return;
     const roomId = this.getAdminRoomId();
     const cap = Number(Utils.$("admin-room-max-viewers")?.value);
     if (!roomId || !cap || cap < 1)
@@ -2764,7 +2846,7 @@ class AdminPanel {
   }
 
   static async setRoomPassword() {
-    if (!this.requireAdmin()) return;
+    if (!this.requireWritePermission()) return;
     const roomId = this.getAdminRoomId();
     if (!roomId) return Utils.toast("Укажите ID комнаты", "error");
     const pass = Utils.$("admin-room-password")?.value ?? "";
@@ -2881,7 +2963,7 @@ class AdminPanel {
   }
 
   static async bulkShadowban() {
-    if (!this.requireAdmin()) return;
+    if (!this.requireWritePermission()) return;
     const raw = Utils.$("admin-bulk-usernames")?.value || "";
     const names = raw
       .split(/[\s,;]+/)
@@ -2901,7 +2983,7 @@ class AdminPanel {
   }
 
   static async forceVerifySelectedEmail() {
-    if (!this.requireAdmin()) return;
+    if (!this.requireWritePermission()) return;
     const uid = Utils.$("admin-user-editor")?.dataset?.targetUid;
     if (!uid) return Utils.toast("Выберите пользователя", "error");
     await update(ref(db, `users/${uid}/profile`), { emailVerified: true });
