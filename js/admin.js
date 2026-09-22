@@ -1341,6 +1341,7 @@ class AdminPanel {
     );
 
     RoomManager.applyCreateRoomAvailability();
+    this.syncSidebarButton();
   }
 
   static handleLogoutCleanup() {
@@ -1358,18 +1359,36 @@ class AdminPanel {
     Utils.$("btn-admin-panel")?.remove();
     Utils.$("modal-admin-panel")?.classList.remove("active");
     this.renderEmptyUserEditor();
+    this.syncSidebarButton();
   }
 
   static syncSidebarButton(profile = {}) {
     const footer = Utils.$("btn-logout")?.parentNode;
+    const uid = AppState.currentUser?.uid || null;
+
+    if (!uid) {
+      if (Utils.$("nav-support-staff"))
+        Utils.$("nav-support-staff").style.display = "none";
+      if (Utils.$("nav-support"))
+        Utils.$("nav-support").style.display = "flex";
+      let btn = Utils.$("btn-admin-panel");
+      if (btn) btn.remove();
+      Utils.$("modal-admin-panel")?.classList.remove("active");
+      if (typeof window !== "undefined" && window.FpsCounter) {
+        window.FpsCounter.checkAndToggle();
+      }
+      return;
+    }
+
+    const myProfile = AppState.usersCache.get(uid) || profile || {};
 
     let hasAdminAccess = this.isAdminProfile(
-      profile,
-      AppState.currentUser?.uid || null,
+      myProfile,
+      uid,
     );
     let hasSupportAccess =
-      this.isCreatorProfile(profile, AppState.currentUser?.uid || null) ||
-      this.isOperatorProfile(profile, AppState.currentUser?.uid || null);
+      this.isCreatorProfile(myProfile, uid) ||
+      this.isOperatorProfile(myProfile, uid);
 
     if (Utils.$("nav-support-staff"))
       Utils.$("nav-support-staff").style.display = hasSupportAccess
@@ -1377,6 +1396,10 @@ class AdminPanel {
         : "none";
     if (Utils.$("nav-support"))
       Utils.$("nav-support").style.display = hasSupportAccess ? "none" : "flex";
+
+    if (typeof window !== "undefined" && window.FpsCounter) {
+      window.FpsCounter.checkAndToggle();
+    }
 
     if (!footer) return;
 

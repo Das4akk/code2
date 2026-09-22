@@ -22,6 +22,7 @@ import "./js/support.js";
 import "./js/admin.js";
 import "./js/room.js";
 import "./js/catalog.js";
+import "./js/fps.js";
 
 // Application Runner & Initialization
 const runApp = () => {
@@ -52,6 +53,7 @@ const runApp = () => {
   initSystem("PremiumManager", () => PremiumManager.init());
   initSystem("LibraryManager", () => window.LibraryManager.init());
   initSystem("MysteryEventManager", () => MysteryEventManager.init());
+  initSystem("FpsCounter", () => window.FpsCounter?.checkAndToggle());
 
   // Добавляем мини-контейнер с ссылками (изначально скрыт, покажется только в lobby-screen)
   const footerLinks = document.createElement("div");

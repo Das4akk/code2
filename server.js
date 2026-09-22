@@ -375,10 +375,10 @@ app.post('/api/library/fetch-metadata', async (req, res) => {
 });
 
 // ----------------------------------------------------
-// PREMIUM & LAVA PAYMENT ROUTES
+// PREMIUM & PLATEGA PAYMENT ROUTES
 // ----------------------------------------------------
-function lavaConfigured() {
-  return Boolean(process.env.LAVA_API_KEY && process.env.LAVA_OFFER_ID);
+function plategaConfigured() {
+  return Boolean((process.env.PLATEGA_API_KEY || process.env.LAVA_API_KEY) && (process.env.PLATEGA_SHOP_ID || process.env.LAVA_OFFER_ID));
 }
 
 function getBaseUrl(req) {
@@ -422,8 +422,8 @@ app.post('/api/premium/create-payment', async (req, res) => {
     const baseUrl = getBaseUrl(req);
     const returnUrl = `${baseUrl}/?premium_return=1&uid=${encodeURIComponent(uid)}`;
 
-    if (!lavaConfigured()) {
-      if (process.env.PREMIUM_SANDBOX_AUTO === 'true' || !process.env.LAVA_API_KEY) {
+    if (!plategaConfigured()) {
+      if (process.env.PREMIUM_SANDBOX_AUTO === 'true' || !(process.env.PLATEGA_API_KEY || process.env.LAVA_API_KEY)) {
         const premium = await activatePremium(uid, `sandbox_${Date.now()}`, amount);
         return res.json({
           success: true,
@@ -435,7 +435,7 @@ app.post('/api/premium/create-payment', async (req, res) => {
       }
       return res.status(503).json({
         success: false,
-        error: 'Платежи не настроены. Добавьте LAVA_API_KEY и LAVA_OFFER_ID в .env',
+        error: 'Платежи не настроены. Добавьте PLATEGA_API_KEY в .env',
         setupRequired: true
       });
     }

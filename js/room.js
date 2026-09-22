@@ -654,6 +654,12 @@ class RoomManager {
     AppState.currentRoomJoinTs = Date.now(); // ФИКС: Запоминаем время входа, чтобы не смотреть старые пасхалки
     // Фикс изначального хоста (только владелец получает тру isHost глобально)
     AppState.isHost = roomData.hostId === AppState.currentUser.uid;
+    const initialPres = roomData.presence || {};
+    const otherInitialUsers = Object.keys(initialPres).filter(
+      (u) => u !== AppState.currentUser.uid,
+    );
+    AppState.enteredEmptyRoomAsNonHost =
+      !AppState.isHost && otherInitialUsers.length === 0;
     AppState.currentPresenceCache = {};
     AppState.usersListRenderToken++;
     AppState.roomSubscriptions.forEach((fn) => fn());
@@ -891,6 +897,12 @@ class RoomManager {
     const pUnsub = onValue(presListRef, (snap) => {
       const prevCache = AppState.currentPresenceCache || {};
       AppState.currentPresenceCache = snap.val() || {};
+      const otherPresUsers = Object.keys(AppState.currentPresenceCache).filter(
+        (u) => u !== AppState.currentUser?.uid,
+      );
+      if (otherPresUsers.length > 0) {
+        AppState.enteredEmptyRoomAsNonHost = false;
+      }
       this.rerenderUsersList();
       this.applyLocalPermissions();
       if (RTCManager.isMicActive) {
@@ -992,6 +1004,13 @@ class RoomManager {
       if (!d) {
         setTimeout(() => (AppState.ignoreVideoEvents = false), 1000);
         return;
+      }
+
+      if (AppState.enteredEmptyRoomAsNonHost && !AppState.isHost) {
+        if (d.state === "playing" || d.type === "play") {
+          d.state = "paused";
+          d.type = "pause";
+        }
       }
 
       AppState.lastKnownSyncState = d;
@@ -1865,17 +1884,24 @@ class RoomManager {
       targetTime += ageSec;
     }
 
-    const currentRoom = AppState.roomsCache.get(AppState.currentRoomId) || {};
+    const currentRoom =
+      AppState.roomsCache.get(AppState.currentRoomId) ||
+      AppState.currentRoomData ||
+      {};
 
     // Prevent auto-play when entering an empty room as a non-host
     const pres = AppState.currentPresenceCache || currentRoom.presence || {};
     const otherPresIds = Object.keys(pres).filter((u) => u !== AppState.currentUser?.uid);
     const roomIsEmpty = otherPresIds.length === 0;
-    const isHostInRoom = currentRoom.hostUid ? Boolean(pres[currentRoom.hostUid]) : false;
+    const hostId = currentRoom.hostId || currentRoom.hostUid || AppState.currentRoomData?.hostId;
+    const isHostInRoom = hostId ? Boolean(pres[hostId]) : false;
 
-    if (!AppState.isHost && (roomIsEmpty || !isHostInRoom)) {
+    if (!AppState.isHost && (roomIsEmpty || !isHostInRoom || AppState.enteredEmptyRoomAsNonHost)) {
       if (state === "playing") {
         state = "paused";
+        if (AppState.lastKnownSyncState) {
+          AppState.lastKnownSyncState.state = "paused";
+        }
       }
     }
 
@@ -2355,7 +2381,8 @@ class RoomManager {
 
     RoomManager.stopRoomExperienceTimer();
 
-    if (AppState.isHost) {
+    const remainingPresCount = Object.keys(AppState.currentPresenceCache || {}).length;
+    if (AppState.isHost || remainingPresCount <= 1) {
       const currentTime = RoomManager.getVideoCurrentTime();
       try {
         set(ref(db, `rooms/${AppState.currentRoomId}/sync`), {

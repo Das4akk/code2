@@ -52,49 +52,44 @@ class PremiumManager {
 
   static PERKS = [
     {
-      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Shopping%20Bags.webp",
-      title: "Полный каталог",
-      desc: "Рамки, звуки и акции только для Premium",
-    },
-    {
       url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp",
       title: "Статус-эмодзи",
-      desc: "10 эмодзи рядом с ником в чате и профиле",
-    },
-    {
-      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Military%20Medal.webp",
-      title: "10-й Уровень",
-      desc: "Автоматическое повышение до 10 уровня при покупке",
+      desc: "Выбор из 9 анимированных эмодзи рядом с ником в комнатах, чатах и профиле",
     },
     {
       url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkler.webp",
-      title: "x2 XP",
-      desc: "В два раза больше опыта за время в комнатах",
+      title: "Удвоенный опыт (x2 XP)",
+      desc: "В 2 раза больше опыта за время в комнатах и ускоренное повышение уровней",
+    },
+    {
+      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Artist%20Palette.webp",
+      title: "Темы оформления",
+      desc: "Доступ ко всем кастомным темам: Neon Cyber, Gold Luxury, Emerald Matrix и др.",
+    },
+    {
+      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp",
+      title: "Золотая подсветка",
+      desc: "Эксклюзивное свечение вашей карточки в списках комнат и у друзей",
+    },
+    {
+      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp",
+      title: "Био до 500 символов",
+      desc: "Увеличенный объём описания профиля (до 500 знаков вместо стандартных 200)",
+    },
+    {
+      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Speech%20Balloon.webp",
+      title: "Темы для диалогов",
+      desc: "4 эксклюзивные темы оформления личных чатов: Vault Gold, Abyss Frost и др.",
     },
     {
       url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Woman%20Technologist.webp",
       title: "Приоритетная поддержка",
-      desc: "Тикеты помечаются и обрабатываются быстрее",
-    },
-    {
-      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Party%20Popper.webp",
-      title: "Ранний доступ",
-      desc: "Первыми видите горячие акции в каталоге",
-    },
-    {
-      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Artist%20Palette.webp",
-      title: "Эксклюзивные темы DM",
-      desc: "4 премиальные темы оформления личных сообщений",
-    },
-    {
-      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp",
-      title: "Расширенное био",
-      desc: "До 500 символов в описании профиля вместо 200",
+      desc: "Тикеты и обращения автоматически получают высший приоритет в обработке",
     },
     {
       url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp",
-      title: "Premium-значок",
-      desc: "Особый бейдж Premium в профиле и списках",
+      title: "Значок Premium",
+      desc: "Уникальный золотой знак отличия в профиле, чате и глобальном поиске",
     },
   ];
 
@@ -134,81 +129,6 @@ class PremiumManager {
         margin-left: 6px;
         opacity: 0.7;
       }
-      .premium-hero {
-        position: relative;
-        overflow: hidden;
-        border-radius: 24px;
-        padding: 28px 26px;
-        margin-bottom: 22px;
-        border: 1px solid rgba(255, 200, 100, 0.22);
-        background:
-          radial-gradient(circle at 20% 0%, rgba(255, 180, 60, 0.18), transparent 45%),
-          radial-gradient(circle at 90% 100%, rgba(255, 120, 40, 0.12), transparent 40%),
-          linear-gradient(145deg, rgba(24, 20, 14, 0.96), rgba(10, 10, 12, 0.98));
-        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 220, 140, 0.08);
-      }
-      .premium-hero::after {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(105deg, transparent 40%, rgba(255, 220, 140, 0.06) 50%, transparent 60%);
-        animation: premiumHeroShine 5s ease-in-out infinite;
-        pointer-events: none;
-      }
-      @keyframes premiumHeroShine {
-        0%, 100% { transform: translateX(-30%); opacity: 0; }
-        50% { transform: translateX(30%); opacity: 1; }
-      }
-      .premium-price-tag {
-        display: inline-flex;
-        align-items: baseline;
-        gap: 4px;
-        font-size: 32px;
-        font-weight: 900;
-        color: #ffe6a0;
-        letter-spacing: -0.5px;
-      }
-      .premium-price-tag small {
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--text-muted);
-      }
-      .premium-perk-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-        gap: 12px;
-        margin: 18px 0 22px;
-      }
-      .premium-perk-card {
-        padding: 14px;
-        border-radius: 14px;
-        border: 1px solid rgba(255, 200, 100, 0.12);
-        background: rgba(255, 255, 255, 0.03);
-      }
-      .premium-emoji-picker {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-top: 10px;
-      }
-      .premium-emoji-btn {
-        width: 42px;
-        height: 42px;
-        border-radius: 12px;
-        border: 1px solid var(--border-light);
-        background: rgba(255,255,255,0.04);
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: border-color 0.15s, transform 0.15s;
-      }
-      .premium-emoji-btn.active {
-        border-color: rgba(255, 200, 90, 0.8);
-        box-shadow: 0 0 12px rgba(255, 180, 60, 0.25);
-        transform: scale(1.05);
-      }
-      .premium-emoji-btn img { width: 24px; height: 24px; }
       .catalog-lock-screen {
         text-align: center;
         padding: 48px 24px;
@@ -253,6 +173,473 @@ class PremiumManager {
       @keyframes premiumHotShimmer {
         0%, 100% { background-position: 0% 50%; }
         50% { background-position: 100% 50%; }
+      }
+
+      /* Hide system scrollbar completely on premium section */
+      #section-premium {
+        scrollbar-width: none !important;
+        -ms-overflow-style: none !important;
+      }
+      #section-premium::-webkit-scrollbar {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+      }
+
+      /* ==================== PREMIUM REDESIGN STYLES ==================== */
+      .prem-container {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+      }
+      .prem-hero-card {
+        position: relative;
+        overflow: hidden;
+        border-radius: 26px;
+        padding: 34px 38px;
+        width: 100%;
+        box-sizing: border-box;
+        background: radial-gradient(circle at 10% 10%, rgba(255, 215, 120, 0.14), transparent 45%),
+                    radial-gradient(circle at 90% 90%, rgba(230, 170, 60, 0.08), transparent 50%),
+                    linear-gradient(150deg, rgba(22, 22, 28, 0.95) 0%, rgba(10, 10, 14, 0.98) 100%);
+        border: 1px solid rgba(255, 215, 120, 0.24);
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+        backdrop-filter: blur(28px);
+        -webkit-backdrop-filter: blur(28px);
+      }
+      .prem-hero-shimmer {
+        position: absolute;
+        top: 0; left: -100%; width: 60%; height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
+        transform: skewX(-25deg);
+        animation: premShimmer 8s infinite ease-in-out;
+        pointer-events: none;
+      }
+      @keyframes premShimmer {
+        0%, 80% { left: -100%; }
+        100% { left: 200%; }
+      }
+      .prem-hero-layout {
+        position: relative;
+        z-index: 2;
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        gap: 36px;
+        align-items: center;
+      }
+      @media (max-width: 880px) {
+        .prem-hero-layout {
+          grid-template-columns: 1fr;
+          gap: 24px;
+        }
+        .prem-hero-card {
+          padding: 24px 20px;
+        }
+      }
+      .prem-pill-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.8px;
+        text-transform: uppercase;
+        color: #f7d788;
+        background: rgba(247, 215, 136, 0.12);
+        border: 1px solid rgba(247, 215, 136, 0.28);
+        padding: 5px 12px;
+        border-radius: 999px;
+        margin-bottom: 12px;
+        box-shadow: 0 0 16px rgba(247, 215, 136, 0.15);
+      }
+      .prem-hero-h1 {
+        font-size: 32px;
+        line-height: 1.18;
+        font-weight: 900;
+        letter-spacing: -0.03em;
+        color: #ffffff;
+        margin: 0 0 12px;
+      }
+      .prem-gold-text {
+        background: linear-gradient(135deg, #ffffff 0%, #fadb73 50%, #f39c12 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .prem-hero-desc {
+        font-size: 14.5px;
+        line-height: 1.6;
+        color: rgba(255, 255, 255, 0.65);
+        margin: 0 0 18px;
+        max-width: 560px;
+      }
+      .prem-stat-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px;
+      }
+      .prem-counter-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12.5px;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.8);
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 6px 13px;
+        border-radius: 12px;
+      }
+      .prem-counter-chip b {
+        color: #f7d788;
+        font-weight: 800;
+      }
+      .prem-pricing-box {
+        background: rgba(0, 0, 0, 0.55);
+        border: 1px solid rgba(255, 215, 120, 0.25);
+        border-radius: 22px;
+        padding: 24px;
+        text-align: center;
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        width: 100%;
+      }
+      .prem-pricing-box.staff-box {
+        border-color: rgba(112, 161, 255, 0.35);
+        background: radial-gradient(circle at 50% 0%, rgba(112, 161, 255, 0.12), transparent 70%), rgba(10, 14, 24, 0.65);
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45), 0 0 24px rgba(112, 161, 255, 0.1);
+      }
+      .prem-price-large {
+        font-size: 38px;
+        font-weight: 900;
+        color: #ffffff;
+        letter-spacing: -0.04em;
+        line-height: 1;
+        margin-bottom: 4px;
+        display: flex;
+        align-items: baseline;
+        justify-content: center;
+        gap: 4px;
+      }
+      .prem-price-period {
+        font-size: 13px;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.5);
+      }
+      .prem-daily-equiv {
+        font-size: 12px;
+        color: #f7d788;
+        font-weight: 700;
+        margin-bottom: 18px;
+      }
+      .prem-cta-btn {
+        width: 100%;
+        padding: 13px 20px;
+        border-radius: 14px;
+        font-size: 14.5px;
+        font-weight: 800;
+        cursor: pointer;
+        transition: all 0.22s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        border: none;
+      }
+      .prem-cta-btn.buy {
+        background: linear-gradient(135deg, #fce38a 0%, #f39c12 100%);
+        color: #120e06;
+        box-shadow: 0 8px 24px rgba(243, 156, 18, 0.35);
+      }
+      .prem-cta-btn.buy:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 30px rgba(243, 156, 18, 0.5);
+        filter: brightness(1.05);
+      }
+      .prem-cta-btn.extend {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        color: #ffffff;
+      }
+      .prem-cta-btn.extend:hover:not(:disabled) {
+        background: rgba(255, 255, 255, 0.15);
+        transform: translateY(-1px);
+      }
+      .prem-secure-note {
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.4);
+        margin-top: 10px;
+        line-height: 1.4;
+      }
+
+      /* Bento Grid Section */
+      .prem-section-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+      }
+      .prem-section-title h2 {
+        font-size: 20px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        color: #ffffff;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .prem-section-subtitle {
+        font-size: 12px;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.45);
+        background: rgba(255, 255, 255, 0.06);
+        padding: 4px 10px;
+        border-radius: 999px;
+      }
+      .prem-bento-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      @media (max-width: 1240px) {
+        .prem-bento-grid {
+          grid-template-columns: repeat(3, 1fr);
+        }
+      }
+      @media (max-width: 860px) {
+        .prem-bento-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+      @media (max-width: 540px) {
+        .prem-bento-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .prem-perk-card {
+        position: relative;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 18px;
+        padding: 20px;
+        transition: all 0.25s ease;
+        overflow: hidden;
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+      }
+      .prem-perk-card:hover {
+        background: rgba(255, 255, 255, 0.055);
+        border-color: rgba(255, 215, 120, 0.28);
+        transform: translateY(-2px);
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+      }
+      .prem-perk-icon-wrap {
+        width: 44px;
+        height: 44px;
+        border-radius: 13px;
+        background: rgba(255, 215, 120, 0.08);
+        border: 1px solid rgba(255, 215, 120, 0.16);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 14px;
+      }
+      .prem-perk-icon-wrap img {
+        width: 24px;
+        height: 24px;
+        object-fit: contain;
+      }
+      .prem-perk-title {
+        font-size: 15px;
+        font-weight: 800;
+        color: #ffffff;
+        margin-bottom: 6px;
+        letter-spacing: -0.01em;
+      }
+      .prem-perk-desc {
+        font-size: 12.5px;
+        line-height: 1.5;
+        color: rgba(255, 255, 255, 0.55);
+      }
+
+      /* Studio / Status Emoji Card */
+      .prem-studio-card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.09);
+        border-radius: 20px;
+        padding: 24px;
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+      }
+      .prem-studio-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+      .prem-emoji-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+      .premium-emoji-btn {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.04);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.18s ease;
+      }
+      .premium-emoji-btn:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 215, 120, 0.4);
+        transform: translateY(-2px);
+      }
+      .premium-emoji-btn.active {
+        border-color: #f7d788 !important;
+        background: rgba(247, 215, 136, 0.16) !important;
+        box-shadow: 0 0 16px rgba(247, 215, 136, 0.3);
+        transform: scale(1.06);
+      }
+      .premium-emoji-btn img {
+        width: 28px;
+        height: 28px;
+      }
+
+      /* Trust & Guarantee Banner */
+      .prem-trust-banner {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 18px 22px;
+        background: rgba(255, 255, 255, 0.025);
+        border: 1px dashed rgba(255, 255, 255, 0.12);
+        border-radius: 18px;
+      }
+      .prem-trust-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #f7d788;
+        flex-shrink: 0;
+      }
+      .prem-trust-text h4 {
+        margin: 0 0 3px;
+        font-size: 13.5px;
+        font-weight: 700;
+        color: #ffffff;
+      }
+      .prem-trust-text p {
+        margin: 0;
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.5);
+        line-height: 1.5;
+      }
+
+      /* Light Theme Adaptations */
+      html.theme-light-global .prem-hero-card {
+        background: radial-gradient(circle at 10% 10%, rgba(255, 215, 120, 0.22), transparent 45%),
+                    linear-gradient(150deg, #ffffff 0%, #f6f8fb 100%);
+        border: 1px solid rgba(220, 180, 80, 0.35);
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08);
+      }
+      html.theme-light-global .prem-hero-h1 {
+        color: #111827;
+      }
+      html.theme-light-global .prem-gold-text {
+        background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      html.theme-light-global .prem-hero-desc {
+        color: #4b5563;
+      }
+      html.theme-light-global .prem-counter-chip {
+        background: rgba(0, 0, 0, 0.04);
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        color: #374151;
+      }
+      html.theme-light-global .prem-counter-chip b {
+        color: #b45309;
+      }
+      html.theme-light-global .prem-pricing-box {
+        background: #ffffff;
+        border: 1px solid rgba(220, 180, 80, 0.4);
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.06);
+      }
+      html.theme-light-global .prem-price-large {
+        color: #111827;
+      }
+      html.theme-light-global .prem-price-period {
+        color: #6b7280;
+      }
+      html.theme-light-global .prem-secure-note {
+        color: #9ca3af;
+      }
+      html.theme-light-global .prem-perk-card {
+        background: #ffffff;
+        border: 1px solid rgba(0, 0, 0, 0.06);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+      }
+      html.theme-light-global .prem-perk-card:hover {
+        background: #fafbfc;
+        border-color: rgba(220, 180, 80, 0.4);
+      }
+      html.theme-light-global .prem-perk-title {
+        color: #111827;
+      }
+      html.theme-light-global .prem-perk-desc {
+        color: #6b7280;
+      }
+      html.theme-light-global .prem-studio-card {
+        background: #ffffff;
+        border: 1px solid rgba(0, 0, 0, 0.06);
+      }
+      html.theme-light-global .prem-studio-header > div > div:first-child {
+        color: #111827 !important;
+      }
+      html.theme-light-global .prem-studio-header > div > div:last-child {
+        color: #6b7280 !important;
+      }
+      html.theme-light-global .premium-emoji-btn {
+        background: #f3f4f6;
+        border-color: #e5e7eb;
+      }
+      html.theme-light-global .prem-trust-banner {
+        background: #ffffff;
+        border-color: #e5e7eb;
+      }
+      html.theme-light-global .prem-trust-text h4 {
+        color: #111827;
+      }
+      html.theme-light-global .prem-trust-text p {
+        color: #6b7280;
+      }
+      html.theme-light-global .prem-section-title h2 {
+        color: #111827;
       }
     `;
     document.head.appendChild(style);
@@ -380,70 +767,146 @@ class PremiumManager {
     const userId = uid || AppState?.currentUser?.uid;
     const active = this.isPremiumActive(p, userId);
     const staff = this.isStaff(p, userId);
+    const selectedEmoji = p?.premium?.statusEmoji || "star";
 
     const perksHtml = this.PERKS.map(
       (perk) => `
-      <div class="premium-perk-card">
-        <img src="${perk.url}" style="width:22px;height:22px;margin-bottom:8px;">
-        <div style="font-weight:800;font-size:14px;margin-bottom:4px;">${perk.title}</div>
-        <div style="font-size:12px;color:var(--text-muted);line-height:1.45;">${perk.desc}</div>
+      <div class="prem-perk-card">
+        <div class="prem-perk-icon-wrap">
+          <img src="${perk.url}" alt="${perk.title}">
+        </div>
+        <div class="prem-perk-title">${perk.title}</div>
+        <div class="prem-perk-desc">${perk.desc}</div>
       </div>`,
     ).join("");
 
-    const emojiPicker = active
-      ? `<div style="margin-top:20px;padding-top:18px;border-top:1px solid var(--border-light);">
-          <div style="font-weight:800;margin-bottom:6px;">Статус-эмодзи</div>
-          <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Выберите эмодзи, которое будет рядом с вашим именем</div>
-          <div class="premium-emoji-picker" id="premium-emoji-picker">
+    const pricingBoxHtml = staff
+      ? `<div class="prem-pricing-box staff-box">
+          <div style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:#70a1ff;background:rgba(112,161,255,0.12);border:1px solid rgba(112,161,255,0.25);padding:4px 12px;border-radius:20px;margin-bottom:12px;">
+            <span style="width:6px;height:6px;border-radius:50%;background:#70a1ff;box-shadow:0 0 8px #70a1ff;"></span>
+            Команда COWIO
+          </div>
+          <div style="font-size:17px;font-weight:800;color:#ffffff;margin-bottom:6px;letter-spacing:-0.01em;">Полный доступ активен</div>
+          <div style="font-size:12.5px;color:rgba(255,255,255,0.6);line-height:1.5;max-width:240px;margin-bottom:14px;">
+            Для вашего аккаунта все функции подписки COWIO Premium включены бессрочно.
+          </div>
+          <div style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#f7d788;background:rgba(247,215,136,0.1);border:1px solid rgba(247,215,136,0.2);padding:6px 14px;border-radius:10px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            Без ограничений
+          </div>
+        </div>`
+      : active
+        ? `<div class="prem-pricing-box">
+            <div style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#2ed573;background:rgba(46,213,115,0.12);border:1px solid rgba(46,213,115,0.25);padding:4px 12px;border-radius:20px;margin-bottom:12px;">
+              <span style="width:6px;height:6px;border-radius:50%;background:#2ed573;box-shadow:0 0 6px #2ed573;"></span>
+              Подписка активна
+            </div>
+            <div style="font-size:12.5px;color:rgba(255,255,255,0.6);margin-bottom:4px;">Действует до:</div>
+            <div style="font-size:16px;font-weight:800;color:#ffffff;margin-bottom:16px;">${this.formatExpiry(p)}</div>
+            <button class="prem-cta-btn extend" id="btn-extend-premium">
+              Продлить подписку (${this.PRICE_RUB} ₽)
+            </button>
+          </div>`
+        : `<div class="prem-pricing-box">
+            <div class="prem-price-large">
+              ${this.PRICE_RUB} ₽
+              <span class="prem-price-period">/ ${this.PLAN_DAYS} дней</span>
+            </div>
+            <div class="prem-daily-equiv">~${(this.PRICE_RUB / this.PLAN_DAYS).toFixed(1)} ₽ в день</div>
+            <button class="prem-cta-btn buy" id="btn-buy-premium">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+              Подключить Premium
+            </button>
+            <div class="prem-secure-note">
+              Защищённая оплата через Platega<br>Мгновенная активация
+            </div>
+          </div>`;
+
+    container.innerHTML = `
+      <div class="prem-container">
+        <!-- Main Hero Card -->
+        <div class="prem-hero-card">
+          <div class="prem-hero-shimmer"></div>
+          <div class="prem-hero-layout">
+            <div>
+              <div class="prem-pill-badge">
+                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" style="width:14px;height:14px;object-fit:contain;" alt="★">
+                COWIO PREMIUM
+              </div>
+              <h1 class="prem-hero-h1">
+                Подписка <span class="prem-gold-text">COWIO Premium</span>
+              </h1>
+              <p class="prem-hero-desc">
+                Единая подписка открывает эксклюзивные темы оформления, удвоенный опыт за общение, персональные статус-эмодзи и расширенные возможности профиля.
+              </p>
+              <div class="prem-stat-row">
+                <div class="prem-counter-chip">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                  Подписчиков: <b id="premium-users-counter">загрузка...</b>
+                </div>
+                <div class="prem-counter-chip">
+                  <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width:15px;height:15px;object-fit:contain;" alt="✨">
+                  <span>8 преимуществ включено</span>
+                </div>
+              </div>
+            </div>
+
+            ${pricingBoxHtml}
+          </div>
+        </div>
+
+        <!-- Status Emoji Studio -->
+        <div class="prem-studio-card">
+          <div class="prem-studio-header">
+            <div>
+              <div style="font-size:16px;font-weight:800;color:#ffffff;display:flex;align-items:center;gap:8px;">
+                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width:20px;height:20px;">
+                Статус-эмодзи
+              </div>
+              <div style="font-size:12.5px;color:rgba(255,255,255,0.5);margin-top:2px;">
+                Выберите иконку, которая будет отображаться рядом с вашим именем в комнатах и профиле
+              </div>
+            </div>
+            ${active || staff
+              ? `<span style="font-size:11px;font-weight:700;color:#f7d788;background:rgba(247,215,136,0.12);padding:4px 10px;border-radius:8px;border:1px solid rgba(247,215,136,0.25);">Доступно</span>`
+              : `<span style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.06);padding:4px 10px;border-radius:8px;">Доступно с Premium</span>`
+            }
+          </div>
+          <div class="prem-emoji-grid" id="premium-emoji-picker">
             ${Object.entries(this.STATUS_EMOJIS)
               .map(
                 ([key, val]) => `
-              <button type="button" class="premium-emoji-btn ${p?.premium?.statusEmoji === key || (!p?.premium?.statusEmoji && key === "star") ? "active" : ""}" data-emoji="${key}" title="${val.label}">
-                <img src="${val.url}" alt="">
+              <button type="button" class="premium-emoji-btn ${selectedEmoji === key ? "active" : ""}" data-emoji="${key}" title="${val.label}">
+                <img src="${val.url}" alt="${val.label}">
               </button>`,
               )
               .join("")}
           </div>
-        </div>`
-      : "";
+        </div>
 
-    container.innerHTML = `
-      <div class="premium-hero">
-        <div style="position:relative;z-index:1;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-            <div style="display:flex;align-items:center;gap:10px;">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" style="width:32px;height:32px;">
-              <div>
-                <div style="font-size:22px;font-weight:900;letter-spacing:0.3px;">COWIO Premium</div>
-                <div style="font-size:13px;color:var(--text-muted);">Месяц привилегий за ${this.PRICE_RUB} ₽</div>
-              </div>
-            </div>
+        <!-- Bento Grid Perks Section -->
+        <div>
+          <div class="prem-section-title">
+            <h2>
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" style="width:22px;height:22px;">
+              Преимущества подписки
+            </h2>
+            <span class="prem-section-subtitle">8 возможностей</span>
           </div>
-          <div style="margin-bottom:14px;display:flex;align-items:center;gap:6px;font-size:13px;color:#ffb347;background:rgba(255,179,71,0.1);padding:6px 12px;border-radius:12px;width:fit-content;">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width:16px;height:16px;">
-            Уже владеют: <b id="premium-users-counter">загрузка...</b>
+          <div class="prem-bento-grid">
+            ${perksHtml}
           </div>
-          ${
-            staff
-              ? `<div style="padding:12px 14px;border-radius:12px;background:rgba(255,255,255,0.05);font-size:13px;color:var(--text-muted);margin-bottom:12px;">У вас доступ персонала: каталог и все Premium-функции уже открыты.</div>`
-              : active
-                ? `<div style="font-size:14px;color:#ffe6a0;margin-bottom:8px;">✓ Premium активен до ${this.formatExpiry(p)}</div>`
-                : `<div class="premium-price-tag">${this.PRICE_RUB} ₽ <small>/ ${this.PLAN_DAYS} дней</small></div>`
-          }
-          <div class="premium-perk-grid">${perksHtml}</div>
-          ${
-            !staff && !active
-              ? `<button class="primary-btn" id="btn-buy-premium" style="width:100%;max-width:320px;padding:14px;font-size:15px;border-radius:14px;background:linear-gradient(135deg,#ffe6a0,#ffb347);color:#1a1208;border:none;font-weight:800;">
-                  Оформить Premium
-                </button>
-                <div style="font-size:11px;color:var(--text-muted);margin-top:10px;max-width:420px;line-height:1.5;">
-                  Оплата через LAVA. После успешной оплаты Premium активируется автоматически.
-                </div>`
-              : !staff && active
-                ? `<button class="secondary-btn" id="btn-extend-premium" style="width:auto;padding:10px 18px;">Продлить ещё на месяц (${this.PRICE_RUB} ₽)</button>`
-                : ""
-          }
-          ${emojiPicker}
+        </div>
+
+        <!-- Trust & Security Banner -->
+        <div class="prem-trust-banner">
+          <div class="prem-trust-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </div>
+          <div class="prem-trust-text">
+            <h4>Безопасная оплата и моментальная активация</h4>
+            <p>Все транзакции проходят через платёжный шлюз Platega. Ваша подписка, статус и возможности активируются сразу после подтверждения платежа без задержек.</p>
+          </div>
         </div>
       </div>
     `;

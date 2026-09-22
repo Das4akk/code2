@@ -715,80 +715,39 @@ class BackgroundFX {
       }
 
       const time = performance.now() * 0.0016;
+      const maxDistSq = 25000;
 
       for (let i = 0; i < dots.length; i++) {
         dots[i].update(time);
         dots[i].draw(ctx, time);
+      }
 
+      ctx.beginPath();
+      ctx.strokeStyle = "rgba(220, 230, 255, 0.14)";
+      ctx.lineWidth = 0.55;
+
+      for (let i = 0; i < dots.length; i++) {
         if (dots[i].isDust) continue;
+        const xi = dots[i].x + dots[i].parallaxX;
+        const yi = dots[i].y + dots[i].parallaxY;
 
         for (let j = i + 1; j < numDots; j++) {
-          let dx =
-            dots[i].x + dots[i].parallaxX - (dots[j].x + dots[j].parallaxX);
-          let dy =
-            dots[i].y + dots[i].parallaxY - (dots[j].y + dots[j].parallaxY);
-          let dist = dx * dx + dy * dy;
-          const key = `${i}:${j}`;
-          const prevStrength = connectionStrength.get(key) || 0;
-          const targetStrength = dist < 35000 ? 1 : 0;
-          const nextStrength =
-            prevStrength + (targetStrength - prevStrength) * 0.08;
+          const xj = dots[j].x + dots[j].parallaxX;
+          const dx = xi - xj;
+          if (dx > 158 || dx < -158) continue;
 
-          if (nextStrength <= 0.01) {
-            connectionStrength.delete(key);
-            continue;
-          }
-          connectionStrength.set(key, nextStrength);
+          const yj = dots[j].y + dots[j].parallaxY;
+          const dy = yi - yj;
+          if (dy > 158 || dy < -158) continue;
 
-          if (nextStrength > 0.02) {
-            const distance = Math.sqrt(dist);
-            const proximity = Math.max(0, 1 - distance / 180);
-            const baseAlpha = Math.max(0.04, 0.2 - distance / 2500);
-            const pulse = 0.92 + Math.sin(time + i * 0.21 + j * 0.13) * 0.08;
-            const alpha = Math.min(
-              0.4,
-              (baseAlpha + proximity * 0.2) * nextStrength * pulse,
-            );
-
-            ctx.strokeStyle = `rgba(220, 230, 255, ${alpha * 0.85})`;
-            ctx.lineWidth = Math.max(0.15, 0.9 * nextStrength);
-            ctx.beginPath();
-            ctx.moveTo(
-              dots[i].x + dots[i].parallaxX,
-              dots[i].y + dots[i].parallaxY,
-            );
-            if ((i + j) % 2 === 0) {
-              let cx =
-                (dots[i].x +
-                  dots[i].parallaxX +
-                  dots[j].x +
-                  dots[j].parallaxX) /
-                2;
-              let cy =
-                (dots[i].y +
-                  dots[i].parallaxY +
-                  dots[j].y +
-                  dots[j].parallaxY) /
-                2;
-              let offset = Math.sin(time * 0.5 + i + j) * (distance * 0.2);
-              cx += offset;
-              cy -= offset;
-              ctx.quadraticCurveTo(
-                cx,
-                cy,
-                dots[j].x + dots[j].parallaxX,
-                dots[j].y + dots[j].parallaxY,
-              );
-            } else {
-              ctx.lineTo(
-                dots[j].x + dots[j].parallaxX,
-                dots[j].y + dots[j].parallaxY,
-              );
-            }
-            ctx.stroke();
+          const dist = dx * dx + dy * dy;
+          if (dist < maxDistSq) {
+            ctx.moveTo(xi, yi);
+            ctx.lineTo(xj, yj);
           }
         }
       }
+      ctx.stroke();
       mouse.vx *= 0.8;
       mouse.vy *= 0.8;
       if (isTabVisible && !AppState.currentRoomId) {

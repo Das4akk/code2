@@ -69,7 +69,14 @@ class VkPlayerManager {
           if (targetTime > 0) {
             this.seek(targetTime);
           }
-          if (sync.state === "paused") {
+          const currentRoom = AppState.roomsCache?.get(AppState.currentRoomId) || AppState.currentRoomData || {};
+          const pres = AppState.currentPresenceCache || currentRoom.presence || {};
+          const otherUsers = Object.keys(pres).filter(u => u !== AppState.currentUser?.uid);
+          const hostId = currentRoom.hostId || AppState.currentRoomData?.hostId;
+          const isHostInRoom = hostId ? Boolean(pres[hostId]) : false;
+          const preventAutoplay = !AppState.isHost && (otherUsers.length === 0 || !isHostInRoom || AppState.enteredEmptyRoomAsNonHost);
+
+          if (sync.state === "paused" || preventAutoplay) {
             this.pause();
           } else if (sync.state === "playing") {
             this.play();
@@ -144,7 +151,7 @@ class VkPlayerManager {
       finalSrc += (finalSrc.includes("?") ? "&" : "?") + "js_api=1";
     }
     if (!finalSrc.includes("autoplay=")) {
-      finalSrc += "&autoplay=1";
+      finalSrc += "&autoplay=0";
     }
     if (!finalSrc.includes("hd=")) {
       finalSrc += "&hd=2";
@@ -550,7 +557,21 @@ class YouTubePlayerManager {
     return new Promise((resolve) => {
       if (this.player && this.playerReady) {
         try {
-          this.player.loadVideoById(videoId);
+          const currentRoom = AppState.roomsCache?.get(AppState.currentRoomId) || AppState.currentRoomData || {};
+          const pres = AppState.currentPresenceCache || currentRoom.presence || {};
+          const otherUsers = Object.keys(pres).filter(u => u !== AppState.currentUser?.uid);
+          const hostId = currentRoom.hostId || AppState.currentRoomData?.hostId;
+          const isHostInRoom = hostId ? Boolean(pres[hostId]) : false;
+          const preventAutoplay = !AppState.isHost && (otherUsers.length === 0 || !isHostInRoom || AppState.enteredEmptyRoomAsNonHost);
+
+          if (preventAutoplay && typeof this.player.cueVideoById === "function") {
+            this.player.cueVideoById(videoId);
+          } else {
+            this.player.loadVideoById(videoId);
+            if (preventAutoplay && typeof this.player.pauseVideo === "function") {
+              this.player.pauseVideo();
+            }
+          }
           this.player.getIframe().style.pointerEvents = "auto";
           setTimeout(
             () =>
@@ -583,6 +604,15 @@ class YouTubePlayerManager {
               try {
                 this.player.getIframe().style.pointerEvents = "auto";
               } catch (e) {}
+              const currentRoom = AppState.roomsCache?.get(AppState.currentRoomId) || AppState.currentRoomData || {};
+              const pres = AppState.currentPresenceCache || currentRoom.presence || {};
+              const otherUsers = Object.keys(pres).filter(u => u !== AppState.currentUser?.uid);
+              const hostId = currentRoom.hostId || AppState.currentRoomData?.hostId;
+              const isHostInRoom = hostId ? Boolean(pres[hostId]) : false;
+              const preventAutoplay = !AppState.isHost && (otherUsers.length === 0 || !isHostInRoom || AppState.enteredEmptyRoomAsNonHost);
+              if (preventAutoplay && typeof this.player.pauseVideo === "function") {
+                try { this.player.pauseVideo(); } catch (e) {}
+              }
               setTimeout(() => {
                 if (typeof RoomManager !== "undefined")
                   RoomManager.forceSyncVideo();
@@ -930,6 +960,10 @@ class VideoPlaybackManager {
           } else if (state === playingState) {
             if (AppState.ignoreVideoEvents) return;
             if (!RoomManager.hasPerm("player")) return;
+            if (AppState.enteredEmptyRoomAsNonHost && !AppState.isHost) {
+              try { Manager.pause(); } catch (e) {}
+              return;
+            }
             if (
               Manager.getCurrentTime() === 0 &&
               AppState.lastKnownSyncState &&

@@ -13,17 +13,6 @@ class LibraryManager {
   }
 
   static bindEvents() {
-    const btnNavLib = document.getElementById("nav-library");
-    if (btnNavLib) {
-      btnNavLib.addEventListener("click", () => {
-        if (window.FriendsManager && window.FriendsManager.setNavActive) {
-            window.FriendsManager.setNavActive("nav-library");
-            window.Utils.showScreen("lobby-screen");
-        }
-        this.renderGrid();
-      });
-    }
-
     const btnLibPub = document.getElementById("btn-lib-public");
     const btnLibMy = document.getElementById("btn-lib-my");
     if (btnLibPub && btnLibMy) {

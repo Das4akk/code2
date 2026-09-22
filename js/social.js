@@ -55,45 +55,75 @@ class FriendsManager {
       "nav-other",
       "nav-library",
     ];
+    const routeMap = {
+      "nav-library": "/library",
+      "nav-support": "/help",
+      "nav-support-staff": "/help",
+      "nav-catalog": "/catalog",
+      "nav-leaderboard": "/leaderboard",
+      "nav-find-friend": "/findfriends",
+      "nav-friends": "/friends",
+      "nav-settings": "/settings",
+      "nav-other": "/other",
+      "nav-premium": "/premium",
+      "nav-profile": "/profile",
+      "nav-rooms": "/lobby"
+    };
+
+    const navSectionMap = {
+      "nav-friends": ["section-friends", "flex"],
+      "nav-find-friend": ["section-find-friend", "flex"],
+      "nav-rooms": ["section-rooms", "flex"],
+      "nav-library": ["section-library", "flex"],
+      "nav-leaderboard": ["section-leaderboard", "block"],
+      "nav-catalog": ["section-catalog", "flex"],
+      "nav-shop": ["section-shop", "flex"],
+      "nav-settings": ["section-settings", "flex"],
+      "nav-other": ["section-other", "flex"],
+      "nav-premium": ["section-premium", "flex"],
+      "nav-mystery": ["section-mystery", "flex"],
+      "nav-support": ["section-support", "flex"],
+      "nav-support-staff": ["section-support", "flex"],
+      "nav-profile": ["section-profile", "flex"],
+      "nav-switch-account": ["section-switch-account", "flex"]
+    };
+
+    let activeNavEl = null;
+
     const setNavActive = (id, skipHistory = false) => {
       if (!skipHistory) {
-          const routeMap = {
-              "nav-library": "/library",
-              "nav-support": "/help",
-              "nav-support-staff": "/help",
-              "nav-catalog": "/catalog",
-              "nav-leaderboard": "/leaderboard",
-              "nav-find-friend": "/findfriends",
-              "nav-friends": "/friends",
-              "nav-settings": "/settings",
-              "nav-other": "/other",
-              "nav-premium": "/premium",
-              "nav-profile": "/profile",
-              "nav-rooms": "/lobby"
-          };
-          const newPath = routeMap[id] || "/lobby";
-          if (window.location.pathname !== newPath) {
-              window.history.pushState({ screenId: "lobby-screen", navId: id }, "", newPath);
-          }
+        const newPath = routeMap[id] || "/lobby";
+        if (window.location.pathname !== newPath) {
+          window.history.pushState({ screenId: "lobby-screen", navId: id }, "", newPath);
+        }
       }
 
-      document.querySelectorAll(".nav-item").forEach((el) => el.classList.remove("active"));
-      if (Utils.$(id)) Utils.$(id).classList.add("active");
-      document.querySelectorAll(".rooms-main").forEach((el) => (el.style.display = "none"));
-      if (Utils.$("section-friends")) Utils.$("section-friends").style.display = id === "nav-friends" ? "flex" : "none";
-      if (Utils.$("section-find-friend")) Utils.$("section-find-friend").style.display = id === "nav-find-friend" ? "flex" : "none";
-      if (Utils.$("section-rooms")) Utils.$("section-rooms").style.display = id === "nav-rooms" ? "flex" : "none";
-      if (Utils.$("section-library")) Utils.$("section-library").style.display = id === "nav-library" ? "flex" : "none";
-      if (Utils.$("section-leaderboard")) Utils.$("section-leaderboard").style.display = id === "nav-leaderboard" ? "block" : "none";
-      if (Utils.$("section-catalog")) Utils.$("section-catalog").style.display = id === "nav-catalog" ? "flex" : "none";
-      if (Utils.$("section-shop")) Utils.$("section-shop").style.display = id === "nav-shop" ? "flex" : "none";
-      if (Utils.$("section-settings")) Utils.$("section-settings").style.display = id === "nav-settings" ? "flex" : "none";
-      if (Utils.$("section-other")) Utils.$("section-other").style.display = id === "nav-other" ? "flex" : "none";
-      if (Utils.$("section-premium")) Utils.$("section-premium").style.display = id === "nav-premium" ? "flex" : "none";
-      if (Utils.$("section-mystery")) Utils.$("section-mystery").style.display = id === "nav-mystery" ? "flex" : "none";
-      if (Utils.$("section-support")) Utils.$("section-support").style.display = id === "nav-support" || id === "nav-support-staff" ? "flex" : "none";
-      if (Utils.$("section-profile")) Utils.$("section-profile").style.display = id === "nav-profile" ? "flex" : "none";
-      Utils.$("section-switch-account").style.display = id === "nav-switch-account" ? "flex" : "none";
+      // Fast active state update on nav items
+      const targetNavEl = Utils.$(id);
+      if (activeNavEl && activeNavEl !== targetNavEl) {
+        activeNavEl.classList.remove("active");
+      }
+      if (targetNavEl) {
+        targetNavEl.classList.add("active");
+        activeNavEl = targetNavEl;
+      }
+
+      // Targeted section display toggle to avoid full-tree layout thrashing
+      const targetConfig = navSectionMap[id];
+      const targetSectionId = targetConfig ? targetConfig[0] : null;
+      const targetDisplay = targetConfig ? targetConfig[1] : "flex";
+
+      const allSections = document.querySelectorAll(".rooms-main");
+      allSections.forEach((el) => {
+        if (targetSectionId && el.id === targetSectionId) {
+          if (el.style.display !== targetDisplay) el.style.display = targetDisplay;
+        } else {
+          if (el.style.display !== "none") el.style.display = "none";
+        }
+      });
+
+      const lobbyContent = document.querySelector(".lobby-content");
+      if (lobbyContent) lobbyContent.scrollTop = 0;
     };
     FriendsManager.setNavActive = setNavActive;
 
@@ -103,28 +133,30 @@ class FriendsManager {
     if (Utils.$("nav-library"))
       Utils.$("nav-library").onclick = () => {
         setNavActive("nav-library");
-        if (window.LibraryManager) window.LibraryManager.renderGrid();
+        requestAnimationFrame(() => {
+          if (window.LibraryManager) window.LibraryManager.renderGrid();
+        });
       };
     if (Utils.$("nav-catalog"))
-      Utils.$("nav-catalog").onclick = async () => {
-        const uid = AppState.currentUser?.uid;
-        let profile = uid ? AppState.usersCache.get(uid) : null;
-        if (uid && !profile && window.ProfileManager) {
-          profile = await ProfileManager.loadUser(uid);
-        }
+      Utils.$("nav-catalog").onclick = () => {
         setNavActive("nav-catalog");
-        if (window.CatalogStore) CatalogStore.renderCatalog();
-        else if (window.CatalogManager) CatalogManager.renderCatalog();
+        requestAnimationFrame(() => {
+          if (window.CatalogManager) CatalogManager.renderCatalog();
+        });
       };
     if (Utils.$("nav-shop"))
       Utils.$("nav-shop").onclick = () => {
         setNavActive("nav-shop");
-        window.ShopController?.loadShop();
+        requestAnimationFrame(() => {
+          window.ShopController?.loadShop();
+        });
       };
     if (Utils.$("nav-leaderboard"))
       Utils.$("nav-leaderboard").onclick = () => {
         setNavActive("nav-leaderboard");
-        if (window.loadLeaderboard) window.loadLeaderboard();
+        requestAnimationFrame(() => {
+          if (window.loadLeaderboard) window.loadLeaderboard();
+        });
       };
     
     if (Utils.$("nav-settings"))
@@ -134,12 +166,16 @@ class FriendsManager {
     if (Utils.$("nav-premium"))
       Utils.$("nav-premium").onclick = () => {
         setNavActive("nav-premium");
-        if (window.PremiumManager) PremiumManager.renderPremiumSection();
+        requestAnimationFrame(() => {
+          if (window.PremiumManager) PremiumManager.renderPremiumSection();
+        });
       };
     if (Utils.$("nav-mystery"))
       Utils.$("nav-mystery").onclick = () => {
         setNavActive("nav-mystery");
-        window.MysteryEventManager?.render();
+        requestAnimationFrame(() => {
+          window.MysteryEventManager?.render();
+        });
       };
     if (Utils.$("nav-support"))
       Utils.$("nav-support").onclick = () => {
