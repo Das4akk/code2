@@ -8839,104 +8839,117 @@
         75% { opacity: 1; transform: translate(-50%, -18px) scale(1); }
         100% { opacity: 0; transform: translate(-50%, -30px) scale(0.85); }
       }
-      .room-lumen-hud-overlay {
-        position: absolute;
-        top: 24px;
-        right: 24px;
-        z-index: 95;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        pointer-events: none;
-      }
-      .room-lumen-reward-toast {
-        position: relative;
-        overflow: hidden;
-        display: flex;
+      /* Sleek Player Lumen Reward Toast (Matches Player Chat Overlay) */
+      .room-player-lumen-toast {
+        background: rgba(0, 0, 0, 0.68);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 215, 0, 0.35);
+        border-radius: 12px;
+        padding: 6px 12px;
+        display: inline-flex;
         align-items: center;
-        gap: 14px;
-        padding: 12px 18px 14px;
-        background: linear-gradient(135deg, rgba(22, 22, 28, 0.96), rgba(12, 12, 16, 0.98));
-        border: 1px solid rgba(255, 215, 0, 0.38);
-        border-radius: 18px;
-        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8), 0 0 25px rgba(255, 215, 0, 0.22);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        animation: roomToastSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), filter 0.4s ease;
-        min-width: 270px;
-        max-width: 360px;
+        gap: 8px;
+        color: #fff;
+        font-size: 13px;
+        animation: chatOverlayFade 4s forwards;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+        pointer-events: none;
+        width: fit-content;
+        max-width: 90%;
+        align-self: center;
+        margin: 0 auto;
       }
-      .room-lumen-reward-toast.fade-out {
-        opacity: 0;
-        transform: translateY(-16px) scale(0.92);
-        filter: blur(6px);
-      }
-      @keyframes roomToastSlideIn {
-        0% { opacity: 0; transform: translateY(-20px) scale(0.92); }
-        100% { opacity: 1; transform: translateY(0) scale(1); }
-      }
-      .room-lumen-reward-toast .reward-icon-wrap {
-        width: 44px;
-        height: 44px;
-        border-radius: 14px;
-        background: radial-gradient(circle, rgba(255, 215, 0, 0.22), rgba(255, 215, 0, 0.04));
-        border: 1px solid rgba(255, 215, 0, 0.45);
+      .room-player-lumen-toast .toast-sparkle-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: rgba(255, 215, 0, 0.15);
+        border: 1px solid rgba(255, 215, 0, 0.35);
         display: flex;
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
-        box-shadow: 0 4px 14px rgba(255, 215, 0, 0.25);
+        overflow: hidden;
       }
-      .room-lumen-reward-toast .reward-icon-wrap img {
-        width: 28px;
-        height: 28px;
+      .room-player-lumen-toast .toast-sparkle-icon img {
+        width: 18px;
+        height: 18px;
         object-fit: contain;
-        filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.7));
       }
-      .room-lumen-reward-toast .reward-info {
+      .room-player-lumen-toast .toast-text-col {
         display: flex;
         flex-direction: column;
-        gap: 2px;
-        min-width: 0;
-        flex: 1;
+        overflow: hidden;
+        line-height: 1.25;
       }
-      .room-lumen-reward-toast .reward-tag {
-        font-size: 10px;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: #ffd700;
-      }
-      .room-lumen-reward-toast .reward-amount {
-        font-size: 16px;
-        font-weight: 900;
-        color: #ffffff;
-        letter-spacing: -0.3px;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-      }
-      .room-lumen-reward-toast .reward-reason {
+      .room-player-lumen-toast .toast-lumen-amount {
         font-size: 11.5px;
-        color: rgba(255, 255, 255, 0.65);
+        font-weight: 700;
+        color: #ffd700;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .room-player-lumen-toast .toast-lumen-desc {
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.8);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        max-width: 250px;
       }
-      .room-lumen-reward-toast .reward-progress-bar {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        height: 2.5px;
-        width: 100%;
-        background: linear-gradient(90deg, #ffd700, #f59e0b);
-        border-radius: 0 0 18px 18px;
-        animation: toastProgressLinear 4s linear forwards;
+
+      /* Report Profile Modal & Categories */
+      .report-category-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 14px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        user-select: none;
       }
-      @keyframes toastProgressLinear {
-        from { width: 100%; }
-        to { width: 0%; }
+      .report-category-item:hover {
+        background: rgba(255, 255, 255, 0.07);
+        border-color: rgba(255, 255, 255, 0.2);
+        transform: translateY(-1px);
+      }
+      .report-category-item.selected {
+        background: rgba(255, 75, 75, 0.14) !important;
+        border-color: #ff4757 !important;
+        box-shadow: 0 0 16px rgba(255, 75, 75, 0.25);
+      }
+      .report-cat-icon {
+        font-size: 20px;
+        flex-shrink: 0;
+      }
+      .report-cat-text {
+        flex: 1;
+        min-width: 0;
+      }
+      .report-cat-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: #ffffff;
+        line-height: 1.25;
+      }
+      .report-cat-desc {
+        font-size: 11px;
+        color: var(--text-muted);
+        line-height: 1.2;
+        margin-top: 2px;
+      }
+      .report-user-card-pill:hover {
+        background: rgba(255, 255, 255, 0.1) !important;
+        transform: translateY(-1px);
+      }
+      .report-user-card-pill.target:hover {
+        background: rgba(255, 75, 75, 0.15) !important;
+        border-color: rgba(255, 75, 75, 0.5) !important;
       }
       .lumens-modal-nav-container {
         display: flex;
@@ -9944,6 +9957,108 @@
             line-height: 1.6;
             margin: 0;
           "></p>
+      </div>
+    </div>
+
+    <!-- Модальное окно жалобы на профиль -->
+    <div class="modal" id="modal-report-profile" style="z-index: 100005;">
+      <div class="modal-content glass-panel" style="max-width: 480px; width: 95%; max-height: 90vh; overflow-y: auto; padding: 24px; position: relative; border: 1px solid rgba(255, 75, 75, 0.25); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(255, 75, 75, 0.15);">
+        <button class="btn-close-modal" id="btn-close-report-profile-modal" style="position: absolute; top: 16px; right: 16px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); color: #fff; width: 32px; height: 32px; border-radius: 50%; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.2)';" onmouseout="this.style.background='rgba(255,255,255,0.08)';">
+          ✕
+        </button>
+
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+          <div style="width: 42px; height: 42px; border-radius: 12px; background: rgba(255, 75, 75, 0.15); border: 1px solid rgba(255, 75, 75, 0.35); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Triangular%20Flag.webp" style="width: 24px; height: 24px; object-fit: contain;" alt="🚩">
+          </div>
+          <div>
+            <h2 style="font-size: 18px; margin: 0; font-weight: 800; color: #fff;">Пожаловаться на профиль</h2>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Обращение в службу поддержки и модерации</div>
+          </div>
+        </div>
+
+        <!-- Target user banner -->
+        <div id="report-target-user-card" style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px; margin-bottom: 20px;">
+          <div id="report-target-avatar-preview" style="width: 38px; height: 38px; border-radius: 50%; overflow: visible; flex-shrink: 0; background: #111; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.1);">
+            ?
+          </div>
+          <div style="overflow: hidden; flex: 1;">
+            <div id="report-target-name-preview" style="font-size: 14px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Пользователь</div>
+            <div id="report-target-username-preview" style="font-size: 12px; color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">@username</div>
+          </div>
+        </div>
+
+        <!-- Step 1: Category Selection -->
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-size: 11px; font-weight: 800; color: rgba(255,255,255,0.9); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;">
+            1. Выберите причину нарушения:
+          </label>
+          <div id="report-categories-list" style="display: flex; flex-direction: column; gap: 8px;">
+            <div class="report-category-item" data-category="Неприемлемый аватар или баннер">
+              <span class="report-cat-icon">🔞</span>
+              <div class="report-cat-text">
+                <div class="report-cat-title">Неприемлемый аватар или баннер</div>
+                <div class="report-cat-desc">18+, эротика, насилие, шок-контент</div>
+              </div>
+            </div>
+            <div class="report-category-item" data-category="Оскорбительный никнейм или био">
+              <span class="report-cat-icon">🤬</span>
+              <div class="report-cat-text">
+                <div class="report-cat-title">Оскорбительный никнейм или био</div>
+                <div class="report-cat-desc">Маты, оскорбления, травля, разжигание розни</div>
+              </div>
+            </div>
+            <div class="report-category-item" data-category="Спам, реклама или мошенничество">
+              <span class="report-cat-icon">📢</span>
+              <div class="report-cat-text">
+                <div class="report-cat-title">Спам, реклама или мошенничество</div>
+                <div class="report-cat-desc">Ссылки на фишинг, реклама сторонних сервисов</div>
+              </div>
+            </div>
+            <div class="report-category-item" data-category="Разжигание ненависти или токсичность">
+              <span class="report-cat-icon">⚠️</span>
+              <div class="report-cat-text">
+                <div class="report-cat-title">Разжигание ненависти или токсичность</div>
+                <div class="report-cat-desc">Дискриминация, угрозы, экстремизм</div>
+              </div>
+            </div>
+            <div class="report-category-item" data-category="Выдача себя за другое лицо">
+              <span class="report-cat-icon">🎭</span>
+              <div class="report-cat-text">
+                <div class="report-cat-title">Выдача себя за другое лицо</div>
+                <div class="report-cat-desc">Фейковый аккаунт, кража чужой личности</div>
+              </div>
+            </div>
+            <div class="report-category-item" data-category="Другое нарушение оформления">
+              <span class="report-cat-icon">📝</span>
+              <div class="report-cat-text">
+                <div class="report-cat-title">Другое нарушение оформления</div>
+                <div class="report-cat-desc">Иные нарушения правил оформления профиля</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2: Comment (revealed smoothly after category selected) -->
+        <div id="report-step-comment-wrap" style="display: none; margin-bottom: 20px;">
+          <label style="display: block; font-size: 11px; font-weight: 800; color: rgba(255,255,255,0.9); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
+            2. Опишите конкретно, в чём дело:
+          </label>
+          <textarea id="report-profile-comment" placeholder="Опишите подробно, что именно нарушает данный профиль, чтобы поддержка быстрее разобралась..." style="width: 100%; height: 95px; padding: 12px 14px; border-radius: 12px; background: rgba(0, 0, 0, 0.45); border: 1px solid rgba(255, 255, 255, 0.12); color: #fff; font-size: 13px; line-height: 1.45; box-sizing: border-box; resize: vertical; outline: none; transition: border-color 0.2s;"></textarea>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 5px; text-align: right;" id="report-profile-comment-hint">
+            Минимум 5 символов
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div style="display: flex; gap: 12px; justify-content: flex-end; align-items: center;">
+          <button class="secondary-btn btn-close-modal" id="btn-cancel-profile-report" style="padding: 10px 18px; border-radius: 10px; font-size: 13px;">
+            Отмена
+          </button>
+          <button class="primary-btn" id="btn-submit-profile-report" style="background: #ff4757; color: #fff; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 700; font-size: 13px; display: inline-flex; align-items: center; gap: 8px; cursor: not-allowed; transition: all 0.2s; opacity: 0.5;" disabled>
+            <span>Отправить жалобу</span>
+          </button>
+        </div>
       </div>
     </div>
 

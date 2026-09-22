@@ -3380,14 +3380,22 @@ class Utils {
   }
 
   static formatDuration(totalSeconds) {
-    const s = Math.max(0, Math.floor(Number(totalSeconds) || 0));
+    let s = Math.max(0, Math.floor(Number(totalSeconds) || 0));
+    if (s > 86400000) {
+      s = Math.floor(s / 1000);
+    }
+    if (s === 0) return "0 мин.";
     if (s < 60) return `${s} сек.`;
     const m = Math.floor(s / 60);
     if (m < 60) return `${m} мин.`;
     const h = Math.floor(m / 60);
     const remM = m % 60;
-    if (remM === 0) return `${h} ч.`;
-    return `${h} ч. ${remM} мин.`;
+    if (h < 24) {
+      return remM === 0 ? `${h} ч.` : `${h} ч. ${remM} мин.`;
+    }
+    const days = Math.floor(h / 24);
+    const remH = h % 24;
+    return remH > 0 ? `${days} д. ${remH} ч.` : `${days} д.`;
   }
 
   static getDistributedHeartLeft(x) {
@@ -3915,18 +3923,6 @@ class Utils {
       clearTimeout(timeout);
       timeout = setTimeout(() => func(...args), wait);
     };
-  }
-
-  static formatDuration(ms = 0) {
-    const totalMin = Math.max(0, Math.floor(Number(ms) / 60000));
-    if (totalMin < 1) return "меньше минуты";
-    if (totalMin < 60) return `${totalMin} мин`;
-    const hours = Math.floor(totalMin / 60);
-    const mins = totalMin % 60;
-    if (hours < 24) return mins ? `${hours} ч ${mins} мин` : `${hours} ч`;
-    const days = Math.floor(hours / 24);
-    const remH = hours % 24;
-    return remH ? `${days} д ${remH} ч` : `${days} д`;
   }
 
   // [ADD] File to Base64 (Compressed for performance/DB)
@@ -5510,8 +5506,8 @@ class VkPlayerManager {
       setQuality: (q) => this.setQuality(q),
       getState: () => this.getState(),
       getCurrentTime: () => this.getCurrentTime(),
+      getDuration: () => this.getDuration(),
     };
-
     return Promise.resolve(this.player);
   }
 
@@ -5560,14 +5556,23 @@ class VkPlayerManager {
     return this.currentTime || 0;
   }
 
+  static getDuration() {
+    return this.duration || 0;
+  }
+
   static getState() {
     return this.state;
   }
 }
+window.VkPlayerManager = VkPlayerManager;
 
 class VimeoPlayerManager {
   static player = null;
   static iframe = null;
+  static currentTime = 0;
+  static duration = 0;
+  static state = "unstarted";
+  static onStateChange = null;
 
   static destroy() {
     if (this.iframe) {
@@ -5575,13 +5580,32 @@ class VimeoPlayerManager {
       this.iframe = null;
     }
     this.player = null;
+    this.currentTime = 0;
+    this.duration = 0;
+    this.state = "unstarted";
+    this.onStateChange = null;
     window.removeEventListener("message", this.handleMessage);
   }
 
   static handleMessage = (e) => {
     try {
       let data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
-      if (data.event === "playProgress") this.currentTime = data.data.seconds;
+      if (!data || typeof data !== "object") return;
+      if (data.event === "playProgress") {
+        if (data.data) {
+          if (typeof data.data.seconds === "number") this.currentTime = data.data.seconds;
+          if (typeof data.data.duration === "number") this.duration = data.data.duration;
+        }
+      } else if (data.event === "play") {
+        this.state = "playing";
+        if (this.onStateChange) this.onStateChange("playing", this.currentTime);
+      } else if (data.event === "pause") {
+        this.state = "paused";
+        if (this.onStateChange) this.onStateChange("paused", this.currentTime);
+      } else if (data.event === "finish") {
+        this.state = "ended";
+        if (this.onStateChange) this.onStateChange("ended", this.currentTime);
+      }
     } catch {}
   };
 
@@ -5608,13 +5632,21 @@ class VimeoPlayerManager {
           );
         }
       },
+      getState: () => this.getState(),
+      getCurrentTime: () => this.getCurrentTime(),
+      getDuration: () => this.getDuration(),
+      play: () => this.play(),
+      pause: () => this.pause(),
+      seek: (time) => this.seek(time),
     };
     return Promise.resolve(this.player);
   }
   static play() {
+    this.state = "playing";
     if (this.player) this.player.postMessage("play");
   }
   static pause() {
+    this.state = "paused";
     if (this.player) this.player.postMessage("pause");
   }
   static seek(time) {
@@ -5623,10 +5655,14 @@ class VimeoPlayerManager {
   static getCurrentTime() {
     return this.currentTime || 0;
   }
+  static getDuration() {
+    return this.duration || 0;
+  }
   static getState() {
-    return "unknown";
+    return this.state;
   }
 }
+window.VimeoPlayerManager = VimeoPlayerManager;
 
 class TwitchPlayerManager {
   static player = null;
@@ -5643,11 +5679,16 @@ class TwitchPlayerManager {
     return Promise.resolve(this.player);
   }
 }
+window.TwitchPlayerManager = TwitchPlayerManager;
 
 class RutubePlayerManager {
   static player = null;
   static apiReady = false;
   static iframe = null;
+  static currentTime = 0;
+  static duration = 0;
+  static state = "unstarted";
+  static onStateChange = null;
 
   static destroy() {
     if (this.iframe) {
@@ -5655,16 +5696,49 @@ class RutubePlayerManager {
       this.iframe = null;
     }
     this.player = null;
+    this.currentTime = 0;
+    this.duration = 0;
+    this.state = "unstarted";
+    this.onStateChange = null;
     window.removeEventListener("message", this.handleMessage);
   }
 
   static handleMessage = (e) => {
     try {
-      const data = JSON.parse(e.data);
-      if (data.type === "player:currentTime") {
-        this.currentTime = data.data.time;
-      } else if (data.type === "player:stateChange") {
-        if (this.onStateChange) this.onStateChange(data.data.state);
+      let data = e.data;
+      if (typeof data === "string") {
+        try {
+          data = JSON.parse(data);
+        } catch {
+          return;
+        }
+      }
+      if (!data || typeof data !== "object") return;
+
+      const type = data.type || data.event;
+      const payload = data.data || {};
+
+      if (type === "player:currentTime") {
+        if (typeof payload.time === "number") {
+          this.currentTime = payload.time;
+        }
+        if (typeof payload.duration === "number") {
+          this.duration = payload.duration;
+        }
+      } else if (type === "player:duration" || type === "player:changeDuration") {
+        if (typeof payload.duration === "number") {
+          this.duration = payload.duration;
+        } else if (typeof payload.time === "number") {
+          this.duration = payload.time;
+        }
+      } else if (type === "player:stateChange" || type === "player:changeState") {
+        const rawState = payload.state || data.state;
+        let normState = rawState;
+        if (rawState === "playing" || rawState === "play") normState = "playing";
+        else if (rawState === "paused" || rawState === "pause") normState = "paused";
+        else if (rawState === "stopped" || rawState === "ended") normState = "ended";
+        this.state = normState;
+        if (this.onStateChange) this.onStateChange(normState, this.currentTime);
       }
     } catch {}
   };
@@ -5696,6 +5770,12 @@ class RutubePlayerManager {
           );
         }
       },
+      getState: () => this.getState(),
+      getCurrentTime: () => this.getCurrentTime(),
+      getDuration: () => this.getDuration(),
+      play: () => this.play(),
+      pause: () => this.pause(),
+      seek: (time) => this.seek(time),
     };
 
     return Promise.resolve(this.player);
@@ -5710,10 +5790,11 @@ class RutubePlayerManager {
   }
 
   static getState() {
-    // Rutube has limited exposed state via postMessage unless tracked
-    // but we track onStateChange in handleMessage? Actually we just pass it.
-    // For simplicity, return null if unknown.
-    return null;
+    return this.state || "unstarted";
+  }
+
+  static getDuration() {
+    return this.duration || 0;
   }
 
   static seek(time) {
@@ -5729,6 +5810,7 @@ class RutubePlayerManager {
       this.player.postMessage("player:setVolume", { volume: vol });
   }
 }
+window.RutubePlayerManager = RutubePlayerManager;
 
 class YouTubePlayerManager {
   static player = null;
@@ -5837,8 +5919,16 @@ class YouTubePlayerManager {
     if (!this.player || !this.playerReady || !this.player.getPlayerState)
       return null;
     const state = this.player.getPlayerState();
-    if (state === window.YT.PlayerState.PLAYING) return "playing";
-    if (state === window.YT.PlayerState.PAUSED) return "paused";
+    if (window.YT && window.YT.PlayerState) {
+      if (state === window.YT.PlayerState.PLAYING) return "playing";
+      if (state === window.YT.PlayerState.PAUSED) return "paused";
+      if (state === window.YT.PlayerState.ENDED) return "ended";
+      if (state === window.YT.PlayerState.BUFFERING) return "buffering";
+    }
+    if (state === 1) return "playing";
+    if (state === 2) return "paused";
+    if (state === 0) return "ended";
+    if (state === 3) return "buffering";
     return null;
   }
   static seek(time) {
@@ -5848,6 +5938,11 @@ class YouTubePlayerManager {
   static getCurrentTime() {
     return this.player && this.playerReady && this.player.getCurrentTime
       ? this.player.getCurrentTime()
+      : 0;
+  }
+  static getDuration() {
+    return this.player && this.playerReady && typeof this.player.getDuration === "function"
+      ? (this.player.getDuration() || 0)
       : 0;
   }
   static destroy() {
@@ -5865,6 +5960,7 @@ class YouTubePlayerManager {
     }
   }
 }
+window.YouTubePlayerManager = YouTubePlayerManager;
 
 class VideoPlaybackManager {
   static hlsInstance = null;
@@ -6160,6 +6256,18 @@ class VideoPlaybackManager {
               time: Manager.getCurrentTime(),
               ts: Date.now(),
             });
+            setTimeout(() => (AppState.ignoreVideoEvents = false), 1500);
+          } else if (state === "ended" || (isYT && (state === 0 || (window.YT && state === window.YT.PlayerState?.ENDED)))) {
+            if (AppState.ignoreVideoEvents || window._isSyncingVideo) return;
+            if (!RoomManager.hasPerm("player")) return;
+            AppState.ignoreVideoEvents = true;
+            const endDuration = (Manager.getDuration && Manager.getDuration()) || Manager.getCurrentTime();
+            set(ref(db, `rooms/${AppState.currentRoomId}/sync`), {
+              type: "pause",
+              state: "paused",
+              time: endDuration,
+              ts: Date.now(),
+            }).catch(() => {});
             setTimeout(() => (AppState.ignoreVideoEvents = false), 1500);
           }
         };
@@ -8858,6 +8966,7 @@ class BadgeManager {
     });
   }
 }
+window.BadgeManager = BadgeManager;
 
 class AuthManager {
   static init() {
@@ -10344,47 +10453,39 @@ class LumenManager {
     }, 1500);
   }
 
-  // Floating HUD toast inside active room
+  // Floating HUD toast inside active room (Matches Player Chat Overlay)
   static showRoomHudReward(amount, reason = "Просмотр видео") {
     const roomScreen = Utils.$("room-screen");
     if (!roomScreen || !roomScreen.classList.contains("active")) return;
 
-    let container = Utils.$("room-lumen-hud-overlay");
+    let container = Utils.$("chat-overlay-container");
     if (!container) {
+      const targetParent = Utils.$("room-video-container") || roomScreen;
       container = document.createElement("div");
-      container.id = "room-lumen-hud-overlay";
-      container.className = "room-lumen-hud-overlay";
-      const targetParent = Utils.$("room-screen");
-      if (targetParent) targetParent.appendChild(container);
+      container.id = "chat-overlay-container";
+      container.style.cssText = "position: absolute; top: 15%; left: 50%; transform: translateX(-50%); width: 80%; pointer-events: none; z-index: 10; display: flex; flex-direction: column; gap: 8px; align-items: center;";
+      targetParent.appendChild(container);
     }
 
     const item = document.createElement("div");
-    item.className = "room-lumen-reward-toast";
+    item.className = "room-player-lumen-toast";
     const amountStr = Math.abs(amount).toLocaleString();
     const absAmt = Math.abs(amount);
     const suffix = absAmt === 1 ? "" : (absAmt % 10 >= 2 && absAmt % 10 <= 4 && (absAmt < 10 || absAmt > 20)) ? "а" : "ов";
     item.innerHTML = `
-      <div class="reward-icon-wrap">
+      <div class="toast-sparkle-icon">
         <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" alt="✨">
       </div>
-      <div class="reward-info">
-        <div class="reward-tag">Награда за просмотр</div>
-        <div class="reward-amount">
-          <span>+${amountStr} Люмен${suffix}</span>
-          <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" class="inline-sparkles-icon" alt="✨">
-        </div>
-        <div class="reward-reason">${Utils.escapeHtml(reason)}</div>
+      <div class="toast-text-col">
+        <span class="toast-lumen-amount">+${amountStr} Люмен${suffix}</span>
+        <span class="toast-lumen-desc">${Utils.escapeHtml(reason)}</span>
       </div>
-      <div class="reward-progress-bar"></div>
     `;
     container.appendChild(item);
 
     setTimeout(() => {
-      item.classList.add("fade-out");
-      setTimeout(() => {
-        if (item.parentNode) item.parentNode.removeChild(item);
-      }, 400);
-    }, 3900);
+      if (item.parentNode) item.parentNode.removeChild(item);
+    }, 4000);
   }
 
   // Central balance updater
@@ -10396,6 +10497,7 @@ class LumenManager {
       animate = true,
       showFloater = true,
       saveTx = false,
+      saveDb = false,
       txType = null,
       txIcon = "sparkles"
     } = options;
@@ -10408,6 +10510,17 @@ class LumenManager {
 
     if (cached) {
       cached.lumens = numLumens;
+    }
+
+    if (saveDb && uid) {
+      try {
+        const profRef = ref(db, `users/${uid}/profile`);
+        update(profRef, { lumens: numLumens }).catch((err) => {
+          console.error("[LumenManager] Failed to persist lumens balance in Firebase:", err);
+        });
+      } catch (err) {
+        console.error("[LumenManager] Exception saving lumens balance:", err);
+      }
     }
 
     const targets = [
@@ -12821,7 +12934,7 @@ class ProfileManager {
           } else {
              reportBtn.style.display = "inline-flex";
              reportBtn.onclick = () => {
-                // Пока что кнопка ни за что не отвечает
+                ReportManager.openProfileReportModal(targetUid);
              };
           }
        }
@@ -13109,6 +13222,10 @@ class ProfileManager {
         updateLevelUI(Number(val.xp) || 0);
         if (lumensCount) {
           lumensCount.innerText = (Number(val.lumens) || 0).toLocaleString();
+        }
+        const statRt = document.getElementById("view-stat-room-time");
+        if (statRt && val.timeSpentInRooms !== undefined) {
+          statRt.innerText = Utils.formatDuration(val.timeSpentInRooms || 0);
         }
       }
     });
@@ -15147,6 +15264,305 @@ window.acceptRoomInvite = async (roomId) => {
 };
 
 // ============================================================================
+// 4.5. СИСТЕМА ЖАЛОБ НА ПРОФИЛИ ПОЛЬЗОВАТЕЛЕЙ
+// ============================================================================
+
+class ReportManager {
+  static currentTargetUid = null;
+  static selectedCategory = null;
+  static _initialized = false;
+
+  static init() {
+    if (this._initialized) return;
+    this._initialized = true;
+
+    const modal = Utils.$("modal-report-profile");
+    if (!modal) return;
+
+    // Close buttons
+    const closeBtns = modal.querySelectorAll(
+      ".btn-close-modal, #btn-close-report-profile-modal, #btn-cancel-profile-report"
+    );
+    closeBtns.forEach((btn) => {
+      btn.onclick = () => this.closeModal();
+    });
+
+    // Category click handling
+    const categoryItems = modal.querySelectorAll(".report-category-item");
+    categoryItems.forEach((item) => {
+      item.onclick = () => {
+        const cat = item.dataset.category;
+        this.selectCategory(cat, item);
+      };
+    });
+
+    // Comment input handling
+    const commentInput = Utils.$("report-profile-comment");
+    if (commentInput) {
+      commentInput.oninput = () => {
+        this.validateForm();
+      };
+    }
+
+    // Submit button
+    const submitBtn = Utils.$("btn-submit-profile-report");
+    if (submitBtn) {
+      submitBtn.onclick = () => {
+        this.submitReport();
+      };
+    }
+  }
+
+  static selectCategory(category, element) {
+    this.selectedCategory = category;
+
+    const modal = Utils.$("modal-report-profile");
+    if (!modal) return;
+
+    modal.querySelectorAll(".report-category-item").forEach((el) => {
+      el.classList.remove("selected");
+    });
+    if (element) {
+      element.classList.add("selected");
+    }
+
+    const commentWrap = Utils.$("report-step-comment-wrap");
+    if (commentWrap) {
+      commentWrap.style.display = "block";
+      commentWrap.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+
+    const commentInput = Utils.$("report-profile-comment");
+    if (commentInput) {
+      commentInput.focus();
+    }
+
+    this.validateForm();
+  }
+
+  static validateForm() {
+    const submitBtn = Utils.$("btn-submit-profile-report");
+    if (!submitBtn) return false;
+
+    const commentInput = Utils.$("report-profile-comment");
+    const commentVal = commentInput ? commentInput.value.trim() : "";
+    const isValid = Boolean(this.selectedCategory && commentVal.length >= 5);
+
+    submitBtn.disabled = !isValid;
+    if (isValid) {
+      submitBtn.style.opacity = "1";
+      submitBtn.style.cursor = "pointer";
+    } else {
+      submitBtn.style.opacity = "0.5";
+      submitBtn.style.cursor = "not-allowed";
+    }
+
+    const hint = Utils.$("report-profile-comment-hint");
+    if (hint) {
+      if (commentVal.length === 0) {
+        hint.textContent = "Минимум 5 символов";
+        hint.style.color = "var(--text-muted)";
+      } else if (commentVal.length < 5) {
+        hint.textContent = `Ещё ${5 - commentVal.length} симв.`;
+        hint.style.color = "#ff6b81";
+      } else {
+        hint.textContent = `Готово (${commentVal.length} симв.)`;
+        hint.style.color = "var(--accent)";
+      }
+    }
+
+    return isValid;
+  }
+
+  static async openProfileReportModal(rawTargetUid) {
+    this.init();
+
+    if (!AppState.currentUser) {
+      Utils.toast("Войдите в аккаунт, чтобы отправить жалобу", "warning");
+      return;
+    }
+
+    const reporterUid = AppState.currentUser.uid;
+    const targetUid =
+      typeof rawTargetUid === "object" && rawTargetUid !== null
+        ? rawTargetUid.uid || rawTargetUid.id
+        : rawTargetUid;
+
+    if (!targetUid) {
+      Utils.toast("Не удалось определить профиль пользователя", "error");
+      return;
+    }
+
+    if (reporterUid === targetUid) {
+      Utils.toast("Вы не можете пожаловаться на собственный профиль", "info");
+      return;
+    }
+
+    if (
+      window.SupportSystem &&
+      SupportSystem.BANNED_USERS &&
+      SupportSystem.BANNED_USERS.has(reporterUid)
+    ) {
+      Utils.toast("Вы заблокированы в системе поддержки", "error");
+      return;
+    }
+
+    this.currentTargetUid = targetUid;
+    this.selectedCategory = null;
+
+    // Load target user profile
+    let targetProfile = AppState.usersCache ? AppState.usersCache.get(targetUid) : null;
+    if (!targetProfile) {
+      try {
+        targetProfile = await ProfileManager.loadUser(targetUid);
+      } catch (e) {
+        console.warn("Failed to load target profile for report:", e);
+      }
+    }
+    targetProfile = targetProfile || {};
+
+    // Populate preview card
+    const targetNameEl = Utils.$("report-target-name-preview");
+    const targetUserEl = Utils.$("report-target-username-preview");
+    const targetAvatarEl = Utils.$("report-target-avatar-preview");
+
+    if (targetNameEl) targetNameEl.textContent = targetProfile.name || "Пользователь";
+    if (targetUserEl) targetUserEl.textContent = `@${targetProfile.username || targetUid}`;
+    if (targetAvatarEl) targetAvatarEl.innerHTML = ProfileManager.getAvatarHtml(targetProfile);
+
+    // Reset categories and comment
+    const modal = Utils.$("modal-report-profile");
+    if (modal) {
+      modal
+        .querySelectorAll(".report-category-item")
+        .forEach((el) => el.classList.remove("selected"));
+      const commentWrap = Utils.$("report-step-comment-wrap");
+      if (commentWrap) commentWrap.style.display = "none";
+      const commentInput = Utils.$("report-profile-comment");
+      if (commentInput) commentInput.value = "";
+      this.validateForm();
+      modal.classList.add("active");
+    }
+  }
+
+  static closeModal() {
+    const modal = Utils.$("modal-report-profile");
+    if (modal) {
+      modal.classList.remove("active");
+    }
+    this.currentTargetUid = null;
+    this.selectedCategory = null;
+  }
+
+  static async submitReport() {
+    if (!this.currentTargetUid) return;
+    if (!this.selectedCategory) {
+      Utils.toast("Выберите категорию нарушения", "warning");
+      return;
+    }
+
+    const commentInput = Utils.$("report-profile-comment");
+    const commentVal = commentInput ? commentInput.value.trim() : "";
+    if (commentVal.length < 5) {
+      Utils.toast("Пожалуйста, опишите конкретно проблему (не менее 5 символов)", "warning");
+      if (commentInput) commentInput.focus();
+      return;
+    }
+
+    const reporterUid = AppState.currentUser?.uid;
+    if (!reporterUid) {
+      Utils.toast("Необходимо авторизоваться", "error");
+      return;
+    }
+
+    const targetUid = this.currentTargetUid;
+    const submitBtn = Utils.$("btn-submit-profile-report");
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<span>Отправка...</span>`;
+    }
+
+    try {
+      const reporterProfile = (AppState.usersCache ? AppState.usersCache.get(reporterUid) : null) || {};
+      let targetProfile = AppState.usersCache ? AppState.usersCache.get(targetUid) : null;
+      if (!targetProfile) {
+        targetProfile = await ProfileManager.loadUser(targetUid);
+      }
+      targetProfile = targetProfile || {};
+
+      const reporterName = reporterProfile.name || "Пользователь";
+      const reporterUsername = reporterProfile.username || reporterUid;
+      const targetName = targetProfile.name || "Пользователь";
+      const targetUsername = targetProfile.username || targetUid;
+
+      const ticketsRef = ref(db, "support_tickets");
+      const newTicketRef = push(ticketsRef);
+      const ticketId = newTicketRef.key;
+      const ts = Date.now();
+
+      const ticketPayload = {
+        title: `Жалоба на профиль @${targetUsername}`,
+        category: "Жалоба",
+        priority: "Высокий",
+        status: "open",
+        creatorUid: reporterUid,
+        reporterUid: reporterUid,
+        targetUid: targetUid,
+        reportCategory: this.selectedCategory,
+        problemDescription: commentVal,
+        createdAt: ts,
+        lastActivity: ts,
+        lastSender: reporterUid,
+        isReport: true,
+        reportType: "profile",
+        reporterInfo: {
+          uid: reporterUid,
+          name: reporterName,
+          username: reporterUsername,
+          avatar: reporterProfile.avatar || ""
+        },
+        targetInfo: {
+          uid: targetUid,
+          name: targetName,
+          username: targetUsername,
+          avatar: targetProfile.avatar || ""
+        }
+      };
+
+      await set(newTicketRef, ticketPayload);
+
+      // Add the opening message to support_tickets/${ticketId}/messages
+      const messagesRef = ref(db, `support_tickets/${ticketId}/messages`);
+      await push(messagesRef, {
+        text: `🚩 Жалоба на содержание профиля пользователя ${targetName} (@${targetUsername})\n\nКатегория: ${this.selectedCategory}\n\nОписание проблемы от заявителя:\n${commentVal}`,
+        uid: reporterUid,
+        name: reporterName,
+        username: reporterUsername,
+        avatar: reporterProfile.avatar || "",
+        isAdmin: false,
+        timestamp: ts,
+        isReportNotice: true,
+        reporterUid: reporterUid,
+        targetUid: targetUid,
+        reportCategory: this.selectedCategory
+      });
+
+      this.closeModal();
+      Utils.toast("Жалоба на профиль успешно отправлена в поддержку!", "success");
+    } catch (err) {
+      console.error("Error creating report ticket:", err);
+      Utils.toast("Ошибка при отправке жалобы. Попробуйте снова.", "error");
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `<span>Отправить жалобу</span>`;
+      }
+    }
+  }
+}
+window.ReportManager = ReportManager;
+
+// ============================================================================
 // 5. АДМИН-ПАНЕЛЬ И ГЛОБАЛЬНОЕ УПРАВЛЕНИЕ (С РОЛЯМИ)
 // ============================================================================
 
@@ -15432,16 +15848,23 @@ class SupportSystem {
               ? `<div style="width:8px;height:8px;border-radius:50%;background:#ff4757;margin-left:8px;flex-shrink:0;box-shadow:0 0 8px #ff4757;" title="Новые сообщения"></div>`
               : "";
 
+          const isReportTicket = Boolean(t.isReport || t.targetUid || t.reportType === "profile" || t.category === "Жалоба");
           const categoryEmoji =
             t.category === "Баг"
               ? '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Bug.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">'
               : t.category === "Вопрос"
                 ? '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Question%20Mark.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">'
-                : '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">';
+                : isReportTicket
+                  ? '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Triangular%20Flag.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">'
+                  : '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">';
+
+          const reportBadge = isReportTicket
+            ? `<span style="margin-left:6px;font-size:10px;padding:1px 5px;border-radius:4px;background:rgba(255,75,75,0.22);color:#ff6b81;font-weight:600;">Жалоба</span>`
+            : "";
 
           return `
                 <div class="dm-chat-item ${this.activeTicketId === t.id ? "active" : ""}" onclick="SupportSystem.openTicket('${t.id}')">
-                    <div class="dm-chat-avatar" style="background:${isOpen ? "rgba(255, 255, 255, 0.1)" : "rgba(255, 0, 0, 0.1)"}; color:${isOpen ? "#ffffff" : "#ff4444"}; font-size:20px;">
+                    <div class="dm-chat-avatar" style="background:${isReportTicket ? "rgba(255, 75, 75, 0.15)" : isOpen ? "rgba(255, 255, 255, 0.1)" : "rgba(255, 0, 0, 0.1)"}; color:${isReportTicket ? "#ff4757" : isOpen ? "#ffffff" : "#ff4444"}; font-size:20px;">
                         ${categoryEmoji}
                     </div>
                     <div class="dm-chat-info">
@@ -15449,7 +15872,7 @@ class SupportSystem {
                            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${titleStr}${premiumMark}</span>
                            ${unreadDot}
                         </div>
-                        <div class="dm-chat-last-msg" style="display:flex;align-items:center;">${statusText}${isAdmin ? priorityHtml : ""}</div>
+                        <div class="dm-chat-last-msg" style="display:flex;align-items:center;">${statusText}${reportBadge}${isAdmin ? priorityHtml : ""}</div>
                     </div>
                 </div>`;
         })
@@ -15583,12 +16006,110 @@ class SupportSystem {
       }
 
       const opInfo = Utils.$("support-operator-ticket-info");
-      if (isAdmin && opInfo) {
-        opInfo.style.display = "block";
-        Utils.$("support-operator-ticket-desc").textContent =
-          t.problemDescription || "Пользователь не оставил описания";
-      } else if (opInfo) {
-        opInfo.style.display = "none";
+      const isReport = Boolean(
+        t.isReport || t.targetUid || t.reportType === "profile" || t.category === "Жалоба",
+      );
+      if (opInfo) {
+        if (isReport && t.targetUid) {
+          opInfo.style.display = "block";
+          const reporterUid = t.reporterUid || t.creatorUid;
+          const targetUid = t.targetUid;
+          const reporterProf =
+            AppState.usersCache.get(reporterUid) || t.reporterInfo || {};
+          const targetProf =
+            AppState.usersCache.get(targetUid) || t.targetInfo || {};
+
+          opInfo.innerHTML = `
+            <div style="background: rgba(255, 75, 75, 0.08); border: 1px solid rgba(255, 75, 75, 0.25); border-radius: 14px; padding: 14px 16px; margin-bottom: 2px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="font-size: 11px; font-weight: 800; color: #ff4757; text-transform: uppercase; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 6px;">
+                    <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Triangular%20Flag.webp" style="width: 16px; height: 16px;" alt="🚩">
+                    Жалоба на содержание профиля
+                  </span>
+                  <span style="font-size: 11px; padding: 2px 8px; border-radius: 6px; background: rgba(255, 75, 75, 0.18); color: #ff6b81; font-weight: 600;">
+                    ${Utils.escapeHtml(t.reportCategory || "Нарушение")}
+                  </span>
+                </div>
+                ${isAdmin ? `
+                  <div style="display: flex; gap: 6px;">
+                    <button class="secondary-btn" style="padding: 4px 10px; font-size: 11px; border-radius: 6px; border: 1px solid rgba(255, 75, 75, 0.35); color: #ff6b81; cursor: pointer;" onclick="ProfileManager.openViewProfileModal('${Utils.escapeHtml(targetUid)}')">
+                      Профиль нарушителя
+                    </button>
+                    <button class="danger-btn" style="padding: 4px 10px; font-size: 11px; border-radius: 6px; cursor: pointer;" onclick="AdminPanel.loadUserEditor('${Utils.escapeHtml(targetUid)}')">
+                      В панель управления
+                    </button>
+                  </div>
+                ` : ""}
+              </div>
+
+              <!-- Two Clickable Accounts: Reporter and Reported -->
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin-bottom: 12px;">
+                <!-- 1. Отправитель жалобы -->
+                <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 10px 12px;">
+                  <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-bottom: 6px; letter-spacing: 0.4px;">
+                    Отправитель жалобы:
+                  </div>
+                  <div class="report-user-card-pill" style="display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 4px; border-radius: 8px; transition: background 0.15s;" onclick="ProfileManager.openViewProfileModal('${Utils.escapeHtml(reporterUid)}')">
+                    <div style="width: 36px; height: 36px; border-radius: 50%; overflow: visible; flex-shrink: 0; background: #111; border: 1px solid rgba(255,255,255,0.15);">
+                      ${ProfileManager.getAvatarHtml(reporterProf)}
+                    </div>
+                    <div style="overflow: hidden; min-width: 0;">
+                      <div style="font-size: 13px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        ${Utils.escapeHtml(reporterProf.name || "Пользователь")}
+                      </div>
+                      <div style="font-size: 11px; color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        @${Utils.escapeHtml(reporterProf.username || reporterUid)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 2. На кого пожаловались -->
+                <div style="background: rgba(255, 75, 75, 0.07); border: 1px solid rgba(255, 75, 75, 0.28); border-radius: 12px; padding: 10px 12px;">
+                  <div style="font-size: 10px; color: #ff6b81; text-transform: uppercase; font-weight: 700; margin-bottom: 6px; letter-spacing: 0.4px;">
+                    На кого пожаловались:
+                  </div>
+                  <div class="report-user-card-pill target" style="display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 4px; border-radius: 8px; transition: background 0.15s;" onclick="ProfileManager.openViewProfileModal('${Utils.escapeHtml(targetUid)}')">
+                    <div style="width: 36px; height: 36px; border-radius: 50%; overflow: visible; flex-shrink: 0; background: #111; border: 1px solid rgba(255,75,75,0.4);">
+                      ${ProfileManager.getAvatarHtml(targetProf)}
+                    </div>
+                    <div style="overflow: hidden; min-width: 0;">
+                      <div style="font-size: 13px; font-weight: 700; color: #ff6b81; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        ${Utils.escapeHtml(targetProf.name || "Пользователь")}
+                      </div>
+                      <div style="font-size: 11px; color: rgba(255, 255, 255, 0.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        @${Utils.escapeHtml(targetProf.username || targetUid)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Описание сути жалобы -->
+              <div style="background: rgba(0, 0, 0, 0.35); border-radius: 8px; padding: 8px 12px; border: 1px solid rgba(255, 255, 255, 0.06);">
+                <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-bottom: 4px;">
+                  Суть жалобы от пользователя:
+                </div>
+                <div style="font-size: 13px; color: rgba(255, 255, 255, 0.9); line-height: 1.45; white-space: pre-wrap;">
+                  ${Utils.escapeHtml(t.problemDescription || "Описание не указано")}
+                </div>
+              </div>
+            </div>
+          `;
+        } else if (isAdmin) {
+          opInfo.style.display = "block";
+          opInfo.innerHTML = `
+            <div style="font-size: 11px; color: var(--accent); font-weight: bold; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">
+              Сведения о проблеме (Для оператора)
+            </div>
+            <div id="support-operator-ticket-desc" style="font-size: 13px; color: rgba(255, 255, 255, 0.8); white-space: pre-wrap; line-height: 1.4;">
+              ${Utils.escapeHtml(t.problemDescription || "Пользователь не оставил описания")}
+            </div>
+          `;
+        } else {
+          opInfo.style.display = "none";
+        }
       }
 
       // handle blur and lock for closed
@@ -15679,7 +16200,13 @@ class SupportSystem {
 
       const uidsToLoad = new Set();
       if (t.creatorUid) uidsToLoad.add(t.creatorUid);
-      Object.values(msgs).forEach((m) => m.uid && uidsToLoad.add(m.uid));
+      if (t.reporterUid) uidsToLoad.add(t.reporterUid);
+      if (t.targetUid) uidsToLoad.add(t.targetUid);
+      Object.values(msgs).forEach((m) => {
+        if (m.uid) uidsToLoad.add(m.uid);
+        if (m.reporterUid) uidsToLoad.add(m.reporterUid);
+        if (m.targetUid) uidsToLoad.add(m.targetUid);
+      });
 
       await Promise.all(
         Array.from(uidsToLoad)
@@ -15691,6 +16218,73 @@ class SupportSystem {
         .sort((a, b) => a.timestamp - b.timestamp)
         .map((m) => {
           try {
+            const sentDate = new Date(m.timestamp || Date.now());
+            const timeStr =
+              sentDate.getHours().toString().padStart(2, "0") +
+              ":" +
+              sentDate.getMinutes().toString().padStart(2, "0");
+
+            if (m.isReportNotice) {
+              const repUid = m.reporterUid || m.uid || t.reporterUid || t.creatorUid;
+              const tarUid = m.targetUid || t.targetUid;
+              const repUser = (AppState.usersCache ? AppState.usersCache.get(repUid) : null) || t.reporterInfo || {};
+              const tarUser = (AppState.usersCache ? AppState.usersCache.get(tarUid) : null) || t.targetInfo || {};
+              const repName = Utils.escapeHtml(repUser.name || m.name || "Пользователь");
+              const repNick = Utils.escapeHtml(repUser.username || m.username || repUid);
+              const tarName = Utils.escapeHtml(tarUser.name || "Пользователь");
+              const tarNick = Utils.escapeHtml(tarUser.username || tarUid);
+
+              return `
+                <div style="width: 100%; margin: 6px 0 10px; background: linear-gradient(135deg, rgba(255, 75, 75, 0.12), rgba(28, 20, 24, 0.9)); border: 1px solid rgba(255, 75, 75, 0.35); border-radius: 16px; padding: 14px 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.45);">
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid rgba(255, 75, 75, 0.2); padding-bottom: 8px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Triangular%20Flag.webp" style="width: 20px; height: 20px;" alt="🚩">
+                      <span style="font-size: 13px; font-weight: 800; color: #ff6b81;">Жалоба на содержание профиля</span>
+                      <span style="font-size: 10px; padding: 2px 7px; border-radius: 4px; background: rgba(255,75,75,0.25); color: #fff; font-weight:600;">${Utils.escapeHtml(m.reportCategory || t.reportCategory || "Нарушение")}</span>
+                    </div>
+                    <span style="font-size: 11px; color: rgba(255,255,255,0.45);">${timeStr}</span>
+                  </div>
+
+                  <!-- Two Clickable Accounts: Reporter and Reported -->
+                  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 12px;">
+                    <!-- 1. Отправитель жалобы -->
+                    <div style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; padding: 8px 10px;">
+                      <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">
+                        Отправитель жалобы:
+                      </div>
+                      <div class="report-user-card-pill" style="display: flex; align-items: center; gap: 8px; cursor: pointer;" onclick="ProfileManager.openViewProfileModal('${Utils.escapeHtml(repUid)}')">
+                        <div style="width: 32px; height: 32px; border-radius: 50%; overflow: visible; flex-shrink: 0; background: #222; border: 1px solid rgba(255,255,255,0.2);">
+                          ${ProfileManager.getAvatarHtml(repUser)}
+                        </div>
+                        <div style="overflow: hidden; min-width: 0;">
+                          <div style="font-size: 12px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${repName}</div>
+                          <div style="font-size: 11px; color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">@${repNick}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- 2. На кого пожаловались -->
+                    <div style="background: rgba(255, 75, 75, 0.1); border: 1px solid rgba(255, 75, 75, 0.3); border-radius: 10px; padding: 8px 10px;">
+                      <div style="font-size: 10px; color: #ff6b81; text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">
+                        На кого пожаловались:
+                      </div>
+                      <div class="report-user-card-pill target" style="display: flex; align-items: center; gap: 8px; cursor: pointer;" onclick="ProfileManager.openViewProfileModal('${Utils.escapeHtml(tarUid)}')">
+                        <div style="width: 32px; height: 32px; border-radius: 50%; overflow: visible; flex-shrink: 0; background: #222; border: 1px solid rgba(255,75,75,0.4);">
+                          ${ProfileManager.getAvatarHtml(tarUser)}
+                        </div>
+                        <div style="overflow: hidden; min-width: 0;">
+                          <div style="font-size: 12px; font-weight: 700; color: #ff6b81; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${tarName}</div>
+                          <div style="font-size: 11px; color: rgba(255, 255, 255, 0.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">@${tarNick}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style="background: rgba(0, 0, 0, 0.32); border-radius: 8px; padding: 10px 12px; font-size: 13px; line-height: 1.45; color: #fff; white-space: pre-wrap; word-break: break-word;">${Utils.escapeHtml(m.text || "")}</div>
+                </div>
+              `;
+            }
+
             const mUid = m.uid || "unknown";
             const cachedUser = AppState.usersCache
               ? AppState.usersCache.get(mUid)
@@ -15719,12 +16313,6 @@ class SupportSystem {
               ? '<span style="color:orange; font-size:10px; font-weight:bold; letter-spacing:0.5px;">[Внутренняя заметка]</span><br>'
               : "";
             if (m.isInternal && !isAdmin) return "";
-
-            const sentDate = new Date(m.timestamp || Date.now());
-            const timeStr =
-              sentDate.getHours().toString().padStart(2, "0") +
-              ":" +
-              sentDate.getMinutes().toString().padStart(2, "0");
 
             const senderIdentity = m.isAdmin
               ? `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Briefcase.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> ` +
@@ -19112,6 +19700,16 @@ class RoomManager {
   }
 
   static initLobbyListeners() {
+    if (!RoomManager._hasWindowUnloadListener) {
+      RoomManager._hasWindowUnloadListener = true;
+      window.addEventListener("beforeunload", () => {
+        if (AppState.currentRoomId) RoomManager.flushPendingRoomTime();
+      });
+      window.addEventListener("pagehide", () => {
+        if (AppState.currentRoomId) RoomManager.flushPendingRoomTime();
+      });
+    }
+
     const roomsRef = ref(db, "rooms");
     const unsub = onValue(roomsRef, (snap) => {
       const data = snap.val() || {};
@@ -19723,6 +20321,8 @@ class RoomManager {
     AppState.ignoreVideoEvents = true;
     RTCManager.destroy();
     AppState.currentRoomId = roomId;
+    AppState.currentRoomData = roomData;
+    AppState.lastKnownSyncState = null;
     AppState.currentRoomJoinTs = Date.now(); // ФИКС: Запоминаем время входа, чтобы не смотреть старые пасхалки
     // Фикс изначального хоста (только владелец получает тру isHost глобально)
     AppState.isHost = roomData.hostId === AppState.currentUser.uid;
@@ -20035,6 +20635,27 @@ class RoomManager {
             time: vid.currentTime,
             ts: Date.now(),
           });
+      };
+      vid.ontimeupdate = () => {
+        if (vid.duration > 0) {
+          AppState.currentVideoCurrentTime = vid.currentTime;
+          AppState.currentVideoDuration = vid.duration;
+          AppState.currentVideoProgress = Math.min(1, Math.max(0, vid.currentTime / vid.duration));
+        }
+      };
+      vid.onended = () => {
+        if (
+          !AppState.ignoreVideoEvents &&
+          !window._isSyncingVideo &&
+          this.hasPerm("player")
+        ) {
+          set(syncRef, {
+            type: "pause",
+            state: "paused",
+            time: vid.duration || vid.currentTime,
+            ts: Date.now(),
+          }).catch(() => {});
+        }
       };
     }
 
@@ -21009,49 +21630,223 @@ class RoomManager {
     if (!AppState.currentRoomId) return false;
 
     // 1. YouTube Player
-    if (window.YouTubePlayerManager && YouTubePlayerManager.player) {
-      if (typeof YouTubePlayerManager.getState === "function") {
-        const st = YouTubePlayerManager.getState();
+    const yt = typeof YouTubePlayerManager !== "undefined" ? YouTubePlayerManager : window.YouTubePlayerManager;
+    if (yt && yt.player) {
+      if (typeof yt.getState === "function") {
+        const st = yt.getState();
         if (st === "playing") return true;
+        if (st === "paused" || st === "ended") return false;
       }
-      if (typeof YouTubePlayerManager.player.getPlayerState === "function") {
-        if (YouTubePlayerManager.player.getPlayerState() === 1) return true;
+      if (typeof yt.player.getPlayerState === "function") {
+        try {
+          const pState = yt.player.getPlayerState();
+          if (pState === 1) return true;
+          if (pState === 2 || pState === 0) return false;
+        } catch (e) {}
       }
     }
 
     // 2. Rutube Player
-    if (window.RutubePlayerManager && RutubePlayerManager.player) {
-      if (typeof RutubePlayerManager.getState === "function" && RutubePlayerManager.getState() === "playing") {
-        return true;
+    const rt = typeof RutubePlayerManager !== "undefined" ? RutubePlayerManager : window.RutubePlayerManager;
+    if (rt && rt.player) {
+      if (typeof rt.getState === "function") {
+        const rState = rt.getState();
+        if (rState === "playing") return true;
+        if (rState === "paused" || rState === "stopped" || rState === "ended") return false;
       }
     }
 
     // 3. VK Player
-    if (window.VkPlayerManager && VkPlayerManager.player) {
-      if (typeof VkPlayerManager.getState === "function" && VkPlayerManager.getState() === "playing") {
-        return true;
+    const vk = typeof VkPlayerManager !== "undefined" ? VkPlayerManager : window.VkPlayerManager;
+    if (vk && vk.player) {
+      if (typeof vk.getState === "function") {
+        const vState = vk.getState();
+        if (vState === "playing") return true;
+        if (vState === "paused" || vState === "ended") return false;
       }
     }
 
-    // 4. Native HTML5 Video (direct stream, mp4, screen share)
+    // 4. Vimeo Player
+    const vm = typeof VimeoPlayerManager !== "undefined" ? VimeoPlayerManager : window.VimeoPlayerManager;
+    if (vm && vm.player) {
+      if (typeof vm.getState === "function") {
+        const vmState = vm.getState();
+        if (vmState === "playing") return true;
+        if (vmState === "paused" || vmState === "ended") return false;
+      }
+    }
+
+    // 5. Native HTML5 Video (direct stream, mp4, screen share)
     const nativeVid = Utils.$("native-player") || Utils.$("room-video-player");
-    if (nativeVid && nativeVid.src && !nativeVid.paused && !nativeVid.ended && nativeVid.readyState >= 2) {
-      return true;
+    if (nativeVid && nativeVid.src && nativeVid.style.display !== "none") {
+      if (!nativeVid.paused && !nativeVid.ended) {
+        return true;
+      }
+      if (nativeVid.paused || nativeVid.ended) return false;
     }
 
-    // 5. Synced room player state in AppState
-    if (AppState.lastKnownSyncState && AppState.lastKnownSyncState.state === "playing") {
-      const ts = AppState.lastKnownSyncState.ts || 0;
-      if (Date.now() - ts < 25000) return true;
+    // 6. Synced room player state in AppState (fallback when local player state is unknown)
+    if (AppState.lastKnownSyncState) {
+      if (AppState.lastKnownSyncState.state === "playing") {
+        return true;
+      } else if (AppState.lastKnownSyncState.state === "paused" || AppState.lastKnownSyncState.state === "ended") {
+        return false;
+      }
     }
 
-    // 6. Current room data player status
+    // 7. Current room data player status (fallback)
     if (AppState.currentRoomData?.player?.state === "playing") {
-      const lastUpdate = AppState.currentRoomData.player.updatedAt || 0;
-      if (Date.now() - lastUpdate < 45000) return true;
+      return true;
+    } else if (AppState.currentRoomData?.player?.state === "paused" || AppState.currentRoomData?.player?.state === "ended") {
+      return false;
     }
 
     return false;
+  }
+
+  static getVideoCurrentTime() {
+    const yt = typeof YouTubePlayerManager !== "undefined" ? YouTubePlayerManager : window.YouTubePlayerManager;
+    if (yt && yt.player && typeof yt.getCurrentTime === "function") {
+      const t = yt.getCurrentTime();
+      if (typeof t === "number" && !isNaN(t) && t >= 0) return t;
+    }
+    const rt = typeof RutubePlayerManager !== "undefined" ? RutubePlayerManager : window.RutubePlayerManager;
+    if (rt && rt.player && typeof rt.getCurrentTime === "function") {
+      const t = rt.getCurrentTime();
+      if (typeof t === "number" && !isNaN(t) && t >= 0) return t;
+    }
+    const vk = typeof VkPlayerManager !== "undefined" ? VkPlayerManager : window.VkPlayerManager;
+    if (vk && vk.player && typeof vk.getCurrentTime === "function") {
+      const t = vk.getCurrentTime();
+      if (typeof t === "number" && !isNaN(t) && t >= 0) return t;
+    }
+    const vm = typeof VimeoPlayerManager !== "undefined" ? VimeoPlayerManager : window.VimeoPlayerManager;
+    if (vm && vm.player && typeof vm.getCurrentTime === "function") {
+      const t = vm.getCurrentTime();
+      if (typeof t === "number" && !isNaN(t) && t >= 0) return t;
+    }
+    const vid = Utils.$("native-player") || Utils.$("room-video-player");
+    if (vid && typeof vid.currentTime === "number" && !isNaN(vid.currentTime) && vid.currentTime >= 0) {
+      return vid.currentTime;
+    }
+    if (AppState.lastKnownSyncState && typeof AppState.lastKnownSyncState.time === "number") {
+      let t = AppState.lastKnownSyncState.time;
+      if (AppState.lastKnownSyncState.state === "playing" && AppState.lastKnownSyncState.ts) {
+        t += (Date.now() - AppState.lastKnownSyncState.ts) / 1000;
+      }
+      return Math.max(0, t);
+    }
+    return 0;
+  }
+
+  static getVideoDuration() {
+    const yt = typeof YouTubePlayerManager !== "undefined" ? YouTubePlayerManager : window.YouTubePlayerManager;
+    if (yt && yt.player && typeof yt.getDuration === "function") {
+      const d = yt.getDuration();
+      if (typeof d === "number" && !isNaN(d) && isFinite(d) && d > 0) return d;
+    }
+    const rt = typeof RutubePlayerManager !== "undefined" ? RutubePlayerManager : window.RutubePlayerManager;
+    if (rt && rt.player && typeof rt.getDuration === "function") {
+      const d = rt.getDuration();
+      if (typeof d === "number" && !isNaN(d) && isFinite(d) && d > 0) return d;
+    }
+    const vk = typeof VkPlayerManager !== "undefined" ? VkPlayerManager : window.VkPlayerManager;
+    if (vk && vk.player && typeof vk.getDuration === "function") {
+      const d = vk.getDuration();
+      if (typeof d === "number" && !isNaN(d) && isFinite(d) && d > 0) return d;
+    }
+    const vm = typeof VimeoPlayerManager !== "undefined" ? VimeoPlayerManager : window.VimeoPlayerManager;
+    if (vm && vm.player && typeof vm.getDuration === "function") {
+      const d = vm.getDuration();
+      if (typeof d === "number" && !isNaN(d) && isFinite(d) && d > 0) return d;
+    }
+    const vid = Utils.$("native-player") || Utils.$("room-video-player");
+    if (vid && typeof vid.duration === "number" && !isNaN(vid.duration) && isFinite(vid.duration) && vid.duration > 0) {
+      return vid.duration;
+    }
+    if (AppState.currentRoomData?.videoDuration) {
+      const vd = Number(AppState.currentRoomData.videoDuration);
+      if (vd > 0) return vd;
+    }
+    if (AppState.currentRoomId) {
+      const r = AppState.roomsCache.get(AppState.currentRoomId);
+      if (r && r.videoDuration) {
+        const vd = Number(r.videoDuration);
+        if (vd > 0) return vd;
+      }
+    }
+    return 0;
+  }
+
+  static getVideoProgress() {
+    const curTime = this.getVideoCurrentTime();
+    const duration = this.getVideoDuration();
+    if (duration > 0 && curTime >= 0) {
+      return Math.min(1, Math.max(0, curTime / duration));
+    }
+    return 0;
+  }
+
+  static async awardPlaybackLumens({ uid, mult = 1, minutes = 1, currentTime = 0, duration = 0, progress = 0, progressPct = 0 }) {
+    if (!uid || RoomManager._isAwardingLumens) return;
+    RoomManager._isAwardingLumens = true;
+
+    try {
+      const profRef = ref(db, `users/${uid}/profile`);
+      const snap = await get(profRef);
+      const data = snap.exists() ? (snap.val() || {}) : {};
+
+      const curLumens = typeof data.lumens === "number" ? data.lumens : (Number(data.lumens) || 0);
+      const minCount = Math.max(1, Math.floor(minutes) || 1);
+      const addLumens = Math.max(1, Math.round(minCount * mult));
+      const newLumens = curLumens + addLumens;
+
+      // 1. Explicitly persist new Lumens balance to Firebase RTDB and ensure it is saved
+      await update(profRef, { lumens: newLumens });
+
+      // 2. Update local user cache
+      const cached = AppState.usersCache.get(uid);
+      if (cached) {
+        cached.lumens = newLumens;
+      }
+
+      // 3. Reason text accurately reflecting watch progress relative to total video duration
+      let progressStr = "";
+      if (duration > 0) {
+        progressStr = ` (${progressPct}%)`;
+      }
+      const reasonText = mult > 1
+        ? `${minCount} мин. просмотра (+${addLumens} x${mult} Premium)${progressStr}`
+        : `${minCount} мин. просмотра видео${progressStr}`;
+
+      // 4. Update UI and trigger HUD notification once (without duplicate toasts)
+      if (window.LumenManager) {
+        LumenManager.updateBalance(newLumens, {
+          diff: addLumens,
+          reason: reasonText,
+          source: "room",
+          animate: true,
+          showFloater: true,
+          saveTx: true,
+          saveDb: false, // already updated profRef above
+          txType: "income",
+          txIcon: "tv"
+        });
+      } else {
+        const hp = Utils.$("header-lumens-count");
+        if (hp) hp.textContent = newLumens.toLocaleString();
+        const rp = Utils.$("room-lumens-count");
+        if (rp) rp.textContent = newLumens.toLocaleString();
+        const myL = Utils.$("my-lumens-val");
+        if (myL) myL.textContent = newLumens.toLocaleString();
+      }
+
+      console.log(`[RoomManager] Lumens awarded: +${addLumens} (${minCount} min), new balance: ${newLumens}, video progress: ${progressPct}% (${Math.round(currentTime)}s / ${Math.round(duration)}s)`);
+    } catch (e) {
+      console.error("[RoomManager] Failed to persist lumens to Firebase:", e);
+    } finally {
+      RoomManager._isAwardingLumens = false;
+    }
   }
 
   static async flushPendingRoomTime() {
@@ -21059,6 +21854,7 @@ class RoomManager {
     const uid = AppState.currentUser.uid;
     const addSeconds = AppState.pendingRoomSeconds;
     AppState.pendingRoomSeconds = 0;
+    AppState.pendingRoomExp = 0;
     try {
       const profRef = ref(db, `users/${uid}/profile`);
       const snap = await get(profRef);
@@ -21070,7 +21866,9 @@ class RoomManager {
         const cached = AppState.usersCache.get(uid);
         if (cached) cached.timeSpentInRooms = newTime;
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error("[RoomManager] Error flushing pending room time:", e);
+    }
   }
 
   static startRoomExperienceTimer() {
@@ -21079,17 +21877,18 @@ class RoomManager {
     AppState.pendingRoomExp = 0;
     AppState.pendingRoomPlaybackSeconds = 0;
     AppState.pendingRoomSeconds = 0;
+    AppState.lastTrackedVideoTime = -1;
+    RoomManager._isRoomSyncBusy = false;
+    RoomManager._isAwardingLumens = false;
+    RoomManager._lastRoomTickTs = Date.now();
 
     AppState.roomExpTimer = setInterval(async () => {
       if (!AppState.currentRoomId || !AppState.currentUser) return;
 
-      const isPlaying = RoomManager.isRoomVideoPlaying();
-
-      // General room activity XP & room time tracking (every 1s in room)
-      if (!AppState.pendingRoomExp) AppState.pendingRoomExp = 0;
-      AppState.pendingRoomExp += 1;
-      if (!AppState.pendingRoomSeconds) AppState.pendingRoomSeconds = 0;
-      AppState.pendingRoomSeconds += 1;
+      const now = Date.now();
+      const lastTs = RoomManager._lastRoomTickTs || now;
+      RoomManager._lastRoomTickTs = now;
+      const elapsedSec = Math.max(1, Math.min(10, Math.round((now - lastTs) / 1000)));
 
       const uid = AppState.currentUser.uid;
       const profile = AppState.usersCache.get(uid) || {};
@@ -21097,81 +21896,101 @@ class RoomManager {
         ? PremiumManager.getXpMultiplier(profile, uid)
         : 1;
 
-      if (AppState.pendingRoomExp >= 10) {
+      // 1. General room activity XP & room time tracking (every elapsed second in room)
+      if (!AppState.pendingRoomExp) AppState.pendingRoomExp = 0;
+      AppState.pendingRoomExp += elapsedSec;
+      if (!AppState.pendingRoomSeconds) AppState.pendingRoomSeconds = 0;
+      AppState.pendingRoomSeconds += elapsedSec;
+
+      // Periodically flush XP and timeSpentInRooms to Firebase (every >= 10s)
+      if (AppState.pendingRoomExp >= 10 && !RoomManager._isRoomSyncBusy) {
         const addXp = AppState.pendingRoomExp * mult;
         const addRoomSeconds = AppState.pendingRoomSeconds;
         AppState.pendingRoomExp = 0;
         AppState.pendingRoomSeconds = 0;
-        try {
-          const profRef = ref(db, `users/${uid}/profile`);
-          const snap = await get(profRef);
-          if (snap.exists()) {
-            const data = snap.val() || {};
-            let curXp = Number(data.xp) || 0;
-            let newXp = curXp + addXp;
-            let curRoomTime = Number(data.timeSpentInRooms) || 0;
-            let newRoomTime = curRoomTime + addRoomSeconds;
-            await update(profRef, { xp: newXp, timeSpentInRooms: newRoomTime });
-            await BadgeManager.checkLevelBadges(uid, newXp);
-            const cached = AppState.usersCache.get(uid);
-            if (cached) {
-              cached.xp = newXp;
-              cached.timeSpentInRooms = newRoomTime;
-            }
-          }
-        } catch (e) {}
-      }
+        RoomManager._isRoomSyncBusy = true;
 
-      // Lumens: 10x economy & STRICTLY ONLY WHEN VIDEO IS ACTIVELY PLAYING!
-      // 60 seconds (1 full minute) of active video playback = 1 Lumen (or 2 with Premium)
-      if (isPlaying) {
-        if (!AppState.pendingRoomPlaybackSeconds) AppState.pendingRoomPlaybackSeconds = 0;
-        AppState.pendingRoomPlaybackSeconds += 1;
-
-        if (AppState.pendingRoomPlaybackSeconds >= 60) {
-          AppState.pendingRoomPlaybackSeconds = 0;
-
+        (async () => {
           try {
             const profRef = ref(db, `users/${uid}/profile`);
             const snap = await get(profRef);
             if (snap.exists()) {
               const data = snap.val() || {};
-              let curLumens = Number(data.lumens) || 0;
-              let addLumens = Math.max(1, Math.round(1 * mult));
-              let newLumens = curLumens + addLumens;
-              await update(profRef, { lumens: newLumens });
-
+              let curXp = Number(data.xp) || 0;
+              let newXp = curXp + addXp;
+              let curRoomTime = Number(data.timeSpentInRooms) || 0;
+              let newRoomTime = curRoomTime + addRoomSeconds;
+              await update(profRef, { xp: newXp, timeSpentInRooms: newRoomTime });
+              if (window.BadgeManager && typeof BadgeManager.checkLevelBadges === "function") {
+                await BadgeManager.checkLevelBadges(uid, newXp);
+              }
               const cached = AppState.usersCache.get(uid);
-              if (cached) cached.lumens = newLumens;
-
-              if (window.LumenManager) {
-                const reasonText = mult > 1
-                  ? `1 мин. просмотра (+${addLumens} x${mult} Premium)`
-                  : "1 мин. просмотра видео";
-
-                LumenManager.updateBalance(newLumens, {
-                  diff: addLumens,
-                  reason: reasonText,
-                  source: "room",
-                  animate: true,
-                  showFloater: true,
-                  saveTx: true,
-                  txType: "income",
-                  txIcon: "tv"
-                });
-
-                LumenManager.showRoomHudReward(addLumens, reasonText);
-              } else {
-                const hp = Utils.$("header-lumens-count");
-                if (hp) hp.textContent = newLumens.toLocaleString();
-                const rp = Utils.$("room-lumens-count");
-                if (rp) rp.textContent = newLumens.toLocaleString();
-                const myL = Utils.$("my-lumens-val");
-                if (myL) myL.textContent = newLumens.toLocaleString();
+              if (cached) {
+                cached.xp = newXp;
+                cached.timeSpentInRooms = newRoomTime;
               }
             }
-          } catch (e) {}
+          } catch (e) {
+            console.error("[RoomManager] Error updating room XP/time in Firebase:", e);
+          } finally {
+            RoomManager._isRoomSyncBusy = false;
+          }
+        })();
+      }
+
+      // 2. Lumens & Video Progress: calculated when room video is playing
+      try {
+        const isPlaying = RoomManager.isRoomVideoPlaying();
+
+        if (isPlaying) {
+          const currentTime = RoomManager.getVideoCurrentTime();
+          const duration = RoomManager.getVideoDuration();
+          const progress = duration > 0 ? Math.min(1, Math.max(0, currentTime / duration)) : 0;
+          const progressPct = duration > 0 ? Math.min(100, Math.round(progress * 100)) : 0;
+
+          AppState.currentVideoCurrentTime = currentTime;
+          AppState.currentVideoDuration = duration;
+          AppState.currentVideoProgress = progress;
+          AppState.currentVideoProgressPct = progressPct;
+
+          const isEnded = duration > 0 && currentTime >= duration - 0.5;
+
+          if (!isEnded) {
+            if (!AppState.pendingRoomPlaybackSeconds) AppState.pendingRoomPlaybackSeconds = 0;
+            AppState.pendingRoomPlaybackSeconds += elapsedSec;
+
+            if (AppState.pendingRoomPlaybackSeconds >= 60) {
+              const minutesToAward = Math.floor(AppState.pendingRoomPlaybackSeconds / 60);
+              AppState.pendingRoomPlaybackSeconds = AppState.pendingRoomPlaybackSeconds % 60;
+              await RoomManager.awardPlaybackLumens({
+                uid,
+                mult,
+                minutes: minutesToAward,
+                currentTime,
+                duration,
+                progress,
+                progressPct
+              });
+            }
+          } else {
+            // Video reached end - handle completion if user watched sufficient portion
+            if (AppState.pendingRoomPlaybackSeconds >= 30) {
+              AppState.pendingRoomPlaybackSeconds = 0;
+              await RoomManager.awardPlaybackLumens({
+                uid,
+                mult,
+                minutes: 1,
+                currentTime,
+                duration,
+                progress: 1,
+                progressPct: 100
+              });
+            }
+          }
+          AppState.lastTrackedVideoTime = currentTime;
         }
+      } catch (err) {
+        console.error("[RoomManager] Error in room experience tick:", err);
       }
     }, 1000);
   }
@@ -21185,6 +22004,9 @@ class RoomManager {
     AppState.pendingRoomExp = 0;
     AppState.roomWatchEarnings = 0;
     AppState.roomWatchTicks = 0;
+    AppState.lastTrackedVideoTime = -1;
+    RoomManager._isRoomSyncBusy = false;
+    RoomManager._isAwardingLumens = false;
   }
 
   static leaveRoom() {
@@ -21193,17 +22015,7 @@ class RoomManager {
     RoomManager.stopRoomExperienceTimer();
 
     if (AppState.isHost) {
-      let currentTime = 0;
-      let isYt = !!YouTubePlayerManager.player;
-      let isRt = !!RutubePlayerManager.player;
-      let isVk = !!VkPlayerManager.player;
-      if (isYt) currentTime = YouTubePlayerManager.getCurrentTime();
-      else if (isRt) currentTime = RutubePlayerManager.getCurrentTime();
-      else if (isVk) currentTime = VkPlayerManager.getCurrentTime();
-      else {
-        const vid = Utils.$("native-player");
-        if (vid) currentTime = vid.currentTime;
-      }
+      const currentTime = RoomManager.getVideoCurrentTime();
       try {
         set(ref(db, `rooms/${AppState.currentRoomId}/sync`), {
           type: "pause",
@@ -21229,6 +22041,8 @@ class RoomManager {
       vid.onplay = null;
       vid.onpause = null;
       vid.onseeked = null;
+      vid.ontimeupdate = null;
+      vid.onended = null;
       vid.onerror = null;
     }
 
@@ -21237,6 +22051,8 @@ class RoomManager {
     AppState.currentPresenceCache = {};
     AppState.usersListRenderToken++;
     AppState.currentRoomId = null;
+    AppState.currentRoomData = null;
+    AppState.lastKnownSyncState = null;
     AppState.currentRoomJoinTs = 0; // Сбрасываем время при выходе
     AppState.currentTheme = null;
     this.applyRoomTheme("default");
@@ -24990,3 +25806,11 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 });
+
+// Initialize ReportManager
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => ReportManager.init());
+} else {
+  ReportManager.init();
+}
+
