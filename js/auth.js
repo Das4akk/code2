@@ -444,7 +444,7 @@ class AuthManager {
 
           await AdminPanel.getDeveloperUid();
 
-          // MPA initial routing checks
+          // Authoritative routing via Router
           let pathname = window.location.pathname;
           const intended = sessionStorage.getItem("cowio_intended_route");
           if (intended && intended !== "/login" && intended !== "/") {
@@ -452,71 +452,10 @@ class AuthManager {
             sessionStorage.removeItem("cowio_intended_route");
           }
 
-          if (pathname.startsWith("/room/")) {
-            const roomId = pathname.split("/")[2];
-            if (roomId && roomId !== "current") {
-              window.history.replaceState(
-                { screenId: "room-screen" },
-                "",
-                `/room/${roomId}`,
-              );
-              RoomManager.joinRoom(roomId);
-            } else {
-              window.history.replaceState(
-                { screenId: "lobby-screen" },
-                "",
-                "/lobby",
-              );
-              Utils.showScreen("lobby-screen", false);
-            }
-          } else if (pathname.startsWith("/@")) {
-            const targetUsername = pathname.slice(2);
-            window.history.replaceState(
-              { screenId: "lobby-screen" },
-              "",
-              pathname,
-            );
-            document.body.insertAdjacentHTML("beforeend", `<style>@keyframes fastProfileSpin { 100% { transform: rotate(360deg); } }</style><div id="fast-profile-loader" style="position:fixed;inset:0;background:var(--bg-main);z-index:999999;display:flex;align-items:center;justify-content:center;"><div style="border:4px solid rgba(255,255,255,0.1);border-top:4px solid #EA284E;border-radius:50%;width:40px;height:40px;animation:fastProfileSpin 1s linear infinite;"></div></div>`);
+          if (window.Router && typeof window.Router.handleRoute === "function") {
+            window.Router.handleRoute(pathname, true);
+          } else if (window.Utils) {
             Utils.showScreen("lobby-screen", false);
-            // Async fetch user and open profile
-            import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(({get, ref, getDatabase}) => {
-                get(ref(getDatabase(), `usernames/${targetUsername}`)).then(snap => {
-                    const l = document.getElementById("fast-profile-loader");
-                    if (l) l.remove();
-                    if (snap.exists()) {
-                        ProfileManager.openViewProfileModal(snap.val());
-                    } else {
-                        Utils.toast("Профиль не найден", "error");
-                        window.history.replaceState({ screenId: "lobby-screen" }, "", "/lobby");
-                    }
-                });
-            });
-          } else {
-            window.history.replaceState(
-              { screenId: "lobby-screen" },
-              "",
-              pathname,
-            );
-            Utils.showScreen("lobby-screen", false);
-            const routeMapToNav = {
-              "/library": "nav-library",
-              "/help": "nav-support",
-              "/catalog": "nav-catalog",
-              "/leaderboard": "nav-leaderboard",
-              "/findfriends": "nav-find-friend",
-              "/friends": "nav-friends",
-              "/settings": "nav-settings",
-              "/other": "nav-other",
-              "/premium": "nav-premium",
-              "/profile": "nav-profile",
-              "/lobby": "nav-rooms"
-            };
-            const targetNav = routeMapToNav[pathname];
-            if (targetNav) {
-                setTimeout(() => {
-                    if (Utils.$(targetNav)) Utils.$(targetNav).click();
-                }, 100);
-            }
           }
 
           if (!AppState.isRegistering) {

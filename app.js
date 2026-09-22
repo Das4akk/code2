@@ -23,6 +23,7 @@ import "./js/admin.js";
 import "./js/room.js";
 import "./js/catalog.js";
 import "./js/fps.js";
+import "./js/router.js";
 
 // Application Runner & Initialization
 const runApp = () => {
@@ -41,6 +42,7 @@ const runApp = () => {
     }
   };
 
+  initSystem("Router", () => window.Router?.init());
   initSystem("SecurityManager", () => SecurityManager.init());
   initSystem("TutorialManager", () => TutorialManager.init());
   initSystem("BadgeManager", () => BadgeManager.init());
@@ -97,60 +99,6 @@ const runApp = () => {
 window.CatalogManager = CatalogManager;
 window.ProfileManager = ProfileManager;
 window.FriendsManager = FriendsManager;
-
-window.addEventListener("popstate", (e) => {
-  if (window.AppState && AppState.currentRoomId) {
-    RoomManager.leaveRoom();
-  }
-  
-  const pathname = window.location.pathname;
-  if (pathname === "/lobby") {
-    // If we came back to lobby, ensure profile is hidden
-    if (window.FriendsManager && window.FriendsManager.setNavActive) {
-       window.FriendsManager.setNavActive("nav-rooms", true);
-    } else {
-       document.querySelectorAll(".rooms-main").forEach(el => el.style.display = "none");
-       if (Utils.$("section-rooms")) Utils.$("section-rooms").style.display = "flex";
-       document.querySelectorAll(".nav-item").forEach(el => el.classList.remove("active"));
-       if (Utils.$("nav-rooms")) Utils.$("nav-rooms").classList.add("active");
-    }
-  } else if (pathname.startsWith("/@")) {
-      const targetUsername = pathname.slice(2);
-      import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(({get, ref, getDatabase}) => {
-          get(ref(getDatabase(), `usernames/${targetUsername}`)).then(snap => {
-              if (snap.exists()) {
-                  ProfileManager.openViewProfileModal(snap.val());
-              }
-          });
-      });
-  } else {
-      const routeMapToNav = {
-          "/library": "nav-library",
-          "/help": "nav-support",
-          "/catalog": "nav-catalog",
-          "/leaderboard": "nav-leaderboard",
-          "/findfriends": "nav-find-friend",
-          "/friends": "nav-friends",
-          "/settings": "nav-settings",
-          "/other": "nav-other",
-          "/premium": "nav-premium",
-          "/profile": "nav-profile"
-      };
-      const navId = routeMapToNav[pathname];
-      if (navId && window.FriendsManager && window.FriendsManager.setNavActive) {
-          window.FriendsManager.setNavActive(navId, true);
-      }
-  }
-
-  if (e.state && e.state.screenId) {
-    if (e.state.screenId === "room-screen") {
-      Utils.showScreen("lobby-screen", false);
-      window.history.replaceState({ screenId: "lobby-screen" }, "", "/lobby");
-    } else {
-      Utils.showScreen(e.state.screenId, false);
-    }
-  }
-});
 
 // Initialize on load so it's visible to guests too
 if (document.readyState === "loading") {
@@ -382,20 +330,29 @@ setTimeout(() => {
     drawLayer.onmouseup = () => (isDrawing = false);
     drawLayer.onmousemove = drawPx;
 
-    // Listener for remote draws
+    // Listener for remote draws (single subscription pattern to prevent leaks)
+    let currentDrawListenerUnsub = null;
+    let lastSubscribedRoomId = null;
     setInterval(() => {
-      if (!AppState.currentRoomId) return;
-      onValue(
+      if (!AppState.currentRoomId) {
+        if (currentDrawListenerUnsub) {
+          currentDrawListenerUnsub();
+          currentDrawListenerUnsub = null;
+          lastSubscribedRoomId = null;
+        }
+        return;
+      }
+      if (lastSubscribedRoomId === AppState.currentRoomId) return;
+      lastSubscribedRoomId = AppState.currentRoomId;
+      if (currentDrawListenerUnsub) currentDrawListenerUnsub();
+      currentDrawListenerUnsub = onValue(
         ref(db, `rooms/${AppState.currentRoomId}/drawEvents`),
         (snap) => {
           const vals = snap.val();
-          if (!vals) {
-            ctx.clearRect(0, 0, drawLayer.width, drawLayer.height);
-            return;
-          }
           ctx.clearRect(0, 0, drawLayer.width, drawLayer.height);
+          if (!vals) return;
+          ctx.fillStyle = "red";
           Object.values(vals).forEach((pt) => {
-            ctx.fillStyle = "red";
             ctx.beginPath();
             ctx.arc(
               pt.x * drawLayer.width,
@@ -406,14 +363,13 @@ setTimeout(() => {
             );
             ctx.fill();
           });
-        },
-        { onlyOnce: true },
+        }
       );
     }, 1000);
   }
 
   // 20. Anonymous Roulette Button
-  setInterval(() => {
+  const rouletteTimer = setInterval(() => {
     const rf = document.querySelector(".lobby-header");
     if (rf && !rf.querySelector(".roulette-btn")) {
       const rb = document.createElement("button");
@@ -435,6 +391,7 @@ setTimeout(() => {
         });
       };
       rf.appendChild(rb);
+      clearInterval(rouletteTimer);
     }
   }, 1000);
 }, 3000);

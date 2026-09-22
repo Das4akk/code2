@@ -480,19 +480,55 @@ class BackgroundFX {
   static init() {
     const canvas = Utils.$("particle-canvas");
     if (!canvas) return;
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d", { alpha: true, desynchronized: true });
     let dots = [];
-    const connectionStrength = new Map();
     let isTabVisible = true;
     let mouse = {
       x: null,
       y: null,
-      radius: window.innerWidth < 768 ? 18 : 32,
+      radius: window.innerWidth < 768 ? 20 : 36,
       vx: 0,
       vy: 0,
     };
     let lastMouse = { x: null, y: null };
     let flashes = [];
+
+    // Pre-bake high-performance offscreen sprites for GPU texture blitting
+    function createOffscreenSprite(shapeType, size = 32, isDust = false) {
+      const c = document.createElement("canvas");
+      c.width = size;
+      c.height = size;
+      const sCtx = c.getContext("2d");
+      const half = size / 2;
+
+      sCtx.fillStyle = "#ffffff";
+      sCtx.beginPath();
+      if (shapeType === "square") {
+        sCtx.rect(half * 0.3, half * 0.3, half * 1.4, half * 1.4);
+      } else if (shapeType === "triangle") {
+        sCtx.moveTo(half, half * 0.2);
+        sCtx.lineTo(half + half * 0.8, half + half * 0.6);
+        sCtx.lineTo(half - half * 0.8, half + half * 0.6);
+        sCtx.closePath();
+      } else {
+        // Soft glowing circle
+        const grad = sCtx.createRadialGradient(half, half, 0, half, half, half);
+        grad.addColorStop(0, "rgba(255, 255, 255, 1)");
+        grad.addColorStop(0.5, "rgba(235, 245, 255, 0.85)");
+        grad.addColorStop(1, "rgba(210, 230, 255, 0)");
+        sCtx.fillStyle = grad;
+        sCtx.arc(half, half, half * 0.95, 0, Math.PI * 2);
+      }
+      sCtx.fill();
+      return c;
+    }
+
+    const sprites = {
+      circle: createOffscreenSprite("circle", 28, false),
+      dustCircle: createOffscreenSprite("circle", 16, true),
+      dustSquare: createOffscreenSprite("square", 16, true),
+      dustTriangle: createOffscreenSprite("triangle", 16, true),
+    };
 
     function resize() {
       canvas.width = window.innerWidth;
@@ -510,18 +546,17 @@ class BackgroundFX {
         mouse.vx = mouse.x - lastMouse.x;
         mouse.vy = mouse.y - lastMouse.y;
       }
-    });
+    }, { passive: true });
 
     window.addEventListener("mouseout", () => {
       mouse.x = null;
       mouse.y = null;
       mouse.vx = 0;
       mouse.vy = 0;
-    });
+    }, { passive: true });
 
     class Dot {
       constructor(isDust = false) {
-        // Spawn from random positions but staggered
         this.x = Math.random() * canvas.width;
         this.y = Math.random() * canvas.height;
 
@@ -536,7 +571,12 @@ class BackgroundFX {
         this.z = isDust ? Math.random() * 0.4 + 0.2 : Math.random() * 0.6 + 0.4;
         this.size = (Math.random() * 2 + 1) * this.z;
         this.isDust = isDust;
-        this.history = [];
+
+        // Pre-allocated typed arrays for trail history (0 GC allocations per frame)
+        this.histX = new Float32Array(10);
+        this.histY = new Float32Array(10);
+        this.historyLen = 0;
+
         this.baseAlpha = isDust
           ? Math.random() * 0.3 + 0.1
           : Math.random() * 0.5 + 0.2;
@@ -555,6 +595,17 @@ class BackgroundFX {
               ? "triangle"
               : "circle"
           : "circle";
+
+        // Assign sprite
+        if (!isDust) {
+          this.sprite = sprites.circle;
+        } else if (this.shapeType === "square") {
+          this.sprite = sprites.dustSquare;
+        } else if (this.shapeType === "triangle") {
+          this.sprite = sprites.dustTriangle;
+        } else {
+          this.sprite = sprites.dustCircle;
+        }
       }
 
       update(t) {
@@ -568,8 +619,7 @@ class BackgroundFX {
           this.x = 0;
           this.baseVx = Math.abs(this.baseVx);
           this.vx = Math.abs(this.vx);
-        }
-        if (this.x > canvas.width) {
+        } else if (this.x > canvas.width) {
           this.x = canvas.width;
           this.baseVx = -Math.abs(this.baseVx);
           this.vx = -Math.abs(this.vx);
@@ -578,16 +628,15 @@ class BackgroundFX {
           this.y = 0;
           this.baseVy = Math.abs(this.baseVy);
           this.vy = Math.abs(this.vy);
-        }
-        if (this.y > canvas.height) {
+        } else if (this.y > canvas.height) {
           this.y = canvas.height;
           this.baseVy = -Math.abs(this.baseVy);
           this.vy = -Math.abs(this.vy);
         }
 
         if (mouse.x != null && this.isInteractive) {
-          let cx = canvas.width / 2;
-          let cy = canvas.height / 2;
+          let cx = canvas.width * 0.5;
+          let cy = canvas.height * 0.5;
           let px = (mouse.x - cx) * 0.05 * this.z;
           let py = (mouse.y - cy) * 0.05 * this.z;
           this.parallaxX += (px - this.parallaxX) * 0.1;
@@ -604,11 +653,16 @@ class BackgroundFX {
         }
 
         if (!this.isDust) {
-          this.history.push({
-            x: this.x + this.parallaxX,
-            y: this.y + this.parallaxY,
-          });
-          if (this.history.length > 10) this.history.shift();
+          // Push to fixed Float32Array without array allocations
+          const maxH = 9;
+          const len = this.historyLen < maxH ? this.historyLen : maxH;
+          for (let h = len; h > 0; h--) {
+            this.histX[h] = this.histX[h - 1];
+            this.histY[h] = this.histY[h - 1];
+          }
+          this.histX[0] = this.x + this.parallaxX;
+          this.histY[0] = this.y + this.parallaxY;
+          if (this.historyLen < 10) this.historyLen++;
         }
       }
 
@@ -623,43 +677,16 @@ class BackgroundFX {
           ? 1
           : Math.sin(t * 0.003 + this.offset) * 0.5 + 0.5;
         let alpha = this.baseAlpha * pulse * twink;
+        if (alpha <= 0.01) return;
 
-        if (!this.isDust && this.history.length > 1) {
-          ctx.beginPath();
-          ctx.moveTo(this.history[0].x, this.history[0].y);
-          for (let i = 1; i < this.history.length; i++) {
-            ctx.lineTo(this.history[i].x, this.history[i].y);
-          }
-          const g = this.grayLevel;
-          ctx.strokeStyle = `rgba(${g}, ${g + 8}, ${g + 18}, ${alpha * 0.28})`;
-          ctx.lineWidth = this.size * 0.8;
-          ctx.lineCap = "round";
-          ctx.stroke();
-        }
-
-        const g = this.grayLevel;
-        ctx.fillStyle = `rgba(${g}, ${g + 6 + this.tint * 40}, ${g + 14 + this.tint * 60}, ${alpha})`;
-        ctx.beginPath();
-        if (this.shapeType === "square") {
-          ctx.rect(
-            drawX - this.size,
-            drawY - this.size,
-            this.size * 2,
-            this.size * 2,
-          );
-        } else if (this.shapeType === "triangle") {
-          ctx.moveTo(drawX, drawY - this.size);
-          ctx.lineTo(drawX + this.size, drawY + this.size * 0.8);
-          ctx.lineTo(drawX - this.size, drawY + this.size * 0.8);
-          ctx.closePath();
-        } else {
-          ctx.arc(drawX, drawY, this.size, 0, Math.PI * 2);
-        }
-        ctx.fill();
+        // Blit pre-baked sprite via hardware texture unit
+        ctx.globalAlpha = alpha;
+        const renderSize = this.size * 2.2;
+        ctx.drawImage(this.sprite, drawX - renderSize * 0.5, drawY - renderSize * 0.5, renderSize, renderSize);
       }
     }
 
-    const numDots = window.innerWidth < 768 ? 32 : 58;
+    const numDots = window.innerWidth < 768 ? 30 : 54;
     for (let i = 0; i < numDots; i++) dots.push(new Dot(false));
     for (let i = 0; i < numDots * 2; i++) dots.push(new Dot(true));
 
@@ -670,75 +697,94 @@ class BackgroundFX {
         return;
       }
 
-      ctx.globalCompositeOperation = "destination-out";
-      ctx.fillStyle = "rgba(0, 0, 0, 0.22)";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.globalCompositeOperation = "source-over";
+      // Fast hardware clear (replaces slow destination-out blend stall)
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+      // Random constellation lightning sparks
       if (Math.random() > 0.996 && dots.length > 2) {
         let n1 = dots[Math.floor(Math.random() * numDots)];
         let n2 = dots[Math.floor(Math.random() * numDots)];
-        if (n1 && n2)
+        if (n1 && n2) {
           flashes.push({
             start: n1,
             end: n2,
             life: 1,
             segments: Math.floor(Math.random() * 4 + 3),
           });
+        }
       }
 
-      for (let i = flashes.length - 1; i >= 0; i--) {
-        let f = flashes[i];
-        f.life -= 0.03;
-        if (f.life <= 0) {
-          flashes.splice(i, 1);
-          continue;
-        }
+      if (flashes.length > 0) {
+        for (let i = flashes.length - 1; i >= 0; i--) {
+          let f = flashes[i];
+          f.life -= 0.03;
+          if (f.life <= 0) {
+            flashes.splice(i, 1);
+            continue;
+          }
 
-        ctx.beginPath();
-        let sx = f.start.x + f.start.parallaxX,
-          sy = f.start.y + f.start.parallaxY;
-        let ex = f.end.x + f.end.parallaxX,
-          ey = f.end.y + f.end.parallaxY;
-        ctx.moveTo(sx, sy);
+          ctx.beginPath();
+          let sx = f.start.x + f.start.parallaxX;
+          let sy = f.start.y + f.start.parallaxY;
+          let ex = f.end.x + f.end.parallaxX;
+          let ey = f.end.y + f.end.parallaxY;
+          ctx.moveTo(sx, sy);
 
-        for (let s = 1; s < f.segments; s++) {
-          let pt = s / f.segments;
-          let nx = sx + (ex - sx) * pt + (Math.random() - 0.5) * (40 * f.life);
-          let ny = sy + (ey - sy) * pt + (Math.random() - 0.5) * (40 * f.life);
-          ctx.lineTo(nx, ny);
+          for (let s = 1; s < f.segments; s++) {
+            let pt = s / f.segments;
+            let nx = sx + (ex - sx) * pt + (Math.random() - 0.5) * (40 * f.life);
+            let ny = sy + (ey - sy) * pt + (Math.random() - 0.5) * (40 * f.life);
+            ctx.lineTo(nx, ny);
+          }
+          ctx.lineTo(ex, ey);
+          ctx.strokeStyle = `rgba(255, 255, 255, ${f.life * 0.6})`;
+          ctx.lineWidth = f.life * 2;
+          ctx.stroke();
         }
-        ctx.lineTo(ex, ey);
-        ctx.strokeStyle = `rgba(255, 255, 255, ${f.life * 0.6})`;
-        ctx.lineWidth = f.life * 2;
-        ctx.stroke();
       }
 
       const time = performance.now() * 0.0016;
-      const maxDistSq = 25000;
 
+      // 1. Update all dots
       for (let i = 0; i < dots.length; i++) {
         dots[i].update(time);
-        dots[i].draw(ctx, time);
       }
 
+      // 2. Batch draw all trails in a SINGLE pass
       ctx.beginPath();
-      ctx.strokeStyle = "rgba(220, 230, 255, 0.14)";
-      ctx.lineWidth = 0.55;
+      ctx.strokeStyle = "rgba(210, 225, 255, 0.14)";
+      ctx.lineWidth = 1.0;
+      ctx.lineCap = "round";
+      for (let i = 0; i < numDots; i++) {
+        const d = dots[i];
+        if (d.historyLen > 1) {
+          ctx.moveTo(d.histX[0], d.histY[0]);
+          for (let h = 1; h < d.historyLen; h++) {
+            ctx.lineTo(d.histX[h], d.histY[h]);
+          }
+        }
+      }
+      ctx.stroke();
 
-      for (let i = 0; i < dots.length; i++) {
-        if (dots[i].isDust) continue;
-        const xi = dots[i].x + dots[i].parallaxX;
-        const yi = dots[i].y + dots[i].parallaxY;
+      // 3. Batch draw constellation connections in a SINGLE pass
+      ctx.beginPath();
+      ctx.strokeStyle = "rgba(220, 230, 255, 0.12)";
+      ctx.lineWidth = 0.55;
+      const maxDistSq = 24000;
+      for (let i = 0; i < numDots; i++) {
+        const di = dots[i];
+        const xi = di.x + di.parallaxX;
+        const yi = di.y + di.parallaxY;
 
         for (let j = i + 1; j < numDots; j++) {
-          const xj = dots[j].x + dots[j].parallaxX;
+          const dj = dots[j];
+          const xj = dj.x + dj.parallaxX;
           const dx = xi - xj;
-          if (dx > 158 || dx < -158) continue;
+          if (dx > 155 || dx < -155) continue;
 
-          const yj = dots[j].y + dots[j].parallaxY;
+          const yj = dj.y + dj.parallaxY;
           const dy = yi - yj;
-          if (dy > 158 || dy < -158) continue;
+          if (dy > 155 || dy < -155) continue;
 
           const dist = dx * dx + dy * dy;
           if (dist < maxDistSq) {
@@ -748,8 +794,16 @@ class BackgroundFX {
         }
       }
       ctx.stroke();
+
+      // 4. Draw dots with hardware sprites
+      for (let i = 0; i < dots.length; i++) {
+        dots[i].draw(ctx, time);
+      }
+      ctx.globalAlpha = 1.0;
+
       mouse.vx *= 0.8;
       mouse.vy *= 0.8;
+
       if (isTabVisible && !AppState.currentRoomId) {
         requestAnimationFrame(animate);
       } else {
@@ -770,6 +824,11 @@ class BackgroundFX {
       if (isTabVisible) resumeAnimation();
     });
 
+    window.addEventListener("screenchange", (e) => {
+      if (e.detail?.screenId === "lobby-screen") {
+        resumeAnimation();
+      }
+    });
     window.resumeBackgroundFX = resumeAnimation;
   }
 }
