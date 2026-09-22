@@ -3379,6 +3379,17 @@ class Utils {
     return new Date(ts).toLocaleDateString();
   }
 
+  static formatDuration(totalSeconds) {
+    const s = Math.max(0, Math.floor(Number(totalSeconds) || 0));
+    if (s < 60) return `${s} сек.`;
+    const m = Math.floor(s / 60);
+    if (m < 60) return `${m} мин.`;
+    const h = Math.floor(m / 60);
+    const remM = m % 60;
+    if (remM === 0) return `${h} ч.`;
+    return `${h} ч. ${remM} мин.`;
+  }
+
   static getDistributedHeartLeft(x) {
     return x;
   }
@@ -4523,18 +4534,23 @@ class Utils {
 
       const updateLiveActive = async () => {
         try {
-          const { get, ref } =
-            await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
-          const snap = await get(ref(window.db || db, "users"));
-          let activeNow = 0;
-          if (snap.exists()) {
-            const usersData = snap.val();
-            for (let uid in usersData) {
-              if (usersData[uid]?.status?.online === true) activeNow++;
+          const now = Date.now();
+          if (!window._usersOnlineCache || now - (window._usersOnlineCacheTime || 0) > 120000) {
+            const { get, ref } =
+              await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
+            const snap = await get(ref(window.db || db, "users"));
+            let activeNow = 0;
+            if (snap.exists()) {
+              const usersData = snap.val();
+              for (let uid in usersData) {
+                if (usersData[uid]?.status?.online === true) activeNow++;
+              }
             }
+            window._usersOnlineCache = activeNow;
+            window._usersOnlineCacheTime = now;
           }
           const el = document.getElementById("custom-online-count");
-          if (el) el.innerText = activeNow;
+          if (el) el.innerText = window._usersOnlineCache ?? 0;
         } catch (e) {
           console.warn("Live active error", e);
         }
@@ -6761,7 +6777,7 @@ class BackgroundFX {
   static init() {
     const canvas = Utils.$("particle-canvas");
     if (!canvas) return;
-    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    const ctx = canvas.getContext("2d");
     let dots = [];
     const connectionStrength = new Map();
     let isTabVisible = true;
@@ -6944,9 +6960,10 @@ class BackgroundFX {
     for (let i = 0; i < numDots; i++) dots.push(new Dot(false));
     for (let i = 0; i < numDots * 2; i++) dots.push(new Dot(true));
 
+    let isRunning = true;
     function animate(t) {
-      if (!isTabVisible) {
-        requestAnimationFrame(animate);
+      if (!isTabVisible || AppState.currentRoomId) {
+        isRunning = false;
         return;
       }
 
@@ -7071,13 +7088,27 @@ class BackgroundFX {
       }
       mouse.vx *= 0.8;
       mouse.vy *= 0.8;
-      requestAnimationFrame(animate);
+      if (isTabVisible && !AppState.currentRoomId) {
+        requestAnimationFrame(animate);
+      } else {
+        isRunning = false;
+      }
     }
     requestAnimationFrame(animate);
 
+    function resumeAnimation() {
+      if (!isRunning && isTabVisible && !AppState.currentRoomId) {
+        isRunning = true;
+        requestAnimationFrame(animate);
+      }
+    }
+
     document.addEventListener("visibilitychange", () => {
       isTabVisible = !document.hidden;
+      if (isTabVisible) resumeAnimation();
     });
+
+    window.resumeBackgroundFX = resumeAnimation;
   }
 }
 
@@ -10877,8 +10908,8 @@ class ProfileManager {
     }
 
     const curLumens = Number(profile.lumens) || 0;
-    // 100x harder economy: 1-3 Lumens daily bonus
-    const bonusLumens = streak >= 8 ? 3 : (streak >= 4 ? 2 : 1);
+    // 10x economy: 3-8 Lumens daily bonus
+    const bonusLumens = streak >= 8 ? 8 : (streak >= 4 ? 5 : 3);
     const newLumens = curLumens + bonusLumens;
 
     await update(ref(db, `users/${uid}/profile`), {
@@ -13177,6 +13208,10 @@ class ProfileManager {
     const statLastLogin = document.getElementById("view-stat-login");
     if (statLastLogin) {
        statLastLogin.innerText = profile.lastLoginDate || "Неизвестно";
+    }
+    const statRoomTime = document.getElementById("view-stat-room-time");
+    if (statRoomTime) {
+       statRoomTime.innerText = Utils.formatDuration(profile.timeSpentInRooms || 0);
     }
 
     const needsExpansion = safeBio.length > LIMIT;
@@ -19086,7 +19121,12 @@ class RoomManager {
       oldKeys.forEach((k) => {
         if (!data[k]) Utils.$(`room-card-${k}`)?.remove();
       });
-      this.updateRoomsDOM();
+      if (!AppState.currentRoomId) {
+        if (!this._debouncedUpdateRooms) {
+          this._debouncedUpdateRooms = Utils.debounce(() => this.updateRoomsDOM(), 150);
+        }
+        this._debouncedUpdateRooms();
+      }
 
       // Автоматическая синхронизация тем
       if (AppState.currentRoomId) {
@@ -19318,8 +19358,10 @@ class RoomManager {
   }
 
   static updateRoomsDOM() {
+    if (AppState.currentRoomId) return;
     const grid = Utils.$("rooms-grid");
-    const search = Utils.$("search-rooms").value.toLowerCase().trim();
+    if (!grid) return;
+    const search = Utils.$("search-rooms") ? Utils.$("search-rooms").value.toLowerCase().trim() : "";
     let count = 0;
 
     AppState.roomsCache.forEach((room, id) => {
@@ -20173,9 +20215,12 @@ class RoomManager {
         const systemLine = document.createElement("div");
         systemLine.className = "sys-msg";
         systemLine.innerText = msg.text || "";
-        Utils.$("chat-messages").appendChild(systemLine);
-        Utils.$("chat-messages").scrollTop =
-          Utils.$("chat-messages").scrollHeight;
+        const chatBox = Utils.$("chat-messages");
+        if (chatBox) {
+          chatBox.appendChild(systemLine);
+          if (chatBox.childElementCount > 200) chatBox.firstElementChild?.remove();
+          chatBox.scrollTop = chatBox.scrollHeight;
+        }
         return;
       }
 
@@ -20289,9 +20334,12 @@ class RoomManager {
           btn.onclick = () => ProfileManager.openViewProfileModal(msg.uid);
       });
 
-      Utils.$("chat-messages").appendChild(line);
-      Utils.$("chat-messages").scrollTop =
-        Utils.$("chat-messages").scrollHeight;
+      const chatBox = Utils.$("chat-messages");
+      if (chatBox) {
+        chatBox.appendChild(line);
+        if (chatBox.childElementCount > 200) chatBox.firstElementChild?.remove();
+        chatBox.scrollTop = chatBox.scrollHeight;
+      }
     });
     AppState.roomSubscriptions.push(cUnsub);
 
@@ -21006,20 +21054,42 @@ class RoomManager {
     return false;
   }
 
+  static async flushPendingRoomTime() {
+    if (!AppState.currentUser || !AppState.pendingRoomSeconds) return;
+    const uid = AppState.currentUser.uid;
+    const addSeconds = AppState.pendingRoomSeconds;
+    AppState.pendingRoomSeconds = 0;
+    try {
+      const profRef = ref(db, `users/${uid}/profile`);
+      const snap = await get(profRef);
+      if (snap.exists()) {
+        const data = snap.val() || {};
+        let curTime = Number(data.timeSpentInRooms) || 0;
+        let newTime = curTime + addSeconds;
+        await update(profRef, { timeSpentInRooms: newTime });
+        const cached = AppState.usersCache.get(uid);
+        if (cached) cached.timeSpentInRooms = newTime;
+      }
+    } catch (e) {}
+  }
+
   static startRoomExperienceTimer() {
     if (AppState.roomExpTimer) clearInterval(AppState.roomExpTimer);
 
     AppState.pendingRoomExp = 0;
     AppState.pendingRoomPlaybackSeconds = 0;
+    AppState.pendingRoomSeconds = 0;
 
     AppState.roomExpTimer = setInterval(async () => {
       if (!AppState.currentRoomId || !AppState.currentUser) return;
 
       const isPlaying = RoomManager.isRoomVideoPlaying();
 
-      // General room activity XP (awarded every 10s of being in room)
+      // General room activity XP & room time tracking (every 1s in room)
       if (!AppState.pendingRoomExp) AppState.pendingRoomExp = 0;
       AppState.pendingRoomExp += 1;
+      if (!AppState.pendingRoomSeconds) AppState.pendingRoomSeconds = 0;
+      AppState.pendingRoomSeconds += 1;
 
       const uid = AppState.currentUser.uid;
       const profile = AppState.usersCache.get(uid) || {};
@@ -21029,7 +21099,9 @@ class RoomManager {
 
       if (AppState.pendingRoomExp >= 10) {
         const addXp = AppState.pendingRoomExp * mult;
+        const addRoomSeconds = AppState.pendingRoomSeconds;
         AppState.pendingRoomExp = 0;
+        AppState.pendingRoomSeconds = 0;
         try {
           const profRef = ref(db, `users/${uid}/profile`);
           const snap = await get(profRef);
@@ -21037,21 +21109,26 @@ class RoomManager {
             const data = snap.val() || {};
             let curXp = Number(data.xp) || 0;
             let newXp = curXp + addXp;
-            await update(profRef, { xp: newXp });
+            let curRoomTime = Number(data.timeSpentInRooms) || 0;
+            let newRoomTime = curRoomTime + addRoomSeconds;
+            await update(profRef, { xp: newXp, timeSpentInRooms: newRoomTime });
             await BadgeManager.checkLevelBadges(uid, newXp);
             const cached = AppState.usersCache.get(uid);
-            if (cached) cached.xp = newXp;
+            if (cached) {
+              cached.xp = newXp;
+              cached.timeSpentInRooms = newRoomTime;
+            }
           }
         } catch (e) {}
       }
 
-      // Lumens: 100x harder economy & STRICTLY ONLY WHEN VIDEO IS ACTIVELY PLAYING!
-      // 600 seconds (10 full minutes) of active video playback = 1 Lumen (or 2 with Premium)
+      // Lumens: 10x economy & STRICTLY ONLY WHEN VIDEO IS ACTIVELY PLAYING!
+      // 60 seconds (1 full minute) of active video playback = 1 Lumen (or 2 with Premium)
       if (isPlaying) {
         if (!AppState.pendingRoomPlaybackSeconds) AppState.pendingRoomPlaybackSeconds = 0;
         AppState.pendingRoomPlaybackSeconds += 1;
 
-        if (AppState.pendingRoomPlaybackSeconds >= 600) {
+        if (AppState.pendingRoomPlaybackSeconds >= 60) {
           AppState.pendingRoomPlaybackSeconds = 0;
 
           try {
@@ -21069,8 +21146,8 @@ class RoomManager {
 
               if (window.LumenManager) {
                 const reasonText = mult > 1
-                  ? `10 мин. просмотра (+${addLumens} x${mult} Premium)`
-                  : "10 мин. просмотра видео";
+                  ? `1 мин. просмотра (+${addLumens} x${mult} Premium)`
+                  : "1 мин. просмотра видео";
 
                 LumenManager.updateBalance(newLumens, {
                   diff: addLumens,
@@ -21100,9 +21177,11 @@ class RoomManager {
   }
 
   static stopRoomExperienceTimer() {
+    RoomManager.flushPendingRoomTime();
     if (AppState.roomExpTimer) clearInterval(AppState.roomExpTimer);
     AppState.roomExpTimer = null;
     AppState.pendingRoomPlaybackSeconds = 0;
+    AppState.pendingRoomSeconds = 0;
     AppState.pendingRoomExp = 0;
     AppState.roomWatchEarnings = 0;
     AppState.roomWatchTicks = 0;
@@ -21168,6 +21247,8 @@ class RoomManager {
       ProfileManager.closeProfileOverlay();
     }
     Utils.showScreen("lobby-screen");
+    if (window.resumeBackgroundFX) window.resumeBackgroundFX();
+    this.updateRoomsDOM();
   }
 
   static applyRoomTheme(theme = "default") {
@@ -24727,6 +24808,7 @@ window.switchLeaderboardCategory = function(cat) {
     window.activeLeaderboardCategory = cat;
     const btnLumens = Utils.$("leaderboard-tab-lumens");
     const btnLikes = Utils.$("leaderboard-tab-likes");
+    const btnTime = Utils.$("leaderboard-tab-time");
 
     if (btnLumens) {
         if (cat === "lumens") {
@@ -24753,6 +24835,20 @@ window.switchLeaderboardCategory = function(cat) {
             btnLikes.style.background = "transparent";
             btnLikes.style.borderColor = "rgba(255, 255, 255, 0.1)";
             btnLikes.style.color = "rgba(255, 255, 255, 0.6)";
+        }
+    }
+
+    if (btnTime) {
+        if (cat === "time") {
+            btnTime.className = "primary-btn";
+            btnTime.style.background = "linear-gradient(135deg, rgba(96, 165, 250, 0.25), rgba(59, 130, 246, 0.25))";
+            btnTime.style.borderColor = "rgba(96, 165, 250, 0.4)";
+            btnTime.style.color = "#60a5fa";
+        } else {
+            btnTime.className = "secondary-btn";
+            btnTime.style.background = "transparent";
+            btnTime.style.borderColor = "rgba(255, 255, 255, 0.1)";
+            btnTime.style.color = "rgba(255, 255, 255, 0.6)";
         }
     }
 
@@ -24788,7 +24884,7 @@ window.loadLeaderboard = async function() {
                 }
             }
             usersArray.sort((a, b) => b.score - a.score);
-        } else {
+        } else if (cat === "likes") {
             for (const [uid, uData] of Object.entries(allUsers)) {
                 if (!uData.profile) continue;
                 const likedBy = uData.profile.likedBy || {};
@@ -24798,12 +24894,22 @@ window.loadLeaderboard = async function() {
                 }
             }
             usersArray.sort((a, b) => b.score - a.score);
+        } else if (cat === "time") {
+            for (const [uid, uData] of Object.entries(allUsers)) {
+                if (!uData.profile) continue;
+                const roomTime = Number(uData.profile.timeSpentInRooms) || 0;
+                if (roomTime > 0) {
+                    usersArray.push({ uid, profile: uData.profile, score: roomTime, type: "time" });
+                }
+            }
+            usersArray.sort((a, b) => b.score - a.score);
         }
 
         const topUsers = usersArray.slice(0, 50);
         
         if (topUsers.length === 0) {
-            listEl.innerHTML = `<div style="color:var(--text-muted); text-align:center; padding: 32px 16px;">Пока ни у кого нет ${cat === "lumens" ? "Люменов" : "лайков"}.</div>`;
+            const emptyLabel = cat === "lumens" ? "Люменов" : (cat === "likes" ? "лайков" : "проведённого времени в комнатах");
+            listEl.innerHTML = `<div style="color:var(--text-muted); text-align:center; padding: 32px 16px;">Пока ни у кого нет ${emptyLabel}.</div>`;
             return;
         }
         
@@ -24826,6 +24932,17 @@ window.loadLeaderboard = async function() {
             const avHtml = ProfileManager.getAvatarHtml(u.profile);
             const isMe = AppState.currentUser?.uid === u.uid;
             
+            let scoreContent = "";
+            if (cat === "lumens") {
+                scoreContent = `${u.score.toLocaleString()} <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 20px; height: 20px;" alt="✨">`;
+            } else if (cat === "likes") {
+                scoreContent = `${u.score.toLocaleString()} <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Heart.webp" style="width: 20px; height: 20px;" alt="❤️">`;
+            } else {
+                scoreContent = `${Utils.formatDuration(u.score)} <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Hourglass%20Done.webp" style="width: 20px; height: 20px;" alt="⏳">`;
+            }
+
+            const scoreColor = cat === "lumens" ? "#ffd700" : (cat === "likes" ? "#ff4b4b" : "#60a5fa");
+
             html += `<div style="display:flex;align-items:center;padding:12px 16px;background:${isMe ? 'rgba(255,215,0,0.08)' : 'rgba(255,255,255,0.03)'};border:1px solid ${isMe ? 'rgba(255,215,0,0.3)' : 'rgba(255,255,255,0.05)'};border-radius:12px;cursor:pointer;transition:transform 0.2s, background 0.2s;" onmouseover="this.style.background='${isMe ? 'rgba(255,215,0,0.14)' : 'rgba(255,255,255,0.08)'}'" onmouseout="this.style.background='${isMe ? 'rgba(255,215,0,0.08)' : 'rgba(255,255,255,0.03)'}'" onclick="ProfileManager.openViewProfileModal('${u.uid}')">
                 <div style="width: 60px; text-align:center; margin-right:16px; font-weight:bold; ${placeStyle}">${placeText}</div>
                 <div style="width:46px;height:46px;margin-right:16px;border-radius:50%;overflow:visible;">${avHtml}</div>
@@ -24836,10 +24953,8 @@ window.loadLeaderboard = async function() {
                     </div>
                     <span style="font-size:12px;color:var(--text-muted);">@${Utils.escapeHtml(u.profile.username || "")}</span>
                 </div>
-                <div style="display:flex;align-items:center;gap:6px;font-weight:700;font-size:16px;${cat === 'lumens' ? 'color:#ffd700;' : 'color:#ff4b4b;'}">
-                    ${u.score.toLocaleString()} ${cat === 'lumens' 
-                        ? '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 20px; height: 20px;" alt="✨">' 
-                        : '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Heart.webp" style="width: 20px; height: 20px;" alt="❤️">'}
+                <div style="display:flex;align-items:center;gap:6px;font-weight:700;font-size:16px;color:${scoreColor};">
+                    ${scoreContent}
                 </div>
             </div>`;
         });

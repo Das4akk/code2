@@ -6445,6 +6445,10 @@
                  <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Heart.webp" style="width: 18px; height: 18px;" alt="❤️">
                  Любимчики (Топ Лайков)
                </button>
+               <button id="leaderboard-tab-time" class="secondary-btn" onclick="if(window.switchLeaderboardCategory) window.switchLeaderboardCategory('time')" style="width: auto; padding: 8px 18px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                 <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Hourglass%20Done.webp" style="width: 18px; height: 18px;" alt="⏳">
+                 Время в комнатах
+               </button>
             </div>
             <div id="leaderboard-list" style="display: flex; flex-direction: column; gap: 10px;">
                <div style="color:var(--text-muted); text-align:center;">Загрузка...</div>
@@ -7057,6 +7061,10 @@
               <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
                  <span style="color: var(--text-muted);">Вход:</span>
                  <span id="view-stat-login" style="color: #fff; font-weight: 600;">Неизвестно</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+                 <span style="color: var(--text-muted);">В комнатах:</span>
+                 <span id="view-stat-room-time" style="color: #fff; font-weight: 600;">0 мин.</span>
               </div>
               <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
                  <span style="color: var(--text-muted);">ID:</span>
@@ -8239,11 +8247,11 @@
         <!-- Navigation Tabs: History, Leaderboard & Guide -->
         <div class="lumens-modal-nav-container">
           <button id="tab-btn-lumens-tx" class="lumens-tab-btn active" onclick="if(window.LumenManager) LumenManager.switchModalTab('history')">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Receipt.webp" style="width: 15px; height: 15px; object-fit: contain;" alt="История">
+            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp" style="width: 15px; height: 15px; object-fit: contain;" alt="История">
             История
           </button>
           <button id="tab-btn-lumens-top" class="lumens-tab-btn" onclick="if(window.LumenManager) LumenManager.switchModalTab('leaderboard')">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activities/Trophy.webp" style="width: 15px; height: 15px; object-fit: contain;" alt="Топ">
+            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Trophy.webp" style="width: 15px; height: 15px; object-fit: contain;" alt="Топ">
             Лидерборд
           </button>
           <button id="tab-btn-lumens-earn" class="lumens-tab-btn" onclick="if(window.LumenManager) LumenManager.switchModalTab('guide')">
@@ -8290,7 +8298,7 @@
             <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Television.webp" alt="Watch" style="width: 26px; height: 26px; object-fit: contain; flex-shrink: 0; margin-top: 2px;">
             <div style="flex: 1;">
               <div style="font-size: 13.5px; font-weight: 700; color: #ffffff;">Воспроизведение видео в комнатах</div>
-              <div style="font-size: 12px; color: rgba(255, 255, 255, 0.6); line-height: 1.4; margin-top: 2px;">Люмены начисляются <strong>только при активном воспроизведении видео</strong>: +1 Люмен за каждые 10 минут просмотра (+2 для COWIO Premium).</div>
+              <div style="font-size: 12px; color: rgba(255, 255, 255, 0.6); line-height: 1.4; margin-top: 2px;">Люмены начисляются <strong>только при активном воспроизведении видео</strong>: +1 Люмен за каждую 1 минуту просмотра (+2 для COWIO Premium).</div>
             </div>
           </div>
 
@@ -8298,12 +8306,12 @@
             <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" alt="Streak" style="width: 26px; height: 26px; object-fit: contain; flex-shrink: 0; margin-top: 2px;">
             <div style="flex: 1;">
               <div style="font-size: 13.5px; font-weight: 700; color: #ffffff;">Ежедневный вход (Стрик)</div>
-              <div style="font-size: 12px; color: rgba(255, 255, 255, 0.6); line-height: 1.4; margin-top: 2px;">Заходите на платформу ежедневно и получайте от 1 до 3 Люменов с ценными бонусами за длинные серии.</div>
+              <div style="font-size: 12px; color: rgba(255, 255, 255, 0.6); line-height: 1.4; margin-top: 2px;">Заходите на платформу ежедневно и получайте от 3 до 8 Люменов с ценными бонусами за длинные серии.</div>
             </div>
           </div>
 
           <div style="display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 14px;">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Wrapped%20Gift.webp" alt="Gift" style="width: 26px; height: 26px; object-fit: contain; flex-shrink: 0; margin-top: 2px;">
+            <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f381/512.webp" alt="Gift" style="width: 26px; height: 26px; object-fit: contain; flex-shrink: 0; margin-top: 2px;" onerror="this.onerror=null; this.src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Activities/Wrapped%20Gift.png';">
             <div style="flex: 1;">
               <div style="font-size: 13.5px; font-weight: 700; color: #ffffff;">Подарки только от друзей</div>
               <div style="font-size: 12px; color: rgba(255, 255, 255, 0.6); line-height: 1.4; margin-top: 2px;">Вы можете дарить Люмены своим подтверждённым друзьям (действует лимит: до 10 Люменов в день).</div>
