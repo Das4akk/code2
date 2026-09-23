@@ -1058,12 +1058,26 @@ class VideoPlaybackManager {
 // Адаптивный Ambilight для плеера
 class Ambilight {
   static loopId = null;
-  static canvas = document.createElement("canvas");
-  static ctx = this.canvas.getContext("2d", { willReadFrequently: true });
+  static canvas = null;
+  static ctx = null;
+
+  static getCanvas() {
+    if (!this.canvas && typeof document !== "undefined") {
+      this.canvas = document.createElement("canvas");
+      try {
+        this.ctx = this.canvas.getContext ? this.canvas.getContext("2d", { willReadFrequently: true }) : null;
+      } catch (e) {
+        this.ctx = null;
+      }
+    }
+    return this.canvas;
+  }
 
   static start(videoEl) {
     this.stop();
     if (!videoEl) return;
+    this.getCanvas();
+    if (!this.canvas || !this.ctx) return;
 
     let glowEl = Utils.$("ambilight-glow");
     if (!glowEl) {

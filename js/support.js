@@ -913,6 +913,49 @@ class SupportSystem {
     a.click();
   }
 
+  static async exportAllTickets() {
+    const snap = await get(ref(db, "support_tickets"));
+    const val = snap.val() || {};
+    let str = "=== ЭКСПОРТ ВСЕХ АКТИВНЫХ ТИКЕТОВ ===\n\n";
+    Object.values(val).forEach((t) => {
+      if (t.status !== "open") return;
+      str += `[ID: ${t.id}] ${t.title} (от ${t.creatorUid})\n`;
+      Object.values(t.messages || {}).forEach((m) => {
+        str += `  - ${m.name}: ${m.text}\n`;
+      });
+      str += "\n";
+    });
+    const blob = new Blob([str], { type: "text/plain" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `active_tickets_${Date.now()}.txt`;
+    a.click();
+  }
+
+  static async forceSyncAllTickets(filter = "all") {
+    const confirmMsg =
+      filter === "old"
+        ? "Удалить все закрытые тикеты старше 7 дней?"
+        : "Удалить все закрытые тикеты?";
+    if (!(await Utils.confirm(confirmMsg))) return;
+    const snap = await get(ref(db, "support_tickets"));
+    const val = snap.val() || {};
+    const now = Date.now();
+    const sevenDays = 7 * 24 * 60 * 60 * 1000;
+    let count = 0;
+    for (const [id, t] of Object.entries(val)) {
+      if (t.status === "closed") {
+        if (filter === "old" && t.createdAt && now - Number(t.createdAt) < sevenDays) {
+          continue;
+        }
+        await remove(ref(db, `support_tickets/${id}`));
+        count++;
+      }
+    }
+    Utils.toast(`Удалено тикетов: ${count}`, "success");
+    this.openCreatorPanel();
+  }
+
   static refreshCreatorStats() {
     this.openCreatorPanel(); // Just calls the opening which refreshes stats
     Utils.toast("Данные обновлены", "success");

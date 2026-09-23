@@ -397,6 +397,19 @@ setTimeout(() => {
 }, 3000);
 
 window.triggerAdminAction = (action) => {
+  const resolveAdminTarget = async (input) => {
+    if (!input) return null;
+    const val = input.trim();
+    if (!val) return null;
+    if (val.toLowerCase() === "all") return "all";
+    const clean = val.replace(/^@/, "").toLowerCase();
+    try {
+      const snap = await get(ref(db, `usernames/${clean}`));
+      if (snap && snap.exists()) return snap.val();
+    } catch (e) {}
+    return val.replace(/^@/, "");
+  };
+
   const showAdminPrompt = (title, inputs, onSubmit) => {
     const overlay = document.createElement("div");
     overlay.style.cssText =

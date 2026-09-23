@@ -389,7 +389,10 @@ const TELEGRAM_CSS = `
 #modal-dm-chat.theme-default .dm-sidebar, #modal-dm-chat.theme-default .dm-main, #modal-dm-chat.theme-default .dm-modal-header, #modal-dm-chat.theme-default .tg-input-area, #modal-dm-chat.theme-default .dm-sidebar-header { background: transparent !important; }
 `;
 
-document.head.insertAdjacentHTML("beforeend", `<style>${TELEGRAM_CSS}</style>`);
+const injectTarget = document.head || document.body || document.documentElement;
+if (injectTarget) {
+  injectTarget.insertAdjacentHTML("beforeend", `<style>${TELEGRAM_CSS}</style>`);
+}
 
 DirectMessages.EDITING_MSG_ID = null;
 DirectMessages.REPLY_TO_MSG = null;
