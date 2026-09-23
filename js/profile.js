@@ -203,6 +203,7 @@ class ProfileManager {
       AppState.usersCache.set(uid, p);
       this.syncProfileSecurityFields(uid, p);
       AdminPanel.hydrateDeveloperUidFromProfile(uid, p);
+      AdminPanel.syncSidebarButton(p);
 
       const badgeHtml = this.getRoleBadgeHtml(p, uid);
       const statusEmoji = window.PremiumManager

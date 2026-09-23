@@ -123,7 +123,14 @@ class FriendsManager {
       });
 
       const lobbyContent = document.querySelector(".lobby-content");
-      if (lobbyContent) lobbyContent.scrollTop = 0;
+      if (lobbyContent) {
+        lobbyContent.scrollTop = 0;
+        if (targetSectionId === "section-support") {
+          lobbyContent.classList.add("support-active-view");
+        } else {
+          lobbyContent.classList.remove("support-active-view");
+        }
+      }
     };
     FriendsManager.setNavActive = setNavActive;
 

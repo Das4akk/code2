@@ -148,6 +148,7 @@ class Router {
       "nav-premium": "section-premium",
       "nav-mystery": "section-mystery",
       "nav-support": "section-support",
+      "nav-support-staff": "section-support",
       "nav-profile": "section-profile"
     };
     return map[navId] || "section-rooms";
@@ -187,9 +188,16 @@ class Router {
       }
     });
 
-    // 4. Scroll lobby content to top
+    // 4. Scroll lobby content to top and toggle full-width support container class
     const lobbyContent = document.querySelector(".lobby-content");
-    if (lobbyContent) lobbyContent.scrollTop = 0;
+    if (lobbyContent) {
+      lobbyContent.scrollTop = 0;
+      if (sectionId === "section-support") {
+        lobbyContent.classList.add("support-active-view");
+      } else {
+        lobbyContent.classList.remove("support-active-view");
+      }
+    }
   }
 
   static triggerSectionInit(navId) {
@@ -203,7 +211,7 @@ class Router {
       window.PremiumManager.renderPremiumSection();
     } else if (navId === "nav-mystery" && window.MysteryEventManager) {
       window.MysteryEventManager.render();
-    } else if (navId === "nav-support" && window.SupportSystem) {
+    } else if ((navId === "nav-support" || navId === "nav-support-staff") && window.SupportSystem) {
       window.SupportSystem.renderTickets();
     }
   }

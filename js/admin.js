@@ -1409,6 +1409,16 @@ class AdminPanel {
     this.syncSidebarButton();
   }
 
+  static isSupportStaffProfile(profile = {}, uid = null) {
+    if (!uid && !profile) return false;
+    const r = String(profile?.role || "").toLowerCase().trim();
+    if (r === "creator" || r === "moderator" || r === "operator") return true;
+    if (this.isCreatorProfile(profile, uid)) return true;
+    if (this.isModeratorProfile(profile, uid)) return true;
+    if (this.isOperatorProfile(profile, uid)) return true;
+    return false;
+  }
+
   static syncSidebarButton(profile = {}) {
     const footer = Utils.$("btn-logout")?.parentNode;
     const uid = AppState.currentUser?.uid || null;
@@ -1433,9 +1443,7 @@ class AdminPanel {
       myProfile,
       uid,
     );
-    let hasSupportAccess =
-      this.isCreatorProfile(myProfile, uid) ||
-      this.isOperatorProfile(myProfile, uid);
+    let hasSupportAccess = this.isSupportStaffProfile(myProfile, uid);
 
     if (Utils.$("nav-support-staff"))
       Utils.$("nav-support-staff").style.display = hasSupportAccess
@@ -1474,6 +1482,23 @@ class AdminPanel {
     this.ensureUI();
     this.renderPanel();
     Utils.$("modal-admin-panel").classList.add("active");
+  }
+
+  static async openUserInAdmin(uid) {
+    if (!this.requireAdmin()) return;
+    if (!uid) return;
+    this.openPanel();
+    this.switchGodModeSection("people");
+    const searchInput = Utils.$("admin-user-search");
+    if (searchInput) {
+      const cached = AppState.usersCache?.get(uid);
+      searchInput.value = cached?.username ? `@${cached.username}` : uid;
+    }
+    await this.loadUserEditor(uid);
+    const editor = Utils.$("admin-user-editor");
+    if (editor) {
+      editor.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
   }
 
   static renderIfOpen() {

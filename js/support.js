@@ -14,13 +14,25 @@ class SupportSystem {
     Закрытие: "Рады были помочь! Тикет закрывается.",
   };
 
+  static isStaff(profile = null, uid = null) {
+    const currentUid = uid || AppState.currentUser?.uid;
+    if (!currentUid) return false;
+    const p = profile || (AppState.usersCache ? AppState.usersCache.get(currentUid) : null) || {};
+    if (window.AdminPanel && typeof AdminPanel.isSupportStaffProfile === "function") {
+      return AdminPanel.isSupportStaffProfile(p, currentUid);
+    }
+    const r = String(p.role || "").toLowerCase().trim();
+    return r === "creator" || r === "moderator" || r === "operator";
+  }
+
   static initGlobalListener() {
     const uid = AppState.currentUser?.uid;
     if (!uid) return;
     const profile = AppState.usersCache.get(uid) || {};
-    const isAdmin =
-      AdminPanel.isCreatorProfile(profile, uid) ||
-      AdminPanel.isOperatorProfile(profile, uid);
+    const isStaff = this.isStaff(profile, uid);
+    const isCreator = window.AdminPanel
+      ? AdminPanel.isCreatorProfile(profile, uid)
+      : false;
 
     // Use implicit import for onValue/ref
     if (typeof onValue !== "undefined") {
@@ -45,10 +57,15 @@ class SupportSystem {
       let hasUnread = false;
 
       Object.entries(val).forEach(([id, t]) => {
-        if (!isAdmin && t.creatorUid !== uid) return;
+        if (!isStaff) {
+          const isSender = t.creatorUid === uid || t.reporterUid === uid;
+          if (!isSender || t.targetUid === uid) return;
+        } else {
+          if (!isCreator && t.targetUid === uid) return;
+        }
 
         if (
-          !isAdmin &&
+          !isStaff &&
           this.lastStatuses[id] &&
           this.lastStatuses[id] !== t.status
         ) {
@@ -69,8 +86,8 @@ class SupportSystem {
             lastMsg.timestamp > this.lastMessageDates[id]
           ) {
             if (
-              (!isAdmin && lastMsg.isAdmin) ||
-              (isAdmin && !lastMsg.isAdmin)
+              (!isStaff && lastMsg.isAdmin) ||
+              (isStaff && !lastMsg.isAdmin)
             ) {
               if (this.activeTicketId !== id) {
                 hasUnread = true;
@@ -90,7 +107,7 @@ class SupportSystem {
             badge = document.createElement("div");
             badge.className = "support-badge";
             badge.style.cssText =
-              "position: absolute; top: 10px; right: 10px; width: 10px; height: 10px; background: red; border-radius: 50%;";
+              "position: absolute; top: 10px; right: 10px; width: 8px; height: 8px; background: #ffffff; border-radius: 50%; box-shadow: 0 0 8px #ffffff;";
             navIcon.style.position = "relative";
             navIcon.appendChild(badge);
           }
@@ -202,180 +219,534 @@ class SupportSystem {
     await this.sendMessage(id, false, text);
   }
 
+  static currentFilter = "all";
+  static searchQuery = "";
+  static cachedTickets = [];
+  static pendingAttachment = null;
+  static modalAttachment = null;
+  static isInitialized = false;
+
+  static formatRelativeTime(timestamp) {
+    if (!timestamp) return "";
+    const diff = Date.now() - timestamp;
+    const sec = Math.floor(diff / 1000);
+    if (sec < 60) return "только что";
+    const min = Math.floor(sec / 60);
+    if (min < 60) return `${min} мин. назад`;
+    const hours = Math.floor(min / 60);
+    if (hours < 24) return `${hours} ч. назад`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days} дн. назад`;
+    const d = new Date(timestamp);
+    return `${d.getDate().toString().padStart(2, "0")}.${(d.getMonth() + 1).toString().padStart(2, "0")}`;
+  }
+
+  static getCategoryBadgeHtml(cat, isReport = false) {
+    if (cat === "Баг") {
+      return '<span class="support-card-tag tag-bug">🐛 Баг</span>';
+    } else if (cat === "Вопрос") {
+      return '<span class="support-card-tag tag-question">💬 Вопрос</span>';
+    } else if (cat === "Идея") {
+      return '<span class="support-card-tag tag-idea">💡 Идея</span>';
+    } else if (cat === "Жалоба" || isReport) {
+      return '<span class="support-card-tag tag-report">🚩 Жалоба</span>';
+    }
+    return `<span class="support-card-tag">📝 ${Utils.escapeHtml(cat || "Тикет")}</span>`;
+  }
+
+  static getCategoryIconUrl(cat, isReport = false) {
+    if (cat === "Баг") {
+      return "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Bug.webp";
+    } else if (cat === "Вопрос") {
+      return "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Question%20Mark.webp";
+    } else if (cat === "Идея") {
+      return "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Light%20Bulb.webp";
+    } else if (cat === "Жалоба" || isReport) {
+      return "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Triangular%20Flag.webp";
+    }
+    return "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp";
+  }
+
+  static openCreateModal(defaultCategory = "") {
+    const uid = AppState.currentUser?.uid;
+    if (this.BANNED_USERS.has(uid)) {
+      return Utils.toast("Вы заблокированы в системе поддержки", "error");
+    }
+    const modal = Utils.$("modal-create-ticket");
+    if (!modal) return;
+
+    if (defaultCategory) {
+      const catInput = Utils.$("support-new-ticket-category");
+      if (catInput) catInput.value = defaultCategory;
+      const chips = document.querySelectorAll("#create-ticket-category-chips .category-chip");
+      chips.forEach((c) => {
+        if (c.getAttribute("data-cat") === defaultCategory) {
+          c.classList.add("active");
+        } else {
+          c.classList.remove("active");
+        }
+      });
+    }
+
+    modal.classList.add("active");
+    setTimeout(() => {
+      const titleInput = Utils.$("support-new-ticket-title");
+      if (titleInput) titleInput.focus();
+    }, 100);
+  }
+
+  static bindUIEvents() {
+    if (this.isInitialized) return;
+    this.isInitialized = true;
+
+    // Sidebar header create button
+    const btnOpenCreate = Utils.$("btn-open-create-ticket-modal");
+    if (btnOpenCreate) {
+      btnOpenCreate.onclick = () => this.openCreateModal();
+    }
+
+    // Search input
+    const searchInput = Utils.$("support-search-input");
+    const searchClear = Utils.$("support-search-clear");
+    if (searchInput) {
+      searchInput.addEventListener("input", (e) => {
+        this.searchQuery = e.target.value.trim();
+        if (searchClear) {
+          searchClear.style.display = this.searchQuery ? "block" : "none";
+        }
+        this.renderFilteredTickets();
+      });
+    }
+    if (searchClear) {
+      searchClear.addEventListener("click", () => {
+        if (searchInput) searchInput.value = "";
+        this.searchQuery = "";
+        searchClear.style.display = "none";
+        this.renderFilteredTickets();
+        if (searchInput) searchInput.focus();
+      });
+    }
+
+    // Filter tabs
+    const filterTabs = document.querySelectorAll("#support-filter-tabs .support-filter-tab");
+    filterTabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        filterTabs.forEach((t) => t.classList.remove("active"));
+        tab.classList.add("active");
+        this.currentFilter = tab.getAttribute("data-filter") || "all";
+        this.renderFilteredTickets();
+      });
+    });
+
+    // Create modal category chips
+    const catChips = document.querySelectorAll("#create-ticket-category-chips .category-chip");
+    catChips.forEach((chip) => {
+      chip.addEventListener("click", () => {
+        catChips.forEach((c) => c.classList.remove("active"));
+        chip.classList.add("active");
+        const val = chip.getAttribute("data-cat");
+        const input = Utils.$("support-new-ticket-category");
+        if (input) input.value = val;
+      });
+    });
+
+    // Create modal priority chips
+    const priChips = document.querySelectorAll("#create-ticket-priority-chips .priority-chip");
+    priChips.forEach((chip) => {
+      chip.addEventListener("click", () => {
+        priChips.forEach((c) => c.classList.remove("active"));
+        chip.classList.add("active");
+        const val = chip.getAttribute("data-pri");
+        const input = Utils.$("support-new-ticket-priority");
+        if (input) input.value = val;
+      });
+    });
+
+    // Create modal attachment
+    const modalAttachBtn = Utils.$("btn-modal-ticket-attach");
+    if (modalAttachBtn) {
+      modalAttachBtn.onclick = () => {
+        const fileInput = document.createElement("input");
+        fileInput.type = "file";
+        fileInput.accept = "image/*";
+        fileInput.onchange = (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (re) => {
+            const img = new Image();
+            img.onload = () => {
+              const canvas = document.createElement("canvas");
+              let w = img.width, h = img.height;
+              const maxDim = 1200;
+              if (w > maxDim || h > maxDim) {
+                if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+                else { w = Math.round((w * maxDim) / h); h = maxDim; }
+              }
+              canvas.width = w; canvas.height = h;
+              canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+              SupportSystem.modalAttachment = canvas.toDataURL("image/jpeg", 0.65);
+
+              const preview = Utils.$("modal-ticket-attach-preview");
+              const previewImg = Utils.$("modal-ticket-preview-img");
+              if (preview && previewImg) {
+                previewImg.src = SupportSystem.modalAttachment;
+                preview.style.display = "inline-flex";
+              }
+              if (Utils.$("modal-ticket-attach-label")) {
+                Utils.$("modal-ticket-attach-label").innerText = "Заменить";
+              }
+            };
+            img.src = re.target.result;
+          };
+          reader.readAsDataURL(file);
+        };
+        fileInput.click();
+      };
+    }
+
+    const modalRemoveAttach = Utils.$("btn-modal-remove-attach");
+    if (modalRemoveAttach) {
+      modalRemoveAttach.onclick = () => {
+        SupportSystem.modalAttachment = null;
+        const preview = Utils.$("modal-ticket-attach-preview");
+        if (preview) preview.style.display = "none";
+        if (Utils.$("modal-ticket-attach-label")) {
+          Utils.$("modal-ticket-attach-label").innerText = "Прикрепить картинку";
+        }
+      };
+    }
+
+    // Ticket creation button handler
+    const btnNew = Utils.$("btn-new-ticket");
+    if (btnNew) {
+      btnNew.onclick = async () => {
+        const uid = AppState.currentUser?.uid;
+        if (!uid) return Utils.toast("Вы не авторизованы", "error");
+        if (this.BANNED_USERS.has(uid)) {
+          return Utils.toast("Вы заблокированы в системе поддержки", "error");
+        }
+
+        const inputTitle = Utils.$("support-new-ticket-title");
+        const inputCategory = Utils.$("support-new-ticket-category");
+        const inputPriority = Utils.$("support-new-ticket-priority");
+        const inputText = Utils.$("support-new-ticket-text");
+
+        const title = inputTitle ? inputTitle.value.trim() : "";
+        const category = inputCategory ? inputCategory.value.trim() : "Вопрос";
+        const priority = inputPriority ? inputPriority.value.trim() : "Средний";
+        const text = inputText ? inputText.value.trim() : "";
+
+        if (!title) {
+          Utils.toast("Пожалуйста, укажите тему обращения", "warning");
+          if (inputTitle) inputTitle.focus();
+          return;
+        }
+        if (!text) {
+          Utils.toast("Пожалуйста, подробно опишите ваш вопрос или проблему", "warning");
+          if (inputText) inputText.focus();
+          return;
+        }
+
+        btnNew.disabled = true;
+        btnNew.innerHTML = "<span>Создание...</span>";
+
+        try {
+          const newRef = push(ref(db, "support_tickets"));
+          const ts = Date.now();
+          const profile = (AppState.usersCache ? AppState.usersCache.get(uid) : null) || {};
+          const isPremiumUser =
+            window.PremiumManager &&
+            PremiumManager.isPremiumActive(profile, uid) &&
+            !PremiumManager.isStaff(profile, uid);
+
+          await set(newRef, {
+            title,
+            category,
+            priority: isPremiumUser && priority !== "Срочный" ? "Высокий" : priority,
+            creatorUid: uid,
+            status: "open",
+            createdAt: ts,
+            lastActivity: ts,
+            lastSender: uid,
+            lastSenderIsAdmin: false,
+            problemDescription: text,
+            isPremium: Boolean(isPremiumUser),
+          });
+
+          await push(ref(db, `support_tickets/${newRef.key}/messages`), {
+            text: text,
+            image: SupportSystem.modalAttachment || null,
+            uid,
+            name: profile?.name || "Пользователь",
+            username: profile?.username || uid,
+            avatar: profile?.avatar || "",
+            isAdmin: false,
+            timestamp: ts,
+          });
+
+          // Reset inputs
+          if (inputTitle) inputTitle.value = "";
+          if (inputText) inputText.value = "";
+          SupportSystem.modalAttachment = null;
+          const preview = Utils.$("modal-ticket-attach-preview");
+          if (preview) preview.style.display = "none";
+          if (Utils.$("modal-ticket-attach-label")) {
+            Utils.$("modal-ticket-attach-label").innerText = "Прикрепить картинку";
+          }
+
+          document.getElementById("modal-create-ticket")?.classList.remove("active");
+          Utils.toast("Обращение успешно создано!", "success");
+
+          // Open the newly created ticket immediately
+          SupportSystem.openTicket(newRef.key);
+        } catch (err) {
+          console.error("Error creating ticket:", err);
+          Utils.toast("Не удалось создать тикет: " + err.message, "error");
+        } finally {
+          btnNew.disabled = false;
+          btnNew.innerHTML = "Создать";
+        }
+      };
+    }
+  }
+
   static async renderTickets() {
     const uid = AppState.currentUser?.uid;
     if (!uid) return;
     const profile =
-      AppState.usersCache.get(AppState.currentUser?.uid) || {} || {};
-    const isAdmin =
-      AdminPanel.isCreatorProfile(profile, uid) ||
-      AdminPanel.isOperatorProfile(profile, uid);
-    const isCreator = AdminPanel.isCreatorProfile(profile, uid);
-    const list = Utils.$("support-tickets-list");
+      (AppState.usersCache ? AppState.usersCache.get(uid) : null) || {};
+    const isStaff = this.isStaff(profile, uid);
+    const isCreator = window.AdminPanel
+      ? AdminPanel.isCreatorProfile(profile, uid)
+      : false;
 
+    // Creator panel button
     const panelBtn = Utils.$("btn-support-creator-panel");
     if (panelBtn) {
-      panelBtn.style.display = isCreator ? "block" : "none";
+      panelBtn.style.display = isCreator ? "inline-flex" : "none";
       panelBtn.onclick = () => this.openCreatorPanel();
     }
 
-    const btnOpenCreate = Utils.$("btn-open-create-ticket-modal");
-    if (btnOpenCreate)
-      btnOpenCreate.onclick = () => {
-        if (this.BANNED_USERS.has(uid))
-          return Utils.toast("Вы заблокированы в системе поддержки", "error");
-        const m = Utils.$("modal-create-ticket");
-        if (m) m.classList.add("active");
-      };
+    // Reports filter tab is only visible to staff
+    const reportsTab = Utils.$("tab-filter-reports");
+    if (reportsTab) {
+      reportsTab.style.display = isStaff ? "inline-flex" : "none";
+    }
+
+    // Bind search and filter events once
+    this.bindUIEvents();
 
     if (this.unsubList) this.unsubList();
     const dbRef = ref(db, "support_tickets");
     this.unsubList = onValue(dbRef, (snap) => {
       const val = snap.val() || {};
       let tickets = Object.entries(val).map(([id, t]) => ({ id, ...t }));
-      if (!isAdmin) {
-        tickets = tickets.filter((t) => t.creatorUid === uid);
-        tickets = tickets.filter((t) => t.status !== "closed"); // Hide for creator visually
+
+      if (!isStaff) {
+        // Regular user: can ONLY see tickets they created/reported, and NEVER tickets where they are accused!
+        tickets = tickets.filter((t) => {
+          const isSender = t.creatorUid === uid || t.reporterUid === uid;
+          const isTarget = t.targetUid === uid;
+          return isSender && !isTarget;
+        });
+      } else {
+        // Staff: can see all tickets, but not complaints where they are the accused target (unless creator of the app)
+        if (!isCreator) {
+          tickets = tickets.filter((t) => t.targetUid !== uid);
+        }
       }
-      if (tickets.length === 0) {
-        list.innerHTML = `<div style="text-align:center; padding: 20px; color: var(--text-muted);">Тикетов нет</div>`;
-        return;
-      }
-      tickets.sort((a, b) => {
-        const priorityOrder = {
-          Срочный: 3,
-          Высокий: 2,
-          Средний: 1,
-          Обычный: 0,
-        };
-        const pA = priorityOrder[a.priority] || 0;
-        const pB = priorityOrder[b.priority] || 0;
-        if (pA !== pB) return pB - pA;
-        return b.createdAt - a.createdAt;
+
+      this.cachedTickets = tickets;
+      this.updateCountsAndBadges();
+      this.renderFilteredTickets();
+    });
+  }
+
+  static updateCountsAndBadges() {
+    const tickets = this.cachedTickets || [];
+    const allCount = tickets.length;
+    const openCount = tickets.filter((t) => t.status !== "closed").length;
+    const closedCount = tickets.filter((t) => t.status === "closed").length;
+    const reportsCount = tickets.filter((t) =>
+      Boolean(t.isReport || t.targetUid || t.reportType === "profile" || t.category === "Жалоба")
+    ).length;
+
+    const bAll = Utils.$("badge-count-all");
+    if (bAll) bAll.innerText = allCount;
+    const bOpen = Utils.$("badge-count-open");
+    if (bOpen) bOpen.innerText = openCount;
+    const bClosed = Utils.$("badge-count-closed");
+    if (bClosed) bClosed.innerText = closedCount;
+    const bReports = Utils.$("badge-count-reports");
+    if (bReports) bReports.innerText = reportsCount;
+  }
+
+  static renderFilteredTickets() {
+    const list = Utils.$("support-tickets-list");
+    if (!list) return;
+    const uid = AppState.currentUser?.uid;
+    const profile = (AppState.usersCache ? AppState.usersCache.get(uid) : null) || {};
+    const isStaff = this.isStaff(profile, uid);
+    const isAdmin = isStaff;
+
+    let tickets = [...(this.cachedTickets || [])];
+
+    // Filter by tab
+    if (this.currentFilter === "open") {
+      tickets = tickets.filter((t) => t.status !== "closed");
+    } else if (this.currentFilter === "closed") {
+      tickets = tickets.filter((t) => t.status === "closed");
+    } else if (this.currentFilter === "reports") {
+      tickets = tickets.filter((t) =>
+        Boolean(t.isReport || t.targetUid || t.reportType === "profile" || t.category === "Жалоба")
+      );
+    }
+
+    // Filter by search query
+    if (this.searchQuery) {
+      const q = this.searchQuery.toLowerCase();
+      tickets = tickets.filter((t) => {
+        const titleMatch = (t.title || "").toLowerCase().includes(q);
+        const descMatch = (t.problemDescription || "").toLowerCase().includes(q);
+        const catMatch = (t.category || "").toLowerCase().includes(q);
+        let msgMatch = false;
+        if (t.messages) {
+          msgMatch = Object.values(t.messages).some((m) =>
+            (m.text || "").toLowerCase().includes(q)
+          );
+        }
+        return titleMatch || descMatch || catMatch || msgMatch;
       });
-      list.innerHTML = tickets
-        .map((t) => {
-          const titleStr = Utils.escapeHtml(t.title || "Без темы");
-          const titleEscaped = titleStr
-            .replace(/'/g, "\\'")
-            .replace(/"/g, "&quot;"); // escape to insert to onclick
-          const isOpen = t.status === "open";
-          const statusText = isOpen
-            ? '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#ffffff;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);padding:1px 7px;border-radius:100px;"><span style="width:5px;height:5px;border-radius:50%;background:#ffffff;box-shadow:0 0 6px #fff;display:inline-block;"></span>В работе</span>'
-            : '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;color:rgba(255,255,255,0.45);background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);padding:1px 7px;border-radius:100px;">Закрыт</span>';
-          let priorityHtml = t.priority
-            ? `<span class="ticket-priority-label" style="margin-left:6px;font-size:10px;padding:2px 7px;border-radius:100px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.85);font-weight:600;">${t.priority}</span>`
-            : "";
-          if (t.isPremium) {
-            priorityHtml = `<span style="margin-left:6px;font-size:10px;padding:2px 8px;border-radius:100px;background:#ffffff;color:#000000;font-weight:800;">${t.priority || "PRO"}</span>`;
-          }
-          const premiumMark = t.isPremium
-            ? `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" style="width:14px;height:14px;margin-left:6px;vertical-align:middle;" title="Premium">`
-            : "";
-          const unreadDot =
-            t.lastActivity &&
-            t.lastActivity > (t.readReceipts?.[uid] || 0) &&
-            t.lastSender !== uid &&
-            (isAdmin || t.lastSenderIsAdmin)
-              ? `<div style="width:7px;height:7px;border-radius:50%;background:#ffffff;margin-left:8px;flex-shrink:0;box-shadow:0 0 8px #ffffff;" title="Новые сообщения"></div>`
-              : "";
+    }
 
-          const isReportTicket = Boolean(t.isReport || t.targetUid || t.reportType === "profile" || t.category === "Жалоба");
-          const categoryEmoji =
-            t.category === "Баг"
-              ? '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Bug.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">'
-              : t.category === "Вопрос"
-                ? '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Question%20Mark.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">'
-                : isReportTicket
-                  ? '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Triangular%20Flag.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">'
-                  : '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">';
+    if (tickets.length === 0) {
+      const emptyMsg = this.searchQuery
+        ? "По запросу ничего не найдено"
+        : this.currentFilter === "open"
+          ? "Нет открытых обращений"
+          : this.currentFilter === "closed"
+            ? "Нет закрытых обращений"
+            : this.currentFilter === "reports"
+              ? "Жалоб нет"
+              : "У вас пока нет обращений";
 
-          const reportBadge = isReportTicket
-            ? `<span style="margin-left:6px;font-size:10px;padding:2px 7px;border-radius:100px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.22);color:#ffffff;font-weight:700;">Жалоба</span>`
-            : "";
+      list.innerHTML = `
+        <div class="support-empty-list">
+          <div class="empty-list-icon">
+            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp" style="width: 28px; height: 28px; opacity: 0.6;">
+          </div>
+          <div class="empty-list-title">${emptyMsg}</div>
+          <div class="empty-list-desc">Создайте новое обращение, если вам нужна помощь</div>
+          <button type="button" class="primary-btn empty-list-btn" onclick="SupportSystem.openCreateModal()">
+            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Pen.webp" style="width: 13px; height: 13px;">
+            <span>Создать обращение</span>
+          </button>
+        </div>
+      `;
+      return;
+    }
 
-          return `
-                <div class="dm-chat-item ${this.activeTicketId === t.id ? "active" : ""}" onclick="SupportSystem.openTicket('${t.id}')">
-                    <div class="dm-chat-avatar" style="width:38px;height:38px;border-radius:12px;background:rgba(255, 255, 255, 0.05);border:1px solid rgba(255, 255, 255, 0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                        ${categoryEmoji}
-                    </div>
-                    <div class="dm-chat-info" style="min-width:0;flex:1;">
-                        <div class="dm-chat-name" style="display:flex;align-items:center;justify-content:space-between;width:100%;margin-bottom:4px;">
-                           <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px;font-weight:700;color:#ffffff;">${titleStr}${premiumMark}</span>
-                           ${unreadDot}
-                        </div>
-                        <div class="dm-chat-last-msg" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">${statusText}${reportBadge}${isAdmin ? priorityHtml : ""}</div>
-                    </div>
-                </div>`;
-        })
-        .join("");
+    // Sort: open first, then by priority, then by lastActivity or createdAt
+    tickets.sort((a, b) => {
+      const isOpenA = a.status !== "closed" ? 1 : 0;
+      const isOpenB = b.status !== "closed" ? 1 : 0;
+      if (isOpenA !== isOpenB) return isOpenB - isOpenA;
+
+      const priorityOrder = {
+        Срочный: 4,
+        Высокий: 3,
+        Средний: 2,
+        Обычный: 1,
+        Низкий: 0,
+      };
+      const pA = priorityOrder[a.priority] || 1;
+      const pB = priorityOrder[b.priority] || 1;
+      if (pA !== pB) return pB - pA;
+
+      const timeA = a.lastActivity || a.createdAt || 0;
+      const timeB = b.lastActivity || b.createdAt || 0;
+      return timeB - timeA;
     });
 
-    const btnNew = Utils.$("btn-new-ticket");
-    if (btnNew)
-      btnNew.onclick = async () => {
-        if (this.BANNED_USERS.has(uid))
-          return Utils.toast("Вы заблокированы в системе поддержки", "error");
-        const inputEl = Utils.$("support-new-ticket-title");
-        const priorityEl = Utils.$("support-new-ticket-priority");
-        const textEl = Utils.$("support-new-ticket-text");
-        const title = inputEl ? inputEl.value.trim() : "";
-        const priority = priorityEl ? priorityEl.value : "Средний";
-        const text = textEl ? textEl.value.trim() : "";
+    list.innerHTML = tickets
+      .map((t) => {
+        const titleStr = Utils.escapeHtml(t.title || "Без темы");
+        const isOpen = t.status !== "closed";
+        const isReport = Boolean(
+          t.isReport || t.targetUid || t.reportType === "profile" || t.category === "Жалоба"
+        );
+        const isActive = this.activeTicketId === t.id;
 
-        if (!title || !text) return;
-        const newRef = push(ref(db, "support_tickets"));
-        const ts = Date.now();
-        const profile = AppState.usersCache.get(uid) || {};
-        const isPremiumUser =
-          window.PremiumManager &&
-          PremiumManager.isPremiumActive(profile, uid) &&
-          !PremiumManager.isStaff(profile, uid);
-        await set(newRef, {
-          title,
-          priority:
-            isPremiumUser && priority !== "Срочный" ? "Высокий" : priority,
-          creatorUid: uid,
-          status: "open",
-          createdAt: ts,
-          lastActivity: ts,
-          lastSender: uid,
-          problemDescription: text,
-          isPremium: Boolean(isPremiumUser),
-        });
-        await push(ref(db, `support_tickets/${newRef.key}/messages`), {
-          text: text,
-          uid,
-          name: profile?.name || "Пользователь",
-          username: profile?.username || uid,
-          avatar: profile?.avatar || "",
-          isAdmin: false,
-          timestamp: ts,
-        });
+        // Last message snippet
+        let lastSnippet = "";
+        if (t.messages) {
+          const msgsArr = Object.values(t.messages);
+          if (msgsArr.length > 0) {
+            const lastM = msgsArr[msgsArr.length - 1];
+            const senderPrefix = lastM.isAdmin ? "Оператор: " : "";
+            lastSnippet = Utils.escapeHtml(senderPrefix + (lastM.text || (lastM.image ? "[Изображение]" : "")));
+          }
+        }
+        if (!lastSnippet && t.problemDescription) {
+          lastSnippet = Utils.escapeHtml(t.problemDescription);
+        }
 
-        if (inputEl) inputEl.value = "";
-        if (textEl) textEl.value = "";
-        document
-          .getElementById("modal-create-ticket")
-          ?.classList.remove("active");
-        SupportSystem.openTicket(newRef.key);
-      };
+        // Unread dot
+        const hasUnread =
+          t.lastActivity &&
+          t.lastActivity > (t.readReceipts?.[uid] || 0) &&
+          t.lastSender !== uid &&
+          (isAdmin || t.lastSenderIsAdmin);
+
+        const timeStr = this.formatRelativeTime(t.lastActivity || t.createdAt);
+        const categoryBadge = this.getCategoryBadgeHtml(t.category, isReport);
+        const categoryIcon = this.getCategoryIconUrl(t.category, isReport);
+
+        const priorityBadge =
+          t.priority && (isAdmin || t.priority === "Высокий")
+            ? `<span class="support-card-priority ${t.priority === "Высокий" ? "high" : ""}">${Utils.escapeHtml(t.priority)}</span>`
+            : "";
+
+        return `
+          <div class="support-ticket-card ${isActive ? "active" : ""} ${isOpen ? "" : "closed"}" onclick="SupportSystem.openTicket('${t.id}')">
+            <div class="support-card-top">
+              <div class="support-card-icon">
+                <img src="${categoryIcon}" alt="icon">
+              </div>
+              <div class="support-card-heading">
+                <div class="support-card-title">${titleStr}</div>
+                <div class="support-card-time">${timeStr}</div>
+              </div>
+              ${hasUnread ? '<div class="support-card-unread" title="Новые сообщения"></div>' : ""}
+            </div>
+
+            ${lastSnippet ? `<div class="support-card-snippet">${lastSnippet}</div>` : ""}
+
+            <div class="support-card-footer">
+              <span class="support-status-chip ${isOpen ? "open" : "closed"}">
+                <span class="status-dot"></span>
+                <span>${isOpen ? "В работе" : "Решён"}</span>
+              </span>
+              ${categoryBadge}
+              ${priorityBadge}
+            </div>
+          </div>
+        `;
+      })
+      .join("");
   }
 
   static async openTicket(id) {
     const uid = AppState.currentUser?.uid;
+    if (!uid) return;
     this.activeTicketId = id;
 
+    // Mark as read in RTDB
     set(ref(db, `support_tickets/${id}/readReceipts/${uid}`), Date.now());
 
-    const items = document.querySelectorAll(
-      "#support-tickets-list .dm-chat-item",
-    );
-    items.forEach((el) => el.classList.remove("active"));
-    const clickedItem = Array.from(items).find((el) =>
-      el.getAttribute("onclick").includes(id),
-    );
-    if (clickedItem) clickedItem.classList.add("active");
+    // Highlight active item in left tickets feed
+    this.renderFilteredTickets();
 
     const layoutContainer = Utils.$("support-grid-container");
     if (layoutContainer) layoutContainer.classList.add("chat-active");
@@ -386,21 +757,18 @@ class SupportSystem {
       btnBack.onclick = () => {
         if (layoutContainer) layoutContainer.classList.remove("chat-active");
         SupportSystem.activeTicketId = null;
-        const activeItem = document.querySelector("#support-tickets-list .dm-chat-item.active");
-        if (activeItem) activeItem.classList.remove("active");
         if (Utils.$("support-active-ticket")) Utils.$("support-active-ticket").style.display = "none";
         if (Utils.$("support-no-ticket")) Utils.$("support-no-ticket").style.display = "flex";
+        SupportSystem.renderFilteredTickets();
       };
     }
 
-    Utils.$("support-no-ticket").style.display = "none";
-    Utils.$("support-active-ticket").style.display = "flex";
+    if (Utils.$("support-no-ticket")) Utils.$("support-no-ticket").style.display = "none";
+    if (Utils.$("support-active-ticket")) Utils.$("support-active-ticket").style.display = "flex";
 
-    const profile =
-      AppState.usersCache.get(AppState.currentUser?.uid) || {} || {};
-    const isAdmin =
-      AdminPanel.isCreatorProfile(profile, uid) ||
-      AdminPanel.isOperatorProfile(profile, uid);
+    const profile = (AppState.usersCache ? AppState.usersCache.get(uid) : null) || {};
+    const isStaff = SupportSystem.isStaff(profile, uid);
+    const isAdmin = isStaff;
 
     if (this.unsub) this.unsub();
     this.unsub = onValue(ref(db, `support_tickets/${id}`), async (snap) => {
@@ -408,116 +776,146 @@ class SupportSystem {
       if (!t) return;
       if (this.activeTicketId !== id) return;
 
-      // Setup auto-read if we are watching this chat
+      // Access verification:
+      if (!isStaff) {
+        const isSender = t.creatorUid === uid || t.reporterUid === uid;
+        const isTarget = t.targetUid === uid;
+        if (!isSender || isTarget) {
+          Utils.toast("У вас нет доступа к данному тикету", "error");
+          SupportSystem.activeTicketId = null;
+          if (Utils.$("support-active-ticket")) Utils.$("support-active-ticket").style.display = "none";
+          if (Utils.$("support-no-ticket")) Utils.$("support-no-ticket").style.display = "flex";
+          return;
+        }
+      } else {
+        const isCreator = window.AdminPanel ? AdminPanel.isCreatorProfile(profile, uid) : false;
+        if (!isCreator && t.targetUid === uid) {
+          Utils.toast("Вы не можете просматривать жалобу на самого себя", "error");
+          SupportSystem.activeTicketId = null;
+          if (Utils.$("support-active-ticket")) Utils.$("support-active-ticket").style.display = "none";
+          if (Utils.$("support-no-ticket")) Utils.$("support-no-ticket").style.display = "flex";
+          return;
+        }
+      }
+
+      // Mark read
       if (!t.readReceipts || t.readReceipts[uid] < (t.lastActivity || 0)) {
         set(ref(db, `support_tickets/${id}/readReceipts/${uid}`), Date.now());
       }
 
-      const templateContainer = Utils.$("support-inline-templates");
-      if (templateContainer) {
-        if (isAdmin) {
-          templateContainer.style.display = "flex";
-          templateContainer.innerHTML = Object.keys(this.TEMPLATES)
-            .map(
-              (k) =>
-                `<button class="secondary-btn" style="padding:5px 12px; width:auto; flex-shrink:0; font-size:11.5px; font-weight:600; border-radius:100px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#ffffff; cursor:pointer;" onclick="SupportSystem.useTemplate('${k}', '${id}')">${k}</button>`,
-            )
-            .join("");
+      // Header info
+      const titleEl = Utils.$("support-ticket-title-text");
+      if (titleEl) titleEl.innerText = t.title || "Без темы";
+
+      const idChip = Utils.$("support-ticket-id-chip");
+      if (idChip) idChip.innerText = "#" + id.slice(-6).toUpperCase();
+
+      const catIcon = Utils.$("support-ticket-category-icon");
+      const isReport = Boolean(t.isReport || t.targetUid || t.reportType === "profile" || t.category === "Жалоба");
+      if (catIcon) {
+        catIcon.innerHTML = `<img src="${SupportSystem.getCategoryIconUrl(t.category, isReport)}" style="width: 20px; height: 20px;">`;
+      }
+
+      const isClosed = t.status === "closed";
+      const statusEl = Utils.$("st-status");
+      if (statusEl) {
+        statusEl.className = `support-status-chip ${isClosed ? "closed" : "open"}`;
+        statusEl.innerHTML = `
+          <span class="status-dot"></span>
+          <span>${isClosed ? "Решён" : "В работе"}</span>
+        `;
+      }
+
+      const tagEl = Utils.$("st-tag");
+      if (tagEl) {
+        if (t.category) {
+          tagEl.style.display = "inline-flex";
+          tagEl.innerText = t.category;
         } else {
-          templateContainer.style.display = "none";
+          tagEl.style.display = "none";
         }
       }
 
-      Utils.$("support-ticket-title-text").innerText = t.title || "Без темы";
-      const isClosed = t.status === "closed";
-      const openTimeStr = Math.floor(
-        (Date.now() - (t.createdAt || Date.now())) / 3600000,
-      );
-      Utils.$("st-status").innerHTML = isClosed
-        ? '<span style="display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:100px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.5);font-size:12px;font-weight:600;"><span style="width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.3);display:inline-block;"></span>Закрыт</span>'
-        : `<span style="display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:100px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.22);color:#ffffff;font-size:12px;font-weight:700;"><span style="width:6px;height:6px;border-radius:50%;background:#ffffff;box-shadow:0 0 8px rgba(255,255,255,0.9);display:inline-block;"></span>В работе</span> ${isAdmin ? `<span style="opacity:0.5;font-weight:500;font-size:11px;margin-left:4px;">(${openTimeStr} ч. назад)</span>` : ""}`;
-
-      if (t.category) {
-        Utils.$("st-tag").style.display = "inline-block";
-        Utils.$("st-tag").innerText = t.category;
-      } else {
-        Utils.$("st-tag").style.display = "none";
+      const priEl = Utils.$("st-priority");
+      if (priEl) {
+        if (t.priority && (isAdmin || t.priority === "Высокий")) {
+          priEl.style.display = "inline-flex";
+          priEl.className = `support-priority-chip ${t.priority === "Высокий" ? "high" : ""}`;
+          priEl.innerText = t.priority;
+        } else {
+          priEl.style.display = "none";
+        }
       }
 
+      // Operator report card or problem description details
       const opInfo = Utils.$("support-operator-ticket-info");
-      const isReport = Boolean(
-        t.isReport || t.targetUid || t.reportType === "profile" || t.category === "Жалоба",
-      );
       if (opInfo) {
         if (isReport && t.targetUid) {
           opInfo.style.display = "block";
           const reporterUid = t.reporterUid || t.creatorUid;
           const targetUid = t.targetUid;
           const reporterProf =
-            AppState.usersCache.get(reporterUid) || t.reporterInfo || {};
+            (AppState.usersCache ? AppState.usersCache.get(reporterUid) : null) || t.reporterInfo || {};
           const targetProf =
-            AppState.usersCache.get(targetUid) || t.targetInfo || {};
+            (AppState.usersCache ? AppState.usersCache.get(targetUid) : null) || t.targetInfo || {};
 
           opInfo.innerHTML = `
-            <div style="background: rgba(255, 75, 75, 0.08); border: 1px solid rgba(255, 75, 75, 0.25); border-radius: 14px; padding: 14px 16px; margin-bottom: 2px;">
+            <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 14px; padding: 14px 16px; margin: 12px 20px 0; backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);">
               <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
                 <div style="display: flex; align-items: center; gap: 8px;">
-                  <span style="font-size: 11px; font-weight: 800; color: #ff4757; text-transform: uppercase; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 6px;">
+                  <span style="font-size: 11px; font-weight: 800; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 6px;">
                     <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Triangular%20Flag.webp" style="width: 16px; height: 16px;" alt="🚩">
-                    Жалоба на содержание профиля
+                    Жалоба на пользователя
                   </span>
-                  <span style="font-size: 11px; padding: 2px 8px; border-radius: 6px; background: rgba(255, 75, 75, 0.18); color: #ff6b81; font-weight: 600;">
+                  <span style="font-size: 11px; padding: 2px 8px; border-radius: 6px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.16); color: #ffffff; font-weight: 600;">
                     ${Utils.escapeHtml(t.reportCategory || "Нарушение")}
                   </span>
                 </div>
                 ${isAdmin ? `
-                  <div style="display: flex; gap: 6px;">
-                    <button class="secondary-btn" style="padding: 4px 10px; font-size: 11px; border-radius: 6px; border: 1px solid rgba(255, 75, 75, 0.35); color: #ff6b81; cursor: pointer;" onclick="ProfileManager.openViewProfileModal('${Utils.escapeHtml(targetUid)}')">
+                  <div style="display: flex; gap: 8px;">
+                    <button class="secondary-btn" style="padding: 6px 12px; font-size: 11.5px; font-weight: 600; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.16); background: rgba(255, 255, 255, 0.06); color: #ffffff; cursor: pointer;" onclick="ProfileManager.openViewProfileModal('${Utils.escapeHtml(targetUid)}')">
                       Профиль нарушителя
                     </button>
-                    <button class="danger-btn" style="padding: 4px 10px; font-size: 11px; border-radius: 6px; cursor: pointer;" onclick="AdminPanel.loadUserEditor('${Utils.escapeHtml(targetUid)}')">
-                      В панель управления
+                    <button class="primary-btn" style="padding: 6px 14px; font-size: 11.5px; font-weight: 700; border-radius: 8px; cursor: pointer; background: #ffffff; color: #000000; border: none; box-shadow: 0 4px 14px rgba(255, 255, 255, 0.18);" onclick="AdminPanel.openUserInAdmin('${Utils.escapeHtml(targetUid)}')">
+                      Панель управления
                     </button>
                   </div>
                 ` : ""}
               </div>
 
-              <!-- Two Clickable Accounts: Reporter and Reported -->
-              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin-bottom: 12px;">
-                <!-- 1. Отправитель жалобы -->
-                <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 10px 12px;">
-                  <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-bottom: 6px; letter-spacing: 0.4px;">
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 12px;">
+                <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 10px 12px;">
+                  <div style="font-size: 10px; color: rgba(255, 255, 255, 0.45); text-transform: uppercase; font-weight: 700; margin-bottom: 6px; letter-spacing: 0.4px;">
                     Отправитель жалобы:
                   </div>
-                  <div class="report-user-card-pill" style="display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 4px; border-radius: 8px; transition: background 0.15s;" onclick="ProfileManager.openViewProfileModal('${Utils.escapeHtml(reporterUid)}')">
-                    <div style="width: 36px; height: 36px; border-radius: 50%; overflow: visible; flex-shrink: 0; background: #111; border: 1px solid rgba(255,255,255,0.15);">
+                  <div class="report-user-card-pill" style="display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 4px; border-radius: 8px;" onclick="ProfileManager.openViewProfileModal('${Utils.escapeHtml(reporterUid)}')">
+                    <div style="width: 34px; height: 34px; border-radius: 50%; overflow: visible; flex-shrink: 0; background: #111; border: 1px solid rgba(255,255,255,0.15);">
                       ${ProfileManager.getAvatarHtml(reporterProf)}
                     </div>
                     <div style="overflow: hidden; min-width: 0;">
                       <div style="font-size: 13px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                         ${Utils.escapeHtml(reporterProf.name || "Пользователь")}
                       </div>
-                      <div style="font-size: 11px; color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                      <div style="font-size: 11px; color: rgba(255, 255, 255, 0.5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                         @${Utils.escapeHtml(reporterProf.username || reporterUid)}
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <!-- 2. На кого пожаловались -->
-                <div style="background: rgba(255, 75, 75, 0.07); border: 1px solid rgba(255, 75, 75, 0.28); border-radius: 12px; padding: 10px 12px;">
-                  <div style="font-size: 10px; color: #ff6b81; text-transform: uppercase; font-weight: 700; margin-bottom: 6px; letter-spacing: 0.4px;">
+                <div style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 12px; padding: 10px 12px;">
+                  <div style="font-size: 10px; color: rgba(255, 255, 255, 0.7); text-transform: uppercase; font-weight: 700; margin-bottom: 6px; letter-spacing: 0.4px;">
                     На кого пожаловались:
                   </div>
-                  <div class="report-user-card-pill target" style="display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 4px; border-radius: 8px; transition: background 0.15s;" onclick="ProfileManager.openViewProfileModal('${Utils.escapeHtml(targetUid)}')">
-                    <div style="width: 36px; height: 36px; border-radius: 50%; overflow: visible; flex-shrink: 0; background: #111; border: 1px solid rgba(255,75,75,0.4);">
+                  <div class="report-user-card-pill target" style="display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 4px; border-radius: 8px;" onclick="ProfileManager.openViewProfileModal('${Utils.escapeHtml(targetUid)}')">
+                    <div style="width: 34px; height: 34px; border-radius: 50%; overflow: visible; flex-shrink: 0; background: #111; border: 1px solid rgba(255,255,255,0.3);">
                       ${ProfileManager.getAvatarHtml(targetProf)}
                     </div>
                     <div style="overflow: hidden; min-width: 0;">
-                      <div style="font-size: 13px; font-weight: 700; color: #ff6b81; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                      <div style="font-size: 13px; font-weight: 700; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                         ${Utils.escapeHtml(targetProf.name || "Пользователь")}
                       </div>
-                      <div style="font-size: 11px; color: rgba(255, 255, 255, 0.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                      <div style="font-size: 11px; color: rgba(255, 255, 255, 0.5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                         @${Utils.escapeHtml(targetProf.username || targetUid)}
                       </div>
                     </div>
@@ -525,10 +923,9 @@ class SupportSystem {
                 </div>
               </div>
 
-              <!-- Описание сути жалобы -->
-              <div style="background: rgba(0, 0, 0, 0.35); border-radius: 8px; padding: 8px 12px; border: 1px solid rgba(255, 255, 255, 0.06);">
-                <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-bottom: 4px;">
-                  Суть жалобы от пользователя:
+              <div style="background: rgba(0, 0, 0, 0.4); border-radius: 8px; padding: 10px 12px; border: 1px solid rgba(255, 255, 255, 0.08);">
+                <div style="font-size: 10px; color: rgba(255, 255, 255, 0.45); text-transform: uppercase; font-weight: 700; margin-bottom: 4px;">
+                  Суть жалобы:
                 </div>
                 <div style="font-size: 13px; color: rgba(255, 255, 255, 0.9); line-height: 1.45; white-space: pre-wrap;">
                   ${Utils.escapeHtml(t.problemDescription || "Описание не указано")}
@@ -536,15 +933,15 @@ class SupportSystem {
               </div>
             </div>
           `;
-        } else if (isAdmin) {
+        } else if (isAdmin && t.problemDescription) {
           opInfo.style.display = "block";
           opInfo.innerHTML = `
-            <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 12px 16px;">
+            <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 12px 16px; margin: 12px 20px 0;">
               <div style="font-size: 10.5px; color: rgba(255, 255, 255, 0.55); font-weight: 700; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px;">
-                Сведения о проблеме (Для оператора)
+                Сведения о проблеме
               </div>
-              <div id="support-operator-ticket-desc" style="font-size: 13px; color: rgba(255, 255, 255, 0.88); white-space: pre-wrap; line-height: 1.45;">
-                ${Utils.escapeHtml(t.problemDescription || "Пользователь не оставил описания")}
+              <div style="font-size: 13px; color: rgba(255, 255, 255, 0.88); white-space: pre-wrap; line-height: 1.45;">
+                ${Utils.escapeHtml(t.problemDescription)}
               </div>
             </div>
           `;
@@ -553,57 +950,57 @@ class SupportSystem {
         }
       }
 
-      // handle blur and lock for closed
-      const overlay = Utils.$("support-closed-overlay");
-      const dmCompose = Utils.$("support-active-ticket").querySelector(
-        ".dm-compose",
-      );
-      const inlineTmplate = Utils.$("support-inline-templates");
-      const closedBanner = Utils.$("support-closed-banner");
-      const chatArea = Utils.$("support-ticket-chat");
-
-      if (isClosed) {
-        if (overlay) overlay.style.display = "flex";
-        if (dmCompose) dmCompose.style.display = "none";
-        if (closedBanner) closedBanner.style.display = "block";
-        if (inlineTmplate) inlineTmplate.style.display = "none";
-        if (chatArea) {
-          chatArea.style.filter = "blur(4px)";
-          chatArea.style.pointerEvents = "none";
-        }
-      } else {
-        if (overlay) overlay.style.display = "none";
-        if (dmCompose) dmCompose.style.display = "flex";
-        if (closedBanner) closedBanner.style.display = "none";
-        if (isAdmin && inlineTmplate) inlineTmplate.style.display = "flex";
-        if (chatArea) {
-          chatArea.style.filter = "none";
-          chatArea.style.pointerEvents = "auto";
+      // Inline templates for staff
+      const templateContainer = Utils.$("support-inline-templates");
+      if (templateContainer) {
+        if (isAdmin && !isClosed) {
+          templateContainer.style.display = "flex";
+          templateContainer.innerHTML = Object.keys(this.TEMPLATES)
+            .map(
+              (k) =>
+                `<button type="button" class="support-template-btn" onclick="SupportSystem.useTemplate('${k}', '${id}')">${k}</button>`
+            )
+            .join("");
+        } else {
+          templateContainer.style.display = "none";
         }
       }
 
+      // Closed resolution bar and composer dock toggles
+      const composeDock = Utils.$("support-compose-dock");
+      const closedBanner = Utils.$("support-closed-banner");
+
+      if (isClosed) {
+        if (composeDock) composeDock.style.display = "none";
+        if (closedBanner) closedBanner.style.display = "block";
+      } else {
+        if (composeDock) composeDock.style.display = "block";
+        if (closedBanner) closedBanner.style.display = "none";
+      }
+
+      // Reopen overlay CTA button
       const btnReopenOverlay = Utils.$("btn-support-reopen-overlay");
       if (btnReopenOverlay) {
-        btnReopenOverlay.style.display = "block";
         btnReopenOverlay.onclick = () => this.reopenTicket(id);
       }
 
-      if (isAdmin) {
-        Utils.$("btn-support-close-ticket").style.display = isClosed
-          ? "none"
-          : "block";
-        Utils.$("btn-support-reopen-ticket").style.display = isClosed
-          ? "block"
-          : "none";
-        Utils.$("btn-support-close-ticket").onclick = () =>
-          this.closeTicket(id);
-        Utils.$("btn-support-reopen-ticket").onclick = () =>
-          this.reopenTicket(id);
+      // Action buttons in header
+      const btnClose = Utils.$("btn-support-close-ticket");
+      const btnReopen = Utils.$("btn-support-reopen-ticket");
+      const quickActionsBtn = Utils.$("btn-support-quick-actions");
+      const quickMenu = Utils.$("support-quick-actions-menu");
 
-        const quickActionsBtn = Utils.$("btn-support-quick-actions");
-        const quickMenu = Utils.$("support-quick-actions-menu");
+      if (isAdmin) {
+        if (btnClose) {
+          btnClose.style.display = isClosed ? "none" : "inline-flex";
+          btnClose.onclick = () => this.closeTicket(id);
+        }
+        if (btnReopen) {
+          btnReopen.style.display = isClosed ? "inline-flex" : "none";
+          btnReopen.onclick = () => this.reopenTicket(id);
+        }
         if (quickActionsBtn) {
-          quickActionsBtn.style.display = "block";
+          quickActionsBtn.style.display = "inline-flex";
           quickActionsBtn.onclick = (e) => {
             e.stopPropagation();
             if (quickMenu) {
@@ -612,29 +1009,33 @@ class SupportSystem {
               } else {
                 quickMenu.style.display = "flex";
                 quickMenu.innerHTML = `
-                  <div style="font-size:10.5px; color:rgba(255,255,255,0.5); margin-bottom:4px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">Теги:</div>
-                  <button class="secondary-btn" style="text-align:left; padding:8px 10px; font-size:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); border-radius:8px; color:#fff; cursor:pointer;" onclick="SupportSystem.setCategory('${id}', 'Баг')">🐛 Баг</button>
-                  <button class="secondary-btn" style="text-align:left; padding:8px 10px; font-size:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); border-radius:8px; color:#fff; cursor:pointer;" onclick="SupportSystem.setCategory('${id}', 'Вопрос')">❔ Вопрос</button>
-                  <div style="border-top:1px solid rgba(255,255,255,0.08); margin: 4px 0;"></div>
-                  <button class="secondary-btn" style="text-align:left; padding:8px 10px; font-size:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); border-radius:8px; color:#fff; cursor:pointer;" onclick="SupportSystem.exportTicket('${id}')">📥 Экспорт как .txt</button>
-                  <button class="danger-btn" style="text-align:left; padding:8px 10px; font-size:12px; border-radius:8px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2); color:#fff; margin-top:2px; cursor:pointer;" onclick="SupportSystem.adminBan('${t.creatorUid}')">🚫 Заблокировать автора</button>
+                  <div style="font-size:10px; color:rgba(255,255,255,0.45); margin-bottom:4px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">Сменить категорию:</div>
+                  <button class="support-popover-item" onclick="SupportSystem.setCategory('${id}', 'Вопрос')">💬 Вопрос</button>
+                  <button class="support-popover-item" onclick="SupportSystem.setCategory('${id}', 'Баг')">🐛 Баг</button>
+                  <button class="support-popover-item" onclick="SupportSystem.setCategory('${id}', 'Жалоба')">🚩 Жалоба</button>
+                  <button class="support-popover-item" onclick="SupportSystem.setCategory('${id}', 'Идея')">💡 Идея</button>
+                  <div class="support-popover-divider"></div>
+                  <button class="support-popover-item" onclick="SupportSystem.exportTicket('${id}')">📥 Экспорт как .txt</button>
+                  <button class="support-popover-item danger" onclick="SupportSystem.adminBan('${t.creatorUid}')">🚫 Блокировка в поддержке</button>
                 `;
               }
             }
           };
         }
-        // Ensure we remove previous event listeners or avoid duplicate globals, using onmousedown instead of addEventListener for simplicity
-        document.onmousedown = (ev) => {
-          if (
-            quickMenu &&
-            !quickMenu.contains(ev.target) &&
-            ev.target !== quickActionsBtn
-          ) {
-            quickMenu.style.display = "none";
-          }
-        };
+      } else {
+        if (btnClose) btnClose.style.display = "none";
+        if (btnReopen) btnReopen.style.display = "none";
+        if (quickActionsBtn) quickActionsBtn.style.display = "none";
+        if (quickMenu) quickMenu.style.display = "none";
       }
 
+      document.onmousedown = (ev) => {
+        if (quickMenu && !quickMenu.contains(ev.target) && ev.target !== quickActionsBtn) {
+          quickMenu.style.display = "none";
+        }
+      };
+
+      // Render Messages
       const chat = Utils.$("support-ticket-chat");
       const msgs = t.messages || {};
 
@@ -650,8 +1051,8 @@ class SupportSystem {
 
       await Promise.all(
         Array.from(uidsToLoad)
-          .filter((uUid) => !AppState.usersCache.has(uUid))
-          .map((uUid) => ProfileManager.loadUser(uUid)),
+          .filter((uUid) => !AppState.usersCache?.has(uUid))
+          .map((uUid) => ProfileManager.loadUser(uUid))
       );
 
       chat.innerHTML = Object.values(msgs)
@@ -664,165 +1065,83 @@ class SupportSystem {
               ":" +
               sentDate.getMinutes().toString().padStart(2, "0");
 
-            if (m.isReportNotice) {
-              const repUid = m.reporterUid || m.uid || t.reporterUid || t.creatorUid;
-              const tarUid = m.targetUid || t.targetUid;
-              const repUser = (AppState.usersCache ? AppState.usersCache.get(repUid) : null) || t.reporterInfo || {};
-              const tarUser = (AppState.usersCache ? AppState.usersCache.get(tarUid) : null) || t.targetInfo || {};
-              const repName = Utils.escapeHtml(repUser.name || m.name || "Пользователь");
-              const repNick = Utils.escapeHtml(repUser.username || m.username || repUid);
-              const tarName = Utils.escapeHtml(tarUser.name || "Пользователь");
-              const tarNick = Utils.escapeHtml(tarUser.username || tarUid);
-
-              return `
-                <div style="width: 100%; margin: 6px 0 10px; background: linear-gradient(135deg, rgba(255, 75, 75, 0.12), rgba(28, 20, 24, 0.9)); border: 1px solid rgba(255, 75, 75, 0.35); border-radius: 16px; padding: 14px 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.45);">
-                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid rgba(255, 75, 75, 0.2); padding-bottom: 8px;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                      <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Triangular%20Flag.webp" style="width: 20px; height: 20px;" alt="🚩">
-                      <span style="font-size: 13px; font-weight: 800; color: #ff6b81;">Жалоба на содержание профиля</span>
-                      <span style="font-size: 10px; padding: 2px 7px; border-radius: 4px; background: rgba(255,75,75,0.25); color: #fff; font-weight:600;">${Utils.escapeHtml(m.reportCategory || t.reportCategory || "Нарушение")}</span>
-                    </div>
-                    <span style="font-size: 11px; color: rgba(255,255,255,0.45);">${timeStr}</span>
-                  </div>
-
-                  <!-- Two Clickable Accounts: Reporter and Reported -->
-                  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 12px;">
-                    <!-- 1. Отправитель жалобы -->
-                    <div style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; padding: 8px 10px;">
-                      <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">
-                        Отправитель жалобы:
-                      </div>
-                      <div class="report-user-card-pill" style="display: flex; align-items: center; gap: 8px; cursor: pointer;" onclick="ProfileManager.openViewProfileModal('${Utils.escapeHtml(repUid)}')">
-                        <div style="width: 32px; height: 32px; border-radius: 50%; overflow: visible; flex-shrink: 0; background: #222; border: 1px solid rgba(255,255,255,0.2);">
-                          ${ProfileManager.getAvatarHtml(repUser)}
-                        </div>
-                        <div style="overflow: hidden; min-width: 0;">
-                          <div style="font-size: 12px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${repName}</div>
-                          <div style="font-size: 11px; color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">@${repNick}</div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- 2. На кого пожаловались -->
-                    <div style="background: rgba(255, 75, 75, 0.1); border: 1px solid rgba(255, 75, 75, 0.3); border-radius: 10px; padding: 8px 10px;">
-                      <div style="font-size: 10px; color: #ff6b81; text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">
-                        На кого пожаловались:
-                      </div>
-                      <div class="report-user-card-pill target" style="display: flex; align-items: center; gap: 8px; cursor: pointer;" onclick="ProfileManager.openViewProfileModal('${Utils.escapeHtml(tarUid)}')">
-                        <div style="width: 32px; height: 32px; border-radius: 50%; overflow: visible; flex-shrink: 0; background: #222; border: 1px solid rgba(255,75,75,0.4);">
-                          ${ProfileManager.getAvatarHtml(tarUser)}
-                        </div>
-                        <div style="overflow: hidden; min-width: 0;">
-                          <div style="font-size: 12px; font-weight: 700; color: #ff6b81; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${tarName}</div>
-                          <div style="font-size: 11px; color: rgba(255, 255, 255, 0.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">@${tarNick}</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style="background: rgba(0, 0, 0, 0.32); border-radius: 8px; padding: 10px 12px; font-size: 13px; line-height: 1.45; color: #fff; white-space: pre-wrap; word-break: break-word;">${Utils.escapeHtml(m.text || "")}</div>
-                </div>
-              `;
-            }
-
             const mUid = m.uid || "unknown";
-            const cachedUser = AppState.usersCache
-              ? AppState.usersCache.get(mUid)
-              : null;
-            const mName = Utils.escapeHtml(
-              cachedUser
-                ? cachedUser.name || "Пользователь"
-                : m.name || "Пользователь",
-            );
-            const mUsername = Utils.escapeHtml(
-              cachedUser ? cachedUser.username || mUid : m.username || mUid,
-            );
-            const mAvatar = Utils.escapeHtml(
-              cachedUser ? cachedUser.avatar || "" : m.avatar || "",
-            );
+            const cachedUser = AppState.usersCache ? AppState.usersCache.get(mUid) : null;
+            const mName = Utils.escapeHtml(cachedUser?.name || m.name || "Пользователь");
+            const mUsername = Utils.escapeHtml(cachedUser?.username || m.username || mUid);
+            const mAvatar = cachedUser?.avatar || m.avatar || "";
             const isMe = mUid === uid;
-            const bg = isMe
-              ? "rgba(255, 255, 255, 0.12)"
-              : m.isInternal
-                ? "rgba(255, 255, 255, 0.08)"
-                : "rgba(255, 255, 255, 0.04)";
-            const borderCol = isMe
-              ? "rgba(255, 255, 255, 0.22)"
-              : m.isInternal
-                ? "rgba(255, 255, 255, 0.18)"
-                : "rgba(255, 255, 255, 0.08)";
-            const avatarHtml = !isMe
-              ? `<div style="width:34px;height:34px;border-radius:12px;background-image:url('${mAvatar}');background-size:cover;background-position:center;background-color:#1c1c22;flex-shrink:0;cursor:pointer;border:1px solid rgba(255,255,255,0.12);" onclick="ProfileManager.openProfileModal('${Utils.escapeHtml(mUid)}')"></div>`
-              : "";
-            const internalTag = m.isInternal
-              ? '<span style="color:#ffffff; background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700; letter-spacing:0.5px;">[Внутренняя заметка]</span><br>'
-              : "";
-            if (m.isInternal && !isAdmin) return "";
-
-            const senderIdentity = m.isAdmin
-              ? `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Briefcase.webp" style="width:1.1em;height:1.1em;vertical-align:bottom;"> ` +
-                (isMe ? `Вы (Поддержка) (${mName})` : `Поддержка (${mName})`)
-              : `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Bust%20In%20Silhouette.webp" style="width:1.1em;height:1.1em;vertical-align:bottom;"> ` +
-                (isMe ? `Вы` : `${mName} @${mUsername}`);
+            const isMsgAdmin = Boolean(m.isAdmin);
 
             return `
-                   <div style="display:flex; gap:10px; align-self: ${isMe ? "flex-end" : "flex-start"}; max-width: 82%; margin-bottom: 2px;">
-                       ${avatarHtml}
-                       <div style="background: ${bg}; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); padding: 11px 16px; border-radius: 18px; border-bottom-${isMe ? "right" : "left"}-radius: 4px; border: 1px solid ${borderCol}; position:relative; min-width: 120px; box-shadow: 0 4px 18px rgba(0,0,0,0.3);">
-                           <div style="font-size: 11px; opacity: 0.65; margin-bottom: 5px; font-weight: 600; cursor:pointer;" onclick="ProfileManager.openProfileModal('${Utils.escapeHtml(mUid)}')">
-                               ${senderIdentity}
-                           </div>
-                           <div style="line-height: 1.5; font-size:13.5px; color: #ffffff; word-wrap: break-word; white-space: pre-wrap; margin-bottom:12px;">${internalTag}${Utils.escapeHtml(m.text || "")}</div>
-                           ${m.image ? `<img src="${Utils.escapeHtml(m.image)}" style="max-width: 100%; border-radius: 10px; margin-top: 5px; margin-bottom: 12px; cursor:pointer; border: 1px solid rgba(255,255,255,0.12);" onclick="window.open(this.src)">` : ""}
-                           <div style="position:absolute; bottom:6px; right:12px; font-size:10px; color:rgba(255,255,255,0.4); font-weight: 500;">
-                              ${timeStr}
-                           </div>
-                       </div>
-                   </div>`;
+              <div class="support-msg-row ${isMe ? "me" : isMsgAdmin ? "operator" : "user"}">
+                <div class="support-msg-avatar" onclick="ProfileManager.openProfileModal('${Utils.escapeHtml(mUid)}')">
+                  ${mAvatar ? `<img src="${Utils.escapeHtml(mAvatar)}" alt="">` : `<span>${mName.charAt(0).toUpperCase()}</span>`}
+                </div>
+                <div class="support-msg-bubble">
+                  <div class="support-msg-header">
+                    <span class="support-msg-sender" onclick="ProfileManager.openProfileModal('${Utils.escapeHtml(mUid)}')">${mName}</span>
+                    ${isMsgAdmin ? '<span class="support-operator-badge">Оператор</span>' : ""}
+                  </div>
+                  <div class="support-msg-body">${Utils.escapeHtml(m.text || "")}</div>
+                  ${m.image ? `<img src="${Utils.escapeHtml(m.image)}" class="support-msg-image" alt="Image" onclick="window.open(this.src)">` : ""}
+                  <div class="support-msg-time">${timeStr}</div>
+                </div>
+              </div>
+            `;
           } catch (e) {
             console.error("Error rendering message:", e);
-            return '<div style="color:red; font-size:12px;">Ошибка загрузки сообщения</div>';
+            return "";
           }
         })
         .join("");
+
       setTimeout(() => {
         chat.scrollTop = chat.scrollHeight;
       }, 50);
     });
 
+    // Realtime Typing Indicator
     if (this.typingUnsub) this.typingUnsub();
-    this.typingUnsub = onValue(
-      ref(db, `support_tickets_typing/${id}`),
-      (snap) => {
-        const val = snap.val() || {};
-        const othersTyping = Object.keys(val).filter(
-          (k) => k !== uid && Date.now() - val[k] < 3000,
-        );
-        Utils.$("support-typing-indicator").style.display =
-          othersTyping.length > 0 ? "block" : "none";
-      },
-    );
+    this.typingUnsub = onValue(ref(db, `support_tickets_typing/${id}`), (snap) => {
+      const val = snap.val() || {};
+      const othersTyping = Object.keys(val).filter((k) => k !== uid && Date.now() - val[k] < 3500);
+      const indicator = Utils.$("support-typing-indicator");
+      if (indicator) {
+        indicator.style.display = othersTyping.length > 0 ? "inline-flex" : "none";
+      }
+    });
 
+    // Composer Input & Send setup
     const btnSend = Utils.$("btn-support-send");
     const input = Utils.$("support-msg-input");
-    if (btnSend)
-      btnSend.onclick = () =>
-        this.sendMessage(id, !!(isAdmin && window._internalNoteToggle));
+
+    if (btnSend) {
+      btnSend.onclick = () => this.sendMessage(id);
+    }
+
     if (input) {
-      input.onkeypress = (e) => {
-        if (e.key === "Enter")
-          this.sendMessage(id, !!(isAdmin && window._internalNoteToggle));
+      input.onkeydown = (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          this.sendMessage(id);
+        }
       };
       input.oninput = () => {
+        // Auto grow textarea
+        input.style.height = "auto";
+        input.style.height = Math.min(input.scrollHeight, 120) + "px";
+
         if (this.typingTimer) clearTimeout(this.typingTimer);
         set(ref(db, `support_tickets_typing/${id}/${uid}`), Date.now());
         this.typingTimer = setTimeout(
           () => remove(ref(db, `support_tickets_typing/${id}/${uid}`)),
-          3000,
+          3000
         );
       };
     }
 
+    // Composer Attachment
     const btnAttach = Utils.$("btn-support-attach");
     if (btnAttach) {
       btnAttach.onclick = () => {
@@ -832,17 +1151,29 @@ class SupportSystem {
         inputImg.onchange = async (e) => {
           const file = e.target.files[0];
           if (!file) return;
-          Utils.toast("Обработка картинки...", "info");
           const reader = new FileReader();
           reader.onload = (re) => {
             const img = new Image();
-            img.onload = async () => {
+            img.onload = () => {
               const canvas = document.createElement("canvas");
-              canvas.width = img.width;
-              canvas.height = img.height;
-              canvas.getContext("2d").drawImage(img, 0, 0);
-              const compressedBase64 = canvas.toDataURL("image/jpeg", 0.6);
-              await this.sendMessage(id, false, "", compressedBase64);
+              let w = img.width, h = img.height;
+              const maxDim = 1200;
+              if (w > maxDim || h > maxDim) {
+                if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+                else { w = Math.round((w * maxDim) / h); h = maxDim; }
+              }
+              canvas.width = w; canvas.height = h;
+              canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+              SupportSystem.pendingAttachment = canvas.toDataURL("image/jpeg", 0.65);
+
+              const attachWrap = Utils.$("support-pending-attachment");
+              const attachImg = Utils.$("support-pending-attachment-img");
+              const attachName = Utils.$("support-pending-attachment-name");
+              if (attachWrap && attachImg) {
+                attachImg.src = SupportSystem.pendingAttachment;
+                if (attachName) attachName.innerText = file.name || "screenshot.png";
+                attachWrap.style.display = "inline-flex";
+              }
             };
             img.src = re.target.result;
           };
@@ -851,60 +1182,148 @@ class SupportSystem {
         inputImg.click();
       };
     }
+
+    const btnRemovePendingAttach = Utils.$("btn-support-remove-pending-attachment");
+    if (btnRemovePendingAttach) {
+      btnRemovePendingAttach.onclick = () => {
+        SupportSystem.pendingAttachment = null;
+        const attachWrap = Utils.$("support-pending-attachment");
+        if (attachWrap) attachWrap.style.display = "none";
+      };
+    }
   }
 
   static async sendMessage(
     ticketId,
     isInternal = false,
     textOverride = "",
-    imageBase64 = null,
+    imageBase64 = null
   ) {
-    if (this.BANNED_USERS.has(AppState.currentUser?.uid))
+    const uid = AppState.currentUser?.uid;
+    if (!uid) return Utils.toast("Вы не авторизованы", "error");
+    if (this.BANNED_USERS.has(uid)) {
       return Utils.toast("Вы заблокированы в поддержке!", "error");
+    }
+
     const input = Utils.$("support-msg-input");
     const msg = textOverride || (input ? input.value.trim() : "");
-    if (!msg && !imageBase64) return;
-    const uid = AppState.currentUser?.uid;
-    const profile = AppState.usersCache.get(AppState.currentUser?.uid) || {};
-    const isAdmin =
-      AdminPanel.isOperatorProfile(profile, uid) ||
-      AdminPanel.isCreatorProfile(profile, uid);
+    const imgToSend = imageBase64 || SupportSystem.pendingAttachment || null;
+
+    if (!msg && !imgToSend) return;
+
+    const profile = (AppState.usersCache ? AppState.usersCache.get(uid) : null) || {};
+    const isAdmin = SupportSystem.isStaff(profile, uid);
     const ts = Date.now();
-    await push(ref(db, `support_tickets/${ticketId}/messages`), {
-      text: msg,
-      image: imageBase64 || null,
-      uid,
-      name: profile?.name || "Пользователь",
-      username: profile?.username || uid,
-      avatar: profile?.avatar || "",
-      isAdmin,
-      isInternal,
-      timestamp: ts,
-    });
-    await update(ref(db, `support_tickets/${ticketId}`), {
-      lastActivity: ts,
-      lastSender: uid,
-      lastSenderIsAdmin: isAdmin,
-    });
-    if (input) input.value = "";
-    if (this.typingTimer) clearTimeout(this.typingTimer);
-    remove(ref(db, `support_tickets_typing/${ticketId}/${uid}`));
-    Utils.$("support-quick-actions-menu").style.display = "none"; // Close quick menu if open
+
+    try {
+      await push(ref(db, `support_tickets/${ticketId}/messages`), {
+        text: msg,
+        image: imgToSend,
+        uid,
+        name: profile?.name || "Пользователь",
+        username: profile?.username || uid,
+        avatar: profile?.avatar || "",
+        isAdmin,
+        isInternal,
+        timestamp: ts,
+      });
+
+      await update(ref(db, `support_tickets/${ticketId}`), {
+        lastActivity: ts,
+        lastSender: uid,
+        lastSenderIsAdmin: isAdmin,
+      });
+
+      if (input) {
+        input.value = "";
+        input.style.height = "auto";
+      }
+
+      SupportSystem.pendingAttachment = null;
+      const attachWrap = Utils.$("support-pending-attachment");
+      if (attachWrap) attachWrap.style.display = "none";
+
+      if (this.typingTimer) clearTimeout(this.typingTimer);
+      remove(ref(db, `support_tickets_typing/${ticketId}/${uid}`));
+    } catch (e) {
+      console.error("Send message error:", e);
+      Utils.toast("Ошибка отправки: " + e.message, "error");
+    }
   }
 
   static async closeTicket(id) {
-    if (!(await Utils.confirm("Закрыть этот тикет?"))) return;
-    await update(ref(db, `support_tickets/${id}`), { status: "closed" });
+    if (!(await Utils.confirm("Закрыть это обращение?"))) return;
+    await update(ref(db, `support_tickets/${id}`), { status: "closed", closedAt: Date.now() });
+    Utils.toast("Тикет закрыт", "info");
   }
 
   static async reopenTicket(id) {
-    await update(ref(db, `support_tickets/${id}`), { status: "open" });
+    await update(ref(db, `support_tickets/${id}`), { status: "open", lastActivity: Date.now() });
+    Utils.toast("Тикет возобновлен", "success");
   }
 
   static async setCategory(id, cat) {
     await update(ref(db, `support_tickets/${id}`), { category: cat });
-    Utils.toast("Категория установлена: " + cat, "success");
-    Utils.$("support-quick-actions-menu").style.display = "none";
+    Utils.toast("Категория обновлена: " + cat, "success");
+    if (Utils.$("support-quick-actions-menu")) {
+      Utils.$("support-quick-actions-menu").style.display = "none";
+    }
+  }
+
+  static async exportTicket(id) {
+    try {
+      const snap = await get(ref(db, `support_tickets/${id}`));
+      const t = snap.val();
+      if (!t) return Utils.toast("Тикет не найден", "error");
+      let str = `=== ТИКЕТ: ${t.title || "Без темы"} ===\n`;
+      str += `ID: ${id}\n`;
+      str += `Категория: ${t.category || "Общее"}\n`;
+      str += `Приоритет: ${t.priority || "Обычный"}\n`;
+      str += `Статус: ${t.status || "open"}\n`;
+      str += `Создан: ${new Date(t.createdAt || Date.now()).toLocaleString()}\n`;
+      str += `Автор UID: ${t.creatorUid || "—"}\n\n`;
+      str += `--- ОПИСАНИЕ ---\n${t.problemDescription || "—"}\n\n`;
+      str += `--- ПЕРЕПИСКА ---\n`;
+      const msgs = Object.values(t.messages || {}).sort((a, b) => a.timestamp - b.timestamp);
+      msgs.forEach((m) => {
+        const time = new Date(m.timestamp || Date.now()).toLocaleString();
+        const sender = m.isAdmin ? `[Поддержка] ${m.name || "Оператор"}` : `${m.name || "Пользователь"} (@${m.username || m.uid})`;
+        str += `[${time}] ${sender}:\n${m.text || ""}\n`;
+        if (m.image) str += `[Вложение: изображение включено]\n`;
+        str += `\n`;
+      });
+      const blob = new Blob([str], { type: "text/plain;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `ticket_${id.slice(-6)}_${Date.now()}.txt`;
+      a.click();
+      Utils.toast("Тикет экспортирован в .txt", "success");
+    } catch (e) {
+      console.error("Export ticket error:", e);
+      Utils.toast("Ошибка экспорта", "error");
+    }
+  }
+
+  static async adminBan(uid) {
+    if (!uid) return;
+    const isBanned = this.BANNED_USERS.has(uid);
+    const action = isBanned ? "Разблокировать" : "Заблокировать";
+    if (!(await Utils.confirm(`${action} пользователя в поддержке?`))) return;
+    if (isBanned) {
+      await remove(ref(db, `support_bans/${uid}`));
+      this.BANNED_USERS.delete(uid);
+      Utils.toast("Пользователь разблокирован в поддержке", "success");
+    } else {
+      await set(ref(db, `support_bans/${uid}`), {
+        bannedAt: Date.now(),
+        bannedBy: AppState.currentUser?.uid || "admin",
+      });
+      this.BANNED_USERS.add(uid);
+      Utils.toast("Пользователь заблокирован в поддержке", "success");
+    }
+    if (Utils.$("support-quick-actions-menu")) {
+      Utils.$("support-quick-actions-menu").style.display = "none";
+    }
   }
 
   static async exportArchiveTickets() {
@@ -919,7 +1338,7 @@ class SupportSystem {
       });
       str += "\n";
     });
-    const blob = new Blob([str], { type: "text/plain" });
+    const blob = new Blob([str], { type: "text/plain;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = `archived_tickets_${Date.now()}.txt`;
@@ -938,7 +1357,7 @@ class SupportSystem {
       });
       str += "\n";
     });
-    const blob = new Blob([str], { type: "text/plain" });
+    const blob = new Blob([str], { type: "text/plain;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = `active_tickets_${Date.now()}.txt`;
@@ -970,23 +1389,28 @@ class SupportSystem {
   }
 
   static refreshCreatorStats() {
-    this.openCreatorPanel(); // Just calls the opening which refreshes stats
+    this.openCreatorPanel();
     Utils.toast("Данные обновлены", "success");
   }
 
   static async deleteTicketLocally() {
     if (!this.activeTicketId) return;
-    if (!(await Utils.confirm("Точно удалить этот тикет?"))) return;
+    if (!(await Utils.confirm("Точно удалить это обращение?"))) return;
     const id = this.activeTicketId;
-    const uid = AppState.currentUser?.uid;
 
-    // Hide visually right now
-    Utils.$("support-active-ticket").style.display = "none";
-    Utils.$("support-no-ticket").style.display = "flex";
+    try {
+      this.activeTicketId = null;
+      if (Utils.$("support-active-ticket")) Utils.$("support-active-ticket").style.display = "none";
+      if (Utils.$("support-no-ticket")) Utils.$("support-no-ticket").style.display = "flex";
 
-    if (typeof remove !== "undefined" && typeof ref !== "undefined") {
+      const layoutContainer = Utils.$("support-grid-container");
+      if (layoutContainer) layoutContainer.classList.remove("chat-active");
+
       await remove(ref(db, `support_tickets/${id}`));
       Utils.toast("Тикет удален", "success");
+    } catch (e) {
+      console.error("Error deleting ticket:", e);
+      Utils.toast("Ошибка при удалении: " + e.message, "error");
     }
   }
 
@@ -1002,7 +1426,7 @@ class SupportSystem {
     let c = 0;
     Object.keys(val).forEach((k) => {
       if (val[k].status === "open") {
-        update(ref(db, `support_tickets/${k}`), { status: "closed" });
+        update(ref(db, `support_tickets/${k}`), { status: "closed", closedAt: Date.now() });
         c++;
       }
     });
@@ -1017,7 +1441,7 @@ class SupportSystem {
       ))
     )
       return;
-    if (!(await Utils.confirm("Вы абсолютно уверены?"))) return; // double check
+    if (!(await Utils.confirm("Вы абсолютно уверены?"))) return;
     await remove(ref(db, "support_tickets"));
     Utils.toast("Все тикеты успешно удалены", "success");
     this.openCreatorPanel();
@@ -1049,10 +1473,9 @@ class SupportSystem {
     )
       return;
     await remove(ref(db, "support_bans"));
+    this.BANNED_USERS.clear();
     Utils.toast("Все пользователи разблокированы", "success");
   }
 }
-window.SupportSystem = SupportSystem;
-
 window.SupportSystem = SupportSystem;
 export { SupportSystem };
