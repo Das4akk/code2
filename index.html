@@ -313,20 +313,6 @@
     .profile-right-content-wrap { flex-direction: column; gap: 10px !important; }
     .profile-stats-container { flex: 1 1 100% !important; width: 100%; }
   }
-
-      .inline-sparkles-icon {
-        width: 1.15em;
-        height: 1.15em;
-        vertical-align: -0.15em;
-        object-fit: contain;
-        display: inline-block;
-        pointer-events: none;
-      }
-      .inline-sparkles-icon.large {
-        width: 1.35em;
-        height: 1.35em;
-        vertical-align: -0.22em;
-      }
 </style>
     <style>
       
@@ -864,12 +850,9 @@
         z-index: -1;
         width: 100%;
         height: 100%;
-        opacity: 0.35;
+        opacity: 0.2;
         pointer-events: none;
-        transform: translate3d(0, 0, 0);
-        will-change: transform;
-        contain: strict;
-        backface-visibility: hidden;
+        filter: blur(0.3px);
       }
       @keyframes premiumDriftLight {
         0%,
@@ -2596,7 +2579,68 @@
         font-size: 12px;
         line-height: 1.4;
         margin-top: -6px;
-      }
+      } /* // [UPDATE] */
+      .profile-bg-panel {
+        display: none;
+        flex-direction: column;
+        gap: 10px;
+        padding: 12px;
+        border: 1px solid var(--profile-border, var(--border-light));
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.04);
+      } /* // [NEW] */
+      .profile-bg-panel.active {
+        display: flex;
+      } /* // [NEW] */
+      .profile-bg-presets {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 8px;
+      } /* // [NEW] */
+      .profile-bg-preset {
+        height: 34px;
+        border-radius: 10px;
+        border: 2px solid rgba(255, 255, 255, 0.18);
+        color: #fff;
+        font-size: 11px;
+        font-weight: 800;
+        text-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+      } /* // [NEW] */
+      .profile-bg-preset.active {
+        border-color: var(--profile-text, var(--text-main));
+        box-shadow: 0 0 0 2px var(--profile-border, var(--border-light));
+      } /* // [NEW] */
+      .profile-bg-row {
+        display: grid;
+        grid-template-columns: 24px 1fr 58px;
+        gap: 8px;
+        align-items: center;
+        color: var(--profile-text, var(--text-main));
+        font-size: 12px;
+        font-weight: 800;
+      } /* // [NEW] */
+      .profile-bg-row input[type="range"] {
+        width: 100%;
+        margin: 0;
+      } /* // [NEW] */
+      .profile-bg-row input[type="number"] {
+        margin: 0;
+        padding: 8px;
+      } /* // [NEW] */
+      .profile-bg-preview {
+        min-height: 52px;
+        border-radius: 12px;
+        border: 1px solid var(--profile-border, var(--border-light));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--profile-text, var(--text-main));
+        font-size: 13px;
+        font-weight: 800;
+      } /* // [NEW] */
+      .profile-bg-url {
+        margin: 0;
+      } /* // [NEW] */
       .partner-container {
         display: none;
         align-items: center;
@@ -4573,7 +4617,7 @@
         }
       }
     </style>
-    <meta name="platega-verify" content="b588132fc91334f7">
+    <meta name="lava-verify" content="b588132fc91334f7">
   
 <style id="tiktok-redesign">
   /* TikTok PC UI Styles */
@@ -6182,19 +6226,13 @@
             <line x1="4" x2="20" y1="18" y2="18"></line>
           </svg>
         </button>
-        <div class="lobby-app-bar-brand" onclick="if(window.Router) { Router.navigate('/lobby'); } else { window.history.pushState({}, '', '/lobby'); }" style="cursor: pointer;"><img src="https://s6.iimage.su/s/16/gCrqWaZxLG89wTzFtrJWUC3v29FIwSjhGbnij4ObO.png" alt="COWIO" style="height: 44px; object-fit: contain;"></div>
+        <div class="lobby-app-bar-brand" onclick="Utils.showScreen('lobby-screen')" style="cursor: pointer;"><img src="https://s6.iimage.su/s/16/gCrqWaZxLG89wTzFtrJWUC3v29FIwSjhGbnij4ObO.png" alt="COWIO" style="height: 44px; object-fit: contain;"></div>
         <div class="tiktok-search-container"><input type="text" id="search-rooms" placeholder="Поиск комнат по названию..."></div>
         
-      <div class="tiktok-right-container">
-        <!-- Lumens Balance Pill in Header -->
-        <div class="header-lumens-pill" id="lobby-header-lumens-pill" title="Ваш баланс Люменов" onclick="if(window.CatalogManager && window.CatalogManager.openLumensModal) { CatalogManager.openLumensModal(); } else if (window.FriendsManager && window.FriendsManager.setNavActive) { FriendsManager.setNavActive('nav-catalog'); if(window.CatalogManager) CatalogManager.renderCatalog(); }" style="display: flex; align-items: center; gap: 6px; padding: 6px 14px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 100px; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); user-select: none;">
-          <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" alt="Lumens" style="width: 17px; height: 17px; object-fit: contain; filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.4));">
-          <span id="header-lumens-count" style="font-size: 13.5px; font-weight: 700; color: #ffffff; letter-spacing: -0.2px;">0</span>
-        </div>
-        <button class="primary-btn" id="btn-open-create-room">
+      <div class="tiktok-right-container"><button class="primary-btn" id="btn-open-create-room">
               <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
               Создать комнату
-            </button><div class="lobby-app-bar-user" id="lobby-app-bar-profile" onclick="if(window.AppState && AppState.currentUser) { const myUname = AppState.usersCache.get(AppState.currentUser.uid)?.username; if(myUname && window.Router) { Router.navigate('/@' + myUname); } else if(window.Router) { Router.navigate('/profile'); } else if(window.ProfileManager) { window.ProfileManager.openViewProfileModal(AppState.currentUser.uid); } }">
+            </button><div class="lobby-app-bar-user" id="lobby-app-bar-profile" onclick="if(window.AppState && window.AppState.currentUser && window.ProfileManager) { window.ProfileManager.openViewProfileModal(window.AppState.currentUser.uid); }">
           <div class="avatar" id="lobby-app-bar-avatar"></div>
         </div></div></header>
 
@@ -6207,10 +6245,6 @@
               <div class="user-card-name" id="my-name-display">Загрузка...</div>
               <div class="user-card-username" id="my-username-display">
                 @loading
-              </div>
-              <div class="user-card-lumens" id="my-lumens-display" style="display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: rgba(255, 255, 255, 0.7); margin-top: 3px;">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" alt="Lumens" style="width: 14px; height: 14px; object-fit: contain;">
-                <span id="my-lumens-val">0</span> Люменов
               </div>
             </div>
           </div>
@@ -6379,18 +6413,8 @@
               Список лучших
             </div>
             <div style="display: flex; gap: 10px; margin-bottom: 20px; justify-content: center; flex-wrap: wrap;">
-               <button id="leaderboard-tab-lumens" class="primary-btn" onclick="if(window.switchLeaderboardCategory) window.switchLeaderboardCategory('lumens')" style="width: auto; padding: 8px 18px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                 <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 18px; height: 18px;" alt="✨">
-                 Топ Люменов
-               </button>
-               <button id="leaderboard-tab-likes" class="secondary-btn" onclick="if(window.switchLeaderboardCategory) window.switchLeaderboardCategory('likes')" style="width: auto; padding: 8px 18px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                 <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Heart.webp" style="width: 18px; height: 18px;" alt="❤️">
-                 Любимчики (Топ Лайков)
-               </button>
-               <button id="leaderboard-tab-time" class="secondary-btn" onclick="if(window.switchLeaderboardCategory) window.switchLeaderboardCategory('time')" style="width: auto; padding: 8px 18px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                 <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Hourglass%20Done.webp" style="width: 18px; height: 18px;" alt="⏳">
-                 Время в комнатах
-               </button>
+               <button class="primary-btn" style="width: auto; padding: 8px 16px;">Любимчики (Топ Лайков)</button>
+               <!-- Future categories can go here -->
             </div>
             <div id="leaderboard-list" style="display: flex; flex-direction: column; gap: 10px;">
                <div style="color:var(--text-muted); text-align:center;">Загрузка...</div>
@@ -6908,31 +6932,6 @@
                <polyline points="9 18 15 12 9 6"></polyline>
              </svg>
            </div>
-           <div id="view-lumens-badge" style="
-               display: inline-flex;
-               align-items: center;
-               gap: 6px;
-               padding: 6px 14px;
-               background: rgba(34, 34, 34, 0.8);
-               border: 1px solid rgba(255, 255, 255, 0.08);
-               border-radius: 100px;
-               box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-               cursor: default;
-             " title="Баланс Люменов">
-             <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="
-                 width: 18px;
-                 height: 18px;
-                 object-fit: contain;
-                 filter: drop-shadow(0 2px 6px rgba(255, 255, 255, 0.4));
-               " alt="Lumens">
-             <span id="view-lumens-count" style="
-                 font-size: 14px;
-                 font-weight: 600;
-                 color: #fff;
-                 letter-spacing: -0.2px;
-               ">0</span>
-             <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 16px; height: 16px; object-fit: contain; vertical-align: middle;" alt="Люмены">
-           </div>
            <div id="view-streak" style="
                display: none;
                align-items: center;
@@ -6976,10 +6975,6 @@
               <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Heart.webp" style="width: 22px; height: 22px; object-fit: contain; filter: grayscale(100%) opacity(50%); transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);" id="like-icon" alt="Like">
               <span id="view-likes-count" style="font-weight: 600;">0</span>
             </button>
-            <button class="secondary-btn" id="btn-gift-lumens" title="Подарить Люмены" aria-label="Подарить Люмены" style="display: none; align-items: center; gap: 6px; padding: 7px 14px; border: 1px solid rgba(255, 215, 0, 0.35); background: linear-gradient(135deg, rgba(255, 215, 0, 0.12) 0%, rgba(255, 170, 0, 0.05) 100%); border-radius: 10px; color: #ffd700; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 0 12px rgba(255, 215, 0, 0.12);">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 18px; height: 18px; object-fit: contain; filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.6));" alt="✨">
-              <span style="font-weight: 700; font-size: 13px; letter-spacing: -0.2px;">Подарить Люмены</span>
-            </button>
             <button class="secondary-btn" id="btn-report-profile" title="Пожаловаться на профиль" aria-label="Пожаловаться на профиль">
               <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Triangular%20Flag.webp" alt="Жалоба">
             </button>
@@ -7003,10 +6998,6 @@
               <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
                  <span style="color: var(--text-muted);">Вход:</span>
                  <span id="view-stat-login" style="color: #fff; font-weight: 600;">Неизвестно</span>
-              </div>
-              <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
-                 <span style="color: var(--text-muted);">В комнатах:</span>
-                 <span id="view-stat-room-time" style="color: #fff; font-weight: 600;">0 мин.</span>
               </div>
               <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
                  <span style="color: var(--text-muted);">ID:</span>
@@ -7100,8 +7091,8 @@
                   <span class="catalog-tab-badge" id="cat-count-free">0</span>
                 </button>
                 <button class="catalog-tab-btn" data-filter="paid">
-                  <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" class="catalog-tab-emoji" alt="Люмены">
-                  <span>За Люмены</span>
+                  <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" class="catalog-tab-emoji" alt="Уровни">
+                  <span>По уровню</span>
                   <span class="catalog-tab-badge" id="cat-count-paid">0</span>
                 </button>
               </div>
@@ -7119,12 +7110,12 @@
                       <span>Сначала рекомендуемые</span>
                       <svg class="catalog-option-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
                     </div>
-                    <div class="catalog-select-option" data-value="price-asc" role="option" aria-selected="false">
-                      <span>Цена: по возрастанию</span>
+                    <div class="catalog-select-option" data-value="level-asc" role="option" aria-selected="false">
+                      <span>Уровень: по возрастанию</span>
                       <svg class="catalog-option-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
                     </div>
-                    <div class="catalog-select-option" data-value="price-desc" role="option" aria-selected="false">
-                      <span>Цена: по убыванию</span>
+                    <div class="catalog-select-option" data-value="level-desc" role="option" aria-selected="false">
+                      <span>Уровень: по убыванию</span>
                       <svg class="catalog-option-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
                     </div>
                     <div class="catalog-select-option" data-value="title-asc" role="option" aria-selected="false">
@@ -7141,8 +7132,17 @@
           </div>
         </main>
 
-        <main class="rooms-main" id="section-premium" style="display: none; overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none; width: 100%; height: 100%; box-sizing: border-box;">
-          <div style="width: 100%; max-width: 100%; margin: 0; padding: 24px 32px 80px; box-sizing: border-box;">
+        <main class="rooms-main" id="section-premium" style="display: none">
+          <div class="friends-container" style="
+              max-width: 860px;
+              width: 100%;
+              margin: 0 auto;
+              padding-top: 20px;
+            ">
+            <div class="section-title" style="font-size: 24px; margin-bottom: 8px">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+              Premium
+            </div>
             <div id="premium-dynamic-content"></div>
           </div>
         </main>
@@ -7260,11 +7260,6 @@
           </div>
           
           <div id="room-top-actions">
-            <!-- Room Lumens Balance Pill -->
-            <div class="header-lumens-pill room-lumens-pill" id="room-header-lumens-pill" title="Ваш баланс Люменов" onclick="if(window.CatalogManager && window.CatalogManager.openLumensModal) { CatalogManager.openLumensModal(); }">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" alt="Lumens" style="width: 17px; height: 17px; object-fit: contain; filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.4));">
-              <span id="room-lumens-count" style="font-size: 13.5px; font-weight: 700; color: #ffffff; letter-spacing: -0.2px;">0</span>
-            </div>
             <!-- Share btn added from JS goes here -->
             <button class="secondary-btn" title="На весь экран" id="btn-fullscreen-toggle" style="background: transparent; border: none; font-size: 22px; cursor: pointer; padding: 8px;">⛶</button>
             <button class="secondary-btn" id="btn-room-settings" title="Настройки комнаты" style="background: transparent; border: none; color: #fff; font-size: 16px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 8px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Toolbox.webp" style="width:26px;height:26px;vertical-align:middle;"></button>
@@ -7556,6 +7551,42 @@
             </label>
           </div>
 
+          <!-- // [UPDATE] PROFILE BACKGROUND SETTING -->
+          <button class="secondary-btn" id="btn-toggle-profile-bg" type="button">
+            Настроить фон профиля
+          </button>
+          <div class="profile-bg-panel" id="profile-bg-panel" data-selected-index="1">
+            <div class="profile-bg-preview" id="profile-bg-preview">
+              Предпросмотр профиля
+            </div>
+            <div class="profile-bg-presets" id="profile-bg-presets"></div>
+            <div class="profile-bg-row">
+              <span>R</span>
+              <input type="range" id="profile-bg-r" min="0" max="255" value="17">
+              <input type="number" id="profile-bg-r-num" min="0" max="255" value="17">
+            </div>
+            <div class="profile-bg-row">
+              <span>G</span>
+              <input type="range" id="profile-bg-g" min="0" max="255" value="17">
+              <input type="number" id="profile-bg-g-num" min="0" max="255" value="17">
+            </div>
+            <div class="profile-bg-row">
+              <span>B</span>
+              <input type="range" id="profile-bg-b" min="0" max="255" value="17">
+              <input type="number" id="profile-bg-b-num" min="0" max="255" value="17">
+            </div>
+            <div class="profile-bg-row" style="margin-top: 5px">
+              <span style="font-size: 10px">Дим</span>
+              <input type="range" id="profile-bg-dim" min="0" max="1" step="0.05" value="0.5">
+              <input type="number" id="profile-bg-dim-num" min="0" max="1" step="0.05" value="0.5">
+            </div>
+            <input class="profile-bg-url" type="text" id="profile-bg-url" placeholder="URL изображения для фона">
+            <input type="file" id="profile-bg-file" accept="image/*" style="font-size: 12px">
+            <div class="profile-background-hint">
+              Настройте RGB, интенсивность затемнения (Дим) и загрузите файл/URL
+              фона.
+            </div>
+          </div>
           <!-- // [NEW] SECOND HALF SELF PROFILE UI -->
           <div class="partner-container" id="edit-partner-container" style="display: none !important"></div>
           <div class="love-requests-box" id="my-love-requests"></div>
@@ -8076,14 +8107,11 @@
           <div class="catalog-modal-lvl-badge">
             <div style="display: flex; flex-direction: column; gap: 2px;">
               <span style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Стоимость</span>
-              <div style="display: flex; align-items: center; gap: 6px;">
-                <img id="catalog-item-price-icon" src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 20px; height: 20px; object-fit: contain; display: none;" alt="✨">
-                <span id="catalog-item-price" style="font-size: 20px; color: #ffffff; font-weight: 800;">БЕСПЛАТНО</span>
-              </div>
+              <span id="catalog-item-price" style="font-size: 20px; color: #ffffff; font-weight: 800;">БЕСПЛАТНО</span>
             </div>
-            <div id="catalog-modal-user-lumens-info" style="display: flex; flex-direction: column; align-items: flex-end; gap: 2px;">
-              <span style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Ваш баланс</span>
-              <span id="catalog-modal-user-lumens-val" style="font-size: 14px; font-weight: 700; color: #34d399; display: inline-flex; align-items: center; gap: 4px;">0 <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" class="inline-sparkles-icon" alt="✨"></span>
+            <div id="catalog-modal-user-level-info" style="display: flex; flex-direction: column; align-items: flex-end; gap: 2px;">
+              <span style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Ваш уровень</span>
+              <span id="catalog-modal-user-level-val" style="font-size: 14px; font-weight: 700; color: #34d399;">10 ур. (Доступно)</span>
             </div>
           </div>
 
@@ -8117,121 +8145,6 @@
               <span style="font-size: 18px">👁</span>
             </button>
           </div>
-        </div>
-      </div>
-    </div>
-
-
-    <!-- Modal: Lumens Balance & Earn Guide -->
-    <div class="modal" id="modal-lumens-info">
-      <div class="modal-content glass-panel" style="max-width: 460px; width: calc(100% - 28px); border-radius: 24px; padding: 0; overflow: hidden; background: rgba(14, 14, 18, 0.98); border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: 0 25px 80px rgba(0, 0, 0, 0.85);">
-        <div style="position: absolute; top: 16px; right: 16px; z-index: 25">
-          <button class="secondary-btn btn-close-modal" style="width: 34px; height: 34px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 14px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); color: #ffffff; cursor: pointer;">✕</button>
-        </div>
-
-        <div style="padding: 32px 24px 20px; text-align: center; background: radial-gradient(circle at 50% 20%, rgba(255, 255, 255, 0.08) 0%, transparent 70%); border-bottom: 1px solid rgba(255, 255, 255, 0.06);">
-          <div style="width: 76px; height: 76px; margin: 0 auto 14px; border-radius: 22px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.14); display: flex; align-items: center; justify-content: center; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" alt="Lumens" style="width: 48px; height: 48px; object-fit: contain; filter: drop-shadow(0 0 16px rgba(255, 255, 255, 0.45)); animation: pulseGlow 2.5s ease-in-out infinite;">
-          </div>
-          <span style="font-size: 12px; font-weight: 700; color: rgba(255, 255, 255, 0.5); text-transform: uppercase; letter-spacing: 0.08em;">Ваш кошелёк</span>
-          <h2 style="font-size: 34px; font-weight: 900; color: #ffffff; margin: 4px 0 2px; letter-spacing: -0.5px; display: flex; align-items: center; justify-content: center; gap: 8px;">
-            <span id="modal-lumens-wallet-val">0</span>
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 30px; height: 30px; object-fit: contain; vertical-align: middle;">
-          </h2>
-          <p style="font-size: 13px; color: rgba(255, 255, 255, 0.6); margin: 0;">Люмены — валюта платформы COWIO для покупок в каталоге</p>
-        </div>
-
-        <!-- Navigation Tabs: History, Leaderboard & Guide -->
-        <div class="lumens-modal-nav-container">
-          <button id="tab-btn-lumens-tx" class="lumens-tab-btn active" onclick="if(window.LumenManager) LumenManager.switchModalTab('history')">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp" style="width: 15px; height: 15px; object-fit: contain;" alt="История">
-            История
-          </button>
-          <button id="tab-btn-lumens-top" class="lumens-tab-btn" onclick="if(window.LumenManager) LumenManager.switchModalTab('leaderboard')">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Trophy.webp" style="width: 15px; height: 15px; object-fit: contain;" alt="Топ">
-            Лидерборд
-          </button>
-          <button id="tab-btn-lumens-earn" class="lumens-tab-btn" onclick="if(window.LumenManager) LumenManager.switchModalTab('guide')">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Light%20Bulb.webp" style="width: 15px; height: 15px; object-fit: contain;" alt="Гайд">
-            Как заработать
-          </button>
-        </div>
-
-        <!-- TAB 1: TRANSACTION HISTORY -->
-        <div id="lumens-tab-history" style="display: flex; flex-direction: column;">
-          <!-- Filter Bar: neatly separated from tabs -->
-          <div class="lumens-filter-row">
-            <span style="font-size: 11px; font-weight: 800; color: rgba(255, 255, 255, 0.45); text-transform: uppercase; letter-spacing: 0.05em;">Фильтр операций:</span>
-            <div style="display: flex; gap: 4px;">
-              <button class="lumens-filter-chip active" id="lumen-filter-all" onclick="if(window.LumenManager) LumenManager.filterTransactions('all')">Все</button>
-              <button class="lumens-filter-chip" id="lumen-filter-income" onclick="if(window.LumenManager) LumenManager.filterTransactions('income')">+ Доходы</button>
-              <button class="lumens-filter-chip" id="lumen-filter-expense" onclick="if(window.LumenManager) LumenManager.filterTransactions('expense')">− Расходы</button>
-            </div>
-          </div>
-          <!-- Transactions List Container -->
-          <div id="lumens-transactions-list" class="oled-scrollbar" style="max-height: 270px; min-height: 180px; overflow-y: auto; padding: 6px 20px 16px; display: flex; flex-direction: column; gap: 8px;">
-            <div style="text-align: center; padding: 30px 10px; color: rgba(255, 255, 255, 0.4); font-size: 13px;">
-              Загрузка истории операций...
-            </div>
-          </div>
-        </div>
-
-        <!-- TAB 2: LEADERBOARD -->
-        <div id="lumens-tab-top" style="display: none; flex-direction: column;">
-          <div style="padding: 6px 20px 10px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255, 255, 255, 0.05); margin-bottom: 4px;">
-            <span style="font-size: 11px; font-weight: 800; color: rgba(255, 255, 255, 0.45); text-transform: uppercase; letter-spacing: 0.05em;">Топ пользователей по Люменам</span>
-            <span style="font-size: 11px; color: #ffd700; font-weight: 700;">Рейтинг COWIO</span>
-          </div>
-          <div id="lumens-leaderboard-list" class="oled-scrollbar" style="max-height: 270px; min-height: 180px; overflow-y: auto; padding: 6px 20px 16px; display: flex; flex-direction: column; gap: 6px;">
-            <div style="text-align: center; padding: 30px 10px; color: rgba(255, 255, 255, 0.4); font-size: 13px;">
-              Загрузка рейтинга...
-            </div>
-          </div>
-        </div>
-
-        <!-- TAB 3: HOW TO EARN (EARN GUIDE) -->
-        <div id="lumens-tab-guide" style="display: none; padding: 14px 20px; flex-direction: column; gap: 10px; max-height: 290px; overflow-y: auto;" class="oled-scrollbar">
-          <div style="display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 14px;">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Television.webp" alt="Watch" style="width: 26px; height: 26px; object-fit: contain; flex-shrink: 0; margin-top: 2px;">
-            <div style="flex: 1;">
-              <div style="font-size: 13.5px; font-weight: 700; color: #ffffff;">Воспроизведение видео в комнатах</div>
-              <div style="font-size: 12px; color: rgba(255, 255, 255, 0.6); line-height: 1.4; margin-top: 2px;">Люмены начисляются <strong>только при активном воспроизведении видео</strong>: +1 Люмен за каждую 1 минуту просмотра (+2 для COWIO Premium).</div>
-            </div>
-          </div>
-
-          <div style="display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 14px;">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" alt="Streak" style="width: 26px; height: 26px; object-fit: contain; flex-shrink: 0; margin-top: 2px;">
-            <div style="flex: 1;">
-              <div style="font-size: 13.5px; font-weight: 700; color: #ffffff;">Ежедневный вход (Стрик)</div>
-              <div style="font-size: 12px; color: rgba(255, 255, 255, 0.6); line-height: 1.4; margin-top: 2px;">Заходите на платформу ежедневно и получайте от 3 до 8 Люменов с ценными бонусами за длинные серии.</div>
-            </div>
-          </div>
-
-          <div style="display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 14px;">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Heart%20With%20Ribbon.webp" alt="Gift" style="width: 26px; height: 26px; object-fit: contain; flex-shrink: 0; margin-top: 2px;">
-            <div style="flex: 1;">
-              <div style="font-size: 13.5px; font-weight: 700; color: #ffffff;">Подарки только от друзей</div>
-              <div style="font-size: 12px; color: rgba(255, 255, 255, 0.6); line-height: 1.4; margin-top: 2px;">Вы можете дарить Люмены своим подтверждённым друзьям (действует лимит: до 100 Люменов в сутки определенному пользователю).</div>
-            </div>
-          </div>
-
-          <div style="display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 14px;">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" alt="Welcome" style="width: 26px; height: 26px; object-fit: contain; flex-shrink: 0; margin-top: 2px;">
-            <div style="flex: 1;">
-              <div style="font-size: 13.5px; font-weight: 700; color: #ffffff;">Приветственный бонус</div>
-              <div style="font-size: 12px; color: rgba(255, 255, 255, 0.6); line-height: 1.4; margin-top: 2px;">Каждый новый зарегистрированный пользователь получает стартовый 1 Люмен для знакомства с платформой.</div>
-            </div>
-          </div>
-        </div>
-
-        <div style="padding: 16px 24px 24px; display: flex; gap: 10px;">
-          <button class="primary-btn" onclick="Utils.closeModal('modal-lumens-info'); if(window.FriendsManager && window.FriendsManager.setNavActive) { FriendsManager.setNavActive('nav-catalog'); if(window.CatalogManager) CatalogManager.renderCatalog(); }" style="flex: 1; padding: 13px; font-size: 14px; font-weight: 700; border-radius: 12px; background: #ffffff; color: #000000; display: flex; align-items: center; justify-content: center; gap: 8px;">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Shopping%20Bags.webp" style="width: 18px; height: 18px; object-fit: contain;">
-            Открыть каталог
-          </button>
-          <button class="secondary-btn btn-close-modal" style="padding: 13px 20px; font-size: 14px; font-weight: 700; border-radius: 12px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); color: #ffffff;">
-            Закрыть
-          </button>
         </div>
       </div>
     </div>
@@ -8431,7 +8344,7 @@
       window.COWIO_MEDIA_API = window.COWIO_MEDIA_API || "";
     </script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.7/dist/hls.min.js"></script>
-    <script type="module" src="app.js?v=4"></script>
+    <script type="module" src="app.js?v=3"></script>
     <style>
       body.monochrome {
         filter: grayscale(1) !important;
@@ -8652,348 +8565,6 @@
         50% {
           transform: translateY(-12px) rotate(3deg);
         }
-      }
-
-      /* ========================================================= */
-      /* LUMENS STYLING & ANIMATIONS */
-      /* ========================================================= */
-      .header-lumens-pill {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        padding: 6px 14px;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 100px;
-        cursor: pointer;
-        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-        user-select: none;
-        position: relative;
-      }
-      .header-lumens-pill:hover {
-        background: rgba(255, 255, 255, 0.12) !important;
-        border-color: rgba(255, 255, 255, 0.28) !important;
-        transform: translateY(-1px);
-        box-shadow: 0 4px 16px rgba(255, 255, 255, 0.12);
-      }
-      .header-lumens-pill:active {
-        transform: translateY(0);
-      }
-      .header-lumens-pill.glow-increase {
-        animation: lumenPillPulse 0.9s ease-out;
-        border-color: rgba(255, 215, 0, 0.85) !important;
-        box-shadow: 0 0 20px rgba(255, 215, 0, 0.55), inset 0 0 8px rgba(255, 215, 0, 0.2) !important;
-      }
-      .header-lumens-pill.glow-decrease {
-        animation: lumenPillSpend 0.7s ease-out;
-        border-color: rgba(248, 113, 113, 0.7) !important;
-        box-shadow: 0 0 16px rgba(248, 113, 113, 0.4) !important;
-      }
-      @keyframes lumenPillPulse {
-        0% { transform: scale(1); }
-        30% { transform: scale(1.1); }
-        60% { transform: scale(1.03); }
-        100% { transform: scale(1); }
-      }
-      @keyframes lumenPillSpend {
-        0% { transform: scale(1); }
-        30% { transform: scale(0.95); }
-        100% { transform: scale(1); }
-      }
-      .lumen-floating-delta {
-        position: absolute;
-        top: calc(100% + 6px);
-        left: 50%;
-        transform: translateX(-50%);
-        pointer-events: none;
-        font-size: 13px;
-        font-weight: 800;
-        padding: 3px 10px;
-        border-radius: 100px;
-        white-space: nowrap;
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        animation: lumenDeltaFloat 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        z-index: 99999;
-        display: flex;
-        align-items: center;
-        gap: 4px;
-      }
-      .lumen-floating-delta.positive {
-        color: #4ade80;
-        background: rgba(34, 197, 94, 0.22);
-        border: 1px solid rgba(74, 222, 128, 0.5);
-        box-shadow: 0 4px 14px rgba(34, 197, 94, 0.35);
-      }
-      .lumen-floating-delta.negative {
-        color: #f87171;
-        background: rgba(239, 68, 68, 0.22);
-        border: 1px solid rgba(248, 113, 113, 0.5);
-        box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35);
-      }
-      @keyframes lumenDeltaFloat {
-        0% { opacity: 0; transform: translate(-50%, -6px) scale(0.85); }
-        20% { opacity: 1; transform: translate(-50%, 4px) scale(1.06); }
-        70% { opacity: 1; transform: translate(-50%, 8px) scale(1); }
-        100% { opacity: 0; transform: translate(-50%, 18px) scale(0.9); }
-      }
-      /* Sleek Player Lumen Reward Toast (Matches Player Chat Overlay) */
-      .room-player-lumen-toast {
-        background: rgba(0, 0, 0, 0.68);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 215, 0, 0.35);
-        border-radius: 12px;
-        padding: 6px 12px;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        color: #fff;
-        font-size: 13px;
-        animation: chatOverlayFade 4s forwards;
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
-        pointer-events: none;
-        width: fit-content;
-        max-width: 90%;
-        align-self: center;
-        margin: 0 auto;
-      }
-      .room-player-lumen-toast .toast-sparkle-icon {
-        width: 28px;
-        height: 28px;
-        border-radius: 50%;
-        background: rgba(255, 215, 0, 0.15);
-        border: 1px solid rgba(255, 215, 0, 0.35);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-        overflow: hidden;
-      }
-      .room-player-lumen-toast .toast-sparkle-icon img {
-        width: 18px;
-        height: 18px;
-        object-fit: contain;
-      }
-      .room-player-lumen-toast .toast-text-col {
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-        line-height: 1.25;
-      }
-      .room-player-lumen-toast .toast-lumen-amount {
-        font-size: 11.5px;
-        font-weight: 700;
-        color: #ffd700;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-      }
-      .room-player-lumen-toast .toast-lumen-desc {
-        font-size: 11px;
-        color: rgba(255, 255, 255, 0.8);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        max-width: 250px;
-      }
-
-      /* Report Profile Modal & Categories */
-      .report-category-item {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 10px 14px;
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 12px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        user-select: none;
-      }
-      .report-category-item:hover {
-        background: rgba(255, 255, 255, 0.07);
-        border-color: rgba(255, 255, 255, 0.2);
-        transform: translateY(-1px);
-      }
-      .report-category-item.selected {
-        background: rgba(255, 75, 75, 0.14) !important;
-        border-color: #ff4757 !important;
-        box-shadow: 0 0 16px rgba(255, 75, 75, 0.25);
-      }
-      .report-cat-icon {
-        font-size: 20px;
-        flex-shrink: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 32px;
-        height: 32px;
-      }
-      .report-cat-icon img {
-        width: 26px;
-        height: 26px;
-        object-fit: contain;
-        display: block;
-      }
-      .gift-preset-btn {
-        padding: 9px 4px;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 12px;
-        color: #ffffff;
-        font-size: 12px;
-        font-weight: 700;
-        cursor: pointer;
-        transition: all 0.18s ease;
-        text-align: center;
-        backdrop-filter: blur(10px);
-      }
-      .gift-preset-btn:hover {
-        background: rgba(255, 255, 255, 0.14);
-        border-color: rgba(255, 255, 255, 0.35);
-        transform: translateY(-1px);
-      }
-      .gift-preset-btn.active {
-        background: #ffffff !important;
-        border-color: #ffffff !important;
-        color: #000000 !important;
-        box-shadow: 0 4px 14px rgba(255, 255, 255, 0.25);
-      }
-      @media (max-width: 640px) {
-        .gift-lumens-horizontal-grid {
-          grid-template-columns: 1fr !important;
-          gap: 16px !important;
-        }
-      }
-      .report-cat-text {
-        flex: 1;
-        min-width: 0;
-      }
-      .report-cat-title {
-        font-size: 13px;
-        font-weight: 700;
-        color: #ffffff;
-        line-height: 1.25;
-      }
-      .report-cat-desc {
-        font-size: 11px;
-        color: var(--text-muted);
-        line-height: 1.2;
-        margin-top: 2px;
-      }
-      .report-user-card-pill:hover {
-        background: rgba(255, 255, 255, 0.1) !important;
-        transform: translateY(-1px);
-      }
-      .report-user-card-pill.target:hover {
-        background: rgba(255, 75, 75, 0.15) !important;
-        border-color: rgba(255, 75, 75, 0.5) !important;
-      }
-      .lumens-modal-nav-container {
-        display: flex;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 14px;
-        padding: 4px;
-        margin: 14px 20px 8px;
-        gap: 4px;
-      }
-      .lumens-tab-btn {
-        flex: 1;
-        padding: 9px 8px;
-        font-size: 12.5px;
-        font-weight: 700;
-        border-radius: 10px;
-        background: transparent;
-        border: none;
-        color: rgba(255, 255, 255, 0.55);
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-        white-space: nowrap;
-      }
-      .lumens-tab-btn:hover {
-        color: rgba(255, 255, 255, 0.85);
-        background: rgba(255, 255, 255, 0.04);
-      }
-      .lumens-tab-btn.active {
-        background: rgba(255, 255, 255, 0.12) !important;
-        color: #ffffff !important;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-      }
-      .lumens-filter-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 4px 20px 10px;
-        gap: 8px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        margin-bottom: 6px;
-      }
-      .lumens-filter-chip {
-        padding: 4px 10px;
-        font-size: 11px;
-        font-weight: 700;
-        border-radius: 8px;
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        color: rgba(255, 255, 255, 0.6);
-        cursor: pointer;
-        transition: all 0.15s ease;
-      }
-      .lumens-filter-chip.active {
-        background: rgba(255, 255, 255, 0.15) !important;
-        border-color: rgba(255, 255, 255, 0.25) !important;
-        color: #ffffff !important;
-      }
-      .lumen-tx-item {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 10px 14px;
-        background: rgba(255, 255, 255, 0.035);
-        border: 1px solid rgba(255, 255, 255, 0.07);
-        border-radius: 14px;
-        transition: background 0.15s ease, border-color 0.15s ease;
-      }
-      .lumen-tx-item:hover {
-        background: rgba(255, 255, 255, 0.06);
-        border-color: rgba(255, 255, 255, 0.12);
-      }
-      .lumen-tx-icon-wrap {
-        width: 36px;
-        height: 36px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-      }
-      .lumen-tx-item.income .lumen-tx-icon-wrap {
-        background: rgba(34, 197, 94, 0.14);
-        border: 1px solid rgba(74, 222, 128, 0.3);
-      }
-      .lumen-tx-item.expense .lumen-tx-icon-wrap {
-        background: rgba(239, 68, 68, 0.14);
-        border: 1px solid rgba(248, 113, 113, 0.3);
-      }
-      .lumen-tx-amount-badge {
-        font-size: 14px;
-        font-weight: 800;
-        letter-spacing: -0.3px;
-        display: flex;
-        align-items: center;
-        gap: 4px;
-      }
-      .lumen-tx-amount-badge.income {
-        color: #4ade80;
-      }
-      .lumen-tx-amount-badge.expense {
-        color: #f87171;
       }
 
       /* ========================================================= */
@@ -9896,342 +9467,6 @@
             line-height: 1.6;
             margin: 0;
           "></p>
-      </div>
-    </div>
-
-    <!-- Модальное окно жалобы на профиль -->
-    <div class="modal" id="modal-report-profile" style="z-index: 100005;">
-      <div class="modal-content glass-panel" style="max-width: 480px; width: 95%; max-height: 90vh; overflow-y: auto; padding: 24px; position: relative; border: 1px solid rgba(255, 75, 75, 0.25); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(255, 75, 75, 0.15);">
-        <button class="btn-close-modal" id="btn-close-report-profile-modal" style="position: absolute; top: 16px; right: 16px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); color: #fff; width: 32px; height: 32px; border-radius: 50%; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.2)';" onmouseout="this.style.background='rgba(255,255,255,0.08)';">
-          ✕
-        </button>
-
-        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-          <div style="width: 42px; height: 42px; border-radius: 12px; background: rgba(255, 75, 75, 0.15); border: 1px solid rgba(255, 75, 75, 0.35); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Triangular%20Flag.webp" style="width: 24px; height: 24px; object-fit: contain;" alt="🚩">
-          </div>
-          <div>
-            <h2 style="font-size: 18px; margin: 0; font-weight: 800; color: #fff;">Пожаловаться на профиль</h2>
-            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Обращение в службу поддержки и модерации</div>
-          </div>
-        </div>
-
-        <!-- Target user banner -->
-        <div id="report-target-user-card" style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px; margin-bottom: 20px;">
-          <div id="report-target-avatar-preview" style="width: 38px; height: 38px; border-radius: 50%; overflow: visible; flex-shrink: 0; background: #111; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.1);">
-            ?
-          </div>
-          <div style="overflow: hidden; flex: 1;">
-            <div id="report-target-name-preview" style="font-size: 14px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Пользователь</div>
-            <div id="report-target-username-preview" style="font-size: 12px; color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">@username</div>
-          </div>
-        </div>
-
-        <!-- Step 1: Category Selection -->
-        <div style="margin-bottom: 16px;">
-          <label style="display: block; font-size: 11px; font-weight: 800; color: rgba(255,255,255,0.9); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;">
-            1. Выберите причину нарушения:
-          </label>
-          <div id="report-categories-list" style="display: flex; flex-direction: column; gap: 8px;">
-            <div class="report-category-item" data-category="Неприемлемый аватар или баннер">
-              <span class="report-cat-icon">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/No%20One%20Under%20Eighteen.webp" alt="🔞">
-              </span>
-              <div class="report-cat-text">
-                <div class="report-cat-title">Неприемлемый аватар или баннер</div>
-                <div class="report-cat-desc">18+, эротика, насилие, шок-контент</div>
-              </div>
-            </div>
-            <div class="report-category-item" data-category="Оскорбительный никнейм или био">
-              <span class="report-cat-icon">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Symbols%20On%20Mouth.webp" alt="🤬">
-              </span>
-              <div class="report-cat-text">
-                <div class="report-cat-title">Оскорбительный никнейм или био</div>
-                <div class="report-cat-desc">Маты, оскорбления, травля, разжигание розни</div>
-              </div>
-            </div>
-            <div class="report-category-item" data-category="Спам, реклама или мошенничество">
-              <span class="report-cat-icon">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Megaphone.webp" alt="📢">
-              </span>
-              <div class="report-cat-text">
-                <div class="report-cat-title">Спам, реклама или мошенничество</div>
-                <div class="report-cat-desc">Ссылки на фишинг, реклама сторонних сервисов</div>
-              </div>
-            </div>
-            <div class="report-category-item" data-category="Разжигание ненависти или токсичность">
-              <span class="report-cat-icon">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Double%20Exclamation%20Mark.webp" alt="⚠️">
-              </span>
-              <div class="report-cat-text">
-                <div class="report-cat-title">Разжигание ненависти или токсичность</div>
-                <div class="report-cat-desc">Дискриминация, угрозы, экстремизм</div>
-              </div>
-            </div>
-            <div class="report-category-item" data-category="Выдача себя за другое лицо">
-              <span class="report-cat-icon">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Performing%20Arts.webp" alt="🎭">
-              </span>
-              <div class="report-cat-text">
-                <div class="report-cat-title">Выдача себя за другое лицо</div>
-                <div class="report-cat-desc">Фейковый аккаунт, кража чужой личности</div>
-              </div>
-            </div>
-            <div class="report-category-item" data-category="Другое нарушение оформления">
-              <span class="report-cat-icon">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp" alt="📝">
-              </span>
-              <div class="report-cat-text">
-                <div class="report-cat-title">Другое нарушение оформления</div>
-                <div class="report-cat-desc">Иные нарушения правил оформления профиля</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Step 2: Comment (revealed smoothly after category selected) -->
-        <div id="report-step-comment-wrap" style="display: none; margin-bottom: 20px;">
-          <label style="display: block; font-size: 11px; font-weight: 800; color: rgba(255,255,255,0.9); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
-            2. Опишите конкретно, в чём дело:
-          </label>
-          <textarea id="report-profile-comment" placeholder="Опишите подробно, что именно нарушает данный профиль, чтобы поддержка быстрее разобралась..." style="width: 100%; height: 95px; padding: 12px 14px; border-radius: 12px; background: rgba(0, 0, 0, 0.45); border: 1px solid rgba(255, 255, 255, 0.12); color: #fff; font-size: 13px; line-height: 1.45; box-sizing: border-box; resize: vertical; outline: none; transition: border-color 0.2s;"></textarea>
-          <div style="font-size: 11px; color: var(--text-muted); margin-top: 5px; text-align: right;" id="report-profile-comment-hint">
-            Минимум 5 символов
-          </div>
-        </div>
-
-        <!-- Actions -->
-        <div style="display: flex; gap: 12px; justify-content: flex-end; align-items: center;">
-          <button class="secondary-btn btn-close-modal" id="btn-cancel-profile-report" style="padding: 10px 18px; border-radius: 10px; font-size: 13px;">
-            Отмена
-          </button>
-          <button class="primary-btn" id="btn-submit-profile-report" style="background: #ff4757; color: #fff; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 700; font-size: 13px; display: inline-flex; align-items: center; gap: 8px; cursor: not-allowed; transition: all 0.2s; opacity: 0.5;" disabled>
-            <span>Отправить жалобу</span>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Модальное окно подарка Люменов (Люксовый Obsidian Glow редизайн) -->
-    <!-- Gift Lumens Modal -->
-    <div class="modal modal-gift-luxury" id="modal-gift-lumens" style="z-index: 100005; backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px); background: rgba(5, 6, 9, 0.88);">
-      <style>
-        #modal-gift-lumens .gift-card-body {
-          max-width: 460px;
-          width: 94%;
-          max-height: 92vh;
-          overflow-y: auto;
-          padding: 28px 24px;
-          position: relative;
-          border-radius: 26px;
-          background: linear-gradient(165deg, rgba(22, 24, 33, 0.95) 0%, rgba(12, 13, 18, 0.98) 100%);
-          backdrop-filter: blur(50px);
-          -webkit-backdrop-filter: blur(50px);
-          border: 1px solid rgba(255, 215, 0, 0.22);
-          box-shadow: 0 32px 80px rgba(0, 0, 0, 0.9), 0 0 50px rgba(255, 195, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.16);
-        }
-        #modal-gift-lumens .gift-aura-orb {
-          position: absolute;
-          top: -40px;
-          left: 50%;
-          transform: translateX(-50%);
-          width: 220px;
-          height: 90px;
-          background: radial-gradient(ellipse, rgba(255, 204, 0, 0.22) 0%, rgba(255, 204, 0, 0) 70%);
-          filter: blur(30px);
-          pointer-events: none;
-        }
-        #modal-gift-lumens .gift-stepper-container {
-          background: linear-gradient(180deg, rgba(0, 0, 0, 0.65) 0%, rgba(15, 16, 22, 0.75) 100%);
-          border: 1px solid rgba(255, 215, 0, 0.2);
-          border-radius: 20px;
-          padding: 16px 14px 14px;
-          box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5), 0 8px 24px rgba(0, 0, 0, 0.35);
-          position: relative;
-        }
-        #modal-gift-lumens .gift-step-btn {
-          width: 44px;
-          height: 44px;
-          border-radius: 14px;
-          background: rgba(255, 255, 255, 0.06);
-          border: 1px solid rgba(255, 255, 255, 0.14);
-          color: #ffffff;
-          font-size: 22px;
-          font-weight: 700;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: all 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
-          user-select: none;
-        }
-        #modal-gift-lumens .gift-step-btn:hover {
-          background: rgba(255, 215, 0, 0.2);
-          border-color: rgba(255, 215, 0, 0.5);
-          transform: translateY(-2px);
-          box-shadow: 0 4px 14px rgba(255, 204, 0, 0.25);
-        }
-        #modal-gift-lumens .gift-step-btn:active {
-          transform: translateY(0) scale(0.96);
-        }
-        #modal-gift-lumens .gift-preset-chip {
-          padding: 8px 0;
-          border-radius: 11px;
-          font-size: 13px;
-          font-weight: 700;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          color: rgba(255, 255, 255, 0.85);
-          cursor: pointer;
-          transition: all 0.15s ease;
-        }
-        #modal-gift-lumens .gift-preset-chip:hover {
-          background: rgba(255, 255, 255, 0.12);
-          border-color: rgba(255, 215, 0, 0.35);
-          color: #fff;
-          transform: translateY(-1px);
-        }
-        #modal-gift-lumens .gift-preset-chip.active {
-          background: linear-gradient(135deg, rgba(255, 215, 0, 0.25) 0%, rgba(255, 170, 0, 0.18) 100%);
-          border-color: rgba(255, 215, 0, 0.7);
-          color: #ffd700;
-          box-shadow: 0 0 14px rgba(255, 215, 0, 0.25);
-        }
-        #modal-gift-lumens .gift-slider-track {
-          -webkit-appearance: none;
-          appearance: none;
-          width: 100%;
-          height: 6px;
-          border-radius: 6px;
-          background: rgba(255, 255, 255, 0.1);
-          outline: none;
-          margin: 12px 0 6px;
-          cursor: pointer;
-        }
-        #modal-gift-lumens .gift-slider-track::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          appearance: none;
-          width: 18px;
-          height: 18px;
-          border-radius: 50%;
-          background: #ffd700;
-          box-shadow: 0 0 10px #ffd700, 0 2px 6px rgba(0, 0, 0, 0.5);
-          cursor: pointer;
-          transition: transform 0.1s ease;
-        }
-        #modal-gift-lumens .gift-slider-track::-webkit-slider-thumb:hover {
-          transform: scale(1.2);
-        }
-      </style>
-      <div class="modal-content glass-panel gift-card-body">
-        <div class="gift-aura-orb"></div>
-        <button class="btn-close-modal" id="btn-close-gift-lumens-modal" style="position: absolute; top: 18px; right: 18px; background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.14); color: #fff; width: 34px; height: 34px; border-radius: 50%; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.2)';" onmouseout="this.style.background='rgba(255,255,255,0.07)';">
-          ✕
-        </button>
-
-        <!-- Header -->
-        <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 20px;">
-          <div style="width: 48px; height: 48px; border-radius: 16px; background: radial-gradient(circle, rgba(255, 215, 0, 0.25) 0%, rgba(255, 170, 0, 0.08) 100%); border: 1px solid rgba(255, 215, 0, 0.4); display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" alt="✨" style="width: 30px; height: 30px; object-fit: contain; filter: drop-shadow(0 0 6px rgba(255, 215, 0, 0.6));">
-          </div>
-          <div>
-            <h2 style="font-size: 19px; margin: 0; font-weight: 800; color: #ffffff; letter-spacing: -0.02em; display: flex; align-items: center; gap: 8px;">
-              Подарить Люмены
-              <span style="font-size: 10px; font-weight: 700; color: #ffd700; background: rgba(255, 215, 0, 0.14); border: 1px solid rgba(255, 215, 0, 0.3); border-radius: 999px; padding: 2px 7px;">LUMENS</span>
-            </h2>
-            <div style="font-size: 12.5px; color: rgba(255, 255, 255, 0.55); margin-top: 2px;">Мгновенный перевод звёздной энергии другу</div>
-          </div>
-        </div>
-
-        <!-- Recipient Card -->
-        <div id="gift-target-user-card" style="display: flex; align-items: center; gap: 14px; padding: 12px 16px; background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 18px; margin-bottom: 16px; position: relative;">
-          <div id="gift-target-avatar-preview" style="width: 44px; height: 44px; border-radius: 50%; overflow: hidden; flex-shrink: 0; background: #0c0c0e; display: flex; align-items: center; justify-content: center; border: 2px solid rgba(255, 215, 0, 0.5); color: #fff; box-shadow: 0 0 14px rgba(255, 215, 0, 0.2);">
-            ?
-          </div>
-          <div style="overflow: hidden; flex: 1;">
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-              <span id="gift-target-name-preview" style="font-size: 14.5px; font-weight: 700; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Друг</span>
-              <span style="font-size: 10.5px; font-weight: 600; color: #ffd700; background: rgba(255, 215, 0, 0.12); padding: 3px 9px; border-radius: 999px; border: 1px solid rgba(255, 215, 0, 0.28); flex-shrink: 0;">Получатель</span>
-            </div>
-            <div id="gift-target-username-preview" style="font-size: 12px; color: rgba(255, 255, 255, 0.45); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px;">@username</div>
-          </div>
-        </div>
-
-        <!-- Balances Bar -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px;">
-          <div style="padding: 11px 14px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px; display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-size: 11.5px; color: rgba(255, 255, 255, 0.55); font-weight: 600;">Ваш баланс:</span>
-            <span style="font-size: 15px; font-weight: 800; color: #ffffff; display: inline-flex; align-items: center; gap: 5px;">
-              <span id="gift-modal-my-lumens">0</span>
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" alt="✨" style="width: 15px; height: 15px; object-fit: contain;">
-            </span>
-          </div>
-          <div style="padding: 11px 14px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px; display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-size: 11.5px; color: rgba(255, 255, 255, 0.55); font-weight: 600;">Лимит суток:</span>
-            <span style="font-size: 15px; font-weight: 800; color: #ffd700; display: inline-flex; align-items: center; gap: 3px;">
-              <span id="gift-modal-remaining-limit">100</span><span style="font-size: 12px; color: rgba(255,255,255,0.4); font-weight: 600;">/100</span>
-            </span>
-          </div>
-        </div>
-
-        <!-- Amount Selection Stepper & Core -->
-        <div style="margin-bottom: 18px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 9px;">
-            <label style="font-size: 11.5px; font-weight: 700; color: rgba(255, 255, 255, 0.75); text-transform: uppercase; letter-spacing: 0.05em;">
-              Количество Люменов
-            </label>
-            <span id="gift-modal-error-msg" style="font-size: 11px; color: #ff6b6b; background: rgba(255, 107, 107, 0.14); border: 1px solid rgba(255, 107, 107, 0.3); border-radius: 6px; padding: 2px 8px; font-weight: 600; display: none;"></span>
-          </div>
-
-          <!-- Luxury Stepper Box -->
-          <div class="gift-stepper-container">
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
-              <button type="button" class="gift-step-btn" id="gift-lumens-btn-minus" aria-label="Уменьшить">−</button>
-              <div style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 10px;">
-                <input type="number" id="gift-lumens-amount-input" min="1" max="100" value="5" style="width: 100px; text-align: center; background: transparent; border: none; font-size: 32px; font-weight: 900; color: #ffffff; outline: none; -moz-appearance: textfield; font-family: inherit; letter-spacing: -0.03em; text-shadow: 0 0 20px rgba(255, 215, 0, 0.4);">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" alt="✨" style="width: 26px; height: 26px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.8));">
-              </div>
-              <button type="button" class="gift-step-btn" id="gift-lumens-btn-plus" aria-label="Увеличить">+</button>
-            </div>
-          </div>
-
-          <!-- Quick Presets -->
-          <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-top: 10px; margin-bottom: 10px;">
-            <button type="button" class="gift-preset-btn gift-preset-chip" data-amount="5">+5</button>
-            <button type="button" class="gift-preset-btn gift-preset-chip" data-amount="10">+10</button>
-            <button type="button" class="gift-preset-btn gift-preset-chip" data-amount="25">+25</button>
-            <button type="button" class="gift-preset-btn gift-preset-chip" data-amount="50">+50</button>
-            <button type="button" class="gift-preset-btn gift-preset-chip" data-amount="100">+100</button>
-            <button type="button" class="gift-preset-btn gift-preset-chip" data-amount="max" style="font-weight: 800; color: #ffd700;">Макс</button>
-          </div>
-
-          <!-- Remainder info -->
-          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: rgba(255, 255, 255, 0.5); padding: 4px 2px;">
-            <span>Остаток после подарка:</span>
-            <span style="color: #ffffff; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
-              <span id="gift-modal-after-balance">0</span>
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" alt="✨" style="width: 14px; height: 14px; object-fit: contain;">
-            </span>
-          </div>
-        </div>
-
-        <!-- Optional Wish / Note -->
-        <div style="margin-bottom: 22px;">
-          <input type="text" id="gift-lumens-note-input" maxlength="60" placeholder="Пожелание другу (необязательно)..." style="width: 100%; padding: 12px 16px; border-radius: 14px; background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(255, 255, 255, 0.12); color: #ffffff; font-size: 13.5px; outline: none; box-sizing: border-box; transition: all 0.2s;" onfocus="this.style.borderColor='rgba(255,215,0,0.5)'; this.style.boxShadow='0 0 14px rgba(255,215,0,0.15)';" onblur="this.style.borderColor='rgba(255,255,255,0.12)'; this.style.boxShadow='none';">
-        </div>
-
-        <!-- Actions -->
-        <div style="display: flex; gap: 12px; align-items: center;">
-          <button class="secondary-btn btn-close-modal" id="btn-cancel-gift-lumens" style="padding: 13px 20px; border-radius: 14px; font-size: 13.5px; font-weight: 600; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.14); color: #ffffff; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.14)';" onmouseout="this.style.background='rgba(255,255,255,0.06)';">
-            Отмена
-          </button>
-          <button class="primary-btn" id="btn-submit-gift-lumens" style="flex: 1; padding: 13px 20px; border-radius: 14px; font-size: 14.5px; font-weight: 800; background: linear-gradient(135deg, #ffd700 0%, #ffaa00 100%); color: #000000; border: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; transition: all 0.2s; box-shadow: 0 6px 24px rgba(255, 204, 0, 0.35);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 30px rgba(255, 204, 0, 0.5)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 6px 24px rgba(255, 204, 0, 0.35)';">
-            <span>Подарить</span>
-            <span id="gift-modal-btn-amount">5</span>
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" alt="✨" style="width: 18px; height: 18px; object-fit: contain;">
-          </button>
-        </div>
       </div>
     </div>
 
