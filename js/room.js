@@ -9,6 +9,217 @@ class RoomManager {
     "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Sparkling%20Heart.webp' style='width:1em;height:1em;'>",
   ];
 
+  static closeUserMiniature() {
+    const modal = document.getElementById("modal-room-user-miniature");
+    if (modal) modal.classList.remove("active");
+  }
+
+  static async showUserMiniature(uid) {
+    if (!uid) return;
+    const modal = document.getElementById("modal-room-user-miniature");
+    if (!modal) return;
+
+    if (!modal._hasMiniDismissal) {
+      modal._hasMiniDismissal = true;
+      modal.addEventListener("click", (e) => {
+        if (e.target === modal) RoomManager.closeUserMiniature();
+      });
+    }
+
+    let profile = AppState.usersCache.get(uid);
+    if (!profile) {
+      try {
+        const { get, ref, getDatabase } = await import(
+          "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"
+        );
+        const snap = await get(ref(getDatabase(), `users/${uid}/profile`));
+        if (snap.exists()) {
+          profile = snap.val();
+          AppState.usersCache.set(uid, profile);
+        }
+      } catch (e) {
+        console.warn("Could not fetch profile for miniature:", e);
+      }
+    }
+    if (!profile) {
+      profile = { name: "Пользователь", username: "user" };
+    }
+
+    // Banner
+    const bannerEl = document.getElementById("mini-user-banner");
+    if (bannerEl) {
+      if (profile.bannerUrl) {
+        bannerEl.style.backgroundImage = `url("${profile.bannerUrl}")`;
+      } else {
+        bannerEl.style.backgroundImage =
+          "linear-gradient(135deg, #3730a3 0%, #1e1b4b 50%, #4f46e5 100%)";
+      }
+    }
+
+    // Avatar
+    const avatarEl = document.getElementById("mini-user-avatar");
+    if (avatarEl) {
+      avatarEl.innerHTML = ProfileManager.getAvatarHtml(profile);
+    }
+
+    // Role Badges
+    const roleContainer = document.getElementById("mini-user-role-container");
+    if (roleContainer) {
+      let badgesHtml = "";
+      const isDev =
+        (profile.username && profile.username.toLowerCase() === "developer") ||
+        (uid && AdminPanel.developerUidCache === uid);
+      const isHost = AppState.currentRoomData?.hostId === uid;
+      const isPrem =
+        profile.isPremium ||
+        (profile.premiumUntil && Number(profile.premiumUntil) > Date.now());
+
+      if (isDev) {
+        badgesHtml += `<span style="font-size:10px;font-weight:800;padding:3px 8px;border-radius:12px;background:rgba(255,215,0,0.18);border:1px solid rgba(255,215,0,0.4);color:#ffd700;">👑 Разработчик</span>`;
+      } else if (profile.role === "admin") {
+        badgesHtml += `<span style="font-size:10px;font-weight:800;padding:3px 8px;border-radius:12px;background:rgba(239,68,68,0.18);border:1px solid rgba(239,68,68,0.4);color:#ef4444;">🛡️ Админ</span>`;
+      } else if (profile.role === "moderator") {
+        badgesHtml += `<span style="font-size:10px;font-weight:800;padding:3px 8px;border-radius:12px;background:rgba(59,130,246,0.18);border:1px solid rgba(59,130,246,0.4);color:#3b82f6;">⚔️ Модератор</span>`;
+      }
+
+      if (isHost) {
+        badgesHtml += `<span style="font-size:10px;font-weight:800;padding:3px 8px;border-radius:12px;background:rgba(168,85,247,0.18);border:1px solid rgba(168,85,247,0.4);color:#c084fc;">🎙️ Хост</span>`;
+      }
+
+      if (isPrem) {
+        badgesHtml += `<span style="font-size:10px;font-weight:800;padding:3px 8px;border-radius:12px;background:rgba(245,158,11,0.18);border:1px solid rgba(245,158,11,0.4);color:#fbbf24;">⭐ Premium</span>`;
+      }
+
+      roleContainer.innerHTML = badgesHtml;
+    }
+
+    // Name & Status Emoji
+    const nameEl = document.getElementById("mini-user-name");
+    if (nameEl) {
+      const statusEmoji = window.PremiumManager
+        ? PremiumManager.getStatusEmojiHtml(profile, uid)
+        : "";
+      nameEl.innerHTML = `${statusEmoji}${Utils.escapeHtml(profile.name || profile.username || "Пользователь")}`;
+    }
+
+    // Username
+    const usernameEl = document.getElementById("mini-user-username");
+    if (usernameEl) {
+      usernameEl.textContent = `@${profile.username || "user"}`;
+    }
+
+    // Level
+    const levelEl = document.getElementById("mini-user-level");
+    if (levelEl) {
+      const math = ProfileManager.getExpMath(Number(profile.xp) || 0);
+      levelEl.innerHTML = `<span>⭐ Уровень ${math.level}</span>`;
+    }
+
+    // Lumens
+    const lumensEl = document.getElementById("mini-user-lumens-val");
+    if (lumensEl) {
+      const lumens = Number(profile.lumens) || 0;
+      lumensEl.textContent = `${lumens.toLocaleString("ru-RU")} Люменов`;
+    }
+
+    // Bio
+    const bioEl = document.getElementById("mini-user-bio");
+    if (bioEl) {
+      bioEl.textContent =
+        profile.bio || "Пользователь пока не добавил описание о себе.";
+    }
+
+    // Actions
+    const isSelf = AppState.currentUser?.uid === uid;
+    const dmBtn = document.getElementById("mini-btn-dm");
+    const friendBtn = document.getElementById("mini-btn-friend");
+    const giftBtn = document.getElementById("mini-btn-gift");
+    const fullProfileBtn = document.getElementById("mini-btn-full-profile");
+
+    if (dmBtn) {
+      if (isSelf) {
+        dmBtn.style.display = "none";
+      } else {
+        dmBtn.style.display = "flex";
+        dmBtn.onclick = () => {
+          RoomManager.closeUserMiniature();
+          if (window.DirectMessages) {
+            DirectMessages.openChat(
+              uid,
+              profile.name || profile.username || "Пользователь",
+            );
+          }
+        };
+      }
+    }
+
+    if (friendBtn) {
+      if (isSelf) {
+        friendBtn.style.display = "none";
+      } else {
+        friendBtn.style.display = "flex";
+        const myFriends = FriendsManager?.friendsMap || {};
+        const isFriend = myFriends[uid]?.status === "accepted";
+        const isPending = Boolean(
+          FriendsManager?.pendingFriendRequestsMap?.[uid],
+        );
+
+        if (isFriend) {
+          friendBtn.innerHTML = `<span>✓ В друзьях</span>`;
+          friendBtn.style.background = "rgba(34, 197, 94, 0.15)";
+          friendBtn.style.borderColor = "rgba(34, 197, 94, 0.35)";
+          friendBtn.style.color = "#4ade80";
+          friendBtn.onclick = () => {
+            FriendsManager.removeFriend(uid);
+            RoomManager.closeUserMiniature();
+          };
+        } else if (isPending) {
+          friendBtn.innerHTML = `<span>⏳ Запрос отправлен</span>`;
+          friendBtn.style.background = "rgba(255, 255, 255, 0.08)";
+          friendBtn.style.borderColor = "rgba(255, 255, 255, 0.15)";
+          friendBtn.style.color = "rgba(255, 255, 255, 0.6)";
+          friendBtn.onclick = null;
+        } else {
+          friendBtn.innerHTML = `<span>🤝 В друзья</span>`;
+          friendBtn.style.background = "rgba(255, 255, 255, 0.08)";
+          friendBtn.style.borderColor = "rgba(255, 255, 255, 0.15)";
+          friendBtn.style.color = "#ffffff";
+          friendBtn.onclick = () => {
+            FriendsManager.sendFriendRequest(uid);
+            friendBtn.innerHTML = `<span>⏳ Запрос отправлен</span>`;
+            friendBtn.style.color = "rgba(255, 255, 255, 0.6)";
+          };
+        }
+      }
+    }
+
+    if (giftBtn) {
+      if (isSelf) {
+        giftBtn.style.display = "none";
+      } else {
+        giftBtn.style.display = "flex";
+        giftBtn.onclick = () => {
+          RoomManager.closeUserMiniature();
+          if (ProfileManager.openGiftLumensModal) {
+            ProfileManager.openGiftLumensModal(
+              uid,
+              profile.name || profile.username || "Другу",
+            );
+          }
+        };
+      }
+    }
+
+    if (fullProfileBtn) {
+      fullProfileBtn.onclick = () => {
+        RoomManager.closeUserMiniature();
+        ProfileManager.openViewProfileModal(uid);
+      };
+    }
+
+    modal.classList.add("active");
+  }
+
   static syncDeveloperControls(profile = {}) {
     AdminPanel.syncSidebarButton(profile);
   }
@@ -682,8 +893,7 @@ class RoomManager {
         authorNameEl.style.cursor = "pointer";
         authorAvatarEl.style.cursor = "pointer";
         const openHostProfile = () => {
-            if (typeof window.showProfileModal === "function") window.showProfileModal(roomData.hostId);
-            else if (window.ProfileManager) ProfileManager.showProfile(roomData.hostId);
+            RoomManager.showUserMiniature(roomData.hostId);
         };
         authorNameEl.onclick = openHostProfile;
         authorAvatarEl.onclick = openHostProfile;
@@ -1299,7 +1509,7 @@ class RoomManager {
       });
       line.querySelectorAll(".chat-profile-link").forEach((btn) => {
         if (msg.uid)
-          btn.onclick = () => ProfileManager.openViewProfileModal(msg.uid);
+          btn.onclick = () => RoomManager.showUserMiniature(msg.uid);
       });
 
       const chatBox = Utils.$("chat-messages");
@@ -1742,8 +1952,8 @@ class RoomManager {
         let speakingClass = isSpeaking ? " speaking" : "";
         html += `<div class="user-item${speakingClass}" data-uid="${uid}" style="${premiumStyle}">`;
         html += `<div class="indicator online" style="margin-right:8px;"></div>`;
-        html += `<div style="width:24px;height:24px;flex-shrink:0;margin-right:8px;border-radius:50%;">${ProfileManager.getAvatarHtml(profile)}</div>`;
-        html += `<div class="user-main" style="flex:1;display:flex;align-items:center;gap:4px;"><span class="user-name profile-open-link room-user-profile-link" data-uid="${uid}">${Utils.escapeHtml(user.name)}</span>${roleBadgeHtml}<span class="voice-wave"><i></i><i></i><i></i><i></i></span></div>`;
+        html += `<div class="room-user-avatar-wrap room-user-profile-link" data-uid="${uid}" style="width:24px;height:24px;flex-shrink:0;margin-right:8px;border-radius:50%;cursor:pointer;">${ProfileManager.getAvatarHtml(profile)}</div>`;
+        html += `<div class="user-main" style="flex:1;display:flex;align-items:center;gap:4px;"><span class="user-name profile-open-link room-user-profile-link" data-uid="${uid}" style="cursor:pointer;">${Utils.escapeHtml(user.name)}</span>${roleBadgeHtml}<span class="voice-wave"><i></i><i></i><i></i><i></i></span></div>`;
         if (isTargetHost) html += `<span class="host-label">Host</span>`;
         if (isLocal) html += `<span class="you-label">(Вы)</span>`;
 
@@ -1809,7 +2019,7 @@ class RoomManager {
       });
       container.querySelectorAll(".room-user-profile-link").forEach((node) => {
         node.onclick = () =>
-          ProfileManager.openViewProfileModal(node.dataset.uid);
+          RoomManager.showUserMiniature(node.dataset.uid);
       });
       container.querySelectorAll(".add-friend-btn").forEach((btn) => {
         btn.onclick = () => {
@@ -3621,4 +3831,5 @@ class MobileSwipeManager {
 window.RoomManager = RoomManager;
 window.RTCManager = RTCManager;
 window.MobileSwipeManager = MobileSwipeManager;
+window.showProfileModal = (uid) => RoomManager.showUserMiniature(uid);
 export { RoomManager, RTCManager, MobileSwipeManager };

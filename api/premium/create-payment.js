@@ -18,18 +18,19 @@ export default async function handler(req, res) {
         body = JSON.parse(body);
       } catch {}
     }
-    const { uid, userName, email } = body || {};
+    const { uid, userName, email, priceRub, planDays } = body || {};
     if (!uid) return res.status(400).json({ success: false, error: 'UID обязателен' });
 
     const PLATEGA_API_KEY = process.env.PLATEGA_API_KEY || '1lLu0Pb7yHD4DkPU8Pc7JBVN78h7pJCIh7dac1NFX1HCBpzNk6aD1mcC8yUeCHj0NTa2hesicgq3tM96r0iocsFaFtj0RhiKJsv2';
     const PLATEGA_MERCHANT_ID = process.env.PLATEGA_MERCHANT_ID || 'f5c52bf0-56b2-485d-b5b1-b0f44cb34b8e';
-    const amount = Number(process.env.PREMIUM_PRICE_RUB || 179);
+    const amount = Number(priceRub || process.env.PREMIUM_PRICE_RUB || 179);
+    const days = Number(planDays || 30);
 
     const proto = req.headers['x-forwarded-proto'] || 'https';
     const host = req.headers['x-forwarded-host'] || req.headers.host || 'cowio.vercel.app';
     const baseUrl = `${proto}://${host}`;
 
-    const returnUrl = `${baseUrl}/?premium_return=1&uid=${encodeURIComponent(uid)}`;
+    const returnUrl = `${baseUrl}/?premium_return=1&uid=${encodeURIComponent(uid)}&days=${days}`;
     const failedUrl = `${baseUrl}/?premium_return=failed&uid=${encodeURIComponent(uid)}`;
     const orderId = `cowio_prem_${uid}_${Date.now()}`;
     const clientIp = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || '127.0.0.1';
@@ -47,14 +48,15 @@ export default async function handler(req, res) {
         amount: amount,
         currency: 'RUB'
       },
-      description: 'Подписка COWIO Premium (30 дней)',
+      description: `Подписка COWIO Premium (${days} дней)`,
       return: returnUrl,
       failedUrl: failedUrl,
-      payload: JSON.stringify({ uid, orderId }),
+      payload: JSON.stringify({ uid, orderId, days }),
       metadata: {
         userId: String(uid),
         userName: String(userName || email || 'User'),
-        clientIp: clientIp
+        clientIp: clientIp,
+        planDays: String(days)
       }
     };
 

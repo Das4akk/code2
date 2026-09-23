@@ -461,36 +461,42 @@ class AuthManager {
             if (window.Router) window.Router.navigate("/lobby", true);
           }
 
+          Utils.showScreen("lobby-screen", false);
           if (window.Router && typeof window.Router.handleRoute === "function") {
+            window.Router.currentPath = null;
             window.Router.handleRoute(pathname, true);
-          } else if (window.Utils) {
-            Utils.showScreen("lobby-screen", false);
           }
 
-          if (!AppState.isRegistering) {
-            await ProfileManager.ensureProfileExists(user);
-          }
-          const profSnap = await get(ref(db, `users/${user.uid}/profile`));
-          if (profSnap.exists()) {
-            await BadgeManager.checkLevelBadges(
-              user.uid,
-              Number(profSnap.val().xp) || 0,
-            );
-          }
-          await BadgeManager.checkRelationshipBadges(user.uid);
           ProfileManager.bindMyProfileListener();
           FriendsManager.initListeners();
+          RoomManager.initLobbyListeners();
+          DirectMessages.startNotifications();
+          AdminPanel.init();
           if (window.PremiumManager) {
             PremiumManager.handlePostLoginReturn();
             PremiumManager.updateThemeButtons();
           }
-          RoomManager.initLobbyListeners();
-          DirectMessages.startNotifications();
-          AdminPanel.init();
           if (window.SupportSystem) window.SupportSystem.initGlobalListener();
-          if (false) 
-          if (Utils.$("nav-rooms")) Utils.$("nav-rooms").click();
           this.bindGlobalPresence();
+
+          // Non-blocking background checks
+          (async () => {
+            try {
+              if (!AppState.isRegistering) {
+                await ProfileManager.ensureProfileExists(user);
+              }
+              const profSnap = await get(ref(db, `users/${user.uid}/profile`));
+              if (profSnap.exists()) {
+                await BadgeManager.checkLevelBadges(
+                  user.uid,
+                  Number(profSnap.val().xp) || 0,
+                );
+              }
+              await BadgeManager.checkRelationshipBadges(user.uid);
+            } catch (err) {
+              console.warn("Background profile/badge checks:", err);
+            }
+          })();
         } else {
           this.handleLogoutCleanup();
         }
@@ -745,22 +751,35 @@ class AuthManager {
 
     if (Utils.$("btn-forgot-password")) {
       Utils.$("btn-forgot-password").onclick = async () => {
-        let email = Utils.$("login-email").value.trim();
-      if (email && !email.includes("@")) {
-          const cleanName = email.replace("@", "").toLowerCase();
+        const rawInput = Utils.$("login-email").value.trim();
+        let email = rawInput;
+        const isEmail = rawInput.includes("@") && rawInput.includes(".") && !rawInput.startsWith("@");
+        if (!isEmail && rawInput) {
+          const cleanName = rawInput.replace(/^@+/, "").toLowerCase().trim();
           try {
-              const snap = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(({get, ref, getDatabase}) => get(ref(getDatabase(), `usernames/${cleanName}`)));
-              if (snap.exists()) {
-                  const uid = snap.val();
-                  const profileSnap = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(({get, ref, getDatabase}) => get(ref(getDatabase(), `users/${uid}/profile/email`)));
-                  if (profileSnap.exists()) {
-                      email = profileSnap.val();
-                  }
+            const { get, ref, getDatabase } = await import(
+              "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"
+            );
+            const dbase = getDatabase();
+            let resolvedUid = null;
+            if (cleanName === "developer") {
+              const devSnap = await get(ref(dbase, "admin/creatorUid"));
+              if (devSnap.exists()) resolvedUid = devSnap.val();
+            }
+            if (!resolvedUid) {
+              const snap = await get(ref(dbase, `usernames/${cleanName}`));
+              if (snap.exists()) resolvedUid = snap.val();
+            }
+            if (resolvedUid) {
+              const profileSnap = await get(ref(dbase, `users/${resolvedUid}/profile/email`));
+              if (profileSnap.exists() && profileSnap.val()) {
+                email = profileSnap.val();
               }
+            }
           } catch(e) {
-             console.log("Could not resolve username to email", e);
+            console.log("Could not resolve username to email", e);
           }
-      }
+        }
         if (!email) return Utils.toast("Введите почту для сброса", "error");
 
         Utils.toast("Отправка кода...", "info");
@@ -1003,29 +1022,50 @@ class AuthManager {
     Utils.$("btn-do-login").onclick = async () => {
       if (
         !SecurityManager.validateAction("auth_login", {
-          count: 3,
+          count: 5,
           timeWindowMs: 30000,
         })
       )
         return;
-      let email = Utils.$("login-email").value.trim();
-      if (email && !email.includes("@")) {
-          const cleanName = email.replace("@", "").toLowerCase();
-          try {
-              const snap = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(({get, ref, getDatabase}) => get(ref(getDatabase(), "usernames/" + cleanName)));
-              if (snap.exists()) {
-                  const uid = snap.val();
-                  const profileSnap = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(({get, ref, getDatabase}) => get(ref(getDatabase(), "users/" + uid + "/profile/email")));
-                  if (profileSnap.exists()) {
-                      email = profileSnap.val();
-                  }
-              }
-          } catch(e) {
-             console.log("Could not resolve username to email", e);
+
+      const rawInput = Utils.$("login-email").value.trim();
+      let email = rawInput;
+
+      // Handle username input (with or without @ prefix, e.g. @developer or developer)
+      const isEmail = rawInput.includes("@") && rawInput.includes(".") && !rawInput.startsWith("@");
+      if (!isEmail && rawInput) {
+        const cleanName = rawInput.replace(/^@+/, "").toLowerCase().trim();
+        try {
+          const { get, ref, getDatabase } = await import(
+            "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"
+          );
+          const dbase = getDatabase();
+          let resolvedUid = null;
+
+          if (cleanName === "developer") {
+            const devSnap = await get(ref(dbase, "admin/creatorUid"));
+            if (devSnap.exists()) resolvedUid = devSnap.val();
           }
+
+          if (!resolvedUid) {
+            const snap = await get(ref(dbase, `usernames/${cleanName}`));
+            if (snap.exists()) resolvedUid = snap.val();
+          }
+
+          if (resolvedUid) {
+            const profileSnap = await get(ref(dbase, `users/${resolvedUid}/profile/email`));
+            if (profileSnap.exists() && profileSnap.val()) {
+              email = profileSnap.val();
+            }
+          }
+        } catch(e) {
+          console.log("Could not resolve username to email", e);
+        }
       }
+
       const pass = Utils.$("login-pass").value.trim();
       if (!email || !pass) return Utils.toast("Заполните все поля", "error");
+
       try {
         Utils.$("btn-do-login").disabled = true;
         const cred = await signInWithEmailAndPassword(auth, email, pass);
@@ -1047,7 +1087,9 @@ class AuthManager {
           JSON.stringify(savedAccounts),
         );
 
-        // Immediately route to lobby if not already routed
+        // Instant UI transition to lobby
+        Utils.showScreen("lobby-screen", false);
+
         const intended = sessionStorage.getItem("cowio_intended_route");
         const nextRoute =
           intended && intended !== "/login" && intended !== "/"
@@ -1056,12 +1098,12 @@ class AuthManager {
         if (intended) sessionStorage.removeItem("cowio_intended_route");
 
         if (window.Router && typeof window.Router.handleRoute === "function") {
+          window.Router.currentPath = null;
           window.Router.navigate(nextRoute, true);
           window.Router.handleRoute(nextRoute, true);
-        } else if (window.Utils) {
-          Utils.showScreen("lobby-screen", false);
         }
       } catch (e) {
+        console.error("Login failed:", e);
         Utils.toast("Ошибка входа. Проверьте данные.", "error");
         Utils.$("btn-do-login").disabled = false;
       }

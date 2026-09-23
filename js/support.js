@@ -40,7 +40,7 @@ class SupportSystem {
     if (typeof onValue !== "undefined") {
       onValue(ref(db, "support_bans"), (snap) => {
         this.BANNED_USERS = new Set(Object.keys(snap.val() || {}));
-      });
+      }, (err) => { console.warn("[Support] bans listener note:", err); });
       onValue(ref(db, "support_templates"), (snap) => {
         if (snap.exists())
           this.TEMPLATES = {
@@ -49,7 +49,7 @@ class SupportSystem {
             Закрытие: "Рады были помочь! Тикет закрывается.",
             ...snap.val(),
           };
-      });
+      }, (err) => { console.warn("[Support] templates listener note:", err); });
     }
 
     if (this.globalUnsub) this.globalUnsub();
@@ -119,6 +119,8 @@ class SupportSystem {
           }
         }
       });
+    }, (err) => {
+      console.warn("[Support] Global tickets listener note:", err);
     });
   }
 
@@ -605,6 +607,8 @@ class SupportSystem {
       this.cachedTickets = tickets;
       this.updateCountsAndBadges();
       this.renderFilteredTickets();
+    }, (err) => {
+      console.warn("[Support] Tickets list listener note:", err);
     });
   }
 
@@ -1233,6 +1237,8 @@ class SupportSystem {
       setTimeout(() => {
         chat.scrollTop = chat.scrollHeight;
       }, 50);
+    }, (err) => {
+      console.warn("[Support] Active ticket listener note:", err);
     });
 
     // Realtime Typing Indicator
@@ -1244,6 +1250,8 @@ class SupportSystem {
       if (indicator) {
         indicator.style.display = othersTyping.length > 0 ? "inline-flex" : "none";
       }
+    }, (err) => {
+      console.warn("[Support] Typing listener note:", err);
     });
 
     // Composer Input & Send setup

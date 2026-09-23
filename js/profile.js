@@ -1,4 +1,19 @@
 class ProfileManager {
+  static showProfile(uid) {
+    if (
+      document.getElementById("room-screen")?.classList.contains("active") ||
+      AppState.currentRoomId
+    ) {
+      if (
+        window.RoomManager &&
+        typeof window.RoomManager.showUserMiniature === "function"
+      ) {
+        return window.RoomManager.showUserMiniature(uid);
+      }
+    }
+    return this.openViewProfileModal(uid);
+  }
+
   static getRoleBadgeHtml(profile, uid = null) {
     if (!profile) return "";
     const badges = [];
@@ -2334,7 +2349,10 @@ class ProfileManager {
        this._currentlyOpenUsername = profile.username.toLowerCase().trim();
        const isSelf = targetUid === AppState.currentUser?.uid;
        const expectedPath = isSelf ? "/profile" : `/@${profile.username}`;
-       if (window.location.pathname !== expectedPath) {
+       const isRoomActive =
+         document.getElementById("room-screen")?.classList.contains("active") ||
+         AppState.currentRoomId;
+       if (!isRoomActive && window.location.pathname !== expectedPath) {
            if (window.Router) window.Router.currentPath = expectedPath;
            window.history.replaceState({ screenId: "profile-screen", _silent: true }, "", expectedPath);
        }

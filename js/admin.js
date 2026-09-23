@@ -77,30 +77,16 @@ class AdminPanel {
       console.warn("Fast getDeveloperUid lookup failed:", e);
     }
 
-    // Only if none found (rare first run before creator is set), fallback to users lookup
-    try {
-      const usersSnap = await get(ref(db, "users"));
-      const usersData = usersSnap.val() || {};
-      let candidateUid =
-        Object.entries(usersData).find(([, userData]) => {
-          return this.isExplicitCreatorProfile(userData?.profile || {});
-        })?.[0] ||
-        Object.entries(usersData).find(([, userData]) => {
-          return this.isLegacyCreatorProfile(userData?.profile || {});
-        })?.[0] ||
-        null;
-
-      if (candidateUid) {
+    // Only if none found, check if current user is developer
+    if (AppState.currentUser) {
+      const myProfile = AppState.usersCache?.get(AppState.currentUser.uid);
+      if (myProfile && (this.isExplicitCreatorProfile(myProfile) || myProfile.username?.toLowerCase() === "developer")) {
+        const candidateUid = AppState.currentUser.uid;
         this.developerUidCache = candidateUid;
         localStorage.setItem("cowio_developer_uid", candidateUid);
-        void this.persistCreatorIdentity(
-          candidateUid,
-          usersData[candidateUid]?.profile || {},
-        );
+        void this.persistCreatorIdentity(candidateUid, myProfile);
         return candidateUid;
       }
-    } catch (err) {
-      console.warn("Users fallback failed:", err);
     }
 
     this.developerUidCache = null;
@@ -1296,14 +1282,19 @@ class AdminPanel {
       }
     });
 
-    const auditUnsub = onValue(auditRef, (snap) => {
-      const data = snap.val() || {};
-      AppState.admin.logs = Object.entries(data)
-        .map(([id, value]) => ({ id, ...(value || {}) }))
-        .sort((a, b) => Number(b.ts || 0) - Number(a.ts || 0))
-        .slice(0, 300);
-      this.renderAuditLog();
-    });
+    if (this.isCurrentUserAdmin()) {
+      import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(({ query, limitToLast }) => {
+        const auditQuery = query(auditRef, limitToLast(40));
+        const auditUnsub = onValue(auditQuery, (snap) => {
+          const data = snap.val() || {};
+          AppState.admin.logs = Object.entries(data)
+            .map(([id, value]) => ({ id, ...(value || {}) }))
+            .sort((a, b) => Number(b.ts || 0) - Number(a.ts || 0));
+          this.renderAuditLog();
+        });
+        this.subscriptions.push(auditUnsub);
+      });
+    }
 
     const forceSignOutUnsub = onValue(forceSignOutRef, async (snap) => {
       const payload = snap.val();

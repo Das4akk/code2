@@ -7749,7 +7749,7 @@
     <!-- ========================================================================= -->
     <!-- LOBBY SCREEN -->
     <!-- ========================================================================= -->
-    <section id="lobby-screen" class="screen">
+    <section id="lobby-screen" class="screen active">
       <header class="lobby-app-bar">
         <button id="toggle-sidebar" class="burger-btn" style="
             pointer-events: auto;
@@ -12004,6 +12004,221 @@
         </div>
       </div>
     </div>
+    <!-- Room User Miniature Modal (Discord/Telegram style popover) -->
+    <div class="modal" id="modal-room-user-miniature" style="z-index: 100001;">
+      <div class="modal-content room-miniature-card" id="room-miniature-card" style="
+        position: relative;
+        max-width: 380px;
+        width: 92%;
+        border-radius: 24px;
+        background: rgba(18, 18, 24, 0.97);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.9), 0 0 40px rgba(255, 255, 255, 0.05);
+        color: #ffffff;
+        backdrop-filter: blur(28px);
+        -webkit-backdrop-filter: blur(28px);
+        overflow: hidden;
+        padding: 0;
+      ">
+        <!-- Close Button -->
+        <button type="button" class="btn-close-modal" id="btn-close-room-miniature" onclick="RoomManager.closeUserMiniature()" style="
+          position: absolute;
+          top: 12px;
+          right: 12px;
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: rgba(0, 0, 0, 0.55);
+          border: 1px solid rgba(255, 255, 255, 0.18);
+          color: rgba(255, 255, 255, 0.85);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          font-size: 16px;
+          z-index: 20;
+          transition: all 0.2s ease;
+        " onmouseover="this.style.background='rgba(255,255,255,0.2)';" onmouseout="this.style.background='rgba(0,0,0,0.55)';">&times;</button>
+
+        <!-- Miniature Banner -->
+        <div id="mini-user-banner" style="
+          width: 100%;
+          height: 96px;
+          background: linear-gradient(135deg, #3730a3 0%, #1e1b4b 50%, #4f46e5 100%);
+          background-size: cover;
+          background-position: center;
+          position: relative;
+        ">
+          <div style="position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(18,18,24,0.7) 100%);"></div>
+        </div>
+
+        <!-- Card Body -->
+        <div style="padding: 0 20px 20px 20px; position: relative;">
+          <!-- Avatar & Status -->
+          <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: -42px; margin-bottom: 12px; position: relative; z-index: 5;">
+            <div style="position: relative;">
+              <div id="mini-user-avatar" style="
+                width: 78px;
+                height: 78px;
+                border-radius: 50%;
+                border: 4px solid #121218;
+                background: #1e1e24;
+                overflow: hidden;
+                box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+              "></div>
+              <div id="mini-user-status-dot" style="
+                position: absolute;
+                bottom: 4px;
+                right: 4px;
+                width: 14px;
+                height: 14px;
+                border-radius: 50%;
+                background: #22c55e;
+                border: 3px solid #121218;
+              "></div>
+            </div>
+
+            <!-- Role Badge Pill -->
+            <div id="mini-user-role-container" style="display: flex; gap: 6px; align-items: center;"></div>
+          </div>
+
+          <!-- Name & Username -->
+          <div style="margin-bottom: 10px;">
+            <div id="mini-user-name" style="font-size: 18px; font-weight: 800; color: #ffffff; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+              User
+            </div>
+            <div id="mini-user-username" style="font-size: 13px; color: rgba(255, 255, 255, 0.55); font-weight: 500; margin-top: 1px;">
+              @username
+            </div>
+          </div>
+
+          <!-- Quick Stats Row (Level + Lumens) -->
+          <div style="display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap;">
+            <div id="mini-user-level" style="
+              display: inline-flex;
+              align-items: center;
+              gap: 5px;
+              padding: 4px 10px;
+              border-radius: 20px;
+              background: rgba(255, 255, 255, 0.06);
+              border: 1px solid rgba(255, 255, 255, 0.1);
+              font-size: 11.5px;
+              font-weight: 700;
+              color: rgba(255, 255, 255, 0.85);
+            ">
+              <span>Уровень 1</span>
+            </div>
+            <div id="mini-user-lumens" style="
+              display: inline-flex;
+              align-items: center;
+              gap: 5px;
+              padding: 4px 10px;
+              border-radius: 20px;
+              background: rgba(255, 195, 60, 0.1);
+              border: 1px solid rgba(255, 195, 60, 0.25);
+              font-size: 11.5px;
+              font-weight: 700;
+              color: #ffd56a;
+            ">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 14px; height: 14px; object-fit: contain;" alt="✨">
+              <span id="mini-user-lumens-val">0 Люменов</span>
+            </div>
+          </div>
+
+          <!-- Bio / Status Description -->
+          <div id="mini-user-bio" style="
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.75);
+            line-height: 1.45;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            padding: 10px 12px;
+            margin-bottom: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            max-height: 85px;
+            overflow-y: auto;
+          ">
+            Пользователь не указал описание о себе.
+          </div>
+
+          <!-- Action Buttons Grid -->
+          <div id="mini-user-actions" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <button type="button" id="mini-btn-dm" style="
+              padding: 10px 14px;
+              border-radius: 12px;
+              font-size: 13px;
+              font-weight: 700;
+              background: #ffffff;
+              color: #000000;
+              border: none;
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 6px;
+              transition: all 0.2s;
+            ">
+              <span>💬 Написать</span>
+            </button>
+
+            <button type="button" id="mini-btn-friend" style="
+              padding: 10px 14px;
+              border-radius: 12px;
+              font-size: 13px;
+              font-weight: 700;
+              background: rgba(255, 255, 255, 0.08);
+              border: 1px solid rgba(255, 255, 255, 0.15);
+              color: #ffffff;
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 6px;
+              transition: all 0.2s;
+            ">
+              <span>🤝 В друзья</span>
+            </button>
+
+            <button type="button" id="mini-btn-gift" style="
+              padding: 10px 14px;
+              border-radius: 12px;
+              font-size: 13px;
+              font-weight: 700;
+              background: rgba(255, 195, 60, 0.12);
+              border: 1px solid rgba(255, 195, 60, 0.3);
+              color: #ffd56a;
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 6px;
+              transition: all 0.2s;
+            ">
+              <span>✨ Люмены</span>
+            </button>
+
+            <button type="button" id="mini-btn-full-profile" style="
+              padding: 10px 14px;
+              border-radius: 12px;
+              font-size: 13px;
+              font-weight: 700;
+              background: rgba(255, 255, 255, 0.05);
+              border: 1px solid rgba(255, 255, 255, 0.1);
+              color: rgba(255, 255, 255, 0.85);
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 6px;
+              transition: all 0.2s;
+            ">
+              <span>👤 Профиль</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Interactive Premium Purchase Modal -->
     <div class="modal" id="modal-premium-purchase" style="z-index: 99999;">
       <div class="modal-content prem-purchase-modal-content" style="
@@ -12057,7 +12272,7 @@
         <!-- STEP 1: Plan selection & Checkout -->
         <div id="prem-modal-step-checkout" style="position: relative; z-index: 2;">
           <!-- Modal Header -->
-          <div style="text-align: center; margin-bottom: 22px;">
+          <div style="text-align: center; margin-bottom: 18px;">
             <div style="
               width: 58px;
               height: 58px;
@@ -12076,87 +12291,99 @@
               COWIO Premium
             </h2>
             <p style="margin: 0; font-size: 13px; color: rgba(255, 255, 255, 0.7); line-height: 1.4;">
-              Выберите удобный период подписки для подключения привилегий
+              Выберите период подписки для подключения всех возможностей
             </p>
           </div>
 
-          <!-- Plans Selector Cards -->
-          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;" id="prem-plans-grid">
-            <!-- 1 Month -->
+          <!-- Community Contribution / Heart Card -->
+          <div style="
+            background: linear-gradient(135deg, rgba(255, 91, 153, 0.12) 0%, rgba(255, 185, 45, 0.12) 100%);
+            border: 1px solid rgba(255, 185, 45, 0.35);
+            border-radius: 18px;
+            padding: 14px 16px;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            box-shadow: 0 4px 20px rgba(255, 91, 153, 0.12);
+          ">
+            <div style="
+              width: 38px;
+              height: 38px;
+              border-radius: 12px;
+              background: rgba(255, 91, 153, 0.2);
+              border: 1px solid rgba(255, 91, 153, 0.4);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              flex-shrink: 0;
+            ">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Heart.webp" style="width: 22px; height: 22px; object-fit: contain;" alt="❤️">
+            </div>
+            <div>
+              <div style="font-size: 13.5px; font-weight: 800; color: #ffffff; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                <span>Ваш вклад в развитие COWIO</span>
+                <span style="font-size: 10px; font-weight: 700; background: rgba(255, 185, 45, 0.2); color: #ffd56a; padding: 2px 7px; border-radius: 6px;">Спасибо!</span>
+              </div>
+              <div style="font-size: 12px; color: rgba(255, 255, 255, 0.8); line-height: 1.45;">
+                Приобретая подписку, вы напрямую помогаете проекту: оплачиваете быстрые сервера синхронизации, трансляции и разработку новых уникальных функций для всего комьюнити!
+              </div>
+            </div>
+          </div>
+
+          <!-- Single Plan Card (1 Month - 179 ₽) stretched across full width -->
+          <div style="margin-bottom: 20px;" id="prem-plans-grid">
             <div class="prem-plan-card active" data-days="30" data-price="179" style="
-              padding: 14px 10px;
-              border-radius: 16px;
-              background: rgba(255, 205, 90, 0.12);
+              width: 100%;
+              box-sizing: border-box;
+              padding: 16px 20px;
+              border-radius: 18px;
+              background: linear-gradient(135deg, rgba(255, 205, 90, 0.16) 0%, rgba(255, 160, 20, 0.08) 100%);
               border: 2px solid #ffd56a;
-              box-shadow: 0 6px 20px rgba(255, 190, 40, 0.2);
+              box-shadow: 0 8px 25px rgba(255, 190, 40, 0.22);
               cursor: pointer;
-              text-align: center;
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
               transition: all 0.2s ease;
               position: relative;
             ">
-              <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #ffd56a; margin-bottom: 4px; letter-spacing: 0.5px;">1 месяц</div>
-              <div style="font-size: 20px; font-weight: 800; color: #ffffff; line-height: 1.1;">179 ₽</div>
-              <div style="font-size: 10px; color: rgba(255, 255, 255, 0.5); margin-top: 4px;">6 ₽/день</div>
-            </div>
-
-            <!-- 3 Months -->
-            <div class="prem-plan-card" data-days="90" data-price="479" style="
-              padding: 14px 10px;
-              border-radius: 16px;
-              background: rgba(255, 255, 255, 0.04);
-              border: 1px solid rgba(255, 255, 255, 0.12);
-              cursor: pointer;
-              text-align: center;
-              transition: all 0.2s ease;
-              position: relative;
-            ">
-              <div style="
-                position: absolute;
-                top: -8px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: linear-gradient(135deg, #e67e22, #f39c12);
-                color: #fff;
-                font-size: 9px;
-                font-weight: 800;
-                padding: 2px 7px;
-                border-radius: 8px;
-                white-space: nowrap;
-                box-shadow: 0 2px 8px rgba(230, 126, 34, 0.4);
-              ">-10%</div>
-              <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: rgba(255, 255, 255, 0.7); margin-bottom: 4px; letter-spacing: 0.5px;">3 месяца</div>
-              <div style="font-size: 20px; font-weight: 800; color: #ffffff; line-height: 1.1;">479 ₽</div>
-              <div style="font-size: 10px; color: #ffd56a; margin-top: 4px; font-weight: 600;">+50 Люменов</div>
-            </div>
-
-            <!-- 6 Months -->
-            <div class="prem-plan-card" data-days="180" data-price="890" style="
-              padding: 14px 10px;
-              border-radius: 16px;
-              background: rgba(255, 255, 255, 0.04);
-              border: 1px solid rgba(255, 255, 255, 0.12);
-              cursor: pointer;
-              text-align: center;
-              transition: all 0.2s ease;
-              position: relative;
-            ">
-              <div style="
-                position: absolute;
-                top: -8px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: linear-gradient(135deg, #9b59b6, #8e44ad);
-                color: #fff;
-                font-size: 9px;
-                font-weight: 800;
-                padding: 2px 7px;
-                border-radius: 8px;
-                white-space: nowrap;
-                box-shadow: 0 2px 8px rgba(155, 89, 182, 0.4);
-              ">ТОП ВЫГОДА</div>
-              <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: rgba(255, 255, 255, 0.7); margin-bottom: 4px; letter-spacing: 0.5px;">6 месяцев</div>
-              <div style="font-size: 20px; font-weight: 800; color: #ffffff; line-height: 1.1;">890 ₽</div>
-              <div style="font-size: 10px; color: #ffd56a; margin-top: 4px; font-weight: 600;">+150 Люменов</div>
+              <div style="display: flex; align-items: center; gap: 14px;">
+                <div style="
+                  width: 46px;
+                  height: 46px;
+                  border-radius: 14px;
+                  background: linear-gradient(135deg, rgba(255, 213, 106, 0.25), rgba(230, 168, 39, 0.15));
+                  border: 1px solid rgba(255, 213, 106, 0.4);
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  flex-shrink: 0;
+                  box-shadow: 0 4px 14px rgba(255, 205, 90, 0.2);
+                ">
+                  <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp" style="width: 28px; height: 28px; object-fit: contain;" alt="Crown">
+                </div>
+                <div style="text-align: left;">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="font-size: 15px; font-weight: 800; color: #ffffff;">Подписка на 1 месяц</div>
+                    <span style="
+                      background: linear-gradient(135deg, #ffd56a, #e6a827);
+                      color: #1a1304;
+                      font-size: 10px;
+                      font-weight: 800;
+                      padding: 2px 8px;
+                      border-radius: 6px;
+                      text-transform: uppercase;
+                      letter-spacing: 0.4px;
+                    ">Выбран</span>
+                  </div>
+                  <div style="font-size: 11.5px; color: rgba(255, 255, 255, 0.6); margin-top: 3px;">Полный доступ ко всем возможностям COWIO Premium • 6 ₽/день</div>
+                </div>
+              </div>
+              <div style="text-align: right; flex-shrink: 0;">
+                <div style="font-size: 22px; font-weight: 900; color: #ffd56a; line-height: 1;">179 ₽</div>
+                <div style="font-size: 10.5px; color: rgba(255, 255, 255, 0.45); margin-top: 4px;">за 30 дней</div>
+              </div>
             </div>
           </div>
 
@@ -12310,7 +12537,7 @@
             text-decoration: underline;
             padding: 6px;
           " onmouseover="this.style.color='rgba(255,255,255,0.7)';" onmouseout="this.style.color='rgba(255,255,255,0.45)';">
-            Вернуться к выбору тарифа
+            Вернуться назад
           </button>
         </div>
 

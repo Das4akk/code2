@@ -855,10 +855,30 @@ class PremiumManager {
               <span class="prem-price-period">/ ${this.PLAN_DAYS} дней</span>
             </div>
             <div class="prem-daily-equiv">~${(this.PRICE_RUB / this.PLAN_DAYS).toFixed(1)} ₽ в день</div>
-            <button class="prem-cta-btn buy" id="btn-buy-premium">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp" style="width:24px;height:24px;object-fit:contain;filter:drop-shadow(0 2px 5px rgba(0,0,0,0.3));" alt="Crown">
-              <span style="font-weight:800;letter-spacing:0.2px;">Приобрести Premium</span>
-              <span style="background:rgba(0,0,0,0.2);padding:3px 9px;border-radius:10px;font-size:12px;font-weight:800;margin-left:auto;">179 ₽</span>
+            <button class="prem-cta-btn buy modern-prem-hero-btn" id="btn-buy-premium" style="
+              background: linear-gradient(135deg, #ffd700 0%, #ffaa00 45%, #ff7700 100%);
+              color: #120c02;
+              padding: 16px 22px;
+              border-radius: 18px;
+              box-shadow: 0 10px 32px rgba(255, 170, 0, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.6);
+              border: 1px solid rgba(255, 225, 100, 0.7);
+              display: flex;
+              align-items: center;
+              gap: 12px;
+              width: 100%;
+              cursor: pointer;
+              position: relative;
+              overflow: hidden;
+              transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            ">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp" style="width:28px;height:28px;object-fit:contain;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.3));" alt="Crown">
+              <div style="display:flex;flex-direction:column;align-items:flex-start;text-align:left;line-height:1.25;">
+                <span style="font-size:16px;font-weight:900;letter-spacing:0.2px;">Приобрести Premium</span>
+                <span style="font-size:11.5px;font-weight:700;opacity:0.85;">Все преимущества + вклад в развитие</span>
+              </div>
+              <div style="background:rgba(0,0,0,0.24);padding:6px 12px;border-radius:12px;font-size:13.5px;font-weight:900;margin-left:auto;color:#ffffff;border:1px solid rgba(255,255,255,0.25);white-space:nowrap;">
+                от 179 ₽
+              </div>
             </button>
             <div class="prem-secure-note">
               Защищённая оплата через Platega<br>Мгновенная активация
@@ -956,10 +976,10 @@ class PremiumManager {
 
     container
       .querySelector("#btn-buy-premium")
-      ?.addEventListener("click", () => this.startPurchase());
+      ?.addEventListener("click", () => this.openPurchaseModal());
     container
       .querySelector("#btn-extend-premium")
-      ?.addEventListener("click", () => this.startPurchase());
+      ?.addEventListener("click", () => this.openPurchaseModal());
     container.querySelectorAll(".premium-emoji-btn").forEach((btn) => {
       btn.onclick = () => this.saveStatusEmoji(btn.dataset.emoji);
     });
@@ -1079,7 +1099,75 @@ class PremiumManager {
     }
   }
 
-  static async startPurchase() {
+  static openPurchaseModal() {
+    const user = AppState?.currentUser;
+    if (!user) return Utils.toast("Войдите в аккаунт", "error");
+
+    const modal = document.getElementById("modal-premium-purchase");
+    if (!modal) {
+      return this.startPurchase();
+    }
+
+    const stepCheckout = document.getElementById("prem-modal-step-checkout");
+    const stepWaiting = document.getElementById("prem-modal-step-waiting");
+    if (stepCheckout) stepCheckout.style.display = "block";
+    if (stepWaiting) stepWaiting.style.display = "none";
+
+    let selectedDays = 30;
+    let selectedPrice = 179;
+
+    const payBtn = document.getElementById("btn-modal-checkout-submit");
+    const payText = document.getElementById("prem-modal-pay-text");
+
+    const updateSelectedPlan = (card) => {
+      document.querySelectorAll(".prem-plan-card").forEach((c) => {
+        c.classList.remove("active");
+        c.style.background = "rgba(255, 255, 255, 0.04)";
+        c.style.border = "1px solid rgba(255, 255, 255, 0.12)";
+        c.style.boxShadow = "none";
+      });
+      card.classList.add("active");
+      card.style.background = "rgba(255, 205, 90, 0.14)";
+      card.style.border = "2px solid #ffd56a";
+      card.style.boxShadow = "0 6px 20px rgba(255, 190, 40, 0.25)";
+
+      selectedDays = parseInt(card.dataset.days, 10) || 30;
+      selectedPrice = parseInt(card.dataset.price, 10) || 179;
+
+      if (payText) payText.textContent = `Оплатить ${selectedPrice} ₽`;
+    };
+
+    document.querySelectorAll(".prem-plan-card").forEach((card) => {
+      card.onclick = () => updateSelectedPlan(card);
+    });
+
+    if (payBtn) {
+      payBtn.onclick = () => {
+        if (stepCheckout) stepCheckout.style.display = "none";
+        if (stepWaiting) stepWaiting.style.display = "block";
+        this.startPurchase(selectedDays, selectedPrice);
+      };
+    }
+
+    const checkNowBtn = document.getElementById("btn-prem-check-now");
+    if (checkNowBtn) {
+      checkNowBtn.onclick = async () => {
+        checkNowBtn.disabled = true;
+        checkNowBtn.textContent = "Проверяем...";
+        await this.handlePostLoginReturn();
+        setTimeout(() => {
+          if (checkNowBtn) {
+            checkNowBtn.disabled = false;
+            checkNowBtn.textContent = "Проверить оплату сейчас";
+          }
+        }, 3000);
+      };
+    }
+
+    modal.classList.add("active");
+  }
+
+  static async startPurchase(planDays = 30, priceRub = 179) {
     const user = AppState?.currentUser;
     if (!user) return Utils.toast("Войдите в аккаунт", "error");
 
@@ -1136,6 +1224,8 @@ class PremiumManager {
             uid: user.uid,
             userName: profile.username || user.displayName || user.email || "User",
             email: profile.email || user.email || "",
+            priceRub,
+            planDays,
           }),
         });
 
@@ -1160,7 +1250,7 @@ class PremiumManager {
         const PLATEGA_API_KEY = "1lLu0Pb7yHD4DkPU8Pc7JBVN78h7pJCIh7dac1NFX1HCBpzNk6aD1mcC8yUeCHj0NTa2hesicgq3tM96r0iocsFaFtj0RhiKJsv2";
         const PLATEGA_MERCHANT_ID = "f5c52bf0-56b2-485d-b5b1-b0f44cb34b8e";
         const baseUrl = window.location.origin;
-        const returnUrl = `${baseUrl}/?premium_return=1&uid=${encodeURIComponent(user.uid)}`;
+        const returnUrl = `${baseUrl}/?premium_return=1&uid=${encodeURIComponent(user.uid)}&days=${planDays}`;
         const failedUrl = `${baseUrl}/?premium_return=failed&uid=${encodeURIComponent(user.uid)}`;
         const orderId = `cowio_prem_${user.uid}_${Date.now()}`;
 
@@ -1175,16 +1265,17 @@ class PremiumManager {
           body: JSON.stringify({
             paymentMethod: 2,
             paymentDetails: {
-              amount: this.PRICE_RUB,
+              amount: priceRub,
               currency: "RUB",
             },
-            description: "Подписка COWIO Premium (30 дней)",
+            description: `Подписка COWIO Premium (${planDays} дней)`,
             return: returnUrl,
             failedUrl: failedUrl,
-            payload: JSON.stringify({ uid: user.uid, orderId }),
+            payload: JSON.stringify({ uid: user.uid, orderId, days: planDays }),
             metadata: {
               userId: String(user.uid),
               userName: String(profile.username || user.displayName || "User"),
+              planDays: String(planDays),
             },
           }),
         });
