@@ -380,10 +380,10 @@ app.post('/api/library/fetch-metadata', async (req, res) => {
 // PREMIUM & PLATEGA PAYMENT ROUTES
 // ----------------------------------------------------
 const PLATEGA_API_KEY = process.env.PLATEGA_API_KEY || '1lLu0Pb7yHD4DkPU8Pc7JBVN78h7pJCIh7dac1NFX1HCBpzNk6aD1mcC8yUeCHj0NTa2hesicgq3tM96r0iocsFaFtj0RhiKJsv2';
-const PLATEGA_MERCHANT_ID = process.env.PLATEGA_MERCHANT_ID || '';
+const PLATEGA_MERCHANT_ID = process.env.PLATEGA_MERCHANT_ID || 'f5c52bf0-56b2-485d-b5b1-b0f44cb34b8e';
 
 function plategaConfigured() {
-  return Boolean(PLATEGA_API_KEY);
+  return Boolean(PLATEGA_API_KEY && PLATEGA_MERCHANT_ID);
 }
 
 function getBaseUrl(req) {
@@ -420,77 +420,76 @@ async function activatePremium(uid, paymentId, amount) {
 
 app.post('/api/premium/create-payment', async (req, res) => {
   try {
-    const { uid, email } = req.body || {};
+    const { uid, userName, email } = req.body || {};
     if (!uid) return res.status(400).json({ success: false, error: 'UID обязателен' });
 
     const amount = Number(process.env.PREMIUM_PRICE_RUB || 179);
     const baseUrl = getBaseUrl(req);
     const returnUrl = `${baseUrl}/?premium_return=1&uid=${encodeURIComponent(uid)}`;
+    const failedUrl = `${baseUrl}/?premium_return=failed&uid=${encodeURIComponent(uid)}`;
     const orderId = `cowio_prem_${uid}_${Date.now()}`;
+    const clientIp = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '127.0.0.1';
 
-    // Attempt Platega transaction creation
-    if (PLATEGA_API_KEY) {
-      try {
-        const txUuid = crypto.randomUUID();
-        const plategaHeaders = {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'X-Secret': PLATEGA_API_KEY
-        };
-        if (PLATEGA_MERCHANT_ID) {
-          plategaHeaders['X-MerchantId'] = PLATEGA_MERCHANT_ID;
-        }
-
-        const plategaPayload = {
-          paymentMethod: 2,
-          id: txUuid,
-          paymentDetails: {
-            amount: amount,
-            currency: 'RUB'
-          },
-          description: 'Подписка COWIO Premium (30 дней)',
-          return: returnUrl,
-          failedUrl: returnUrl,
-          payload: JSON.stringify({ uid, orderId })
-        };
-
-        const plategaRes = await fetch('https://app.platega.io/transaction/process', {
-          method: 'POST',
-          headers: plategaHeaders,
-          body: JSON.stringify(plategaPayload)
-        });
-
-        if (plategaRes.ok) {
-          const pData = await plategaRes.json();
-          const confirmationUrl = pData.redirect || pData.url || pData.confirmationUrl || pData.data?.url || pData.data?.redirect;
-          if (confirmationUrl) {
-            return res.json({
-              success: true,
-              confirmationUrl,
-              paymentId: pData.transactionId || orderId,
-              returnUrl
-            });
-          }
-        } else {
-          const errText = await plategaRes.text();
-          console.warn('[Premium] Platega gateway non-OK response:', plategaRes.status, errText);
-        }
-      } catch (plategaErr) {
-        console.warn('[Premium] Platega gateway call failed, using graceful instant activation:', plategaErr.message);
-      }
+    if (!PLATEGA_API_KEY || !PLATEGA_MERCHANT_ID) {
+      return res.status(500).json({ success: false, error: 'Шлюз Platega не настроен на сервере' });
     }
 
-    // Graceful direct activation (so payments always succeed seamlessly)
-    const premium = await activatePremium(uid, orderId, amount);
+    const plategaHeaders = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'X-Secret': PLATEGA_API_KEY,
+      'X-MerchantId': PLATEGA_MERCHANT_ID
+    };
+
+    const plategaPayload = {
+      paymentMethod: 2,
+      paymentDetails: {
+        amount: amount,
+        currency: 'RUB'
+      },
+      description: 'Подписка COWIO Premium (30 дней)',
+      return: returnUrl,
+      failedUrl: failedUrl,
+      payload: JSON.stringify({ uid, orderId }),
+      metadata: {
+        userId: String(uid),
+        userName: String(userName || email || 'User'),
+        clientIp: clientIp
+      }
+    };
+
+    const plategaRes = await fetch('https://app.platega.io/transaction/process', {
+      method: 'POST',
+      headers: plategaHeaders,
+      body: JSON.stringify(plategaPayload)
+    });
+
+    if (!plategaRes.ok) {
+      const errText = await plategaRes.text();
+      console.error('[Premium] Platega gateway non-OK response:', plategaRes.status, errText);
+      let errMsg = 'Ошибка платежного шлюза Platega';
+      try {
+        const parsed = JSON.parse(errText);
+        if (parsed.message) errMsg = `Platega: ${parsed.message}`;
+      } catch {}
+      return res.status(plategaRes.status || 400).json({ success: false, error: errMsg });
+    }
+
+    const pData = await plategaRes.json();
+    const confirmationUrl = pData.redirect || pData.url || pData.confirmationUrl;
+    if (!confirmationUrl) {
+      console.error('[Premium] Platega returned no redirect URL:', pData);
+      return res.status(502).json({ success: false, error: 'Шлюз не предоставил ссылку для оплаты' });
+    }
+
     return res.json({
       success: true,
-      sandbox: true,
-      activated: true,
-      premium,
-      message: 'Оплата Premium успешно обработана! Подписка активирована на 30 дней.'
+      confirmationUrl,
+      paymentId: pData.transactionId || pData.id || orderId,
+      returnUrl
     });
   } catch (e) {
-    console.error('[Premium] create-payment:', e);
+    console.error('[Premium] create-payment error:', e);
     res.status(500).json({ success: false, error: e.message || 'Ошибка создания платежа' });
   }
 });
@@ -498,42 +497,106 @@ app.post('/api/premium/create-payment', async (req, res) => {
 app.post('/api/premium/webhook', async (req, res) => {
   try {
     const payload = req.body || {};
-    const { orderId, status, amount, uid: bodyUid } = payload;
-    let targetUid = bodyUid;
-    if (!targetUid && orderId && orderId.startsWith('cowio_prem_')) {
-      const parts = orderId.split('_');
-      targetUid = parts[2];
+    console.log('[Premium Webhook] Received callback from Platega:', JSON.stringify(payload));
+    const status = String(payload.status || '').toUpperCase();
+    const txId = payload.id || payload.transactionId || '';
+
+    if (status === 'CONFIRMED' || status === 'SUCCESS' || status === 'PAID') {
+      let targetUid = payload.uid || payload.userId || '';
+      let orderId = payload.orderId || payload.externalId || txId;
+      const amount = Number(payload.paymentDetails?.amount) || Number(payload.amount) || 179;
+
+      if (!targetUid && payload.payload) {
+        try {
+          const parsed = typeof payload.payload === 'string' ? JSON.parse(payload.payload) : payload.payload;
+          if (parsed.uid) targetUid = parsed.uid;
+          if (parsed.orderId) orderId = parsed.orderId;
+        } catch {}
+      }
+
+      if (!targetUid && payload.metadata?.userId) {
+        targetUid = payload.metadata.userId;
+      }
+
+      if (!targetUid && orderId && orderId.startsWith('cowio_prem_')) {
+        const parts = orderId.split('_');
+        targetUid = parts[2];
+      }
+
+      if (targetUid) {
+        await activatePremium(targetUid, txId || orderId, amount);
+        console.log(`[Premium Webhook] Activated premium for user ${targetUid} via Platega webhook`);
+      }
     }
-    if (targetUid) {
-      await activatePremium(targetUid, orderId || `wh_${Date.now()}`, amount || 179);
-      console.log(`[Premium Webhook] Activated premium for user ${targetUid}`);
-    }
-    res.json({ success: true });
+    res.json({ success: true, message: 'Webhook processed' });
   } catch (err) {
     console.error('[Premium Webhook] Error:', err);
-    res.status(500).json({ error: 'Webhook failure' });
+    res.status(500).json({ error: 'Webhook processing failed' });
   }
 });
 
 app.get('/api/premium/status', async (req, res) => {
   try {
-    const { uid } = req.query;
+    const uid = req.query.uid || '';
+    const paymentId = req.query.paymentId || '';
     if (!uid) return res.status(400).json({ success: false, error: 'UID обязателен' });
+
     const db = getFirebaseDb();
+    let currentPremium = null;
     if (db) {
       const premiumSnap = await db.ref(`users/${uid}/profile/premium`).once('value');
-      const premium = premiumSnap.exists() ? premiumSnap.val() : null;
-      const active = Boolean(premium?.active && Number(premium.expiresAt) > Date.now());
-      return res.json({
-        success: true,
-        active,
-        premium: active ? premium : null,
-        expiresAt: premium?.expiresAt || null
-      });
+      if (premiumSnap.exists()) currentPremium = premiumSnap.val();
     }
-    res.json({ success: true, active: false, premium: null });
+
+    let isActive = Boolean(currentPremium?.active && Number(currentPremium.expiresAt) > Date.now());
+
+    // If not active yet, and paymentId is provided, query Platega directly
+    if (!isActive && paymentId && PLATEGA_MERCHANT_ID && PLATEGA_API_KEY) {
+      try {
+        const pRes = await fetch(`https://app.platega.io/transaction/${encodeURIComponent(paymentId)}`, {
+          headers: {
+            'X-MerchantId': PLATEGA_MERCHANT_ID,
+            'X-Secret': PLATEGA_API_KEY
+          }
+        });
+        if (pRes.ok) {
+          const txData = await pRes.json();
+          const txStatus = String(txData.status || '').toUpperCase();
+          if (txStatus === 'CONFIRMED' || txStatus === 'SUCCESS' || txStatus === 'PAID') {
+            const amt = Number(txData.paymentDetails?.amount) || 179;
+            currentPremium = await activatePremium(uid, paymentId, amt);
+            isActive = true;
+            console.log(`[Premium Status] Verified transaction ${paymentId} with Platega -> Activated for ${uid}`);
+          } else if (txStatus === 'PENDING') {
+            return res.json({
+              success: true,
+              active: false,
+              pending: true,
+              message: 'Платёж ожидает подтверждения банком'
+            });
+          } else if (txStatus === 'CANCELED' || txStatus === 'EXPIRED' || txStatus === 'FAILED') {
+            return res.json({
+              success: true,
+              active: false,
+              canceled: true,
+              message: 'Платёж отменён или истёк срок действия'
+            });
+          }
+        }
+      } catch (chkErr) {
+        console.warn('[Premium Status] Check Platega tx error:', chkErr);
+      }
+    }
+
+    return res.json({
+      success: true,
+      active: isActive,
+      premium: isActive ? currentPremium : null,
+      expiresAt: currentPremium?.expiresAt || null
+    });
   } catch (e) {
-    res.status(500).json({ success: false, error: 'Ошибка статуса' });
+    console.error('[Premium Status] error:', e);
+    res.status(500).json({ success: false, error: 'Ошибка проверки статуса' });
   }
 });
 

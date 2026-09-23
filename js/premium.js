@@ -1044,44 +1044,34 @@ class PremiumManager {
       document.getElementById("btn-extend-premium");
     if (btn) {
       btn.disabled = true;
-      btn.textContent = "Обработка платежа...";
+      btn.textContent = "Переход к оплате...";
     }
 
     try {
-      let data = null;
-      try {
-        const res = await fetch("/api/premium/create-payment", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            uid: user.uid,
-            email: profile.email || user.email || "",
-          }),
-        });
-        const text = await res.text();
-        if (text && text.trim().startsWith("{")) {
-          data = JSON.parse(text);
-        }
-      } catch (fetchErr) {
-        console.warn("[Premium] /api/premium/create-payment fetch note:", fetchErr);
+      const res = await fetch("/api/premium/create-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          uid: user.uid,
+          userName: profile.username || user.displayName || user.email || "User",
+          email: profile.email || user.email || "",
+        }),
+      });
+
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error || "Ошибка создания платежа в шлюзе Platega");
       }
 
       if (data?.confirmationUrl) {
         sessionStorage.setItem("cowio_pending_payment", data.paymentId || "");
+        sessionStorage.setItem("cowio_pending_uid", user.uid);
+        Utils.toast("Перенаправление на страницу оплаты Platega...", "info");
         window.location.href = data.confirmationUrl;
         return;
       }
 
-      if (data?.activated) {
-        await this.activatePremiumDirectly(user);
-        return;
-      }
-
-      // If backend was unreachable or returned non-redirect, activate directly seamlessly
-      const activated = await this.activatePremiumDirectly(user);
-      if (!activated) {
-        throw new Error(data?.error || "Не удалось оформить подписку. Попробуйте еще раз.");
-      }
+      throw new Error(data?.error || "Платёжный шлюз не предоставил ссылку для оплаты");
     } catch (e) {
       Utils.toast(e.message || "Ошибка оплаты", "error");
     } finally {
@@ -1101,12 +1091,22 @@ class PremiumManager {
     if (paymentId) q.set("paymentId", paymentId);
     try {
       const res = await fetch(`/api/premium/status?${q}`);
-      const text = await res.text();
-      const data = text && text.trim().startsWith("{") ? JSON.parse(text) : null;
+      const data = await res.json().catch(() => null);
       if (data && data.active) {
         sessionStorage.removeItem("cowio_pending_payment");
-        Utils.toast("Premium успешно активирован!", "success");
+        const cached = AppState.usersCache.get(uid) || {};
+        cached.premium = data.premium;
+        AppState.usersCache.set(uid, cached);
+        Utils.toast("Premium успешно оплачен и активирован!", "success");
         if (window.CatalogManager) CatalogManager.renderCatalog();
+        if (window.ProfileManager && typeof ProfileManager.renderProfile === "function") {
+          ProfileManager.renderProfile();
+        }
+      } else if (data && data.pending) {
+        Utils.toast("Платёж обрабатывается платёжной системой...", "info");
+      } else if (data && data.canceled) {
+        sessionStorage.removeItem("cowio_pending_payment");
+        Utils.toast("Платёж был отменён", "info");
       }
       this.renderPremiumSection();
       return data;
@@ -1139,7 +1139,7 @@ class PremiumManager {
       !data.uid ||
       !AppState?.currentUser ||
       data.uid !== AppState.currentUser.uid ||
-      Date.now() - data.ts > 60000
+      Date.now() - data.ts > 120000
     ) {
       sessionStorage.removeItem("cowio_premium_return_uid");
       return;
@@ -1149,7 +1149,17 @@ class PremiumManager {
     if (window.Utils?.showScreen) Utils.showScreen("lobby-screen");
     setTimeout(async () => {
       document.getElementById("nav-premium")?.click();
-      await this.refreshStatus(data.uid);
+      const statusRes = await this.refreshStatus(data.uid);
+      if (statusRes && !statusRes.active && statusRes.pending) {
+        let attempts = 0;
+        const pollTimer = setInterval(async () => {
+          attempts++;
+          const polled = await this.refreshStatus(data.uid);
+          if (polled?.active || attempts >= 4) {
+            clearInterval(pollTimer);
+          }
+        }, 3000);
+      }
     }, 800);
   }
 
