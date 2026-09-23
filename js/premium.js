@@ -1048,19 +1048,89 @@ class PremiumManager {
     }
 
     try {
-      const res = await fetch("/api/premium/create-payment", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          uid: user.uid,
-          userName: profile.username || user.displayName || user.email || "User",
-          email: profile.email || user.email || "",
-        }),
-      });
+      let data = null;
 
-      const data = await res.json().catch(() => null);
-      if (!res.ok || !data?.success) {
-        throw new Error(data?.error || "Ошибка создания платежа в шлюзе Platega");
+      // 1. Try server backend endpoint first
+      try {
+        const res = await fetch("/api/premium/create-payment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            uid: user.uid,
+            userName: profile.username || user.displayName || user.email || "User",
+            email: profile.email || user.email || "",
+          }),
+        });
+
+        if (res.ok) {
+          data = await res.json().catch(() => null);
+        } else if (res.status === 404) {
+          console.warn("[Premium] /api/premium/create-payment returned 404 on current host. Using direct Platega gateway call...");
+        } else {
+          const errData = await res.json().catch(() => null);
+          throw new Error(errData?.error || `Ошибка сервера: ${res.status}`);
+        }
+      } catch (backendErr) {
+        if (backendErr.message && !backendErr.message.includes("404") && backendErr.message.startsWith("Platega:")) {
+          throw backendErr;
+        }
+        console.warn("[Premium] Backend endpoint note:", backendErr);
+      }
+
+      // 2. If backend gave 404 or was unreachable:
+      // Call Platega API directly from the client (Platega officially supports browser CORS)
+      if (!data?.confirmationUrl) {
+        const PLATEGA_API_KEY = "1lLu0Pb7yHD4DkPU8Pc7JBVN78h7pJCIh7dac1NFX1HCBpzNk6aD1mcC8yUeCHj0NTa2hesicgq3tM96r0iocsFaFtj0RhiKJsv2";
+        const PLATEGA_MERCHANT_ID = "f5c52bf0-56b2-485d-b5b1-b0f44cb34b8e";
+        const baseUrl = window.location.origin;
+        const returnUrl = `${baseUrl}/?premium_return=1&uid=${encodeURIComponent(user.uid)}`;
+        const failedUrl = `${baseUrl}/?premium_return=failed&uid=${encodeURIComponent(user.uid)}`;
+        const orderId = `cowio_prem_${user.uid}_${Date.now()}`;
+
+        const directRes = await fetch("https://app.platega.io/transaction/process", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "X-Secret": PLATEGA_API_KEY,
+            "X-MerchantId": PLATEGA_MERCHANT_ID,
+          },
+          body: JSON.stringify({
+            paymentMethod: 2,
+            paymentDetails: {
+              amount: this.PRICE_RUB,
+              currency: "RUB",
+            },
+            description: "Подписка COWIO Premium (30 дней)",
+            return: returnUrl,
+            failedUrl: failedUrl,
+            payload: JSON.stringify({ uid: user.uid, orderId }),
+            metadata: {
+              userId: String(user.uid),
+              userName: String(profile.username || user.displayName || "User"),
+            },
+          }),
+        });
+
+        if (directRes.ok) {
+          const pData = await directRes.json();
+          const confUrl = pData.redirect || pData.url || pData.confirmationUrl;
+          if (confUrl) {
+            data = {
+              success: true,
+              confirmationUrl: confUrl,
+              paymentId: pData.transactionId || pData.id || orderId,
+            };
+          }
+        } else {
+          const errText = await directRes.text();
+          let errMsg = "Ошибка платежного шлюза Platega";
+          try {
+            const parsed = JSON.parse(errText);
+            if (parsed.message) errMsg = `Platega: ${parsed.message}`;
+          } catch {}
+          throw new Error(errMsg);
+        }
       }
 
       if (data?.confirmationUrl) {
@@ -1090,12 +1160,52 @@ class PremiumManager {
     const q = new URLSearchParams({ uid });
     if (paymentId) q.set("paymentId", paymentId);
     try {
-      const res = await fetch(`/api/premium/status?${q}`);
-      const data = await res.json().catch(() => null);
+      let data = null;
+      try {
+        const res = await fetch(`/api/premium/status?${q}`);
+        if (res.ok) {
+          data = await res.json().catch(() => null);
+        }
+      } catch (fetchErr) {
+        console.warn("[Premium] /api/premium/status fetch error:", fetchErr);
+      }
+
+      // If backend was 404 or unavailable, check directly with Platega
+      if (!data && paymentId) {
+        try {
+          const PLATEGA_API_KEY = "1lLu0Pb7yHD4DkPU8Pc7JBVN78h7pJCIh7dac1NFX1HCBpzNk6aD1mcC8yUeCHj0NTa2hesicgq3tM96r0iocsFaFtj0RhiKJsv2";
+          const PLATEGA_MERCHANT_ID = "f5c52bf0-56b2-485d-b5b1-b0f44cb34b8e";
+          const pRes = await fetch(`https://app.platega.io/transaction/${encodeURIComponent(paymentId)}`, {
+            headers: {
+              "X-MerchantId": PLATEGA_MERCHANT_ID,
+              "X-Secret": PLATEGA_API_KEY,
+            },
+          });
+          if (pRes.ok) {
+            const txData = await pRes.json();
+            const txStatus = String(txData.status || "").toUpperCase();
+            if (txStatus === "CONFIRMED" || txStatus === "SUCCESS" || txStatus === "PAID") {
+              const user = AppState.currentUser;
+              if (user && user.uid === uid) {
+                const amt = Number(txData.paymentDetails?.amount) || this.PRICE_RUB;
+                await this.activatePremiumDirectly(user, amt);
+              }
+              data = { active: true };
+            } else if (txStatus === "PENDING") {
+              data = { active: false, pending: true };
+            } else if (txStatus === "CANCELED" || txStatus === "EXPIRED" || txStatus === "FAILED") {
+              data = { active: false, canceled: true };
+            }
+          }
+        } catch (dirErr) {
+          console.warn("[Premium] Direct Platega status check note:", dirErr);
+        }
+      }
+
       if (data && data.active) {
         sessionStorage.removeItem("cowio_pending_payment");
         const cached = AppState.usersCache.get(uid) || {};
-        cached.premium = data.premium;
+        if (data.premium) cached.premium = data.premium;
         AppState.usersCache.set(uid, cached);
         Utils.toast("Premium успешно оплачен и активирован!", "success");
         if (window.CatalogManager) CatalogManager.renderCatalog();
