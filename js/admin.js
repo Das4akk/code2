@@ -50,41 +50,38 @@ class AdminPanel {
   static async getDeveloperUid(forceRefresh = false) {
     if (!forceRefresh && this.developerUidCache) return this.developerUidCache;
 
-    const [creatorSnap, usernameSnap, usersSnap] = await Promise.all([
-      get(ref(db, "admin/creatorUid")),
-      get(ref(db, "usernames/developer")),
-      get(ref(db, "users")),
-    ]);
+    const cachedStored = localStorage.getItem("cowio_developer_uid");
+    if (!forceRefresh && cachedStored) {
+      this.developerUidCache = cachedStored;
+      return cachedStored;
+    }
 
-    const usersData = usersSnap.val() || {};
-    const storedCreatorUid = creatorSnap.exists() ? creatorSnap.val() : null;
-    const reservedDeveloperUid = usernameSnap.exists()
-      ? usernameSnap.val()
-      : null;
-    const hasExplicitCreatorProfile = (uid) =>
-      Boolean(
-        uid &&
-        usersData?.[uid]?.profile &&
-        this.isExplicitCreatorProfile(usersData[uid].profile),
-      );
-    const hasLegacyCreatorProfile = (uid) =>
-      Boolean(
-        uid &&
-        usersData?.[uid]?.profile &&
-        this.isLegacyCreatorProfile(usersData[uid].profile),
-      );
+    try {
+      const [creatorSnap, usernameSnap] = await Promise.all([
+        get(ref(db, "admin/creatorUid")),
+        get(ref(db, "usernames/developer")),
+      ]);
 
-    let candidateUid = null;
+      const storedCreatorUid = creatorSnap.exists() ? creatorSnap.val() : null;
+      const reservedDeveloperUid = usernameSnap.exists()
+        ? usernameSnap.val()
+        : null;
 
-    if (
-      hasExplicitCreatorProfile(storedCreatorUid) ||
-      hasLegacyCreatorProfile(storedCreatorUid)
-    ) {
-      candidateUid = storedCreatorUid;
-    } else if (hasLegacyCreatorProfile(reservedDeveloperUid)) {
-      candidateUid = reservedDeveloperUid;
-    } else {
-      candidateUid =
+      const candidateUid = storedCreatorUid || reservedDeveloperUid;
+      if (candidateUid) {
+        this.developerUidCache = candidateUid;
+        localStorage.setItem("cowio_developer_uid", candidateUid);
+        return candidateUid;
+      }
+    } catch (e) {
+      console.warn("Fast getDeveloperUid lookup failed:", e);
+    }
+
+    // Only if none found (rare first run before creator is set), fallback to users lookup
+    try {
+      const usersSnap = await get(ref(db, "users"));
+      const usersData = usersSnap.val() || {};
+      let candidateUid =
         Object.entries(usersData).find(([, userData]) => {
           return this.isExplicitCreatorProfile(userData?.profile || {});
         })?.[0] ||
@@ -92,18 +89,22 @@ class AdminPanel {
           return this.isLegacyCreatorProfile(userData?.profile || {});
         })?.[0] ||
         null;
+
+      if (candidateUid) {
+        this.developerUidCache = candidateUid;
+        localStorage.setItem("cowio_developer_uid", candidateUid);
+        void this.persistCreatorIdentity(
+          candidateUid,
+          usersData[candidateUid]?.profile || {},
+        );
+        return candidateUid;
+      }
+    } catch (err) {
+      console.warn("Users fallback failed:", err);
     }
 
-    if (!candidateUid) {
-      this.developerUidCache = null;
-      return null;
-    }
-
-    await this.persistCreatorIdentity(
-      candidateUid,
-      usersData[candidateUid]?.profile || {},
-    );
-    return this.developerUidCache;
+    this.developerUidCache = null;
+    return null;
   }
 
   static hydrateDeveloperUidFromProfile(uid, profile = {}) {

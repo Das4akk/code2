@@ -442,7 +442,7 @@ class AuthManager {
             );
           }
 
-          await AdminPanel.getDeveloperUid();
+          void AdminPanel.getDeveloperUid();
 
           // Authoritative routing via Router
           let pathname = window.location.pathname;
@@ -450,6 +450,15 @@ class AuthManager {
           if (intended && intended !== "/login" && intended !== "/") {
             pathname = intended;
             sessionStorage.removeItem("cowio_intended_route");
+          }
+
+          if (
+            pathname === "/login" ||
+            pathname === "/register" ||
+            pathname === "/"
+          ) {
+            pathname = "/lobby";
+            if (window.Router) window.Router.navigate("/lobby", true);
           }
 
           if (window.Router && typeof window.Router.handleRoute === "function") {
@@ -1046,6 +1055,10 @@ class AuthManager {
         Utils.$("btn-do-login").disabled = true;
         const cred = await signInWithEmailAndPassword(auth, email, pass);
 
+        // Reset password and enable button
+        Utils.$("login-pass").value = "";
+        Utils.$("btn-do-login").disabled = false;
+
         // save password for 1-click login
         const savedAccounts = JSON.parse(
           localStorage.getItem("cowio_saved_accounts") || "[]",
@@ -1058,6 +1071,21 @@ class AuthManager {
           "cowio_saved_accounts",
           JSON.stringify(savedAccounts),
         );
+
+        // Immediately route to lobby if not already routed
+        const intended = sessionStorage.getItem("cowio_intended_route");
+        const nextRoute =
+          intended && intended !== "/login" && intended !== "/"
+            ? intended
+            : "/lobby";
+        if (intended) sessionStorage.removeItem("cowio_intended_route");
+
+        if (window.Router && typeof window.Router.handleRoute === "function") {
+          window.Router.navigate(nextRoute, true);
+          window.Router.handleRoute(nextRoute, true);
+        } else if (window.Utils) {
+          Utils.showScreen("lobby-screen", false);
+        }
       } catch (e) {
         Utils.toast("Ошибка входа. Проверьте данные.", "error");
         Utils.$("btn-do-login").disabled = false;

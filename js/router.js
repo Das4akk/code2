@@ -89,6 +89,10 @@ class Router {
     }
 
     if (pathname === "/login" || pathname === "/register") {
+      if (window.AppState && window.AppState.currentUser) {
+        this.navigate("/lobby", true);
+        return;
+      }
       if (window.Utils && window.Utils.showScreen) {
         window.Utils.showScreen("auth-screen", false);
       }
