@@ -261,13 +261,13 @@ class SupportSystem {
             .replace(/"/g, "&quot;"); // escape to insert to onclick
           const isOpen = t.status === "open";
           const statusText = isOpen
-            ? '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/White%20Circle.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> В работе'
-            : '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Circle.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Закрыт';
+            ? '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#ffffff;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);padding:1px 7px;border-radius:100px;"><span style="width:5px;height:5px;border-radius:50%;background:#ffffff;box-shadow:0 0 6px #fff;display:inline-block;"></span>В работе</span>'
+            : '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;color:rgba(255,255,255,0.45);background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);padding:1px 7px;border-radius:100px;">Закрыт</span>';
           let priorityHtml = t.priority
-            ? `<span class="ticket-priority-label" style="margin-left:8px;font-size:10px;padding:2px 6px;border-radius:4px;background:var(--button-secondary-bg, rgba(100,100,100,0.3));color:inherit;">${t.priority}</span>`
+            ? `<span class="ticket-priority-label" style="margin-left:6px;font-size:10px;padding:2px 7px;border-radius:100px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.85);font-weight:600;">${t.priority}</span>`
             : "";
           if (t.isPremium) {
-            priorityHtml = `<span style="margin-left:8px;font-size:10px;padding:2px 6px;border-radius:4px;background:linear-gradient(135deg,#ffaa00,#ff4400);color:#fff;box-shadow:0 0 8px rgba(255,170,0,0.5);font-weight:bold;">${t.priority || "Premium"}</span>`;
+            priorityHtml = `<span style="margin-left:6px;font-size:10px;padding:2px 8px;border-radius:100px;background:#ffffff;color:#000000;font-weight:800;">${t.priority || "PRO"}</span>`;
           }
           const premiumMark = t.isPremium
             ? `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" style="width:14px;height:14px;margin-left:6px;vertical-align:middle;" title="Premium">`
@@ -277,7 +277,7 @@ class SupportSystem {
             t.lastActivity > (t.readReceipts?.[uid] || 0) &&
             t.lastSender !== uid &&
             (isAdmin || t.lastSenderIsAdmin)
-              ? `<div style="width:8px;height:8px;border-radius:50%;background:#ff4757;margin-left:8px;flex-shrink:0;box-shadow:0 0 8px #ff4757;" title="Новые сообщения"></div>`
+              ? `<div style="width:7px;height:7px;border-radius:50%;background:#ffffff;margin-left:8px;flex-shrink:0;box-shadow:0 0 8px #ffffff;" title="Новые сообщения"></div>`
               : "";
 
           const isReportTicket = Boolean(t.isReport || t.targetUid || t.reportType === "profile" || t.category === "Жалоба");
@@ -291,20 +291,20 @@ class SupportSystem {
                   : '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">';
 
           const reportBadge = isReportTicket
-            ? `<span style="margin-left:6px;font-size:10px;padding:1px 5px;border-radius:4px;background:rgba(255,75,75,0.22);color:#ff6b81;font-weight:600;">Жалоба</span>`
+            ? `<span style="margin-left:6px;font-size:10px;padding:2px 7px;border-radius:100px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.22);color:#ffffff;font-weight:700;">Жалоба</span>`
             : "";
 
           return `
                 <div class="dm-chat-item ${this.activeTicketId === t.id ? "active" : ""}" onclick="SupportSystem.openTicket('${t.id}')">
-                    <div class="dm-chat-avatar" style="background:${isReportTicket ? "rgba(255, 75, 75, 0.15)" : isOpen ? "rgba(255, 255, 255, 0.1)" : "rgba(255, 0, 0, 0.1)"}; color:${isReportTicket ? "#ff4757" : isOpen ? "#ffffff" : "#ff4444"}; font-size:20px;">
+                    <div class="dm-chat-avatar" style="width:38px;height:38px;border-radius:12px;background:rgba(255, 255, 255, 0.05);border:1px solid rgba(255, 255, 255, 0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                         ${categoryEmoji}
                     </div>
-                    <div class="dm-chat-info">
-                        <div class="dm-chat-name" style="display:flex;align-items:center;justify-content:space-between;width:100%;">
-                           <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${titleStr}${premiumMark}</span>
+                    <div class="dm-chat-info" style="min-width:0;flex:1;">
+                        <div class="dm-chat-name" style="display:flex;align-items:center;justify-content:space-between;width:100%;margin-bottom:4px;">
+                           <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px;font-weight:700;color:#ffffff;">${titleStr}${premiumMark}</span>
                            ${unreadDot}
                         </div>
-                        <div class="dm-chat-last-msg" style="display:flex;align-items:center;">${statusText}${reportBadge}${isAdmin ? priorityHtml : ""}</div>
+                        <div class="dm-chat-last-msg" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">${statusText}${reportBadge}${isAdmin ? priorityHtml : ""}</div>
                     </div>
                 </div>`;
         })
@@ -382,8 +382,15 @@ class SupportSystem {
 
     const btnBack = Utils.$("btn-support-back");
     if (btnBack) {
-      btnBack.style.display = window.innerWidth <= 1024 ? "block" : "none";
-      btnBack.onclick = () => layoutContainer.classList.remove("chat-active");
+      btnBack.style.display = window.innerWidth <= 1024 ? "inline-flex" : "none";
+      btnBack.onclick = () => {
+        if (layoutContainer) layoutContainer.classList.remove("chat-active");
+        SupportSystem.activeTicketId = null;
+        const activeItem = document.querySelector("#support-tickets-list .dm-chat-item.active");
+        if (activeItem) activeItem.classList.remove("active");
+        if (Utils.$("support-active-ticket")) Utils.$("support-active-ticket").style.display = "none";
+        if (Utils.$("support-no-ticket")) Utils.$("support-no-ticket").style.display = "flex";
+      };
     }
 
     Utils.$("support-no-ticket").style.display = "none";
@@ -413,7 +420,7 @@ class SupportSystem {
           templateContainer.innerHTML = Object.keys(this.TEMPLATES)
             .map(
               (k) =>
-                `<button class="secondary-btn" style="padding:4px 10px; width:auto; flex-shrink:0; font-size:11px; border-radius:12px;" onclick="SupportSystem.useTemplate('${k}', '${id}')">${k}</button>`,
+                `<button class="secondary-btn" style="padding:5px 12px; width:auto; flex-shrink:0; font-size:11.5px; font-weight:600; border-radius:100px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#ffffff; cursor:pointer;" onclick="SupportSystem.useTemplate('${k}', '${id}')">${k}</button>`,
             )
             .join("");
         } else {
@@ -427,11 +434,11 @@ class SupportSystem {
         (Date.now() - (t.createdAt || Date.now())) / 3600000,
       );
       Utils.$("st-status").innerHTML = isClosed
-        ? '<span style="color:#ff4444;font-weight:bold;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Cross%20Mark.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Закрыт</span>'
-        : `<span style="color:#ffffff;font-weight:bold;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Check%20Mark%20Button.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> В работе</span> ${isAdmin ? `<span style="opacity:0.5;font-weight:normal;font-size:11px;">(Открыт ${openTimeStr} ч. назад)</span>` : ""}`;
+        ? '<span style="display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:100px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.5);font-size:12px;font-weight:600;"><span style="width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.3);display:inline-block;"></span>Закрыт</span>'
+        : `<span style="display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:100px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.22);color:#ffffff;font-size:12px;font-weight:700;"><span style="width:6px;height:6px;border-radius:50%;background:#ffffff;box-shadow:0 0 8px rgba(255,255,255,0.9);display:inline-block;"></span>В работе</span> ${isAdmin ? `<span style="opacity:0.5;font-weight:500;font-size:11px;margin-left:4px;">(${openTimeStr} ч. назад)</span>` : ""}`;
 
       if (t.category) {
-        Utils.$("st-tag").style.display = "block";
+        Utils.$("st-tag").style.display = "inline-block";
         Utils.$("st-tag").innerText = t.category;
       } else {
         Utils.$("st-tag").style.display = "none";
@@ -532,11 +539,13 @@ class SupportSystem {
         } else if (isAdmin) {
           opInfo.style.display = "block";
           opInfo.innerHTML = `
-            <div style="font-size: 11px; color: var(--accent); font-weight: bold; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">
-              Сведения о проблеме (Для оператора)
-            </div>
-            <div id="support-operator-ticket-desc" style="font-size: 13px; color: rgba(255, 255, 255, 0.8); white-space: pre-wrap; line-height: 1.4;">
-              ${Utils.escapeHtml(t.problemDescription || "Пользователь не оставил описания")}
+            <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 12px 16px;">
+              <div style="font-size: 10.5px; color: rgba(255, 255, 255, 0.55); font-weight: 700; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px;">
+                Сведения о проблеме (Для оператора)
+              </div>
+              <div id="support-operator-ticket-desc" style="font-size: 13px; color: rgba(255, 255, 255, 0.88); white-space: pre-wrap; line-height: 1.45;">
+                ${Utils.escapeHtml(t.problemDescription || "Пользователь не оставил описания")}
+              </div>
             </div>
           `;
         } else {
@@ -603,14 +612,13 @@ class SupportSystem {
               } else {
                 quickMenu.style.display = "flex";
                 quickMenu.innerHTML = `
-                                 
-                                 <div style="font-size:11px; color:var(--text-muted); margin-bottom:4px; font-weight:bold;">ТЕГИ:</div>
-                                 <button class="secondary-btn" style="text-align:left; padding:6px 8px; font-size:12px; background:rgba(255,255,255,0.05); border:none;" onclick="SupportSystem.setCategory('${id}', 'Баг')">🐛 Баг</button>
-                                 <button class="secondary-btn" style="text-align:left; padding:6px 8px; font-size:12px; background:rgba(255,255,255,0.05); border:none;" onclick="SupportSystem.setCategory('${id}', 'Вопрос')">❔ Вопрос</button>
-                                 <div style="border-top:1px solid rgba(255,255,255,0.05); margin: 6px 0;"></div>
-                                 <button class="secondary-btn" style="text-align:left; padding:6px 8px; font-size:12px; background:rgba(255,255,255,0.05); border:none;" onclick="SupportSystem.exportTicket('${id}')">📥 Экспорт как .txt</button>
-                                 <button class="danger-btn" style="text-align:left; padding:6px 8px; font-size:12px; margin-top:4px;" onclick="SupportSystem.adminBan('${t.creatorUid}')">🚫 Заблокировать автора</button>
-                              `;
+                  <div style="font-size:10.5px; color:rgba(255,255,255,0.5); margin-bottom:4px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">Теги:</div>
+                  <button class="secondary-btn" style="text-align:left; padding:8px 10px; font-size:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); border-radius:8px; color:#fff; cursor:pointer;" onclick="SupportSystem.setCategory('${id}', 'Баг')">🐛 Баг</button>
+                  <button class="secondary-btn" style="text-align:left; padding:8px 10px; font-size:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); border-radius:8px; color:#fff; cursor:pointer;" onclick="SupportSystem.setCategory('${id}', 'Вопрос')">❔ Вопрос</button>
+                  <div style="border-top:1px solid rgba(255,255,255,0.08); margin: 4px 0;"></div>
+                  <button class="secondary-btn" style="text-align:left; padding:8px 10px; font-size:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); border-radius:8px; color:#fff; cursor:pointer;" onclick="SupportSystem.exportTicket('${id}')">📥 Экспорт как .txt</button>
+                  <button class="danger-btn" style="text-align:left; padding:8px 10px; font-size:12px; border-radius:8px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2); color:#fff; margin-top:2px; cursor:pointer;" onclick="SupportSystem.adminBan('${t.creatorUid}')">🚫 Заблокировать автора</button>
+                `;
               }
             }
           };
@@ -734,34 +742,39 @@ class SupportSystem {
             );
             const isMe = mUid === uid;
             const bg = isMe
-              ? "rgba(255,255,255,0.15)"
+              ? "rgba(255, 255, 255, 0.12)"
               : m.isInternal
-                ? "rgba(255,165,0,0.15)"
-                : "rgba(255,255,255,0.06)";
+                ? "rgba(255, 255, 255, 0.08)"
+                : "rgba(255, 255, 255, 0.04)";
+            const borderCol = isMe
+              ? "rgba(255, 255, 255, 0.22)"
+              : m.isInternal
+                ? "rgba(255, 255, 255, 0.18)"
+                : "rgba(255, 255, 255, 0.08)";
             const avatarHtml = !isMe
-              ? `<div style="width:32px;height:32px;border-radius:50%;background-image:url('${mAvatar}');background-size:cover;background-color:#333;flex-shrink:0;cursor:pointer;border:1px solid rgba(255,255,255,0.1);" onclick="ProfileManager.openProfileModal('${Utils.escapeHtml(mUid)}')"></div>`
+              ? `<div style="width:34px;height:34px;border-radius:12px;background-image:url('${mAvatar}');background-size:cover;background-position:center;background-color:#1c1c22;flex-shrink:0;cursor:pointer;border:1px solid rgba(255,255,255,0.12);" onclick="ProfileManager.openProfileModal('${Utils.escapeHtml(mUid)}')"></div>`
               : "";
             const internalTag = m.isInternal
-              ? '<span style="color:orange; font-size:10px; font-weight:bold; letter-spacing:0.5px;">[Внутренняя заметка]</span><br>'
+              ? '<span style="color:#ffffff; background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700; letter-spacing:0.5px;">[Внутренняя заметка]</span><br>'
               : "";
             if (m.isInternal && !isAdmin) return "";
 
             const senderIdentity = m.isAdmin
-              ? `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Briefcase.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> ` +
+              ? `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Briefcase.webp" style="width:1.1em;height:1.1em;vertical-align:bottom;"> ` +
                 (isMe ? `Вы (Поддержка) (${mName})` : `Поддержка (${mName})`)
-              : `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Bust%20In%20Silhouette.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> ` +
+              : `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Bust%20In%20Silhouette.webp" style="width:1.1em;height:1.1em;vertical-align:bottom;"> ` +
                 (isMe ? `Вы` : `${mName} @${mUsername}`);
 
             return `
-                   <div style="display:flex; gap:10px; align-self: ${isMe ? "flex-end" : "flex-start"}; max-width: 85%;">
+                   <div style="display:flex; gap:10px; align-self: ${isMe ? "flex-end" : "flex-start"}; max-width: 82%; margin-bottom: 2px;">
                        ${avatarHtml}
-                       <div style="background: ${bg}; padding: 10px 16px; border-radius: 16px; border-bottom-${isMe ? "right" : "left"}-radius: 4px; border: 1px solid rgba(255,255,255,0.05); position:relative; min-width: 120px;">
-                           <div style="font-size: 11px; opacity: 0.6; margin-bottom: 4px; font-weight: 600; cursor:pointer;" onclick="ProfileManager.openProfileModal('${Utils.escapeHtml(mUid)}')">
+                       <div style="background: ${bg}; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); padding: 11px 16px; border-radius: 18px; border-bottom-${isMe ? "right" : "left"}-radius: 4px; border: 1px solid ${borderCol}; position:relative; min-width: 120px; box-shadow: 0 4px 18px rgba(0,0,0,0.3);">
+                           <div style="font-size: 11px; opacity: 0.65; margin-bottom: 5px; font-weight: 600; cursor:pointer;" onclick="ProfileManager.openProfileModal('${Utils.escapeHtml(mUid)}')">
                                ${senderIdentity}
                            </div>
-                           <div style="line-height: 1.5; font-size:14px; word-wrap: break-word; margin-bottom:12px;">${internalTag}${Utils.escapeHtml(m.text || "")}</div>
-                           ${m.image ? `<img src="${Utils.escapeHtml(m.image)}" style="max-width: 100%; border-radius: 8px; margin-top: 5px; margin-bottom: 12px; cursor:pointer;" onclick="window.open(this.src)">` : ""}
-                           <div style="position:absolute; bottom:6px; right:12px; font-size:10px; color:rgba(255,255,255,0.4);">
+                           <div style="line-height: 1.5; font-size:13.5px; color: #ffffff; word-wrap: break-word; white-space: pre-wrap; margin-bottom:12px;">${internalTag}${Utils.escapeHtml(m.text || "")}</div>
+                           ${m.image ? `<img src="${Utils.escapeHtml(m.image)}" style="max-width: 100%; border-radius: 10px; margin-top: 5px; margin-bottom: 12px; cursor:pointer; border: 1px solid rgba(255,255,255,0.12);" onclick="window.open(this.src)">` : ""}
+                           <div style="position:absolute; bottom:6px; right:12px; font-size:10px; color:rgba(255,255,255,0.4); font-weight: 500;">
                               ${timeStr}
                            </div>
                        </div>
