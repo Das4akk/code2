@@ -1092,6 +1092,38 @@ class PremiumManager {
       btn.textContent = "Переход к оплате...";
     }
 
+    // Pre-open new tab synchronously during click event so popup blockers won't block it
+    let paymentWindow = null;
+    try {
+      paymentWindow = window.open("about:blank", "_blank");
+      if (paymentWindow) {
+        paymentWindow.document.write(`<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>COWIO Premium | Оплата</title>
+    <style>
+      body { margin: 0; background: #0f0f12; color: #fff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+      .card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 40px; text-align: center; max-width: 420px; }
+      .spinner { width: 42px; height: 42px; border: 3px solid rgba(255,255,255,0.1); border-top-color: #ff5b99; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 20px; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      h2 { margin: 0 0 10px; font-size: 20px; font-weight: 700; }
+      p { margin: 0; font-size: 14px; color: #888; line-height: 1.5; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="spinner"></div>
+      <h2>Перенаправление на оплату...</h2>
+      <p>Формируем безопасный платёжный шлюз COWIO Premium. Пожалуйста, подождите несколько секунд.</p>
+    </div>
+  </body>
+</html>`);
+      }
+    } catch (winErr) {
+      console.warn("[Premium] Note on pre-opening window:", winErr);
+    }
+
     try {
       let data = null;
 
@@ -1182,13 +1214,31 @@ class PremiumManager {
         this.lastConfirmationUrl = data.confirmationUrl;
         sessionStorage.setItem("cowio_pending_payment", data.paymentId || "");
         sessionStorage.setItem("cowio_pending_uid", user.uid);
-        window.open(data.confirmationUrl, "_blank");
+
+        if (paymentWindow && !paymentWindow.closed) {
+          paymentWindow.location.href = data.confirmationUrl;
+          try { paymentWindow.focus(); } catch (e) {}
+        } else {
+          const win = window.open(data.confirmationUrl, "_blank");
+          if (!win) {
+            const a = document.createElement("a");
+            a.href = data.confirmationUrl;
+            a.target = "_blank";
+            a.rel = "noopener noreferrer";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+          }
+        }
         Utils.toast("Окно оплаты открыто в новой вкладке", "success");
         return;
       }
 
       throw new Error(data?.error || "Платёжный шлюз не предоставил ссылку для оплаты");
     } catch (e) {
+      if (paymentWindow && !paymentWindow.closed) {
+        paymentWindow.close();
+      }
       Utils.toast(e.message || "Ошибка оплаты", "error");
     } finally {
       if (btn) {

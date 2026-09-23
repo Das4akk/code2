@@ -7836,7 +7836,7 @@
               <span><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
                 Список лучших</span>
             </div>
-            <div class="nav-item" id="nav-support" style="display: none">
+            <div class="nav-item" id="nav-support" style="display: flex">
               <span><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Woman%20Technologist.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
                 Поддержка</span>
             </div>
@@ -11642,8 +11642,9 @@
       </div>
     </div>
 
-    <div class="modal" id="modal-create-ticket">
-      <div class="modal-content support-create-modal-content">
+    <div class="modal" id="modal-create-ticket" onclick="if(event.target===this)this.classList.remove('active')">
+      <div class="modal-content support-create-modal-content" style="position: relative;">
+        <button type="button" class="btn-close-modal" style="position: absolute; top: 18px; right: 18px; width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; transition: 0.2s;" onclick="document.getElementById('modal-create-ticket').classList.remove('active')">✕</button>
         <div class="support-modal-badge">
           <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp" style="width: 28px; height: 28px; object-fit: contain;">
         </div>

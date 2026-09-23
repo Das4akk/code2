@@ -197,21 +197,30 @@ class FriendsManager {
     
     if (Utils.$("lobby-app-bar-profile")) {
       Utils.$("lobby-app-bar-profile").onclick = () => {
-         const uid = AppState.currentUser?.uid;
-         if (uid) {
-    ProfileManager.openViewProfileModal(uid).catch(err => {
-      Utils.toast("Error opening profile: " + err.message, "error");
-      console.error(err);
-    });
-  }
+        const uid = AppState.currentUser?.uid;
+        if (uid) {
+          setNavActive("nav-profile");
+          if (window.Router) {
+            Router.navigate("/profile");
+          }
+          if (window.ProfileManager) {
+            ProfileManager.openViewProfileModal(uid);
+          }
+        }
       };
     }
     if (Utils.$("nav-profile")) {
       Utils.$("nav-profile").onclick = () => {
-         const uid = AppState.currentUser?.uid;
-         if (uid) {
-             ProfileManager.openViewProfileModal(uid);
-         }
+        const uid = AppState.currentUser?.uid;
+        if (uid) {
+          setNavActive("nav-profile");
+          if (window.Router) {
+            Router.navigate("/profile");
+          }
+          if (window.ProfileManager) {
+            ProfileManager.openViewProfileModal(uid);
+          }
+        }
       };
     }
     if (Utils.$("btn-switch-account")) {

@@ -1698,6 +1698,12 @@ class ProfileManager {
   }
 
   static closeProfileOverlay() {
+    if (this.viewUnsubs) {
+      this.viewUnsubs.forEach((f) => { try { f(); } catch (e) {} });
+      this.viewUnsubs = [];
+    }
+    this._currentlyOpenUid = null;
+    this._currentlyOpenUsername = null;
     const sProfile = document.getElementById("section-profile");
     const backdrop = document.getElementById("profile-overlay-backdrop");
     if (backdrop) backdrop.style.display = "none";
@@ -1995,6 +2001,19 @@ class ProfileManager {
   }
 
   static async openViewProfileModal(targetUid) {
+    if (!targetUid) return;
+    if (!this._profileReqCounter) this._profileReqCounter = 0;
+    const thisReqId = ++this._profileReqCounter;
+    this._currentlyOpenUid = targetUid;
+
+    // Immediately stop listening to previous profile to prevent stale updates/sticking
+    if (this.viewUnsubs) {
+      this.viewUnsubs.forEach((f) => { try { f(); } catch (e) {} });
+      this.viewUnsubs = [];
+    } else {
+      this.viewUnsubs = [];
+    }
+
     const sProfile = document.getElementById("section-profile");
     if (!sProfile) return;
     const vModal = sProfile;
@@ -2090,6 +2109,9 @@ class ProfileManager {
         if (targetUid === AppState.currentUser?.uid) {
            const navMy = document.getElementById('nav-profile');
            if (navMy) navMy.classList.add('active');
+        } else {
+           const navMy = document.getElementById('nav-profile');
+           if (navMy) navMy.classList.remove('active');
         }
         sProfile.style.display = "flex";
     }
@@ -2295,6 +2317,9 @@ class ProfileManager {
     ];
 
     const [loadedProfile, friendsSnap, statusSnap] = await Promise.all(fetchPromises);
+
+    // If another profile request started while this was loading, discard this one!
+    if (this._profileReqCounter !== thisReqId) return;
     
     // Если профиля не было в кеше, обновляем шапку
     if (!profile && loadedProfile) {
@@ -2304,12 +2329,14 @@ class ProfileManager {
       ProfileManager.applyProfileBanner(vModal, loadedProfile);
     }
     
-    
     profile = loadedProfile;
     if (profile && profile.username) {
-       const expectedPath = `/@${profile.username}`;
+       this._currentlyOpenUsername = profile.username.toLowerCase().trim();
+       const isSelf = targetUid === AppState.currentUser?.uid;
+       const expectedPath = isSelf ? "/profile" : `/@${profile.username}`;
        if (window.location.pathname !== expectedPath) {
-           window.history.pushState({ screenId: "profile-screen" }, "", expectedPath);
+           if (window.Router) window.Router.currentPath = expectedPath;
+           window.history.replaceState({ screenId: "profile-screen", _silent: true }, "", expectedPath);
        }
     }
     
@@ -2438,8 +2465,10 @@ class ProfileManager {
       }
     }
 
+    if (this._profileReqCounter !== thisReqId) return;
+
     if (this.viewUnsubs) {
-      this.viewUnsubs.forEach((f) => f());
+      this.viewUnsubs.forEach((f) => { try { f(); } catch (e) {} });
       this.viewUnsubs = [];
     } else {
       this.viewUnsubs = [];

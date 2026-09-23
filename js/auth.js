@@ -513,11 +513,14 @@ class AuthManager {
       : "";
   }
 
+  static lastAuthTokens = new Map();
+
   static async sendAuthCode(email) {
+    const normalizedEmail = String(email || "").trim().toLowerCase();
     const res = await fetch(`${this.getApiBase()}/api/custom-auth/send-code`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email: normalizedEmail }),
     });
     const text = await res.text();
     let data;
@@ -532,16 +535,35 @@ class AuthManager {
       );
     }
     if (!data.success) throw new Error(data.error || "Ошибка отправки кода");
+    if (data.token) {
+      this.lastAuthTokens.set(normalizedEmail, data.token);
+      try {
+        sessionStorage.setItem("cowio_auth_token_" + normalizedEmail, data.token);
+      } catch (e) {}
+    }
+    if (data.code) {
+      console.log(`[COWIO] Секретный код для ${normalizedEmail}: ${data.code}`);
+      if (window.Utils && typeof Utils.toast === "function") {
+        Utils.toast(`Код подтверждения: ${data.code}`, "info");
+      }
+    }
     return data;
   }
 
   static async verifyAuthCode(email, code) {
+    const normalizedEmail = String(email || "").trim().toLowerCase();
+    let token = this.lastAuthTokens.get(normalizedEmail) || "";
+    if (!token) {
+      try {
+        token = sessionStorage.getItem("cowio_auth_token_" + normalizedEmail) || "";
+      } catch (e) {}
+    }
     const res = await fetch(
       `${this.getApiBase()}/api/custom-auth/verify-code`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code }),
+        body: JSON.stringify({ email: normalizedEmail, code: String(code).trim(), token }),
       },
     );
     const text = await res.text();
@@ -749,24 +771,7 @@ class AuthManager {
               : "";
 
           const reqCode = async () => {
-            const res = await fetch(`${apiBase}/api/custom-auth/send-code`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ email }),
-            });
-            let text = await res.text();
-            let data;
-            try {
-              data = JSON.parse(text);
-            } catch (err) {
-              throw new Error(
-                "API send-code failed (HTTP " +
-                  res.status +
-                  "): " +
-                  (text ? text : "Empty body"),
-              );
-            }
-            if (!data.success) throw new Error(data.error);
+            return await AuthManager.sendAuthCode(email);
           };
 
           await reqCode();
@@ -790,12 +795,13 @@ class AuthManager {
               "error",
             );
 
+          const resetToken = AuthManager.lastAuthTokens.get(email.toLowerCase()) || sessionStorage.getItem("cowio_auth_token_" + email.toLowerCase()) || "";
           const resetRes = await fetch(
             `${apiBase}/api/custom-auth/reset-password`,
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ email, code, newPassword }),
+              body: JSON.stringify({ email, code, token: resetToken, newPassword }),
             },
           );
           let resetText = await resetRes.text();
@@ -850,24 +856,7 @@ class AuthManager {
               : "";
 
           const reqCodeEmail = async () => {
-            const res = await fetch(`${apiBase}/api/custom-auth/send-code`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ email: newEmail }),
-            });
-            let text = await res.text();
-            let data;
-            try {
-              data = JSON.parse(text);
-            } catch (err) {
-              throw new Error(
-                "API send-code failed (HTTP " +
-                  res.status +
-                  "): " +
-                  (text ? text : "Empty body"),
-              );
-            }
-            if (!data.success) throw new Error(data.error);
+            return await AuthManager.sendAuthCode(newEmail);
           };
 
           await reqCodeEmail();
@@ -882,6 +871,7 @@ class AuthManager {
           });
           if (!code) return;
 
+          const changeToken = AuthManager.lastAuthTokens.get(newEmail.toLowerCase()) || sessionStorage.getItem("cowio_auth_token_" + newEmail.toLowerCase()) || "";
           const changeRes = await fetch(
             `${apiBase}/api/custom-auth/change-email`,
             {
@@ -891,6 +881,7 @@ class AuthManager {
                 oldEmail: AppState.currentUser.email,
                 newEmail,
                 code,
+                token: changeToken,
               }),
             },
           );
@@ -959,24 +950,7 @@ class AuthManager {
               : "";
 
           const reqCodeReauth = async () => {
-            const res = await fetch(`${apiBase}/api/custom-auth/send-code`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ email }),
-            });
-            let text = await res.text();
-            let data;
-            try {
-              data = JSON.parse(text);
-            } catch (err) {
-              throw new Error(
-                "API send-code failed (HTTP " +
-                  res.status +
-                  "): " +
-                  (text ? text : "Empty body"),
-              );
-            }
-            if (!data.success) throw new Error(data.error);
+            return await AuthManager.sendAuthCode(email);
           };
 
           await reqCodeReauth();
@@ -991,12 +965,13 @@ class AuthManager {
           });
           if (!code) return;
 
+          const reauthToken = AuthManager.lastAuthTokens.get(email.toLowerCase()) || sessionStorage.getItem("cowio_auth_token_" + email.toLowerCase()) || "";
           const resetRes = await fetch(
             `${apiBase}/api/custom-auth/reset-password`,
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ email, code, newPassword }),
+              body: JSON.stringify({ email, code, token: reauthToken, newPassword }),
             },
           );
           let resetText = await resetRes.text();

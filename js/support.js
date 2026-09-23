@@ -1,3 +1,5 @@
+import { db, ref, set, get, push, onValue, remove, update, off } from "./firebase.js";
+
 class SupportSystem {
   static activeTicketId = null;
   static unsubList = null;
@@ -28,7 +30,7 @@ class SupportSystem {
   static initGlobalListener() {
     const uid = AppState.currentUser?.uid;
     if (!uid) return;
-    const profile = AppState.usersCache.get(uid) || {};
+    const profile = (AppState.usersCache ? AppState.usersCache.get(uid) : null) || {};
     const isStaff = this.isStaff(profile, uid);
     const isCreator = window.AdminPanel
       ? AdminPanel.isCreatorProfile(profile, uid)
@@ -99,23 +101,53 @@ class SupportSystem {
         }
       });
 
-      const navIcon = Utils.$("nav-support") || Utils.$("nav-support-staff");
-      if (navIcon) {
-        let badge = navIcon.querySelector(".support-badge");
-        if (hasUnread) {
-          if (!badge) {
-            badge = document.createElement("div");
-            badge.className = "support-badge";
-            badge.style.cssText =
-              "position: absolute; top: 10px; right: 10px; width: 8px; height: 8px; background: #ffffff; border-radius: 50%; box-shadow: 0 0 8px #ffffff;";
-            navIcon.style.position = "relative";
-            navIcon.appendChild(badge);
+      ["nav-support", "nav-support-staff"].forEach((navId) => {
+        const navIcon = Utils.$(navId);
+        if (navIcon) {
+          let badge = navIcon.querySelector(".support-badge");
+          if (hasUnread) {
+            if (!badge) {
+              badge = document.createElement("div");
+              badge.className = "support-badge";
+              badge.style.cssText =
+                "position: absolute; top: 10px; right: 10px; width: 8px; height: 8px; background: #ffffff; border-radius: 50%; box-shadow: 0 0 8px #ffffff;";
+              navIcon.style.position = "relative";
+              navIcon.appendChild(badge);
+            }
+          } else if (badge) {
+            badge.remove();
           }
-        } else if (badge) {
-          badge.remove();
         }
-      }
+      });
     });
+  }
+
+  static viewImage(src) {
+    if (!src) return;
+    let overlay = document.getElementById("support-image-lightbox");
+    if (!overlay) {
+      overlay = document.createElement("div");
+      overlay.id = "support-image-lightbox";
+      overlay.style.cssText =
+        "position: fixed; inset: 0; background: rgba(0, 0, 0, 0.88); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); z-index: 100002; display: flex; align-items: center; justify-content: center; padding: 24px; cursor: zoom-out;";
+      overlay.onclick = () => { overlay.style.display = "none"; };
+      const img = document.createElement("img");
+      img.id = "support-image-lightbox-img";
+      img.style.cssText =
+        "max-width: 90vw; max-height: 90vh; object-fit: contain; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.8); cursor: default; border: 1px solid rgba(255,255,255,0.15);";
+      img.onclick = (e) => e.stopPropagation();
+      const closeBtn = document.createElement("button");
+      closeBtn.innerHTML = "✕";
+      closeBtn.style.cssText =
+        "position: absolute; top: 20px; right: 20px; width: 38px; height: 38px; border-radius: 50%; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); color: #fff; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center;";
+      closeBtn.onclick = () => { overlay.style.display = "none"; };
+      overlay.appendChild(img);
+      overlay.appendChild(closeBtn);
+      document.body.appendChild(overlay);
+    }
+    const imgEl = document.getElementById("support-image-lightbox-img");
+    if (imgEl) imgEl.src = src;
+    overlay.style.display = "flex";
   }
 
   static async openCreatorPanel() {
@@ -1143,7 +1175,7 @@ class SupportSystem {
                   <div class="support-msg-row me">
                     <div class="support-msg-bubble">
                       <div class="support-msg-body">${Utils.escapeHtml(m.text || "")}</div>
-                      ${m.image ? `<img src="${Utils.escapeHtml(m.image)}" class="support-msg-image" alt="Вложение" onclick="window.open(this.src)">` : ""}
+                      ${m.image ? `<img src="${Utils.escapeHtml(m.image)}" class="support-msg-image" alt="Вложение" onclick="SupportSystem.viewImage(this.src)">` : ""}
                       <div class="support-msg-time">${timeStr}</div>
                     </div>
                   </div>
@@ -1165,7 +1197,7 @@ class SupportSystem {
                         <span class="support-msg-sender" onclick="ProfileManager.openViewProfileModal('${Utils.escapeHtml(mUid)}')">${mName}</span>
                       </div>
                       <div class="support-msg-body">${Utils.escapeHtml(m.text || "")}</div>
-                      ${m.image ? `<img src="${Utils.escapeHtml(m.image)}" class="support-msg-image" alt="Вложение" onclick="window.open(this.src)">` : ""}
+                      ${m.image ? `<img src="${Utils.escapeHtml(m.image)}" class="support-msg-image" alt="Вложение" onclick="SupportSystem.viewImage(this.src)">` : ""}
                       <div class="support-msg-time">${timeStr}</div>
                     </div>
                   </div>
@@ -1184,7 +1216,7 @@ class SupportSystem {
                         <span class="support-msg-handle">@${mUsername}</span>
                       </div>
                       <div class="support-msg-body">${Utils.escapeHtml(m.text || "")}</div>
-                      ${m.image ? `<img src="${Utils.escapeHtml(m.image)}" class="support-msg-image" alt="Вложение" onclick="window.open(this.src)">` : ""}
+                      ${m.image ? `<img src="${Utils.escapeHtml(m.image)}" class="support-msg-image" alt="Вложение" onclick="SupportSystem.viewImage(this.src)">` : ""}
                       <div class="support-msg-time">${timeStr}</div>
                     </div>
                   </div>

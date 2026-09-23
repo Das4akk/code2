@@ -38,6 +38,15 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getDatabase(app);
 window.db = db;
+window.ref = ref;
+window.set = set;
+window.get = get;
+window.push = push;
+window.update = update;
+window.remove = remove;
+window.onValue = onValue;
+window.off = off;
+window.onDisconnect = onDisconnect;
 window.firebaseRef = ref;
 window.firebaseUpdate = update;
 window.firebaseSet = set;
@@ -53,6 +62,7 @@ window.firebaseDatabase = {
   onValue,
   off,
   onChildAdded,
+  onDisconnect,
 };
 
 const AppState = {

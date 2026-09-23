@@ -29,6 +29,7 @@ class Router {
     const originalPushState = window.history.pushState;
     window.history.pushState = function (state, title, url) {
       originalPushState.apply(this, arguments);
+      if (state && state._silent) return;
       const pathname = typeof url === "string" ? (url.startsWith("http") ? new URL(url).pathname : url) : window.location.pathname;
       Router.handleRoute(pathname);
     };
@@ -36,6 +37,7 @@ class Router {
     const originalReplaceState = window.history.replaceState;
     window.history.replaceState = function (state, title, url) {
       originalReplaceState.apply(this, arguments);
+      if (state && state._silent) return;
       const pathname = typeof url === "string" ? (url.startsWith("http") ? new URL(url).pathname : url) : window.location.pathname;
       Router.handleRoute(pathname);
     };
@@ -64,6 +66,9 @@ class Router {
 
   static async handleRoute(rawPathname, isInitial = false) {
     const pathname = (rawPathname || window.location.pathname).split("?")[0].split("#")[0] || "/lobby";
+    if (!isInitial && this.currentPath === pathname) {
+      return;
+    }
     this.currentPath = pathname;
 
     // Remove anti-flicker class from html root
@@ -223,6 +228,7 @@ class Router {
   static async loadMyProfile() {
     const uid = window.AppState?.currentUser?.uid;
     if (uid && window.ProfileManager) {
+      if (window.ProfileManager._currentlyOpenUid === uid) return;
       window.ProfileManager.openViewProfileModal(uid);
     } else {
       // Wait briefly for auth if initializing
@@ -231,7 +237,9 @@ class Router {
         if (u) {
           clearInterval(checkAuth);
           if (window.Router.currentPath === "/profile" && window.ProfileManager) {
-            window.ProfileManager.openViewProfileModal(u);
+            if (window.ProfileManager._currentlyOpenUid !== u) {
+              window.ProfileManager.openViewProfileModal(u);
+            }
           }
         }
       }, 100);
@@ -241,6 +249,10 @@ class Router {
 
   static async loadUsernameProfile(username) {
     if (!username) return;
+    const cleanUsername = username.toLowerCase().trim();
+    if (window.ProfileManager && window.ProfileManager._currentlyOpenUsername === cleanUsername) {
+      return;
+    }
 
     // Show skeleton immediately in #section-profile
     const sProfile = document.getElementById("section-profile");
@@ -261,9 +273,13 @@ class Router {
     }
 
     try {
-      const { get, ref, getDatabase } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
-      const db = getDatabase();
-      const snap = await get(ref(db, `usernames/${username.toLowerCase()}`));
+      let database = window.db;
+      if (!database) {
+        const fb = await import("./firebase.js");
+        database = fb.db || window.db;
+      }
+      const { get, ref } = await import("./firebase.js");
+      const snap = await get(ref(database, `usernames/${username.toLowerCase()}`));
       if (snap.exists()) {
         const targetUid = snap.val();
         if (window.ProfileManager) {
