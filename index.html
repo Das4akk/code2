@@ -1,4 +1,5 @@
 <!DOCTYPE html><html lang="ru"><head>
+    <base href="/">
     <link rel="icon" type="image/png" href="https://sun9-84.vkuserphoto.ru/s/v1/ig2/jTtFY4sN61sjV8m2sC_x71BvLxuiprqs7jQuk-j1aJ_FptikhjWKkZaRU51ox1ElLcAny0FplpQEqQ9Zs4CjHsD6.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,504x504&from=bu&u=eNz4gZZr3vbE9ZrTkr9Wx40QuBK1GSVIJkp_OCUMb0U&cs=504x0">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -9884,7 +9885,7 @@
       window.COWIO_MEDIA_API = window.COWIO_MEDIA_API || "";
     </script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.7/dist/hls.min.js"></script>
-    <script type="module" src="app.js?v=4"></script>
+    <script type="module" src="/app.js?v=4"></script>
     <style>
       body.monochrome {
         filter: grayscale(1) !important;
@@ -12002,5 +12003,356 @@
         </div>
       </div>
     </div>
+    <!-- Interactive Premium Purchase Modal -->
+    <div class="modal" id="modal-premium-purchase" style="z-index: 99999;">
+      <div class="modal-content prem-purchase-modal-content" style="
+        position: relative;
+        max-width: 540px;
+        width: 95%;
+        border-radius: 28px;
+        background: linear-gradient(180deg, rgba(26, 21, 14, 0.98) 0%, rgba(12, 11, 14, 0.99) 100%);
+        border: 1px solid rgba(255, 205, 90, 0.35);
+        box-shadow: 0 28px 80px rgba(0, 0, 0, 0.85), 0 0 50px rgba(255, 185, 45, 0.15);
+        padding: 28px;
+        color: #ffffff;
+        backdrop-filter: blur(28px);
+        -webkit-backdrop-filter: blur(28px);
+        overflow: hidden;
+      ">
+        <!-- Close button -->
+        <button type="button" class="btn-close-modal" id="btn-close-premium-purchase" onclick="document.getElementById('modal-premium-purchase').classList.remove('active')" style="
+          position: absolute;
+          top: 18px;
+          right: 18px;
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          color: rgba(255, 255, 255, 0.7);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          font-size: 18px;
+          line-height: 1;
+          transition: all 0.2s ease;
+          z-index: 10;
+        " onmouseover="this.style.background='rgba(255,255,255,0.18)'; this.style.color='#fff';" onmouseout="this.style.background='rgba(255,255,255,0.08)'; this.style.color='rgba(255,255,255,0.7)';">&times;</button>
+
+        <!-- Shimmer background ambient element -->
+        <div style="
+          position: absolute;
+          top: -60px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 300px;
+          height: 180px;
+          background: radial-gradient(ellipse at center, rgba(255, 195, 60, 0.22) 0%, rgba(255, 195, 60, 0) 70%);
+          pointer-events: none;
+          z-index: 1;
+        "></div>
+
+        <!-- STEP 1: Plan selection & Checkout -->
+        <div id="prem-modal-step-checkout" style="position: relative; z-index: 2;">
+          <!-- Modal Header -->
+          <div style="text-align: center; margin-bottom: 22px;">
+            <div style="
+              width: 58px;
+              height: 58px;
+              margin: 0 auto 12px;
+              border-radius: 20px;
+              background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 140, 0, 0.15));
+              border: 1px solid rgba(255, 215, 0, 0.45);
+              box-shadow: 0 8px 24px rgba(255, 190, 40, 0.25);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            ">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp" style="width: 36px; height: 36px; object-fit: contain;" alt="Crown">
+            </div>
+            <h2 style="margin: 0 0 6px 0; font-size: 24px; font-weight: 800; background: linear-gradient(135deg, #fff 30%, #ffd666 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+              COWIO Premium
+            </h2>
+            <p style="margin: 0; font-size: 13px; color: rgba(255, 255, 255, 0.7); line-height: 1.4;">
+              Выберите удобный период подписки для подключения привилегий
+            </p>
+          </div>
+
+          <!-- Plans Selector Cards -->
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;" id="prem-plans-grid">
+            <!-- 1 Month -->
+            <div class="prem-plan-card active" data-days="30" data-price="179" style="
+              padding: 14px 10px;
+              border-radius: 16px;
+              background: rgba(255, 205, 90, 0.12);
+              border: 2px solid #ffd56a;
+              box-shadow: 0 6px 20px rgba(255, 190, 40, 0.2);
+              cursor: pointer;
+              text-align: center;
+              transition: all 0.2s ease;
+              position: relative;
+            ">
+              <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #ffd56a; margin-bottom: 4px; letter-spacing: 0.5px;">1 месяц</div>
+              <div style="font-size: 20px; font-weight: 800; color: #ffffff; line-height: 1.1;">179 ₽</div>
+              <div style="font-size: 10px; color: rgba(255, 255, 255, 0.5); margin-top: 4px;">6 ₽/день</div>
+            </div>
+
+            <!-- 3 Months -->
+            <div class="prem-plan-card" data-days="90" data-price="479" style="
+              padding: 14px 10px;
+              border-radius: 16px;
+              background: rgba(255, 255, 255, 0.04);
+              border: 1px solid rgba(255, 255, 255, 0.12);
+              cursor: pointer;
+              text-align: center;
+              transition: all 0.2s ease;
+              position: relative;
+            ">
+              <div style="
+                position: absolute;
+                top: -8px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: linear-gradient(135deg, #e67e22, #f39c12);
+                color: #fff;
+                font-size: 9px;
+                font-weight: 800;
+                padding: 2px 7px;
+                border-radius: 8px;
+                white-space: nowrap;
+                box-shadow: 0 2px 8px rgba(230, 126, 34, 0.4);
+              ">-10%</div>
+              <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: rgba(255, 255, 255, 0.7); margin-bottom: 4px; letter-spacing: 0.5px;">3 месяца</div>
+              <div style="font-size: 20px; font-weight: 800; color: #ffffff; line-height: 1.1;">479 ₽</div>
+              <div style="font-size: 10px; color: #ffd56a; margin-top: 4px; font-weight: 600;">+50 Люменов</div>
+            </div>
+
+            <!-- 6 Months -->
+            <div class="prem-plan-card" data-days="180" data-price="890" style="
+              padding: 14px 10px;
+              border-radius: 16px;
+              background: rgba(255, 255, 255, 0.04);
+              border: 1px solid rgba(255, 255, 255, 0.12);
+              cursor: pointer;
+              text-align: center;
+              transition: all 0.2s ease;
+              position: relative;
+            ">
+              <div style="
+                position: absolute;
+                top: -8px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: linear-gradient(135deg, #9b59b6, #8e44ad);
+                color: #fff;
+                font-size: 9px;
+                font-weight: 800;
+                padding: 2px 7px;
+                border-radius: 8px;
+                white-space: nowrap;
+                box-shadow: 0 2px 8px rgba(155, 89, 182, 0.4);
+              ">ТОП ВЫГОДА</div>
+              <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: rgba(255, 255, 255, 0.7); margin-bottom: 4px; letter-spacing: 0.5px;">6 месяцев</div>
+              <div style="font-size: 20px; font-weight: 800; color: #ffffff; line-height: 1.1;">890 ₽</div>
+              <div style="font-size: 10px; color: #ffd56a; margin-top: 4px; font-weight: 600;">+150 Люменов</div>
+            </div>
+          </div>
+
+          <!-- Quick Perks Accordion / List -->
+          <div style="
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 14px 16px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+          ">
+            <div style="display: flex; align-items: center; gap: 10px; font-size: 12.5px;">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 18px; height: 18px; object-fit: contain;">
+              <span><strong>Удвоенный опыт (x2 XP)</strong> за просмотр видео в комнатах</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; font-size: 12.5px;">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" style="width: 18px; height: 18px; object-fit: contain;">
+              <span><strong>9 анимированных статус-эмодзи</strong> рядом с ником во всех разделах</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; font-size: 12.5px;">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Artist%20Palette.webp" style="width: 18px; height: 18px; object-fit: contain;">
+              <span><strong>Все премиум-темы сайта</strong> + темы для личных диалогов</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; font-size: 12.5px;">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp" style="width: 18px; height: 18px; object-fit: contain;">
+              <span><strong>Золотое свечение профиля</strong> и приоритет в поддержке</span>
+            </div>
+          </div>
+
+          <!-- Payment methods info pill -->
+          <div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 18px; opacity: 0.85;">
+            <div style="display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: rgba(255, 255, 255, 0.75);">
+              <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #2ecc71;"></span>
+              <span>СБП / QR</span>
+            </div>
+            <div style="font-size: 10px; color: rgba(255, 255, 255, 0.3);">•</div>
+            <div style="display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: rgba(255, 255, 255, 0.75);">
+              <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #3498db;"></span>
+              <span>Карты МИР / Visa / MC</span>
+            </div>
+            <div style="font-size: 10px; color: rgba(255, 255, 255, 0.3);">•</div>
+            <div style="display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: rgba(255, 255, 255, 0.75);">
+              <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #f1c40f;"></span>
+              <span>T-Pay / SberPay</span>
+            </div>
+          </div>
+
+          <!-- Checkout CTA Button -->
+          <button type="button" id="btn-modal-checkout-submit" class="prem-modal-pay-btn" style="
+            width: 100%;
+            padding: 15px 20px;
+            border-radius: 16px;
+            font-size: 15px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #ffd56a 0%, #e6a827 50%, #d4931a 100%);
+            color: #120e06;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 8px 25px rgba(255, 190, 40, 0.35);
+            transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+            overflow: hidden;
+          " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 12px 30px rgba(255, 190, 40, 0.45)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 8px 25px rgba(255, 190, 40, 0.35)';">
+            <span id="prem-modal-pay-text">Оплатить 179 ₽</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </button>
+
+          <div style="text-align: center; margin-top: 12px; font-size: 11px; color: rgba(255, 255, 255, 0.45); line-height: 1.4;">
+            Платёж откроется в новой вкладке через шлюз Platega.<br>Мгновенная активация сразу после оплаты.
+          </div>
+        </div>
+
+        <!-- STEP 2: Waiting for payment in new tab -->
+        <div id="prem-modal-step-waiting" style="display: none; position: relative; z-index: 2; text-align: center; padding: 10px 0;">
+          <div style="
+            width: 72px;
+            height: 72px;
+            margin: 0 auto 16px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(255, 205, 90, 0.15), rgba(255, 140, 0, 0.1));
+            border: 2px solid rgba(255, 205, 90, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+          ">
+            <div class="prem-radar-ring" style="
+              position: absolute;
+              inset: -8px;
+              border-radius: 50%;
+              border: 2px solid rgba(255, 205, 90, 0.25);
+              animation: premPulse 2s infinite ease-out;
+            "></div>
+            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkler.webp" style="width: 40px; height: 40px; object-fit: contain;" alt="Waiting">
+          </div>
+
+          <h3 style="margin: 0 0 8px 0; font-size: 21px; font-weight: 800; color: #ffffff;">
+            Оплата открыта в новой вкладке
+          </h3>
+          <p style="margin: 0 0 20px 0; font-size: 13px; color: rgba(255, 255, 255, 0.7); line-height: 1.5; max-width: 420px; margin-left: auto; margin-right: auto;">
+            Завершите транзакцию на открытой странице платёжного шлюза. Мы автоматически проверяем поступление оплаты.
+          </p>
+
+          <div style="display: flex; flex-direction: column; gap: 10px; max-width: 320px; margin: 0 auto 20px;">
+            <button type="button" id="btn-prem-check-now" class="primary-btn" style="
+              padding: 12px 18px;
+              border-radius: 14px;
+              font-size: 13.5px;
+              font-weight: 700;
+              background: #ffffff;
+              color: #000000;
+              border: none;
+              cursor: pointer;
+              box-shadow: 0 4px 16px rgba(255, 255, 255, 0.2);
+              display: inline-flex;
+              align-items: center;
+              justify-content: center;
+              gap: 8px;
+            ">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+              <span>Проверить оплату сейчас</span>
+            </button>
+
+            <button type="button" id="btn-prem-reopen-tab" class="secondary-btn" style="
+              padding: 10px 16px;
+              border-radius: 14px;
+              font-size: 12.5px;
+              font-weight: 600;
+              background: rgba(255, 255, 255, 0.06);
+              border: 1px solid rgba(255, 255, 255, 0.15);
+              color: rgba(255, 255, 255, 0.85);
+              cursor: pointer;
+            ">
+              Открыть страницу оплаты повторно
+            </button>
+          </div>
+
+          <button type="button" id="btn-prem-cancel-waiting" style="
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.45);
+            font-size: 12px;
+            cursor: pointer;
+            text-decoration: underline;
+            padding: 6px;
+          " onmouseover="this.style.color='rgba(255,255,255,0.7)';" onmouseout="this.style.color='rgba(255,255,255,0.45)';">
+            Вернуться к выбору тарифа
+          </button>
+        </div>
+
+        <!-- STEP 3: Payment Success Celebration -->
+        <div id="prem-modal-step-success" style="display: none; position: relative; z-index: 2; text-align: center; padding: 20px 0;">
+          <div style="
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 16px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(46, 204, 113, 0.2), rgba(39, 174, 96, 0.15));
+            border: 2px solid #2ecc71;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 35px rgba(46, 204, 113, 0.35);
+          ">
+            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp" style="width: 48px; height: 48px; object-fit: contain;" alt="Activated">
+          </div>
+
+          <h3 style="margin: 0 0 8px 0; font-size: 23px; font-weight: 800; color: #ffd56a;">
+            COWIO Premium активирован!
+          </h3>
+          <p style="margin: 0 0 24px 0; font-size: 13.5px; color: rgba(255, 255, 255, 0.8); line-height: 1.5; max-width: 400px; margin-left: auto; margin-right: auto;">
+            Поздравляем! Ваш статус, удвоенный опыт x2 XP, доступ к темам и статус-эмодзи уже подключены.
+          </p>
+
+          <button type="button" class="primary-btn" onclick="document.getElementById('modal-premium-purchase').classList.remove('active');" style="
+            padding: 13px 32px;
+            border-radius: 16px;
+            font-size: 14.5px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #ffd56a, #e6a827);
+            color: #120e06;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 8px 25px rgba(255, 190, 40, 0.35);
+          ">
+            Отлично!
+          </button>
+        </div>
+      </div>
+    </div>
+
   <div id="reaction-layer"></div>
 </body></html>

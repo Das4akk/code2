@@ -341,6 +341,27 @@ class PremiumManager {
         font-weight: 700;
         margin-bottom: 18px;
       }
+      @keyframes goldGlowPulse {
+        0%, 100% {
+          box-shadow: 0 8px 28px rgba(255, 195, 60, 0.38), 0 0 16px rgba(255, 215, 0, 0.2);
+          transform: translateY(0);
+        }
+        50% {
+          box-shadow: 0 14px 40px rgba(255, 195, 60, 0.65), 0 0 28px rgba(255, 215, 0, 0.4);
+          transform: translateY(-2px);
+        }
+      }
+      @keyframes premPulse {
+        0% { transform: scale(0.95); opacity: 0.8; }
+        50% { transform: scale(1.35); opacity: 0; }
+        100% { transform: scale(0.95); opacity: 0; }
+      }
+      @keyframes premShimmerMove {
+        0% { left: -80%; }
+        25% { left: 150%; }
+        100% { left: 150%; }
+      }
+
       .prem-cta-btn {
         width: 100%;
         padding: 13px 20px;
@@ -356,14 +377,34 @@ class PremiumManager {
         border: none;
       }
       .prem-cta-btn.buy {
-        background: linear-gradient(135deg, #fce38a 0%, #f39c12 100%);
+        background: linear-gradient(135deg, #ffe082 0%, #ffc107 45%, #ff9800 100%);
         color: #120e06;
-        box-shadow: 0 8px 24px rgba(243, 156, 18, 0.35);
+        padding: 15px 22px;
+        border-radius: 16px;
+        font-size: 15px;
+        font-weight: 800;
+        letter-spacing: 0.2px;
+        box-shadow: 0 8px 30px rgba(255, 190, 40, 0.45);
+        animation: goldGlowPulse 3s infinite ease-in-out;
+        position: relative;
+        overflow: hidden;
+      }
+      .prem-cta-btn.buy::after {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -80%;
+        width: 45%;
+        height: 200%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+        transform: rotate(28deg);
+        animation: premShimmerMove 3.6s infinite ease-in-out;
+        pointer-events: none;
       }
       .prem-cta-btn.buy:hover:not(:disabled) {
-        transform: translateY(-2px);
-        box-shadow: 0 12px 30px rgba(243, 156, 18, 0.5);
-        filter: brightness(1.05);
+        transform: translateY(-3px) scale(1.02);
+        box-shadow: 0 16px 42px rgba(255, 190, 40, 0.7);
+        filter: brightness(1.06);
       }
       .prem-cta-btn.extend {
         background: rgba(255, 255, 255, 0.08);
@@ -803,8 +844,9 @@ class PremiumManager {
             </div>
             <div style="font-size:12.5px;color:rgba(255,255,255,0.6);margin-bottom:4px;">Действует до:</div>
             <div style="font-size:16px;font-weight:800;color:#ffffff;margin-bottom:16px;">${this.formatExpiry(p)}</div>
-            <button class="prem-cta-btn extend" id="btn-extend-premium">
-              Продлить подписку (${this.PRICE_RUB} ₽)
+            <button class="prem-cta-btn extend" id="btn-extend-premium" style="display:inline-flex;align-items:center;justify-content:center;gap:8px;">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp" style="width:20px;height:20px;object-fit:contain;" alt="Crown">
+              <span>Продлить подписку (${this.PRICE_RUB} ₽)</span>
             </button>
           </div>`
         : `<div class="prem-pricing-box">
@@ -814,8 +856,9 @@ class PremiumManager {
             </div>
             <div class="prem-daily-equiv">~${(this.PRICE_RUB / this.PLAN_DAYS).toFixed(1)} ₽ в день</div>
             <button class="prem-cta-btn buy" id="btn-buy-premium">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-              Подключить Premium
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp" style="width:24px;height:24px;object-fit:contain;filter:drop-shadow(0 2px 5px rgba(0,0,0,0.3));" alt="Crown">
+              <span style="font-weight:800;letter-spacing:0.2px;">Приобрести Premium</span>
+              <span style="background:rgba(0,0,0,0.2);padding:3px 9px;border-radius:10px;font-size:12px;font-weight:800;margin-left:auto;">179 ₽</span>
             </button>
             <div class="prem-secure-note">
               Защищённая оплата через Platega<br>Мгновенная активация
@@ -993,13 +1036,15 @@ class PremiumManager {
     }, 1500);
   }
 
-  static async activatePremiumDirectly(user, amount = this.PRICE_RUB) {
+  static async activatePremiumDirectly(user, amount = this.PRICE_RUB, customDays = 0) {
     try {
       const now = Date.now();
-      const expiresAt = now + this.PLAN_DAYS * 24 * 60 * 60 * 1000;
+      const planDays = customDays || (amount >= 800 ? 180 : amount >= 400 ? 90 : 30);
+      const expiresAt = now + planDays * 24 * 60 * 60 * 1000;
+      const planKey = planDays >= 180 ? "premium_6months" : planDays >= 90 ? "premium_3months" : "premium_month";
       const premiumData = {
         active: true,
-        plan: "premium_month",
+        plan: planKey,
         activatedAt: now,
         expiresAt: expiresAt,
         amount: Number(amount) || this.PRICE_RUB,
@@ -1021,7 +1066,7 @@ class PremiumManager {
       cached.premium = premiumData;
       AppState.usersCache.set(user.uid, cached);
 
-      Utils.toast("Premium успешно активирован на 30 дней!", "success");
+      Utils.toast(`Premium успешно активирован на ${planDays} дней!`, "success");
       this.renderPremiumSection();
       if (window.CatalogManager) CatalogManager.renderCatalog();
       if (window.ProfileManager) {
@@ -1134,10 +1179,11 @@ class PremiumManager {
       }
 
       if (data?.confirmationUrl) {
+        this.lastConfirmationUrl = data.confirmationUrl;
         sessionStorage.setItem("cowio_pending_payment", data.paymentId || "");
         sessionStorage.setItem("cowio_pending_uid", user.uid);
-        Utils.toast("Перенаправление на страницу оплаты Platega...", "info");
-        window.location.href = data.confirmationUrl;
+        window.open(data.confirmationUrl, "_blank");
+        Utils.toast("Окно оплаты открыто в новой вкладке", "success");
         return;
       }
 

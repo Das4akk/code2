@@ -400,13 +400,18 @@ function getFirebaseDb() {
   return null;
 }
 
-async function activatePremium(uid, paymentId, amount) {
+async function activatePremium(uid, paymentId, amount, days) {
   const db = getFirebaseDb();
   const now = Date.now();
-  const expiresAt = now + 30 * 24 * 60 * 60 * 1000;
+  let durationDays = Number(days) || 30;
+  if (!days) {
+    if (amount >= 800) durationDays = 180;
+    else if (amount >= 400) durationDays = 90;
+  }
+  const expiresAt = now + durationDays * 24 * 60 * 60 * 1000;
   const premiumData = {
     active: true,
-    plan: 'premium_month',
+    plan: durationDays >= 180 ? 'premium_6months' : durationDays >= 90 ? 'premium_3months' : 'premium_month',
     activatedAt: now,
     expiresAt,
     paymentId: paymentId || null,
@@ -423,7 +428,8 @@ app.post('/api/premium/create-payment', async (req, res) => {
     const { uid, userName, email } = req.body || {};
     if (!uid) return res.status(400).json({ success: false, error: 'UID обязателен' });
 
-    const amount = Number(process.env.PREMIUM_PRICE_RUB || 179);
+    const amount = Number(req.body?.amount) || Number(process.env.PREMIUM_PRICE_RUB || 179);
+    const days = Number(req.body?.days) || (amount >= 800 ? 180 : amount >= 400 ? 90 : 30);
     const baseUrl = getBaseUrl(req);
     const returnUrl = `${baseUrl}/?premium_return=1&uid=${encodeURIComponent(uid)}`;
     const failedUrl = `${baseUrl}/?premium_return=failed&uid=${encodeURIComponent(uid)}`;
@@ -447,10 +453,10 @@ app.post('/api/premium/create-payment', async (req, res) => {
         amount: amount,
         currency: 'RUB'
       },
-      description: 'Подписка COWIO Premium (30 дней)',
+      description: `Подписка COWIO Premium (${days} дней)`,
       return: returnUrl,
       failedUrl: failedUrl,
-      payload: JSON.stringify({ uid, orderId }),
+      payload: JSON.stringify({ uid, orderId, days, amount }),
       metadata: {
         userId: String(uid),
         userName: String(userName || email || 'User'),
@@ -645,11 +651,20 @@ app.use('/api/proxy/stream', createProxyMiddleware({
 // ----------------------------------------------------
 // STATIC FILES & SPA SERVING
 // ----------------------------------------------------
-const publicPath = __dirname;
-app.use(express.static(publicPath, { index: false }));
+const distPath = path.join(__dirname, 'dist');
+const hasDist = fs.existsSync(path.join(distPath, 'index.html'));
 
-app.get(/.*/, (req, res) => {
-  res.sendFile(path.join(publicPath, 'index.html'));
+if (hasDist) {
+  app.use(express.static(distPath, { index: false }));
+}
+app.use(express.static(__dirname, { index: false }));
+
+app.get(/.*/, (req, res, next) => {
+  if (req.path.startsWith('/api')) {
+    return next();
+  }
+  const targetHtml = hasDist ? path.join(distPath, 'index.html') : path.join(__dirname, 'index.html');
+  res.sendFile(targetHtml);
 });
 
 // Global Error Handler
