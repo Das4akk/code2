@@ -243,15 +243,28 @@ class SupportSystem {
 
   static getCategoryBadgeHtml(cat, isReport = false) {
     if (cat === "Баг") {
-      return '<span class="support-card-tag tag-bug">🐛 Баг</span>';
+      return '<span class="support-card-tag tag-bug"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Bug.webp" class="emoji-animated-xs" alt=""> Баг</span>';
     } else if (cat === "Вопрос") {
-      return '<span class="support-card-tag tag-question">💬 Вопрос</span>';
+      return '<span class="support-card-tag tag-question"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Speech%20Balloon.webp" class="emoji-animated-xs" alt=""> Вопрос</span>';
     } else if (cat === "Идея") {
-      return '<span class="support-card-tag tag-idea">💡 Идея</span>';
+      return '<span class="support-card-tag tag-idea"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Light%20Bulb.webp" class="emoji-animated-xs" alt=""> Идея</span>';
     } else if (cat === "Жалоба" || isReport) {
-      return '<span class="support-card-tag tag-report">🚩 Жалоба</span>';
+      return '<span class="support-card-tag tag-report"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Triangular%20Flag.webp" class="emoji-animated-xs" alt=""> Жалоба</span>';
     }
-    return `<span class="support-card-tag">📝 ${Utils.escapeHtml(cat || "Тикет")}</span>`;
+    return `<span class="support-card-tag"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp" class="emoji-animated-xs" alt=""> ${Utils.escapeHtml(cat || "Тикет")}</span>`;
+  }
+
+  static getPriorityBadgeHtml(priority, isPremium = false) {
+    if (isPremium) {
+      return '<span class="support-card-priority pro"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" class="emoji-animated-xs" alt=""> PRO</span>';
+    }
+    if (priority === "Высокий" || priority === "Срочный") {
+      return `<span class="support-card-priority high"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Heart%20On%20Fire.webp" class="emoji-animated-xs" alt=""> ${Utils.escapeHtml(priority)}</span>`;
+    }
+    if (priority === "Средний") {
+      return `<span class="support-card-priority medium"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Yellow%20Heart.webp" class="emoji-animated-xs" alt=""> ${Utils.escapeHtml(priority)}</span>`;
+    }
+    return `<span class="support-card-priority low"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Green%20Heart.webp" class="emoji-animated-xs" alt=""> ${Utils.escapeHtml(priority || "Обычный")}</span>`;
   }
 
   static getCategoryIconUrl(cat, isReport = false) {
@@ -704,32 +717,32 @@ class SupportSystem {
         const categoryIcon = this.getCategoryIconUrl(t.category, isReport);
 
         const priorityBadge =
-          t.priority && (isAdmin || t.priority === "Высокий")
-            ? `<span class="support-card-priority ${t.priority === "Высокий" ? "high" : ""}">${Utils.escapeHtml(t.priority)}</span>`
+          t.priority && (isAdmin || t.priority === "Высокий" || t.priority === "Срочный")
+            ? this.getPriorityBadgeHtml(t.priority, t.isPremium)
             : "";
 
         return `
           <div class="support-ticket-card ${isActive ? "active" : ""} ${isOpen ? "" : "closed"}" onclick="SupportSystem.openTicket('${t.id}')">
-            <div class="support-card-top">
-              <div class="support-card-icon">
-                <img src="${categoryIcon}" alt="icon">
-              </div>
-              <div class="support-card-heading">
-                <div class="support-card-title">${titleStr}</div>
-                <div class="support-card-time">${timeStr}</div>
-              </div>
-              ${hasUnread ? '<div class="support-card-unread" title="Новые сообщения"></div>' : ""}
+            <div class="support-card-icon">
+              <img src="${categoryIcon}" alt="">
             </div>
-
-            ${lastSnippet ? `<div class="support-card-snippet">${lastSnippet}</div>` : ""}
-
-            <div class="support-card-footer">
-              <span class="support-status-chip ${isOpen ? "open" : "closed"}">
-                <span class="status-dot"></span>
-                <span>${isOpen ? "В работе" : "Решён"}</span>
-              </span>
-              ${categoryBadge}
-              ${priorityBadge}
+            <div class="support-card-main">
+              <div class="support-card-header-row">
+                <span class="support-card-title">${titleStr}</span>
+                <div class="support-card-meta">
+                  <span class="support-card-time">${timeStr}</span>
+                  ${hasUnread ? '<span class="support-card-unread" title="Новые сообщения"></span>' : ""}
+                </div>
+              </div>
+              <div class="support-card-sub-row">
+                <span class="support-status-chip ${isOpen ? "open" : "closed"}">
+                  <span class="status-dot"></span>
+                  <span>${isOpen ? "В работе" : "Решён"}</span>
+                </span>
+                ${categoryBadge}
+                ${priorityBadge}
+                ${lastSnippet ? `<span class="support-card-snippet">${lastSnippet}</span>` : ""}
+              </div>
             </div>
           </div>
         `;
@@ -830,7 +843,7 @@ class SupportSystem {
       if (tagEl) {
         if (t.category) {
           tagEl.style.display = "inline-flex";
-          tagEl.innerText = t.category;
+          tagEl.innerHTML = this.getCategoryBadgeHtml(t.category, isReport);
         } else {
           tagEl.style.display = "none";
         }
@@ -838,10 +851,9 @@ class SupportSystem {
 
       const priEl = Utils.$("st-priority");
       if (priEl) {
-        if (t.priority && (isAdmin || t.priority === "Высокий")) {
+        if (t.priority && (isAdmin || t.priority === "Высокий" || t.priority === "Срочный")) {
           priEl.style.display = "inline-flex";
-          priEl.className = `support-priority-chip ${t.priority === "Высокий" ? "high" : ""}`;
-          priEl.innerText = t.priority;
+          priEl.innerHTML = this.getPriorityBadgeHtml(t.priority, t.isPremium);
         } else {
           priEl.style.display = "none";
         }
@@ -1010,13 +1022,31 @@ class SupportSystem {
                 quickMenu.style.display = "flex";
                 quickMenu.innerHTML = `
                   <div style="font-size:10px; color:rgba(255,255,255,0.45); margin-bottom:4px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">Сменить категорию:</div>
-                  <button class="support-popover-item" onclick="SupportSystem.setCategory('${id}', 'Вопрос')">💬 Вопрос</button>
-                  <button class="support-popover-item" onclick="SupportSystem.setCategory('${id}', 'Баг')">🐛 Баг</button>
-                  <button class="support-popover-item" onclick="SupportSystem.setCategory('${id}', 'Жалоба')">🚩 Жалоба</button>
-                  <button class="support-popover-item" onclick="SupportSystem.setCategory('${id}', 'Идея')">💡 Идея</button>
+                  <button class="support-popover-item" onclick="SupportSystem.setCategory('${id}', 'Вопрос')">
+                    <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Speech%20Balloon.webp" class="emoji-animated-sm" alt="">
+                    <span>Вопрос</span>
+                  </button>
+                  <button class="support-popover-item" onclick="SupportSystem.setCategory('${id}', 'Баг')">
+                    <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Bug.webp" class="emoji-animated-sm" alt="">
+                    <span>Баг</span>
+                  </button>
+                  <button class="support-popover-item" onclick="SupportSystem.setCategory('${id}', 'Жалоба')">
+                    <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Triangular%20Flag.webp" class="emoji-animated-sm" alt="">
+                    <span>Жалоба</span>
+                  </button>
+                  <button class="support-popover-item" onclick="SupportSystem.setCategory('${id}', 'Идея')">
+                    <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Light%20Bulb.webp" class="emoji-animated-sm" alt="">
+                    <span>Идея</span>
+                  </button>
                   <div class="support-popover-divider"></div>
-                  <button class="support-popover-item" onclick="SupportSystem.exportTicket('${id}')">📥 Экспорт как .txt</button>
-                  <button class="support-popover-item danger" onclick="SupportSystem.adminBan('${t.creatorUid}')">🚫 Блокировка в поддержке</button>
+                  <button class="support-popover-item" onclick="SupportSystem.exportTicket('${id}')">
+                    <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Package.webp" class="emoji-animated-sm" alt="">
+                    <span>Экспорт как .txt</span>
+                  </button>
+                  <button class="support-popover-item danger" onclick="SupportSystem.adminBan('${t.creatorUid}')">
+                    <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Cross%20Mark.webp" class="emoji-animated-sm" alt="">
+                    <span>Блокировка в поддержке</span>
+                  </button>
                 `;
               }
             }
@@ -1049,52 +1079,124 @@ class SupportSystem {
         if (m.targetUid) uidsToLoad.add(m.targetUid);
       });
 
-      await Promise.all(
-        Array.from(uidsToLoad)
-          .filter((uUid) => !AppState.usersCache?.has(uUid))
-          .map((uUid) => ProfileManager.loadUser(uUid))
-      );
+      if (typeof ProfileManager !== "undefined" && ProfileManager.loadUser) {
+        await Promise.all(
+          Array.from(uidsToLoad)
+            .filter((uUid) => !AppState.usersCache?.has(uUid))
+            .map((uUid) => ProfileManager.loadUser(uUid).catch(() => null))
+        );
+      }
 
-      chat.innerHTML = Object.values(msgs)
-        .sort((a, b) => a.timestamp - b.timestamp)
-        .map((m) => {
-          try {
-            const sentDate = new Date(m.timestamp || Date.now());
-            const timeStr =
-              sentDate.getHours().toString().padStart(2, "0") +
-              ":" +
-              sentDate.getMinutes().toString().padStart(2, "0");
+      const sortedMsgs = Object.values(msgs).sort((a, b) => a.timestamp - b.timestamp);
 
-            const mUid = m.uid || "unknown";
-            const cachedUser = AppState.usersCache ? AppState.usersCache.get(mUid) : null;
-            const mName = Utils.escapeHtml(cachedUser?.name || m.name || "Пользователь");
-            const mUsername = Utils.escapeHtml(cachedUser?.username || m.username || mUid);
-            const mAvatar = cachedUser?.avatar || m.avatar || "";
-            const isMe = mUid === uid;
-            const isMsgAdmin = Boolean(m.isAdmin);
-
-            return `
-              <div class="support-msg-row ${isMe ? "me" : isMsgAdmin ? "operator" : "user"}">
-                <div class="support-msg-avatar" onclick="ProfileManager.openProfileModal('${Utils.escapeHtml(mUid)}')">
-                  ${mAvatar ? `<img src="${Utils.escapeHtml(mAvatar)}" alt="">` : `<span>${mName.charAt(0).toUpperCase()}</span>`}
-                </div>
-                <div class="support-msg-bubble">
-                  <div class="support-msg-header">
-                    <span class="support-msg-sender" onclick="ProfileManager.openProfileModal('${Utils.escapeHtml(mUid)}')">${mName}</span>
-                    ${isMsgAdmin ? '<span class="support-operator-badge">Оператор</span>' : ""}
+      if (sortedMsgs.length === 0) {
+        chat.innerHTML = `
+          <div class="support-chat-empty">
+            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Speech%20Balloon.webp" style="width: 42px; height: 42px; object-fit: contain;" alt="">
+            <div class="support-chat-empty-title">Диалог начат</div>
+            <div class="support-chat-empty-desc">Напишите сообщение ниже — специалист поддержки ответит вам в ближайшее время</div>
+          </div>
+        `;
+      } else {
+        let lastDatePill = "";
+        chat.innerHTML = sortedMsgs
+          .map((m) => {
+            try {
+              const sentDate = new Date(m.timestamp || Date.now());
+              const datePillStr = sentDate.toLocaleDateString("ru-RU", {
+                day: "numeric",
+                month: "long",
+              });
+              let dateHeaderHtml = "";
+              if (datePillStr !== lastDatePill) {
+                dateHeaderHtml = `
+                  <div class="support-date-divider">
+                    <span class="support-date-pill">${datePillStr}</span>
                   </div>
-                  <div class="support-msg-body">${Utils.escapeHtml(m.text || "")}</div>
-                  ${m.image ? `<img src="${Utils.escapeHtml(m.image)}" class="support-msg-image" alt="Image" onclick="window.open(this.src)">` : ""}
-                  <div class="support-msg-time">${timeStr}</div>
-                </div>
-              </div>
-            `;
-          } catch (e) {
-            console.error("Error rendering message:", e);
-            return "";
-          }
-        })
-        .join("");
+                `;
+                lastDatePill = datePillStr;
+              }
+
+              const timeStr =
+                sentDate.getHours().toString().padStart(2, "0") +
+                ":" +
+                sentDate.getMinutes().toString().padStart(2, "0");
+
+              const mUid = m.uid || "unknown";
+              const cachedUser = AppState.usersCache ? AppState.usersCache.get(mUid) : null;
+              const userProfile = cachedUser || {
+                name: m.name || "Пользователь",
+                username: m.username || mUid,
+                avatar: m.avatar || "",
+                frame: cachedUser?.frame || "",
+              };
+              const mName = Utils.escapeHtml(userProfile.name || "Пользователь");
+              const mUsername = Utils.escapeHtml(userProfile.username || mUid);
+
+              const isMe = mUid === uid;
+              const isMsgAdmin = Boolean(m.isAdmin);
+
+              if (isMe) {
+                // Outgoing message (my own message):
+                // Clean right-aligned bubble, NO avatar, NO name header.
+                return dateHeaderHtml + `
+                  <div class="support-msg-row me">
+                    <div class="support-msg-bubble">
+                      <div class="support-msg-body">${Utils.escapeHtml(m.text || "")}</div>
+                      ${m.image ? `<img src="${Utils.escapeHtml(m.image)}" class="support-msg-image" alt="Вложение" onclick="window.open(this.src)">` : ""}
+                      <div class="support-msg-time">${timeStr}</div>
+                    </div>
+                  </div>
+                `;
+              } else if (isMsgAdmin) {
+                // Incoming message from operator:
+                const avatarHtml = ProfileManager.getAvatarHtml(userProfile);
+                return dateHeaderHtml + `
+                  <div class="support-msg-row operator">
+                    <div class="support-msg-avatar" onclick="ProfileManager.openViewProfileModal('${Utils.escapeHtml(mUid)}')" title="${mName}">
+                      ${avatarHtml}
+                    </div>
+                    <div class="support-msg-bubble">
+                      <div class="support-msg-header">
+                        <span class="support-operator-badge">
+                          <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Briefcase.webp" class="emoji-animated-xs" alt="">
+                          Поддержка COWIO
+                        </span>
+                        <span class="support-msg-sender" onclick="ProfileManager.openViewProfileModal('${Utils.escapeHtml(mUid)}')">${mName}</span>
+                      </div>
+                      <div class="support-msg-body">${Utils.escapeHtml(m.text || "")}</div>
+                      ${m.image ? `<img src="${Utils.escapeHtml(m.image)}" class="support-msg-image" alt="Вложение" onclick="window.open(this.src)">` : ""}
+                      <div class="support-msg-time">${timeStr}</div>
+                    </div>
+                  </div>
+                `;
+              } else {
+                // Incoming message from user:
+                const avatarHtml = ProfileManager.getAvatarHtml(userProfile);
+                return dateHeaderHtml + `
+                  <div class="support-msg-row user">
+                    <div class="support-msg-avatar" onclick="ProfileManager.openViewProfileModal('${Utils.escapeHtml(mUid)}')" title="${mName}">
+                      ${avatarHtml}
+                    </div>
+                    <div class="support-msg-bubble">
+                      <div class="support-msg-header">
+                        <span class="support-msg-sender" onclick="ProfileManager.openViewProfileModal('${Utils.escapeHtml(mUid)}')">${mName}</span>
+                        <span class="support-msg-handle">@${mUsername}</span>
+                      </div>
+                      <div class="support-msg-body">${Utils.escapeHtml(m.text || "")}</div>
+                      ${m.image ? `<img src="${Utils.escapeHtml(m.image)}" class="support-msg-image" alt="Вложение" onclick="window.open(this.src)">` : ""}
+                      <div class="support-msg-time">${timeStr}</div>
+                    </div>
+                  </div>
+                `;
+              }
+            } catch (e) {
+              console.error("Error rendering message:", e);
+              return "";
+            }
+          })
+          .join("");
+      }
 
       setTimeout(() => {
         chat.scrollTop = chat.scrollHeight;
@@ -1236,7 +1338,7 @@ class SupportSystem {
 
       if (input) {
         input.value = "";
-        input.style.height = "auto";
+        input.style.height = "42px";
       }
 
       SupportSystem.pendingAttachment = null;
@@ -1245,6 +1347,13 @@ class SupportSystem {
 
       if (this.typingTimer) clearTimeout(this.typingTimer);
       remove(ref(db, `support_tickets_typing/${ticketId}/${uid}`));
+
+      const chat = Utils.$("support-ticket-chat");
+      if (chat) {
+        setTimeout(() => {
+          chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });
+        }, 40);
+      }
     } catch (e) {
       console.error("Send message error:", e);
       Utils.toast("Ошибка отправки: " + e.message, "error");

@@ -4606,6 +4606,44 @@
         border: none !important;
         border-radius: 0 !important;
       }
+      #section-support::before {
+        content: '';
+        position: absolute;
+        top: 2%;
+        left: 15%;
+        width: 520px;
+        height: 520px;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 45%, transparent 70%);
+        border-radius: 50%;
+        filter: blur(80px);
+        -webkit-filter: blur(80px);
+        pointer-events: none;
+        z-index: 0;
+        animation: supportAmbientFloat 12s ease-in-out infinite alternate;
+      }
+      #section-support::after {
+        content: '';
+        position: absolute;
+        bottom: 2%;
+        right: 10%;
+        width: 550px;
+        height: 550px;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.015) 50%, transparent 75%);
+        border-radius: 50%;
+        filter: blur(90px);
+        -webkit-filter: blur(90px);
+        pointer-events: none;
+        z-index: 0;
+        animation: supportAmbientFloat2 15s ease-in-out infinite alternate;
+      }
+      @keyframes supportAmbientFloat {
+        0% { transform: translate(0, 0) scale(1); }
+        100% { transform: translate(35px, 25px) scale(1.1); }
+      }
+      @keyframes supportAmbientFloat2 {
+        0% { transform: translate(0, 0) scale(1); }
+        100% { transform: translate(-30px, -35px) scale(1.08); }
+      }
       .support-grid-layout {
         width: 100% !important;
         height: 100% !important;
@@ -4616,19 +4654,21 @@
         margin: 0 !important;
         border-radius: 0 !important;
         border: none !important;
-        background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.07), rgba(8, 8, 12, 0.98)) !important;
-        backdrop-filter: blur(40px) saturate(180%) !important;
-        -webkit-backdrop-filter: blur(40px) saturate(180%) !important;
+        background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.06), rgba(8, 8, 12, 0.90)) !important;
+        backdrop-filter: blur(48px) saturate(190%) !important;
+        -webkit-backdrop-filter: blur(48px) saturate(190%) !important;
         box-shadow: none !important;
         overflow: hidden;
+        position: relative;
+        z-index: 1;
       }
       .support-sidebar {
         border-right: 1px solid rgba(255, 255, 255, 0.12) !important;
         display: flex;
         flex-direction: column;
-        background: rgba(10, 10, 14, 0.92) !important;
-        backdrop-filter: blur(36px) !important;
-        -webkit-backdrop-filter: blur(36px) !important;
+        background: rgba(10, 10, 14, 0.78) !important;
+        backdrop-filter: blur(40px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(40px) saturate(180%) !important;
         height: 100%;
         overflow: hidden;
         position: relative;
@@ -4703,8 +4743,10 @@
         display: flex;
         flex-direction: column;
         gap: 10px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-        background: rgba(0, 0, 0, 0.25);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(0, 0, 0, 0.32);
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
         flex-shrink: 0;
       }
       .support-search-bar {
@@ -4722,8 +4764,10 @@
       .support-search-bar input {
         width: 100%;
         padding: 9px 32px 9px 34px;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
         border-radius: 10px;
         color: #ffffff;
         font-size: 13px;
@@ -4732,8 +4776,8 @@
       }
       .support-search-bar input:focus {
         border-color: rgba(255, 255, 255, 0.35);
-        background: rgba(255, 255, 255, 0.08);
-        box-shadow: 0 0 16px rgba(255, 255, 255, 0.06);
+        background: rgba(255, 255, 255, 0.09);
+        box-shadow: 0 0 16px rgba(255, 255, 255, 0.08);
       }
       .support-search-bar button#support-search-clear {
         position: absolute;
@@ -4764,9 +4808,11 @@
         border-radius: 8px;
         font-size: 11.5px;
         font-weight: 600;
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        color: rgba(255, 255, 255, 0.65);
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        color: rgba(255, 255, 255, 0.7);
         cursor: pointer;
         display: inline-flex;
         align-items: center;
@@ -4775,15 +4821,16 @@
         transition: all 0.2s ease;
       }
       .support-filter-tab:hover {
-        background: rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.12);
         color: #ffffff;
-        border-color: rgba(255, 255, 255, 0.16);
+        border-color: rgba(255, 255, 255, 0.25);
+        transform: translateY(-1px);
       }
       .support-filter-tab.active {
         background: #ffffff;
         color: #000000;
         border-color: #ffffff;
-        box-shadow: 0 2px 10px rgba(255, 255, 255, 0.25);
+        box-shadow: 0 2px 12px rgba(255, 255, 255, 0.3);
       }
       .support-filter-badge {
         font-size: 10px;
@@ -4824,12 +4871,13 @@
         backdrop-filter: blur(20px) !important;
         -webkit-backdrop-filter: blur(20px) !important;
         cursor: pointer !important;
-        transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
         user-select: none !important;
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        min-height: auto !important;
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 10px !important;
+        min-height: 52px !important;
       }
       .support-ticket-card:hover {
         background: rgba(255, 255, 255, 0.07) !important;
@@ -4842,21 +4890,16 @@
         box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.2) !important;
       }
       .support-ticket-card.closed {
-        opacity: 0.72;
+        opacity: 0.68;
       }
       .support-ticket-card.closed:hover {
-        opacity: 1;
-      }
-      .support-card-top {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        width: 100%;
+        opacity: 0.95;
       }
       .support-card-icon {
-        width: 26px;
-        height: 26px;
-        border-radius: 8px;
+        width: 30px;
+        height: 30px;
+        min-width: 30px;
+        border-radius: 9px;
         background: rgba(255, 255, 255, 0.05);
         border: 1px solid rgba(255, 255, 255, 0.12);
         display: flex;
@@ -4865,17 +4908,23 @@
         flex-shrink: 0;
       }
       .support-card-icon img {
-        width: 15px;
-        height: 15px;
+        width: 17px;
+        height: 17px;
         object-fit: contain;
       }
-      .support-card-heading {
+      .support-card-main {
         flex: 1;
         min-width: 0;
         display: flex;
-        align-items: baseline;
+        flex-direction: column;
+        gap: 3px;
+      }
+      .support-card-header-row {
+        display: flex;
+        align-items: center;
         justify-content: space-between;
-        gap: 6px;
+        gap: 8px;
+        width: 100%;
       }
       .support-card-title {
         font-size: 13px;
@@ -4885,11 +4934,17 @@
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+        flex: 1;
+      }
+      .support-card-meta {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
       }
       .support-card-time {
         font-size: 10.5px;
         color: rgba(255, 255, 255, 0.4);
-        flex-shrink: 0;
       }
       .support-card-unread {
         width: 7px;
@@ -4899,23 +4954,21 @@
         box-shadow: 0 0 8px #ffffff;
         flex-shrink: 0;
       }
-      .support-card-snippet {
-        font-size: 11.5px;
-        color: rgba(255, 255, 255, 0.5);
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        line-height: 1.3;
-        padding-left: 34px;
-        margin-top: -2px;
-      }
-      .support-card-footer {
+      .support-card-sub-row {
         display: flex;
         align-items: center;
         gap: 6px;
-        padding-left: 34px;
-        margin-top: 2px;
-        flex-wrap: wrap;
+        width: 100%;
+        overflow: hidden;
+      }
+      .support-card-snippet {
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.45);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        flex: 1;
+        min-width: 0;
       }
       .support-card-tag {
         display: inline-flex;
@@ -4926,6 +4979,7 @@
         font-size: 10px;
         font-weight: 700;
         line-height: 1.2;
+        flex-shrink: 0;
       }
       .support-card-tag.tag-bug {
         background: rgba(255, 255, 255, 0.08);
@@ -4947,20 +5001,36 @@
         border: 1px solid rgba(255, 255, 255, 0.22);
         color: #ffffff;
       }
-      .support-card-tag.tag-pri-high {
+      .support-card-priority {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 1.5px 6px;
+        border-radius: 6px;
+        font-size: 10px;
+        font-weight: 700;
+        line-height: 1.2;
+        flex-shrink: 0;
+      }
+      .support-card-priority.high {
         background: rgba(255, 255, 255, 0.12);
         border: 1px solid rgba(255, 255, 255, 0.24);
         color: #ffffff;
       }
-      .support-card-tag.tag-pri-med {
+      .support-card-priority.medium {
         background: rgba(255, 255, 255, 0.06);
         border: 1px solid rgba(255, 255, 255, 0.14);
         color: rgba(255, 255, 255, 0.85);
       }
-      .support-card-tag.tag-pri-low {
+      .support-card-priority.low {
         background: rgba(255, 255, 255, 0.04);
         border: 1px solid rgba(255, 255, 255, 0.1);
         color: rgba(255, 255, 255, 0.65);
+      }
+      .support-card-priority.pro {
+        background: #ffffff;
+        color: #000000;
+        border: none;
       }
       .support-sidebar-footer {
         padding: 10px 16px;
@@ -5104,25 +5174,64 @@
       }
       .support-action-btn {
         width: auto !important;
-        padding: 7px 13px !important;
+        padding: 6px 12px !important;
         font-size: 12px !important;
         font-weight: 600 !important;
-        border-radius: 10px !important;
+        border-radius: 9px !important;
         display: inline-flex !important;
         align-items: center !important;
         gap: 6px !important;
         cursor: pointer !important;
-        transition: all 0.2s ease !important;
+        transition: all 0.18s ease !important;
+      }
+      .support-action-btn.secondary-btn,
+      #btn-support-quick-actions,
+      #btn-support-close-ticket,
+      #btn-support-back {
+        background: rgba(255, 255, 255, 0.07) !important;
+        border: 1px solid rgba(255, 255, 255, 0.18) !important;
+        backdrop-filter: blur(16px) saturate(160%) !important;
+        -webkit-backdrop-filter: blur(16px) saturate(160%) !important;
+        color: #ffffff !important;
+      }
+      .support-action-btn.secondary-btn:hover,
+      #btn-support-quick-actions:hover,
+      #btn-support-close-ticket:hover,
+      #btn-support-back:hover {
+        background: rgba(255, 255, 255, 0.14) !important;
+        border-color: rgba(255, 255, 255, 0.35) !important;
+        box-shadow: 0 4px 16px rgba(255, 255, 255, 0.1) !important;
+        transform: translateY(-1px);
+      }
+      .support-action-btn.primary-btn,
+      #btn-support-reopen-ticket {
+        background: #ffffff !important;
+        color: #000000 !important;
+        border: none !important;
+        font-weight: 700 !important;
+        backdrop-filter: blur(16px) saturate(160%) !important;
+        -webkit-backdrop-filter: blur(16px) saturate(160%) !important;
+        box-shadow: 0 2px 14px rgba(255, 255, 255, 0.25) !important;
+      }
+      .support-action-btn.primary-btn:hover,
+      #btn-support-reopen-ticket:hover {
+        box-shadow: 0 4px 20px rgba(255, 255, 255, 0.4) !important;
+        transform: translateY(-1px);
       }
       .support-delete-btn {
-        padding: 7px 10px !important;
-        background: rgba(255, 255, 255, 0.04) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-        color: rgba(255, 255, 255, 0.7) !important;
+        padding: 6px 10px !important;
+        background: rgba(255, 75, 75, 0.1) !important;
+        border: 1px solid rgba(255, 75, 75, 0.28) !important;
+        backdrop-filter: blur(14px) !important;
+        -webkit-backdrop-filter: blur(14px) !important;
+        color: #ff6b6b !important;
       }
       .support-delete-btn:hover {
-        background: rgba(255, 255, 255, 0.12) !important;
+        background: rgba(255, 75, 75, 0.22) !important;
+        border-color: rgba(255, 75, 75, 0.5) !important;
         color: #ffffff !important;
+        box-shadow: 0 4px 16px rgba(255, 75, 75, 0.25) !important;
+        transform: translateY(-1px);
       }
       .support-popover-menu {
         position: absolute;
@@ -5130,7 +5239,7 @@
         top: 100%;
         margin-top: 8px;
         width: 230px;
-        background: rgba(16, 16, 22, 0.96);
+        background: rgba(14, 14, 18, 0.90);
         border: 1px solid rgba(255, 255, 255, 0.16);
         border-radius: 14px;
         padding: 8px;
@@ -5139,8 +5248,8 @@
         gap: 4px;
         z-index: 100;
         box-shadow: 0 16px 40px rgba(0, 0, 0, 0.85);
-        backdrop-filter: blur(28px);
-        -webkit-backdrop-filter: blur(28px);
+        backdrop-filter: blur(36px) saturate(180%);
+        -webkit-backdrop-filter: blur(36px) saturate(180%);
       }
       .support-popover-item {
         display: flex;
@@ -5149,23 +5258,28 @@
         width: 100%;
         padding: 8px 10px;
         border-radius: 8px;
-        background: transparent;
-        border: none;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid transparent;
         color: #ffffff;
         font-size: 12px;
         font-weight: 600;
         text-align: left;
         cursor: pointer;
-        transition: background 0.15s, transform 0.15s;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        transition: all 0.15s ease;
       }
       .support-popover-item:hover {
-        background: rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.2);
+        transform: translateY(-1px);
       }
       .support-popover-item.danger {
         color: rgba(255, 120, 120, 0.95);
       }
       .support-popover-item.danger:hover {
-        background: rgba(255, 75, 75, 0.12);
+        background: rgba(255, 75, 75, 0.15);
+        border-color: rgba(255, 75, 75, 0.3);
         color: #ff5252;
       }
       .support-popover-divider {
@@ -5179,6 +5293,8 @@
         display: flex;
         flex-direction: column;
         overflow: hidden;
+        background: radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.03) 0%, transparent 60%),
+                    radial-gradient(circle at 20% 80%, rgba(255, 255, 255, 0.02) 0%, transparent 60%);
       }
       .support-messages-scroll {
         flex: 1;
@@ -5200,17 +5316,20 @@
       .support-msg-row.me {
         justify-content: flex-end;
       }
+      .support-msg-row.me .support-msg-avatar {
+        display: none !important;
+      }
       .support-msg-row:not(.me) {
         justify-content: flex-start;
         align-items: flex-start;
       }
       .support-msg-avatar {
-        width: 34px;
-        height: 34px;
-        min-width: 34px;
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
         border-radius: 50%;
-        overflow: hidden;
-        background: rgba(255, 255, 255, 0.08);
+        position: relative;
+        background: rgba(255, 255, 255, 0.06);
         border: 1px solid rgba(255, 255, 255, 0.16);
         display: flex;
         align-items: center;
@@ -5222,8 +5341,41 @@
         user-select: none;
       }
       .support-msg-avatar:hover {
-        transform: scale(1.05);
-        border-color: rgba(255, 255, 255, 0.35);
+        transform: scale(1.06);
+        border-color: rgba(255, 255, 255, 0.4);
+      }
+      .support-msg-avatar .profile-avatar-wrapper {
+        width: 100% !important;
+        height: 100% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        position: relative !important;
+      }
+      .support-msg-avatar .profile-avatar-img {
+        width: 100% !important;
+        height: 100% !important;
+        border-radius: 50% !important;
+        object-fit: cover !important;
+      }
+      .support-msg-avatar .profile-avatar-frame {
+        position: absolute !important;
+        top: -15% !important;
+        left: -15% !important;
+        width: 130% !important;
+        height: 130% !important;
+        pointer-events: none !important;
+      }
+      .support-msg-avatar .profile-avatar-fallback {
+        width: 100% !important;
+        height: 100% !important;
+        border-radius: 50% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 13px !important;
+        font-weight: 700 !important;
+        color: #ffffff !important;
       }
       .support-msg-avatar img {
         width: 100%;
@@ -5248,8 +5400,8 @@
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
       }
       .support-msg-row.me .support-msg-bubble {
-        background: rgba(255, 255, 255, 0.14);
-        border: 1px solid rgba(255, 255, 255, 0.25);
+        background: rgba(255, 255, 255, 0.15) !important;
+        border: 1px solid rgba(255, 255, 255, 0.28) !important;
         border-bottom-right-radius: 4px;
         color: #ffffff;
       }
@@ -5260,8 +5412,12 @@
         color: #ffffff;
       }
       .support-msg-row.operator:not(.me) .support-msg-bubble {
-        background: rgba(255, 255, 255, 0.08);
-        border-color: rgba(255, 255, 255, 0.22);
+        background: rgba(255, 255, 255, 0.08) !important;
+        border-color: rgba(255, 255, 255, 0.24) !important;
+      }
+      .support-msg-row.user:not(.me) .support-msg-bubble {
+        background: rgba(255, 255, 255, 0.05) !important;
+        border-color: rgba(255, 255, 255, 0.14) !important;
       }
       .support-msg-header {
         display: flex;
@@ -5280,11 +5436,16 @@
       .support-msg-sender:hover {
         text-decoration: underline;
       }
+      .support-msg-handle {
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.45);
+        font-weight: 500;
+      }
       .support-operator-badge {
         display: inline-flex;
         align-items: center;
         gap: 4px;
-        padding: 1px 7px;
+        padding: 2px 7px;
         border-radius: 100px;
         background: rgba(255, 255, 255, 0.12);
         border: 1px solid rgba(255, 255, 255, 0.22);
@@ -5292,6 +5453,29 @@
         font-weight: 700;
         color: #ffffff;
         letter-spacing: 0.02em;
+      }
+      .support-chat-empty {
+        margin: auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        max-width: 320px;
+        padding: 30px 20px;
+        user-select: none;
+      }
+      .support-chat-empty-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: #ffffff;
+        margin-top: 12px;
+        margin-bottom: 6px;
+      }
+      .support-chat-empty-desc {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.45);
+        line-height: 1.45;
       }
       .support-msg-body {
         font-size: 13.5px;
@@ -5376,7 +5560,9 @@
         padding: 6px 12px;
         border-radius: 8px;
         background: rgba(255, 255, 255, 0.06);
-        border: 1px solid rgba(255, 255, 255, 0.14);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
         color: rgba(255, 255, 255, 0.85);
         font-size: 11.5px;
         font-weight: 600;
@@ -5388,9 +5574,10 @@
         gap: 5px;
       }
       .support-template-btn:hover {
-        background: rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.14);
         color: #ffffff;
-        border-color: rgba(255, 255, 255, 0.28);
+        border-color: rgba(255, 255, 255, 0.32);
+        box-shadow: 0 4px 14px rgba(255, 255, 255, 0.06);
         transform: translateY(-1px);
       }
       .support-action-btn {
@@ -5402,6 +5589,8 @@
         display: inline-flex !important;
         align-items: center !important;
         gap: 6px !important;
+        backdrop-filter: blur(14px) !important;
+        -webkit-backdrop-filter: blur(14px) !important;
         transition: all 0.2s ease !important;
       }
       #support-typing-indicator {
@@ -5431,16 +5620,17 @@
         overflow-x: auto;
         gap: 8px;
         padding: 8px 20px;
-        background: rgba(14, 14, 18, 0.9);
-        backdrop-filter: blur(20px);
+        background: rgba(14, 14, 18, 0.82);
+        backdrop-filter: blur(28px) saturate(180%);
+        -webkit-backdrop-filter: blur(28px) saturate(180%);
         border-top: 1px solid rgba(255, 255, 255, 0.08);
         scrollbar-width: none;
       }
       .support-composer-dock {
         flex-shrink: 0;
-        background: rgba(12, 12, 16, 0.94);
-        backdrop-filter: blur(32px) saturate(180%);
-        -webkit-backdrop-filter: blur(32px) saturate(180%);
+        background: rgba(12, 12, 16, 0.85);
+        backdrop-filter: blur(36px) saturate(190%);
+        -webkit-backdrop-filter: blur(36px) saturate(190%);
         border-top: 1px solid rgba(255, 255, 255, 0.1);
         padding: 12px 20px 14px;
         display: flex;
@@ -5457,8 +5647,10 @@
         width: 42px;
         height: 42px;
         border-radius: 12px;
-        background: rgba(255, 255, 255, 0.06);
-        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: rgba(255, 255, 255, 0.07);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -5467,14 +5659,18 @@
         flex-shrink: 0;
       }
       .support-compose-attach-btn:hover {
-        background: rgba(255, 255, 255, 0.12);
-        border-color: rgba(255, 255, 255, 0.25);
+        background: rgba(255, 255, 255, 0.14);
+        border-color: rgba(255, 255, 255, 0.3);
+        box-shadow: 0 4px 14px rgba(255, 255, 255, 0.08);
+        transform: translateY(-1px);
       }
       .support-composer-inner textarea#support-msg-input {
         flex: 1;
         border-radius: 12px;
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
         padding: 11px 16px;
         color: #ffffff;
         font-size: 13.5px;
@@ -5484,11 +5680,11 @@
         max-height: 120px;
         min-height: 42px;
         line-height: 1.4;
-        transition: border-color 0.2s;
+        transition: border-color 0.2s, background 0.2s;
       }
       .support-composer-inner textarea#support-msg-input:focus {
-        border-color: rgba(255, 255, 255, 0.35);
-        background: rgba(255, 255, 255, 0.07);
+        border-color: rgba(255, 255, 255, 0.38);
+        background: rgba(255, 255, 255, 0.08);
       }
       .support-send-btn {
         width: auto !important;
@@ -5499,17 +5695,19 @@
         color: #000000 !important;
         font-weight: 700 !important;
         border: none !important;
+        backdrop-filter: blur(16px) !important;
+        -webkit-backdrop-filter: blur(16px) !important;
         cursor: pointer !important;
         display: flex !important;
         align-items: center !important;
         gap: 6px !important;
-        box-shadow: 0 4px 14px rgba(255, 255, 255, 0.16) !important;
+        box-shadow: 0 4px 16px rgba(255, 255, 255, 0.22) !important;
         flex-shrink: 0 !important;
         transition: all 0.2s ease !important;
       }
       .support-send-btn:hover {
         transform: translateY(-1px);
-        box-shadow: 0 6px 20px rgba(255, 255, 255, 0.25) !important;
+        box-shadow: 0 6px 22px rgba(255, 255, 255, 0.35) !important;
       }
       .support-composer-hint {
         font-size: 11px;
@@ -5599,11 +5797,18 @@
         color: #000000 !important;
         border-radius: 10px !important;
         border: none !important;
+        backdrop-filter: blur(16px) !important;
+        -webkit-backdrop-filter: blur(16px) !important;
         cursor: pointer !important;
-        box-shadow: 0 4px 14px rgba(255, 255, 255, 0.2) !important;
+        box-shadow: 0 4px 16px rgba(255, 255, 255, 0.22) !important;
         display: inline-flex !important;
         align-items: center !important;
         gap: 6px !important;
+        transition: all 0.2s ease !important;
+      }
+      .support-reopen-cta:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 22px rgba(255, 255, 255, 0.35) !important;
       }
 
       /* Empty Welcome View */
@@ -5621,11 +5826,11 @@
         max-width: 540px;
         padding: 36px 30px;
         border-radius: 24px;
-        background: rgba(255, 255, 255, 0.02);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        backdrop-filter: blur(28px);
-        -webkit-backdrop-filter: blur(28px);
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        backdrop-filter: blur(36px) saturate(180%);
+        -webkit-backdrop-filter: blur(36px) saturate(180%);
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.7), inset 0 0 30px rgba(255, 255, 255, 0.02);
       }
       .support-welcome-icon-wrap {
         width: 72px;
@@ -5633,6 +5838,8 @@
         border-radius: 22px;
         background: rgba(255, 255, 255, 0.06);
         border: 1px solid rgba(255, 255, 255, 0.14);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -5662,16 +5869,18 @@
         background: #ffffff !important;
         color: #000000 !important;
         border: none !important;
+        backdrop-filter: blur(16px) !important;
+        -webkit-backdrop-filter: blur(16px) !important;
         cursor: pointer !important;
         display: inline-flex !important;
         align-items: center !important;
         gap: 8px !important;
-        box-shadow: 0 4px 20px rgba(255, 255, 255, 0.2) !important;
+        box-shadow: 0 4px 20px rgba(255, 255, 255, 0.22) !important;
         transition: all 0.2s ease !important;
       }
       .support-welcome-cta:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 28px rgba(255, 255, 255, 0.3) !important;
+        box-shadow: 0 8px 28px rgba(255, 255, 255, 0.35) !important;
       }
       .support-quick-starters {
         display: grid;
@@ -5682,19 +5891,29 @@
       .support-starter-card {
         padding: 14px;
         border-radius: 14px;
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(20px) saturate(160%);
+        -webkit-backdrop-filter: blur(20px) saturate(160%);
         cursor: pointer;
         transition: all 0.2s ease;
       }
       .support-starter-card:hover {
-        background: rgba(255, 255, 255, 0.08);
-        border-color: rgba(255, 255, 255, 0.22);
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.26);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
         transform: translateY(-2px);
       }
       .starter-emoji {
         font-size: 20px;
         margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+      }
+      .starter-emoji img {
+        width: 26px;
+        height: 26px;
+        object-fit: contain;
       }
       .starter-title {
         font-size: 12.5px;
@@ -5713,8 +5932,8 @@
         max-width: 480px !important;
         padding: 26px !important;
         text-align: left !important;
-        background: rgba(14, 14, 18, 0.96) !important;
-        backdrop-filter: blur(36px) saturate(180%) !important;
+        background: rgba(14, 14, 18, 0.94) !important;
+        backdrop-filter: blur(40px) saturate(190%) !important;
         border: 1px solid rgba(255, 255, 255, 0.16) !important;
         border-radius: 24px !important;
         box-shadow: 0 24px 70px rgba(0, 0, 0, 0.9) !important;
@@ -5725,6 +5944,8 @@
         border-radius: 14px;
         background: rgba(255, 255, 255, 0.06);
         border: 1px solid rgba(255, 255, 255, 0.14);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -5765,21 +5986,33 @@
         border-radius: 10px;
         font-size: 12px;
         font-weight: 600;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        color: rgba(255, 255, 255, 0.7);
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        color: rgba(255, 255, 255, 0.75);
         cursor: pointer;
         transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .category-chip img {
+        width: 14px;
+        height: 14px;
+        object-fit: contain;
       }
       .category-chip:hover {
-        background: rgba(255, 255, 255, 0.09);
+        background: rgba(255, 255, 255, 0.12);
         color: #ffffff;
+        border-color: rgba(255, 255, 255, 0.28);
       }
       .category-chip.active {
         background: #ffffff;
         color: #000000;
         border-color: #ffffff;
         font-weight: 700;
+        box-shadow: 0 2px 10px rgba(255, 255, 255, 0.25);
       }
       .support-priority-selector {
         display: flex;
@@ -5791,22 +6024,35 @@
         border-radius: 10px;
         font-size: 12px;
         font-weight: 600;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        color: rgba(255, 255, 255, 0.7);
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        color: rgba(255, 255, 255, 0.75);
         cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
         text-align: center;
         transition: all 0.2s ease;
       }
+      .priority-chip img {
+        width: 14px;
+        height: 14px;
+        object-fit: contain;
+      }
       .priority-chip:hover {
-        background: rgba(255, 255, 255, 0.09);
+        background: rgba(255, 255, 255, 0.12);
         color: #ffffff;
+        border-color: rgba(255, 255, 255, 0.28);
       }
       .priority-chip.active {
-        background: rgba(255, 255, 255, 0.18);
+        background: rgba(255, 255, 255, 0.22);
         color: #ffffff;
-        border-color: rgba(255, 255, 255, 0.4);
+        border-color: rgba(255, 255, 255, 0.5);
         font-weight: 700;
+        box-shadow: 0 2px 10px rgba(255, 255, 255, 0.15);
       }
       .support-modal-field input,
       .support-modal-field textarea {
@@ -5815,6 +6061,8 @@
         border-radius: 12px;
         background: rgba(255, 255, 255, 0.05);
         border: 1px solid rgba(255, 255, 255, 0.14);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
         color: #ffffff;
         font-size: 13.5px;
         box-sizing: border-box;
@@ -5836,13 +6084,20 @@
         padding: 7px 14px !important;
         font-size: 12px !important;
         border-radius: 10px !important;
-        background: rgba(255, 255, 255, 0.06) !important;
-        border: 1px solid rgba(255, 255, 255, 0.14) !important;
-        color: rgba(255, 255, 255, 0.85) !important;
+        background: rgba(255, 255, 255, 0.07) !important;
+        border: 1px solid rgba(255, 255, 255, 0.16) !important;
+        backdrop-filter: blur(14px) !important;
+        -webkit-backdrop-filter: blur(14px) !important;
+        color: rgba(255, 255, 255, 0.9) !important;
         display: inline-flex !important;
         align-items: center !important;
         gap: 6px !important;
         cursor: pointer !important;
+        transition: all 0.2s ease !important;
+      }
+      .modal-attach-btn:hover {
+        background: rgba(255, 255, 255, 0.14) !important;
+        border-color: rgba(255, 255, 255, 0.3) !important;
       }
       .support-modal-actions {
         display: flex;
@@ -8011,17 +8266,23 @@
 
                   <div class="support-quick-starters">
                     <div class="support-starter-card" onclick="SupportSystem.openCreateModal('Вопрос')">
-                      <div class="starter-emoji">💬</div>
+                      <div class="starter-emoji">
+                        <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Speech%20Balloon.webp" alt="Вопрос">
+                      </div>
                       <div class="starter-title">Вопрос по сервису</div>
                       <div class="starter-desc">Помощь по комнатам, музыке, профилю и функциям</div>
                     </div>
                     <div class="support-starter-card" onclick="SupportSystem.openCreateModal('Баг')">
-                      <div class="starter-emoji">🐛</div>
+                      <div class="starter-emoji">
+                        <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Bug.webp" alt="Баг">
+                      </div>
                       <div class="starter-title">Сообщить о баге</div>
                       <div class="starter-desc">Неполадки воспроизведения, звука или интерфейса</div>
                     </div>
                     <div class="support-starter-card" onclick="SupportSystem.openCreateModal('Жалоба')">
-                      <div class="starter-emoji">🚩</div>
+                      <div class="starter-emoji">
+                        <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Triangular%20Flag.webp" alt="Жалоба">
+                      </div>
                       <div class="starter-title">Жалоба на нарушение</div>
                       <div class="starter-desc">Оскорбления, спам или неприемлемое поведение</div>
                     </div>
@@ -11392,10 +11653,22 @@
         <div class="support-modal-field">
           <label class="support-modal-label">Категория</label>
           <div class="support-category-selector" id="create-ticket-category-chips">
-            <button type="button" class="category-chip active" data-cat="Вопрос">💬 Вопрос</button>
-            <button type="button" class="category-chip" data-cat="Баг">🐛 Баг</button>
-            <button type="button" class="category-chip" data-cat="Жалоба">🚩 Жалоба</button>
-            <button type="button" class="category-chip" data-cat="Идея">💡 Идея</button>
+            <button type="button" class="category-chip active" data-cat="Вопрос">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Speech%20Balloon.webp" alt="">
+              <span>Вопрос</span>
+            </button>
+            <button type="button" class="category-chip" data-cat="Баг">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Bug.webp" alt="">
+              <span>Баг</span>
+            </button>
+            <button type="button" class="category-chip" data-cat="Жалоба">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Triangular%20Flag.webp" alt="">
+              <span>Жалоба</span>
+            </button>
+            <button type="button" class="category-chip" data-cat="Идея">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Light%20Bulb.webp" alt="">
+              <span>Идея</span>
+            </button>
           </div>
           <input type="hidden" id="support-new-ticket-category" value="Вопрос">
         </div>
@@ -11404,9 +11677,18 @@
         <div class="support-modal-field">
           <label class="support-modal-label">Приоритет</label>
           <div class="support-priority-selector" id="create-ticket-priority-chips">
-            <button type="button" class="priority-chip" data-pri="Обычный">🟢 Обычный</button>
-            <button type="button" class="priority-chip active" data-pri="Средний">🟡 Средний</button>
-            <button type="button" class="priority-chip" data-pri="Высокий">🔴 Высокий</button>
+            <button type="button" class="priority-chip" data-pri="Обычный">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Green%20Heart.webp" alt="">
+              <span>Обычный</span>
+            </button>
+            <button type="button" class="priority-chip active" data-pri="Средний">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Yellow%20Heart.webp" alt="">
+              <span>Средний</span>
+            </button>
+            <button type="button" class="priority-chip" data-pri="Высокий">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Heart%20On%20Fire.webp" alt="">
+              <span>Высокий</span>
+            </button>
           </div>
           <input type="hidden" id="support-new-ticket-priority" value="Средний">
         </div>
@@ -11616,14 +11898,17 @@
               Аналитика и экспорт
             </h4>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px">
-              <button class="secondary-btn" style="font-size: 11.5px; padding: 9px 10px; font-weight: 600; border-radius: 10px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); color: #fff;" onclick="SupportSystem.exportAllTickets()">
-                📥 Экспорт активных
+              <button class="secondary-btn" style="font-size: 11.5px; padding: 9px 10px; font-weight: 600; border-radius: 10px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); color: #fff; display: inline-flex; align-items: center; justify-content: center; gap: 6px;" onclick="SupportSystem.exportAllTickets()">
+                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Package.webp" style="width: 14px; height: 14px; vertical-align: -1px;">
+                <span>Экспорт активных</span>
               </button>
-              <button class="secondary-btn" style="font-size: 11.5px; padding: 9px 10px; font-weight: 600; border-radius: 10px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); color: #fff;" onclick="SupportSystem.exportArchiveTickets()">
-                📥 Экспорт архива
+              <button class="secondary-btn" style="font-size: 11.5px; padding: 9px 10px; font-weight: 600; border-radius: 10px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); color: #fff; display: inline-flex; align-items: center; justify-content: center; gap: 6px;" onclick="SupportSystem.exportArchiveTickets()">
+                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Package.webp" style="width: 14px; height: 14px; vertical-align: -1px;">
+                <span>Экспорт архива</span>
               </button>
-              <button class="secondary-btn" style="font-size: 11.5px; padding: 9px 10px; font-weight: 600; border-radius: 10px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); color: #fff; grid-column: span 2;" onclick="SupportSystem.refreshCreatorStats()">
-                🔄 Обновить показатели
+              <button class="secondary-btn" style="font-size: 11.5px; padding: 9px 10px; font-weight: 600; border-radius: 10px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); color: #fff; grid-column: span 2; display: inline-flex; align-items: center; justify-content: center; gap: 6px;" onclick="SupportSystem.refreshCreatorStats()">
+                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Counterclockwise%20Arrows%20Button.webp" style="width: 14px; height: 14px; vertical-align: -1px;">
+                <span>Обновить показатели</span>
               </button>
             </div>
           </div>
