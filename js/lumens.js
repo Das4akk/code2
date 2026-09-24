@@ -489,7 +489,7 @@ class LumenManager {
         const avatar = item.profile.avatar || "assets/avatars/default.png";
 
         return `
-          <div style="display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; background: ${isMe ? 'rgba(255, 215, 0, 0.08)' : 'rgba(255, 255, 255, 0.03)'}; border: 1px solid ${isMe ? 'rgba(255, 215, 0, 0.3)' : 'rgba(255, 255, 255, 0.06)'}; border-radius: 12px; cursor: pointer; transition: all 0.15s ease;" onclick="Utils.closeModal('modal-lumens-info'); ProfileManager.openViewProfileModal('${item.uid}')">
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; background: ${isMe ? 'rgba(255, 215, 0, 0.08)' : 'rgba(255, 255, 255, 0.03)'}; border: 1px solid ${isMe ? 'rgba(255, 215, 0, 0.3)' : 'rgba(255, 255, 255, 0.06)'}; border-radius: 12px; cursor: pointer; transition: all 0.15s ease;" onclick="Utils.closeModal('modal-lumens-info'); ProfileManager.showProfile('${item.uid}')">
             <div style="display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
               <div style="display: flex; align-items: center; justify-content: center; width: 24px; flex-shrink: 0;">
                 ${rankBadge}

@@ -921,7 +921,7 @@ class SupportSystem {
                 </div>
                 ${isAdmin ? `
                   <div style="display: flex; gap: 8px;">
-                    <button class="secondary-btn" style="padding: 6px 12px; font-size: 11.5px; font-weight: 600; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.16); background: rgba(255, 255, 255, 0.06); color: #ffffff; cursor: pointer;" onclick="ProfileManager.openViewProfileModal('${Utils.escapeHtml(targetUid)}')">
+                    <button class="secondary-btn" style="padding: 6px 12px; font-size: 11.5px; font-weight: 600; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.16); background: rgba(255, 255, 255, 0.06); color: #ffffff; cursor: pointer;" onclick="ProfileManager.showUserMiniature('${Utils.escapeHtml(targetUid)}')">
                       Профиль нарушителя
                     </button>
                     <button class="primary-btn" style="padding: 6px 14px; font-size: 11.5px; font-weight: 700; border-radius: 8px; cursor: pointer; background: #ffffff; color: #000000; border: none; box-shadow: 0 4px 14px rgba(255, 255, 255, 0.18);" onclick="AdminPanel.openUserInAdmin('${Utils.escapeHtml(targetUid)}')">
@@ -936,7 +936,7 @@ class SupportSystem {
                   <div style="font-size: 10px; color: rgba(255, 255, 255, 0.45); text-transform: uppercase; font-weight: 700; margin-bottom: 6px; letter-spacing: 0.4px;">
                     Отправитель жалобы:
                   </div>
-                  <div class="report-user-card-pill" style="display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 4px; border-radius: 8px;" onclick="ProfileManager.openViewProfileModal('${Utils.escapeHtml(reporterUid)}')">
+                  <div class="report-user-card-pill" style="display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 4px; border-radius: 8px;" onclick="ProfileManager.showUserMiniature('${Utils.escapeHtml(reporterUid)}')">
                     <div style="width: 34px; height: 34px; border-radius: 50%; overflow: visible; flex-shrink: 0; background: #111; border: 1px solid rgba(255,255,255,0.15);">
                       ${ProfileManager.getAvatarHtml(reporterProf)}
                     </div>
@@ -955,7 +955,7 @@ class SupportSystem {
                   <div style="font-size: 10px; color: rgba(255, 255, 255, 0.7); text-transform: uppercase; font-weight: 700; margin-bottom: 6px; letter-spacing: 0.4px;">
                     На кого пожаловались:
                   </div>
-                  <div class="report-user-card-pill target" style="display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 4px; border-radius: 8px;" onclick="ProfileManager.openViewProfileModal('${Utils.escapeHtml(targetUid)}')">
+                  <div class="report-user-card-pill target" style="display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 4px; border-radius: 8px;" onclick="ProfileManager.showUserMiniature('${Utils.escapeHtml(targetUid)}')">
                     <div style="width: 34px; height: 34px; border-radius: 50%; overflow: visible; flex-shrink: 0; background: #111; border: 1px solid rgba(255,255,255,0.3);">
                       ${ProfileManager.getAvatarHtml(targetProf)}
                     </div>
@@ -1189,7 +1189,7 @@ class SupportSystem {
                 const avatarHtml = ProfileManager.getAvatarHtml(userProfile);
                 return dateHeaderHtml + `
                   <div class="support-msg-row operator">
-                    <div class="support-msg-avatar" onclick="ProfileManager.openViewProfileModal('${Utils.escapeHtml(mUid)}')" title="${mName}">
+                    <div class="support-msg-avatar" onclick="ProfileManager.showUserMiniature('${Utils.escapeHtml(mUid)}')" title="${mName}">
                       ${avatarHtml}
                     </div>
                     <div class="support-msg-bubble">
@@ -1198,7 +1198,7 @@ class SupportSystem {
                           <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Briefcase.webp" class="emoji-animated-xs" alt="">
                           Поддержка COWIO
                         </span>
-                        <span class="support-msg-sender" onclick="ProfileManager.openViewProfileModal('${Utils.escapeHtml(mUid)}')">${mName}</span>
+                        <span class="support-msg-sender" onclick="ProfileManager.showUserMiniature('${Utils.escapeHtml(mUid)}')">${mName}</span>
                       </div>
                       <div class="support-msg-body">${Utils.escapeHtml(m.text || "")}</div>
                       ${m.image ? `<img src="${Utils.escapeHtml(m.image)}" class="support-msg-image" alt="Вложение" onclick="SupportSystem.viewImage(this.src)">` : ""}
@@ -1211,12 +1211,12 @@ class SupportSystem {
                 const avatarHtml = ProfileManager.getAvatarHtml(userProfile);
                 return dateHeaderHtml + `
                   <div class="support-msg-row user">
-                    <div class="support-msg-avatar" onclick="ProfileManager.openViewProfileModal('${Utils.escapeHtml(mUid)}')" title="${mName}">
+                    <div class="support-msg-avatar" onclick="ProfileManager.showUserMiniature('${Utils.escapeHtml(mUid)}')" title="${mName}">
                       ${avatarHtml}
                     </div>
                     <div class="support-msg-bubble">
                       <div class="support-msg-header">
-                        <span class="support-msg-sender" onclick="ProfileManager.openViewProfileModal('${Utils.escapeHtml(mUid)}')">${mName}</span>
+                        <span class="support-msg-sender" onclick="ProfileManager.showUserMiniature('${Utils.escapeHtml(mUid)}')">${mName}</span>
                         <span class="support-msg-handle">@${mUsername}</span>
                       </div>
                       <div class="support-msg-body">${Utils.escapeHtml(m.text || "")}</div>

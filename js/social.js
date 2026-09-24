@@ -827,7 +827,12 @@ class DirectMessages {
       id: chatId,
     };
 
-    Utils.$("dm-chat-title").innerText = `Чат: ${targetName}`;
+    const titleEl = Utils.$("dm-chat-title");
+    if (titleEl) {
+      titleEl.innerText = `Чат: ${targetName}`;
+      titleEl.style.cursor = "pointer";
+      titleEl.onclick = () => ProfileManager.showUserMiniature(targetUid);
+    }
 
     // Fetch last seen for target
     get(ref(db, `users/${targetUid}/status`)).then((snap) => {

@@ -1,17 +1,10 @@
 class ProfileManager {
   static showProfile(uid) {
-    if (
-      document.getElementById("room-screen")?.classList.contains("active") ||
-      AppState.currentRoomId
-    ) {
-      if (
-        window.RoomManager &&
-        typeof window.RoomManager.showUserMiniature === "function"
-      ) {
-        return window.RoomManager.showUserMiniature(uid);
-      }
-    }
-    return this.openViewProfileModal(uid);
+    return this.openViewProfileModal(uid, true);
+  }
+
+  static showUserMiniature(uid) {
+    return this.openViewProfileModal(uid, true);
   }
 
   static getRoleBadgeHtml(profile, uid = null) {
@@ -1737,6 +1730,7 @@ class ProfileManager {
       sProfile.style.maxWidth = "none";
       sProfile.style.maxHeight = "none";
       sProfile.style.height = "100%";
+      sProfile.style.aspectRatio = "unset";
       sProfile.style.zIndex = "1";
       sProfile.style.background = "transparent";
       sProfile.style.borderRadius = "0";
@@ -2015,7 +2009,7 @@ class ProfileManager {
     }
   }
 
-  static async openViewProfileModal(targetUid) {
+  static async openViewProfileModal(targetUid, forceOverlay = false) {
     if (!targetUid) return;
     if (!this._profileReqCounter) this._profileReqCounter = 0;
     const thisReqId = ++this._profileReqCounter;
@@ -2033,7 +2027,7 @@ class ProfileManager {
     if (!sProfile) return;
     const vModal = sProfile;
 
-    const isRoom = document.getElementById("room-screen")?.classList.contains("active");
+    const isRoom = forceOverlay || document.getElementById("room-screen")?.classList.contains("active");
 
     if (isRoom) {
        // Save original location in lobby DOM
@@ -2050,30 +2044,41 @@ class ProfileManager {
        if (!backdrop) {
          backdrop = document.createElement("div");
          backdrop.id = "profile-overlay-backdrop";
-         backdrop.style.cssText = "position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); z-index: 99998; display: block;";
+         backdrop.style.cssText = "position: fixed; inset: 0; background: rgba(0,0,0,0.72); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 99998; display: block;";
          backdrop.onclick = () => ProfileManager.closeProfileOverlay();
          document.body.appendChild(backdrop);
        } else {
-         backdrop.style.display = "block";
+         backdrop.style.cssText = "position: fixed; inset: 0; background: rgba(0,0,0,0.72); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 99998; display: block;";
        }
 
-       // Make it a modal overlay on top of the room
+       if (!window._profileOverlayEscapeBound) {
+         window._profileOverlayEscapeBound = true;
+         window.addEventListener("keydown", (e) => {
+           if (e.key === "Escape") {
+             ProfileManager.closeProfileOverlay();
+           }
+         });
+       }
+
+       // Make it a horizontal (16:9 widescreen) modal overlay with translucent frosted glass blur
        sProfile.style.setProperty("position", "fixed", "important");
        sProfile.style.setProperty("top", "50%", "important");
        sProfile.style.setProperty("left", "50%", "important");
        sProfile.style.setProperty("transform", "translate(-50%, -50%)", "important");
-       sProfile.style.setProperty("width", "92%", "important");
-       sProfile.style.setProperty("max-width", "820px", "important");
+       sProfile.style.setProperty("width", "min(94vw, 940px)", "important");
+       sProfile.style.setProperty("max-width", "940px", "important");
+       sProfile.style.setProperty("aspect-ratio", "16 / 9", "important");
        sProfile.style.setProperty("max-height", "88vh", "important");
        sProfile.style.setProperty("height", "auto", "important");
        sProfile.style.setProperty("overflow-y", "auto", "important");
        sProfile.style.setProperty("overflow-x", "hidden", "important");
        sProfile.style.setProperty("z-index", "99999", "important");
-       sProfile.style.setProperty("background", "rgba(18, 18, 22, 0.97)", "important");
-       sProfile.style.setProperty("border-radius", "24px", "important");
-       sProfile.style.setProperty("box-shadow", "0 25px 80px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.12)", "important");
-       sProfile.style.setProperty("border", "1px solid rgba(255,255,255,0.12)", "important");
-       sProfile.style.setProperty("backdrop-filter", "blur(24px)", "important");
+       sProfile.style.setProperty("background", "rgba(10, 10, 14, 0.45)", "important");
+       sProfile.style.setProperty("border-radius", "20px", "important");
+       sProfile.style.setProperty("box-shadow", "0 25px 80px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.14) inset", "important");
+       sProfile.style.setProperty("border", "1px solid rgba(255,255,255,0.15)", "important");
+       sProfile.style.setProperty("backdrop-filter", "blur(24px) saturate(180%)", "important");
+       sProfile.style.setProperty("-webkit-backdrop-filter", "blur(24px) saturate(180%)", "important");
        sProfile.style.display = "flex";
        sProfile.style.flexDirection = "column";
        
@@ -2082,9 +2087,9 @@ class ProfileManager {
            btn.id = "profile-overlay-close";
            btn.innerHTML = "✖";
            btn.title = "Закрыть профиль";
-           btn.style.cssText = "position: absolute; top: 16px; right: 16px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 50%; width: 38px; height: 38px; cursor: pointer; z-index: 100000; font-size: 16px; display: flex; align-items: center; justify-content: center; transition: background 0.2s, transform 0.2s;";
-           btn.onmouseover = () => { btn.style.background = "rgba(255,255,255,0.25)"; btn.style.transform = "scale(1.05)"; };
-           btn.onmouseout = () => { btn.style.background = "rgba(255,255,255,0.15)"; btn.style.transform = "scale(1)"; };
+           btn.style.cssText = "position: absolute; top: 16px; right: 16px; background: rgba(0,0,0,0.65); border: 1px solid rgba(255,255,255,0.25); color: white; border-radius: 50%; width: 36px; height: 36px; cursor: pointer; z-index: 100000; font-size: 16px; display: flex; align-items: center; justify-content: center; transition: background 0.2s, transform 0.2s;";
+           btn.onmouseover = () => { btn.style.background = "rgba(0,0,0,0.85)"; btn.style.transform = "scale(1.05)"; };
+           btn.onmouseout = () => { btn.style.background = "rgba(0,0,0,0.65)"; btn.style.transform = "scale(1)"; };
            btn.onclick = () => {
                ProfileManager.closeProfileOverlay();
            };
@@ -3218,14 +3223,16 @@ class ProfileManager {
                 </div>
                 <div class="${isOnline ? "indicator-pulsing-online" : ""}" style="
                   position: absolute;
-                  bottom: -1px;
-                  right: -1px;
-                  width: 13px;
-                  height: 13px;
+                  bottom: -2px;
+                  right: -2px;
+                  width: 14px;
+                  height: 14px;
                   border-radius: 50%;
                   background: ${isOnline ? "#22c55e" : "#64748b"};
                   border: 2.5px solid #10131e;
-                  box-shadow: ${isOnline ? "0 0 8px rgba(34, 197, 94, 0.8)" : "none"};
+                  box-shadow: ${isOnline ? "0 0 8px rgba(34, 197, 94, 0.85)" : "none"};
+                  z-index: 10;
+                  pointer-events: none;
                 "></div>
               </div>
               <div style="flex: 1; min-width: 0; text-align: left;">
@@ -3234,27 +3241,31 @@ class ProfileManager {
                   ${roleBadge}
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: rgba(255,255,255,0.55); margin-top: 3px;">
-                  <span style="color: var(--accent); font-weight: 600;">@${Utils.escapeHtml(prof.username || "user")}</span>
+                  <span style="color: rgba(255, 255, 255, 0.65); font-weight: 600;">@${Utils.escapeHtml(prof.username || "user")}</span>
                   <span>•</span>
                   <span style="color: ${isOnline ? "#22c55e" : "rgba(255,255,255,0.5)"}; font-weight: ${isOnline ? "600" : "400"};">${statusText}</span>
                 </div>
               </div>
-              <div style="
-                width: 32px;
-                height: 32px;
-                border-radius: 50%;
-                background: rgba(255, 255, 255, 0.06);
-                border: 1px solid rgba(255, 255, 255, 0.12);
-                backdrop-filter: blur(8px);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                flex-shrink: 0;
-                color: rgba(255, 255, 255, 0.7);
-              ">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="9 18 15 12 9 6"></polyline>
-                </svg>
+              <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+                <button type="button" class="btn-friend-view-profile" data-fuid="${fUid}" style="
+                  display: inline-flex;
+                  align-items: center;
+                  gap: 6px;
+                  padding: 7px 13px;
+                  border-radius: 12px;
+                  background: rgba(255, 255, 255, 0.1);
+                  border: 1px solid rgba(255, 255, 255, 0.18);
+                  color: #ffffff;
+                  font-size: 12.5px;
+                  font-weight: 600;
+                  cursor: pointer;
+                  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                " onmouseover="this.style.background='rgba(255,255,255,0.22)'; this.style.borderColor='rgba(255,255,255,0.35)';" onmouseout="this.style.background='rgba(255,255,255,0.1)'; this.style.borderColor='rgba(255,255,255,0.18)';">
+                  <span>Профиль</span>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                  </svg>
+                </button>
               </div>
             </div>
           `;
@@ -3263,10 +3274,9 @@ class ProfileManager {
         listEl.querySelectorAll(".tiktok-friend-row").forEach((row) => {
           row.onclick = () => {
             const fUid = row.dataset.fuid;
-            if (fUid) {
-              ProfileManager.closeFriendsListModal();
-              ProfileManager.openViewProfileModal(fUid);
-            }
+            if (!fUid) return;
+            ProfileManager.closeFriendsListModal();
+            ProfileManager.openViewProfileModal(fUid);
           };
         });
       };

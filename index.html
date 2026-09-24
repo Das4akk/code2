@@ -2545,8 +2545,9 @@
       .modal {
         position: fixed;
         inset: 0;
-        background: rgba(0, 0, 0, 0.85);
-        backdrop-filter: blur(8px);
+        background: rgba(0, 0, 0, 0.65) !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
         display: none;
         align-items: center;
         justify-content: center;
@@ -2566,10 +2567,12 @@
         transition: 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         max-height: calc(100% - 32px);
         overflow-y: auto;
-        background: var(--panel);
-        border: 1px solid var(--border-light);
+        background: rgba(18, 18, 22, 0.95);
+        backdrop-filter: blur(28px) !important;
+        -webkit-backdrop-filter: blur(28px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.12);
         border-radius: 20px;
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.9);
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.06) inset;
       }
       .modal.active .modal-content {
         transform: translateY(0) scale(1);
@@ -2585,34 +2588,70 @@
         margin-top: 20px;
       }
       /* ========================================================= */
-      /* FROSTED LIQUID GLASS MODALS (FRIENDS & MINIATURE)         */
+      /* CH/B (MONOCHROME) FROSTED GLASS WINDOWS                   */
       /* ========================================================= */
       #modal-profile-friends,
-      #modal-room-user-miniature {
-        background: rgba(3, 5, 12, 0.48) !important;
-        backdrop-filter: blur(20px) saturate(160%) !important;
-        -webkit-backdrop-filter: blur(20px) saturate(160%) !important;
-        transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), backdrop-filter 0.25s ease !important;
+      #modal-room-user-miniature,
+      #modal-support-ticket,
+      #modal-create-ticket,
+      #modal-support-search,
+      #modal-support-creator-panel,
+      #modal-gift-lumens {
+        background: rgba(0, 0, 0, 0.65) !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
       }
 
       .frosted-modal-card {
-        background: linear-gradient(155deg, rgba(22, 26, 40, 0.65) 0%, rgba(10, 13, 22, 0.55) 100%) !important;
-        backdrop-filter: blur(48px) saturate(210%) contrast(105%) !important;
-        -webkit-backdrop-filter: blur(48px) saturate(210%) contrast(105%) !important;
+        background: rgba(14, 14, 17, 0.96) !important;
+        backdrop-filter: blur(32px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(32px) saturate(180%) !important;
         border: 1px solid rgba(255, 255, 255, 0.14) !important;
-        box-shadow: 0 32px 90px rgba(0, 0, 0, 0.78),
+        box-shadow: 0 32px 90px rgba(0, 0, 0, 0.88),
                     0 0 0 1px rgba(255, 255, 255, 0.08) inset,
-                    0 1px 0 0 rgba(255, 255, 255, 0.28) inset !important;
-        border-radius: 28px !important;
+                    0 1px 0 0 rgba(255, 255, 255, 0.2) inset !important;
+        border-radius: 24px !important;
         color: #ffffff !important;
       }
 
+      #modal-profile-friends .modal-content,
+      #profile-friends-modal-card {
+        background: rgba(10, 10, 14, 0.45) !important;
+        backdrop-filter: blur(24px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        box-shadow: 0 32px 90px rgba(0, 0, 0, 0.8),
+                    0 0 0 1px rgba(255, 255, 255, 0.14) inset !important;
+      }
+
+      #modal-room-user-miniature .modal-content,
+      #room-miniature-card {
+        width: min(94vw, 940px) !important;
+        max-width: 940px !important;
+        aspect-ratio: 16 / 9 !important;
+        max-height: 88vh !important;
+        border-radius: 20px !important;
+        background: rgba(10, 10, 14, 0.45) !important;
+        backdrop-filter: blur(24px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        box-shadow: 0 32px 90px rgba(0, 0, 0, 0.8),
+                    0 0 0 1px rgba(255, 255, 255, 0.14) inset !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        padding: 0 !important;
+        position: relative !important;
+      }
+
+      #mini-btn-like-profile.liked,
       #mini-btn-like.liked {
         background: rgba(239, 68, 68, 0.18) !important;
         border-color: rgba(239, 68, 68, 0.45) !important;
         color: #fca5a5 !important;
         box-shadow: 0 0 14px rgba(239, 68, 68, 0.25) !important;
       }
+      #mini-btn-like-profile.liked #mini-like-icon,
       #mini-btn-like.liked #mini-like-icon {
         filter: none !important;
         transform: scale(1.15) !important;
@@ -2623,8 +2662,18 @@
         70% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
         100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
       }
-      .indicator-pulsing-online {
-        animation: pulseOnlineDot 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
+      .indicator-pulsing-online,
+      #mini-user-status-dot,
+      .status-dot,
+      .avatar-status-dot,
+      .online-dot {
+        z-index: 99 !important;
+      }
+
+      /* Keep avatar frames underneath online status indicators */
+      .avatar-inner-wrap img[style*="pointer-events:none"],
+      .avatar-inner-wrap div[style*="pointer-events:none"] {
+        z-index: 2 !important;
       }
       .profile-modal-top {
         display: flex;
@@ -11766,7 +11815,7 @@
 
     <!-- Модальное окно подарка Люменов (Горизонтальный ЧБ прямоугольник с блюром) -->
     <!-- Gift Lumens Modal -->
-    <div class="modal modal-gift-luxury" id="modal-gift-lumens" style="z-index: 100005; backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px); background: rgba(5, 5, 8, 0.82);">
+    <div class="modal modal-gift-luxury" id="modal-gift-lumens" style="z-index: 100005; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; background: rgba(5, 5, 8, 0.7);">
       <style>
         #modal-gift-lumens .gift-card-horizontal {
           max-width: 820px;
@@ -12384,20 +12433,25 @@
       </div>
     </div>
 
-    <!-- Room User Miniature Modal (Complete 1:1 scaled profile replica on frosted glass) -->
-    <div class="modal" id="modal-room-user-miniature" style="z-index: 100001;">
+    <!-- Room User Miniature Modal (1:1 accurate profile replica on frosted monochrome glass) -->
+    <div class="modal" id="modal-room-user-miniature" style="z-index: 100001; background: rgba(0, 0, 0, 0.65) !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important;">
       <div class="modal-content room-miniature-card frosted-modal-card oled-scrollbar" id="room-miniature-card" style="
         position: relative;
-        max-width: 460px;
-        width: min(460px, calc(100vw - 24px));
-        border-radius: 28px;
+        max-width: 480px;
+        width: min(480px, calc(100vw - 24px));
+        border-radius: 24px;
         color: #ffffff;
         overflow-y: auto;
         overflow-x: hidden;
         padding: 0;
         max-height: 88vh;
+        background: rgba(14, 14, 17, 0.96) !important;
+        border: 1px solid rgba(255, 255, 255, 0.14) !important;
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.08) inset !important;
+        backdrop-filter: blur(28px) !important;
+        -webkit-backdrop-filter: blur(28px) !important;
       ">
-        <!-- Close Button -->
+        <!-- Close Button (✖ top right corner) -->
         <button type="button" class="btn-close-modal" id="btn-close-room-miniature" onclick="RoomManager.closeUserMiniature()" style="
           position: absolute;
           top: 14px;
@@ -12405,118 +12459,79 @@
           width: 34px;
           height: 34px;
           border-radius: 50%;
-          background: rgba(0, 0, 0, 0.45);
-          backdrop-filter: blur(14px);
-          -webkit-backdrop-filter: blur(14px);
-          border: 1px solid rgba(255, 255, 255, 0.22);
-          color: rgba(255, 255, 255, 0.9);
+          background: rgba(0, 0, 0, 0.65);
+          border: 1px solid rgba(255, 255, 255, 0.25);
+          color: #ffffff;
           display: flex;
           align-items: center;
           justify-content: center;
           cursor: pointer;
           font-size: 16px;
-          z-index: 25;
+          z-index: 50;
           transition: all 0.2s ease;
-        " onmouseover="this.style.background='rgba(255,255,255,0.22)'; this.style.transform='scale(1.08)';" onmouseout="this.style.background='rgba(0,0,0,0.45)'; this.style.transform='none';">&times;</button>
+        " onmouseover="this.style.background='rgba(255,255,255,0.2)'; this.style.transform='scale(1.08)';" onmouseout="this.style.background='rgba(0,0,0,0.65)'; this.style.transform='none';">✕</button>
 
-        <!-- Profile Banner (1:1 replica of #profile-banner-wrapper) -->
-        <div id="mini-user-banner-wrap" style="
+        <!-- Profile Banner (1:1 replica from photo) -->
+        <div id="mini-user-banner-wrapper" style="
           position: relative;
-          width: 100%;
-          height: 115px;
+          width: calc(100% - 24px);
+          margin: 12px 12px 0 12px;
+          aspect-ratio: 21 / 6;
+          min-height: 110px;
+          border-radius: 14px;
           overflow: hidden;
-          background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #db2777 100%);
+          display: none;
+          z-index: 1;
         ">
-          <div id="mini-user-banner" style="
-            width: 100%;
-            height: 100%;
-            background-size: cover;
-            background-position: center 50%;
-            transition: all 0.3s ease;
-          "></div>
-          <div id="mini-user-banner-overlay" style="
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(10, 13, 22, 0.75) 100%);
-          "></div>
+          <img id="mini-user-banner-img" style="width: 100%; height: 100%; object-fit: cover; object-position: center 50%; display: none; border-radius: 14px;" alt="">
+          <div id="mini-user-banner-overlay" style="position: absolute; inset: 0; background: rgba(0,0,0,0.3); border-radius: 14px; display: none;"></div>
         </div>
 
-        <!-- Miniature Card Body (replicating .tiktok-profile-container) -->
-        <div class="mini-profile-body" style="padding: 0 20px 22px 20px; position: relative;">
-          
-          <!-- Avatar & Roles Header -->
-          <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: -46px; margin-bottom: 12px; position: relative; z-index: 5;">
-            <div style="position: relative;">
-              <div id="mini-user-avatar" style="
-                width: 82px;
-                height: 82px;
+        <!-- 1:1 Content Container matching original profile -->
+        <div class="tiktok-profile-container" id="mini-tiktok-container" style="position: relative; z-index: 2; height: auto !important; overflow-y: visible !important; padding: 0 18px 24px 18px;">
+          <!-- Avatar Header Row (overlapping banner) -->
+          <div id="mini-avatar-header-row" style="display: flex; align-items: flex-end; justify-content: space-between; margin-top: 14px; margin-bottom: 12px; position: relative; z-index: 5;">
+            <div class="tiktok-profile-avatar-wrap" style="position: relative; cursor: pointer;" title="Открыть полный профиль" id="mini-user-avatar-wrap">
+              <div class="avatar" id="mini-user-avatar" style="
+                position: relative;
+                width: 88px;
+                height: 88px;
+                font-size: 32px;
+                margin: 0;
                 border-radius: 50%;
-                border: 3.5px solid rgba(255, 255, 255, 0.18);
-                background: #141724;
                 overflow: visible;
                 display: flex;
                 align-items: center;
                 justify-content: center;
+                background: #111111;
                 box-shadow: 0 10px 28px rgba(0,0,0,0.65);
-                font-size: 30px;
-              "></div>
+              ">?</div>
               <div id="mini-user-status-dot" style="
                 position: absolute;
-                bottom: 3px;
-                right: 3px;
+                bottom: 2px;
+                right: 2px;
                 width: 15px;
                 height: 15px;
                 border-radius: 50%;
                 background: #22c55e;
-                border: 3px solid rgba(14, 18, 30, 0.95);
+                border: 3px solid #111111;
                 box-shadow: 0 0 8px rgba(34, 197, 94, 0.7);
               "></div>
             </div>
-
-            <!-- Role Badges (Host, Dev, Admin, Mod, Premium) -->
-            <div id="mini-user-role-container" style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; max-width: 65%;"></div>
           </div>
 
-          <!-- User Title & Identity (1:1 replica of .tiktok-profile-title) -->
-          <div style="margin-bottom: 12px;">
-            <div id="mini-user-name" style="
-              font-size: 20px;
-              font-weight: 800;
-              color: #ffffff;
-              letter-spacing: -0.3px;
-              display: flex;
-              align-items: center;
-              gap: 8px;
-              flex-wrap: wrap;
-              margin-bottom: 2px;
-            ">
-              Пользователь
+          <!-- User Title & Details (1:1 with photo) -->
+          <div style="margin-bottom: 14px;">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 3px;">
+              <h2 id="mini-user-name" style="margin: 0; font-size: 21px; font-weight: 800; color: #ffffff; letter-spacing: -0.3px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">Пользователь</h2>
             </div>
-            
-            <div id="mini-user-username" style="
-              color: var(--accent);
-              font-size: 13.5px;
-              font-weight: 600;
-              margin-bottom: 6px;
-            ">
+
+            <!-- Username + Extra Usernames: e.g. @developer \n @dev | @creator | @ceo -->
+            <div id="mini-user-username" style="color: rgba(255, 255, 255, 0.65); font-size: 13.5px; margin-bottom: 8px; font-weight: 600; line-height: 1.35;">
               @user
             </div>
 
-            <!-- Online / Offline Status -->
-            <div id="mini-user-status" style="
-              font-size: 12.5px;
-              font-weight: 600;
-              color: #22c55e;
-              margin-bottom: 10px;
-              display: flex;
-              align-items: center;
-              gap: 6px;
-            ">
-              <span style="width: 7px; height: 7px; border-radius: 50%; background: #22c55e; display: inline-block;"></span>
-              <span>Онлайн</span>
-            </div>
-
-            <!-- Friends Button (Clickable pill opening friends list) -->
+            <!-- Friends count button with arrow > -->
             <div id="mini-user-friends-btn" class="tiktok-friends-btn" style="
               display: inline-flex;
               align-items: center;
@@ -12526,13 +12541,12 @@
               border: 1px solid rgba(255, 255, 255, 0.12);
               border-radius: 999px;
               color: #ffffff;
-              font-size: 13px;
+              font-size: 13.5px;
               font-weight: 600;
-              margin-bottom: 12px;
+              margin-bottom: 10px;
               cursor: pointer;
               transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
               user-select: none;
-              backdrop-filter: blur(10px);
               width: fit-content;
             " onmouseover="this.style.background='rgba(255, 255, 255, 0.12)'; this.style.borderColor='rgba(255, 255, 255, 0.25)';" onmouseout="this.style.background='rgba(255, 255, 255, 0.06)'; this.style.borderColor='rgba(255, 255, 255, 0.12)';">
               <span id="mini-user-friends-count-text">Друзья · 0</span>
@@ -12542,55 +12556,65 @@
             </div>
 
             <!-- Gender -->
-            <div id="mini-user-gender" style="color: var(--text-muted); font-size: 13px; margin-bottom: 10px; font-weight: 500; display: none;"></div>
+            <div id="mini-user-gender" style="color: rgba(255, 255, 255, 0.55); font-size: 13.5px; margin-bottom: 12px; font-weight: 500; display: none;"></div>
 
-            <!-- Profile Badges Row (Level + Lumens + Streak) -->
-            <div class="tiktok-profile-badges-row" id="mini-user-badges-row" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px;">
+            <!-- Badges Row: Level + Lumens + Streak (1:1 with photo) -->
+            <div class="tiktok-profile-badges-row" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;">
               <!-- Level Badge -->
-              <div id="mini-user-level" style="
+              <div id="mini-user-level-badge" style="
                 display: inline-flex;
                 align-items: center;
                 gap: 6px;
-                padding: 6px 13px;
-                background: rgba(255, 255, 255, 0.06);
-                border: 1px solid rgba(255, 255, 255, 0.10);
+                padding: 6px 14px;
+                background: rgba(34, 34, 34, 0.8);
+                border: 1px solid rgba(255, 255, 255, 0.08);
                 border-radius: 100px;
                 cursor: pointer;
                 transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-                backdrop-filter: blur(8px);
-              " onmouseover="this.style.background='rgba(255, 255, 255, 0.12)';" onmouseout="this.style.background='rgba(255, 255, 255, 0.06)';">
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+              ">
                 <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Star.webp" style="
-                  width: 17px;
-                  height: 17px;
+                  width: 18px;
+                  height: 18px;
                   object-fit: contain;
                   filter: drop-shadow(0 2px 4px rgba(255, 170, 0, 0.4));
-                " alt="⭐">
-                <span id="mini-user-level-text" style="font-size: 13px; font-weight: 600; color: #fff;">Уровень 1</span>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 2px;">
+                " id="mini-user-level-badge-icon" alt="⭐">
+                <span id="mini-user-level-badge-text" style="
+                  font-size: 13.5px;
+                  font-weight: 600;
+                  color: #fff;
+                  letter-spacing: -0.2px;
+                ">Уровень 0</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 2px">
                   <polyline points="9 18 15 12 9 6"></polyline>
                 </svg>
               </div>
 
               <!-- Lumens Badge -->
-              <div id="mini-user-lumens" style="
+              <div id="mini-user-lumens-badge" style="
                 display: inline-flex;
                 align-items: center;
                 gap: 6px;
-                padding: 6px 13px;
-                background: rgba(255, 215, 0, 0.09);
-                border: 1px solid rgba(255, 215, 0, 0.22);
+                padding: 6px 14px;
+                background: rgba(34, 34, 34, 0.8);
+                border: 1px solid rgba(255, 255, 255, 0.08);
                 border-radius: 100px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
                 cursor: default;
-                backdrop-filter: blur(8px);
               " title="Баланс Люменов">
                 <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="
-                  width: 17px;
-                  height: 17px;
+                  width: 18px;
+                  height: 18px;
                   object-fit: contain;
-                  filter: drop-shadow(0 2px 6px rgba(255, 215, 0, 0.4));
-                " alt="✨">
-                <span id="mini-user-lumens-val" style="font-size: 13px; font-weight: 600; color: #ffd700;">0</span>
-                <span style="font-size: 12px; color: rgba(255, 215, 0, 0.85); font-weight: 500;">Люменов</span>
+                  filter: drop-shadow(0 2px 6px rgba(255, 255, 255, 0.4));
+                " alt="Lumens">
+                <span id="mini-user-lumens-count" style="
+                  font-size: 13.5px;
+                  font-weight: 600;
+                  color: #fff;
+                  letter-spacing: -0.2px;
+                ">0</span>
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 16px; height: 16px; object-fit: contain; vertical-align: middle;" alt="Люмены">
               </div>
 
               <!-- Streak Badge -->
@@ -12598,200 +12622,80 @@
                 display: none;
                 align-items: center;
                 gap: 6px;
-                padding: 6px 13px;
-                background: rgba(255, 100, 0, 0.10);
-                border: 1px solid rgba(255, 100, 0, 0.25);
+                padding: 6px 14px;
+                background: rgba(34, 34, 34, 0.8);
+                border: 1px solid rgba(255, 255, 255, 0.08);
                 border-radius: 100px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
                 cursor: default;
-                backdrop-filter: blur(8px);
               " title="Стрик активности">
                 <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Fire.webp" style="
-                  width: 17px;
-                  height: 17px;
+                  width: 18px;
+                  height: 18px;
                   object-fit: contain;
                   filter: drop-shadow(0 2px 4px rgba(255, 100, 0, 0.6));
-                " alt="🔥">
-                <span id="mini-user-streak-val" style="font-size: 13px; font-weight: 600; color: #ff8844;">0</span>
-                <span style="font-size: 11.5px; color: rgba(255,255,255,0.6); font-weight: 500;">дн.</span>
+                " alt="Streak">
+                <span id="mini-user-streak-count" style="
+                  font-size: 13.5px;
+                  font-weight: 600;
+                  color: #fff;
+                  letter-spacing: -0.2px;
+                ">0</span>
+                <span style="font-size: 12px; color: rgba(255,255,255,0.6); font-weight: 500;">дн.</span>
               </div>
             </div>
-          </div>
 
-          <!-- Bio Section (1:1 replica of .profile-bio-wrapper) -->
-          <div id="mini-user-bio-wrap" style="
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 16px;
-            padding: 12px 14px;
-            margin-bottom: 14px;
-            backdrop-filter: blur(10px);
-          ">
-            <div id="mini-user-bio" style="
-              font-size: 13px;
-              color: rgba(255, 255, 255, 0.85);
-              line-height: 1.5;
-              word-break: break-word;
-            ">
-              Пользователь пока не добавил описание о себе.
-            </div>
-          </div>
-
-          <!-- Badges Collection & Hashtags -->
-          <div id="mini-user-extras" style="margin-bottom: 14px; display: none;">
-            <div id="mini-user-badges-list" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;"></div>
-            <div id="mini-user-hashtags-list" class="hashtags-list" style="display: flex; gap: 6px; flex-wrap: wrap;"></div>
-          </div>
-
-          <!-- Statistics Panel (1:1 Compact Replica of #view-profile-stats) -->
-          <div id="mini-user-stats" style="
-            background: rgba(0, 0, 0, 0.26);
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            border-radius: 16px;
-            padding: 12px 14px;
-            margin-bottom: 16px;
-            backdrop-filter: blur(12px);
-          ">
-            <div style="font-size: 13px; color: var(--text-muted); font-weight: 600; margin-bottom: 8px;">Статистика</div>
-            <div style="display: flex; justify-content: space-between; font-size: 12.5px; margin-bottom: 5px;">
-              <span style="color: var(--text-muted);">Регистрация:</span>
-              <span id="mini-stat-created" style="color: #ffffff; font-weight: 600;">Неизвестно</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; font-size: 12.5px; margin-bottom: 5px;">
-              <span style="color: var(--text-muted);">Вход:</span>
-              <span id="mini-stat-login" style="color: #ffffff; font-weight: 600;">Неизвестно</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; font-size: 12.5px; margin-bottom: 5px;">
-              <span style="color: var(--text-muted);">В комнатах:</span>
-              <span id="mini-stat-room-time" style="color: #ffffff; font-weight: 600;">0 мин.</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; font-size: 12.5px;">
-              <span style="color: var(--text-muted);">ID:</span>
-              <span id="mini-stat-uid" style="color: rgba(255,255,255,0.7); font-family: monospace; font-size: 11px;"></span>
-            </div>
-          </div>
-
-          <!-- Actions Row (Replicating #view-profile-actions) -->
-          <div id="mini-user-actions" style="
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-          ">
-            <div style="display: flex; gap: 8px; align-items: center; width: 100%;">
-              <button type="button" class="primary-btn" id="mini-btn-dm" style="
-                flex: 1;
-                background-color: #FFFFFF !important;
-                color: #000000 !important;
-                border: none;
-                font-weight: 700;
-                padding: 10px 14px;
-                border-radius: 12px;
-                font-size: 13.5px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                gap: 6px;
-                cursor: pointer;
-                transition: all 0.2s;
-              " onmouseover="this.style.transform='translateY(-1px)';" onmouseout="this.style.transform='none';">
-                💬 Написать
+            <!-- Action Buttons: "Изменить профиль" or "Написать сообщение", Like button "❤️ 777" -->
+            <div id="mini-user-actions-row" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 18px;">
+              <button class="primary-btn" id="mini-btn-primary-action" style="background: rgba(255, 255, 255, 0.1) !important; color: #FFFFFF !important; border: 1px solid rgba(255,255,255,0.15); padding: 8px 18px; font-size: 13.5px; font-weight: 700; border-radius: 10px; cursor: pointer; transition: 0.2s;">
+                Изменить профиль
               </button>
 
-              <!-- Like Profile Button -->
-              <button type="button" class="secondary-btn" id="mini-btn-like" style="
-                display: flex;
-                align-items: center;
-                gap: 6px;
-                padding: 9px 14px;
-                border: 1px solid rgba(255, 255, 255, 0.12);
-                background: rgba(255, 255, 255, 0.06);
-                border-radius: 12px;
-                color: #ffffff;
-                cursor: pointer;
-                transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-                backdrop-filter: blur(8px);
-                font-weight: 600;
-                font-size: 13px;
-              " onmouseover="this.style.background='rgba(255,255,255,0.12)';" onmouseout="this.style.background='rgba(255,255,255,0.06)';">
+              <button class="secondary-btn" id="mini-btn-like-profile" style="display: flex; align-items: center; gap: 6px; padding: 7px 14px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.05); border-radius: 10px; color: #fff; cursor: pointer; transition: 0.2s; font-size: 13.5px; font-weight: 700;">
                 <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Red%20Heart.webp" style="width: 20px; height: 20px; object-fit: contain; filter: grayscale(100%) opacity(50%); transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);" id="mini-like-icon" alt="Like">
-                <span id="mini-likes-count">0</span>
+                <span id="mini-likes-count" style="font-weight: 700;">0</span>
               </button>
 
-              <!-- Report Button -->
-              <button type="button" class="secondary-btn" id="mini-btn-report" title="Пожаловаться" aria-label="Пожаловаться" style="
-                padding: 9px 12px;
-                border-radius: 12px;
-                border: 1px solid rgba(255, 255, 255, 0.12);
-                background: rgba(255, 255, 255, 0.06);
-                color: #fff;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-              ">
-                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Flags/Triangular%20Flag.webp" style="width: 18px; height: 18px; object-fit: contain;" alt="Жалоба">
+              <button class="secondary-btn" id="mini-btn-gift" title="Подарить Люмены" aria-label="Подарить Люмены" style="display: none; align-items: center; gap: 6px; padding: 7px 12px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.05); border-radius: 10px; color: #fff; cursor: pointer;">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 17px; height: 17px; object-fit: contain;" alt="✨">
+              </button>
+
+              <button class="secondary-btn" id="mini-btn-report" title="Пожаловаться" aria-label="Пожаловаться" style="display: none; align-items: center; justify-content: center; padding: 7px 12px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.05); border-radius: 10px; color: #fff; cursor: pointer;">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Flags/Triangular%20Flag.webp" style="width: 17px; height: 17px; object-fit: contain;" alt="Жалоба">
               </button>
             </div>
 
-            <!-- Secondary Action Row -->
-            <div style="display: flex; gap: 8px; width: 100%;">
-              <button type="button" class="secondary-btn" id="mini-btn-friend" style="
-                flex: 1;
-                padding: 9px 12px;
-                border-radius: 12px;
-                font-size: 13px;
-                font-weight: 600;
-                background: rgba(255, 255, 255, 0.06);
-                border: 1px solid rgba(255, 255, 255, 0.12);
-                color: #ffffff;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                gap: 6px;
-                transition: all 0.2s;
-              ">
-                <span>🤝 В друзья</span>
-              </button>
+            <!-- Section: ПОСТИЖЕНИЯ И АЧИВКИ (1:1 with photo) -->
+            <div id="mini-badges-collection" style="width: 100%; margin-bottom: 18px;"></div>
 
-              <button type="button" class="secondary-btn" id="mini-btn-gift" style="
-                flex: 1;
-                padding: 9px 12px;
-                border-radius: 12px;
-                font-size: 13px;
-                font-weight: 700;
-                background: linear-gradient(135deg, rgba(255, 215, 0, 0.12) 0%, rgba(255, 170, 0, 0.05) 100%);
-                border: 1px solid rgba(255, 215, 0, 0.35);
-                color: #ffd700;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                gap: 6px;
-                transition: all 0.2s;
-                box-shadow: 0 0 12px rgba(255, 215, 0, 0.10);
-              ">
-                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 16px; height: 16px; object-fit: contain;" alt="✨">
-                <span>Подарить</span>
-              </button>
-
-              <button type="button" class="secondary-btn" id="mini-btn-full-profile" style="
-                padding: 9px 12px;
-                border-radius: 12px;
-                font-size: 13px;
-                font-weight: 600;
-                background: rgba(255, 255, 255, 0.06);
-                border: 1px solid rgba(255, 255, 255, 0.12);
-                color: rgba(255, 255, 255, 0.85);
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                gap: 5px;
-                transition: all 0.2s;
-              " title="Открыть полный профиль">
-                <span>👤</span>
-              </button>
+            <!-- Section: Статистика (1:1 with photo) -->
+            <div id="mini-user-stats" style="padding: 14px 16px; background: rgba(34,34,34,0.5); border-radius: 12px; border: 1px solid rgba(255,255,255,0.06); width: 100%; box-sizing: border-box; margin-bottom: 16px;">
+              <div style="font-size: 14px; color: rgba(255, 255, 255, 0.55); font-weight: 600; margin-bottom: 10px;">Статистика</div>
+              <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 7px;">
+                 <span style="color: rgba(255, 255, 255, 0.5);">Регистрация:</span>
+                 <span id="mini-stat-created" style="color: #fff; font-weight: 700;">Неизвестно</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 7px;">
+                 <span style="color: rgba(255, 255, 255, 0.5);">Вход:</span>
+                 <span id="mini-stat-login" style="color: #fff; font-weight: 700;">Неизвестно</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 7px;">
+                 <span style="color: rgba(255, 255, 255, 0.5);">В комнатах:</span>
+                 <span id="mini-stat-room-time" style="color: #fff; font-weight: 700;">0 мин.</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 13px;">
+                 <span style="color: rgba(255, 255, 255, 0.5);">ID:</span>
+                 <span id="mini-stat-uid" style="color: #fff; font-weight: 700; font-family: monospace; font-size: 11.5px; word-break: break-all;"></span>
+              </div>
             </div>
+
+            <!-- Bio Section -->
+            <div id="mini-user-bio-wrap" style="width: 100%; margin-bottom: 14px;">
+              <div id="mini-user-bio" style="color: rgba(255, 255, 255, 0.6); font-size: 13.5px; line-height: 1.5;"></div>
+            </div>
+
+            <!-- Romantic Partner Box -->
+            <div id="mini-partner-container" style="margin-bottom: 14px;"></div>
           </div>
         </div>
       </div>
