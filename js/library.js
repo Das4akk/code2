@@ -79,9 +79,9 @@ class LibraryManager {
     if (url.includes("rutube.ru/video/")) {
         vidIdLine = url.match(/rutube\.ru\/video\/([a-zA-Z0-9]+)/);
         vidId = vidIdLine && vidIdLine[1] ? vidIdLine[1] : null;
-        if(vidId) return "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Television.webp"; // fallback for rutube
+        if(vidId) return "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Television.webp"; // fallback for rutube
     }
-    return vidId ? `https://i.ytimg.com/vi/${vidId}/hqdefault.jpg` : "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Television.webp";
+    return vidId ? `https://i.ytimg.com/vi/${vidId}/hqdefault.jpg` : "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Television.webp";
   }
 
   static renderGrid() {
@@ -117,7 +117,7 @@ class LibraryManager {
             <div class="room-preview">
                 <img src="${thumbUrl}" style="width:100%; height:100%; object-fit:cover;">
                 <div class="room-preview-overlay"></div>
-                ${v.isPublic ? '' : '<div style="position:absolute; top:8px; right:8px; background:rgba(0,0,0,0.7); padding:4px 8px; border-radius:6px; font-size:11px; display:flex; align-items:center; gap:4px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width:1.2em;height:1.2em;" /> Личное</div>'}
+                ${v.isPublic ? '' : '<div style="position:absolute; top:8px; right:8px; background:rgba(0,0,0,0.7); padding:4px 8px; border-radius:6px; font-size:11px; display:flex; align-items:center; gap:4px;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" style="width:1.2em;height:1.2em;" /> Личное</div>'}
             </div>
             <div class="room-info">
                 <h4 class="rm-title">${window.Utils.escapeHtml(v.title || "Без названия")}</h4>
@@ -163,7 +163,7 @@ class LibraryManager {
             </div>
             <div id="lib-ai-fields-container" style="position:relative;">
                 <div id="lib-ai-lock-overlay" style="display:none; position:absolute; inset:-10px; background:rgba(10,10,15,0.7); backdrop-filter:blur(8px); z-index:10; border-radius:16px; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
-                    <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width:48px;height:48px;margin-bottom:10px;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.5));" />
+                    <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" style="width:48px;height:48px;margin-bottom:10px;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.5));" />
                     <div style="color:#fff; font-weight:600; font-size:14px;">Получение информации...</div>
                     <div style="color:var(--text-muted); font-size:12px; margin-top:4px;">Пожалуйста, подождите</div>
                 </div>
@@ -268,7 +268,7 @@ class LibraryManager {
       modal.innerHTML = `
           <div class="modal-content" style="max-width: 500px">
               <div class="modal-header">
-                  <h2>Участники видео <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom" /></h2>
+                  <h2>Участники видео <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Busts%20In%20Silhouette.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom" /></h2>
               </div>
               <div style="text-align:center; margin-bottom:15px;">
                   <img src="${thumbUrl}" style="max-width:100%; border-radius:12px; max-height:200px; object-fit:cover;" />
@@ -280,7 +280,7 @@ class LibraryManager {
                 <div style="margin-bottom: 20px; position:relative;">
                    <div style="display:flex; gap:10px;">
                        <input type="text" id="lib-add-people" class="settings-input" placeholder="Имена через запятую (начните вводить...)" style="flex:1;" autocomplete="off" />
-                       <button class="secondary-btn" id="btn-lib-add-author-from-list" style="width:auto; padding:0 15px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Man%20Student.webp" style="width: 20px; height: 20px; vertical-align: middle; margin-right: 5px;" /> Авторы</button>
+                       <button class="secondary-btn" id="btn-lib-add-author-from-list" style="width:auto; padding:0 15px;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Man%20Student.webp" style="width: 20px; height: 20px; vertical-align: middle; margin-right: 5px;" /> Авторы</button>
                    </div>
                    <div id="lib-authors-dropdown" style="display:none; position:absolute; top:100%; left:0; right:0; background:var(--panel); border:1px solid rgba(255,255,255,0.1); border-radius:12px; max-height:200px; overflow-y:auto; z-index:100; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
                    </div>
@@ -371,7 +371,7 @@ class LibraryManager {
       modal.innerHTML = `
           <div class="modal-content" style="max-width: 400px; padding: 0; display:flex; flex-direction:column; max-height:80vh;">
               <div class="modal-header" style="padding: 20px; border-bottom: 1px solid var(--border-light); display:flex; justify-content:space-between; align-items:center;">
-                  <h2 style="margin:0;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom" /> Авторы библиотеки</h2>
+                  <h2 style="margin:0;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Busts%20In%20Silhouette.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom" /> Авторы библиотеки</h2>
                   <button class="secondary-btn btn-close-modal" id="btn-close-all-authors" style="border:none; padding:4px 8px; width:auto; border-radius:8px;">✕</button>
               </div>
               <div class="modal-scrollable-content" style="flex-grow: 1; padding: 20px; overflow-y:auto;" id="all-authors-list-container">
@@ -459,13 +459,13 @@ class LibraryManager {
                       if (avatarSrc) {
                           authorsListHTML += `<span style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.05);padding:4px 10px;border-radius:20px;"><img src="${avatarSrc}" style="width:20px;height:20px;border-radius:50%;object-fit:cover;"/> <strong style="color:var(--accent);font-size:13px;">${window.Utils.escapeHtml(personName)}</strong></span>`;
                       } else {
-                          authorsListHTML += `<span style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.05);padding:4px 10px;border-radius:20px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width:1.2em;height:1.2em;"/> <strong style="color:var(--accent);font-size:13px;">${window.Utils.escapeHtml(personName)}</strong></span>`;
+                          authorsListHTML += `<span style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.05);padding:4px 10px;border-radius:20px;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Busts%20In%20Silhouette.webp" style="width:1.2em;height:1.2em;"/> <strong style="color:var(--accent);font-size:13px;">${window.Utils.escapeHtml(personName)}</strong></span>`;
                       }
                   });
               } else {
                   // If no authors exist in db but there is people tag
                   v.people.split(',').map(s => s.trim()).filter(Boolean).forEach(personName => {
-                      authorsListHTML += `<span style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.05);padding:4px 10px;border-radius:20px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width:1.2em;height:1.2em;"/> <strong style="color:var(--accent);font-size:13px;">${window.Utils.escapeHtml(personName)}</strong></span>`;
+                      authorsListHTML += `<span style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.05);padding:4px 10px;border-radius:20px;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Busts%20In%20Silhouette.webp" style="width:1.2em;height:1.2em;"/> <strong style="color:var(--accent);font-size:13px;">${window.Utils.escapeHtml(personName)}</strong></span>`;
                   });
               }
           } catch(e) {}
@@ -498,7 +498,7 @@ class LibraryManager {
                       <button id="btn-lib-desc-toggle" class="btn-text-link" style="display:none; margin-top:8px; font-size:13px; color:var(--accent);">Читать полностью</button>
                   </div>
 
-                  <button class="primary-btn" id="btn-lib-create-room" style="font-size:16px; padding:16px; border-radius:12px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Popcorn.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom" /> Создать комнату с этим видео</button>
+                  <button class="primary-btn" id="btn-lib-create-room" style="font-size:16px; padding:16px; border-radius:12px;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Food%20and%20Drink/Popcorn.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom" /> Создать комнату с этим видео</button>
               </div>
           </div>
       `;
@@ -761,7 +761,7 @@ class LibraryManager {
               item.style = "background:rgba(0,0,0,0.3); padding:8px 12px; border-radius:8px; border:1px solid var(--border-light); display:flex; justify-content:space-between; align-items:center; cursor:pointer;";
               item.innerHTML = `
                 <div style="font-size:13px; max-width:70%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; align-items:center; gap:4px;">
-                    ${v.isPublic===false?'<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width:1.2em;height:1.2em;" /> ':""} 
+                    ${v.isPublic===false?'<img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" style="width:1.2em;height:1.2em;" /> ':""} 
                     <span>${window.Utils.escapeHtml(v.title||"Без названия")} <span style="opacity:0.5">(${v.addedByName})</span></span>
                 </div>
                 <button class="danger-btn btn-del-single" style="width:auto; padding:4px 8px; font-size:12px;">Удалить</button>

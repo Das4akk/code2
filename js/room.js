@@ -2,11 +2,11 @@ class RoomManager {
   static themeIndex = 0;
   static heartsTimer = null;
   static loveHeartEmojis = [
-    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Heart.webp' style='width:1em;height:1em;'>",
-    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Heart%20With%20Arrow.webp' style='width:1em;height:1em;'>",
-    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Revolving%20Hearts.webp' style='width:1em;height:1em;'>",
-    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Two%20Hearts.webp' style='width:1em;height:1em;'>",
-    "<img src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Sparkling%20Heart.webp' style='width:1em;height:1em;'>",
+    "<img src='https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Red%20Heart.webp' style='width:1em;height:1em;'>",
+    "<img src='https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Heart%20With%20Arrow.webp' style='width:1em;height:1em;'>",
+    "<img src='https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Revolving%20Hearts.webp' style='width:1em;height:1em;'>",
+    "<img src='https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Two%20Hearts.webp' style='width:1em;height:1em;'>",
+    "<img src='https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Sparkling%20Heart.webp' style='width:1em;height:1em;'>",
   ];
 
   static closeUserMiniature() {
@@ -26,74 +26,106 @@ class RoomManager {
       });
     }
 
+    const { get, ref, set, remove, getDatabase } = await import(
+      "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"
+    );
+    const db = getDatabase();
+
+    // Fetch profile, status, and friends concurrently
     let profile = AppState.usersCache.get(uid);
-    if (!profile) {
-      try {
-        const { get, ref, getDatabase } = await import(
-          "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"
-        );
-        const snap = await get(ref(getDatabase(), `users/${uid}/profile`));
-        if (snap.exists()) {
-          profile = snap.val();
-          AppState.usersCache.set(uid, profile);
-        }
-      } catch (e) {
-        console.warn("Could not fetch profile for miniature:", e);
+    let statusVal = {};
+    let friendsVal = {};
+
+    try {
+      const [profSnap, stSnap, frSnap] = await Promise.all([
+        !profile ? get(ref(db, `users/${uid}/profile`)).catch(() => null) : null,
+        get(ref(db, `users/${uid}/status`)).catch(() => null),
+        get(ref(db, `users/${uid}/friends`)).catch(() => null),
+      ]);
+      if (profSnap && profSnap.exists()) {
+        profile = profSnap.val();
+        AppState.usersCache.set(uid, profile);
       }
+      if (stSnap && stSnap.exists()) {
+        statusVal = stSnap.val() || {};
+      }
+      if (frSnap && frSnap.exists()) {
+        friendsVal = frSnap.val() || {};
+      }
+    } catch (e) {
+      console.warn("Could not fetch user data for miniature:", e);
     }
+
     if (!profile) {
       profile = { name: "Пользователь", username: "user" };
     }
 
-    // Banner
+    const isSelf = AppState.currentUser?.uid === uid;
+    const isOnline = Boolean(statusVal.online);
+    const friendsCount = Object.values(friendsVal).filter((f) => f && f.status === "accepted").length;
+
+    // 1. Banner
     const bannerEl = document.getElementById("mini-user-banner");
     if (bannerEl) {
       if (profile.bannerUrl) {
         bannerEl.style.backgroundImage = `url("${profile.bannerUrl}")`;
       } else {
-        bannerEl.style.backgroundImage =
-          "linear-gradient(135deg, #3730a3 0%, #1e1b4b 50%, #4f46e5 100%)";
+        bannerEl.style.backgroundImage = "linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #db2777 100%)";
       }
     }
 
-    // Avatar
+    // 2. Avatar
     const avatarEl = document.getElementById("mini-user-avatar");
     if (avatarEl) {
       avatarEl.innerHTML = ProfileManager.getAvatarHtml(profile);
     }
 
-    // Role Badges
+    // 3. Status Dot
+    const statusDot = document.getElementById("mini-user-status-dot");
+    if (statusDot) {
+      statusDot.style.background = isOnline ? "#22c55e" : "#64748b";
+      statusDot.style.boxShadow = isOnline ? "0 0 8px rgba(34, 197, 94, 0.8)" : "none";
+      if (isOnline) {
+        statusDot.classList.add("indicator-pulsing-online");
+      } else {
+        statusDot.classList.remove("indicator-pulsing-online");
+      }
+    }
+
+    // 4. Role Badges
     const roleContainer = document.getElementById("mini-user-role-container");
     if (roleContainer) {
       let badgesHtml = "";
       const isDev =
         (profile.username && profile.username.toLowerCase() === "developer") ||
-        (uid && AdminPanel.developerUidCache === uid);
+        (uid && AdminPanel.developerUidCache === uid) ||
+        (window.AdminPanel && AdminPanel.isCreatorProfile && AdminPanel.isCreatorProfile(profile, uid));
       const isHost = AppState.currentRoomData?.hostId === uid;
       const isPrem =
         profile.isPremium ||
-        (profile.premiumUntil && Number(profile.premiumUntil) > Date.now());
+        (profile.premiumUntil && Number(profile.premiumUntil) > Date.now()) ||
+        (window.PremiumManager && PremiumManager.isPremiumActive(profile, uid));
 
       if (isDev) {
-        badgesHtml += `<span style="font-size:10px;font-weight:800;padding:3px 8px;border-radius:12px;background:rgba(255,215,0,0.18);border:1px solid rgba(255,215,0,0.4);color:#ffd700;">👑 Разработчик</span>`;
+        badgesHtml += `<span style="font-size:11px;font-weight:800;padding:4px 9px;border-radius:12px;background:rgba(255,215,0,0.18);border:1px solid rgba(255,215,0,0.45);color:#ffd700;display:inline-flex;align-items:center;gap:4px;">👑 Разработчик</span>`;
       } else if (profile.role === "admin") {
-        badgesHtml += `<span style="font-size:10px;font-weight:800;padding:3px 8px;border-radius:12px;background:rgba(239,68,68,0.18);border:1px solid rgba(239,68,68,0.4);color:#ef4444;">🛡️ Админ</span>`;
+        badgesHtml += `<span style="font-size:11px;font-weight:800;padding:4px 9px;border-radius:12px;background:rgba(239,68,68,0.18);border:1px solid rgba(239,68,68,0.45);color:#ef4444;display:inline-flex;align-items:center;gap:4px;">🛡️ Админ</span>`;
       } else if (profile.role === "moderator") {
-        badgesHtml += `<span style="font-size:10px;font-weight:800;padding:3px 8px;border-radius:12px;background:rgba(59,130,246,0.18);border:1px solid rgba(59,130,246,0.4);color:#3b82f6;">⚔️ Модератор</span>`;
+        badgesHtml += `<span style="font-size:11px;font-weight:800;padding:4px 9px;border-radius:12px;background:rgba(59,130,246,0.18);border:1px solid rgba(59,130,246,0.45);color:#3b82f6;display:inline-flex;align-items:center;gap:4px;">⚔️ Модератор</span>`;
       }
 
       if (isHost) {
-        badgesHtml += `<span style="font-size:10px;font-weight:800;padding:3px 8px;border-radius:12px;background:rgba(168,85,247,0.18);border:1px solid rgba(168,85,247,0.4);color:#c084fc;">🎙️ Хост</span>`;
+        badgesHtml += `<span style="font-size:11px;font-weight:800;padding:4px 9px;border-radius:12px;background:rgba(168,85,247,0.18);border:1px solid rgba(168,85,247,0.45);color:#c084fc;display:inline-flex;align-items:center;gap:4px;">🎙️ Хост</span>`;
       }
 
       if (isPrem) {
-        badgesHtml += `<span style="font-size:10px;font-weight:800;padding:3px 8px;border-radius:12px;background:rgba(245,158,11,0.18);border:1px solid rgba(245,158,11,0.4);color:#fbbf24;">⭐ Premium</span>`;
+        badgesHtml += `<span style="font-size:11px;font-weight:800;padding:4px 9px;border-radius:12px;background:rgba(245,158,11,0.18);border:1px solid rgba(245,158,11,0.45);color:#fbbf24;display:inline-flex;align-items:center;gap:4px;">⭐ Premium</span>`;
       }
 
       roleContainer.innerHTML = badgesHtml;
     }
 
-    // Name & Status Emoji
+    // 5. Name & Status Emoji
     const nameEl = document.getElementById("mini-user-name");
     if (nameEl) {
       const statusEmoji = window.PremiumManager
@@ -102,40 +134,234 @@ class RoomManager {
       nameEl.innerHTML = `${statusEmoji}${Utils.escapeHtml(profile.name || profile.username || "Пользователь")}`;
     }
 
-    // Username
+    // 6. Username
     const usernameEl = document.getElementById("mini-user-username");
     if (usernameEl) {
       usernameEl.textContent = `@${profile.username || "user"}`;
     }
 
-    // Level
-    const levelEl = document.getElementById("mini-user-level");
-    if (levelEl) {
-      const math = ProfileManager.getExpMath(Number(profile.xp) || 0);
-      levelEl.innerHTML = `<span>⭐ Уровень ${math.level}</span>`;
+    // 7. Status Line
+    const statusLineEl = document.getElementById("mini-user-status");
+    if (statusLineEl) {
+      const statusText = isOnline
+        ? "Онлайн"
+        : statusVal.lastSeen
+        ? `Был(а) ${Utils.formatLastSeen(statusVal.lastSeen)}`
+        : "Офлайн";
+      statusLineEl.innerHTML = `
+        <span style="width: 7px; height: 7px; border-radius: 50%; background: ${isOnline ? "#22c55e" : "#64748b"}; display: inline-block;"></span>
+        <span style="color: ${isOnline ? "#22c55e" : "rgba(255,255,255,0.55)"}; font-weight: ${isOnline ? "600" : "500"};">${statusText}</span>
+      `;
     }
 
-    // Lumens
+    // 8. Friends Button
+    const friendsBtn = document.getElementById("mini-user-friends-btn");
+    const friendsText = document.getElementById("mini-user-friends-count-text");
+    if (friendsText) {
+      friendsText.textContent = `Друзья · ${friendsCount}`;
+    }
+    if (friendsBtn) {
+      friendsBtn.onclick = () => {
+        RoomManager.closeUserMiniature();
+        ProfileManager.openFriendsListModal(uid, profile.name || profile.username || "Пользователь");
+      };
+    }
+
+    // 9. Gender (if set)
+    const genderEl = document.getElementById("mini-user-gender");
+    if (genderEl) {
+      if (profile.gender === "female") {
+        genderEl.style.display = "block";
+        genderEl.innerHTML = 'Пол: Женский <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Woman%20Technologist.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;" alt="Женщина">';
+      } else if (profile.gender === "male") {
+        genderEl.style.display = "block";
+        genderEl.innerHTML = 'Пол: Мужской <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Man%20Technologist.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;" alt="Мужчина">';
+      } else {
+        genderEl.style.display = "none";
+      }
+    }
+
+    // 10. Badges Row: Level, Lumens, Streak
+    const levelEl = document.getElementById("mini-user-level");
+    const levelText = document.getElementById("mini-user-level-text");
+    if (levelText) {
+      const math = ProfileManager.getExpMath(Number(profile.xp) || 0);
+      levelText.textContent = `Уровень ${math.level}`;
+    }
+    if (levelEl) {
+      levelEl.onclick = () => {
+        RoomManager.closeUserMiniature();
+        ProfileManager.openViewProfileModal(uid);
+      };
+    }
+
     const lumensEl = document.getElementById("mini-user-lumens-val");
     if (lumensEl) {
       const lumens = Number(profile.lumens) || 0;
-      lumensEl.textContent = `${lumens.toLocaleString("ru-RU")} Люменов`;
+      lumensEl.textContent = lumens.toLocaleString("ru-RU");
     }
 
-    // Bio
+    const streakEl = document.getElementById("mini-user-streak");
+    const streakVal = document.getElementById("mini-user-streak-val");
+    const streakCount = Number(profile.streak) || 0;
+    if (streakEl && streakVal) {
+      if (streakCount > 0) {
+        streakEl.style.display = "inline-flex";
+        streakVal.textContent = streakCount;
+      } else {
+        streakEl.style.display = "none";
+      }
+    }
+
+    // 11. Bio
     const bioEl = document.getElementById("mini-user-bio");
     if (bioEl) {
-      bioEl.textContent =
-        profile.bio || "Пользователь пока не добавил описание о себе.";
+      bioEl.textContent = profile.bio || "Пользователь пока не добавил описание о себе.";
     }
 
-    // Actions
-    const isSelf = AppState.currentUser?.uid === uid;
-    const dmBtn = document.getElementById("mini-btn-dm");
-    const friendBtn = document.getElementById("mini-btn-friend");
-    const giftBtn = document.getElementById("mini-btn-gift");
-    const fullProfileBtn = document.getElementById("mini-btn-full-profile");
+    // 12. Extras: Badges & Hashtags
+    const extrasWrap = document.getElementById("mini-user-extras");
+    const badgesList = document.getElementById("mini-user-badges-list");
+    const hashtagsList = document.getElementById("mini-user-hashtags-list");
+    let hasExtras = false;
 
+    if (hashtagsList) {
+      const tags = Array.isArray(profile.hashtags) ? profile.hashtags : [];
+      if (tags.length > 0) {
+        hashtagsList.innerHTML = tags.map(t => `<span class="hashtag-chip" style="font-size:11px; padding:3px 8px;">${Utils.escapeHtml(t)}</span>`).join("");
+        hasExtras = true;
+      } else {
+        hashtagsList.innerHTML = "";
+      }
+    }
+    if (badgesList) {
+      const assigned = Array.isArray(profile.assignedBadges) ? profile.assignedBadges : [];
+      if (assigned.length > 0) {
+        badgesList.innerHTML = assigned.map(b => `<span style="font-size:14px;" title="${Utils.escapeHtml(b.name || '')}">${b.icon || '🏅'}</span>`).join("");
+        hasExtras = true;
+      } else {
+        badgesList.innerHTML = "";
+      }
+    }
+    if (extrasWrap) {
+      extrasWrap.style.display = hasExtras ? "block" : "none";
+    }
+
+    // 13. Statistics Panel
+    const statCreated = document.getElementById("mini-stat-created");
+    if (statCreated) {
+      statCreated.textContent = profile.createdAt ? new Date(profile.createdAt).toLocaleDateString("ru-RU") : "Неизвестно";
+    }
+    const statLogin = document.getElementById("mini-stat-login");
+    if (statLogin) {
+      statLogin.textContent = profile.lastLoginDate || "Неизвестно";
+    }
+    const statRoomTime = document.getElementById("mini-stat-room-time");
+    if (statRoomTime) {
+      statRoomTime.textContent = Utils.formatDuration(profile.timeSpentInRooms || 0);
+    }
+    const statUid = document.getElementById("mini-stat-uid");
+    if (statUid) {
+      statUid.textContent = uid;
+    }
+
+    // 14. Like Button
+    const likeBtn = document.getElementById("mini-btn-like");
+    const likesCountEl = document.getElementById("mini-likes-count");
+    const likeIconEl = document.getElementById("mini-like-icon");
+
+    const updateLikeState = (p) => {
+      const likedBy = p?.likedBy || {};
+      const count = Object.keys(likedBy).length;
+      if (likesCountEl) likesCountEl.textContent = count;
+      const isLiked = Boolean(AppState.currentUser && likedBy[AppState.currentUser.uid]);
+      if (likeBtn) {
+        if (isLiked) {
+          likeBtn.classList.add("liked");
+          if (likeIconEl) {
+            likeIconEl.style.filter = "none";
+            likeIconEl.style.transform = "scale(1.15)";
+          }
+        } else {
+          likeBtn.classList.remove("liked");
+          if (likeIconEl) {
+            likeIconEl.style.filter = "grayscale(100%) opacity(50%)";
+            likeIconEl.style.transform = "none";
+          }
+        }
+      }
+    };
+    updateLikeState(profile);
+
+    if (likeBtn) {
+      likeBtn.onclick = async () => {
+        const myUid = AppState.currentUser?.uid;
+        if (!myUid) {
+          return Utils.toast("Войдите в аккаунт, чтобы ставить лайки", "warning");
+        }
+        if (isSelf) {
+          return Utils.toast("Нельзя ставить лайк самому себе", "info");
+        }
+
+        try {
+          const likedRef = ref(db, `users/${uid}/profile/likedBy/${myUid}`);
+          const isLikedAlready = Boolean(profile.likedBy && profile.likedBy[myUid]);
+
+          if (isLikedAlready) {
+            await remove(likedRef);
+            if (profile.likedBy) delete profile.likedBy[myUid];
+          } else {
+            await set(likedRef, Date.now());
+            if (!profile.likedBy) profile.likedBy = {};
+            profile.likedBy[myUid] = Date.now();
+            Utils.toast(`Вы поставили лайк пользователю ${profile.name || "Пользователь"} ❤️`, "success");
+
+            // Heart animation
+            for (let i = 0; i < 5; i++) {
+              const heart = document.createElement("div");
+              heart.innerHTML = "❤️";
+              heart.style.position = "fixed";
+              heart.style.left = `${50 + (Math.random() * 20 - 10)}%`;
+              heart.style.bottom = `${45 + Math.random() * 15}%`;
+              heart.style.fontSize = `${20 + Math.random() * 14}px`;
+              heart.style.pointerEvents = "none";
+              heart.style.zIndex = "100005";
+              heart.style.transition = "all 1s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+              heart.style.transform = `translateY(0) scale(1) rotate(${Math.random() * 30 - 15}deg)`;
+              heart.style.opacity = "1";
+              document.body.appendChild(heart);
+              setTimeout(() => {
+                heart.style.transform = `translateY(-110px) scale(1.3) rotate(${Math.random() * 40 - 20}deg)`;
+                heart.style.opacity = "0";
+              }, 30);
+              setTimeout(() => heart.remove(), 1100);
+            }
+          }
+          updateLikeState(profile);
+        } catch (err) {
+          console.error("Like toggle error:", err);
+        }
+      };
+    }
+
+    // 15. Report Button
+    const reportBtn = document.getElementById("mini-btn-report");
+    if (reportBtn) {
+      if (isSelf) {
+        reportBtn.style.display = "none";
+      } else {
+        reportBtn.style.display = "inline-flex";
+        reportBtn.onclick = () => {
+          RoomManager.closeUserMiniature();
+          if (window.ReportManager?.openProfileReportModal) {
+            ReportManager.openProfileReportModal(uid);
+          }
+        };
+      }
+    }
+
+    // 16. DM Button
+    const dmBtn = document.getElementById("mini-btn-dm");
     if (dmBtn) {
       if (isSelf) {
         dmBtn.style.display = "none";
@@ -144,15 +370,14 @@ class RoomManager {
         dmBtn.onclick = () => {
           RoomManager.closeUserMiniature();
           if (window.DirectMessages) {
-            DirectMessages.openChat(
-              uid,
-              profile.name || profile.username || "Пользователь",
-            );
+            DirectMessages.openChat(uid, profile.name || profile.username || "Пользователь");
           }
         };
       }
     }
 
+    // 17. Friend Button
+    const friendBtn = document.getElementById("mini-btn-friend");
     if (friendBtn) {
       if (isSelf) {
         friendBtn.style.display = "none";
@@ -160,14 +385,12 @@ class RoomManager {
         friendBtn.style.display = "flex";
         const myFriends = FriendsManager?.friendsMap || {};
         const isFriend = myFriends[uid]?.status === "accepted";
-        const isPending = Boolean(
-          FriendsManager?.pendingFriendRequestsMap?.[uid],
-        );
+        const isPending = Boolean(FriendsManager?.pendingFriendRequestsMap?.[uid]);
 
         if (isFriend) {
           friendBtn.innerHTML = `<span>✓ В друзьях</span>`;
-          friendBtn.style.background = "rgba(34, 197, 94, 0.15)";
-          friendBtn.style.borderColor = "rgba(34, 197, 94, 0.35)";
+          friendBtn.style.background = "rgba(34, 197, 94, 0.16)";
+          friendBtn.style.borderColor = "rgba(34, 197, 94, 0.38)";
           friendBtn.style.color = "#4ade80";
           friendBtn.onclick = () => {
             FriendsManager.removeFriend(uid);
@@ -193,6 +416,8 @@ class RoomManager {
       }
     }
 
+    // 18. Gift Button
+    const giftBtn = document.getElementById("mini-btn-gift");
     if (giftBtn) {
       if (isSelf) {
         giftBtn.style.display = "none";
@@ -201,15 +426,14 @@ class RoomManager {
         giftBtn.onclick = () => {
           RoomManager.closeUserMiniature();
           if (ProfileManager.openGiftLumensModal) {
-            ProfileManager.openGiftLumensModal(
-              uid,
-              profile.name || profile.username || "Другу",
-            );
+            ProfileManager.openGiftLumensModal(uid, profile.name || profile.username || "Другу");
           }
         };
       }
     }
 
+    // 19. Full Profile Button
+    const fullProfileBtn = document.getElementById("mini-btn-full-profile");
     if (fullProfileBtn) {
       fullProfileBtn.onclick = () => {
         RoomManager.closeUserMiniature();
@@ -346,98 +570,19 @@ class RoomManager {
   static currentThemeFolder = "classic";
   static selectedTheme = "default";
 
-  static initThemes() {
-    const toggleBtn = Utils.$("btn-room-theme-toggle");
-    const carousel = Utils.$("room-theme-carousel");
-    const prevBtn = Utils.$("room-theme-prev"); // [UPDATE]
-    const nextBtn = Utils.$("room-theme-next");
-    const track = Utils.$("room-theme-track");
-    if (!toggleBtn || !carousel || !prevBtn || !nextBtn || !track) return;
+  static initThemes() {}
 
-    toggleBtn.onclick = () => {
-      if (toggleBtn.classList.contains("premium-locked-theme")) {
-        return window.Utils.toast(
-          "Смена темы доступна только с Premium!",
-          "error",
-        );
-      }
-      carousel.classList.toggle("active");
-    };
-    prevBtn.onclick = () => this.stepThemeCarousel(-1);
-    nextBtn.onclick = () => this.stepThemeCarousel(1);
-    track.onclick = (e) => {
-      const card = e.target.closest(".theme-card");
-      if (!card?.dataset.theme) return;
-      const uid = AppState?.currentUser?.uid;
-      const profile = uid ? AppState.usersCache.get(uid) : null;
-      
-      const opts = ThemeManager.FOLDERS[this.currentThemeFolder].themes;
-      this.themeIndex = Math.max(0, opts.indexOf(card.dataset.theme));
-      this.updateThemeTransform();
-      this.syncThemeCarouselActive();
-    };
+  static stepThemeCarousel() {}
+
+  static syncThemeCarouselActive() {}
+
+  static setRoomModalTheme() {}
+
+  static updateThemeTransform() {}
+
+  static normalizeRoomTheme() {
+    return "default";
   }
-
-  static stepThemeCarousel(direction = 1) {
-    const opts = ThemeManager.FOLDERS[this.currentThemeFolder]?.themes || [];
-    if (!opts.length) return;
-    this.themeIndex = (this.themeIndex + direction + opts.length) % opts.length;
-    this.updateThemeTransform();
-    this.syncThemeCarouselActive();
-  }
-
-  static syncThemeCarouselActive() {
-    const track = Utils.$("room-theme-track");
-    if (!track) return;
-    track.querySelectorAll(".theme-card").forEach((card) => {
-      const isLocked =
-        card.dataset.theme !== "default" &&
-        window.PremiumManager &&
-        !PremiumManager.canUseTheme(
-          card.dataset.theme,
-          AppState?.currentUser?.profile || null,
-          AppState?.currentUser?.uid,
-        );
-      card.classList.toggle("locked", !!isLocked);
-      card.classList.toggle(
-        "active",
-        card.dataset.theme === this.selectedTheme,
-      );
-    });
-  }
-
-  static setRoomModalTheme(theme = "default") {
-    const normalized = this.normalizeRoomTheme(theme);
-    this.selectedTheme = normalized;
-    this.currentThemeFolder = ThemeManager.findFolderForTheme(normalized);
-    const foldersContainer = Utils.$("room-theme-folders");
-    foldersContainer?.querySelectorAll(".theme-folder-btn").forEach((btn) => {
-      btn.classList.toggle(
-        "active",
-        btn.dataset.folder === this.currentThemeFolder,
-      );
-    });
-    ThemeManager.renderCarouselTrack(this.currentThemeFolder);
-    this.syncThemeCarouselActive();
-  }
-
-  static updateThemeTransform() {
-    const track = Utils.$("room-theme-track");
-    if (!track) return;
-    const opts = ThemeManager.FOLDERS[this.currentThemeFolder]?.themes || [
-      "default",
-    ];
-    this.selectedTheme = opts[this.themeIndex] || "default";
-    const modal = Utils.$("modal-room");
-    if (modal) modal.dataset.selectedTheme = this.selectedTheme;
-    track.style.transform = `translateX(-${this.themeIndex * 100}%)`;
-    this.syncThemeCarouselActive();
-  }
-
-  static normalizeRoomTheme(theme = "default") {
-    // [NEW]
-    return ThemeManager.EXTENDED_THEMES[theme] ? theme : "default"; // [NEW]
-  } // [NEW]
 
   static getActorLabel() {
     const uid = AppState.currentUser?.uid || "";
@@ -594,6 +739,23 @@ class RoomManager {
       );
     }
 
+    if (!roomId) {
+      const myUid = AppState.currentUser?.uid;
+      const myProfile = myUid ? (AppState.usersCache.get(myUid) || AppState.myProfile) : null;
+      const isPrem = window.PremiumManager ? PremiumManager.isPremiumActive(myProfile, myUid) : false;
+      let myRoomsCount = 0;
+      if (myUid && AppState.roomsCache) {
+        AppState.roomsCache.forEach((r) => {
+          if (r && r.hostId === myUid) myRoomsCount++;
+        });
+      }
+      if (!isPrem && myRoomsCount >= 1) {
+        Utils.toast("Создание 2 комнат и более доступно только с COWIO Premium!", "error");
+        if (window.PremiumManager) PremiumManager.openPremiumPurchaseModal();
+        return;
+      }
+    }
+
     const modal = Utils.$("modal-room");
     const isEdit = !!roomId;
     Utils.$("room-modal-title").innerText = isEdit
@@ -616,8 +778,6 @@ class RoomManager {
       Utils.$("room-input-hashtag").value = Array.isArray(r.hashtags)
         ? r.hashtags[0] || ""
         : "";
-      this.setRoomModalTheme(r.theme || "default");
-      Utils.$("room-theme-carousel").classList.remove("active");
       RoomVideoSearchManager.reset();
       const hint = Utils.$("room-name-autofill-hint");
       if (hint) hint.style.display = "none";
@@ -636,8 +796,6 @@ class RoomManager {
       Utils.$("room-input-password").value = "";
       Utils.$("room-input-hashtag").value = "";
       MediaResolverClient.setModalStatus("idle", "");
-      this.setRoomModalTheme("default");
-      Utils.$("room-theme-carousel").classList.remove("active");
       RoomVideoSearchManager.reset();
       const hint = Utils.$("room-name-autofill-hint");
       if (hint) hint.style.display = "none";
@@ -667,8 +825,6 @@ class RoomManager {
       true,
     );
     const roomId = Utils.$("modal-room").dataset.editingId;
-    const selectedTheme =
-      Utils.$("modal-room").dataset.selectedTheme || "default";
 
     if (!roomId && AdminPanel.isSystemReadOnlyForUser()) {
       return Utils.toast("Система в режиме ReadOnly", "error");
@@ -682,6 +838,23 @@ class RoomManager {
         "Создание комнат временно отключено администратором",
         "error",
       );
+    }
+
+    if (!roomId) {
+      const myUid = AppState.currentUser?.uid;
+      const myProfile = myUid ? (AppState.usersCache.get(myUid) || AppState.myProfile) : null;
+      const isPrem = window.PremiumManager ? PremiumManager.isPremiumActive(myProfile, myUid) : false;
+      let myRoomsCount = 0;
+      if (myUid && AppState.roomsCache) {
+        AppState.roomsCache.forEach((r) => {
+          if (r && r.hostId === myUid) myRoomsCount++;
+        });
+      }
+      if (!isPrem && myRoomsCount >= 1) {
+        Utils.toast("Создание 2 комнат и более доступно только с COWIO Premium!", "error");
+        if (window.PremiumManager) PremiumManager.openPremiumPurchaseModal();
+        return;
+      }
     }
 
     if (!name) return Utils.toast("Название не может быть пустым", "error");
@@ -740,7 +913,7 @@ class RoomManager {
         videoThumbnail: videoFields.videoThumbnail,
         isPrivate,
         hashtags,
-        theme: this.normalizeRoomTheme(selectedTheme),
+        theme: "default",
         hostId: AppState.currentUser.uid,
         hostName:
           AppState.usersCache.get(AppState.currentUser.uid)?.name ||
@@ -1414,7 +1587,7 @@ class RoomManager {
           String(msg.url).startsWith("data:image/");
         content = isImg
           ? `<div style="padding:4px;"><img src="${Utils.escapeHtml(msg.url)}" style="max-width: 250px; max-height: 250px; object-fit: contain; border-radius: 8px; display: block;" onerror="this.onerror=null; this.src='https://via.placeholder.com/200x150?text=Error';" /></div>`
-          : `<div style="padding:4px;"><a href="${Utils.escapeHtml(msg.url)}" target="_blank" style="color: var(--accent); padding: 8px; display: inline-block;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Paperclip.webp" style="width:18px;height:18px;vertical-align:bottom;margin-right:5px;">Прикрепленный файл</a></div>`;
+          : `<div style="padding:4px;"><a href="${Utils.escapeHtml(msg.url)}" target="_blank" style="color: var(--accent); padding: 8px; display: inline-block;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Paperclip.webp" style="width:18px;height:18px;vertical-align:bottom;margin-right:5px;">Прикрепленный файл</a></div>`;
       } else {
         content = Utils.escapeHtml(msg.text || "");
         content = content.replace(
@@ -1739,11 +1912,11 @@ class RoomManager {
       const el = document.createElement("div");
       el.className = "floating-emoji";
       const imgMap = {
-        "🔥": "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp",
-        "😂": "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Tears%20Of%20Joy.webp",
-        "😱": "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20Screaming%20In%20Fear.webp",
-        "❤️": "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Heart.webp",
-        "👏": "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Clapping%20Hands.webp",
+        "🔥": "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Fire.webp",
+        "😂": "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Face%20With%20Tears%20Of%20Joy.webp",
+        "😱": "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Face%20Screaming%20In%20Fear.webp",
+        "❤️": "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Red%20Heart.webp",
+        "👏": "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Clapping%20Hands.webp",
       };
       if (imgMap[rx.emoji]) {
         el.innerHTML = `<img src="${imgMap[rx.emoji]}" style="width: 48px; height: 48px; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3));">`;
@@ -2648,51 +2821,12 @@ class RoomManager {
   static applyRoomTheme(theme = "default") {
     const roomScreen = Utils.$("room-screen");
     if (!roomScreen) return;
-
-    // Smooth transition trick: fade the old background out OVER the new background
-    let fadeLayer = document.createElement("div");
-    fadeLayer.style.cssText = `
-            position: absolute; inset: 0; z-index: 0; pointer-events: none;
-            background: ${getComputedStyle(roomScreen).background};
-            transition: opacity 0.8s ease;
-            opacity: 1;
-        `;
-    roomScreen.appendChild(fadeLayer);
-
-    Object.keys(ThemeManager.EXTENDED_THEMES).forEach((k) => {
-      roomScreen.classList.remove("theme-" + k);
-    });
     document.body.classList.remove(
       "theme-love-room",
       "theme-inverted-room",
       "theme-light-room",
     );
     this.stopLoveHearts();
-
-    const safeTheme = this.normalizeRoomTheme(theme);
-    Ambilight.updateTheme(safeTheme);
-
-    if (safeTheme === "love") {
-      roomScreen.classList.add("theme-love");
-      document.body.classList.add("theme-love-room");
-      this.startLoveHearts();
-      setTimeout(() => this.startLoveHearts(), 150);
-    } else {
-      if (safeTheme === "inverted")
-        document.body.classList.add("theme-inverted-room");
-      if (safeTheme === "light")
-        document.body.classList.add("theme-light-room");
-      if (safeTheme !== "default")
-        roomScreen.classList.add(`theme-${safeTheme}`);
-    }
-
-    // Trigger fade out
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        fadeLayer.style.opacity = "0";
-        setTimeout(() => fadeLayer.remove(), 850);
-      });
-    });
   }
 
   static startLoveHearts() {

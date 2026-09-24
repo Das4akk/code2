@@ -600,7 +600,7 @@ class FriendsManager {
           : profile.streak;
         const streakHTML =
           activeStreak && activeStreak > 0
-            ? `<div style="position: absolute; bottom: 8px; right: 12px; background: rgba(0,0,0,0.4); border-radius: 12px; padding: 2px 6px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: rgba(255,255,255,0.8);" title="Стрик захода: ${activeStreak} дней"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" style="width:14px; height:14px; margin-right:4px;">${activeStreak}</div>`
+            ? `<div style="position: absolute; bottom: 8px; right: 12px; background: rgba(0,0,0,0.4); border-radius: 12px; padding: 2px 6px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: rgba(255,255,255,0.8);" title="Стрик захода: ${activeStreak} дней"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Fire.webp" style="width:14px; height:14px; margin-right:4px;">${activeStreak}</div>`
             : "";
 
         const isFriendPremium = window.PremiumManager
@@ -791,7 +791,7 @@ class DirectMessages {
                     <div class="dm-chat-name">${Utils.escapeHtml(item.name)}</div>
                     <div class="dm-chat-last-msg">${Utils.escapeHtml(item.lastText) || "<i>Нет сообщений</i>"}</div>
                 </div>
-                <button class="dm-pin-btn" title="Закрепить">${item.isPinned ? '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Reminder%20Ribbon.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">' : '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Pushpin.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;opacity:0.5;">'}</button>
+                <button class="dm-pin-btn" title="Закрепить">${item.isPinned ? '<img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Reminder%20Ribbon.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">' : '<img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Pushpin.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;opacity:0.5;">'}</button>
             `;
 
       el.onclick = (e) => {
@@ -1137,8 +1137,8 @@ class DirectMessages {
                         <strong>${Utils.escapeHtml(isSelf ? "Вы" : m.fromName)}</strong>
                         <div class="bubble" style="border: 1px solid var(--accent); background: rgba(46,213,115,0.1);">
                             <div style="font-weight:bold; margin-bottom:5px;">Привет! Заходи к нам:</div>
-                            <div style="font-size: 16px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Television.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> ${Utils.escapeHtml(m.roomName)}</div>
-                            <div style="font-size: 12px; opacity:0.8; margin-bottom:8px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Зрителей: ${m.membersCount || 1}</div>
+                            <div style="font-size: 16px;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Television.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> ${Utils.escapeHtml(m.roomName)}</div>
+                            <div style="font-size: 12px; opacity:0.8; margin-bottom:8px;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Busts%20In%20Silhouette.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> Зрителей: ${m.membersCount || 1}</div>
                             ${
                               !isSelf
                                 ? `
@@ -1167,7 +1167,7 @@ class DirectMessages {
                     <div class="m-line ${isSelf ? "self" : ""}">
                         <strong>${Utils.escapeHtml(isSelf ? "Вы" : m.fromName)}</strong>
                         <div class="bubble" style="padding: 4px;">
-                            ${isImg ? `<img src="${Utils.escapeHtml(m.url)}" style="max-width: 250px; max-height: 250px; object-fit: contain; border-radius: 8px; display: block;" onerror="this.onerror=null; this.src='https://via.placeholder.com/200x150?text=Error';" />` : `<a href="${Utils.escapeHtml(m.url)}" target="_blank" style="color: var(--accent); padding: 8px; display: inline-block;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Paperclip.webp" style="width:18px;height:18px;vertical-align:bottom;margin-right:5px;">Прикрепленный файл</a>`}
+                            ${isImg ? `<img src="${Utils.escapeHtml(m.url)}" style="max-width: 250px; max-height: 250px; object-fit: contain; border-radius: 8px; display: block;" onerror="this.onerror=null; this.src='https://via.placeholder.com/200x150?text=Error';" />` : `<a href="${Utils.escapeHtml(m.url)}" target="_blank" style="color: var(--accent); padding: 8px; display: inline-block;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Paperclip.webp" style="width:18px;height:18px;vertical-align:bottom;margin-right:5px;">Прикрепленный файл</a>`}
                         </div>
                     </div>
                 `
@@ -1189,202 +1189,21 @@ class DirectMessages {
     if (this.theme === "love") this.startLoveHearts();
   }
 
-  static bindThemeControls() {
-    const toggle = Utils.$("btn-dm-theme-toggle");
-    const carousel = Utils.$("dm-theme-carousel");
-    if (!toggle || !carousel) return;
+  static bindThemeControls() {}
 
-    toggle.onclick = () => {
-      const uid = AppState?.currentUser?.uid;
-      const profile = uid ? AppState.usersCache.get(uid) : null;
-      const isPremium = profile
-        ? PremiumManager.isPremiumActive(profile, uid) ||
-          PremiumManager.isStaff(profile, uid)
-        : false;
+  static renderThemeCarousel() {}
 
-      if (!isPremium) {
-        return Utils.toast("Смена темы доступна только с Premium!", "error");
-      }
-      carousel.classList.toggle("active");
-      if (carousel.classList.contains("active")) {
-        this.renderThemeCarousel();
-      }
-    };
+  static renderCarouselTrack() {}
 
-    Utils.$("dm-theme-prev")?.addEventListener("click", () =>
-      this.stepThemeCarousel(-1),
-    );
-    Utils.$("dm-theme-next")?.addEventListener("click", () =>
-      this.stepThemeCarousel(1),
-    );
+  static stepThemeCarousel() {}
+
+  static updateThemeTransform() {}
+
+  static normalizeTheme() {
+    return "default";
   }
 
-  static currentThemeFolder = "favorites";
-  static themeIndex = 0;
-  static selectedTheme = "default";
-
-  static renderThemeCarousel() {
-    if (!this.currentThemeFolder)
-      this.currentThemeFolder = Object.keys(ThemeManager.FOLDERS)[0];
-
-    // Render Folders
-    const foldersContainer = Utils.$("dm-theme-folders");
-    if (foldersContainer) {
-      foldersContainer.innerHTML = "";
-      const fKeys = Object.keys(ThemeManager.FOLDERS);
-      fKeys.forEach((fKey, index) => {
-        const btn = document.createElement("button");
-        btn.className = `secondary-btn theme-folder-btn ${fKey === this.currentThemeFolder ? "active" : ""}`;
-        btn.dataset.folder = fKey;
-        btn.innerHTML = ThemeManager.FOLDERS[fKey].label;
-        btn.style.padding = "6px 12px";
-        btn.style.fontSize = "12px";
-        btn.onclick = () => {
-          foldersContainer
-            .querySelectorAll(".theme-folder-btn")
-            .forEach((b) => b.classList.remove("active"));
-          btn.classList.add("active");
-          this.currentThemeFolder = fKey;
-          this.renderCarouselTrack(fKey);
-        };
-        foldersContainer.appendChild(btn);
-      });
-    }
-
-    this.renderCarouselTrack(this.currentThemeFolder);
-  }
-
-  static renderCarouselTrack(fKey) {
-    const track = Utils.$("dm-theme-track");
-    if (!track) return;
-    track.innerHTML = "";
-
-    // Need to initialize selectedTheme to current theme
-    this.selectedTheme = this.theme;
-
-    const themesList = ThemeManager.FOLDERS[fKey]?.themes || [];
-    if (fKey === "favorites" && !themesList.length) {
-      track.innerHTML = `
-                <div class="theme-card theme-card-empty">
-                    <div class="theme-empty-msg">Нажмите ★ на любой теме,<br>чтобы добавить в любимые</div>
-                </div>
-            `;
-      this.themeIndex = 0;
-      this.updateThemeTransform();
-      return;
-    }
-
-    themesList.forEach((themeKey) => {
-      const t = ThemeManager.EXTENDED_THEMES[themeKey];
-      if (!t) return;
-      const isFav = ThemeManager.isFavorite(themeKey);
-      const div = document.createElement("div");
-      div.className = `theme-card ${this.selectedTheme === themeKey ? "active" : ""}`;
-      div.dataset.theme = themeKey;
-      div.innerHTML = `
-                <button type="button" class="theme-fav-btn ${isFav ? "active" : ""}" data-theme="${themeKey}" title="${isFav ? "Убрать из любимых" : "В любимые"}">★</button>
-                <div class="theme-rect ${themeKey}"></div>
-                <div class="theme-name">${ThemeManager.getThemeLabel(themeKey)}</div>
-                <div class="theme-check">✓</div>
-            `;
-      track.appendChild(div);
-    });
-
-    track.querySelectorAll(".theme-fav-btn").forEach((btn) => {
-      btn.onclick = (e) => {
-        e.stopPropagation();
-        ThemeManager.toggleFavorite(btn.dataset.theme);
-        this.renderCarouselTrack(this.currentThemeFolder);
-      };
-    });
-
-    const opts = ThemeManager.FOLDERS[this.currentThemeFolder]?.themes || [];
-    const idx = opts.indexOf(this.selectedTheme);
-    if (idx >= 0) this.themeIndex = idx;
-    else
-      this.themeIndex = Math.min(this.themeIndex, Math.max(0, opts.length - 1));
-    this.updateThemeTransform();
-
-    track.querySelectorAll(".theme-card").forEach((card) => {
-      card.onclick = () => {
-        const t = card.dataset.theme;
-        if (!t) return;
-        this.applyTheme(t, true);
-        this.selectedTheme = t;
-        const opts = ThemeManager.FOLDERS[this.currentThemeFolder].themes;
-        this.themeIndex = Math.max(0, opts.indexOf(t));
-        this.updateThemeTransform();
-      };
-    });
-  }
-
-  static stepThemeCarousel(direction = 1) {
-    const opts = ThemeManager.FOLDERS[this.currentThemeFolder]?.themes || [];
-    if (!opts.length) return;
-    this.themeIndex = (this.themeIndex + direction + opts.length) % opts.length;
-    this.updateThemeTransform();
-  }
-
-  static updateThemeTransform() {
-    const track = Utils.$("dm-theme-track");
-    if (!track) return;
-    track.style.transform = `translateX(-${this.themeIndex * 100}%)`;
-    track.querySelectorAll(".theme-card").forEach((card) => {
-      card.classList.toggle(
-        "active",
-        card.dataset.theme === this.selectedTheme,
-      );
-    });
-  }
-
-  static normalizeTheme(theme = "default") {
-    return ThemeManager.EXTENDED_THEMES[theme] ? theme : "default";
-  }
-
-  static applyTheme(theme = "default", persist = false) {
-    const modal = Utils.$("modal-dm-chat");
-    if (!modal) return;
-    const uid = AppState?.currentUser?.uid;
-    const profile = uid ? AppState.usersCache.get(uid) : null;
-    if (
-      window.PremiumManager &&
-      !PremiumManager.canUseTheme(theme, profile, uid)
-    ) {
-      Utils.toast("Эта тема доступна только Premium-подписчикам", "info");
-      return;
-    }
-    this.theme = this.normalizeTheme(theme);
-    Object.keys(ThemeManager.EXTENDED_THEMES).forEach((k) =>
-      modal.classList.remove("theme-" + k),
-    );
-    if (this.theme !== "default") modal.classList.add(`theme-${this.theme}`);
-    Utils.$("dm-theme-controls")
-      ?.querySelectorAll(".dm-theme-chip")
-      .forEach((btn) => {
-        btn.classList.toggle("active", btn.dataset.theme === this.theme);
-      });
-    if (this.theme === "love") this.startLoveHearts();
-    else this.stopLoveHearts();
-
-    if (persist && AppState.currentDirectChat?.id) {
-      const profile = AppState.usersCache.get(AppState.currentUser.uid) || {};
-      update(ref(db, `direct-messages/${AppState.currentDirectChat.id}`), {
-        theme: this.theme,
-        updatedAt: Date.now(),
-      }).catch(() => {});
-      push(
-        ref(db, `direct-messages/${AppState.currentDirectChat.id}/messages`),
-        {
-          type: "system",
-          fromUid: AppState.currentUser.uid,
-          fromName:
-            profile.name || AppState.currentUser.displayName || "Пользователь",
-          text: `сменил тему чата на "${this.theme}"`,
-          ts: Date.now(),
-        },
-      ).catch(() => {});
-    }
-  }
+  static applyTheme() {}
 
   static startLoveHearts() {
     if (this.theme !== "love") return;

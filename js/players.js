@@ -1094,36 +1094,31 @@ class Ambilight {
     const draw = () => {
       if (!AppState.currentRoomId) return this.stop();
 
-      if (AppState.currentTheme === "love") {
-        glowEl.style.background = "rgba(255, 105, 180, 0.9)";
-        glowEl.style.boxShadow = "0 0 100px rgba(255, 105, 180, 0.8)";
-      } else {
-        // Adaptive color reading from video
-        if (!videoEl.paused && !videoEl.ended && videoEl.readyState > 2) {
-          try {
-            this.ctx.drawImage(videoEl, 0, 0, 64, 64);
-            const data = this.ctx.getImageData(0, 0, 64, 64).data;
-            let r = 0,
-              g = 0,
-              b = 0,
-              count = 0;
-            for (let i = 0; i < data.length; i += 16) {
-              r += data[i];
-              g += data[i + 1];
-              b += data[i + 2];
-              count++;
-            }
-            r = Math.floor(r / count);
-            g = Math.floor(g / count);
-            b = Math.floor(b / count);
-            const color = `rgb(${r}, ${g}, ${b})`;
-            glowEl.style.background = color;
-            glowEl.style.boxShadow = `0 0 80px ${color}, 0 0 120px ${color}`;
-          } catch (e) {
-            // Fallback on CORS errors
-            glowEl.style.background = "rgba(255, 255, 255, 0.05)";
-            glowEl.style.boxShadow = "none";
+      // Adaptive color reading from video
+      if (!videoEl.paused && !videoEl.ended && videoEl.readyState > 2) {
+        try {
+          this.ctx.drawImage(videoEl, 0, 0, 64, 64);
+          const data = this.ctx.getImageData(0, 0, 64, 64).data;
+          let r = 0,
+            g = 0,
+            b = 0,
+            count = 0;
+          for (let i = 0; i < data.length; i += 16) {
+            r += data[i];
+            g += data[i + 1];
+            b += data[i + 2];
+            count++;
           }
+          r = Math.floor(r / count);
+          g = Math.floor(g / count);
+          b = Math.floor(b / count);
+          const color = `rgb(${r}, ${g}, ${b})`;
+          glowEl.style.background = color;
+          glowEl.style.boxShadow = `0 0 80px ${color}, 0 0 120px ${color}`;
+        } catch (e) {
+          // Fallback on CORS errors
+          glowEl.style.background = "rgba(255, 255, 255, 0.05)";
+          glowEl.style.boxShadow = "none";
         }
       }
       this.loopId = requestAnimationFrame(draw);
@@ -1131,13 +1126,7 @@ class Ambilight {
     draw();
   }
 
-  static updateTheme(theme) {
-    const glowEl = Utils.$("ambilight-glow");
-    if (glowEl && theme === "love") {
-      glowEl.style.background = "rgba(255, 105, 180, 0.9)";
-      glowEl.style.boxShadow = "0 0 100px rgba(255, 105, 180, 0.8)";
-    }
-  }
+  static updateTheme() {}
 
   static stop() {
     if (this.loopId) cancelAnimationFrame(this.loopId);

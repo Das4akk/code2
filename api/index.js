@@ -4,8 +4,7 @@ function restoreOriginalUrl(req) {
   const raw =
     req.headers['x-vercel-original-url'] ||
     req.headers['x-original-url'] ||
-    req.headers['x-forwarded-uri'] ||
-    req.headers['x-invoke-path'];
+    req.headers['x-forwarded-uri'];
   if (typeof raw !== 'string' || !raw.length) return;
   if (raw.startsWith('http://') || raw.startsWith('https://')) {
     const u = new URL(raw);

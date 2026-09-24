@@ -18,9 +18,9 @@ class ProfileManager {
     if (!profile) return "";
     const badges = [];
 
-    const ownerImg = `<span class="role-badge-icon-wrapper" data-tooltip="Создатель платформы" onclick="event.stopPropagation(); if(window.Utils) Utils.showBadgeModal('Создатель', 'Высший ранг платформы. Владелец проекта.', 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Military%20Medal.webp')"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Military%20Medal.webp" class="role-badge-icon" style="width:1.2em;height:1.2em;vertical-align:bottom;" title=""></span>`;
-    const adminImg = `<span class="role-badge-icon-wrapper" data-tooltip="Администратор" onclick="event.stopPropagation(); if(window.Utils) Utils.showBadgeModal('Администратор', 'Управляет платформой и модераторами.', 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Diamond%20With%20A%20Dot.webp')"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Diamond%20With%20A%20Dot.webp" class="role-badge-icon" style="width:1.2em;height:1.2em;vertical-align:bottom;" title=""></span>`;
-    const modImg = `<span class="role-badge-icon-wrapper" data-tooltip="Модератор комьюнити" onclick="event.stopPropagation(); if(window.Utils) Utils.showBadgeModal('Модератор', 'Поддерживает порядок и помогает пользователям.', 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Man%20Police%20Officer.webp')"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Man%20Police%20Officer.webp" class="role-badge-icon" style="width:1.2em;height:1.2em;vertical-align:bottom;" title=""></span>`;
+    const ownerImg = `<span class="role-badge-icon-wrapper" data-tooltip="Создатель платформы" onclick="event.stopPropagation(); if(window.Utils) Utils.showBadgeModal('Создатель', 'Высший ранг платформы. Владелец проекта.', 'https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Military%20Medal.webp')"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Military%20Medal.webp" class="role-badge-icon" style="width:1.2em;height:1.2em;vertical-align:bottom;" title=""></span>`;
+    const adminImg = `<span class="role-badge-icon-wrapper" data-tooltip="Администратор" onclick="event.stopPropagation(); if(window.Utils) Utils.showBadgeModal('Администратор', 'Управляет платформой и модераторами.', 'https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Diamond%20With%20A%20Dot.webp')"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Diamond%20With%20A%20Dot.webp" class="role-badge-icon" style="width:1.2em;height:1.2em;vertical-align:bottom;" title=""></span>`;
+    const modImg = `<span class="role-badge-icon-wrapper" data-tooltip="Модератор комьюнити" onclick="event.stopPropagation(); if(window.Utils) Utils.showBadgeModal('Модератор', 'Поддерживает порядок и помогает пользователям.', 'https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Man%20Police%20Officer.webp')"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Man%20Police%20Officer.webp" class="role-badge-icon" style="width:1.2em;height:1.2em;vertical-align:bottom;" title=""></span>`;
 
     if (AdminPanel.isCreatorProfile(profile, uid)) badges.push(ownerImg);
     else if (AdminPanel.isModeratorProfile(profile, uid)) badges.push(modImg);
@@ -1231,7 +1231,7 @@ class ProfileManager {
     if (ownerUid && !String(partnerUid).startsWith("custom_partner_")) {
       const bond = await PartnerBondEngine.getBond(ownerUid, partnerUid);
       const lvl = PartnerBondEngine.bondLevel(bond.totalWarmth);
-      bondMeta = ` · ур. ${lvl}${bond.streak && bond.streak > 1 ? ` · <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">${bond.streak}` : ""}`;
+      bondMeta = ` · ур. ${lvl}${bond.streak && bond.streak > 1 ? ` · <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Fire.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">${bond.streak}` : ""}`;
     }
     container.innerHTML = `
             <div class="partner-avatar">${this.getAvatarHtml(partnerProfile)}</div>
@@ -2003,7 +2003,7 @@ class ProfileManager {
             Utils.toast("Ошибка при отправке подарка", "error");
           } finally {
             submitBtn.disabled = false;
-            submitBtn.innerHTML = `<span>Подарить</span> <span id="gift-modal-btn-amount">${finalAmount}</span> <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 18px; height: 18px; object-fit: contain;" alt="✨">`;
+            submitBtn.innerHTML = `<span>Подарить</span> <span id="gift-modal-btn-amount">${finalAmount}</span> <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 18px; height: 18px; object-fit: contain;" alt="✨">`;
           }
         };
       }
@@ -2294,7 +2294,7 @@ class ProfileManager {
                     for (let i = 0; i < 8; i++) {
                         const heart = document.createElement("div");
                         heart.className = "floating-emoji";
-                        heart.innerHTML = '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Heart.webp" style="width: 48px; height: 48px; filter: drop-shadow(0 4px 12px rgba(255, 0, 0, 0.4));">';
+                        heart.innerHTML = '<img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Red%20Heart.webp" style="width: 48px; height: 48px; filter: drop-shadow(0 4px 12px rgba(255, 0, 0, 0.4));">';
                         
                         // Start position around bottom center of screen or button
                         heart.style.left = `${Math.random() * 40 + 30}%`; // 30% to 70%
@@ -2539,7 +2539,19 @@ class ProfileManager {
       ? Object.values(friendsSnap.val()).filter((f) => f.status === "accepted")
           .length
       : 0;
-    if (Utils.$("view-friends-count")) Utils.$("view-friends-count").innerText = "Друзей: " + friendsCount;
+    const friendsBtn = Utils.$("view-friends-count");
+    const friendsText = Utils.$("view-friends-count-text");
+    if (friendsText) {
+      friendsText.innerText = `Друзья · ${friendsCount}`;
+    } else if (friendsBtn) {
+      friendsBtn.innerText = `Друзей: ${friendsCount}`;
+    }
+    if (friendsBtn) {
+      friendsBtn.style.cursor = "pointer";
+      friendsBtn.onclick = () => {
+        ProfileManager.openFriendsListModal(targetUid, profile?.name || "Пользователь");
+      };
+    }
     const joinDate = profile.createdAt
       ? new Date(profile.createdAt).toLocaleDateString()
       : "Неизвестно";
@@ -2558,10 +2570,10 @@ class ProfileManager {
     let genderString = "";
     if (profile.gender === "female") {
       genderString =
-        'Пол: Женский <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Woman%20Technologist.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;" alt="Женщина">';
+        'Пол: Женский <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Woman%20Technologist.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;" alt="Женщина">';
     } else if (profile.gender === "male") {
       genderString =
-        'Пол: Мужской <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Man%20Technologist.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;" alt="Мужчина">';
+        'Пол: Мужской <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Man%20Technologist.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;" alt="Мужчина">';
     }
     if (Utils.$("view-gender")) {
       Utils.$("view-gender").innerHTML = genderString;
@@ -2658,7 +2670,7 @@ class ProfileManager {
           lvl_10: {
             name: "Ветеран",
             desc: "Достиг 10 уровня",
-            icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp",
+            icon: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Star.webp",
             color: "#cddc39",
             xp: 0,
             bg: "rgba(205, 220, 57, 0.2)",
@@ -2667,7 +2679,7 @@ class ProfileManager {
           lvl_25: {
             name: "Мастер",
             desc: "Достиг 25 уровня",
-            icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp",
+            icon: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Fire.webp",
             color: "#ff9800",
             xp: 0,
             bg: "rgba(255, 152, 0, 0.2)",
@@ -2676,7 +2688,7 @@ class ProfileManager {
           lvl_50: {
             name: "Легенда",
             desc: "Достиг 50 уровня",
-            icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Gem%20Stone.webp",
+            icon: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Gem%20Stone.webp",
             color: "#2196f3",
             xp: 0,
             bg: "rgba(33, 150, 243, 0.2)",
@@ -2685,7 +2697,7 @@ class ProfileManager {
           lvl_100: {
             name: "Божество",
             desc: "Достиг 100 уровня",
-            icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp",
+            icon: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Crown.webp",
             color: "#ffeb3b",
             xp: 0,
             bg: "rgba(255, 235, 59, 0.2)",
@@ -3059,6 +3071,217 @@ class ProfileManager {
           e.stopPropagation();
           inspector.style.display = "none";
         };
+      }
+    }
+  }
+
+  static closeFriendsListModal() {
+    const modal = document.getElementById("modal-profile-friends");
+    if (modal) modal.classList.remove("active");
+  }
+
+  static async openFriendsListModal(targetUid, profileName = "Пользователь") {
+    if (!targetUid) return;
+    const modal = document.getElementById("modal-profile-friends");
+    if (!modal) return;
+
+    const titleEl = document.getElementById("profile-friends-modal-title");
+    const subtitleEl = document.getElementById("profile-friends-modal-subtitle");
+    const listEl = document.getElementById("profile-friends-modal-list");
+    const searchInput = document.getElementById("profile-friends-search");
+
+    if (searchInput) searchInput.value = "";
+
+    const isSelf = targetUid === AppState.currentUser?.uid;
+    if (titleEl) {
+      titleEl.innerText = isSelf ? "Мои друзья" : `Друзья • ${profileName}`;
+    }
+    if (subtitleEl) {
+      subtitleEl.innerText = "Загрузка списка друзей...";
+    }
+
+    if (listEl) {
+      listEl.innerHTML = `
+        <div style="display:flex; flex-direction:column; gap:8px; padding:4px 0;">
+          <div style="display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:16px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06);">
+            <div style="width:46px; height:46px; border-radius:50%; background:rgba(255,255,255,0.08); animation:pulse 1.5s infinite;"></div>
+            <div style="flex:1;">
+              <div style="width:120px; height:14px; background:rgba(255,255,255,0.1); border-radius:6px; animation:pulse 1.5s infinite; margin-bottom:8px;"></div>
+              <div style="width:80px; height:11px; background:rgba(255,255,255,0.05); border-radius:6px; animation:pulse 1.5s infinite;"></div>
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:16px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06);">
+            <div style="width:46px; height:46px; border-radius:50%; background:rgba(255,255,255,0.08); animation:pulse 1.5s infinite;"></div>
+            <div style="flex:1;">
+              <div style="width:140px; height:14px; background:rgba(255,255,255,0.1); border-radius:6px; animation:pulse 1.5s infinite; margin-bottom:8px;"></div>
+              <div style="width:70px; height:11px; background:rgba(255,255,255,0.05); border-radius:6px; animation:pulse 1.5s infinite;"></div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    modal.classList.add("active");
+
+    try {
+      const { get, ref, getDatabase } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
+      const dbInstance = getDatabase();
+      const friendsSnap = await get(ref(dbInstance, `users/${targetUid}/friends`));
+      const friendsVal = friendsSnap.val() || {};
+
+      const friendUids = Object.keys(friendsVal).filter(
+        (uid) => friendsVal[uid] && friendsVal[uid].status === "accepted"
+      );
+
+      if (subtitleEl) {
+        subtitleEl.innerText = `${friendUids.length} друзей`;
+      }
+
+      if (friendUids.length === 0) {
+        if (listEl) {
+          listEl.innerHTML = `
+            <div style="text-align:center; padding:36px 16px; color:var(--text-muted); display:flex; flex-direction:column; align-items:center; gap:10px;">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Handshake.webp" style="width:52px; height:52px;" alt="Друзья" onerror="this.style.display='none';">
+              <div style="font-weight:700; font-size:15px; color:#ffffff;">${isSelf ? "У вас пока нет друзей" : "У пользователя пока нет друзей"}</div>
+              <div style="font-size:13px; max-width:280px;">Знакомьтесь и общайтесь в комнатах!</div>
+            </div>
+          `;
+        }
+        return;
+      }
+
+      // Load all friend profiles and status in parallel
+      const friendData = await Promise.all(
+        friendUids.map(async (fUid) => {
+          const [prof, stSnap] = await Promise.all([
+            ProfileManager.loadUser(fUid).catch(() => null),
+            get(ref(dbInstance, `users/${fUid}/status`)).catch(() => null),
+          ]);
+          const status = stSnap?.val() || { online: false };
+          return {
+            uid: fUid,
+            profile: prof || { name: "Пользователь", username: "user" },
+            status,
+          };
+        })
+      );
+
+      const renderList = (filterQuery = "") => {
+        if (!listEl) return;
+        const q = filterQuery.toLowerCase().trim();
+        const filtered = friendData.filter((item) => {
+          if (!q) return true;
+          const nameMatch = (item.profile.name || "").toLowerCase().includes(q);
+          const userMatch = (item.profile.username || "").toLowerCase().includes(q);
+          return nameMatch || userMatch;
+        });
+
+        if (filtered.length === 0) {
+          listEl.innerHTML = `
+            <div style="text-align:center; padding:32px 16px; color:var(--text-muted); font-size:14px;">
+              Ничего не найдено по запросу "<strong>${Utils.escapeHtml(q)}</strong>"
+            </div>
+          `;
+          return;
+        }
+
+        listEl.innerHTML = filtered.map((item) => {
+          const fUid = item.uid;
+          const prof = item.profile;
+          const isOnline = item.status?.online;
+          const statusText = isOnline
+            ? "Онлайн"
+            : item.status?.lastSeen
+            ? `Был(а) ${Utils.formatLastSeen(item.status.lastSeen)}`
+            : "Офлайн";
+          const roleBadge = ProfileManager.getRoleBadgeHtml(prof, fUid);
+          const avatarHtml = ProfileManager.getAvatarHtml(prof);
+          const isFriendPremium = window.PremiumManager && PremiumManager.isPremiumActive(prof, fUid);
+
+          return `
+            <div class="tiktok-friend-row" data-fuid="${fUid}" style="
+              display: flex;
+              align-items: center;
+              gap: 12px;
+              padding: 12px 14px;
+              border-radius: 16px;
+              background: ${isFriendPremium ? "radial-gradient(circle at 15% 50%, rgba(255, 180, 60, 0.16), transparent 50%), rgba(255,255,255,0.05)" : "rgba(255,255,255,0.05)"};
+              border: 1px solid ${isFriendPremium ? "rgba(255, 200, 100, 0.3)" : "rgba(255,255,255,0.09)"};
+              backdrop-filter: blur(14px);
+              -webkit-backdrop-filter: blur(14px);
+              cursor: pointer;
+              transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            " onmouseover="this.style.background='rgba(255,255,255,0.12)'; this.style.borderColor='rgba(255,255,255,0.24)'; this.style.transform='translateY(-1px)';" onmouseout="this.style.background='${isFriendPremium ? "radial-gradient(circle at 15% 50%, rgba(255, 180, 60, 0.16), transparent 50%), rgba(255,255,255,0.05)" : "rgba(255,255,255,0.05)"}'; this.style.borderColor='${isFriendPremium ? "rgba(255, 200, 100, 0.3)" : "rgba(255,255,255,0.09)"}'; this.style.transform='none';">
+              <div style="position: relative; width: 46px; height: 46px; flex-shrink: 0;">
+                <div class="avatar" style="width: 46px; height: 46px; border-radius: 50%; overflow: visible; font-size: 20px; margin: 0;">
+                  ${avatarHtml}
+                </div>
+                <div class="${isOnline ? "indicator-pulsing-online" : ""}" style="
+                  position: absolute;
+                  bottom: -1px;
+                  right: -1px;
+                  width: 13px;
+                  height: 13px;
+                  border-radius: 50%;
+                  background: ${isOnline ? "#22c55e" : "#64748b"};
+                  border: 2.5px solid #10131e;
+                  box-shadow: ${isOnline ? "0 0 8px rgba(34, 197, 94, 0.8)" : "none"};
+                "></div>
+              </div>
+              <div style="flex: 1; min-width: 0; text-align: left;">
+                <div style="font-weight: 700; font-size: 14.5px; color: #ffffff; display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                  <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${Utils.escapeHtml(prof.name || "Пользователь")}</span>
+                  ${roleBadge}
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: rgba(255,255,255,0.55); margin-top: 3px;">
+                  <span style="color: var(--accent); font-weight: 600;">@${Utils.escapeHtml(prof.username || "user")}</span>
+                  <span>•</span>
+                  <span style="color: ${isOnline ? "#22c55e" : "rgba(255,255,255,0.5)"}; font-weight: ${isOnline ? "600" : "400"};">${statusText}</span>
+                </div>
+              </div>
+              <div style="
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                background: rgba(255, 255, 255, 0.06);
+                border: 1px solid rgba(255, 255, 255, 0.12);
+                backdrop-filter: blur(8px);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-shrink: 0;
+                color: rgba(255, 255, 255, 0.7);
+              ">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+              </div>
+            </div>
+          `;
+        }).join("");
+
+        listEl.querySelectorAll(".tiktok-friend-row").forEach((row) => {
+          row.onclick = () => {
+            const fUid = row.dataset.fuid;
+            if (fUid) {
+              ProfileManager.closeFriendsListModal();
+              ProfileManager.openViewProfileModal(fUid);
+            }
+          };
+        });
+      };
+
+      renderList();
+
+      if (searchInput) {
+        searchInput.oninput = (e) => {
+          renderList(e.target.value);
+        };
+      }
+    } catch (err) {
+      console.error("Friends fetch error:", err);
+      if (listEl) {
+        listEl.innerHTML = `<div style="text-align:center; padding:20px; color:#ff4d4f; font-size:13px;">Не удалось загрузить список друзей</div>`;
       }
     }
   }

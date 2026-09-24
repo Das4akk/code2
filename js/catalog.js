@@ -66,7 +66,7 @@ class CatalogManager {
           desc: "Футуристическая неоновая аура для активных зрителей комнат",
           price: "50",
           priceType: "paid",
-          image: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp",
+          image: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp",
           type: "frame",
           isHot: true,
         },
@@ -75,7 +75,7 @@ class CatalogManager {
           desc: "Анимированная золотая корона признанного лидера комнат",
           price: "150",
           priceType: "paid",
-          image: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Glowing%20Star.webp",
+          image: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Glowing%20Star.webp",
           type: "frame",
           isHot: true,
         },
@@ -84,7 +84,7 @@ class CatalogManager {
           desc: "Пламенное оформление для постоянных создателей стримов",
           price: "300",
           priceType: "paid",
-          image: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp",
+          image: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Fire.webp",
           type: "frame",
           isHot: false,
         },
@@ -93,7 +93,7 @@ class CatalogManager {
           desc: "Бесплатный подарок в честь знакомства с платформой COWIO",
           price: "0",
           priceType: "free",
-          image: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Partying%20Face.webp",
+          image: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Partying%20Face.webp",
           type: "frame",
           isHot: false,
         },
@@ -342,7 +342,7 @@ class CatalogManager {
     if (filtered.length === 0) {
       list.innerHTML = `
         <div class="catalog-empty-state">
-          <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Shopping%20Bags.webp" alt="Empty" class="catalog-empty-emoji">
+          <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Shopping%20Bags.webp" alt="Empty" class="catalog-empty-emoji">
           <h3 class="catalog-empty-title">Ничего не найдено</h3>
           <p class="catalog-empty-desc">
             ${this.searchQuery ? `По запросу "${Utils.escapeHtml(this.searchQuery)}" предложений не обнаружено.` : "В выбранном разделе каталога сейчас нет доступных предложений."}
@@ -400,7 +400,7 @@ class CatalogManager {
         } else {
           actionBtnHtml = `
             <button class="catalog-card-action-btn btn-locked" onclick="event.stopPropagation(); window.openCatalogItemModal('${item.id}')">
-              ${price} <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" class="inline-sparkles-icon" alt="✨">
+              ${price} <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" class="inline-sparkles-icon" alt="✨">
             </button>
           `;
         }
@@ -416,7 +416,7 @@ class CatalogManager {
               <div class="catalog-card-badges-top">
                 ${isHot ? `
                   <div class="catalog-badge-fire">
-                    <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" alt="Акция">
+                    <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Fire.webp" alt="Акция">
                     <span>Акция</span>
                   </div>
                 ` : `<div></div>`}
@@ -449,15 +449,15 @@ class CatalogManager {
                 <div class="catalog-card-price-block">
                   <div class="catalog-price-tag">
                     ${isFree ? `
-                      <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" class="catalog-price-emoji" alt="Free">
+                      <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" class="catalog-price-emoji" alt="Free">
                       <span>Бесплатно</span>
                     ` : `
-                      <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" class="catalog-price-emoji" alt="Люмены">
+                      <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" class="catalog-price-emoji" alt="Люмены">
                       <span>${price}</span>
                     `}
                   </div>
                   <div class="catalog-price-status-hint ${canAfford ? "can-buy" : "need-lvl"}">
-                    ${canAfford ? "Доступно к покупке" : `Нужно еще ${price - userLumens} <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" class="inline-sparkles-icon" alt="✨">`}
+                    ${canAfford ? "Доступно к покупке" : `Нужно еще ${price - userLumens} <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" class="inline-sparkles-icon" alt="✨">`}
                   </div>
                 </div>
 
@@ -592,7 +592,7 @@ window.openCatalogItemModal = function (itemId) {
   const price = isFree ? 0 : (parseInt(item.price, 10) || 0);
 
   const priceEl = Utils.$("catalog-item-price");
-  if (priceEl) priceEl.innerHTML = isFree ? "БЕСПЛАТНО" : `${price} <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" class="inline-sparkles-icon large" alt="✨">`;
+  if (priceEl) priceEl.innerHTML = isFree ? "БЕСПЛАТНО" : `${price} <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" class="inline-sparkles-icon large" alt="✨">`;
 
   const priceIcon = Utils.$("catalog-item-price-icon");
   if (priceIcon) priceIcon.style.display = isFree ? "none" : "inline-block";
@@ -670,17 +670,17 @@ window.openCatalogItemModal = function (itemId) {
   // Обновление плашки баланса в модалке
   const userLumensVal = Utils.$("catalog-modal-user-lumens-val");
   if (userLumensVal) {
-    userLumensVal.innerHTML = `${userLumens} <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" class="inline-sparkles-icon" alt="✨">`;
+    userLumensVal.innerHTML = `${userLumens} <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" class="inline-sparkles-icon" alt="✨">`;
     userLumensVal.style.color = (isFree || userLumens >= price) ? "#34d399" : "#f87171";
   }
 
   const userLvlVal = Utils.$("catalog-modal-user-level-val");
   if (userLvlVal) {
     if (isFree || userLumens >= price) {
-      userLvlVal.innerHTML = `${userLumens} <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" class="inline-sparkles-icon" alt="✨"> (Доступно)`;
+      userLvlVal.innerHTML = `${userLumens} <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" class="inline-sparkles-icon" alt="✨"> (Доступно)`;
       userLvlVal.style.color = "#34d399";
     } else {
-      userLvlVal.innerHTML = `${userLumens} / ${price} <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" class="inline-sparkles-icon" alt="✨"> (Не хватает)`;
+      userLvlVal.innerHTML = `${userLumens} / ${price} <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" class="inline-sparkles-icon" alt="✨"> (Не хватает)`;
       userLvlVal.style.color = "var(--text-muted)";
     }
   }
@@ -751,7 +751,7 @@ window.openCatalogItemModal = function (itemId) {
     } else {
       const canAfford = userLumens >= price;
       if (canAfford) {
-        buyBtn.innerHTML = `КУПИТЬ ЗА ${price} <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" class="inline-sparkles-icon" alt="✨">`;
+        buyBtn.innerHTML = `КУПИТЬ ЗА ${price} <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" class="inline-sparkles-icon" alt="✨">`;
         buyBtn.style.background = "#ffffff";
         buyBtn.style.color = "#000000";
         buyBtn.style.border = "none";
@@ -809,7 +809,7 @@ window.openCatalogItemModal = function (itemId) {
         };
       } else {
         const needMore = price - userLumens;
-        buyBtn.innerHTML = `НЕ ХВАТАЕТ ${needMore} <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" class="inline-sparkles-icon" alt="✨"> (У ВАС ${userLumens})`;
+        buyBtn.innerHTML = `НЕ ХВАТАЕТ ${needMore} <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" class="inline-sparkles-icon" alt="✨"> (У ВАС ${userLumens})`;
         buyBtn.style.background = "rgba(255, 255, 255, 0.06)";
         buyBtn.style.color = "rgba(255, 255, 255, 0.4)";
         buyBtn.style.border = "1px solid rgba(255, 255, 255, 0.1)";

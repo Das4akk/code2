@@ -5,89 +5,84 @@ class PremiumManager {
   static STATUS_EMOJIS = {
     star: {
       label: "Звезда",
-      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp",
+      url: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Star.webp",
     },
     sparkles: {
       label: "Искры",
-      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp",
+      url: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp",
     },
     crown: {
       label: "Корона",
-      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp",
+      url: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Crown.webp",
     },
     gem: {
       label: "Алмаз",
-      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Gem%20Stone.webp",
+      url: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Gem%20Stone.webp",
     },
     rocket: {
       label: "Ракета",
-      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Rocket.webp",
+      url: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Travel%20and%20Places/Rocket.webp",
     },
     fire: {
       label: "Огонь",
-      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp",
+      url: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Fire.webp",
     },
     butterfly: {
       label: "Бабочка",
-      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Butterfly.webp",
+      url: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Butterfly.webp",
     },
     rainbow: {
       label: "Радуга",
-      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Rainbow.webp",
+      url: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Rainbow.webp",
     },
     trophy: {
       label: "Кубок",
-      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Trophy.webp",
+      url: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Trophy.webp",
     },
   };
 
-  static PREMIUM_DM_THEMES = [
-    "vault-gold",
-    "abyss-frost",
-    "crimson-chalk",
-    "noir-rose",
-  ];
+  static PREMIUM_DM_THEMES = [];
   static BIO_LIMIT_DEFAULT = 200;
   static BIO_LIMIT_PREMIUM = 500;
 
   static PERKS = [
     {
-      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp",
+      url: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Star.webp",
       title: "Статус-эмодзи",
       desc: "Выбор из 9 анимированных эмодзи рядом с ником в комнатах, чатах и профиле",
     },
     {
-      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkler.webp",
+      url: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkler.webp",
       title: "Удвоенный опыт (x2 XP)",
       desc: "В 2 раза больше опыта за время в комнатах и ускоренное повышение уровней",
     },
     {
-      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Artist%20Palette.webp",
-      title: "Темы оформления",
-      desc: "Доступ ко всем кастомным темам: Neon Cyber, Gold Luxury, Emerald Matrix и др.",
+      url: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Travel%20and%20Places/Compass.webp",
+      title: "Создание нескольких комнат",
+      desc: "Возможность создавать 2 и более комнаты одновременно без каких-либо ограничений",
     },
     {
-      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp",
+      url: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp",
       title: "Золотая подсветка",
       desc: "Эксклюзивное свечение вашей карточки в списках комнат и у друзей",
     },
     {
-      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp",
+      url: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Memo.webp",
       title: "Био до 500 символов",
       desc: "Увеличенный объём описания профиля (до 500 знаков вместо стандартных 200)",
     },
     {
-      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Speech%20Balloon.webp",
-      title: "Темы для диалогов",
-      desc: "4 эксклюзивные темы оформления личных чатов: Vault Gold, Abyss Frost и др.",
+      url: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Speech%20Balloon.webp",
+      title: "Расширенный функционал комнат",
+      desc: "Полный доступ к одновременному управлению несколькими комнатами и аудиторией",
     },
     {
-      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Woman%20Technologist.webp",
+      url: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Woman%20Technologist.webp",
       title: "Приоритетная поддержка",
       desc: "Тикеты и обращения автоматически получают высший приоритет в обработке",
     },
     {
-      url: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp",
+      url: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Crown.webp",
       title: "Значок Premium",
       desc: "Уникальный золотой знак отличия в профиле, чате и глобальном поиске",
     },
@@ -734,9 +729,8 @@ class PremiumManager {
       : this.BIO_LIMIT_DEFAULT;
   }
 
-  static canUseTheme(themeKey, profile, uid) {
-    if (themeKey === "default") return true;
-    return this.isPremiumActive(profile, uid);
+  static canUseTheme() {
+    return true;
   }
 
   static getXpMultiplier(profile, uid) {
@@ -845,7 +839,7 @@ class PremiumManager {
             <div style="font-size:12.5px;color:rgba(255,255,255,0.6);margin-bottom:4px;">Действует до:</div>
             <div style="font-size:16px;font-weight:800;color:#ffffff;margin-bottom:16px;">${this.formatExpiry(p)}</div>
             <button class="prem-cta-btn extend" id="btn-extend-premium" style="display:inline-flex;align-items:center;justify-content:center;gap:8px;">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp" style="width:20px;height:20px;object-fit:contain;" alt="Crown">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Crown.webp" style="width:20px;height:20px;object-fit:contain;" alt="Crown">
               <span>Продлить подписку (${this.PRICE_RUB} ₽)</span>
             </button>
           </div>`
@@ -871,7 +865,7 @@ class PremiumManager {
               overflow: hidden;
               transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
             ">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp" style="width:28px;height:28px;object-fit:contain;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.3));" alt="Crown">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Crown.webp" style="width:28px;height:28px;object-fit:contain;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.3));" alt="Crown">
               <div style="display:flex;flex-direction:column;align-items:flex-start;text-align:left;line-height:1.25;">
                 <span style="font-size:16px;font-weight:900;letter-spacing:0.2px;">Приобрести Premium</span>
                 <span style="font-size:11.5px;font-weight:700;opacity:0.85;">Все преимущества + вклад в развитие</span>
@@ -893,7 +887,7 @@ class PremiumManager {
           <div class="prem-hero-layout">
             <div>
               <div class="prem-pill-badge">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" style="width:14px;height:14px;object-fit:contain;" alt="★">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Star.webp" style="width:14px;height:14px;object-fit:contain;" alt="★">
                 COWIO PREMIUM
               </div>
               <h1 class="prem-hero-h1">
@@ -908,7 +902,7 @@ class PremiumManager {
                   Подписчиков: <b id="premium-users-counter">загрузка...</b>
                 </div>
                 <div class="prem-counter-chip">
-                  <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width:15px;height:15px;object-fit:contain;" alt="✨">
+                  <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width:15px;height:15px;object-fit:contain;" alt="✨">
                   <span>8 преимуществ включено</span>
                 </div>
               </div>
@@ -923,7 +917,7 @@ class PremiumManager {
           <div class="prem-studio-header">
             <div>
               <div style="font-size:16px;font-weight:800;color:#ffffff;display:flex;align-items:center;gap:8px;">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width:20px;height:20px;">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width:20px;height:20px;">
                 Статус-эмодзи
               </div>
               <div style="font-size:12.5px;color:rgba(255,255,255,0.5);margin-top:2px;">
@@ -951,7 +945,7 @@ class PremiumManager {
         <div>
           <div class="prem-section-title">
             <h2>
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" style="width:22px;height:22px;">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Star.webp" style="width:22px;height:22px;">
               Преимущества подписки
             </h2>
             <span class="prem-section-subtitle">8 возможностей</span>
@@ -1028,33 +1022,7 @@ class PremiumManager {
     Utils.toast("Статус-эмодзи обновлён", "success");
   }
 
-  static updateThemeButtons() {
-    setTimeout(() => {
-      const uid = window.AppState?.currentUser?.uid;
-      if (!uid) return;
-      const profile =
-        window.AppState?.usersCache?.get(uid) || window.AppState?.myProfile;
-      const isAdmin = this.isStaff(profile, uid);
-      const isPremium = profile
-        ? this.isPremiumActive(profile, uid) || isAdmin
-        : false;
-
-      ["btn-room-theme-toggle", "btn-dm-theme-toggle"].forEach((id) => {
-        const btn = document.getElementById(id);
-        if (!btn) return;
-        if (isPremium) {
-          btn.classList.remove("premium-locked-theme");
-          btn.innerHTML = "Поменять тему";
-          btn.style.opacity = "1";
-        } else {
-          btn.classList.add("premium-locked-theme");
-          btn.innerHTML =
-            '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width:18px;height:18px;vertical-align:middle;margin-right:6px;"><span style="position:relative;display:inline-flex;align-items:center;justify-content:center;"><span style="filter:blur(3px);opacity:0.3;position:absolute;">Поменять тему</span><span style="font-size:11px;font-weight:700;white-space:nowrap;color:#ffe6a0;position:relative;z-index:1;">Приобретите Premium</span></span>';
-          btn.style.opacity = "0.9";
-        }
-      });
-    }, 1500);
-  }
+  static updateThemeButtons() {}
 
   static async activatePremiumDirectly(user, amount = this.PRICE_RUB, customDays = 0) {
     try {
@@ -1465,7 +1433,7 @@ class PremiumManager {
     const level = this.getUserLevel(profile);
     return `
       <div class="catalog-lock-screen">
-        <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width:48px;height:48px;margin-bottom:14px;opacity:0.9;">
+        <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" style="width:48px;height:48px;margin-bottom:14px;opacity:0.9;">
         <h3 style="margin:0 0 10px;font-size:20px;">Каталог с 10 Уровня</h3>
         <p style="margin:0 0 20px;font-size:14px;color:var(--text-muted);max-width:420px;margin-left:auto;margin-right:auto;line-height:1.55;">
           Рамки, звуки и горячие акции доступны игрокам, достигшим 10 уровня.

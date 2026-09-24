@@ -189,7 +189,7 @@ class LumenManager {
     const floater = document.createElement("div");
     floater.className = `lumen-floating-delta ${isPositive ? "positive" : "negative"}`;
     const sign = isPositive ? "+" : "-";
-    floater.innerHTML = `${sign}${Math.abs(amount).toLocaleString()} <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 14px; height: 14px; vertical-align: middle; pointer-events: none;" alt="✨">`;
+    floater.innerHTML = `${sign}${Math.abs(amount).toLocaleString()} <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 14px; height: 14px; vertical-align: middle; pointer-events: none;" alt="✨">`;
 
     anchorEl.style.position = "relative";
     anchorEl.appendChild(floater);
@@ -222,7 +222,7 @@ class LumenManager {
     const suffix = absAmt === 1 ? "" : (absAmt % 10 >= 2 && absAmt % 10 <= 4 && (absAmt < 10 || absAmt > 20)) ? "а" : "ов";
     item.innerHTML = `
       <div class="toast-sparkle-icon">
-        <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" alt="✨">
+        <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" alt="✨">
       </div>
       <div class="toast-text-col">
         <span class="toast-lumen-amount">+${amountStr} Люмен${suffix}</span>
@@ -305,7 +305,7 @@ class LumenManager {
 
     const catalogUserVal = Utils.$("catalog-modal-user-lumens-val");
     if (catalogUserVal) {
-      catalogUserVal.innerHTML = `${numLumens.toLocaleString()} <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" class="inline-sparkles-icon" alt="✨">`;
+      catalogUserVal.innerHTML = `${numLumens.toLocaleString()} <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" class="inline-sparkles-icon" alt="✨">`;
     }
 
     if (source === "room" && calculatedDiff > 0) {
@@ -462,7 +462,7 @@ class LumenManager {
       if (topUsers.length === 0) {
         listEl.innerHTML = `
           <div style="text-align:center; padding:32px 16px; color:rgba(255,255,255,0.45);">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 36px; height: 36px; margin: 0 auto 8px; display: block;" alt="✨">
+            <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 36px; height: 36px; margin: 0 auto 8px; display: block;" alt="✨">
             <div style="font-weight: 700; color: #ffffff; font-size: 13.5px; margin-bottom: 4px;">Пока ни у кого нет Люменов</div>
             <div style="font-size: 12px; color: rgba(255, 255, 255, 0.55);">Смотрите видео в комнатах, чтобы стать первым в рейтинге!</div>
           </div>
@@ -477,11 +477,11 @@ class LumenManager {
         const isMe = item.uid === myUid;
         let rankBadge = `<span style="font-weight: 800; font-size: 12px; color: rgba(255,255,255,0.5); width: 24px; text-align: center;">#${rank}</span>`;
         if (rank === 1) {
-          rankBadge = `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp" style="width: 22px; height: 22px; object-fit: contain;" alt="1">`;
+          rankBadge = `<img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Crown.webp" style="width: 22px; height: 22px; object-fit: contain;" alt="1">`;
         } else if (rank === 2) {
-          rankBadge = `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Gem%20Stone.webp" style="width: 20px; height: 20px; object-fit: contain;" alt="2">`;
+          rankBadge = `<img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Gem%20Stone.webp" style="width: 20px; height: 20px; object-fit: contain;" alt="2">`;
         } else if (rank === 3) {
-          rankBadge = `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" style="width: 20px; height: 20px; object-fit: contain;" alt="3">`;
+          rankBadge = `<img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Star.webp" style="width: 20px; height: 20px; object-fit: contain;" alt="3">`;
         }
 
         const name = Utils.escapeHtml(item.profile.name || "Пользователь");
@@ -505,7 +505,7 @@ class LumenManager {
             </div>
             <div style="font-size: 13px; font-weight: 800; color: #ffd700; display: flex; align-items: center; gap: 5px; margin-left: 8px; flex-shrink: 0;">
               <span>${item.lumens.toLocaleString()}</span>
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" class="inline-sparkles-icon" alt="✨">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" class="inline-sparkles-icon" alt="✨">
             </div>
           </div>
         `;
@@ -564,7 +564,7 @@ class LumenManager {
     if (!filtered || filtered.length === 0) {
       listEl.innerHTML = `
         <div style="text-align: center; padding: 32px 16px; color: rgba(255, 255, 255, 0.5);">
-          <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 36px; height: 36px; margin: 0 auto 8px; display: block;" alt="✨">
+          <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 36px; height: 36px; margin: 0 auto 8px; display: block;" alt="✨">
           <div style="font-weight: 700; font-size: 13.5px; color: #ffffff; margin-bottom: 4px;">История пока пуста</div>
           <div style="font-size: 12px; color: rgba(255, 255, 255, 0.55); line-height: 1.4;">Зарабатывайте Люмены за просмотр видео в комнатах, ежедневный вход или подарки от друзей!</div>
         </div>
@@ -573,12 +573,12 @@ class LumenManager {
     }
 
     const iconMap = {
-      fire: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp",
-      tv: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Television.webp",
-      gift: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Heart%20With%20Ribbon.webp",
-      bag: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Shopping%20Bags.webp",
-      crown: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp",
-      sparkles: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp"
+      fire: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Fire.webp",
+      tv: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Television.webp",
+      gift: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Heart%20With%20Ribbon.webp",
+      bag: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Shopping%20Bags.webp",
+      crown: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Crown.webp",
+      sparkles: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp"
     };
 
     listEl.innerHTML = filtered
@@ -606,7 +606,7 @@ class LumenManager {
             </div>
             <div class="lumen-tx-amount-badge ${isIncome ? "income" : "expense"}" style="flex-shrink: 0; margin-left: 12px;">
               <span>${sign}${amtStr}</span>
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 15px; height: 15px; object-fit: contain;" alt="✨">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 15px; height: 15px; object-fit: contain;" alt="✨">
             </div>
           </div>
         `;

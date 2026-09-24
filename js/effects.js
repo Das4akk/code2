@@ -140,7 +140,7 @@ class PartnerBondEngine {
     await this.recordMoment(uid, partnerUid, "checkin", {
       fromUid: uid,
       label:
-        'Отметили день вместе <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">',
+        'Отметили день вместе <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">',
       warmth: 14,
       checkinKey,
     });
@@ -278,7 +278,7 @@ class PartnerRelationshipPanel {
                         ? `
                     <div class="partner-metric-card">
                         <span class="metric-label">Серия дней</span>
-                        <strong>${bond.streak} <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"></strong>
+                        <strong>${bond.streak} <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Fire.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"></strong>
                     </div>
                     `
                         : ""
@@ -299,7 +299,7 @@ class PartnerRelationshipPanel {
                 </section>
                 <footer class="partner-ambilight-footer">
                     <button type="button" class="partner-kiss-btn" id="btn-partner-modal-kiss">Поцелуй 💋</button>
-                    <button type="button" class="partner-checkin-btn" id="btn-partner-checkin" ${canCheckin ? "" : "disabled"}>${canCheckin ? 'Отметить день <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">' : "День отмечен"}</button>
+                    <button type="button" class="partner-checkin-btn" id="btn-partner-checkin" ${canCheckin ? "" : "disabled"}>${canCheckin ? 'Отметить день <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">' : "День отмечен"}</button>
                     <button type="button" class="secondary-btn btn-close-modal">Закрыть</button>
                 </footer>
             </div>
@@ -889,37 +889,38 @@ class EasterEggManager {
     "a",
   ];
   static STICKERS = {
-    cow: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Cow.webp",
+    cow: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Cow.webp",
     popcorn:
-      "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Popcorn.webp",
-    milk: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Glass%20Of%20Milk.webp",
-    tv: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Television.webp",
-    cat: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Cat.webp",
+      "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Food%20and%20Drink/Popcorn.webp",
+    milk: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Food%20and%20Drink/Glass%20Of%20Milk.webp",
+    tv: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Television.webp",
+    cat: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Cat.webp",
     clapper:
-      "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Clapper%20Board.webp",
+      "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Clapper%20Board.webp",
     scream:
-      "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20Screaming%20In%20Fear.webp",
-    clap: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Clapping%20Hands.webp",
-    tree: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Deciduous%20Tree.webp",
+      "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Face%20Screaming%20In%20Fear.webp",
+    clap: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Clapping%20Hands.webp",
+    tree: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Deciduous%20Tree.webp",
     rocket:
-      "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Rocket.webp",
+      "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Travel%20and%20Places/Rocket.webp",
     skull:
-      "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Skull.webp",
+      "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Skull.webp",
     party:
-      "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Party%20Popper.webp",
+      "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Party%20Popper.webp",
     potato:
-      "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Canned%20Food.webp",
+      "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Food%20and%20Drink/Canned%20Food.webp",
     mirror:
-      "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Mirror%20Ball.webp",
+      "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Mirror%20Ball.webp",
     ninja:
-      "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Ghost.webp",
+      "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Ghost.webp",
     glass:
-      "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Food%20and%20Drink/Clinking%20Glasses.webp",
-    vhs: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Video%20Camera.webp",
+      "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Food%20and%20Drink/Clinking%20Glasses.webp",
+    vhs: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Video%20Camera.webp",
   };
 
   static sticker(url, size = 48) {
-    return `<img src="${url}" class="easter-sticker" style="width:${size}px;height:${size}px;object-fit:contain;" alt="" draggable="false">`;
+    const fixedUrl = (window.Utils && Utils.fixEmojiUrl) ? Utils.fixEmojiUrl(url) : url;
+    return `<img src="${fixedUrl}" class="easter-sticker" style="width:${size}px;height:${size}px;object-fit:contain;-webkit-transform:translateZ(0);transform:translateZ(0);" alt="" draggable="false" loading="eager" decoding="async">`;
   }
 
   static init() {
@@ -1031,7 +1032,7 @@ class EasterEggManager {
             }
             body.easter-cow-cursor,
             body.easter-cow-cursor * {
-                cursor: url("https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Cow.webp") 16 16, auto !important;
+                cursor: url("https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Cow.webp") 16 16, auto !important;
             }
             #easter-egg-root {
                 position: fixed;

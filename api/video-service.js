@@ -952,13 +952,14 @@ export async function searchVideos(query, platform = 'all') {
     return { success: true, results: rt };
   }
 
-  // 'all': Search VK Video and YouTube simultaneously
-  const [vk, yt] = await Promise.all([
+  // 'all': Search VK Video, YouTube, and Rutube simultaneously
+  const [vk, yt, rt] = await Promise.all([
     searchVK(q, 20).catch(() => []),
-    searchYouTube(q, 16).catch(() => [])
+    searchYouTube(q, 16).catch(() => []),
+    searchRutube(q, 10).catch(() => [])
   ]);
 
-  const all = [...vk, ...yt];
+  const all = [...vk, ...yt, ...rt];
   const seen = new Set();
   const unique = [];
 

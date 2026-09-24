@@ -131,13 +131,13 @@ class BadgeManager {
     });
 
     const presetEmojis = [
-      "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Smiling%20Face%20With%20Horns.webp",
-      "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Sleeping%20Face.webp",
-      "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Partying%20Face.webp",
-      "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Clown%20Face.webp",
-      "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Smiling%20Face%20With%20Sunglasses.webp",
-      "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20Screaming%20In%20Fear.webp",
-      "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20Without%20Mouth.webp",
+      "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Smiling%20Face%20With%20Horns.webp",
+      "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Sleeping%20Face.webp",
+      "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Partying%20Face.webp",
+      "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Clown%20Face.webp",
+      "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Smiling%20Face%20With%20Sunglasses.webp",
+      "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Face%20Screaming%20In%20Fear.webp",
+      "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Face%20Without%20Mouth.webp",
     ];
 
     setTimeout(() => {
@@ -184,7 +184,7 @@ class BadgeManager {
       lvl_10: {
         name: "Ветеран",
         desc: "Достиг 10 уровня",
-        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp",
+        icon: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Star.webp",
         color: "#cddc39",
         xp: 0,
         bg: "rgba(205, 220, 57, 0.2)",
@@ -193,7 +193,7 @@ class BadgeManager {
       lvl_25: {
         name: "Мастер",
         desc: "Достиг 25 уровня",
-        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp",
+        icon: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Fire.webp",
         color: "#ff9800",
         xp: 0,
         bg: "rgba(255, 152, 0, 0.2)",
@@ -202,7 +202,7 @@ class BadgeManager {
       lvl_50: {
         name: "Легенда",
         desc: "Достиг 50 уровня",
-        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Gem%20Stone.webp",
+        icon: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Gem%20Stone.webp",
         color: "#2196f3",
         xp: 0,
         bg: "rgba(33, 150, 243, 0.2)",
@@ -211,7 +211,7 @@ class BadgeManager {
       lvl_100: {
         name: "Божество",
         desc: "Достиг 100 уровня",
-        icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp",
+        icon: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Crown.webp",
         color: "#ffeb3b",
         xp: 0,
         bg: "rgba(255, 235, 59, 0.2)",

@@ -277,41 +277,41 @@ class SupportSystem {
 
   static getCategoryBadgeHtml(cat, isReport = false) {
     if (cat === "Баг") {
-      return '<span class="support-card-tag tag-bug"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Bug.webp" class="emoji-animated-xs" alt=""> Баг</span>';
+      return '<span class="support-card-tag tag-bug"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Bug.webp" class="emoji-animated-xs" alt=""> Баг</span>';
     } else if (cat === "Вопрос") {
-      return '<span class="support-card-tag tag-question"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Speech%20Balloon.webp" class="emoji-animated-xs" alt=""> Вопрос</span>';
+      return '<span class="support-card-tag tag-question"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Speech%20Balloon.webp" class="emoji-animated-xs" alt=""> Вопрос</span>';
     } else if (cat === "Идея") {
-      return '<span class="support-card-tag tag-idea"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Light%20Bulb.webp" class="emoji-animated-xs" alt=""> Идея</span>';
+      return '<span class="support-card-tag tag-idea"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Light%20Bulb.webp" class="emoji-animated-xs" alt=""> Идея</span>';
     } else if (cat === "Жалоба" || isReport) {
-      return '<span class="support-card-tag tag-report"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Triangular%20Flag.webp" class="emoji-animated-xs" alt=""> Жалоба</span>';
+      return '<span class="support-card-tag tag-report"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Flags/Triangular%20Flag.webp" class="emoji-animated-xs" alt=""> Жалоба</span>';
     }
-    return `<span class="support-card-tag"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp" class="emoji-animated-xs" alt=""> ${Utils.escapeHtml(cat || "Тикет")}</span>`;
+    return `<span class="support-card-tag"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Memo.webp" class="emoji-animated-xs" alt=""> ${Utils.escapeHtml(cat || "Тикет")}</span>`;
   }
 
   static getPriorityBadgeHtml(priority, isPremium = false) {
     if (isPremium) {
-      return '<span class="support-card-priority pro"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" class="emoji-animated-xs" alt=""> PRO</span>';
+      return '<span class="support-card-priority pro"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Star.webp" class="emoji-animated-xs" alt=""> PRO</span>';
     }
     if (priority === "Высокий" || priority === "Срочный") {
-      return `<span class="support-card-priority high"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Heart%20On%20Fire.webp" class="emoji-animated-xs" alt=""> ${Utils.escapeHtml(priority)}</span>`;
+      return `<span class="support-card-priority high"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Heart%20On%20Fire.webp" class="emoji-animated-xs" alt=""> ${Utils.escapeHtml(priority)}</span>`;
     }
     if (priority === "Средний") {
-      return `<span class="support-card-priority medium"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Yellow%20Heart.webp" class="emoji-animated-xs" alt=""> ${Utils.escapeHtml(priority)}</span>`;
+      return `<span class="support-card-priority medium"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Yellow%20Heart.webp" class="emoji-animated-xs" alt=""> ${Utils.escapeHtml(priority)}</span>`;
     }
-    return `<span class="support-card-priority low"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Green%20Heart.webp" class="emoji-animated-xs" alt=""> ${Utils.escapeHtml(priority || "Обычный")}</span>`;
+    return `<span class="support-card-priority low"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Green%20Heart.webp" class="emoji-animated-xs" alt=""> ${Utils.escapeHtml(priority || "Обычный")}</span>`;
   }
 
   static getCategoryIconUrl(cat, isReport = false) {
     if (cat === "Баг") {
-      return "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Bug.webp";
+      return "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Bug.webp";
     } else if (cat === "Вопрос") {
-      return "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Question%20Mark.webp";
+      return "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Question%20Mark.webp";
     } else if (cat === "Идея") {
-      return "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Light%20Bulb.webp";
+      return "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Light%20Bulb.webp";
     } else if (cat === "Жалоба" || isReport) {
-      return "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Triangular%20Flag.webp";
+      return "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Flags/Triangular%20Flag.webp";
     }
-    return "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp";
+    return "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Memo.webp";
   }
 
   static openCreateModal(defaultCategory = "") {
@@ -683,12 +683,12 @@ class SupportSystem {
       list.innerHTML = `
         <div class="support-empty-list">
           <div class="empty-list-icon">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp" style="width: 28px; height: 28px; opacity: 0.6;">
+            <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Memo.webp" style="width: 28px; height: 28px; opacity: 0.6;">
           </div>
           <div class="empty-list-title">${emptyMsg}</div>
           <div class="empty-list-desc">Создайте новое обращение, если вам нужна помощь</div>
           <button type="button" class="primary-btn empty-list-btn" onclick="SupportSystem.openCreateModal()">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Pen.webp" style="width: 13px; height: 13px;">
+            <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Pen.webp" style="width: 13px; height: 13px;">
             <span>Создать обращение</span>
           </button>
         </div>
@@ -912,7 +912,7 @@ class SupportSystem {
               <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
                 <div style="display: flex; align-items: center; gap: 8px;">
                   <span style="font-size: 11px; font-weight: 800; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 6px;">
-                    <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Triangular%20Flag.webp" style="width: 16px; height: 16px;" alt="🚩">
+                    <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Flags/Triangular%20Flag.webp" style="width: 16px; height: 16px;" alt="🚩">
                     Жалоба на пользователя
                   </span>
                   <span style="font-size: 11px; padding: 2px 8px; border-radius: 6px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.16); color: #ffffff; font-weight: 600;">
@@ -1059,28 +1059,28 @@ class SupportSystem {
                 quickMenu.innerHTML = `
                   <div style="font-size:10px; color:rgba(255,255,255,0.45); margin-bottom:4px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">Сменить категорию:</div>
                   <button class="support-popover-item" onclick="SupportSystem.setCategory('${id}', 'Вопрос')">
-                    <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Speech%20Balloon.webp" class="emoji-animated-sm" alt="">
+                    <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Speech%20Balloon.webp" class="emoji-animated-sm" alt="">
                     <span>Вопрос</span>
                   </button>
                   <button class="support-popover-item" onclick="SupportSystem.setCategory('${id}', 'Баг')">
-                    <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Bug.webp" class="emoji-animated-sm" alt="">
+                    <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Bug.webp" class="emoji-animated-sm" alt="">
                     <span>Баг</span>
                   </button>
                   <button class="support-popover-item" onclick="SupportSystem.setCategory('${id}', 'Жалоба')">
-                    <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Triangular%20Flag.webp" class="emoji-animated-sm" alt="">
+                    <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Flags/Triangular%20Flag.webp" class="emoji-animated-sm" alt="">
                     <span>Жалоба</span>
                   </button>
                   <button class="support-popover-item" onclick="SupportSystem.setCategory('${id}', 'Идея')">
-                    <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Light%20Bulb.webp" class="emoji-animated-sm" alt="">
+                    <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Light%20Bulb.webp" class="emoji-animated-sm" alt="">
                     <span>Идея</span>
                   </button>
                   <div class="support-popover-divider"></div>
                   <button class="support-popover-item" onclick="SupportSystem.exportTicket('${id}')">
-                    <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Package.webp" class="emoji-animated-sm" alt="">
+                    <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Package.webp" class="emoji-animated-sm" alt="">
                     <span>Экспорт как .txt</span>
                   </button>
                   <button class="support-popover-item danger" onclick="SupportSystem.adminBan('${t.creatorUid}')">
-                    <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Cross%20Mark.webp" class="emoji-animated-sm" alt="">
+                    <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Cross%20Mark.webp" class="emoji-animated-sm" alt="">
                     <span>Блокировка в поддержке</span>
                   </button>
                 `;
@@ -1128,7 +1128,7 @@ class SupportSystem {
       if (sortedMsgs.length === 0) {
         chat.innerHTML = `
           <div class="support-chat-empty">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Speech%20Balloon.webp" style="width: 42px; height: 42px; object-fit: contain;" alt="">
+            <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Speech%20Balloon.webp" style="width: 42px; height: 42px; object-fit: contain;" alt="">
             <div class="support-chat-empty-title">Диалог начат</div>
             <div class="support-chat-empty-desc">Напишите сообщение ниже — специалист поддержки ответит вам в ближайшее время</div>
           </div>
@@ -1195,7 +1195,7 @@ class SupportSystem {
                     <div class="support-msg-bubble">
                       <div class="support-msg-header">
                         <span class="support-operator-badge">
-                          <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Briefcase.webp" class="emoji-animated-xs" alt="">
+                          <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Briefcase.webp" class="emoji-animated-xs" alt="">
                           Поддержка COWIO
                         </span>
                         <span class="support-msg-sender" onclick="ProfileManager.openViewProfileModal('${Utils.escapeHtml(mUid)}')">${mName}</span>

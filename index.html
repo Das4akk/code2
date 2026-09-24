@@ -7,7 +7,58 @@
     <meta name="description" content="Платформа совместного просмотра видео и фильмов с синхронизацией VK Video, Rutube и YouTube, поддержкой комнат и чата.">
     <meta property="og:title" content="COWIO - Онлайн Кинотеатр Вместе">
     <meta property="og:description" content="Платформа совместного просмотра видео и фильмов с синхронизацией VK Video, Rutube и YouTube, поддержкой комнат и чата.">
-    <!-- // [NEW] THEME PERSISTENCE BOOTSTRAP -->
+    <!-- iOS Animated Stickers (WebP) Compatibility & CDN Fallback Engine -->
+    <script>
+      (function() {
+        const GITHUB_RAW = "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/";
+        const JSDELIVR_CDN = "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/";
+
+        function sanitizeStickerUrl(url) {
+          if (!url || typeof url !== "string") return url;
+          if (url.includes("raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis")) {
+            return url.replace(GITHUB_RAW, JSDELIVR_CDN);
+          }
+          return url;
+        }
+
+        const originalSetAttribute = Element.prototype.setAttribute;
+        Element.prototype.setAttribute = function(name, val) {
+          if (name === "src" && typeof val === "string") {
+            val = sanitizeStickerUrl(val);
+          }
+          return originalSetAttribute.call(this, name, val);
+        };
+
+        const imgProto = HTMLImageElement.prototype;
+        const origSrcDescriptor = Object.getOwnPropertyDescriptor(imgProto, "src");
+        if (origSrcDescriptor && origSrcDescriptor.set) {
+          Object.defineProperty(imgProto, "src", {
+            get: function() {
+              return origSrcDescriptor.get.call(this);
+            },
+            set: function(val) {
+              return origSrcDescriptor.set.call(this, sanitizeStickerUrl(val));
+            },
+            configurable: true,
+            enumerable: true
+          });
+        }
+
+        window.addEventListener("error", function(e) {
+          const el = e.target;
+          if (el && el.tagName === "IMG" && el.src && el.src.includes("Telegram-Animated-Emojis")) {
+            const currentSrc = el.src;
+            if (currentSrc.includes("cdn.jsdelivr.net")) {
+              el.src = currentSrc.replace("cdn.jsdelivr.net", "fastly.jsdelivr.net");
+            } else if (currentSrc.includes("fastly.jsdelivr.net")) {
+              el.src = currentSrc.replace("fastly.jsdelivr.net", "gcore.jsdelivr.net");
+            } else if (currentSrc.includes("raw.githubusercontent.com")) {
+              el.src = currentSrc.replace(GITHUB_RAW, JSDELIVR_CDN);
+            }
+          }
+        }, true);
+      })();
+    </script>
     <script>
       // Force animated emojis by default - removed static emojis toggle
       localStorage.setItem("staticEmojis", "false");
@@ -74,21 +125,13 @@
       });
     </script>
     <script>
-      // [NEW] Applies saved lobby theme before the first UI paint.
       (() => {
-        // [NEW]
-        const savedTheme = localStorage.getItem("cowio:globalTheme") || "dark"; // [NEW]
-        const normalizedTheme = savedTheme === "light" ? "light" : "dark"; // [NEW]
-        document.documentElement.dataset.globalTheme = normalizedTheme; // [NEW]
-        document.documentElement.classList.toggle(
-          "theme-light-global",
-          normalizedTheme === "light",
-        ); // [NEW]
-
-        document.addEventListener("DOMContentLoaded", () => {
-          // zoom logic removed
-        });
-      })(); // [NEW]
+        try {
+          localStorage.removeItem("cowio:globalTheme");
+          document.documentElement.dataset.globalTheme = "dark";
+          document.documentElement.classList.remove("theme-light-global");
+        } catch (e) {}
+      })();
     </script>
     <style>
       .global-flashbang {
@@ -2540,6 +2583,48 @@
         display: flex;
         gap: 10px;
         margin-top: 20px;
+      }
+      /* ========================================================= */
+      /* FROSTED LIQUID GLASS MODALS (FRIENDS & MINIATURE)         */
+      /* ========================================================= */
+      #modal-profile-friends,
+      #modal-room-user-miniature {
+        background: rgba(3, 5, 12, 0.48) !important;
+        backdrop-filter: blur(20px) saturate(160%) !important;
+        -webkit-backdrop-filter: blur(20px) saturate(160%) !important;
+        transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), backdrop-filter 0.25s ease !important;
+      }
+
+      .frosted-modal-card {
+        background: linear-gradient(155deg, rgba(22, 26, 40, 0.65) 0%, rgba(10, 13, 22, 0.55) 100%) !important;
+        backdrop-filter: blur(48px) saturate(210%) contrast(105%) !important;
+        -webkit-backdrop-filter: blur(48px) saturate(210%) contrast(105%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.14) !important;
+        box-shadow: 0 32px 90px rgba(0, 0, 0, 0.78),
+                    0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+                    0 1px 0 0 rgba(255, 255, 255, 0.28) inset !important;
+        border-radius: 28px !important;
+        color: #ffffff !important;
+      }
+
+      #mini-btn-like.liked {
+        background: rgba(239, 68, 68, 0.18) !important;
+        border-color: rgba(239, 68, 68, 0.45) !important;
+        color: #fca5a5 !important;
+        box-shadow: 0 0 14px rgba(239, 68, 68, 0.25) !important;
+      }
+      #mini-btn-like.liked #mini-like-icon {
+        filter: none !important;
+        transform: scale(1.15) !important;
+      }
+
+      @keyframes pulseOnlineDot {
+        0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+        70% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+      }
+      .indicator-pulsing-online {
+        animation: pulseOnlineDot 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
       }
       .profile-modal-top {
         display: flex;
@@ -7507,15 +7592,15 @@
           </p>
           <div class="auth-features">
             <div class="auth-feature-item">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 24px; height: 24px">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 24px; height: 24px">
               Создавайте и управляйте своими комнатами
             </div>
             <div class="auth-feature-item">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width: 24px; height: 24px">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Busts%20In%20Silhouette.webp" style="width: 24px; height: 24px">
               Находите друзей и единомышленников
             </div>
             <div class="auth-feature-item">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width: 24px; height: 24px">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" style="width: 24px; height: 24px">
               Безопасная и приватная среда
             </div>
           </div>
@@ -7530,15 +7615,15 @@
           </p>
           <div class="auth-features">
             <div class="auth-feature-item">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 24px; height: 24px">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 24px; height: 24px">
               Продолжайте общение в любимых комнатах
             </div>
             <div class="auth-feature-item">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width: 24px; height: 24px">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Busts%20In%20Silhouette.webp" style="width: 24px; height: 24px">
               Узнавайте, что нового у друзей
             </div>
             <div class="auth-feature-item">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width: 24px; height: 24px">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" style="width: 24px; height: 24px">
               Приватность и защита сообщений
             </div>
           </div>
@@ -7548,11 +7633,11 @@
       <div class="auth-right">
         <div class="auth-tabs-new">
           <button id="tab-login-btn">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width: 16px; height: 16px">
+            <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" style="width: 16px; height: 16px">
             Вход
           </button>
           <button id="tab-reg-btn" class="active">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp" style="width: 16px; height: 16px">
+            <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Memo.webp" style="width: 16px; height: 16px">
             Регистрация
           </button>
         </div>
@@ -7561,16 +7646,16 @@
           <div class="form-group-new">
             <label>Электронная почта</label>
             <div class="auth-input-wrapper">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Incoming%20Envelope.webp" class="auth-input-icon">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Incoming%20Envelope.webp" class="auth-input-icon">
               <input type="text" id="login-email" placeholder="Email или юзернейм">
             </div>
           </div>
           <div class="form-group-new">
             <label>Пароль</label>
             <div class="auth-input-wrapper">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Key.webp" class="auth-input-icon">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Key.webp" class="auth-input-icon">
               <input type="password" id="login-pass" placeholder="••••••••">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Peeking%20Eye.webp" class="auth-pass-eye" onclick="togglePasswordVisibility(this, 'login-pass')">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Face%20With%20Peeking%20Eye.webp" class="auth-pass-eye" onclick="togglePasswordVisibility(this, 'login-pass')">
             </div>
           </div>
           <button type="button" id="btn-forgot-password" class="btn-text-link" style="
@@ -7586,7 +7671,7 @@
           </button>
           <button class="submit-btn" id="btn-do-login" style="margin-top: 10px">
             Войти в систему
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/Rocket.webp" style="width: 16px; height: 16px">
+            <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Travel%20and%20Places/Rocket.webp" style="width: 16px; height: 16px">
           </button>
           <button id="btn-google-login" class="google-btn">
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width: 16px; height: 16px">
@@ -7598,14 +7683,14 @@
           <div class="form-group-new">
             <label>Отображаемое имя</label>
             <div class="auth-input-wrapper">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Bust%20In%20Silhouette.webp" class="auth-input-icon">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Bust%20In%20Silhouette.webp" class="auth-input-icon">
               <input type="text" id="reg-name" placeholder="Моё имя">
             </div>
           </div>
           <div class="form-group-new">
             <label>Уникальный ID</label>
             <div class="auth-input-wrapper">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Identification%20Card.webp" class="auth-input-icon">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Identification%20Card.webp" class="auth-input-icon">
               <input type="text" id="reg-username" placeholder="user123">
             </div>
           </div>
@@ -7626,7 +7711,7 @@
                     color: #999;
                     transition: all 0.2s;
                   ">
-                  <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Man%20Technologist.webp" style="
+                  <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Man%20Technologist.webp" style="
                       width: 16px;
                       height: 16px;
                       vertical-align: middle;
@@ -7648,7 +7733,7 @@
                     color: #999;
                     transition: all 0.2s;
                   ">
-                  <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Woman%20Technologist.webp" style="
+                  <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Woman%20Technologist.webp" style="
                       width: 16px;
                       height: 16px;
                       vertical-align: middle;
@@ -7663,16 +7748,16 @@
           <div class="form-group-new">
             <label>Электронная почта</label>
             <div class="auth-input-wrapper">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Incoming%20Envelope.webp" class="auth-input-icon">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Incoming%20Envelope.webp" class="auth-input-icon">
               <input type="email" id="reg-email" placeholder="mail@example.com">
             </div>
           </div>
           <div class="form-group-new">
             <label>Пароль (мин. 6 символов)</label>
             <div class="auth-input-wrapper">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Key.webp" class="auth-input-icon">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Key.webp" class="auth-input-icon">
               <input type="password" id="reg-pass" placeholder="••••••••">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Peeking%20Eye.webp" class="auth-pass-eye" onclick="togglePasswordVisibility(this, 'reg-pass')">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Face%20With%20Peeking%20Eye.webp" class="auth-pass-eye" onclick="togglePasswordVisibility(this, 'reg-pass')">
             </div>
           </div>
 
@@ -7690,7 +7775,7 @@
           </div>
 
           <button class="submit-btn" id="btn-do-reg" style="margin-top: 10px">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 16px; height: 16px; vertical-align: middle">
+            <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 16px; height: 16px; vertical-align: middle">
             Создать аккаунт
           </button>
           <button id="btn-google-reg" class="google-btn">
@@ -7701,7 +7786,7 @@
 
         <div id="reg-verify-form" class="auth-form-new auth-verify-panel" style="display: none">
           <div style="text-align: center; width: 100%">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width: 72px; height: 72px; margin-bottom: 16px">
+            <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" style="width: 72px; height: 72px; margin-bottom: 16px">
             <h3 style="margin: 0 0 8px; font-weight: 800; font-size: 24px">
               Подтвердите почту
             </h3>
@@ -7736,7 +7821,7 @@
             </button>
             <button class="submit-btn" id="btn-reg-verify-submit" style="width: 100%; margin-bottom: 10px">
               Подтвердить и создать аккаунт
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 16px; height: 16px">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 16px; height: 16px">
             </button>
             <button type="button" id="btn-reg-verify-back" class="secondary-btn" style="width: 100%">
               ← Назад к регистрации
@@ -7779,11 +7864,11 @@
       <div class="tiktok-right-container">
         <!-- Lumens Balance Pill in Header -->
         <div class="header-lumens-pill" id="lobby-header-lumens-pill" title="Ваш баланс Люменов" onclick="if(window.CatalogManager && window.CatalogManager.openLumensModal) { CatalogManager.openLumensModal(); } else if (window.FriendsManager && window.FriendsManager.setNavActive) { FriendsManager.setNavActive('nav-catalog'); if(window.CatalogManager) CatalogManager.renderCatalog(); }" style="display: flex; align-items: center; gap: 6px; padding: 6px 14px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 100px; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); user-select: none;">
-          <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" alt="Lumens" style="width: 17px; height: 17px; object-fit: contain; filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.4));">
+          <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" alt="Lumens" style="width: 17px; height: 17px; object-fit: contain; filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.4));">
           <span id="header-lumens-count" style="font-size: 13.5px; font-weight: 700; color: #ffffff; letter-spacing: -0.2px;">0</span>
         </div>
         <button class="primary-btn" id="btn-open-create-room">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
               Создать комнату
             </button><div class="lobby-app-bar-user" id="lobby-app-bar-profile" onclick="if(window.AppState && AppState.currentUser) { const myUname = AppState.usersCache.get(AppState.currentUser.uid)?.username; if(myUname && window.Router) { Router.navigate('/@' + myUname); } else if(window.Router) { Router.navigate('/profile'); } else if(window.ProfileManager) { window.ProfileManager.openViewProfileModal(AppState.currentUser.uid); } }">
           <div class="avatar" id="lobby-app-bar-avatar"></div>
@@ -7800,7 +7885,7 @@
                 @loading
               </div>
               <div class="user-card-lumens" id="my-lumens-display" style="display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: rgba(255, 255, 255, 0.7); margin-top: 3px;">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" alt="Lumens" style="width: 14px; height: 14px; object-fit: contain;">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" alt="Lumens" style="width: 14px; height: 14px; object-fit: contain;">
                 <span id="my-lumens-val">0</span> Люменов
               </div>
             </div>
@@ -7809,54 +7894,54 @@
           <nav class="nav-menu">
             <div class="section-title">Контент</div>
             <div class="nav-item active" id="nav-rooms">
-              <span><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Television.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+              <span><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Television.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
                 Комнаты</span>
             </div>
             <div class="nav-item" id="nav-library">
-              <span><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Open%20Book.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+              <span><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Open%20Book.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
                 Библиотека</span>
             </div>
             <div class="nav-item" id="nav-catalog">
-              <span><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Shopping%20Bags.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+              <span><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Shopping%20Bags.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
                 Каталог</span>
             </div>
 
             <div class="nav-section-divider"></div>
             <div class="section-title">Сообщество</div>
             <div class="nav-item" id="nav-friends">
-              <span><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+              <span><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Busts%20In%20Silhouette.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
                 Друзья</span>
               <div class="nav-badge" id="friend-req-badge">0</div>
             </div>
             <div class="nav-item" id="nav-find-friend">
-              <span><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Magnifying%20Glass%20Tilted%20Left.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+              <span><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Magnifying%20Glass%20Tilted%20Left.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
                 Найти друга</span>
             </div>
             <div class="nav-item" id="nav-leaderboard">
-              <span><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+              <span><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Fire.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
                 Список лучших</span>
             </div>
             <div class="nav-item" id="nav-support" style="display: flex">
-              <span><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Woman%20Technologist.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+              <span><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Woman%20Technologist.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
                 Поддержка</span>
             </div>
             <div class="nav-item" id="nav-support-staff" style="display: none; color: #fff">
-              <span><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Briefcase.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+              <span><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Briefcase.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
                 Поддержка (Оператор)</span>
             </div>
 
             <div class="nav-section-divider"></div>
             <div class="section-title">Аккаунт</div>
             <div class="nav-item" id="nav-profile">
-              <span><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Bust%20In%20Silhouette.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+              <span><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Bust%20In%20Silhouette.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
                 Мой профиль</span>
             </div>
             <div class="nav-item" id="nav-settings">
-              <span><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Toolbox.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+              <span><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Toolbox.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
                 Настройки</span>
             </div>
             <div class="nav-item" id="nav-other">
-              <span><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Card%20Index%20Dividers.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+              <span><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Card%20Index%20Dividers.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
                 Прочее</span>
             </div>
           </nav>
@@ -7870,35 +7955,25 @@
               flex-shrink: 0;
             ">
             <div class="nav-item" id="nav-premium" style="margin-bottom: 4px">
-              <span><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+              <span><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Star.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
                 Premium</span>
             </div>
             <div class="nav-item" id="nav-mystery" style="margin-bottom: 4px">
-              <span><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Question%20Mark.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+              <span><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Question%20Mark.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
                 ???</span>
-            </div>
-            <div style="text-align: center; font-size: 12px; font-weight: bold; color: var(--text-muted); margin-bottom: 8px; margin-top: 8px; letter-spacing: 0.5px; text-transform: uppercase;">platega верификация</div>
-            <div id="lobby-theme-slot">
-              <label class="global-theme-toggle" title="Светлая тема">
-                <span class="global-theme-label">Тема лобби</span>
-                <span><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/First%20Quarter%20Moon%20Face.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom"></span>
-                <input type="checkbox" id="global-theme-toggle">
-                <span class="global-theme-slider"></span>
-                <span><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Sun.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom"></span>
-              </label>
             </div>
             <button class="secondary-btn" id="btn-switch-account" style="
                 border-color: rgba(255, 255, 255, 0.1);
                 color: var(--text-muted);
               ">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Up%20Button.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Up%20Button.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
               Сменить аккаунт
             </button>
             <button class="secondary-btn" id="btn-logout" style="
                 border-color: rgba(255, 255, 255, 0.1);
                 color: var(--text-muted);
               ">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/House.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Travel%20and%20Places/House.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
               Выйти из аккаунта
             </button>
           </div>
@@ -7922,13 +7997,13 @@
                 align-items: center;
                 gap: 10px;
               ">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Open%20Book.webp" style="width: 32px; height: 32px">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Open%20Book.webp" style="width: 32px; height: 32px">
               Библиотека
             </h2>
           </div>
           <div style="display: flex; gap: 10px; margin-bottom: 20px">
             <button class="primary-btn" id="btn-lib-public" style="flex: 1; border-radius: 12px">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Books.webp" style="
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Books.webp" style="
                   width: 20px;
                   height: 20px;
                   vertical-align: middle;
@@ -7937,7 +8012,7 @@
               Публичная библиотека
             </button>
             <button class="secondary-btn" id="btn-lib-my" style="flex: 1; border-radius: 12px">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Bust%20In%20Silhouette.webp" style="
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Bust%20In%20Silhouette.webp" style="
                   width: 20px;
                   height: 20px;
                   vertical-align: middle;
@@ -7949,7 +8024,7 @@
           <div style="display: flex; gap: 10px; margin-bottom: 20px">
             <input type="text" id="library-search" placeholder="Поиск видео..." class="settings-input" style="flex: 1; border-radius: 12px; padding-left: 15px">
             <button class="primary-btn" id="btn-lib-add-video" style="border-radius: 12px; width: auto; padding: 0 20px">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="
                   width: 20px;
                   height: 20px;
                   vertical-align: middle;
@@ -7971,15 +8046,15 @@
             </div>
             <div style="display: flex; gap: 10px; margin-bottom: 20px; justify-content: center; flex-wrap: wrap;">
                <button id="leaderboard-tab-lumens" class="primary-btn" onclick="if(window.switchLeaderboardCategory) window.switchLeaderboardCategory('lumens')" style="width: auto; padding: 8px 18px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                 <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 18px; height: 18px;" alt="✨">
+                 <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 18px; height: 18px;" alt="✨">
                  Топ Люменов
                </button>
                <button id="leaderboard-tab-likes" class="secondary-btn" onclick="if(window.switchLeaderboardCategory) window.switchLeaderboardCategory('likes')" style="width: auto; padding: 8px 18px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                 <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Heart.webp" style="width: 18px; height: 18px;" alt="❤️">
+                 <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Red%20Heart.webp" style="width: 18px; height: 18px;" alt="❤️">
                  Любимчики (Топ Лайков)
                </button>
                <button id="leaderboard-tab-time" class="secondary-btn" onclick="if(window.switchLeaderboardCategory) window.switchLeaderboardCategory('time')" style="width: auto; padding: 8px 18px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                 <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Hourglass%20Done.webp" style="width: 18px; height: 18px;" alt="⏳">
+                 <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Hourglass%20Done.webp" style="width: 18px; height: 18px;" alt="⏳">
                  Время в комнатах
                </button>
             </div>
@@ -7996,7 +8071,7 @@
               padding-top: 20px;
             ">
             <div class="section-title" style="font-size: 24px; margin-bottom: 20px">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Busts%20In%20Silhouette.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
               Ваши друзья
             </div>
 
@@ -8031,7 +8106,7 @@
               padding-top: 20px;
             ">
             <div class="section-title" style="font-size: 24px; margin-bottom: 20px">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Magnifying%20Glass%20Tilted%20Left.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Magnifying%20Glass%20Tilted%20Left.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
               Найти человека
             </div>
             <div style="
@@ -8079,7 +8154,7 @@
               <div class="support-sidebar-header">
                 <div class="support-brand">
                   <div class="support-brand-icon">
-                    <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp" alt="Support">
+                    <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Memo.webp" alt="Support">
                   </div>
                   <div>
                     <div class="support-brand-title">Центр поддержки</div>
@@ -8091,11 +8166,11 @@
                 </div>
                 <div class="support-header-actions">
                   <button class="secondary-btn" title="Панель Создателя" id="btn-support-creator-panel" style="display: none; width: auto; padding: 6px 10px; font-size: 11.5px; border-radius: 8px;">
-                    <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp" style="width: 14px; height: 14px; vertical-align: -2px; margin-right: 3px;">
+                    <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Crown.webp" style="width: 14px; height: 14px; vertical-align: -2px; margin-right: 3px;">
                     <span>Панель</span>
                   </button>
                   <button class="primary-btn" id="btn-open-create-ticket-modal" style="width: auto; padding: 6px 12px; font-size: 12px; font-weight: 700; border-radius: 8px;">
-                    <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Pen.webp" style="width: 13px; height: 13px; vertical-align: -1px; margin-right: 4px;">
+                    <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Pen.webp" style="width: 13px; height: 13px; vertical-align: -1px; margin-right: 4px;">
                     <span>Создать</span>
                   </button>
                 </div>
@@ -8123,7 +8198,7 @@
                     <span class="support-filter-badge" id="badge-count-closed">0</span>
                   </button>
                   <button type="button" class="support-filter-tab" data-filter="reports" id="tab-filter-reports" style="display: none;">
-                    <span><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Triangular%20Flag.webp" class="emoji-animated-sm" alt=""> Жалобы</span>
+                    <span><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Flags/Triangular%20Flag.webp" class="emoji-animated-sm" alt=""> Жалобы</span>
                     <span class="support-filter-badge" id="badge-count-reports">0</span>
                   </button>
                 </div>
@@ -8137,7 +8212,7 @@
               <!-- Sidebar Footer -->
               <div class="support-sidebar-footer">
                 <div class="support-footer-info">
-                  <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/High%20Voltage.webp" style="width: 15px; height: 15px; object-fit: contain;">
+                  <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/High%20Voltage.webp" style="width: 15px; height: 15px; object-fit: contain;">
                   <div style="flex:1;">Среднее время ответа: <strong>~10 минут</strong></div>
                 </div>
               </div>
@@ -8151,10 +8226,10 @@
                 <header class="support-ticket-header">
                   <div class="support-header-left">
                     <button class="secondary-btn" id="btn-support-back" style="display: none; width: auto; padding: 7px 11px; border-radius: 10px;" title="Назад к списку">
-                      <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Back%20Arrow.webp" style="width: 14px; height: 14px; object-fit: contain;">
+                      <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Back%20Arrow.webp" style="width: 14px; height: 14px; object-fit: contain;">
                     </button>
                     <div class="support-header-icon" id="support-ticket-category-icon">
-                      <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp" style="width: 20px; height: 20px;">
+                      <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Memo.webp" style="width: 20px; height: 20px;">
                     </div>
                     <div class="support-header-meta">
                       <div class="support-header-title-row">
@@ -8172,21 +8247,21 @@
                   <!-- Header Action Buttons -->
                   <div class="support-header-actions" style="position: relative;">
                     <button class="secondary-btn support-action-btn" id="btn-support-quick-actions" title="Действия оператора" style="display: none;">
-                      <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Toolbox.webp" style="width: 14px; height: 14px;">
+                      <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Toolbox.webp" style="width: 14px; height: 14px;">
                       <span>Опции</span>
                     </button>
                     <div id="support-quick-actions-menu" class="support-popover-menu" style="display: none;"></div>
 
                     <button class="secondary-btn support-action-btn" id="btn-support-close-ticket" style="display: none;">
-                      <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width: 14px; height: 14px;">
+                      <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" style="width: 14px; height: 14px;">
                       <span>Закрыть тикет</span>
                     </button>
                     <button class="primary-btn support-action-btn" id="btn-support-reopen-ticket" style="display: none;">
-                      <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Counterclockwise%20Arrows%20Button.webp" style="width: 14px; height: 14px;">
+                      <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Counterclockwise%20Arrows%20Button.webp" style="width: 14px; height: 14px;">
                       <span>Возобновить</span>
                     </button>
                     <button class="danger-btn support-action-btn support-delete-btn" id="btn-support-delete-ticket" title="Удалить тикет" onclick="SupportSystem.deleteTicketLocally()">
-                      <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Wastebasket.webp" style="width: 14px; height: 14px;">
+                      <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Wastebasket.webp" style="width: 14px; height: 14px;">
                     </button>
                   </div>
                 </header>
@@ -8221,12 +8296,12 @@
                   </div>
                   <div class="support-composer-inner">
                     <button type="button" id="btn-support-attach" class="support-compose-attach-btn" title="Прикрепить скриншот">
-                      <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Paperclip.webp" style="width: 16px; height: 16px;">
+                      <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Paperclip.webp" style="width: 16px; height: 16px;">
                     </button>
                     <textarea id="support-msg-input" placeholder="Напишите ответ в поддержку..." rows="1"></textarea>
                     <button type="button" id="btn-support-send" class="primary-btn support-send-btn">
                       <span>Отправить</span>
-                      <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Envelope.webp" style="width: 14px; height: 14px;">
+                      <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Envelope.webp" style="width: 14px; height: 14px;">
                     </button>
                   </div>
                   <div class="support-composer-hint">Нажмите <strong>Enter</strong> для отправки, <strong>Shift + Enter</strong> для новой строки</div>
@@ -8236,14 +8311,14 @@
                 <div id="support-closed-banner" class="support-closed-resolution-bar" style="display: none;">
                   <div class="support-closed-bar-content">
                     <div class="support-closed-bar-icon">
-                      <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width: 20px; height: 20px;">
+                      <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" style="width: 20px; height: 20px;">
                     </div>
                     <div class="support-closed-bar-info">
                       <div class="support-closed-bar-title">Обращение закрыто и сохранено в архиве</div>
                       <div class="support-closed-bar-desc">История диалога доступна для чтения. Если проблема повторилась, возобновите тикет в один клик.</div>
                     </div>
                     <button type="button" class="primary-btn support-reopen-cta" id="btn-support-reopen-overlay">
-                      <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Counterclockwise%20Arrows%20Button.webp" style="width: 14px; height: 14px;">
+                      <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Counterclockwise%20Arrows%20Button.webp" style="width: 14px; height: 14px;">
                       <span>Возобновить тикет</span>
                     </button>
                   </div>
@@ -8254,35 +8329,35 @@
               <div id="support-no-ticket" class="support-empty-welcome">
                 <div class="support-welcome-card">
                   <div class="support-welcome-icon-wrap">
-                    <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Compass.webp" style="width: 44px; height: 44px;" alt="Support">
+                    <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Travel%20and%20Places/Compass.webp" style="width: 44px; height: 44px;" alt="Support" onerror="this.src='https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Telephone%20Receiver.webp'">
                   </div>
                   <div class="support-welcome-title">Центр поддержки COWIO</div>
                   <div class="support-welcome-subtitle">
                     Мы готовы помочь в любой ситуации. Выберите обращение из списка слева или создайте новый тикет:
                   </div>
                   <button type="button" class="primary-btn support-welcome-cta" onclick="SupportSystem.openCreateModal()">
-                    <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Pen.webp" style="width: 15px; height: 15px;">
+                    <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Pen.webp" style="width: 15px; height: 15px;">
                     <span>Создать новое обращение</span>
                   </button>
 
                   <div class="support-quick-starters">
                     <div class="support-starter-card" onclick="SupportSystem.openCreateModal('Вопрос')">
                       <div class="starter-emoji">
-                        <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Speech%20Balloon.webp" alt="Вопрос">
+                        <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Speech%20Balloon.webp" alt="Вопрос">
                       </div>
                       <div class="starter-title">Вопрос по сервису</div>
                       <div class="starter-desc">Помощь по комнатам, музыке, профилю и функциям</div>
                     </div>
                     <div class="support-starter-card" onclick="SupportSystem.openCreateModal('Баг')">
                       <div class="starter-emoji">
-                        <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Bug.webp" alt="Баг">
+                        <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Bug.webp" alt="Баг">
                       </div>
                       <div class="starter-title">Сообщить о баге</div>
                       <div class="starter-desc">Неполадки воспроизведения, звука или интерфейса</div>
                     </div>
                     <div class="support-starter-card" onclick="SupportSystem.openCreateModal('Жалоба')">
                       <div class="starter-emoji">
-                        <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Triangular%20Flag.webp" alt="Жалоба">
+                        <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Flags/Triangular%20Flag.webp" alt="Жалоба">
                       </div>
                       <div class="starter-title">Жалоба на нарушение</div>
                       <div class="starter-desc">Оскорбления, спам или неприемлемое поведение</div>
@@ -8331,7 +8406,28 @@
            @user
          </div>
          <div id="view-status" style="font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 12px; display: flex; align-items: center;"></div>
-         <div id="view-friends-count" style="color: var(--text-muted); font-size: 14px; margin-bottom: 6px; font-weight: 500;">Друзей: 0</div>
+         <div id="view-friends-count" class="tiktok-friends-btn" style="
+             display: inline-flex;
+             align-items: center;
+             gap: 8px;
+             padding: 6px 14px;
+             background: rgba(255, 255, 255, 0.06);
+             border: 1px solid rgba(255, 255, 255, 0.12);
+             border-radius: 999px;
+             color: #ffffff;
+             font-size: 13.5px;
+             font-weight: 600;
+             margin-bottom: 12px;
+             cursor: pointer;
+             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+             user-select: none;
+             width: fit-content;
+           " onmouseover="this.style.background='rgba(255, 255, 255, 0.12)'; this.style.borderColor='rgba(255, 255, 255, 0.25)';" onmouseout="this.style.background='rgba(255, 255, 255, 0.06)'; this.style.borderColor='rgba(255, 255, 255, 0.12)';">
+           <span id="view-friends-count-text">Друзья · 0</span>
+           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+             <polyline points="9 18 15 12 9 6"></polyline>
+           </svg>
+         </div>
          <div id="view-gender" style="color: var(--text-muted); font-size: 14px; margin-bottom: 12px; font-weight: 500; display: none;"></div>
          <div class="tiktok-profile-badges-row" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;">
            <div id="view-level-badge" style="
@@ -8346,7 +8442,7 @@
                transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
              ">
-             <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" style="
+             <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Star.webp" style="
                  width: 18px;
                  height: 18px;
                  object-fit: contain;
@@ -8373,7 +8469,7 @@
                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
                cursor: default;
              " title="Баланс Люменов">
-             <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="
+             <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="
                  width: 18px;
                  height: 18px;
                  object-fit: contain;
@@ -8385,7 +8481,7 @@
                  color: #fff;
                  letter-spacing: -0.2px;
                ">0</span>
-             <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 16px; height: 16px; object-fit: contain; vertical-align: middle;" alt="Люмены">
+             <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 16px; height: 16px; object-fit: contain; vertical-align: middle;" alt="Люмены">
            </div>
            <div id="view-streak" style="
                display: none;
@@ -8398,7 +8494,7 @@
                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
                cursor: default;
              " title="Стрик активности">
-             <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" style="
+             <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Fire.webp" style="
                  width: 18px;
                  height: 18px;
                  object-fit: contain;
@@ -8427,15 +8523,15 @@
               Написать сообщение
             </button> 
             <button class="secondary-btn" id="btn-like-profile" style="display: flex; align-items: center; gap: 6px; padding: 6px 14px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); border-radius: 8px; color: #fff; cursor: pointer; transition: 0.2s;">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Heart.webp" style="width: 22px; height: 22px; object-fit: contain; filter: grayscale(100%) opacity(50%); transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);" id="like-icon" alt="Like">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Red%20Heart.webp" style="width: 22px; height: 22px; object-fit: contain; filter: grayscale(100%) opacity(50%); transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);" id="like-icon" alt="Like">
               <span id="view-likes-count" style="font-weight: 600;">0</span>
             </button>
             <button class="secondary-btn" id="btn-gift-lumens" title="Подарить Люмены" aria-label="Подарить Люмены" style="display: none; align-items: center; gap: 6px; padding: 7px 14px; border: 1px solid rgba(255, 215, 0, 0.35); background: linear-gradient(135deg, rgba(255, 215, 0, 0.12) 0%, rgba(255, 170, 0, 0.05) 100%); border-radius: 10px; color: #ffd700; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 0 12px rgba(255, 215, 0, 0.12);">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 18px; height: 18px; object-fit: contain; filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.6));" alt="✨">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 18px; height: 18px; object-fit: contain; filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.6));" alt="✨">
               <span style="font-weight: 700; font-size: 13px; letter-spacing: -0.2px;">Подарить Люмены</span>
             </button>
             <button class="secondary-btn" id="btn-report-profile" title="Пожаловаться на профиль" aria-label="Пожаловаться на профиль">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Triangular%20Flag.webp" alt="Жалоба">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Flags/Triangular%20Flag.webp" alt="Жалоба">
             </button>
           </div>
         </div>
@@ -8486,7 +8582,7 @@
               padding-top: 40px;
               text-align: center;
             ">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Up%20Button.webp" style="width: 80px; height: 80px; margin-bottom: 20px">
+            <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Up%20Button.webp" style="width: 80px; height: 80px; margin-bottom: 20px">
             <h2 style="font-size: 28px; margin-bottom: 15px">Смена аккаунта</h2>
             <div style="
                 color: var(--text-muted);
@@ -8539,22 +8635,22 @@
 
               <div class="catalog-tabs" id="catalog-filters">
                 <button class="catalog-tab-btn active-filter" data-filter="all">
-                  <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Shopping%20Bags.webp" class="catalog-tab-emoji" alt="Все">
+                  <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Shopping%20Bags.webp" class="catalog-tab-emoji" alt="Все">
                   <span>Все</span>
                   <span class="catalog-tab-badge" id="cat-count-all">0</span>
                 </button>
                 <button class="catalog-tab-btn" data-filter="hot">
-                  <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" class="catalog-tab-emoji" alt="Акции">
+                  <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Fire.webp" class="catalog-tab-emoji" alt="Акции">
                   <span>Акции</span>
                   <span class="catalog-tab-badge" id="cat-count-hot">0</span>
                 </button>
                 <button class="catalog-tab-btn" data-filter="free">
-                  <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" class="catalog-tab-emoji" alt="Бесплатные">
+                  <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" class="catalog-tab-emoji" alt="Бесплатные">
                   <span>Бесплатные</span>
                   <span class="catalog-tab-badge" id="cat-count-free">0</span>
                 </button>
                 <button class="catalog-tab-btn" data-filter="paid">
-                  <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" class="catalog-tab-emoji" alt="Люмены">
+                  <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" class="catalog-tab-emoji" alt="Люмены">
                   <span>За Люмены</span>
                   <span class="catalog-tab-badge" id="cat-count-paid">0</span>
                 </button>
@@ -8606,9 +8702,9 @@
             <div class="mystery-event-blur"></div>
             <div class="mystery-event-overlay">
               <div class="mystery-question-row" aria-label="Секретный будущий ивент">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Question%20Mark.webp" alt="?">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Question%20Mark.webp" alt="?">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Question%20Mark.webp" alt="?">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Question%20Mark.webp" alt="?">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Question%20Mark.webp" alt="?">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Question%20Mark.webp" alt="?">
               </div>
               <div class="mystery-countdown" aria-live="polite">
                 <div class="mystery-time-cell">
@@ -8635,7 +8731,7 @@
         <main class="rooms-main" id="section-settings" style="display: none">
           <div class="lobby-header">
             <h2>
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Toolbox.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Toolbox.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
               Настройки
             </h2>
           </div>
@@ -8647,7 +8743,7 @@
         <main class="rooms-main" id="section-other" style="display: none; overflow-y: auto;">
           <div class="lobby-header">
             <h2>
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Card%20Index%20Dividers.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Card%20Index%20Dividers.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
               Прочее
             </h2>
             <p style="color: var(--text-muted); font-size: 14px; margin-top: 4px;">
@@ -8657,7 +8753,7 @@
           <div style="padding: 24px; display: flex; flex-direction: column; gap: 20px; max-width: 860px;">
             <div class="glass-panel" style="padding: 24px; border-radius: 16px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08);">
               <h3 style="display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; margin-bottom: 14px; color: var(--text-main);">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Open%20Book.webp" style="width: 24px; height: 24px;">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Open%20Book.webp" style="width: 24px; height: 24px;">
                 О проекте и информация
               </h3>
               <p style="color: var(--text-muted); font-size: 14px; line-height: 1.7; margin-bottom: 16px;">
@@ -8665,7 +8761,7 @@
               </p>
               <div style="background: rgba(0, 0, 0, 0.25); border: 1px dashed rgba(255, 255, 255, 0.15); border-radius: 12px; padding: 18px; font-size: 13px; color: var(--text-muted); line-height: 1.6;">
                 <div style="font-weight: 600; color: var(--text-main); margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
-                  <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Light%20Bulb.webp" style="width: 18px; height: 18px;">
+                  <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Light%20Bulb.webp" style="width: 18px; height: 18px;">
                   Пользовательская заметка:
                 </div>
                 Добро пожаловать в COWIO! Здесь вы можете смотреть любимые видео вместе с друзьями синхронно в реальном времени, общаться в чате, делиться эмодзи и реакциями.
@@ -8674,7 +8770,7 @@
 
             <div class="glass-panel" style="padding: 24px; border-radius: 16px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08);">
               <h3 style="display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; margin-bottom: 14px; color: var(--text-main);">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp" style="width: 24px; height: 24px;">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Memo.webp" style="width: 24px; height: 24px;">
                 Правила и рекомендации
               </h3>
               <ul style="color: var(--text-muted); font-size: 14px; line-height: 1.7; margin: 0; padding-left: 20px;">
@@ -8687,7 +8783,7 @@
             <!-- Контакты и связь (Mail & Telegram) -->
             <div class="glass-panel" style="padding: 24px; border-radius: 16px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08);">
               <h3 style="display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; margin-bottom: 8px; color: var(--text-main);">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Incoming%20Envelope.webp" style="width: 24px; height: 24px;">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Incoming%20Envelope.webp" style="width: 24px; height: 24px;">
                 Контакты и связь
               </h3>
               <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6; margin-bottom: 16px;">
@@ -8696,7 +8792,7 @@
 
               <div style="display: flex; flex-direction: column; gap: 12px;">
                 <!-- Mail -->
-                <a href="mailto:das4akk@gmail.com" style="
+                <a href="mailto:cowiosupport@gmail.com" style="
                   display: flex;
                   align-items: center;
                   justify-content: space-between;
@@ -8727,7 +8823,7 @@
                     </div>
                     <div>
                       <div style="font-weight: 700; font-size: 15px; color: #ffffff;">Электронная почта (Mail)</div>
-                      <div style="font-size: 12.5px; color: var(--text-muted); margin-top: 2px;">das4akk@gmail.com • Прямая связь по любым вопросам</div>
+                      <div style="font-size: 12.5px; color: var(--text-muted); margin-top: 2px;">cowiosupport@gmail.com • Прямая связь по любым вопросам</div>
                     </div>
                   </div>
                   <div style="
@@ -8810,7 +8906,7 @@
             <!-- Правовая информация (Политика и Соглашение) -->
             <div class="glass-panel" style="padding: 24px; border-radius: 16px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08);">
               <h3 style="display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; margin-bottom: 8px; color: var(--text-main);">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width: 24px; height: 24px;">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" style="width: 24px; height: 24px;">
                 Правовая информация
               </h3>
               <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6; margin-bottom: 16px;">
@@ -8962,12 +9058,12 @@
           <div id="room-top-actions">
             <!-- Room Lumens Balance Pill -->
             <div class="header-lumens-pill room-lumens-pill" id="room-header-lumens-pill" title="Ваш баланс Люменов" onclick="if(window.CatalogManager && window.CatalogManager.openLumensModal) { CatalogManager.openLumensModal(); }">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" alt="Lumens" style="width: 17px; height: 17px; object-fit: contain; filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.4));">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" alt="Lumens" style="width: 17px; height: 17px; object-fit: contain; filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.4));">
               <span id="room-lumens-count" style="font-size: 13.5px; font-weight: 700; color: #ffffff; letter-spacing: -0.2px;">0</span>
             </div>
             <!-- Share btn added from JS goes here -->
             <button class="secondary-btn" title="На весь экран" id="btn-fullscreen-toggle" style="background: transparent; border: none; font-size: 22px; cursor: pointer; padding: 8px;">⛶</button>
-            <button class="secondary-btn" id="btn-room-settings" title="Настройки комнаты" style="background: transparent; border: none; color: #fff; font-size: 16px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 8px;"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Toolbox.webp" style="width:26px;height:26px;vertical-align:middle;"></button>
+            <button class="secondary-btn" id="btn-room-settings" title="Настройки комнаты" style="background: transparent; border: none; color: #fff; font-size: 16px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 8px;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Toolbox.webp" style="width:26px;height:26px;vertical-align:middle;"></button>
           </div>
         </div>
 
@@ -8975,19 +9071,19 @@
         <div class="player-section">
           <div class="reaction-bar">
               <button class="react-btn" data-emoji="🔥">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" style="width: 36px; height: 36px; pointer-events: none">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Fire.webp" style="width: 36px; height: 36px; pointer-events: none">
               </button>
               <button class="react-btn" data-emoji="😂">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Tears%20Of%20Joy.webp" style="width: 36px; height: 36px; pointer-events: none">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Face%20With%20Tears%20Of%20Joy.webp" style="width: 36px; height: 36px; pointer-events: none">
               </button>
               <button class="react-btn" data-emoji="😱">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20Screaming%20In%20Fear.webp" style="width: 36px; height: 36px; pointer-events: none">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Face%20Screaming%20In%20Fear.webp" style="width: 36px; height: 36px; pointer-events: none">
               </button>
               <button class="react-btn" data-emoji="❤️">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Heart.webp" style="width: 36px; height: 36px; pointer-events: none">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Red%20Heart.webp" style="width: 36px; height: 36px; pointer-events: none">
               </button>
               <button class="react-btn" data-emoji="👏">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Clapping%20Hands.webp" style="width: 36px; height: 36px; pointer-events: none">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Clapping%20Hands.webp" style="width: 36px; height: 36px; pointer-events: none">
               </button>
           </div>
           <div class="video-container glass-panel">
@@ -9041,7 +9137,7 @@
         <!-- Mobile Swipe Handle -->
         <div class="profile-modal-top">
           <h2 style="margin-bottom: 0">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Bust%20In%20Silhouette.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+            <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Bust%20In%20Silhouette.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
             Настройки профиля
           </h2>
           <div class="profile-menu-wrap">
@@ -9225,7 +9321,7 @@
                   font-size: 14px;
                   font-weight: 600;
                 ">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Man%20Technologist.webp" style="
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Man%20Technologist.webp" style="
                     width: 20px;
                     height: 20px;
                     vertical-align: middle;
@@ -9245,7 +9341,7 @@
                   font-size: 14px;
                   font-weight: 600;
                 ">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Woman%20Technologist.webp" style="
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Woman%20Technologist.webp" style="
                     width: 20px;
                     height: 20px;
                     vertical-align: middle;
@@ -9385,30 +9481,9 @@
               </p>
             </div>
             <div class="dm-header-actions">
-              <button class="secondary-btn" id="btn-dm-theme-toggle" style="width: auto; padding: 8px 12px">
-                Поменять тему
-              </button>
               <button class="secondary-btn btn-close-modal" style="width: auto; padding: 8px 12px">
                 ✕
               </button>
-            </div>
-          </div>
-          <div class="room-theme-carousel" id="dm-theme-carousel">
-            <div class="theme-folders" id="dm-theme-folders" style="
-                display: flex;
-                gap: 8px;
-                padding: 10px;
-                overflow-x: auto;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-              "></div>
-            <div class="theme-carousel-top">
-              <button class="theme-arrow-btn" id="dm-theme-prev">‹</button>
-              <div class="theme-preview-wrap">
-                <div class="theme-preview-track" id="dm-theme-track">
-                  <!-- cards go here -->
-                </div>
-              </div>
-              <button class="theme-arrow-btn" id="dm-theme-next">›</button>
             </div>
           </div>
           <div class="panel-love-hearts" id="dm-love-hearts"></div>
@@ -9475,10 +9550,10 @@
 
           <div class="dm-compose">
             <button class="dm-compose-btn" id="btn-dm-attach-file" title="Прикрепить фото">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/File%20Folder.webp" style="width: 20px; height: 20px">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/File%20Folder.webp" style="width: 20px; height: 20px">
             </button>
             <button class="dm-compose-btn" id="btn-dm-attach" title="Прикрепить URL">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Briefcase.webp" style="width: 20px; height: 20px">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Briefcase.webp" style="width: 20px; height: 20px">
             </button>
             <input type="text" id="dm-input" placeholder="Написать сообщение..." autocomplete="off">
             <button id="btn-dm-send" class="primary-btn" style="width: 50px; border-radius: 50%">
@@ -9493,7 +9568,7 @@
       <div class="modal-content glass-panel" style="width: min(560px, calc(100% - 32px)); max-width: 560px">
         <div class="modal-drag-handle"></div>
         <h2 id="room-modal-title">
-          <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+          <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
           Создать комнату
         </h2>
         <div style="display: flex; flex-direction: column; gap: 12px">
@@ -9501,7 +9576,7 @@
             <div class="room-field-header">
               <span class="room-field-label">Название комнаты</span>
               <span id="room-name-autofill-hint" class="room-autofill-hint" style="display: none;">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 14px; height: 14px; vertical-align: middle;">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 14px; height: 14px; vertical-align: middle;">
                 <span>Скопировано из видео</span>
               </span>
             </div>
@@ -9512,7 +9587,7 @@
             <div class="room-field-header">
               <span class="room-field-label">Ссылка на видео</span>
               <span id="room-url-loading-indicator" style="display: none; font-size: 11px; color: #10b981; font-weight: 600; align-items: center; gap: 4px;">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 14px; height: 14px; vertical-align: middle;">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 14px; height: 14px; vertical-align: middle;">
                 <span>Получаем название...</span>
               </span>
             </div>
@@ -9528,7 +9603,7 @@
               padding: 6px;
               border-radius: 6px;
             ">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Double%20Exclamation%20Mark.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom; margin-right: 4px;"><b>Внимание:</b> При использовании ссылок YouTube может
+            <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Double%20Exclamation%20Mark.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom; margin-right: 4px;"><b>Внимание:</b> При использовании ссылок YouTube может
             потребоваться включенный ВПН (VPN) для корректной синхронизации и
             воспроизведения из-за региональных ограничений.
           </div>
@@ -9538,7 +9613,7 @@
           <div class="room-search-card" id="room-video-search-container">
             <div class="room-search-header">
               <div class="room-search-title">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Magnifying%20Glass%20Tilted%20Right.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Magnifying%20Glass%20Tilted%20Right.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
                 <span>Поиск по названию и платформе</span>
               </div>
               <span class="room-search-badge">VK Video & YouTube</span>
@@ -9553,7 +9628,7 @@
 
             <div class="room-search-platforms" id="room-search-platform-chips">
               <button type="button" class="platform-chip active" data-platform="all" id="chip-plat-all">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 15px; height: 15px; vertical-align: middle; margin-right: 4px;">Все
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 15px; height: 15px; vertical-align: middle; margin-right: 4px;">Все
               </button>
               <button type="button" class="platform-chip" data-platform="vk" id="chip-plat-vk">
                 <img src="https://cdn-icons-png.flaticon.com/128/145/145813.png" style="width: 15px; height: 15px; border-radius: 3px; object-fit: contain; vertical-align: middle; margin-right: 4px;">VK Video
@@ -9564,11 +9639,11 @@
             </div>
 
             <div id="room-search-loading" class="room-search-loading" style="display: none;">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Magnifying%20Glass%20Tilted%20Right.webp" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 6px;">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Magnifying%20Glass%20Tilted%20Right.webp" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 6px;">
               <span>Ищем видео на платформах...</span>
             </div>
             <div id="room-search-empty" class="room-search-empty" style="display: none;">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Thinking%20Face.webp" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 6px;">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Thinking%20Face.webp" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 6px;">
               <span>Ничего не найдено</span>
             </div>
 
@@ -9594,30 +9669,6 @@
             <div class="hashtag-suggestions" id="room-hashtag-suggestions"></div>
             <input type="text" id="room-input-hashtag" placeholder="#chill">
           </div>
-          <button class="secondary-btn room-theme-toggle" id="btn-room-theme-toggle">
-            Поменять тему
-          </button>
-          <div class="room-theme-carousel" id="room-theme-carousel">
-            <!-- [NEW] Theme Category Folders -->
-            <div class="theme-folders" id="room-theme-folders" style="
-                display: flex;
-                gap: 8px;
-                margin-bottom: 12px;
-                overflow-x: auto;
-                padding-bottom: 6px;
-              ">
-              <!-- Will be populated by JS -->
-            </div>
-            <div class="theme-carousel-top">
-              <button class="theme-arrow-btn" id="room-theme-prev">‹</button>
-              <div class="theme-preview-wrap">
-                <div class="theme-preview-track" id="room-theme-track">
-                  <!-- Populated by JS -->
-                </div>
-              </div>
-              <button class="theme-arrow-btn" id="room-theme-next">›</button>
-            </div>
-          </div>
 
           <div class="modal-actions">
             <button class="secondary-btn btn-close-modal">Отмена</button>
@@ -9634,7 +9685,7 @@
       <div class="modal-content glass-panel">
         <div class="modal-drag-handle"></div>
         <h2>
-          <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+          <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
           Вход в приватную комнату
         </h2>
         <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 15px">
@@ -9777,13 +9828,13 @@
             <div style="display: flex; flex-direction: column; gap: 2px;">
               <span style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Стоимость</span>
               <div style="display: flex; align-items: center; gap: 6px;">
-                <img id="catalog-item-price-icon" src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 20px; height: 20px; object-fit: contain; display: none;" alt="✨">
+                <img id="catalog-item-price-icon" src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 20px; height: 20px; object-fit: contain; display: none;" alt="✨">
                 <span id="catalog-item-price" style="font-size: 20px; color: #ffffff; font-weight: 800;">БЕСПЛАТНО</span>
               </div>
             </div>
             <div id="catalog-modal-user-lumens-info" style="display: flex; flex-direction: column; align-items: flex-end; gap: 2px;">
               <span style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Ваш баланс</span>
-              <span id="catalog-modal-user-lumens-val" style="font-size: 14px; font-weight: 700; color: #34d399; display: inline-flex; align-items: center; gap: 4px;">0 <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" class="inline-sparkles-icon" alt="✨"></span>
+              <span id="catalog-modal-user-lumens-val" style="font-size: 14px; font-weight: 700; color: #34d399; display: inline-flex; align-items: center; gap: 4px;">0 <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" class="inline-sparkles-icon" alt="✨"></span>
             </div>
           </div>
 
@@ -9831,12 +9882,12 @@
 
         <div style="padding: 32px 24px 20px; text-align: center; background: radial-gradient(circle at 50% 20%, rgba(255, 255, 255, 0.08) 0%, transparent 70%); border-bottom: 1px solid rgba(255, 255, 255, 0.06);">
           <div style="width: 76px; height: 76px; margin: 0 auto 14px; border-radius: 22px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.14); display: flex; align-items: center; justify-content: center; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" alt="Lumens" style="width: 48px; height: 48px; object-fit: contain; filter: drop-shadow(0 0 16px rgba(255, 255, 255, 0.45)); animation: pulseGlow 2.5s ease-in-out infinite;">
+            <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" alt="Lumens" style="width: 48px; height: 48px; object-fit: contain; filter: drop-shadow(0 0 16px rgba(255, 255, 255, 0.45)); animation: pulseGlow 2.5s ease-in-out infinite;">
           </div>
           <span style="font-size: 12px; font-weight: 700; color: rgba(255, 255, 255, 0.5); text-transform: uppercase; letter-spacing: 0.08em;">Ваш кошелёк</span>
           <h2 style="font-size: 34px; font-weight: 900; color: #ffffff; margin: 4px 0 2px; letter-spacing: -0.5px; display: flex; align-items: center; justify-content: center; gap: 8px;">
             <span id="modal-lumens-wallet-val">0</span>
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 30px; height: 30px; object-fit: contain; vertical-align: middle;">
+            <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 30px; height: 30px; object-fit: contain; vertical-align: middle;">
           </h2>
           <p style="font-size: 13px; color: rgba(255, 255, 255, 0.6); margin: 0;">Люмены — валюта платформы COWIO для покупок в каталоге</p>
         </div>
@@ -9844,15 +9895,15 @@
         <!-- Navigation Tabs: History, Leaderboard & Guide -->
         <div class="lumens-modal-nav-container">
           <button id="tab-btn-lumens-tx" class="lumens-tab-btn active" onclick="if(window.LumenManager) LumenManager.switchModalTab('history')">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp" style="width: 15px; height: 15px; object-fit: contain;" alt="История">
+            <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Memo.webp" style="width: 15px; height: 15px; object-fit: contain;" alt="История">
             История
           </button>
           <button id="tab-btn-lumens-top" class="lumens-tab-btn" onclick="if(window.LumenManager) LumenManager.switchModalTab('leaderboard')">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Trophy.webp" style="width: 15px; height: 15px; object-fit: contain;" alt="Топ">
+            <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Trophy.webp" style="width: 15px; height: 15px; object-fit: contain;" alt="Топ">
             Лидерборд
           </button>
           <button id="tab-btn-lumens-earn" class="lumens-tab-btn" onclick="if(window.LumenManager) LumenManager.switchModalTab('guide')">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Light%20Bulb.webp" style="width: 15px; height: 15px; object-fit: contain;" alt="Гайд">
+            <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Light%20Bulb.webp" style="width: 15px; height: 15px; object-fit: contain;" alt="Гайд">
             Как заработать
           </button>
         </div>
@@ -9892,7 +9943,7 @@
         <!-- TAB 3: HOW TO EARN (EARN GUIDE) -->
         <div id="lumens-tab-guide" style="display: none; padding: 14px 20px; flex-direction: column; gap: 10px; max-height: 290px; overflow-y: auto;" class="oled-scrollbar">
           <div style="display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 14px;">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Television.webp" alt="Watch" style="width: 26px; height: 26px; object-fit: contain; flex-shrink: 0; margin-top: 2px;">
+            <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Television.webp" alt="Watch" style="width: 26px; height: 26px; object-fit: contain; flex-shrink: 0; margin-top: 2px;">
             <div style="flex: 1;">
               <div style="font-size: 13.5px; font-weight: 700; color: #ffffff;">Воспроизведение видео в комнатах</div>
               <div style="font-size: 12px; color: rgba(255, 255, 255, 0.6); line-height: 1.4; margin-top: 2px;">Люмены начисляются <strong>только при активном воспроизведении видео</strong>: +1 Люмен за каждую 1 минуту просмотра (+2 для COWIO Premium).</div>
@@ -9900,7 +9951,7 @@
           </div>
 
           <div style="display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 14px;">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp" alt="Streak" style="width: 26px; height: 26px; object-fit: contain; flex-shrink: 0; margin-top: 2px;">
+            <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Fire.webp" alt="Streak" style="width: 26px; height: 26px; object-fit: contain; flex-shrink: 0; margin-top: 2px;">
             <div style="flex: 1;">
               <div style="font-size: 13.5px; font-weight: 700; color: #ffffff;">Ежедневный вход (Стрик)</div>
               <div style="font-size: 12px; color: rgba(255, 255, 255, 0.6); line-height: 1.4; margin-top: 2px;">Заходите на платформу ежедневно и получайте от 3 до 8 Люменов с ценными бонусами за длинные серии.</div>
@@ -9908,7 +9959,7 @@
           </div>
 
           <div style="display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 14px;">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Heart%20With%20Ribbon.webp" alt="Gift" style="width: 26px; height: 26px; object-fit: contain; flex-shrink: 0; margin-top: 2px;">
+            <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Heart%20With%20Ribbon.webp" alt="Gift" style="width: 26px; height: 26px; object-fit: contain; flex-shrink: 0; margin-top: 2px;">
             <div style="flex: 1;">
               <div style="font-size: 13.5px; font-weight: 700; color: #ffffff;">Подарки только от друзей</div>
               <div style="font-size: 12px; color: rgba(255, 255, 255, 0.6); line-height: 1.4; margin-top: 2px;">Вы можете дарить Люмены своим подтверждённым друзьям (действует лимит: до 100 Люменов в сутки определенному пользователю).</div>
@@ -9916,7 +9967,7 @@
           </div>
 
           <div style="display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 14px;">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" alt="Welcome" style="width: 26px; height: 26px; object-fit: contain; flex-shrink: 0; margin-top: 2px;">
+            <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" alt="Welcome" style="width: 26px; height: 26px; object-fit: contain; flex-shrink: 0; margin-top: 2px;">
             <div style="flex: 1;">
               <div style="font-size: 13.5px; font-weight: 700; color: #ffffff;">Приветственный бонус</div>
               <div style="font-size: 12px; color: rgba(255, 255, 255, 0.6); line-height: 1.4; margin-top: 2px;">Каждый новый зарегистрированный пользователь получает стартовый 1 Люмен для знакомства с платформой.</div>
@@ -9926,7 +9977,7 @@
 
         <div style="padding: 16px 24px 24px; display: flex; gap: 10px;">
           <button class="primary-btn" onclick="Utils.closeModal('modal-lumens-info'); if(window.FriendsManager && window.FriendsManager.setNavActive) { FriendsManager.setNavActive('nav-catalog'); if(window.CatalogManager) CatalogManager.renderCatalog(); }" style="flex: 1; padding: 13px; font-size: 14px; font-weight: 700; border-radius: 12px; background: #ffffff; color: #000000; display: flex; align-items: center; justify-content: center; gap: 8px;">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Shopping%20Bags.webp" style="width: 18px; height: 18px; object-fit: contain;">
+            <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Shopping%20Bags.webp" style="width: 18px; height: 18px; object-fit: contain;">
             Открыть каталог
           </button>
           <button class="secondary-btn btn-close-modal" style="padding: 13px 20px; font-size: 14px; font-weight: 700; border-radius: 12px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); color: #ffffff;">
@@ -10047,7 +10098,7 @@
               animation: throbStar 4s ease-in-out infinite;
               margin-bottom: 20px;
             ">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" style="width: 100px; height: 100px; object-fit: contain">
+            <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Star.webp" style="width: 100px; height: 100px; object-fit: contain">
           </div>
           <h3 style="
               font-size: 26px;
@@ -11608,7 +11659,7 @@
 
         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
           <div style="width: 42px; height: 42px; border-radius: 12px; background: rgba(255, 75, 75, 0.15); border: 1px solid rgba(255, 75, 75, 0.35); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Triangular%20Flag.webp" style="width: 24px; height: 24px; object-fit: contain;" alt="🚩">
+            <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Flags/Triangular%20Flag.webp" style="width: 24px; height: 24px; object-fit: contain;" alt="🚩">
           </div>
           <div>
             <h2 style="font-size: 18px; margin: 0; font-weight: 800; color: #fff;">Пожаловаться на профиль</h2>
@@ -11635,7 +11686,7 @@
           <div id="report-categories-list" style="display: flex; flex-direction: column; gap: 8px;">
             <div class="report-category-item" data-category="Неприемлемый аватар или баннер">
               <span class="report-cat-icon">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/No%20One%20Under%20Eighteen.webp" alt="🔞">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/No%20One%20Under%20Eighteen.webp" alt="🔞">
               </span>
               <div class="report-cat-text">
                 <div class="report-cat-title">Неприемлемый аватар или баннер</div>
@@ -11644,7 +11695,7 @@
             </div>
             <div class="report-category-item" data-category="Оскорбительный никнейм или био">
               <span class="report-cat-icon">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Symbols%20On%20Mouth.webp" alt="🤬">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Face%20With%20Symbols%20On%20Mouth.webp" alt="🤬">
               </span>
               <div class="report-cat-text">
                 <div class="report-cat-title">Оскорбительный никнейм или био</div>
@@ -11653,7 +11704,7 @@
             </div>
             <div class="report-category-item" data-category="Спам, реклама или мошенничество">
               <span class="report-cat-icon">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Megaphone.webp" alt="📢">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Megaphone.webp" alt="📢">
               </span>
               <div class="report-cat-text">
                 <div class="report-cat-title">Спам, реклама или мошенничество</div>
@@ -11662,7 +11713,7 @@
             </div>
             <div class="report-category-item" data-category="Разжигание ненависти или токсичность">
               <span class="report-cat-icon">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Double%20Exclamation%20Mark.webp" alt="⚠️">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Double%20Exclamation%20Mark.webp" alt="⚠️">
               </span>
               <div class="report-cat-text">
                 <div class="report-cat-title">Разжигание ненависти или токсичность</div>
@@ -11671,7 +11722,7 @@
             </div>
             <div class="report-category-item" data-category="Выдача себя за другое лицо">
               <span class="report-cat-icon">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Performing%20Arts.webp" alt="🎭">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Performing%20Arts.webp" alt="🎭">
               </span>
               <div class="report-cat-text">
                 <div class="report-cat-title">Выдача себя за другое лицо</div>
@@ -11680,7 +11731,7 @@
             </div>
             <div class="report-category-item" data-category="Другое нарушение оформления">
               <span class="report-cat-icon">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp" alt="📝">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Memo.webp" alt="📝">
               </span>
               <div class="report-cat-text">
                 <div class="report-cat-title">Другое нарушение оформления</div>
@@ -11801,7 +11852,7 @@
           <!-- Col 1: Recipient & Balances -->
           <div style="display: flex; flex-direction: column; gap: 12px; border-right: 1px solid rgba(255, 255, 255, 0.08); padding-right: 18px;">
             <div style="display: flex; align-items: center; gap: 10px;">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" alt="✨" style="width: 22px; height: 22px; object-fit: contain;">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" alt="✨" style="width: 22px; height: 22px; object-fit: contain;">
               <div>
                 <h3 style="margin: 0; font-size: 15px; font-weight: 700; color: #ffffff; letter-spacing: -0.01em;">Подарок Люменов</h3>
                 <span style="font-size: 11px; color: rgba(255, 255, 255, 0.5);">Перевод другу</span>
@@ -11825,7 +11876,7 @@
                 <span>Ваш баланс:</span>
                 <span style="font-weight: 700; color: #ffffff; display: inline-flex; align-items: center; gap: 4px;">
                   <span id="gift-modal-my-lumens">0</span>
-                  <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" alt="✨" style="width: 13px; height: 13px; object-fit: contain;">
+                  <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" alt="✨" style="width: 13px; height: 13px; object-fit: contain;">
                 </span>
               </div>
               <div style="display: flex; justify-content: space-between; color: rgba(255, 255, 255, 0.6);">
@@ -11849,7 +11900,7 @@
               <button type="button" class="gift-step-btn-bw" id="gift-lumens-btn-minus" aria-label="Уменьшить">−</button>
               <div style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 0;">
                 <input type="number" id="gift-lumens-amount-input" min="1" value="5" style="width: 100%; min-width: 110px; max-width: 180px; text-align: center; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 10px; font-size: 26px; font-weight: 800; color: #ffffff; outline: none; -moz-appearance: textfield; font-family: inherit; letter-spacing: -0.02em; padding: 6px 10px; box-sizing: border-box; overflow: visible;">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" alt="✨" style="width: 22px; height: 22px; object-fit: contain; flex-shrink: 0;">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" alt="✨" style="width: 22px; height: 22px; object-fit: contain; flex-shrink: 0;">
               </div>
               <button type="button" class="gift-step-btn-bw" id="gift-lumens-btn-plus" aria-label="Увеличить">+</button>
             </div>
@@ -11877,7 +11928,7 @@
             <button class="primary-btn" id="btn-submit-gift-lumens" style="width: 100%; padding: 12px 14px; border-radius: 12px; font-size: 13.5px; font-weight: 700; background: #ffffff; color: #000000; border: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 14px rgba(255, 255, 255, 0.15);" onmouseover="this.style.background='rgba(255,255,255,0.9)';" onmouseout="this.style.background='#ffffff';">
               <span>Подарить</span>
               <span id="gift-modal-btn-amount">5</span>
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" alt="✨" style="width: 15px; height: 15px; object-fit: contain;">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" alt="✨" style="width: 15px; height: 15px; object-fit: contain;">
             </button>
 
             <button class="secondary-btn btn-close-modal" id="btn-cancel-gift-lumens" style="width: 100%; padding: 9px 14px; border-radius: 12px; font-size: 12px; font-weight: 600; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.12); color: rgba(255, 255, 255, 0.7); cursor: pointer; text-align: center; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.12)'; this.style.color='#fff';" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='rgba(255,255,255,0.7)';">
@@ -11892,7 +11943,7 @@
       <div class="modal-content support-create-modal-content" style="position: relative;">
         <button type="button" class="btn-close-modal" style="position: absolute; top: 18px; right: 18px; width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; transition: 0.2s;" onclick="document.getElementById('modal-create-ticket').classList.remove('active')">✕</button>
         <div class="support-modal-badge">
-          <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp" style="width: 28px; height: 28px; object-fit: contain;">
+          <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Memo.webp" style="width: 28px; height: 28px; object-fit: contain;">
         </div>
         <h2 class="support-modal-heading">Новое обращение</h2>
         <p class="support-modal-subheading">Опишите ваш вопрос или проблему — операторы поддержки свяжутся с вами в ближайшее время</p>
@@ -11902,19 +11953,19 @@
           <label class="support-modal-label">Категория</label>
           <div class="support-category-selector" id="create-ticket-category-chips">
             <button type="button" class="category-chip active" data-cat="Вопрос">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Speech%20Balloon.webp" alt="">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Speech%20Balloon.webp" alt="">
               <span>Вопрос</span>
             </button>
             <button type="button" class="category-chip" data-cat="Баг">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Bug.webp" alt="">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Bug.webp" alt="">
               <span>Баг</span>
             </button>
             <button type="button" class="category-chip" data-cat="Жалоба">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Flags/Triangular%20Flag.webp" alt="">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Flags/Triangular%20Flag.webp" alt="">
               <span>Жалоба</span>
             </button>
             <button type="button" class="category-chip" data-cat="Идея">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Light%20Bulb.webp" alt="">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Light%20Bulb.webp" alt="">
               <span>Идея</span>
             </button>
           </div>
@@ -11926,15 +11977,15 @@
           <label class="support-modal-label">Приоритет</label>
           <div class="support-priority-selector" id="create-ticket-priority-chips">
             <button type="button" class="priority-chip" data-pri="Обычный">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Green%20Heart.webp" alt="">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Green%20Heart.webp" alt="">
               <span>Обычный</span>
             </button>
             <button type="button" class="priority-chip active" data-pri="Средний">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Yellow%20Heart.webp" alt="">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Yellow%20Heart.webp" alt="">
               <span>Средний</span>
             </button>
             <button type="button" class="priority-chip" data-pri="Высокий">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Heart%20On%20Fire.webp" alt="">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Heart%20On%20Fire.webp" alt="">
               <span>Высокий</span>
             </button>
           </div>
@@ -11958,7 +12009,7 @@
           <label class="support-modal-label">Скриншот или вложение (необязательно)</label>
           <div class="support-modal-attachment-row">
             <button type="button" id="btn-modal-ticket-attach" class="modal-attach-btn">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Paperclip.webp" style="width: 14px; height: 14px;">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Paperclip.webp" style="width: 14px; height: 14px;">
               <span id="modal-ticket-attach-label">Прикрепить картинку</span>
             </button>
             <div id="modal-ticket-attach-preview" style="display: none; align-items: center; gap: 8px;">
@@ -12031,7 +12082,7 @@
             gap: 10px;
             letter-spacing: -0.02em;
           ">
-          <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp" style="width: 24px; height: 24px; vertical-align: middle;">
+          <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Crown.webp" style="width: 24px; height: 24px; vertical-align: middle;">
           Панель Создателя (Поддержка)
         </h2>
         <div style="color: rgba(255, 255, 255, 0.5); font-size: 13px; margin-top: -10px">
@@ -12095,7 +12146,7 @@
               border: 1px solid rgba(255, 255, 255, 0.1);
             ">
             <h4 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 700; color: #ffffff; display: flex; align-items: center; gap: 8px;">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Memo.webp" style="width: 18px; height: 18px; vertical-align: middle;">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Memo.webp" style="width: 18px; height: 18px; vertical-align: middle;">
               Шаблоны быстрых ответов
             </h4>
             <div id="support-creator-templates-list" style="
@@ -12142,20 +12193,20 @@
             </div>
 
             <h4 style="margin: 20px 0 10px 0; font-size: 14px; font-weight: 700; color: #ffffff; display: flex; align-items: center; gap: 8px;">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Magnifying%20Glass%20Tilted%20Right.webp" style="width: 18px; height: 18px; vertical-align: middle;">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Magnifying%20Glass%20Tilted%20Right.webp" style="width: 18px; height: 18px; vertical-align: middle;">
               Аналитика и экспорт
             </h4>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px">
               <button class="secondary-btn" style="font-size: 11.5px; padding: 9px 10px; font-weight: 600; border-radius: 10px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); color: #fff; display: inline-flex; align-items: center; justify-content: center; gap: 6px;" onclick="SupportSystem.exportAllTickets()">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Package.webp" style="width: 14px; height: 14px; vertical-align: -1px;">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Package.webp" style="width: 14px; height: 14px; vertical-align: -1px;">
                 <span>Экспорт активных</span>
               </button>
               <button class="secondary-btn" style="font-size: 11.5px; padding: 9px 10px; font-weight: 600; border-radius: 10px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); color: #fff; display: inline-flex; align-items: center; justify-content: center; gap: 6px;" onclick="SupportSystem.exportArchiveTickets()">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Package.webp" style="width: 14px; height: 14px; vertical-align: -1px;">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Package.webp" style="width: 14px; height: 14px; vertical-align: -1px;">
                 <span>Экспорт архива</span>
               </button>
               <button class="secondary-btn" style="font-size: 11.5px; padding: 9px 10px; font-weight: 600; border-radius: 10px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); color: #fff; grid-column: span 2; display: inline-flex; align-items: center; justify-content: center; gap: 6px;" onclick="SupportSystem.refreshCreatorStats()">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Counterclockwise%20Arrows%20Button.webp" style="width: 14px; height: 14px; vertical-align: -1px;">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Counterclockwise%20Arrows%20Button.webp" style="width: 14px; height: 14px; vertical-align: -1px;">
                 <span>Обновить показатели</span>
               </button>
             </div>
@@ -12171,7 +12222,7 @@
               gap: 12px;
             ">
             <h4 style="margin: 0; font-size: 14px; font-weight: 700; color: #ffffff; display: flex; align-items: center; gap: 8px;">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Technologist.webp" style="width: 18px; height: 18px; vertical-align: middle;">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Technologist.webp" style="width: 18px; height: 18px; vertical-align: middle;">
               Управление системой
             </h4>
             <div style="
@@ -12219,11 +12270,11 @@
         if (input.type === "password") {
           input.type = "text";
           img.src =
-            "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Eyes.webp";
+            "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Eyes.webp";
         } else {
           input.type = "password";
           img.src =
-            "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Peeking%20Eye.webp";
+            "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Face%20With%20Peeking%20Eye.webp";
         }
       }
     </script>
@@ -12236,230 +12287,511 @@
         <button class="modal-close" onclick="document.getElementById('modal-like-stats').classList.remove('active')" style="position:absolute; top:15px; right:15px; background:none; border:none; color:#fff; font-size:24px; cursor:pointer; line-height: 1;">&times;</button>
         <h2 style="margin-top:0; font-size:20px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
           Статистика лайков
-          <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Heart.webp" style="width: 24px; height: 24px;" alt="Heart">
+          <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Red%20Heart.webp" style="width: 24px; height: 24px;" alt="Heart">
         </h2>
         <div style="margin: 15px 0; font-size: 16px;">
           Всего лайков: <strong id="like-stats-total" style="color:var(--primary); font-size: 18px;">0</strong>
         </div>
         <div style="font-size: 14px; margin-bottom: 10px; color: var(--text-muted); font-weight: 500;">
           Последние 10 лайков:
-          <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Eyes.webp" style="width: 18px; height: 18px; vertical-align: bottom; margin-left: 4px;">
+          <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Eyes.webp" style="width: 18px; height: 18px; vertical-align: bottom; margin-left: 4px;">
         </div>
         <div id="like-stats-list" class="oled-scrollbar" style="max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 5px;">
           <!-- list -->
         </div>
       </div>
     </div>
-    <!-- Room User Miniature Modal (Discord/Telegram style popover) -->
-    <div class="modal" id="modal-room-user-miniature" style="z-index: 100001;">
-      <div class="modal-content room-miniature-card" id="room-miniature-card" style="
+
+    <!-- TikTok-Style Friends List Modal -->
+    <div class="modal" id="modal-profile-friends" style="z-index: 100004;">
+      <div class="modal-content frosted-modal-card" id="profile-friends-modal-card" style="
         position: relative;
-        max-width: 380px;
-        width: 92%;
-        border-radius: 24px;
-        background: rgba(18, 18, 24, 0.97);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.9), 0 0 40px rgba(255, 255, 255, 0.05);
-        color: #ffffff;
-        backdrop-filter: blur(28px);
-        -webkit-backdrop-filter: blur(28px);
+        max-width: 470px;
+        width: min(470px, calc(100vw - 24px));
+        border-radius: 28px;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        max-height: 85vh;
         overflow: hidden;
+      ">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+          <div>
+            <h3 id="profile-friends-modal-title" style="margin: 0; font-size: 20px; font-weight: 800; color: #ffffff; letter-spacing: -0.3px; display: flex; align-items: center; gap: 8px;">
+              <span>👥 Друзья</span>
+            </h3>
+            <div id="profile-friends-modal-subtitle" style="font-size: 13px; color: rgba(255, 255, 255, 0.6); margin-top: 3px;">Список друзей</div>
+          </div>
+          <button type="button" class="btn-close-modal" id="btn-close-profile-friends" onclick="ProfileManager.closeFriendsListModal()" style="
+            width: 36px;
+            height: 36px;
+            padding: 0;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            color: #ffffff;
+            cursor: pointer;
+            transition: all 0.2s;
+          " onmouseover="this.style.background='rgba(255,255,255,0.2)';" onmouseout="this.style.background='rgba(255,255,255,0.08)';">✕</button>
+        </div>
+
+        <!-- Search Input -->
+        <div style="position: relative; margin-bottom: 14px;">
+          <input type="text" id="profile-friends-search" placeholder="Поиск по друзьям..." style="
+            width: 100%;
+            padding: 10px 14px 10px 38px;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            color: #ffffff;
+            font-size: 14px;
+            outline: none;
+            box-sizing: border-box;
+            transition: all 0.2s ease;
+          " onfocus="this.style.background='rgba(255,255,255,0.1)'; this.style.borderColor='rgba(255,255,255,0.28)';" onblur="this.style.background='rgba(255,255,255,0.06)'; this.style.borderColor='rgba(255,255,255,0.12)';">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.45)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 13px; top: 50%; transform: translateY(-50%); pointer-events: none;">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+        </div>
+
+        <!-- Scrollable Friends List -->
+        <div id="profile-friends-modal-list" class="oled-scrollbar" style="
+          flex: 1;
+          overflow-y: auto;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          padding: 8px;
+          background: rgba(0, 0, 0, 0.25);
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          border-radius: 20px;
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          min-height: 220px;
+          max-height: 52vh;
+        ">
+          <!-- Populated dynamically by ProfileManager.openFriendsListModal -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Room User Miniature Modal (Complete 1:1 scaled profile replica on frosted glass) -->
+    <div class="modal" id="modal-room-user-miniature" style="z-index: 100001;">
+      <div class="modal-content room-miniature-card frosted-modal-card oled-scrollbar" id="room-miniature-card" style="
+        position: relative;
+        max-width: 460px;
+        width: min(460px, calc(100vw - 24px));
+        border-radius: 28px;
+        color: #ffffff;
+        overflow-y: auto;
+        overflow-x: hidden;
         padding: 0;
+        max-height: 88vh;
       ">
         <!-- Close Button -->
         <button type="button" class="btn-close-modal" id="btn-close-room-miniature" onclick="RoomManager.closeUserMiniature()" style="
           position: absolute;
-          top: 12px;
-          right: 12px;
-          width: 32px;
-          height: 32px;
+          top: 14px;
+          right: 14px;
+          width: 34px;
+          height: 34px;
           border-radius: 50%;
-          background: rgba(0, 0, 0, 0.55);
-          border: 1px solid rgba(255, 255, 255, 0.18);
-          color: rgba(255, 255, 255, 0.85);
+          background: rgba(0, 0, 0, 0.45);
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          border: 1px solid rgba(255, 255, 255, 0.22);
+          color: rgba(255, 255, 255, 0.9);
           display: flex;
           align-items: center;
           justify-content: center;
           cursor: pointer;
           font-size: 16px;
-          z-index: 20;
+          z-index: 25;
           transition: all 0.2s ease;
-        " onmouseover="this.style.background='rgba(255,255,255,0.2)';" onmouseout="this.style.background='rgba(0,0,0,0.55)';">&times;</button>
+        " onmouseover="this.style.background='rgba(255,255,255,0.22)'; this.style.transform='scale(1.08)';" onmouseout="this.style.background='rgba(0,0,0,0.45)'; this.style.transform='none';">&times;</button>
 
-        <!-- Miniature Banner -->
-        <div id="mini-user-banner" style="
-          width: 100%;
-          height: 96px;
-          background: linear-gradient(135deg, #3730a3 0%, #1e1b4b 50%, #4f46e5 100%);
-          background-size: cover;
-          background-position: center;
+        <!-- Profile Banner (1:1 replica of #profile-banner-wrapper) -->
+        <div id="mini-user-banner-wrap" style="
           position: relative;
+          width: 100%;
+          height: 115px;
+          overflow: hidden;
+          background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #db2777 100%);
         ">
-          <div style="position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(18,18,24,0.7) 100%);"></div>
+          <div id="mini-user-banner" style="
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center 50%;
+            transition: all 0.3s ease;
+          "></div>
+          <div id="mini-user-banner-overlay" style="
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(10, 13, 22, 0.75) 100%);
+          "></div>
         </div>
 
-        <!-- Card Body -->
-        <div style="padding: 0 20px 20px 20px; position: relative;">
-          <!-- Avatar & Status -->
-          <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: -42px; margin-bottom: 12px; position: relative; z-index: 5;">
+        <!-- Miniature Card Body (replicating .tiktok-profile-container) -->
+        <div class="mini-profile-body" style="padding: 0 20px 22px 20px; position: relative;">
+          
+          <!-- Avatar & Roles Header -->
+          <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: -46px; margin-bottom: 12px; position: relative; z-index: 5;">
             <div style="position: relative;">
               <div id="mini-user-avatar" style="
-                width: 78px;
-                height: 78px;
+                width: 82px;
+                height: 82px;
                 border-radius: 50%;
-                border: 4px solid #121218;
-                background: #1e1e24;
-                overflow: hidden;
-                box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+                border: 3.5px solid rgba(255, 255, 255, 0.18);
+                background: #141724;
+                overflow: visible;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 10px 28px rgba(0,0,0,0.65);
+                font-size: 30px;
               "></div>
               <div id="mini-user-status-dot" style="
                 position: absolute;
-                bottom: 4px;
-                right: 4px;
-                width: 14px;
-                height: 14px;
+                bottom: 3px;
+                right: 3px;
+                width: 15px;
+                height: 15px;
                 border-radius: 50%;
                 background: #22c55e;
-                border: 3px solid #121218;
+                border: 3px solid rgba(14, 18, 30, 0.95);
+                box-shadow: 0 0 8px rgba(34, 197, 94, 0.7);
               "></div>
             </div>
 
-            <!-- Role Badge Pill -->
-            <div id="mini-user-role-container" style="display: flex; gap: 6px; align-items: center;"></div>
+            <!-- Role Badges (Host, Dev, Admin, Mod, Premium) -->
+            <div id="mini-user-role-container" style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; max-width: 65%;"></div>
           </div>
 
-          <!-- Name & Username -->
-          <div style="margin-bottom: 10px;">
-            <div id="mini-user-name" style="font-size: 18px; font-weight: 800; color: #ffffff; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-              User
-            </div>
-            <div id="mini-user-username" style="font-size: 13px; color: rgba(255, 255, 255, 0.55); font-weight: 500; margin-top: 1px;">
-              @username
-            </div>
-          </div>
-
-          <!-- Quick Stats Row (Level + Lumens) -->
-          <div style="display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap;">
-            <div id="mini-user-level" style="
-              display: inline-flex;
-              align-items: center;
-              gap: 5px;
-              padding: 4px 10px;
-              border-radius: 20px;
-              background: rgba(255, 255, 255, 0.06);
-              border: 1px solid rgba(255, 255, 255, 0.1);
-              font-size: 11.5px;
-              font-weight: 700;
-              color: rgba(255, 255, 255, 0.85);
-            ">
-              <span>Уровень 1</span>
-            </div>
-            <div id="mini-user-lumens" style="
-              display: inline-flex;
-              align-items: center;
-              gap: 5px;
-              padding: 4px 10px;
-              border-radius: 20px;
-              background: rgba(255, 195, 60, 0.1);
-              border: 1px solid rgba(255, 195, 60, 0.25);
-              font-size: 11.5px;
-              font-weight: 700;
-              color: #ffd56a;
-            ">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 14px; height: 14px; object-fit: contain;" alt="✨">
-              <span id="mini-user-lumens-val">0 Люменов</span>
-            </div>
-          </div>
-
-          <!-- Bio / Status Description -->
-          <div id="mini-user-bio" style="
-            font-size: 13px;
-            color: rgba(255, 255, 255, 0.75);
-            line-height: 1.45;
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 12px;
-            padding: 10px 12px;
-            margin-bottom: 16px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            max-height: 85px;
-            overflow-y: auto;
-          ">
-            Пользователь не указал описание о себе.
-          </div>
-
-          <!-- Action Buttons Grid -->
-          <div id="mini-user-actions" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-            <button type="button" id="mini-btn-dm" style="
-              padding: 10px 14px;
-              border-radius: 12px;
-              font-size: 13px;
-              font-weight: 700;
-              background: #ffffff;
-              color: #000000;
-              border: none;
-              cursor: pointer;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              gap: 6px;
-              transition: all 0.2s;
-            ">
-              <span>💬 Написать</span>
-            </button>
-
-            <button type="button" id="mini-btn-friend" style="
-              padding: 10px 14px;
-              border-radius: 12px;
-              font-size: 13px;
-              font-weight: 700;
-              background: rgba(255, 255, 255, 0.08);
-              border: 1px solid rgba(255, 255, 255, 0.15);
+          <!-- User Title & Identity (1:1 replica of .tiktok-profile-title) -->
+          <div style="margin-bottom: 12px;">
+            <div id="mini-user-name" style="
+              font-size: 20px;
+              font-weight: 800;
               color: #ffffff;
-              cursor: pointer;
+              letter-spacing: -0.3px;
               display: flex;
               align-items: center;
-              justify-content: center;
-              gap: 6px;
-              transition: all 0.2s;
+              gap: 8px;
+              flex-wrap: wrap;
+              margin-bottom: 2px;
             ">
-              <span>🤝 В друзья</span>
-            </button>
+              Пользователь
+            </div>
+            
+            <div id="mini-user-username" style="
+              color: var(--accent);
+              font-size: 13.5px;
+              font-weight: 600;
+              margin-bottom: 6px;
+            ">
+              @user
+            </div>
 
-            <button type="button" id="mini-btn-gift" style="
-              padding: 10px 14px;
-              border-radius: 12px;
-              font-size: 13px;
-              font-weight: 700;
-              background: rgba(255, 195, 60, 0.12);
-              border: 1px solid rgba(255, 195, 60, 0.3);
-              color: #ffd56a;
-              cursor: pointer;
+            <!-- Online / Offline Status -->
+            <div id="mini-user-status" style="
+              font-size: 12.5px;
+              font-weight: 600;
+              color: #22c55e;
+              margin-bottom: 10px;
               display: flex;
               align-items: center;
-              justify-content: center;
               gap: 6px;
-              transition: all 0.2s;
             ">
-              <span>✨ Люмены</span>
-            </button>
+              <span style="width: 7px; height: 7px; border-radius: 50%; background: #22c55e; display: inline-block;"></span>
+              <span>Онлайн</span>
+            </div>
 
-            <button type="button" id="mini-btn-full-profile" style="
-              padding: 10px 14px;
-              border-radius: 12px;
+            <!-- Friends Button (Clickable pill opening friends list) -->
+            <div id="mini-user-friends-btn" class="tiktok-friends-btn" style="
+              display: inline-flex;
+              align-items: center;
+              gap: 8px;
+              padding: 6px 14px;
+              background: rgba(255, 255, 255, 0.06);
+              border: 1px solid rgba(255, 255, 255, 0.12);
+              border-radius: 999px;
+              color: #ffffff;
               font-size: 13px;
-              font-weight: 700;
-              background: rgba(255, 255, 255, 0.05);
-              border: 1px solid rgba(255, 255, 255, 0.1);
+              font-weight: 600;
+              margin-bottom: 12px;
+              cursor: pointer;
+              transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+              user-select: none;
+              backdrop-filter: blur(10px);
+              width: fit-content;
+            " onmouseover="this.style.background='rgba(255, 255, 255, 0.12)'; this.style.borderColor='rgba(255, 255, 255, 0.25)';" onmouseout="this.style.background='rgba(255, 255, 255, 0.06)'; this.style.borderColor='rgba(255, 255, 255, 0.12)';">
+              <span id="mini-user-friends-count-text">Друзья · 0</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </div>
+
+            <!-- Gender -->
+            <div id="mini-user-gender" style="color: var(--text-muted); font-size: 13px; margin-bottom: 10px; font-weight: 500; display: none;"></div>
+
+            <!-- Profile Badges Row (Level + Lumens + Streak) -->
+            <div class="tiktok-profile-badges-row" id="mini-user-badges-row" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px;">
+              <!-- Level Badge -->
+              <div id="mini-user-level" style="
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                padding: 6px 13px;
+                background: rgba(255, 255, 255, 0.06);
+                border: 1px solid rgba(255, 255, 255, 0.10);
+                border-radius: 100px;
+                cursor: pointer;
+                transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                backdrop-filter: blur(8px);
+              " onmouseover="this.style.background='rgba(255, 255, 255, 0.12)';" onmouseout="this.style.background='rgba(255, 255, 255, 0.06)';">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Star.webp" style="
+                  width: 17px;
+                  height: 17px;
+                  object-fit: contain;
+                  filter: drop-shadow(0 2px 4px rgba(255, 170, 0, 0.4));
+                " alt="⭐">
+                <span id="mini-user-level-text" style="font-size: 13px; font-weight: 600; color: #fff;">Уровень 1</span>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 2px;">
+                  <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+              </div>
+
+              <!-- Lumens Badge -->
+              <div id="mini-user-lumens" style="
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                padding: 6px 13px;
+                background: rgba(255, 215, 0, 0.09);
+                border: 1px solid rgba(255, 215, 0, 0.22);
+                border-radius: 100px;
+                cursor: default;
+                backdrop-filter: blur(8px);
+              " title="Баланс Люменов">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="
+                  width: 17px;
+                  height: 17px;
+                  object-fit: contain;
+                  filter: drop-shadow(0 2px 6px rgba(255, 215, 0, 0.4));
+                " alt="✨">
+                <span id="mini-user-lumens-val" style="font-size: 13px; font-weight: 600; color: #ffd700;">0</span>
+                <span style="font-size: 12px; color: rgba(255, 215, 0, 0.85); font-weight: 500;">Люменов</span>
+              </div>
+
+              <!-- Streak Badge -->
+              <div id="mini-user-streak" style="
+                display: none;
+                align-items: center;
+                gap: 6px;
+                padding: 6px 13px;
+                background: rgba(255, 100, 0, 0.10);
+                border: 1px solid rgba(255, 100, 0, 0.25);
+                border-radius: 100px;
+                cursor: default;
+                backdrop-filter: blur(8px);
+              " title="Стрик активности">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Fire.webp" style="
+                  width: 17px;
+                  height: 17px;
+                  object-fit: contain;
+                  filter: drop-shadow(0 2px 4px rgba(255, 100, 0, 0.6));
+                " alt="🔥">
+                <span id="mini-user-streak-val" style="font-size: 13px; font-weight: 600; color: #ff8844;">0</span>
+                <span style="font-size: 11.5px; color: rgba(255,255,255,0.6); font-weight: 500;">дн.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bio Section (1:1 replica of .profile-bio-wrapper) -->
+          <div id="mini-user-bio-wrap" style="
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 12px 14px;
+            margin-bottom: 14px;
+            backdrop-filter: blur(10px);
+          ">
+            <div id="mini-user-bio" style="
+              font-size: 13px;
               color: rgba(255, 255, 255, 0.85);
-              cursor: pointer;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              gap: 6px;
-              transition: all 0.2s;
+              line-height: 1.5;
+              word-break: break-word;
             ">
-              <span>👤 Профиль</span>
-            </button>
+              Пользователь пока не добавил описание о себе.
+            </div>
+          </div>
+
+          <!-- Badges Collection & Hashtags -->
+          <div id="mini-user-extras" style="margin-bottom: 14px; display: none;">
+            <div id="mini-user-badges-list" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;"></div>
+            <div id="mini-user-hashtags-list" class="hashtags-list" style="display: flex; gap: 6px; flex-wrap: wrap;"></div>
+          </div>
+
+          <!-- Statistics Panel (1:1 Compact Replica of #view-profile-stats) -->
+          <div id="mini-user-stats" style="
+            background: rgba(0, 0, 0, 0.26);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 16px;
+            padding: 12px 14px;
+            margin-bottom: 16px;
+            backdrop-filter: blur(12px);
+          ">
+            <div style="font-size: 13px; color: var(--text-muted); font-weight: 600; margin-bottom: 8px;">Статистика</div>
+            <div style="display: flex; justify-content: space-between; font-size: 12.5px; margin-bottom: 5px;">
+              <span style="color: var(--text-muted);">Регистрация:</span>
+              <span id="mini-stat-created" style="color: #ffffff; font-weight: 600;">Неизвестно</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 12.5px; margin-bottom: 5px;">
+              <span style="color: var(--text-muted);">Вход:</span>
+              <span id="mini-stat-login" style="color: #ffffff; font-weight: 600;">Неизвестно</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 12.5px; margin-bottom: 5px;">
+              <span style="color: var(--text-muted);">В комнатах:</span>
+              <span id="mini-stat-room-time" style="color: #ffffff; font-weight: 600;">0 мин.</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 12.5px;">
+              <span style="color: var(--text-muted);">ID:</span>
+              <span id="mini-stat-uid" style="color: rgba(255,255,255,0.7); font-family: monospace; font-size: 11px;"></span>
+            </div>
+          </div>
+
+          <!-- Actions Row (Replicating #view-profile-actions) -->
+          <div id="mini-user-actions" style="
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+          ">
+            <div style="display: flex; gap: 8px; align-items: center; width: 100%;">
+              <button type="button" class="primary-btn" id="mini-btn-dm" style="
+                flex: 1;
+                background-color: #FFFFFF !important;
+                color: #000000 !important;
+                border: none;
+                font-weight: 700;
+                padding: 10px 14px;
+                border-radius: 12px;
+                font-size: 13.5px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                cursor: pointer;
+                transition: all 0.2s;
+              " onmouseover="this.style.transform='translateY(-1px)';" onmouseout="this.style.transform='none';">
+                💬 Написать
+              </button>
+
+              <!-- Like Profile Button -->
+              <button type="button" class="secondary-btn" id="mini-btn-like" style="
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                padding: 9px 14px;
+                border: 1px solid rgba(255, 255, 255, 0.12);
+                background: rgba(255, 255, 255, 0.06);
+                border-radius: 12px;
+                color: #ffffff;
+                cursor: pointer;
+                transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                backdrop-filter: blur(8px);
+                font-weight: 600;
+                font-size: 13px;
+              " onmouseover="this.style.background='rgba(255,255,255,0.12)';" onmouseout="this.style.background='rgba(255,255,255,0.06)';">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Red%20Heart.webp" style="width: 20px; height: 20px; object-fit: contain; filter: grayscale(100%) opacity(50%); transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);" id="mini-like-icon" alt="Like">
+                <span id="mini-likes-count">0</span>
+              </button>
+
+              <!-- Report Button -->
+              <button type="button" class="secondary-btn" id="mini-btn-report" title="Пожаловаться" aria-label="Пожаловаться" style="
+                padding: 9px 12px;
+                border-radius: 12px;
+                border: 1px solid rgba(255, 255, 255, 0.12);
+                background: rgba(255, 255, 255, 0.06);
+                color: #fff;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+              ">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Flags/Triangular%20Flag.webp" style="width: 18px; height: 18px; object-fit: contain;" alt="Жалоба">
+              </button>
+            </div>
+
+            <!-- Secondary Action Row -->
+            <div style="display: flex; gap: 8px; width: 100%;">
+              <button type="button" class="secondary-btn" id="mini-btn-friend" style="
+                flex: 1;
+                padding: 9px 12px;
+                border-radius: 12px;
+                font-size: 13px;
+                font-weight: 600;
+                background: rgba(255, 255, 255, 0.06);
+                border: 1px solid rgba(255, 255, 255, 0.12);
+                color: #ffffff;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                transition: all 0.2s;
+              ">
+                <span>🤝 В друзья</span>
+              </button>
+
+              <button type="button" class="secondary-btn" id="mini-btn-gift" style="
+                flex: 1;
+                padding: 9px 12px;
+                border-radius: 12px;
+                font-size: 13px;
+                font-weight: 700;
+                background: linear-gradient(135deg, rgba(255, 215, 0, 0.12) 0%, rgba(255, 170, 0, 0.05) 100%);
+                border: 1px solid rgba(255, 215, 0, 0.35);
+                color: #ffd700;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                transition: all 0.2s;
+                box-shadow: 0 0 12px rgba(255, 215, 0, 0.10);
+              ">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 16px; height: 16px; object-fit: contain;" alt="✨">
+                <span>Подарить</span>
+              </button>
+
+              <button type="button" class="secondary-btn" id="mini-btn-full-profile" style="
+                padding: 9px 12px;
+                border-radius: 12px;
+                font-size: 13px;
+                font-weight: 600;
+                background: rgba(255, 255, 255, 0.06);
+                border: 1px solid rgba(255, 255, 255, 0.12);
+                color: rgba(255, 255, 255, 0.85);
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 5px;
+                transition: all 0.2s;
+              " title="Открыть полный профиль">
+                <span>👤</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -12531,7 +12863,7 @@
               align-items: center;
               justify-content: center;
             ">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp" style="width: 36px; height: 36px; object-fit: contain;" alt="Crown">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Crown.webp" style="width: 36px; height: 36px; object-fit: contain;" alt="Crown">
             </div>
             <h2 style="margin: 0 0 6px 0; font-size: 24px; font-weight: 800; background: linear-gradient(135deg, #fff 30%, #ffd666 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
               COWIO Premium
@@ -12564,7 +12896,7 @@
               justify-content: center;
               flex-shrink: 0;
             ">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Heart.webp" style="width: 22px; height: 22px; object-fit: contain;" alt="❤️">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Red%20Heart.webp" style="width: 22px; height: 22px; object-fit: contain;" alt="❤️">
             </div>
             <div>
               <div style="font-size: 13.5px; font-weight: 800; color: #ffffff; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
@@ -12607,7 +12939,7 @@
                   flex-shrink: 0;
                   box-shadow: 0 4px 14px rgba(255, 205, 90, 0.2);
                 ">
-                  <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp" style="width: 28px; height: 28px; object-fit: contain;" alt="Crown">
+                  <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Crown.webp" style="width: 28px; height: 28px; object-fit: contain;" alt="Crown">
                 </div>
                 <div style="text-align: left;">
                   <div style="display: flex; align-items: center; gap: 8px;">
@@ -12645,19 +12977,19 @@
             gap: 10px;
           ">
             <div style="display: flex; align-items: center; gap: 10px; font-size: 12.5px;">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 18px; height: 18px; object-fit: contain;">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 18px; height: 18px; object-fit: contain;">
               <span><strong>Удвоенный опыт (x2 XP)</strong> за просмотр видео в комнатах</span>
             </div>
             <div style="display: flex; align-items: center; gap: 10px; font-size: 12.5px;">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" style="width: 18px; height: 18px; object-fit: contain;">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Star.webp" style="width: 18px; height: 18px; object-fit: contain;">
               <span><strong>9 анимированных статус-эмодзи</strong> рядом с ником во всех разделах</span>
             </div>
             <div style="display: flex; align-items: center; gap: 10px; font-size: 12.5px;">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Artist%20Palette.webp" style="width: 18px; height: 18px; object-fit: contain;">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Artist%20Palette.webp" style="width: 18px; height: 18px; object-fit: contain;">
               <span><strong>Все премиум-темы сайта</strong> + темы для личных диалогов</span>
             </div>
             <div style="display: flex; align-items: center; gap: 10px; font-size: 12.5px;">
-              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp" style="width: 18px; height: 18px; object-fit: contain;">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Crown.webp" style="width: 18px; height: 18px; object-fit: contain;">
               <span><strong>Золотое свечение профиля</strong> и приоритет в поддержке</span>
             </div>
           </div>
@@ -12730,7 +13062,7 @@
               border: 2px solid rgba(255, 205, 90, 0.25);
               animation: premPulse 2s infinite ease-out;
             "></div>
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkler.webp" style="width: 40px; height: 40px; object-fit: contain;" alt="Waiting">
+            <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkler.webp" style="width: 40px; height: 40px; object-fit: contain;" alt="Waiting">
           </div>
 
           <h3 style="margin: 0 0 8px 0; font-size: 21px; font-weight: 800; color: #ffffff;">
@@ -12801,7 +13133,7 @@
             justify-content: center;
             box-shadow: 0 0 35px rgba(46, 204, 113, 0.35);
           ">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp" style="width: 48px; height: 48px; object-fit: contain;" alt="Activated">
+            <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Crown.webp" style="width: 48px; height: 48px; object-fit: contain;" alt="Activated">
           </div>
 
           <h3 style="margin: 0 0 8px 0; font-size: 23px; font-weight: 800; color: #ffd56a;">

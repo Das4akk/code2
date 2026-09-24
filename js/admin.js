@@ -299,7 +299,7 @@ class AdminPanel {
 
                 <div id="admin-manager-readonly-notice" style="display:none; padding:12px 16px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.18); border-radius:12px; margin-bottom:16px; backdrop-filter:blur(10px);">
                     <div style="font-weight:700; font-size:13px; color:#ffffff; display:flex; align-items:center; gap:8px;">
-                        <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Eye.webp" style="width:18px; height:18px; vertical-align:middle;" alt="👁️" onerror="this.style.display='none'">
+                        <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Eye.webp" style="width:18px; height:18px; vertical-align:middle;" alt="👁️" onerror="this.style.display='none'">
                         <span>Режим просмотра (Роль: Менеджер)</span>
                     </div>
                     <div style="font-size:11px; color:rgba(255,255,255,0.7); margin-top:4px;">
@@ -1239,7 +1239,7 @@ class AdminPanel {
           milk: "кто-нибудь желает молока? 🥛",
           popcorn: "Запасаемся попкорном, сейчас начнется кино! 🍿",
           dvd: "Ждем, когда логотип ударится в угол... 📀",
-          roll: 'Делаем бочку! Уууииии! <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Up%20Button.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">',
+          roll: 'Делаем бочку! Уууииии! <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Up%20Button.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">',
           matrix: "Тук-тук, Нео. Матрица имеет тебя... 💻",
           shh: "Тссс... Режим тишины активирован 🤫",
           vader: "Люк, я твой отец... *тяжелое дыхание* ⚔️",
@@ -1679,7 +1679,7 @@ class AdminPanel {
                 <div data-occupancy="${membersCount}" style="border:1px solid var(--border-light); border-radius:12px; padding:12px; display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap;">
                     <div style="min-width:0; flex:1;">
                         <div style="font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${room.isPrivate ? "🔒 " : ""}${Utils.escapeHtml(room.name || "Без названия")}</div>
-                        <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">ID: ${roomId} • <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Busts%20In%20Silhouette.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> ${membersCount} • Хост: ${Utils.escapeHtml(room.hostName || "Неизвестно")}</div>
+                        <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">ID: ${roomId} • <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Busts%20In%20Silhouette.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"> ${membersCount} • Хост: ${Utils.escapeHtml(room.hostName || "Неизвестно")}</div>
                     </div>
                     <div style="display:flex; gap:8px;">
                         <button class="secondary-btn admin-edit-room-btn" data-room-id="${roomId}" style="width:auto; padding:8px 12px;">✏️ Изменить</button>
@@ -1791,7 +1791,7 @@ class AdminPanel {
     editor.innerHTML = `
             ${isReadOnly ? `
             <div style="padding:10px 14px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.18); border-radius:10px; margin-bottom:12px; font-size:12px; color:#fff; display:flex; align-items:center; gap:8px;">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Eye.webp" style="width:16px; height:16px;" alt="👁️" onerror="this.style.display='none'">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Eye.webp" style="width:16px; height:16px;" alt="👁️" onerror="this.style.display='none'">
                 <span><strong>Режим только просмотра</strong> (Менеджер). Редактирование профиля недоступно.</span>
             </div>` : ''}
             <div style="font-size:12px; color:var(--text-muted);">UID: ${uid}</div>
@@ -1838,13 +1838,13 @@ class AdminPanel {
             <div style="border:1px solid rgba(255, 215, 0, 0.35); border-radius:14px; padding:16px; background:linear-gradient(145deg, rgba(255, 215, 0, 0.1), rgba(0,0,0,0.45)); margin-top:12px; box-shadow:0 4px 16px rgba(0,0,0,0.3);">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
                     <div style="font-weight:800; font-size:14px; color:#ffd700; display:flex; align-items:center; gap:8px;">
-                        <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width:20px; height:20px;" alt="✨">
+                        <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width:20px; height:20px;" alt="✨">
                         <span>Баланс Люменов</span>
                     </div>
                     <div style="padding:6px 14px; background:rgba(255, 215, 0, 0.18); border:1px solid rgba(255, 215, 0, 0.45); border-radius:100px; font-size:13px; font-weight:800; color:#ffd700; display:flex; align-items:center; gap:6px;">
                         <span style="color:rgba(255,255,255,0.75); font-weight:600; font-size:12px;">Текущий:</span>
                         <span id="admin-user-current-lumens" style="color:#ffffff; font-size:14px; font-weight:900;">${Number(profile.lumens || 0).toLocaleString()}</span>
-                        <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" class="inline-sparkles-icon" alt="✨">
+                        <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" class="inline-sparkles-icon" alt="✨">
                     </div>
                 </div>
                 
@@ -1868,7 +1868,7 @@ class AdminPanel {
 
                 <button type="button" class="primary-btn" id="btn-admin-apply-lumens-only" style="width:100%; height:40px; font-size:13px; font-weight:800; background:linear-gradient(135deg, #ffd700, #f59e0b); color:#000000; border:none; border-radius:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 4px 14px rgba(255, 215, 0, 0.3);">
                     <span>Сохранить баланс Люменов</span>
-                    <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width:16px; height:16px;" alt="✨">
+                    <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width:16px; height:16px;" alt="✨">
                 </button>
             </div>
 

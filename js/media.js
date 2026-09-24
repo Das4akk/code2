@@ -189,7 +189,7 @@ class MediaResolverClient {
         }
         if (hint) {
           hint.style.display = "inline-flex";
-          hint.innerHTML = `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;"><span>Скопировано: ${Utils.escapeHtml(info.platformLabel || info.platform || "Видео")}</span>`;
+          hint.innerHTML = `<img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;"><span>Скопировано: ${Utils.escapeHtml(info.platformLabel || info.platform || "Видео")}</span>`;
         }
         if (statusText) statusText.textContent = "Название скопировано!";
         this.setModalStatus(
@@ -608,8 +608,8 @@ class RoomVideoSearchManager {
             : "";
 
           const authorAvatarHtml = item.authorAvatar
-            ? `<img src="${Utils.escapeHtml(item.authorAvatar)}" alt="" class="video-channel-avatar" onerror="this.onerror=null; this.src='https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Bust%20In%20Silhouette.webp';">`
-            : `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Bust%20In%20Silhouette.webp" class="video-channel-avatar" style="border:none; background:transparent;" alt="">`;
+            ? `<img src="${Utils.escapeHtml(item.authorAvatar)}" alt="" class="video-channel-avatar" onerror="this.onerror=null; this.src='https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Bust%20In%20Silhouette.webp';">`
+            : `<img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Bust%20In%20Silhouette.webp" class="video-channel-avatar" style="border:none; background:transparent;" alt="">`;
 
           card.innerHTML = `
             <div class="video-search-thumb-wrap">
@@ -658,7 +658,7 @@ class RoomVideoSearchManager {
     }
     if (hint) {
       hint.style.display = "inline-flex";
-      hint.innerHTML = `<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;"><span>Скопировано: ${Utils.escapeHtml(video.platformLabel || video.platform || "Видео")}</span>`;
+      hint.innerHTML = `<img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;"><span>Скопировано: ${Utils.escapeHtml(video.platformLabel || video.platform || "Видео")}</span>`;
     }
 
     const resultsContainer = Utils.$("room-video-search-results");

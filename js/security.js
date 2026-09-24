@@ -198,7 +198,7 @@ class TutorialManager {
 
   static showWelcome() {
     this.renderModal(
-      "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Waving%20Hand.webp",
+      "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Waving%20Hand.webp",
       "Добро пожаловать!",
       "Хей, добро пожаловать! Спасибо, что решил(а) присоединиться к нашей платформе. Мы тут постарались создать уютное место для общения, поиска друзей и просто хорошего времяпровождения. Давай я быстро покажу тебе, что к чему? Это не займёт много времени!",
       "Поехали!",
@@ -271,14 +271,14 @@ class TutorialManager {
     profile: {
       id: "nav-profile",
       emoji:
-        "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Bust%20In%20Silhouette.webp",
+        "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Bust%20In%20Silhouette.webp",
       title: "Твой профиль",
       text: "Твоя личная крепость! Здесь ты можешь красиво оформить свою страничку - поставить крутую аватарку, написать пару слов о себе и даже поменять фон. Люди любят, когда профиль заполнен с душой, так проще найти общие интересы.",
       next: "settings",
     },
     settings: {
       id: "nav-settings",
-      emoji: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Toolbox.webp",
+      emoji: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Toolbox.webp",
       title: "Настройки",
       text: "Здесь ты можешь настроить свой аккаунт, сменить пароль или добавить дополнительные юзернеймы.",
       next: "friends",
@@ -286,7 +286,7 @@ class TutorialManager {
     friends: {
       id: "nav-friends",
       emoji:
-        "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Handshake.webp",
+        "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Handshake.webp",
       title: "Друзья",
       text: "Твой круг общения. Тут будут отображаться все, с кем ты подружился. Отсюда удобно сразу переходить к переписке, смотреть кто онлайн и управлять запросами в друзья. Не стесняйся заводить новые знакомства!",
       next: "search",
@@ -294,14 +294,14 @@ class TutorialManager {
     search: {
       id: "nav-find-friend",
       emoji:
-        "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Magnifying%20Glass%20Tilted%20Left.webp",
+        "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Magnifying%20Glass%20Tilted%20Left.webp",
       title: "Найти друга",
       text: "Не с кем поболтать? Загляни сюда. Здесь можно найти других ребят, посмотреть их профили и отправить запрос в друзья. Если кто-то показался интересным - смело пиши, тут все рады новому общению.",
       next: "leaderboard",
     },
     leaderboard: {
       id: "nav-leaderboard",
-      emoji: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Fire.webp",
+      emoji: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Fire.webp",
       title: "Список лучших",
       text: "В этом разделе собираются самые активные ребята нашего комьюнити! Смотри топы лайков и стремись занять первые места на доске почета.",
       next: "catalog",
@@ -309,7 +309,7 @@ class TutorialManager {
     catalog: {
       id: "nav-catalog",
       emoji:
-        "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp",
+        "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Star.webp",
       title: "Каталог",
       text: "Местная сокровищница! В каталоге мы собираем классные темы оформления, рамки, значки и другие штуки для кастомизации. Доступ к нему открывается при достижении 10-го уровня. Заглядывай сюда периодически, чтобы обновить свой стиль и выделиться из толпы.",
       next: "library",
@@ -317,7 +317,7 @@ class TutorialManager {
     library: {
       id: "nav-library",
       emoji:
-        "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Open%20Book.webp",
+        "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Open%20Book.webp",
       title: "Библиотека",
       text: "Настоящая кинобаза от наших пользователей! Здесь можно искать классные ролики и фильмы, смотреть, кто есть на превьюшках, и, самое главное — моментально создавать комнаты для просмотра с друзьями прямо из карточки видео. Заглядывай и делись своими находками!",
       next: "rooms",
@@ -325,14 +325,14 @@ class TutorialManager {
     rooms: {
       id: "nav-rooms",
       emoji:
-        "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Travel%20and%20Places/House.webp",
+        "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Travel%20and%20Places/House.webp",
       title: "Комнаты",
       text: "А вот здесь происходит магия общения! Заходи в комнаты чтобы общаться с людьми, смотреть видео вместе или обмениваться сообщениями вживую. Можешь даже создать свою уютную комнату и собрать там компанию!",
       next: "support",
     },
     support: {
       id: "nav-support",
-      emoji: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Woman%20Technologist.webp",
+      emoji: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Woman%20Technologist.webp",
       title: "Поддержка",
       text: "Возникли проблемы или есть предложения? Смело пиши в поддержку! Наши администраторы всегда на связи и готовы помочь с любым вопросом.",
       next: null,
@@ -405,7 +405,7 @@ class TutorialManager {
       
       const pointer = document.createElement("div");
       pointer.id = "tutorial-pointer";
-      pointer.innerHTML = '<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Backhand%20Index%20Pointing%20Left.webp" style="width: 48px; height: 48px;">';
+      pointer.innerHTML = '<img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Backhand%20Index%20Pointing%20Left.webp" style="width: 48px; height: 48px;">';
       pointer.style.position = "absolute";
       pointer.style.right = "0px";
       pointer.style.top = "50%";
@@ -465,7 +465,7 @@ class TutorialManager {
 
     if (showFinal) {
         this.renderModal(
-          "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Party%20Popper.webp",
+          "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Party%20Popper.webp",
           "Готово!",
           "Вот и всё! Теперь ты знаешь самое важное. Желаем отличного настроения и классного общения на нашей платформе!",
           "Завершить",

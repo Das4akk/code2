@@ -1,4 +1,15 @@
 class Utils {
+  static fixEmojiUrl(url) {
+    if (!url || typeof url !== "string") return url;
+    if (url.includes("raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/")) {
+      return url.replace(
+        "raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/",
+        "cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/",
+      );
+    }
+    return url;
+  }
+
   static $(id) {
     return document.getElementById(id);
   }
@@ -352,7 +363,7 @@ class Utils {
         <div class="modal-content glass-panel" style="max-width: 420px; text-align: center; border-radius: 24px; padding: 40px 30px; background: rgba(15, 15, 20, 0.85); box-shadow: 0 0 50px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.1); backdrop-filter: blur(25px); position: relative; overflow: hidden; animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
           
           <div style="position: relative; z-index: 1;">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Locked%20With%20Key.webp" style="width: 72px; height: 72px; margin-bottom: 20px; filter: drop-shadow(0 10px 15px rgba(0,0,0,0.5)); animation: float 3s ease-in-out infinite;">
+            <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" style="width: 72px; height: 72px; margin-bottom: 20px; filter: drop-shadow(0 10px 15px rgba(0,0,0,0.5)); animation: float 3s ease-in-out infinite;">
             <h3 style="margin-bottom: 12px; font-weight: 800; font-size: 26px; color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,0.5);">Код подтверждения</h3>
             <p style="margin-bottom: 30px; color: var(--text-muted); font-size: 15px; line-height: 1.5;">Мы отправили секретный код на<br><b style="color:#fff; background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 6px; display: inline-block; margin-top: 6px;">${Utils.escapeHtml(email)}</b></p>
             
@@ -366,7 +377,7 @@ class Utils {
 
             <div style="display: flex; gap: 15px; margin-top: 10px;">
               <button class="secondary-btn" id="custom-prompt-cancel" style="flex: 1; padding: 14px; border-radius: 14px; font-weight: 600; font-size: 15px; transition: all 0.2s; border: 1px solid rgba(255,255,255,0.1);">Отмена</button>
-              <button class="primary-btn" id="custom-prompt-ok" style="flex: 1; padding: 14px; border-radius: 14px; font-weight: 600; font-size: 15px; box-shadow: 0 5px 15px rgba(255,255,255,0.1); transition: all 0.2s;">Готово <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width:16px;height:16px;vertical-align:text-bottom;"></button>
+              <button class="primary-btn" id="custom-prompt-ok" style="flex: 1; padding: 14px; border-radius: 14px; font-weight: 600; font-size: 15px; box-shadow: 0 5px 15px rgba(255,255,255,0.1); transition: all 0.2s;">Готово <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width:16px;height:16px;vertical-align:text-bottom;"></button>
             </div>
           </div>
         </div>
