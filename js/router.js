@@ -174,9 +174,6 @@ class Router {
       }
     });
 
-    const footerLinks = document.getElementById("bottom-footer-links");
-    if (footerLinks) footerLinks.style.display = "flex";
-
     // 2. Synchronously switch sections with ZERO flash
     const allSections = document.querySelectorAll(".rooms-main");
     allSections.forEach((el) => {

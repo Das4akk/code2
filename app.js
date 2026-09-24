@@ -57,19 +57,6 @@ const runApp = () => {
   initSystem("MysteryEventManager", () => MysteryEventManager.init());
   initSystem("FpsCounter", () => window.FpsCounter?.checkAndToggle());
 
-  // Добавляем мини-контейнер с ссылками (изначально скрыт, покажется только в lobby-screen)
-  const footerLinks = document.createElement("div");
-  footerLinks.id = "bottom-footer-links";
-  footerLinks.style.display = "none"; // Будет переключаться в Utils.showScreen
-  footerLinks.innerHTML = `
-        <a href="mailto:das4akk@gmail.com">Mail</a>
-        <a href="https://t.me/ezkid" target="_blank">Telegram</a>
-        <a href="#" onclick="openLegalModal('privacy'); return false;">Политика</a>
-        <a href="#" onclick="openLegalModal('offer'); return false;">Соглашение</a>
-        <a href="https://t.me/EzKid" target="_blank">Предложка</a>
-    `;
-  document.body.appendChild(footerLinks);
-
   document.querySelectorAll(".btn-close-modal").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       const modal = e.target.closest(".modal");

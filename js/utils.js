@@ -548,12 +548,6 @@ class Utils {
     const screen = Utils.$(screenId);
     if (screen) screen.classList.add("active");
 
-    // Показываем футер с ссылками ТОЛЬКО в лобби
-    const footerLinks = Utils.$("bottom-footer-links");
-    if (footerLinks) {
-      footerLinks.style.display = screenId === "lobby-screen" ? "flex" : "none";
-    }
-
     if (screenId === "room-screen" || screenId === "lobby-screen") {
       const uid = AppState.currentUser?.uid;
       const prof = uid ? AppState.usersCache.get(uid) : null;
@@ -871,41 +865,6 @@ class Utils {
                 color: #8d63ff;
                 border: 1px solid rgba(141, 99, 255, 0.5);
                 box-shadow: 0 4px 12px rgba(141, 99, 255, 0.3);
-            }
-
-            /* СТИЛИ ФУТЕРА С ССЫЛКАМИ */
-            #bottom-footer-links {
-                position: fixed;
-                bottom: 12px;
-                left: 50%;
-                transform: translateX(-50%);
-                display: flex;
-                gap: 16px;
-                background: rgba(15, 15, 15, 0.75);
-                backdrop-filter: blur(10px);
-                padding: 8px 24px;
-                border-radius: 20px;
-                border: 1px solid var(--border-light);
-                z-index: 9998;
-                font-size: 13px;
-                font-weight: 600;
-            }
-            #bottom-footer-links a {
-                color: var(--text-muted);
-                text-decoration: none;
-                transition: color 0.2s ease, transform 0.2s ease;
-            }
-            #bottom-footer-links a:hover {
-                color: var(--accent);
-                transform: translateY(-2px);
-            }
-            @media (max-width: 768px) {
-                #bottom-footer-links {
-                    bottom: 70px;
-                    padding: 6px 14px;
-                    font-size: 11px;
-                    gap: 12px;
-                }
             }
 
             /* UI polish layer: outlines, motion, light-input fix */
