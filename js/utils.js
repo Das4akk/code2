@@ -1191,7 +1191,7 @@ class Utils {
           const now = Date.now();
           if (!window._usersOnlineCache || now - (window._usersOnlineCacheTime || 0) > 120000) {
             const { get, ref } =
-              await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
+              await import("firebase/database");
             const snap = await get(ref(window.db || db, "users"));
             let activeNow = 0;
             if (snap.exists()) {

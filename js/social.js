@@ -7,7 +7,7 @@ class FriendsManager {
     const uid = AppState.currentUser.uid;
     if (uid === targetUid) return false;
     try {
-      const { get, ref, getDatabase } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
+      const { get, ref, getDatabase } = await import("firebase/database");
       const dbInstance = getDatabase();
       const snap = await get(ref(dbInstance, `users/${uid}/friends/${targetUid}`));
       return snap.exists() && snap.val() !== null;
@@ -273,7 +273,7 @@ class FriendsManager {
               Utils.toast("Аккаунт удален из списка");
               if (isCurrent && newSaved.length === 0) {
                 localStorage.removeItem("cowio_saved_accounts");
-                import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js").then(
+                import("firebase/auth").then(
                   ({ signOut, getAuth }) => {
                     signOut(getAuth());
                   },
@@ -292,12 +292,12 @@ class FriendsManager {
               if (e.target.tagName === "BUTTON") return;
               if (!acc.pass) {
                 Utils.toast("Пароль не сохранен. Войдите вручную.");
-                import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js").then(
+                import("firebase/auth").then(
                   ({ signOut, getAuth }) => signOut(getAuth()),
                 );
                 return;
               }
-              import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js").then(
+              import("firebase/auth").then(
                 ({ signInWithEmailAndPassword, getAuth }) => {
                   Utils.toast("Вход...");
                   signInWithEmailAndPassword(getAuth(), acc.email, acc.pass)
@@ -318,7 +318,7 @@ class FriendsManager {
     }
     if (Utils.$("btn-do-switch-account")) {
       Utils.$("btn-do-switch-account").onclick = () => {
-        import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js").then(
+        import("firebase/auth").then(
           ({ signOut, getAuth }) => {
             signOut(getAuth());
           },
@@ -328,7 +328,7 @@ class FriendsManager {
     if (Utils.$("btn-do-switch-account-clear")) {
       Utils.$("btn-do-switch-account-clear").onclick = () => {
         localStorage.removeItem("cowio_saved_accounts");
-        import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js").then(
+        import("firebase/auth").then(
           ({ signOut, getAuth }) => {
             signOut(getAuth());
           },

@@ -1,1 +1,54 @@
 @import "tailwindcss";
+
+.modal,
+#modal-profile-friends,
+#modal-room-user-miniature,
+#modal-support-ticket,
+#modal-create-ticket,
+#modal-support-search,
+#modal-support-creator-panel,
+#modal-gift-lumens,
+#modal-room,
+#modal-edit-profile,
+#modal-view-profile,
+#modal-catalog-item,
+#modal-catalog-preview,
+#modal-catalog,
+#modal-lumens-info,
+#modal-daily-lumens,
+#modal-premium-purchase,
+#modal-dm-chat {
+  background: rgba(0, 0, 0, 0.28) !important;
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+}
+
+.frosted-modal-card,
+.modal-content,
+.dm-modal-content,
+.support-create-modal-content,
+#modal-room .modal-content,
+#modal-edit-profile .modal-content,
+#modal-view-profile .modal-content,
+#modal-catalog-item .modal-content,
+#modal-catalog-preview .modal-content,
+#modal-lumens-info .modal-content,
+#modal-gift-lumens .modal-content,
+#modal-daily-lumens .modal-content,
+#modal-premium-purchase .modal-content,
+#modal-create-ticket .modal-content,
+#modal-support-ticket .modal-content,
+#modal-support-search .modal-content,
+#modal-support-creator-panel .modal-content,
+#profile-friends-modal-card,
+#room-miniature-card {
+  background: rgba(6, 6, 9, 0.45) !important;
+  backdrop-filter: blur(28px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.8),
+              0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+              0 1px 0 0 rgba(255, 255, 255, 0.2) inset !important;
+  border-radius: 22px !important;
+  color: #ffffff !important;
+}

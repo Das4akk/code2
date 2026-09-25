@@ -1,4 +1,4 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { initializeApp } from "firebase/app";
 import {
   getAuth,
   onAuthStateChanged,
@@ -11,7 +11,7 @@ import {
   reauthenticateWithCredential,
   EmailAuthProvider,
   verifyBeforeUpdateEmail,
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+} from "firebase/auth";
 import {
   getDatabase,
   ref,
@@ -24,7 +24,7 @@ import {
   update,
   onChildAdded,
   off,
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+} from "firebase/database";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCby2qPGnlHWRfxWAI3Y2aK_UndEh9nato",
@@ -71,7 +71,7 @@ const AppState = {
   currentRoomJoinTs: 0, // Фикс синхронизации новых юзеров
   customBadges: {},
   currentTheme: null,
-  globalTheme: "dark", // [NEW]
+  globalTheme: "dark",
   isHost: false,
   isRegistering: false,
   usersCache: new Map(),
@@ -97,7 +97,8 @@ const AppState = {
       globalChatLocked: false,
       globalReactionsBlocked: false,
       globalInvitesBlocked: false,
-      globalRegistrationsBlocked: false, emailVerificationBlocked: false,
+      globalRegistrationsBlocked: false,
+      emailVerificationBlocked: false,
       maintenanceMode: false,
       systemReadOnlyMode: false,
     },
@@ -124,11 +125,6 @@ const AppState = {
   roomWatchEarnings: 0,
   roomWatchTicks: 0,
 };
-
-// ============================================================================
-// 2. УТИЛИТЫ И GUI ФИКСЫ (Инъекция стилей, Анимации, Нейрофон)
-// ============================================================================
-
 
 window.initializeApp = initializeApp;
 window.getAuth = getAuth;
@@ -185,5 +181,5 @@ export {
   reauthenticateWithCredential,
   EmailAuthProvider,
   verifyBeforeUpdateEmail,
-  AppState
+  AppState,
 };

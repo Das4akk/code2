@@ -1,20 +1,64 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# COWIO — Платформа совместного просмотра видео и фильмов
 
-# Run and deploy your AI Studio app
+Платформа совместного просмотра видео и фильмов с синхронизацией VK Video и YouTube, поддержкой комнат, голосовой связи, чата, профилей и системы подписки Premium.
 
-This contains everything you need to run your app locally.
+---
 
-View your app in AI Studio: https://ai.studio/apps/9b86a985-cf5c-481f-aa43-0816d74012ae
+## 🎨 Стандарты дизайна и интерфейса (UI / Design Constitution)
 
-## Run Locally
+> **ВАЖНО ДЛЯ РАЗРАБОТЧИКОВ И ИИ-АГЕНТОВ**:
+> При создании или изменении любых модальных окон, всплывающих меню, карточек, тултипов, уведомлений, шторок и доков **ОБЯЗАТЕЛЬНО** применять единый стиль **True Dark-Black Translucent Frosted Glass**.
 
-**Prerequisites:**  Node.js
+### 1. Единый стиль полупрозрачного стекла (Frosted Glass)
+* **Фон карточек и окон**: `rgba(6, 6, 9, 0.45)` (глубокий чистый чёрный цвет, без синих, серых или фиолетовых оттенков).
+* **Блюр и насыщенность**: `backdrop-filter: blur(28px) saturate(190%) !important; -webkit-backdrop-filter: blur(28px) saturate(190%) !important;`
+* **Тонкий бордер**: `border: 1px solid rgba(255, 255, 255, 0.14) !important;`
+* **Скругление**: `border-radius: 22px !important;` (для меню и тостов `16px`).
+* **Объёмная тень**: `box-shadow: 0 24px 70px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08) inset, 0 1px 0 0 rgba(255, 255, 255, 0.2) inset !important;`
+* **Затемнение оверлея (.modal)**: `background: rgba(0, 0, 0, 0.28) !important; backdrop-filter: blur(4px) !important;` (лёгкое полупрозрачное затемнение, чтобы звёзды, видео и фоновый интерфейс отчётливо просвечивали через размытое стекло).
 
+### 2. Применение стиля
+Стиль применяется ко всем элементам интерфейса:
+- Все модальные окна (`#modal-room`, `#modal-edit-profile`, `#modal-view-profile`, `#modal-catalog-item`, `#modal-lumens-info`, `#modal-create-ticket`, `#modal-dm-chat`, `#modal-room-user-miniature`, `#modal-premium-purchase` и др.)
+- Контекстные меню, выпадающие списки и всплывающие окна (`.dropdown-menu`, `.context-menu`, `#user-quick-menu`)
+- Тултипы и подсказки (`.tooltip`, `.custom-tooltip`, `[data-tooltip]`)
+- Уведомления и тосты (`.toast`, `#toast-container .toast`)
+- Доки и шторки (`.support-composer-dock`, `.support-templates-dock`, `.dock`, `.bottom-dock`, `.drawer`)
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+---
+
+## 🔍 Правила поиска видео
+* В поиске по названию используются **исключительно** платформы **VK Video** и **YouTube**.
+* Поиск по Rutube, Twitch и сторонним платформам отключён.
+
+---
+
+## 📚 Правила доступа к Библиотеке (Library Access Rules)
+* **Для всех пользователей**:
+  * Просмотр вкладок «Публичная библиотека» и «Моя библиотека».
+  * Поиск по видеотеке.
+  * Открытие карточек и модального окна просмотра информации о добавленных видео (`modal-lib-view`).
+  * Разворачивание описания («Читать полностью»).
+* **Только для пользователей с COWIO Premium**:
+  * Добавление новых видео в библиотеку (`#btn-lib-add-video`).
+  * Создание комнат из библиотеки (`#btn-lib-create-room`).
+  * Редактирование, удаление и управление авторами.
+* **Оформление заблокированных кнопок для не-премиум пользователей**:
+  * Кнопки заблюрены (`filter: blur(0.5px); opacity: 0.85;`).
+  * Размещается иконка замка 🔒 и бейдж «Доступно с Premium».
+  * При клике выдаётся предупреждающий тост и открывается окно оформления Premium (`#modal-premium-purchase`).
+
+---
+
+## 🚀 Запуск и разработка
+
+```bash
+# Установка зависимостей
+npm install
+
+# Запуск сервера разработки
+npm run dev
+
+# Сборка проекта
+npm run build
+```

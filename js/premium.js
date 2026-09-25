@@ -763,6 +763,9 @@ class PremiumManager {
     document.body.classList.remove("user-is-premium");
     this.syncNav(profile, uid);
     this.renderPremiumSection(profile, uid);
+    if (window.LibraryManager && typeof window.LibraryManager.syncPremiumUI === "function") {
+      window.LibraryManager.syncPremiumUI();
+    }
   }
 
   static syncNav(profile, uid) {
@@ -1042,7 +1045,7 @@ class PremiumManager {
       const db = AppState?.db;
       if (db && user?.uid) {
         try {
-          const { ref, set } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js");
+          const { ref, set } = await import("firebase/database");
           await set(ref(db, `users/${user.uid}/profile/premium`), premiumData);
         } catch (dbErr) {
           console.warn("[Premium] DB direct write note:", dbErr);

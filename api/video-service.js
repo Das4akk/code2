@@ -938,28 +938,22 @@ export async function searchVideos(query, platform = 'all') {
   const normPlat = String(platform || 'all').toLowerCase();
 
   if (normPlat === 'youtube') {
-    const yt = await searchYouTube(q, 18);
+    const yt = await searchYouTube(q, 24);
     return { success: true, results: yt };
   }
 
   if (normPlat === 'vk') {
-    const vk = await searchVK(q, 20);
+    const vk = await searchVK(q, 24);
     return { success: true, results: vk };
   }
 
-  if (normPlat === 'rutube') {
-    const rt = await searchRutube(q, 18);
-    return { success: true, results: rt };
-  }
-
-  // 'all': Search VK Video, YouTube, and Rutube simultaneously
-  const [vk, yt, rt] = await Promise.all([
+  // 'all': Search ONLY VK Video and YouTube simultaneously
+  const [vk, yt] = await Promise.all([
     searchVK(q, 20).catch(() => []),
-    searchYouTube(q, 16).catch(() => []),
-    searchRutube(q, 10).catch(() => [])
+    searchYouTube(q, 20).catch(() => [])
   ]);
 
-  const all = [...vk, ...yt, ...rt];
+  const all = [...vk, ...yt];
   const seen = new Set();
   const unique = [];
 
@@ -972,5 +966,5 @@ export async function searchVideos(query, platform = 'all') {
   }
 
   unique.sort((a, b) => (b._score || 0) - (a._score || 0));
-  return { success: true, results: unique.slice(0, 24) };
+  return { success: true, results: unique.slice(0, 30) };
 }

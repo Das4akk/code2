@@ -438,7 +438,7 @@ class LumenManager {
     `;
 
     try {
-      const { get, ref, getDatabase } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
+      const { get, ref, getDatabase } = await import("firebase/database");
       const dbInstance = getDatabase();
       const snap = await get(ref(dbInstance, "users"));
       if (!snap.exists()) {

@@ -393,6 +393,29 @@ class AuthManager {
   static init() {
     Utils.injectFixes();
 
+    // Instant optimistic preload on F5
+    try {
+      const lastRaw = localStorage.getItem("cowio_last_profile");
+      const savedAccounts = JSON.parse(
+        localStorage.getItem("cowio_saved_accounts") || "[]",
+      );
+      if (lastRaw && savedAccounts.length > 0) {
+        const cachedP = JSON.parse(lastRaw);
+        const lastUid = cachedP.uid || savedAccounts[savedAccounts.length - 1]?.uid;
+        if (lastUid && cachedP) {
+          AppState.currentUser = { uid: lastUid, email: cachedP.email || savedAccounts[0]?.email };
+          AppState.usersCache.set(lastUid, cachedP);
+          if (window.ProfileManager && typeof ProfileManager.renderProfileUI === "function") {
+            ProfileManager.renderProfileUI(lastUid, cachedP);
+          }
+          const pathname = window.location.pathname;
+          if (pathname === "/login" || pathname === "/register" || pathname === "/") {
+            Utils.showScreen("lobby-screen", false);
+          }
+        }
+      }
+    } catch (e) {}
+
     onAuthStateChanged(auth, async (user) => {
       try {
         if (user) {
@@ -401,7 +424,7 @@ class AuthManager {
           }
           AppState.currentUser = user;
           
-          import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(({ ref, get, remove, getDatabase }) => {
+          import("firebase/database").then(({ ref, get, remove, getDatabase }) => {
               const dbase = getDatabase();
               get(ref(dbase, `users/${user.uid}/force_tutorial`)).then(snap => {
                   if (snap.exists() && snap.val() === true) {
@@ -413,7 +436,7 @@ class AuthManager {
           
           // --- Like Notifications ---
           let initialLikesLoad = true;
-          import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(({ onChildAdded, ref, get, getDatabase }) => {
+          import("firebase/database").then(({ onChildAdded, ref, get, getDatabase }) => {
               const dbase = getDatabase();
               onChildAdded(ref(dbase, `users/${user.uid}/profile/likedBy`), (snap) => {
                   if (initialLikesLoad) return;
@@ -758,7 +781,7 @@ class AuthManager {
           const cleanName = rawInput.replace(/^@+/, "").toLowerCase().trim();
           try {
             const { get, ref, getDatabase } = await import(
-              "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"
+              "firebase/database"
             );
             const dbase = getDatabase();
             let resolvedUid = null;
@@ -1037,7 +1060,7 @@ class AuthManager {
         const cleanName = rawInput.replace(/^@+/, "").toLowerCase().trim();
         try {
           const { get, ref, getDatabase } = await import(
-            "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"
+            "firebase/database"
           );
           const dbase = getDatabase();
           let resolvedUid = null;

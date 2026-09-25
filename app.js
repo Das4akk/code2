@@ -4,6 +4,10 @@
  */
 
 // Core Infrastructure & Shared State
+import Hls from "hls.js";
+if (typeof window !== "undefined") {
+  window.Hls = Hls;
+}
 import "./js/firebase.js";
 import "./js/emojis.js";
 import "./js/security.js";
@@ -793,7 +797,7 @@ window.loadLeaderboard = async function() {
     listEl.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding: 24px;">Загрузка рейтинга...</div>';
     
     try {
-        const { get, ref, getDatabase } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
+        const { get, ref, getDatabase } = await import("firebase/database");
         const db = getDatabase();
 
         const snap = await get(ref(db, "users"));

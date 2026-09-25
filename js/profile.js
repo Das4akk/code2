@@ -203,31 +203,29 @@ class ProfileManager {
     }
   }
 
-  static bindMyProfileListener() {
-    const uid = AppState.currentUser.uid;
-    const profileRef = ref(db, `users/${uid}/profile`);
-    const unsub = onValue(profileRef, (snap) => {
-      const p = snap.val() || {};
-      AppState.usersCache.set(uid, p);
-      this.syncProfileSecurityFields(uid, p);
-      AdminPanel.hydrateDeveloperUidFromProfile(uid, p);
-      AdminPanel.syncSidebarButton(p);
-
+  static renderProfileUI(uid, p) {
+    if (!p) return;
+    try {
       const badgeHtml = this.getRoleBadgeHtml(p, uid);
       const statusEmoji = window.PremiumManager
         ? PremiumManager.getStatusEmojiHtml(p, uid)
         : "";
-      Utils.$("my-name-display").innerHTML =
-        `${statusEmoji}${Utils.escapeHtml(p.name)} ${badgeHtml}`;
-      Utils.$("my-username-display").innerHTML =
-        `@${Utils.escapeHtml(p.username)}` +
-        (p.extraUsernames && p.extraUsernames.length > 0
-          ? `<br><span style="opacity:0.7;font-size:0.9em;">` +
-            p.extraUsernames.map((u) => `@${Utils.escapeHtml(u)}`).join(" | ") +
-            `</span>`
-          : "");
-      Utils.$("my-avatar-display").innerHTML = ProfileManager.getAvatarHtml(p);
-      if(Utils.$("lobby-app-bar-avatar")) Utils.$("lobby-app-bar-avatar").innerHTML = ProfileManager.getAvatarHtml(p);
+      if (Utils.$("my-name-display")) {
+        Utils.$("my-name-display").innerHTML =
+          `${statusEmoji}${Utils.escapeHtml(p.name || "Пользователь")} ${badgeHtml}`;
+      }
+      if (Utils.$("my-username-display")) {
+        Utils.$("my-username-display").innerHTML =
+          `@${Utils.escapeHtml(p.username || "user")}` +
+          (p.extraUsernames && p.extraUsernames.length > 0
+            ? `<br><span style="opacity:0.7;font-size:0.9em;">` +
+              p.extraUsernames.map((u) => `@${Utils.escapeHtml(u)}`).join(" | ") +
+              `</span>`
+            : "");
+      }
+      const avatarHtml = ProfileManager.getAvatarHtml(p);
+      if (Utils.$("my-avatar-display")) Utils.$("my-avatar-display").innerHTML = avatarHtml;
+      if (Utils.$("lobby-app-bar-avatar")) Utils.$("lobby-app-bar-avatar").innerHTML = avatarHtml;
 
       const currentLumens = Number(p.lumens) || 0;
       if (window.LumenManager) {
@@ -242,6 +240,39 @@ class ProfileManager {
         const myL = Utils.$("my-lumens-val");
         if (myL) myL.textContent = currentLumens.toLocaleString();
       }
+    } catch (e) {}
+  }
+
+  static hydrateCachedProfile(uid) {
+    if (!uid) return;
+    try {
+      const raw = localStorage.getItem(`cowio_cached_profile_${uid}`) || localStorage.getItem(`cowio_last_profile`);
+      if (!raw) return;
+      const p = JSON.parse(raw);
+      if (!p || typeof p !== "object") return;
+      AppState.usersCache.set(uid, p);
+      this.renderProfileUI(uid, p);
+    } catch (e) {}
+  }
+
+  static bindMyProfileListener() {
+    const uid = AppState.currentUser.uid;
+    this.hydrateCachedProfile(uid);
+
+    const profileRef = ref(db, `users/${uid}/profile`);
+    const unsub = onValue(profileRef, (snap) => {
+      const p = snap.val() || {};
+      AppState.usersCache.set(uid, p);
+      try {
+        localStorage.setItem(`cowio_cached_profile_${uid}`, JSON.stringify(p));
+        localStorage.setItem(`cowio_last_profile`, JSON.stringify(p));
+      } catch (e) {}
+
+      this.syncProfileSecurityFields(uid, p);
+      AdminPanel.hydrateDeveloperUidFromProfile(uid, p);
+      AdminPanel.syncSidebarButton(p);
+
+      this.renderProfileUI(uid, p);
 
       if (window.PremiumManager) PremiumManager.syncFromProfile(p, uid);
 
@@ -796,7 +827,7 @@ class ProfileManager {
 
         try {
           const { updatePassword } =
-            await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
+            await import("firebase/auth");
           await updatePassword(auth.currentUser, newPass);
 
           // Save to fast-switch cache
@@ -1760,7 +1791,7 @@ class ProfileManager {
     }
 
     try {
-      const { update, ref, getDatabase, get } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
+      const { update, ref, getDatabase, get } = await import("firebase/database");
       const dbInstance = getDatabase();
 
       // Daily limit per recipient: up to 100 Lumens per day to a specific user
@@ -2264,7 +2295,7 @@ class ProfileManager {
                       </div>`;
                   }
                   
-                  const snap = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(({get, ref, getDatabase}) => get(ref(getDatabase(), `users/${likeObj.uid}/profile`)));
+                  const snap = await import("firebase/database").then(({get, ref, getDatabase}) => get(ref(getDatabase(), `users/${likeObj.uid}/profile`)));
                   const prof = snap.val() || {};
                   const avHtml = ProfileManager.getAvatarHtml(prof);
                   return `<div style="display:flex;align-items:center;padding:10px;background:rgba(255,255,255,0.05);border-radius:8px;cursor:pointer;transition:background 0.2s;" onclick="ProfileManager.openViewProfileModal('${likeObj.uid}')">
@@ -3129,7 +3160,7 @@ class ProfileManager {
     modal.classList.add("active");
 
     try {
-      const { get, ref, getDatabase } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
+      const { get, ref, getDatabase } = await import("firebase/database");
       const dbInstance = getDatabase();
       const friendsSnap = await get(ref(dbInstance, `users/${targetUid}/friends`));
       const friendsVal = friendsSnap.val() || {};

@@ -557,7 +557,7 @@ class RoomManager {
   static async joinRoom(roomId) {
     if (!roomId) return;
     try {
-      import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(
+      import("firebase/database").then(
         ({ getDatabase, ref, get }) => {
           get(ref(getDatabase(), `rooms/${roomId}`)).then((snap) => {
             if (snap.exists()) {
@@ -651,7 +651,7 @@ class RoomManager {
         authorNameEl.onclick = openHostProfile;
         authorAvatarEl.onclick = openHostProfile;
 
-        import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(({get, ref, getDatabase}) => {
+        import("firebase/database").then(({get, ref, getDatabase}) => {
             // First check profile, then fallback
             get(ref(getDatabase(), `users/${roomData.hostId}/profile`)).then(snap => {
                 let name = "Неизвестно";

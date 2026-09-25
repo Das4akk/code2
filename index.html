@@ -7,53 +7,28 @@
     <meta name="description" content="Платформа совместного просмотра видео и фильмов с синхронизацией VK Video, Rutube и YouTube, поддержкой комнат и чата.">
     <meta property="og:title" content="COWIO - Онлайн Кинотеатр Вместе">
     <meta property="og:description" content="Платформа совместного просмотра видео и фильмов с синхронизацией VK Video, Rutube и YouTube, поддержкой комнат и чата.">
-    <!-- iOS Animated Stickers (WebP) Compatibility & CDN Fallback Engine -->
+    <!-- High-Performance Animated Stickers & Icons CDN Fallback Engine -->
     <script>
       (function() {
-        const GITHUB_RAW = "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/";
-        const JSDELIVR_CDN = "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/";
-
-        function sanitizeStickerUrl(url) {
-          if (!url || typeof url !== "string") return url;
-          if (url.includes("raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis")) {
-            return url.replace(GITHUB_RAW, JSDELIVR_CDN);
-          }
-          return url;
-        }
-
-        const originalSetAttribute = Element.prototype.setAttribute;
-        Element.prototype.setAttribute = function(name, val) {
-          if (name === "src" && typeof val === "string") {
-            val = sanitizeStickerUrl(val);
-          }
-          return originalSetAttribute.call(this, name, val);
-        };
-
-        const imgProto = HTMLImageElement.prototype;
-        const origSrcDescriptor = Object.getOwnPropertyDescriptor(imgProto, "src");
-        if (origSrcDescriptor && origSrcDescriptor.set) {
-          Object.defineProperty(imgProto, "src", {
-            get: function() {
-              return origSrcDescriptor.get.call(this);
-            },
-            set: function(val) {
-              return origSrcDescriptor.set.call(this, sanitizeStickerUrl(val));
-            },
-            configurable: true,
-            enumerable: true
-          });
-        }
+        const CDNS = [
+          "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/",
+          "https://testingcf.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/",
+          "https://fastly.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/",
+          "https://gcore.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/",
+          "/api/emoji-proxy?path="
+        ];
 
         window.addEventListener("error", function(e) {
           const el = e.target;
           if (el && el.tagName === "IMG" && el.src && el.src.includes("Telegram-Animated-Emojis")) {
             const currentSrc = el.src;
-            if (currentSrc.includes("cdn.jsdelivr.net")) {
-              el.src = currentSrc.replace("cdn.jsdelivr.net", "fastly.jsdelivr.net");
-            } else if (currentSrc.includes("fastly.jsdelivr.net")) {
-              el.src = currentSrc.replace("fastly.jsdelivr.net", "gcore.jsdelivr.net");
-            } else if (currentSrc.includes("raw.githubusercontent.com")) {
-              el.src = currentSrc.replace(GITHUB_RAW, JSDELIVR_CDN);
+            const attempt = Number(el.dataset.cdnAttempt || "0");
+            if (attempt < CDNS.length - 1) {
+              el.dataset.cdnAttempt = String(attempt + 1);
+              const rel = currentSrc.replace(/^https?:\/\/[^\/]+\/(gh\/[^\/]+\/[^@]+@[^\/]+\/|main\/)?/, "")
+                                    .replace(/^Telegram-Animated-Emojis\/(main\/)?/, "")
+                                    .replace(/^\/+/, "");
+              el.src = CDNS[attempt + 1] + rel;
             }
           }
         }, true);
@@ -591,31 +566,40 @@
         background: rgba(255, 255, 255, 0.08);
       }
       .video-search-details {
-        flex: 1;
+        flex: 1 1 auto;
         min-width: 0;
+        max-width: 100%;
         display: flex;
         flex-direction: column;
         gap: 3px;
+        overflow: hidden;
       }
       .video-search-title {
         font-size: 12px;
         font-weight: 600;
-        color: var(--text-main);
+        color: #ffffff;
         overflow: hidden;
         text-overflow: ellipsis;
         display: -webkit-box;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
         line-height: 1.35;
+        word-break: break-word;
       }
       .video-search-author {
         font-size: 11px;
         color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        min-width: 0;
+        gap: 4px;
+      }
+      .video-search-author span {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        display: flex;
-        align-items: center;
+        min-width: 0;
+        flex: 1;
       }
       .video-search-select-btn {
         width: auto !important;
@@ -2567,12 +2551,12 @@
         transition: 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         max-height: calc(100% - 32px);
         overflow-y: auto;
-        background: rgba(18, 18, 22, 0.95);
-        backdrop-filter: blur(28px) !important;
-        -webkit-backdrop-filter: blur(28px) !important;
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 20px;
-        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+        background: rgba(6, 6, 9, 0.45) !important;
+        backdrop-filter: blur(28px) saturate(190%) !important;
+        -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.14) !important;
+        border-radius: 22px;
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08) inset, 0 1px 0 0 rgba(255, 255, 255, 0.2) inset !important;
       }
       .modal.active .modal-content {
         transform: translateY(0) scale(1);
@@ -2588,41 +2572,71 @@
         margin-top: 20px;
       }
       /* ========================================================= */
-      /* CH/B (MONOCHROME) FROSTED GLASS WINDOWS                   */
+      /* TRANSLUCENT FROSTED GLASS THEME ACROSS ALL WINDOWS & UI   */
       /* ========================================================= */
+      .modal,
       #modal-profile-friends,
       #modal-room-user-miniature,
       #modal-support-ticket,
       #modal-create-ticket,
       #modal-support-search,
       #modal-support-creator-panel,
-      #modal-gift-lumens {
-        background: rgba(0, 0, 0, 0.65) !important;
-        backdrop-filter: none !important;
-        -webkit-backdrop-filter: none !important;
+      #modal-gift-lumens,
+      #modal-room,
+      #modal-edit-profile,
+      #modal-view-profile,
+      #modal-catalog-item,
+      #modal-catalog-preview,
+      #modal-catalog,
+      #modal-lumens-info,
+      #modal-daily-lumens,
+      #modal-premium-purchase,
+      #modal-dm-chat {
+        background: rgba(0, 0, 0, 0.28) !important;
+        backdrop-filter: blur(4px) !important;
+        -webkit-backdrop-filter: blur(4px) !important;
         transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
       }
 
-      .frosted-modal-card {
-        background: rgba(14, 14, 17, 0.96) !important;
-        backdrop-filter: blur(32px) saturate(180%) !important;
-        -webkit-backdrop-filter: blur(32px) saturate(180%) !important;
+      .frosted-modal-card,
+      .modal-content,
+      .dm-modal-content,
+      .support-create-modal-content,
+      #modal-room .modal-content,
+      #modal-edit-profile .modal-content,
+      #modal-view-profile .modal-content,
+      #modal-catalog-item .modal-content,
+      #modal-catalog-preview .modal-content,
+      #modal-lumens-info .modal-content,
+      #modal-gift-lumens .modal-content,
+      #modal-daily-lumens .modal-content,
+      #modal-premium-purchase .modal-content,
+      #modal-create-ticket .modal-content,
+      #modal-support-ticket .modal-content,
+      #modal-support-search .modal-content,
+      #modal-support-creator-panel .modal-content,
+      #profile-friends-modal-card,
+      #room-miniature-card {
+        background: rgba(6, 6, 9, 0.45) !important;
+        backdrop-filter: blur(28px) saturate(190%) !important;
+        -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
         border: 1px solid rgba(255, 255, 255, 0.14) !important;
-        box-shadow: 0 32px 90px rgba(0, 0, 0, 0.88),
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.8),
                     0 0 0 1px rgba(255, 255, 255, 0.08) inset,
                     0 1px 0 0 rgba(255, 255, 255, 0.2) inset !important;
-        border-radius: 24px !important;
+        border-radius: 22px !important;
         color: #ffffff !important;
       }
 
       #modal-profile-friends .modal-content,
       #profile-friends-modal-card {
-        background: rgba(10, 10, 14, 0.45) !important;
-        backdrop-filter: blur(24px) saturate(180%) !important;
-        -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
-        border: 1px solid rgba(255, 255, 255, 0.15) !important;
-        box-shadow: 0 32px 90px rgba(0, 0, 0, 0.8),
-                    0 0 0 1px rgba(255, 255, 255, 0.14) inset !important;
+        background: rgba(6, 6, 9, 0.45) !important;
+        backdrop-filter: blur(28px) saturate(190%) !important;
+        -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.14) !important;
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.8),
+                    0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+                    0 1px 0 0 rgba(255, 255, 255, 0.2) inset !important;
       }
 
       #modal-room-user-miniature .modal-content,
@@ -2631,17 +2645,91 @@
         max-width: 940px !important;
         aspect-ratio: 16 / 9 !important;
         max-height: 88vh !important;
-        border-radius: 20px !important;
-        background: rgba(10, 10, 14, 0.45) !important;
-        backdrop-filter: blur(24px) saturate(180%) !important;
-        -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
-        border: 1px solid rgba(255, 255, 255, 0.15) !important;
-        box-shadow: 0 32px 90px rgba(0, 0, 0, 0.8),
-                    0 0 0 1px rgba(255, 255, 255, 0.14) inset !important;
+        border-radius: 22px !important;
+        background: rgba(6, 6, 9, 0.45) !important;
+        backdrop-filter: blur(28px) saturate(190%) !important;
+        -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.14) !important;
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.8),
+                    0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+                    0 1px 0 0 rgba(255, 255, 255, 0.2) inset !important;
         overflow-y: auto !important;
         overflow-x: hidden !important;
         padding: 0 !important;
         position: relative !important;
+      }
+
+      /* Unified styling for menus, popups, tooltips, toasts, and docks */
+      .dropdown,
+      .dropdown-menu,
+      .context-menu,
+      .user-menu-popover,
+      .menu-popup,
+      .support-quick-actions-menu,
+      #user-quick-menu,
+      #user-context-menu,
+      .catalog-sort-dropdown,
+      .custom-dropdown-list,
+      .reactions-popover,
+      .emoji-picker-popover {
+        background: rgba(6, 6, 9, 0.55) !important;
+        backdrop-filter: blur(28px) saturate(190%) !important;
+        -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.14) !important;
+        box-shadow: 0 18px 45px rgba(0, 0, 0, 0.75),
+                    0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+                    0 1px 0 0 rgba(255, 255, 255, 0.2) inset !important;
+        border-radius: 16px !important;
+      }
+
+      .tooltip,
+      .custom-tooltip,
+      .partner-path-tooltip,
+      [data-tooltip]::before,
+      [data-tooltip]::after,
+      .ui-tooltip {
+        background: rgba(6, 6, 9, 0.65) !important;
+        backdrop-filter: blur(28px) saturate(190%) !important;
+        -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.14) !important;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6),
+                    0 0 0 1px rgba(255, 255, 255, 0.08) inset !important;
+        color: #ffffff !important;
+      }
+
+      .toast,
+      #toast-container .toast,
+      .room-player-lumen-toast,
+      .site-notification,
+      .alert-toast {
+        background: rgba(6, 6, 9, 0.55) !important;
+        backdrop-filter: blur(28px) saturate(190%) !important;
+        -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.14) !important;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8),
+                    0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+                    0 1px 0 0 rgba(255, 255, 255, 0.2) inset !important;
+        border-radius: 16px !important;
+        color: #ffffff !important;
+      }
+
+      .support-templates-dock,
+      .support-composer-dock,
+      .dock,
+      .lobby-dock,
+      .bottom-dock,
+      .room-controls-dock,
+      .mobile-shutter,
+      .sheet,
+      .drawer,
+      .mobile-drawer,
+      .bottom-sheet {
+        background: rgba(6, 6, 9, 0.5) !important;
+        backdrop-filter: blur(28px) saturate(190%) !important;
+        -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.14) !important;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.75),
+                    0 0 0 1px rgba(255, 255, 255, 0.08) inset !important;
       }
 
       #mini-btn-like-profile.liked,
@@ -8565,22 +8653,22 @@
         </div>
       </div>
 
-      <div class="tiktok-profile-side-col">
-        <div class="tiktok-profile-actions-wrap">
-          <div id="view-profile-actions" style="display: flex; flex-direction: row; gap: 8px; align-items: center;">
-            <button class="primary-btn" id="btn-dm-modal" style="background-color: #FFFFFF !important; color: #000000 !important; border: none; font-weight: 600;">
+      <div class="tiktok-profile-side-col" style="width: 100%; max-width: 100%; box-sizing: border-box;">
+        <div class="tiktok-profile-actions-wrap" style="width: 100%; max-width: 100%; margin-bottom: 16px;">
+          <div id="view-profile-actions" style="display: flex; flex-direction: row; gap: 8px; align-items: center; flex-wrap: wrap; width: 100%; max-width: 100%; box-sizing: border-box;">
+            <button class="primary-btn" id="btn-dm-modal" style="background-color: #FFFFFF !important; color: #000000 !important; border: none; font-weight: 700; flex: 1 1 auto; min-width: 130px; padding: 8px 14px; font-size: 13.5px; border-radius: 10px; cursor: pointer;">
               Написать сообщение
             </button> 
-            <button class="secondary-btn" id="btn-like-profile" style="display: flex; align-items: center; gap: 6px; padding: 6px 14px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); border-radius: 8px; color: #fff; cursor: pointer; transition: 0.2s;">
-              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Red%20Heart.webp" style="width: 22px; height: 22px; object-fit: contain; filter: grayscale(100%) opacity(50%); transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);" id="like-icon" alt="Like">
-              <span id="view-likes-count" style="font-weight: 600;">0</span>
+            <button class="secondary-btn" id="btn-like-profile" style="display: flex; align-items: center; justify-content: center; gap: 6px; padding: 7px 12px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06); border-radius: 10px; color: #fff; cursor: pointer; transition: 0.2s; flex-shrink: 0;">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Red%20Heart.webp" style="width: 20px; height: 20px; object-fit: contain; filter: grayscale(100%) opacity(50%); transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);" id="like-icon" alt="Like">
+              <span id="view-likes-count" style="font-weight: 700; font-size: 13px;">0</span>
             </button>
-            <button class="secondary-btn" id="btn-gift-lumens" title="Подарить Люмены" aria-label="Подарить Люмены" style="display: none; align-items: center; gap: 6px; padding: 7px 14px; border: 1px solid rgba(255, 215, 0, 0.35); background: linear-gradient(135deg, rgba(255, 215, 0, 0.12) 0%, rgba(255, 170, 0, 0.05) 100%); border-radius: 10px; color: #ffd700; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 0 12px rgba(255, 215, 0, 0.12);">
-              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 18px; height: 18px; object-fit: contain; filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.6));" alt="✨">
-              <span style="font-weight: 700; font-size: 13px; letter-spacing: -0.2px;">Подарить Люмены</span>
+            <button class="secondary-btn" id="btn-gift-lumens" title="Подарить Люмены" aria-label="Подарить Люмены" style="display: none; align-items: center; justify-content: center; gap: 6px; padding: 7px 12px; border: 1px solid rgba(255, 215, 0, 0.35); background: linear-gradient(135deg, rgba(255, 215, 0, 0.14) 0%, rgba(255, 170, 0, 0.06) 100%); border-radius: 10px; color: #ffd700; cursor: pointer; transition: all 0.2s; flex-shrink: 0;">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 17px; height: 17px; object-fit: contain; filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.6));" alt="✨">
+              <span style="font-weight: 700; font-size: 13px;">Люмены</span>
             </button>
-            <button class="secondary-btn" id="btn-report-profile" title="Пожаловаться на профиль" aria-label="Пожаловаться на профиль">
-              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Flags/Triangular%20Flag.webp" alt="Жалоба">
+            <button class="secondary-btn" id="btn-report-profile" title="Пожаловаться на профиль" aria-label="Пожаловаться на профиль" style="display: flex; align-items: center; justify-content: center; padding: 7px 11px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06); cursor: pointer; flex-shrink: 0;">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Flags/Triangular%20Flag.webp" alt="Жалоба" style="width: 17px; height: 17px; object-fit: contain;">
             </button>
           </div>
         </div>
@@ -9924,7 +10012,7 @@
 
     <!-- Modal: Lumens Balance & Earn Guide -->
     <div class="modal" id="modal-lumens-info">
-      <div class="modal-content glass-panel" style="max-width: 460px; width: calc(100% - 28px); border-radius: 24px; padding: 0; overflow: hidden; background: rgba(14, 14, 18, 0.98); border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: 0 25px 80px rgba(0, 0, 0, 0.85);">
+      <div class="modal-content glass-panel" style="max-width: 460px; width: calc(100% - 28px); border-radius: 24px; padding: 0; overflow: hidden;">
         <div style="position: absolute; top: 16px; right: 16px; z-index: 25">
           <button class="secondary-btn btn-close-modal" style="width: 34px; height: 34px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 14px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); color: #ffffff; cursor: pointer;">✕</button>
         </div>
@@ -10230,7 +10318,6 @@
     <script>
       window.COWIO_MEDIA_API = window.COWIO_MEDIA_API || "";
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.7/dist/hls.min.js"></script>
     <script type="module" src="/app.js?v=4"></script>
     <style>
       body.monochrome {
@@ -12434,7 +12521,7 @@
     </div>
 
     <!-- Room User Miniature Modal (1:1 accurate profile replica on frosted monochrome glass) -->
-    <div class="modal" id="modal-room-user-miniature" style="z-index: 100001; background: rgba(0, 0, 0, 0.65) !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important;">
+    <div class="modal" id="modal-room-user-miniature" style="z-index: 100001;">
       <div class="modal-content room-miniature-card frosted-modal-card oled-scrollbar" id="room-miniature-card" style="
         position: relative;
         max-width: 480px;
@@ -12445,11 +12532,6 @@
         overflow-x: hidden;
         padding: 0;
         max-height: 88vh;
-        background: rgba(14, 14, 17, 0.96) !important;
-        border: 1px solid rgba(255, 255, 255, 0.14) !important;
-        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.08) inset !important;
-        backdrop-filter: blur(28px) !important;
-        -webkit-backdrop-filter: blur(28px) !important;
       ">
         <!-- Close Button (✖ top right corner) -->
         <button type="button" class="btn-close-modal" id="btn-close-room-miniature" onclick="RoomManager.closeUserMiniature()" style="

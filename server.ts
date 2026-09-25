@@ -529,6 +529,66 @@ app.post('/api/library/fetch-metadata', async (req: Request, res: Response) => {
 });
 
 // ----------------------------------------------------
+// EMOJI & STICKER PROXY FOR FAST ACCESS WITHOUT VPN
+// ----------------------------------------------------
+const emojiCache = new Map<string, { buffer: Buffer; contentType: string; timestamp: number }>();
+
+app.get('/api/emoji-proxy', async (req: Request, res: Response) => {
+  try {
+    let emojiPath = ((req.query.path || req.query.url || '') as string).trim();
+    if (!emojiPath) return res.status(400).send('path required');
+
+    emojiPath = emojiPath.replace(/^https?:\/\/[^\/]+\/(gh\/[^\/]+\/[^@]+@[^\/]+\/|main\/)?/, '');
+    emojiPath = emojiPath.replace(/^Telegram-Animated-Emojis\/(main\/)?/, '');
+    emojiPath = emojiPath.replace(/^\/+/, '');
+
+    const cacheKey = emojiPath;
+    const cached = emojiCache.get(cacheKey);
+    if (cached && (Date.now() - cached.timestamp < 7 * 24 * 3600 * 1000)) {
+      res.setHeader('Content-Type', cached.contentType);
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      return res.send(cached.buffer);
+    }
+
+    const mirrors = [
+      `https://testingcf.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/${emojiPath}`,
+      `https://fastly.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/${emojiPath}`,
+      `https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/${emojiPath}`,
+      `https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/${emojiPath}`,
+      `https://gcore.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/${emojiPath}`
+    ];
+
+    for (const mirror of mirrors) {
+      try {
+        const fetchRes = await fetch(mirror, {
+          signal: AbortSignal.timeout(3500),
+          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+        });
+        if (fetchRes.ok) {
+          const arrayBuffer = await fetchRes.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
+          const contentType = fetchRes.headers.get('content-type') || 'image/webp';
+
+          if (emojiCache.size > 1500) {
+            const firstKey = emojiCache.keys().next().value;
+            if (firstKey) emojiCache.delete(firstKey);
+          }
+          emojiCache.set(cacheKey, { buffer, contentType, timestamp: Date.now() });
+
+          res.setHeader('Content-Type', contentType);
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+          return res.send(buffer);
+        }
+      } catch (err) {}
+    }
+
+    return res.status(404).send('Emoji not found');
+  } catch (e: any) {
+    return res.status(500).send('Proxy error');
+  }
+});
+
+// ----------------------------------------------------
 // PREMIUM & PLATEGA PAYMENT ROUTES
 // ----------------------------------------------------
 const PLATEGA_API_KEY = process.env.PLATEGA_API_KEY || '1lLu0Pb7yHD4DkPU8Pc7JBVN78h7pJCIh7dac1NFX1HCBpzNk6aD1mcC8yUeCHj0NTa2hesicgq3tM96r0iocsFaFtj0RhiKJsv2';

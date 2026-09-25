@@ -57,7 +57,7 @@ class CatalogManager {
   static async seedDefaultItems() {
     try {
       const { set, ref, getDatabase } = await import(
-        "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"
+        "firebase/database"
       );
       const dbRef = getDatabase();
       const initial = {
@@ -498,7 +498,7 @@ class CatalogManager {
     const currentProf = AppState.usersCache.get(uid) || {};
     const frameVal = item.image || item.id;
 
-    await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(
+    await import("firebase/database").then(
       ({ update, ref, getDatabase }) =>
         update(ref(getDatabase()), {
           [`users/${uid}/profile/frame`]: frameVal,
@@ -734,7 +734,7 @@ window.openCatalogItemModal = function (itemId) {
         if (item.image && !currentInv.includes(item.image)) currentInv.push(item.image);
 
         const frameVal = item.image || item.id;
-        const { update, ref, getDatabase } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
+        const { update, ref, getDatabase } = await import("firebase/database");
         await update(ref(getDatabase()), {
           [`users/${uid}/profile/inventory`]: currentInv,
           [`users/${uid}/profile/frame`]: frameVal,
@@ -773,7 +773,7 @@ window.openCatalogItemModal = function (itemId) {
           const frameVal = item.image || item.id;
           const newLumens = curLumens - price;
 
-          const { update, ref, getDatabase } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
+          const { update, ref, getDatabase } = await import("firebase/database");
           await update(ref(getDatabase()), {
             [`users/${uid}/profile/inventory`]: currentInv,
             [`users/${uid}/profile/frame`]: frameVal,

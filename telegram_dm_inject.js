@@ -4,20 +4,24 @@ console.log("[Telegram Patch] Loading...");
 
 const TELEGRAM_CSS = `
 .dm-modal-content {
-    background: #09090b !important;
+    background: rgba(6, 6, 9, 0.45) !important;
+    backdrop-filter: blur(28px) saturate(190%) !important;
+    -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
     color: #f4f4f5;
-    border-radius: 16px;
+    border-radius: 22px;
     overflow: hidden;
-    box-shadow: 0 16px 48px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05);
+    box-shadow: 0 24px 70px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.08) inset, 0 1px 0 0 rgba(255,255,255,0.2) inset !important;
 }
 .dm-sidebar {
-    background: #09090b !important;
-    border-right: 1px solid rgba(255,255,255,0.04) !important;
+    background: rgba(4, 4, 6, 0.4) !important;
+    backdrop-filter: blur(20px) !important;
+    border-right: 1px solid rgba(255,255,255,0.08) !important;
 }
 .dm-sidebar-header {
-    background: #09090b !important;
+    background: rgba(4, 4, 6, 0.35) !important;
     padding: 20px 24px !important;
-    border-bottom: 1px solid rgba(255,255,255,0.03) !important;
+    border-bottom: 1px solid rgba(255,255,255,0.06) !important;
 }
 .dm-chat-item {
     padding: 14px 18px !important;
@@ -38,24 +42,24 @@ const TELEGRAM_CSS = `
     background: rgba(255,255,255,0.02);
 }
 .dm-chat-item:hover { 
-    background: rgba(255,255,255,0.03) !important; 
+    background: rgba(255,255,255,0.05) !important; 
     transform: translateX(2px);
 }
 .dm-chat-item.active { 
-    background: rgba(255,255,255,0.08) !important; 
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05);
+    background: rgba(255,255,255,0.1) !important; 
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
 }
 
 .dm-main {
-    background: #000000 !important;
+    background: rgba(4, 4, 6, 0.35) !important;
     position: relative;
     overflow: hidden;
 }
 .dm-modal-header {
-    background: rgba(9, 9, 11, 0.8) !important;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border-bottom: 1px solid rgba(255,255,255,0.03) !important;
+    background: rgba(6, 6, 9, 0.4) !important;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255,255,255,0.08) !important;
     height: 70px;
     padding: 0 28px !important;
     display: flex;

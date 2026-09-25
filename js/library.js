@@ -3,12 +3,63 @@ class LibraryManager {
   static allVideos = [];
   
   static async getDb() {
-      const fb = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
+      const fb = await import("firebase/database");
       return { ...fb, db: window.db };
+  }
+
+  static hasPremium() {
+    const uid = window.AppState?.currentUser?.uid;
+    if (!uid) return false;
+    const profile = window.AppState?.usersCache?.get(uid);
+    if (window.PremiumManager && typeof window.PremiumManager.isPremiumActive === "function") {
+      return window.PremiumManager.isPremiumActive(profile, uid);
+    }
+    return Boolean(profile?.premium?.active);
+  }
+
+  static syncPremiumUI() {
+    const isPrem = this.hasPremium();
+    const btnAdd = document.getElementById("btn-lib-add-video");
+    if (btnAdd) {
+      if (!isPrem) {
+        btnAdd.style.filter = "blur(0.5px)";
+        btnAdd.style.opacity = "0.9";
+        btnAdd.style.position = "relative";
+        btnAdd.style.color = "#ffffff";
+        btnAdd.style.background = "rgba(255, 255, 255, 0.08)";
+        btnAdd.style.border = "1px dashed rgba(255, 213, 106, 0.5)";
+        btnAdd.innerHTML = `
+          <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 6px;">
+          <span style="color: #ffffff; font-weight: 600;">Добавить видео</span>
+          <span style="font-size: 11px; background: rgba(255, 213, 106, 0.22); border: 1px solid rgba(255, 213, 106, 0.5); color: #ffffff; font-weight: 700; padding: 2px 8px; border-radius: 6px; margin-left: 8px;">Premium</span>
+        `;
+        btnAdd.onclick = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (window.Utils && window.Utils.toast) {
+            window.Utils.toast("Добавление видео в библиотеку доступно только с COWIO Premium", "warning");
+          }
+          const premModal = document.getElementById("modal-premium-purchase");
+          if (premModal) premModal.classList.add("active");
+        };
+      } else {
+        btnAdd.style.filter = "none";
+        btnAdd.style.opacity = "1";
+        btnAdd.style.color = "#ffffff";
+        btnAdd.style.background = "";
+        btnAdd.style.border = "";
+        btnAdd.innerHTML = `
+          <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 20px; height: 20px; vertical-align: middle; margin-right: 5px;">
+          <span style="color: #ffffff; font-weight: 600;">Добавить видео</span>
+        `;
+        btnAdd.onclick = () => this.showAddModal();
+      }
+    }
   }
 
   static init() {
     this.bindEvents();
+    this.syncPremiumUI();
     this.startListening();
   }
 
@@ -35,10 +86,7 @@ class LibraryManager {
       searchInput.addEventListener("input", () => this.renderGrid());
     }
 
-    const btnAdd = document.getElementById("btn-lib-add-video");
-    if (btnAdd) {
-      btnAdd.onclick = () => this.showAddModal();
-    }
+    this.syncPremiumUI();
   }
 
   static async startListening() {
@@ -151,6 +199,15 @@ class LibraryManager {
   }
 
   static showAddModal() {
+    if (!this.hasPremium()) {
+      if (window.Utils && window.Utils.toast) {
+        window.Utils.toast("Добавление видео в библиотеку доступно только с COWIO Premium", "warning");
+      }
+      const premModal = document.getElementById("modal-premium-purchase");
+      if (premModal) premModal.classList.add("active");
+      return;
+    }
+
     const modal = this.getOrCreateModal("modal-lib-add");
     modal.innerHTML = `
         <div class="modal-content" style="max-width: 500px">
@@ -498,7 +555,10 @@ class LibraryManager {
                       <button id="btn-lib-desc-toggle" class="btn-text-link" style="display:none; margin-top:8px; font-size:13px; color:var(--accent);">Читать полностью</button>
                   </div>
 
-                  <button class="primary-btn" id="btn-lib-create-room" style="font-size:16px; padding:16px; border-radius:12px;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Food%20and%20Drink/Popcorn.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom" /> Создать комнату с этим видео</button>
+                  ${this.hasPremium()
+                    ? `<button class="primary-btn" id="btn-lib-create-room" style="font-size:16px; padding:16px; border-radius:12px; color:#ffffff;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Food%20and%20Drink/Popcorn.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom" /> Создать комнату с этим видео</button>`
+                    : `<button class="primary-btn" id="btn-lib-create-room" style="font-size:14.5px; padding:14px; border-radius:12px; filter: blur(0.5px); opacity: 0.9; color: #ffffff; background: rgba(255, 255, 255, 0.08); border: 1px dashed rgba(255, 213, 106, 0.5);"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 6px;" /><span style="color:#ffffff; font-weight:600;">Создать комнату</span> <span style="font-size: 11.5px; background: rgba(255, 213, 106, 0.22); border: 1px solid rgba(255, 213, 106, 0.5); color: #ffffff; font-weight: 700; padding: 2px 8px; border-radius: 6px; margin-left: 8px;">Доступно с Premium</span></button>`
+                  }
               </div>
           </div>
       `;
@@ -532,6 +592,14 @@ class LibraryManager {
       modal.querySelector("#btn-lib-close-view").onclick = () => this.closeModal("modal-lib-view");
       
       modal.querySelector("#btn-lib-create-room").onclick = () => {
+          if (!this.hasPremium()) {
+              if (window.Utils && window.Utils.toast) {
+                  window.Utils.toast("Создание комнат из библиотеки доступно с COWIO Premium", "warning");
+              }
+              const premModal = document.getElementById("modal-premium-purchase");
+              if (premModal) premModal.classList.add("active");
+              return;
+          }
           this.closeModal("modal-lib-view");
           // trigger create room mechanics
           window.AppState.pendingLibraryVideoUrl = v.url;
