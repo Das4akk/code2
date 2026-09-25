@@ -915,7 +915,7 @@ class EasterEggManager {
       "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Ghost.webp",
     glass:
       "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Food%20and%20Drink/Clinking%20Glasses.webp",
-    vhs: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Video%20Camera.webp",
+    vhs: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Clapper%20Board.webp",
   };
 
   static sticker(url, size = 48) {

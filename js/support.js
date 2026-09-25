@@ -702,7 +702,7 @@ class SupportSystem {
           <div class="empty-list-title">${emptyMsg}</div>
           <div class="empty-list-desc">Создайте новое обращение, если вам нужна помощь</div>
           <button type="button" class="primary-btn empty-list-btn" onclick="SupportSystem.openCreateModal()">
-            <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Pen.webp" style="width: 13px; height: 13px;">
+            <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Pencil.webp" style="width: 13px; height: 13px;">
             <span>Создать обращение</span>
           </button>
         </div>
@@ -1096,7 +1096,7 @@ class SupportSystem {
                   </button>
                   <div class="support-popover-divider"></div>
                   <button class="support-popover-item" onclick="SupportSystem.exportTicket('${id}')">
-                    <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Package.webp" class="emoji-animated-sm" alt="">
+                    <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Toolbox.webp" class="emoji-animated-sm" alt="">
                     <span>Экспорт как .txt</span>
                   </button>
                   <button class="support-popover-item danger" onclick="SupportSystem.adminBan('${t.creatorUid}')">

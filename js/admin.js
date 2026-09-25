@@ -299,7 +299,7 @@ class AdminPanel {
 
                 <div id="admin-manager-readonly-notice" style="display:none; padding:12px 16px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.18); border-radius:12px; margin-bottom:16px; backdrop-filter:blur(10px);">
                     <div style="font-weight:700; font-size:13px; color:#ffffff; display:flex; align-items:center; gap:8px;">
-                        <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Eye.webp" style="width:18px; height:18px; vertical-align:middle;" alt="👁️" onerror="this.style.display='none'">
+                        <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Eyes.webp" style="width:18px; height:18px; vertical-align:middle;" alt="👁️" onerror="this.style.display='none'">
                         <span>Режим просмотра (Роль: Менеджер)</span>
                     </div>
                     <div style="font-size:11px; color:rgba(255,255,255,0.7); margin-top:4px;">
@@ -1791,7 +1791,7 @@ class AdminPanel {
     editor.innerHTML = `
             ${isReadOnly ? `
             <div style="padding:10px 14px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.18); border-radius:10px; margin-bottom:12px; font-size:12px; color:#fff; display:flex; align-items:center; gap:8px;">
-                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Eye.webp" style="width:16px; height:16px;" alt="👁️" onerror="this.style.display='none'">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Eyes.webp" style="width:16px; height:16px;" alt="👁️" onerror="this.style.display='none'">
                 <span><strong>Режим только просмотра</strong> (Менеджер). Редактирование профиля недоступно.</span>
             </div>` : ''}
             <div style="font-size:12px; color:var(--text-muted);">UID: ${uid}</div>

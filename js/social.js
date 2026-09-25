@@ -791,7 +791,7 @@ class DirectMessages {
                     <div class="dm-chat-name">${Utils.escapeHtml(item.name)}</div>
                     <div class="dm-chat-last-msg">${Utils.escapeHtml(item.lastText) || "<i>Нет сообщений</i>"}</div>
                 </div>
-                <button class="dm-pin-btn" title="Закрепить">${item.isPinned ? '<img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Reminder%20Ribbon.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">' : '<img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Pushpin.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;opacity:0.5;">'}</button>
+                <button class="dm-pin-btn" title="Закрепить">${item.isPinned ? '<img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Reminder%20Ribbon.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">' : '<img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Reminder%20Ribbon.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;opacity:0.4;filter:grayscale(100%);">'}</button>
             `;
 
       el.onclick = (e) => {
@@ -1172,7 +1172,7 @@ class DirectMessages {
                     <div class="m-line ${isSelf ? "self" : ""}">
                         <strong>${Utils.escapeHtml(isSelf ? "Вы" : m.fromName)}</strong>
                         <div class="bubble" style="padding: 4px;">
-                            ${isImg ? `<img src="${Utils.escapeHtml(m.url)}" style="max-width: 250px; max-height: 250px; object-fit: contain; border-radius: 8px; display: block;" onerror="this.onerror=null; this.src='https://via.placeholder.com/200x150?text=Error';" />` : `<a href="${Utils.escapeHtml(m.url)}" target="_blank" style="color: var(--accent); padding: 8px; display: inline-block;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Paperclip.webp" style="width:18px;height:18px;vertical-align:bottom;margin-right:5px;">Прикрепленный файл</a>`}
+                            ${isImg ? `<img src="${Utils.escapeHtml(m.url)}" style="max-width: 250px; max-height: 250px; object-fit: contain; border-radius: 8px; display: block;" onerror="this.onerror=null; this.src='https://via.placeholder.com/200x150?text=Error';" />` : `<a href="${Utils.escapeHtml(m.url)}" target="_blank" style="color: var(--accent); padding: 8px; display: inline-block;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Memo.webp" style="width:18px;height:18px;vertical-align:bottom;margin-right:5px;">Прикрепленный файл</a>`}
                         </div>
                     </div>
                 `

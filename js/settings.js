@@ -127,7 +127,7 @@ const SettingSections = [
         type: "toggle",
         title: "Отключить анимации окон",
         desc: "Делает интерфейс резким",
-        icon: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Travel%20and%20Places/High%20Speed%20Train.webp",
+        icon: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Travel%20and%20Places/Rocket.webp",
         default: false,
         onChange: (val) => {
           localStorage.setItem("disableTransitions", val);
@@ -139,7 +139,7 @@ const SettingSections = [
         type: "toggle",
         title: "Включить прокси (Обход)",
         desc: "Проксирует запрос ютуб видео для обхода блокировок",
-        icon: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Satellite%20Antenna.webp",
+        icon: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Telescope.webp",
         default: false,
         onChange: (val) => {
           localStorage.setItem("useGlobalProxy", val);

@@ -7,11 +7,24 @@ const fallbackWebp = Buffer.from(
   'base64'
 );
 
+const EMOJI_ALIASES = {
+  'objects/pen.webp': 'Objects/Pencil.webp',
+  'symbols/back arrow.webp': 'Symbols/Top Arrow.webp',
+  'symbols/back%20arrow.webp': 'Symbols/Top Arrow.webp',
+  'symbols/counterclockwise arrows button.webp': 'Symbols/Currency Exchange.webp',
+  'symbols/counterclockwise%20arrows%20button.webp': 'Symbols/Currency Exchange.webp',
+  'objects/wastebasket.webp': 'Symbols/Cross Mark.webp',
+  'objects/paperclip.webp': 'Objects/Memo.webp',
+  'objects/envelope.webp': 'Objects/Incoming Envelope.webp',
+  'objects/package.webp': 'Objects/Toolbox.webp'
+};
+
 export default async function handler(req, res) {
   try {
     let rawPath = ((req.query.path || req.query.url || '') + '').trim();
     if (!rawPath) {
       res.setHeader('Content-Type', 'image/webp');
+      res.setHeader('Access-Control-Allow-Origin', '*');
       return res.status(200).send(fallbackWebp);
     }
 
@@ -23,6 +36,11 @@ export default async function handler(req, res) {
     try {
       emojiPath = decodeURIComponent(emojiPath);
     } catch (e) {}
+
+    const lowerKey = emojiPath.toLowerCase();
+    if (EMOJI_ALIASES[lowerKey]) {
+      emojiPath = EMOJI_ALIASES[lowerKey];
+    }
 
     const encodedPath = encodeURI(emojiPath);
     const cacheKey = emojiPath;
@@ -79,6 +97,7 @@ export default async function handler(req, res) {
     }
   } catch (err) {
     res.setHeader('Content-Type', 'image/webp');
+    res.setHeader('Access-Control-Allow-Origin', '*');
     return res.status(200).send(fallbackWebp);
   }
 }

@@ -1172,7 +1172,7 @@ class RoomManager {
           String(msg.url).startsWith("data:image/");
         content = isImg
           ? `<div style="padding:4px;"><img src="${Utils.escapeHtml(msg.url)}" style="max-width: 250px; max-height: 250px; object-fit: contain; border-radius: 8px; display: block;" onerror="this.onerror=null; this.src='https://via.placeholder.com/200x150?text=Error';" /></div>`
-          : `<div style="padding:4px;"><a href="${Utils.escapeHtml(msg.url)}" target="_blank" style="color: var(--accent); padding: 8px; display: inline-block;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Paperclip.webp" style="width:18px;height:18px;vertical-align:bottom;margin-right:5px;">Прикрепленный файл</a></div>`;
+          : `<div style="padding:4px;"><a href="${Utils.escapeHtml(msg.url)}" target="_blank" style="color: var(--accent); padding: 8px; display: inline-block;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Memo.webp" style="width:18px;height:18px;vertical-align:bottom;margin-right:5px;">Прикрепленный файл</a></div>`;
       } else {
         content = Utils.escapeHtml(msg.text || "");
         content = content.replace(

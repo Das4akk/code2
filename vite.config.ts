@@ -50,9 +50,21 @@ function apiDevPlugin(): Plugin {
 
         if (pathname === '/api/emoji-proxy') {
           try {
+            const EMOJI_ALIASES: Record<string, string> = {
+              'objects/pen.webp': 'Objects/Pencil.webp',
+              'symbols/back arrow.webp': 'Symbols/Top Arrow.webp',
+              'symbols/back%20arrow.webp': 'Symbols/Top Arrow.webp',
+              'symbols/counterclockwise arrows button.webp': 'Symbols/Currency Exchange.webp',
+              'symbols/counterclockwise%20arrows%20button.webp': 'Symbols/Currency Exchange.webp',
+              'objects/wastebasket.webp': 'Symbols/Cross Mark.webp',
+              'objects/paperclip.webp': 'Objects/Memo.webp',
+              'objects/envelope.webp': 'Objects/Incoming Envelope.webp',
+              'objects/package.webp': 'Objects/Toolbox.webp'
+            };
             let rawPath = (url.searchParams.get('path') || url.searchParams.get('url') || '').trim();
             if (!rawPath) {
               res.setHeader('Content-Type', 'image/webp');
+              res.setHeader('Access-Control-Allow-Origin', '*');
               res.end(Buffer.from('UklGRiQAAABXRUJQVlA4IBgAAAAwAQCdASoBAAEAAwA0JaQAA3AA/vuUAAA=', 'base64'));
               return;
             }
@@ -61,6 +73,12 @@ function apiDevPlugin(): Plugin {
               .replace(/^Telegram-Animated-Emojis\/(main\/)?/, '')
               .replace(/^\/+/, '');
             try { emojiPath = decodeURIComponent(emojiPath); } catch (e) {}
+
+            const lowerKey = emojiPath.toLowerCase();
+            if (EMOJI_ALIASES[lowerKey]) {
+              emojiPath = EMOJI_ALIASES[lowerKey];
+            }
+
             const encodedPath = encodeURI(emojiPath);
             const mirrors = [
               `https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/${encodedPath}`,

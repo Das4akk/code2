@@ -353,7 +353,7 @@ class LibraryManager {
                 <div style="margin-bottom: 20px; position:relative;">
                    <div style="display:flex; gap:10px;">
                        <input type="text" id="lib-add-people" class="settings-input" placeholder="Имена через запятую (начните вводить...)" style="flex:1;" autocomplete="off" />
-                       <button class="secondary-btn" id="btn-lib-add-author-from-list" style="width:auto; padding:0 15px;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Man%20Student.webp" style="width: 20px; height: 20px; vertical-align: middle; margin-right: 5px;" /> Авторы</button>
+                       <button class="secondary-btn" id="btn-lib-add-author-from-list" style="width:auto; padding:0 15px;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Graduation%20Cap.webp" style="width: 20px; height: 20px; vertical-align: middle; margin-right: 5px;" /> Авторы</button>
                    </div>
                    <div id="lib-authors-dropdown" style="display:none; position:absolute; top:100%; left:0; right:0; background:var(--panel); border:1px solid rgba(255,255,255,0.1); border-radius:12px; max-height:200px; overflow-y:auto; z-index:100; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
                    </div>

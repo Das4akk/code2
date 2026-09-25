@@ -4,16 +4,8 @@
  */
 
 // Core Infrastructure & Shared State
-if (typeof window !== "undefined" && !window.Hls) {
-  try {
-    const hlsMod = await import("hls.js").catch(() => null);
-    if (hlsMod) {
-      window.Hls = hlsMod.default || hlsMod;
-    }
-  } catch (e) {
-    console.warn("[COWIO Core] Hls dynamic load notice:", e);
-  }
-}
+// window.Hls is provided by the global script tag or bundler
+const Hls = typeof window !== "undefined" ? window.Hls : null;
 import "./js/firebase.js";
 import "./js/emojis.js";
 import "./js/security.js";

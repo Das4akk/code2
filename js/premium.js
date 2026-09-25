@@ -72,7 +72,7 @@ class PremiumManager {
       desc: "Увеличенный объём описания профиля (до 500 знаков вместо стандартных 200)",
     },
     {
-      url: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Speech%20Balloon.webp",
+      url: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Speech%20Balloon.webp",
       title: "Расширенный функционал комнат",
       desc: "Полный доступ к одновременному управлению несколькими комнатами и аудиторией",
     },
