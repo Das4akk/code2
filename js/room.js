@@ -226,6 +226,11 @@ class RoomManager {
     const search = Utils.$("search-rooms") ? Utils.$("search-rooms").value.toLowerCase().trim() : "";
     let count = 0;
 
+    const skeletons = grid.querySelectorAll(".skeleton-room-card");
+    if (skeletons.length > 0 && AppState.roomsCache && AppState.roomsCache.size > 0) {
+      skeletons.forEach((s) => s.remove());
+    }
+
     AppState.roomsCache.forEach((room, id) => {
       if (search && !(room.name || "").toLowerCase().includes(search)) {
         Utils.$(`room-card-${id}`)?.remove();
@@ -254,7 +259,7 @@ class RoomManager {
           room.videoSourceUrl || room.videoUrl,
         );
         const ytHtml = isYtUrl
-          ? `<img src="https://i.ytimg.com/vi/${isYtUrl}/hqdefault.jpg" style="width:100%;height:100%;object-fit:cover;">`
+          ? `<img src="https://i.ytimg.com/vi/${isYtUrl}/hqdefault.jpg" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover;">`
           : "";
         const vidHtml =
           room.videoUrl && !isYtUrl

@@ -631,6 +631,20 @@ class SupportSystem {
     if (bReports) bReports.innerText = reportsCount;
   }
 
+  static showSkeleton() {
+    const list = Utils.$("support-tickets-list");
+    if (!list) return;
+    list.innerHTML = Array(4).fill(0).map(() => `
+      <div class="skeleton-ticket-card">
+        <div class="skeleton-ticket-avatar skeleton-shimmer"></div>
+        <div class="skeleton-ticket-content">
+          <div class="skeleton-line skeleton-shimmer" style="width: 75%; height: 14px;"></div>
+          <div class="skeleton-line skeleton-shimmer" style="width: 45%; height: 10px;"></div>
+        </div>
+      </div>
+    `).join("");
+  }
+
   static renderFilteredTickets() {
     const list = Utils.$("support-tickets-list");
     if (!list) return;
@@ -1026,9 +1040,10 @@ class SupportSystem {
         if (closedBanner) closedBanner.style.display = "none";
       }
 
-      // Reopen overlay CTA button
+      // Reopen overlay CTA button (only staff can reopen)
       const btnReopenOverlay = Utils.$("btn-support-reopen-overlay");
       if (btnReopenOverlay) {
+        btnReopenOverlay.style.display = isStaff ? "inline-flex" : "none";
         btnReopenOverlay.onclick = () => this.reopenTicket(id);
       }
 
@@ -1037,8 +1052,13 @@ class SupportSystem {
       const btnReopen = Utils.$("btn-support-reopen-ticket");
       const quickActionsBtn = Utils.$("btn-support-quick-actions");
       const quickMenu = Utils.$("support-quick-actions-menu");
+      const btnDelete = Utils.$("btn-support-delete-ticket");
 
-      if (isAdmin) {
+      if (btnDelete) {
+        btnDelete.style.display = isStaff ? "inline-flex" : "none";
+      }
+
+      if (isStaff) {
         if (btnClose) {
           btnClose.style.display = isClosed ? "none" : "inline-flex";
           btnClose.onclick = () => this.closeTicket(id);
@@ -1089,10 +1109,13 @@ class SupportSystem {
           };
         }
       } else {
+        // Regular user/creator view: completely hide all moderator/staff control buttons
         if (btnClose) btnClose.style.display = "none";
         if (btnReopen) btnReopen.style.display = "none";
         if (quickActionsBtn) quickActionsBtn.style.display = "none";
         if (quickMenu) quickMenu.style.display = "none";
+        if (templateContainer) templateContainer.style.display = "none";
+        if (btnDelete) btnDelete.style.display = "none";
       }
 
       document.onmousedown = (ev) => {

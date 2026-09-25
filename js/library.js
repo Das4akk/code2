@@ -22,16 +22,17 @@ class LibraryManager {
     const btnAdd = document.getElementById("btn-lib-add-video");
     if (btnAdd) {
       if (!isPrem) {
-        btnAdd.style.filter = "blur(0.5px)";
-        btnAdd.style.opacity = "0.9";
+        btnAdd.classList.add("locked-feature-btn");
+        btnAdd.style.filter = "none";
+        btnAdd.style.opacity = "0.95";
         btnAdd.style.position = "relative";
-        btnAdd.style.color = "#ffffff";
+        btnAdd.style.setProperty("color", "#ffffff", "important");
         btnAdd.style.background = "rgba(255, 255, 255, 0.08)";
-        btnAdd.style.border = "1px dashed rgba(255, 213, 106, 0.5)";
+        btnAdd.style.border = "1px dashed rgba(255, 213, 106, 0.6)";
         btnAdd.innerHTML = `
           <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 6px;">
-          <span style="color: #ffffff; font-weight: 600;">Добавить видео</span>
-          <span style="font-size: 11px; background: rgba(255, 213, 106, 0.22); border: 1px solid rgba(255, 213, 106, 0.5); color: #ffffff; font-weight: 700; padding: 2px 8px; border-radius: 6px; margin-left: 8px;">Premium</span>
+          <span style="color: #ffffff !important; font-weight: 600;">Добавить видео</span>
+          <span style="font-size: 11px; background: rgba(255, 213, 106, 0.25); border: 1px solid rgba(255, 213, 106, 0.6); color: #ffffff !important; font-weight: 700; padding: 2px 8px; border-radius: 6px; margin-left: 8px;">Premium</span>
         `;
         btnAdd.onclick = (e) => {
           e.preventDefault();
@@ -43,14 +44,15 @@ class LibraryManager {
           if (premModal) premModal.classList.add("active");
         };
       } else {
+        btnAdd.classList.remove("locked-feature-btn");
         btnAdd.style.filter = "none";
         btnAdd.style.opacity = "1";
-        btnAdd.style.color = "#ffffff";
-        btnAdd.style.background = "";
+        btnAdd.style.setProperty("color", "#000000", "important");
+        btnAdd.style.background = "var(--brand)";
         btnAdd.style.border = "";
         btnAdd.innerHTML = `
           <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 20px; height: 20px; vertical-align: middle; margin-right: 5px;">
-          <span style="color: #ffffff; font-weight: 600;">Добавить видео</span>
+          <span style="color: #000000 !important; font-weight: 700;">Добавить видео</span>
         `;
         btnAdd.onclick = () => this.showAddModal();
       }
@@ -132,6 +134,20 @@ class LibraryManager {
     return vidId ? `https://i.ytimg.com/vi/${vidId}/hqdefault.jpg` : "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Television.webp";
   }
 
+  static showSkeleton() {
+    const grid = document.getElementById("library-grid");
+    if (!grid) return;
+    grid.innerHTML = Array(6).fill(0).map(() => `
+      <div class="room-card skeleton-room-card">
+        <div class="room-preview skeleton-room-thumb skeleton-shimmer"></div>
+        <div class="room-info skeleton-room-body">
+          <div class="skeleton-line title skeleton-shimmer"></div>
+          <div class="skeleton-line subtitle skeleton-shimmer"></div>
+        </div>
+      </div>
+    `).join("");
+  }
+
   static renderGrid() {
     const grid = document.getElementById("library-grid");
     if (!grid) return;
@@ -163,9 +179,9 @@ class LibraryManager {
         
         card.innerHTML = `
             <div class="room-preview">
-                <img src="${thumbUrl}" style="width:100%; height:100%; object-fit:cover;">
+                <img src="${thumbUrl}" loading="lazy" decoding="async" onerror="this.onerror=null; this.src='https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Television.webp';" style="width:100%; height:100%; object-fit:cover;">
                 <div class="room-preview-overlay"></div>
-                ${v.isPublic ? '' : '<div style="position:absolute; top:8px; right:8px; background:rgba(0,0,0,0.7); padding:4px 8px; border-radius:6px; font-size:11px; display:flex; align-items:center; gap:4px;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" style="width:1.2em;height:1.2em;" /> Личное</div>'}
+                ${v.isPublic ? '' : '<div style="position:absolute; top:8px; right:8px; background:rgba(0,0,0,0.7); padding:4px 8px; border-radius:6px; font-size:11px; display:flex; align-items:center; gap:4px;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" loading="lazy" decoding="async" style="width:1.2em;height:1.2em;" /> Личное</div>'}
             </div>
             <div class="room-info">
                 <h4 class="rm-title">${window.Utils.escapeHtml(v.title || "Без названия")}</h4>
@@ -556,8 +572,8 @@ class LibraryManager {
                   </div>
 
                   ${this.hasPremium()
-                    ? `<button class="primary-btn" id="btn-lib-create-room" style="font-size:16px; padding:16px; border-radius:12px; color:#ffffff;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Food%20and%20Drink/Popcorn.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom" /> Создать комнату с этим видео</button>`
-                    : `<button class="primary-btn" id="btn-lib-create-room" style="font-size:14.5px; padding:14px; border-radius:12px; filter: blur(0.5px); opacity: 0.9; color: #ffffff; background: rgba(255, 255, 255, 0.08); border: 1px dashed rgba(255, 213, 106, 0.5);"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 6px;" /><span style="color:#ffffff; font-weight:600;">Создать комнату</span> <span style="font-size: 11.5px; background: rgba(255, 213, 106, 0.22); border: 1px solid rgba(255, 213, 106, 0.5); color: #ffffff; font-weight: 700; padding: 2px 8px; border-radius: 6px; margin-left: 8px;">Доступно с Premium</span></button>`
+                    ? `<button class="primary-btn" id="btn-lib-create-room" style="font-size:16px; padding:16px; border-radius:12px; color:#000000 !important; background:var(--brand); font-weight:700;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Food%20and%20Drink/Popcorn.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom" /> <span style="color:#000000 !important; font-weight:700;">Создать комнату с этим видео</span></button>`
+                    : `<button class="primary-btn locked-feature-btn" id="btn-lib-create-room" style="font-size:14.5px; padding:14px; border-radius:12px; opacity: 0.95; color: #ffffff !important; background: rgba(255, 255, 255, 0.08); border: 1px dashed rgba(255, 213, 106, 0.6);"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 6px;" /><span style="color:#ffffff !important; font-weight:600;">Создать комнату</span> <span style="font-size: 11.5px; background: rgba(255, 213, 106, 0.25); border: 1px solid rgba(255, 213, 106, 0.6); color: #ffffff !important; font-weight: 700; padding: 2px 8px; border-radius: 6px; margin-left: 8px;">Доступно с Premium</span></button>`
                   }
               </div>
           </div>

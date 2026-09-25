@@ -1270,7 +1270,9 @@ class AuthManager {
 
     let currentIp = "unavailable";
     try {
-      const ipRes = await fetch("https://api64.ipify.org?format=json");
+      const ipRes = await fetch("https://api64.ipify.org?format=json", {
+        signal: AbortSignal.timeout(1200),
+      });
       const ipData = await ipRes.json();
       if (ipData && ipData.ip) {
         currentIp = ipData.ip;

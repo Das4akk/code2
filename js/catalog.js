@@ -433,7 +433,7 @@ class CatalogManager {
                   ${userAvatarInner}
                 </div>
                 ${item.image ? `
-                  <img src="${Utils.escapeHtml(item.image)}" class="catalog-frame-overlay" alt="${Utils.escapeHtml(item.title || "Рамка")}" />
+                  <img src="${Utils.escapeHtml(item.image)}" loading="lazy" decoding="async" class="catalog-frame-overlay" alt="${Utils.escapeHtml(item.title || "Рамка")}" onerror="this.style.display='none';" />
                 ` : ""}
               </div>
             </div>

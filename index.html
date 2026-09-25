@@ -1,35 +1,24 @@
 <!DOCTYPE html><html lang="ru"><head>
     <base href="/">
-    <link rel="icon" type="image/png" href="https://sun9-84.vkuserphoto.ru/s/v1/ig2/jTtFY4sN61sjV8m2sC_x71BvLxuiprqs7jQuk-j1aJ_FptikhjWKkZaRU51ox1ElLcAny0FplpQEqQ9Zs4CjHsD6.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,504x504&from=bu&u=eNz4gZZr3vbE9ZrTkr9Wx40QuBK1GSVIJkp_OCUMb0U&cs=504x0">
+    <link rel="icon" type="image/png" href="/logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>COWIO - Онлайн Кинотеатр Вместе</title>
     <meta name="description" content="Платформа совместного просмотра видео и фильмов с синхронизацией VK Video, Rutube и YouTube, поддержкой комнат и чата.">
     <meta property="og:title" content="COWIO - Онлайн Кинотеатр Вместе">
     <meta property="og:description" content="Платформа совместного просмотра видео и фильмов с синхронизацией VK Video, Rutube и YouTube, поддержкой комнат и чата.">
-    <!-- High-Performance Animated Stickers & Icons CDN Fallback Engine -->
+    <!-- High-Performance Animated Stickers & Icons Fallback Engine -->
     <script>
       (function() {
-        const CDNS = [
-          "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/",
-          "https://testingcf.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/",
-          "https://fastly.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/",
-          "https://gcore.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/",
-          "/api/emoji-proxy?path="
-        ];
-
         window.addEventListener("error", function(e) {
           const el = e.target;
-          if (el && el.tagName === "IMG" && el.src && el.src.includes("Telegram-Animated-Emojis")) {
+          if (el && el.tagName === "IMG" && el.src && el.src.includes("Telegram-Animated-Emojis") && !el.dataset.fallbackDone) {
+            el.dataset.fallbackDone = "1";
             const currentSrc = el.src;
-            const attempt = Number(el.dataset.cdnAttempt || "0");
-            if (attempt < CDNS.length - 1) {
-              el.dataset.cdnAttempt = String(attempt + 1);
-              const rel = currentSrc.replace(/^https?:\/\/[^\/]+\/(gh\/[^\/]+\/[^@]+@[^\/]+\/|main\/)?/, "")
-                                    .replace(/^Telegram-Animated-Emojis\/(main\/)?/, "")
-                                    .replace(/^\/+/, "");
-              el.src = CDNS[attempt + 1] + rel;
-            }
+            const rel = currentSrc.replace(/^https?:\/\/[^\/]+(\/gh\/[^\/]+\/[^@]+@[^\/]+\/|\/main\/)?/, "")
+                                  .replace(/^Telegram-Animated-Emojis\/(main\/)?/, "")
+                                  .replace(/^\/+/, "");
+            el.src = "/api/emoji-proxy?path=" + encodeURIComponent(decodeURIComponent(rel));
           }
         }, true);
       })();
@@ -568,14 +557,13 @@
       .video-search-details {
         flex: 1 1 auto;
         min-width: 0;
-        max-width: 100%;
         display: flex;
         flex-direction: column;
         gap: 3px;
         overflow: hidden;
       }
       .video-search-title {
-        font-size: 12px;
+        font-size: 13px;
         font-weight: 600;
         color: #ffffff;
         overflow: hidden;
@@ -584,22 +572,24 @@
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
         line-height: 1.35;
+        overflow-wrap: break-word;
         word-break: break-word;
       }
       .video-search-author {
-        font-size: 11px;
-        color: var(--text-muted);
+        font-size: 11.5px;
+        color: rgba(255, 255, 255, 0.7);
         display: flex;
         align-items: center;
         min-width: 0;
-        gap: 4px;
+        gap: 5px;
       }
       .video-search-author span {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
         min-width: 0;
-        flex: 1;
+        flex: 1 1 auto;
+        display: inline-block;
       }
       .video-search-select-btn {
         width: auto !important;
@@ -618,6 +608,33 @@
         background: #10b981 !important;
         color: #ffffff !important;
         border-color: #10b981 !important;
+      }
+      @media (max-width: 640px) {
+        .video-search-card {
+          gap: 10px;
+          padding: 8px 10px;
+        }
+        .video-search-thumb-wrap {
+          width: 76px;
+          height: 48px;
+          flex-shrink: 0;
+        }
+        .video-search-details {
+          flex: 1 1 auto;
+          min-width: 0;
+        }
+        .video-search-title {
+          font-size: 12px;
+          line-height: 1.3;
+        }
+        .video-search-author {
+          font-size: 11px;
+        }
+        .video-search-select-btn {
+          padding: 6px 10px !important;
+          font-size: 11px !important;
+          flex-shrink: 0;
+        }
       }
       .room-search-loading,
       .room-search-empty {
@@ -976,6 +993,162 @@
         -webkit-box-shadow: 0 0 0 30px #0a0a0a inset !important;
         -webkit-text-fill-color: var(--text-main) !important;
         transition: background-color 5000s ease-in-out 0s;
+      }
+
+      /* ========================================================= */
+      /* LOCKED FEATURE WHITE TEXT VS NORMAL BUTTON TEXT FIX      */
+      /* ========================================================= */
+      .primary-btn:not(.locked-feature-btn) {
+        color: #000000 !important;
+      }
+      .primary-btn:not(.locked-feature-btn) > span {
+        color: #000000 !important;
+      }
+      .locked-feature-btn,
+      .locked-feature-btn *,
+      #btn-lib-add-video.locked-feature-btn,
+      #btn-lib-create-room.locked-feature-btn {
+        color: #ffffff !important;
+      }
+      .locked-feature-btn:hover,
+      .locked-feature-btn:hover * {
+        color: #ffffff !important;
+      }
+
+      /* ========================================================= */
+      /* SKELETON LOADING STATES                                   */
+      /* ========================================================= */
+      @keyframes shimmer-wave {
+        0% {
+          background-position: -200% 0;
+        }
+        100% {
+          background-position: 200% 0;
+        }
+      }
+
+      .skeleton-shimmer {
+        background: linear-gradient(
+          90deg,
+          rgba(255, 255, 255, 0.03) 25%,
+          rgba(255, 255, 255, 0.09) 50%,
+          rgba(255, 255, 255, 0.03) 75%
+        ) !important;
+        background-size: 200% 100% !important;
+        animation: shimmer-wave 1.6s ease-in-out infinite !important;
+      }
+
+      .skeleton-room-card {
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        min-height: 220px;
+        pointer-events: none;
+      }
+
+      .skeleton-room-thumb {
+        aspect-ratio: 16 / 9;
+        width: 100%;
+        background: rgba(255, 255, 255, 0.04);
+      }
+
+      .skeleton-room-body {
+        padding: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        flex: 1;
+      }
+
+      .skeleton-line {
+        height: 12px;
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.05);
+      }
+
+      .skeleton-line.title {
+        height: 16px;
+        width: 80%;
+      }
+
+      .skeleton-line.subtitle {
+        height: 12px;
+        width: 50%;
+      }
+
+      .skeleton-ticket-card {
+        display: flex;
+        gap: 12px;
+        padding: 14px 16px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        background: rgba(255, 255, 255, 0.03);
+        margin-bottom: 8px;
+        align-items: center;
+        pointer-events: none;
+      }
+
+      .skeleton-ticket-avatar {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        flex-shrink: 0;
+        background: rgba(255, 255, 255, 0.05);
+      }
+
+      .skeleton-ticket-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      /* ========================================================= */
+      /* ROOM PLAYER LOADING PROGRESS BAR                          */
+      /* ========================================================= */
+      .room-player-loading-bar {
+        position: absolute;
+        top: 14px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 25;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 14px;
+        background: rgba(10, 10, 14, 0.78);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 20px;
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.25s ease;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+      }
+      .room-player-loading-bar.active {
+        opacity: 0.95;
+      }
+      .room-player-loading-bar .loading-pulse-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #ffffff;
+        box-shadow: 0 0 8px rgba(255, 255, 255, 0.85);
+        animation: pulseLoading 1.2s infinite ease-in-out;
+      }
+      @keyframes pulseLoading {
+        0%, 100% { transform: scale(0.8); opacity: 0.4; }
+        50% { transform: scale(1.3); opacity: 1; }
+      }
+      .room-player-loading-bar span#room-player-loading-text {
+        font-size: 11.5px;
+        font-weight: 600;
+        color: #ffffff;
+        letter-spacing: 0.2px;
       }
 
       .primary-btn {
@@ -2641,10 +2814,10 @@
 
       #modal-room-user-miniature .modal-content,
       #room-miniature-card {
-        width: min(94vw, 940px) !important;
-        max-width: 940px !important;
-        aspect-ratio: 16 / 9 !important;
-        max-height: 88vh !important;
+        width: min(94vw, 480px) !important;
+        max-width: 480px !important;
+        aspect-ratio: auto !important;
+        max-height: 90vh !important;
         border-radius: 22px !important;
         background: rgba(6, 6, 9, 0.45) !important;
         backdrop-filter: blur(28px) saturate(190%) !important;
@@ -5236,24 +5409,28 @@
         flex-shrink: 0;
       }
       .support-card-priority.high {
-        background: rgba(255, 255, 255, 0.12);
-        border: 1px solid rgba(255, 255, 255, 0.24);
-        color: #ffffff;
+        background: rgba(239, 68, 68, 0.18) !important;
+        border: 1px solid rgba(239, 68, 68, 0.5) !important;
+        color: #ff6b6b !important;
+        font-weight: 800 !important;
       }
       .support-card-priority.medium {
-        background: rgba(255, 255, 255, 0.06);
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        color: rgba(255, 255, 255, 0.85);
+        background: rgba(245, 158, 11, 0.18) !important;
+        border: 1px solid rgba(245, 158, 11, 0.45) !important;
+        color: #fbbf24 !important;
+        font-weight: 700 !important;
       }
       .support-card-priority.low {
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        color: rgba(255, 255, 255, 0.65);
+        background: rgba(16, 185, 129, 0.14) !important;
+        border: 1px solid rgba(16, 185, 129, 0.35) !important;
+        color: #34d399 !important;
+        font-weight: 700 !important;
       }
       .support-card-priority.pro {
-        background: #ffffff;
-        color: #000000;
-        border: none;
+        background: #ffffff !important;
+        color: #000000 !important;
+        border: none !important;
+        font-weight: 800 !important;
       }
       .support-sidebar-footer {
         padding: 10px 16px;
@@ -5388,12 +5565,11 @@
         font-weight: 600;
       }
       .support-priority-chip {
-        padding: 2px 8px;
-        border-radius: 100px;
-        background: #ffffff;
-        color: #000000;
-        font-size: 10.5px;
-        font-weight: 800;
+        display: inline-flex;
+        align-items: center;
+        background: transparent !important;
+        padding: 0 !important;
+        border: none !important;
       }
       .support-action-btn {
         width: auto !important;
@@ -5839,15 +6015,19 @@
         40% { opacity: 1; transform: scale(1.2); }
       }
       .support-templates-dock {
+        display: none;
         flex-direction: row;
         overflow-x: auto;
-        gap: 8px;
-        padding: 8px 20px;
-        background: rgba(14, 14, 18, 0.82);
+        gap: 6px;
+        padding: 6px 16px;
+        background: rgba(14, 14, 18, 0.88);
         backdrop-filter: blur(28px) saturate(180%);
         -webkit-backdrop-filter: blur(28px) saturate(180%);
         border-top: 1px solid rgba(255, 255, 255, 0.08);
         scrollbar-width: none;
+      }
+      .support-templates-dock::-webkit-scrollbar {
+        display: none;
       }
       .support-composer-dock {
         flex-shrink: 0;
@@ -5859,12 +6039,14 @@
         display: flex;
         flex-direction: column;
         gap: 8px;
+        box-sizing: border-box;
       }
       .support-composer-inner {
         display: flex;
-        gap: 10px;
-        align-items: center;
+        gap: 8px;
+        align-items: flex-end;
         width: 100%;
+        box-sizing: border-box;
       }
       .support-compose-attach-btn {
         width: 42px;
@@ -5894,7 +6076,7 @@
         background: rgba(255, 255, 255, 0.05);
         backdrop-filter: blur(18px);
         -webkit-backdrop-filter: blur(18px);
-        padding: 11px 16px;
+        padding: 10px 14px;
         color: #ffffff;
         font-size: 13.5px;
         font-family: inherit;
@@ -5904,6 +6086,12 @@
         min-height: 42px;
         line-height: 1.4;
         transition: border-color 0.2s, background 0.2s;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        box-sizing: border-box;
+      }
+      .support-composer-inner textarea#support-msg-input::-webkit-scrollbar {
+        display: none;
       }
       .support-composer-inner textarea#support-msg-input:focus {
         border-color: rgba(255, 255, 255, 0.38);
@@ -5911,26 +6099,77 @@
       }
       .support-send-btn {
         width: auto !important;
-        padding: 0 18px !important;
+        padding: 0 16px !important;
         border-radius: 12px !important;
         height: 42px !important;
         background: #ffffff !important;
         color: #000000 !important;
         font-weight: 700 !important;
+        font-size: 13px !important;
         border: none !important;
         backdrop-filter: blur(16px) !important;
         -webkit-backdrop-filter: blur(16px) !important;
         cursor: pointer !important;
-        display: flex !important;
+        display: inline-flex !important;
         align-items: center !important;
+        justify-content: center !important;
         gap: 6px !important;
         box-shadow: 0 4px 16px rgba(255, 255, 255, 0.22) !important;
         flex-shrink: 0 !important;
         transition: all 0.2s ease !important;
+        white-space: nowrap !important;
+        box-sizing: border-box !important;
       }
       .support-send-btn:hover {
         transform: translateY(-1px);
         box-shadow: 0 6px 22px rgba(255, 255, 255, 0.35) !important;
+      }
+      @media (max-width: 768px) {
+        .support-ticket-header {
+          flex-direction: column !important;
+          align-items: stretch !important;
+          padding: 10px 12px !important;
+          gap: 8px !important;
+        }
+        .support-header-left {
+          width: 100% !important;
+        }
+        .support-header-actions {
+          display: flex !important;
+          align-items: center !important;
+          gap: 6px !important;
+          overflow-x: auto !important;
+          scrollbar-width: none !important;
+          width: 100% !important;
+          justify-content: flex-start !important;
+          padding-top: 2px !important;
+        }
+        .support-header-actions .support-action-btn {
+          flex-shrink: 0 !important;
+          padding: 6px 10px !important;
+          font-size: 11.5px !important;
+        }
+        .support-composer-dock {
+          padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px)) !important;
+        }
+        .support-composer-inner {
+          gap: 6px !important;
+        }
+        .support-compose-attach-btn {
+          width: 38px !important;
+          height: 38px !important;
+        }
+        .support-composer-inner textarea#support-msg-input {
+          font-size: 13px !important;
+          padding: 8px 11px !important;
+          min-height: 38px !important;
+          max-height: 80px !important;
+        }
+        .support-send-btn {
+          height: 38px !important;
+          padding: 0 12px !important;
+          font-size: 12px !important;
+        }
       }
       .support-composer-hint {
         font-size: 11px;
@@ -6675,18 +6914,53 @@
      margin-bottom: 16px;
   }
   
-  /* Fix the default buttons to look more TikTok-like */
-  #view-profile-actions {
+  /* Fix the default buttons to look more TikTok-like and avoid mobile overflow */
+  #view-profile-actions,
+  #mini-user-actions-row {
+     display: flex !important;
      flex-direction: row !important;
+     flex-wrap: wrap !important;
      gap: 8px !important;
+     width: 100% !important;
+     max-width: 100% !important;
+     box-sizing: border-box !important;
+     align-items: center !important;
   }
   
-  #view-profile-actions button {
-     width: auto !important;
-     padding: 8px 24px !important;
-     font-size: 15px !important;
+  #view-profile-actions button,
+  #mini-user-actions-row button {
+     box-sizing: border-box !important;
+     font-size: 13.5px !important;
      font-weight: 600 !important;
-     border-radius: 4px !important;
+     border-radius: 10px !important;
+  }
+
+  #view-profile-actions #btn-dm-modal,
+  #mini-user-actions-row #mini-btn-primary-action {
+     flex: 1 1 auto !important;
+     min-width: 120px !important;
+     max-width: 100% !important;
+     padding: 8px 14px !important;
+     font-size: 13.5px !important;
+     font-weight: 700 !important;
+     white-space: nowrap !important;
+     text-align: center !important;
+  }
+
+  #view-profile-actions #btn-like-profile,
+  #view-profile-actions #btn-gift-lumens,
+  #view-profile-actions #btn-report-profile,
+  #mini-user-actions-row #mini-btn-like-profile,
+  #mini-user-actions-row #mini-btn-gift,
+  #mini-user-actions-row #mini-btn-report {
+     flex: 0 0 auto !important;
+     width: auto !important;
+     padding: 7px 11px !important;
+     font-size: 13px !important;
+     display: inline-flex !important;
+     align-items: center !important;
+     justify-content: center !important;
+     white-space: nowrap !important;
   }
   
   #view-profile-actions .btn-close-modal {
@@ -7208,19 +7482,24 @@
   .tiktok-profile-actions-wrap {
     display: flex !important;
     align-items: center !important;
-    gap: 10px !important;
-    position: absolute !important;
-    top: 14px !important;
-    right: 8px !important;
-    margin: 0 !important;
+    gap: 8px !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 8px 0 16px 0 !important;
     z-index: 20 !important;
+    box-sizing: border-box !important;
   }
 
   #view-profile-actions {
     display: flex !important;
     flex-direction: row !important;
+    flex-wrap: wrap !important;
     gap: 8px !important;
     align-items: center !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   #view-bio {
@@ -7720,7 +7999,7 @@
 
       <div class="auth-left">
         <div id="auth-left-reg">
-          <img src="https://s6.iimage.su/s/16/gCrqWaZxLG89wTzFtrJWUC3v29FIwSjhGbnij4ObO.png" alt="Logo" style="height: 72px; margin-bottom: 20px; border-radius: 8px; animation: slideUpFade 0.6s ease-out forwards; opacity: 0;">
+          <img src="/logo.png" onerror="this.onerror=null; this.src='https://s6.iimage.su/s/16/gCrqWaZxLG89wTzFtrJWUC3v29FIwSjhGbnij4ObO.png';" alt="COWIO" style="height: 72px; margin-bottom: 20px; border-radius: 8px; animation: slideUpFade 0.6s ease-out forwards; opacity: 0; object-fit: contain;">
           <h1>Добро пожаловать</h1>
           <p class="subtitle">
             Платформа нового поколения для общения, обмена идеями и создания
@@ -7744,7 +8023,7 @@
         </div>
 
         <div id="auth-left-login" style="display: none">
-          <img src="https://s6.iimage.su/s/16/gCrqWaZxLG89wTzFtrJWUC3v29FIwSjhGbnij4ObO.png" alt="Logo" style="height: 72px; margin-bottom: 20px; border-radius: 8px; animation: slideUpFade 0.6s ease-out forwards; opacity: 0;">
+          <img src="/logo.png" onerror="this.onerror=null; this.src='https://s6.iimage.su/s/16/gCrqWaZxLG89wTzFtrJWUC3v29FIwSjhGbnij4ObO.png';" alt="COWIO" style="height: 72px; margin-bottom: 20px; border-radius: 8px; animation: slideUpFade 0.6s ease-out forwards; opacity: 0; object-fit: contain;">
           <h1>С возвращением!</h1>
           <p class="subtitle">
             Рады видеть вас снова. Войдите, чтобы продолжить общение, находить
@@ -7995,7 +8274,7 @@
             <line x1="4" x2="20" y1="18" y2="18"></line>
           </svg>
         </button>
-        <div class="lobby-app-bar-brand" onclick="if(window.Router) { Router.navigate('/lobby'); } else { window.history.pushState({}, '', '/lobby'); }" style="cursor: pointer;"><img src="https://s6.iimage.su/s/16/gCrqWaZxLG89wTzFtrJWUC3v29FIwSjhGbnij4ObO.png" alt="COWIO" style="height: 44px; object-fit: contain;"></div>
+        <div class="lobby-app-bar-brand" onclick="if(window.Router) { Router.navigate('/lobby'); } else { window.history.pushState({}, '', '/lobby'); }" style="cursor: pointer;"><img src="/logo.png" onerror="this.onerror=null; this.src='https://s6.iimage.su/s/16/gCrqWaZxLG89wTzFtrJWUC3v29FIwSjhGbnij4ObO.png';" alt="COWIO" style="height: 44px; object-fit: contain;"></div>
         <div class="tiktok-search-container"><input type="text" id="search-rooms" placeholder="Поиск комнат по названию..."></div>
         
       <div class="tiktok-right-container">
@@ -8123,7 +8402,29 @@
             
           </header>
 
-          <div class="rooms-grid" id="rooms-grid"></div>
+          <div class="rooms-grid" id="rooms-grid">
+            <div class="room-card skeleton-room-card">
+              <div class="room-preview skeleton-room-thumb skeleton-shimmer"></div>
+              <div class="room-info skeleton-room-body">
+                <div class="skeleton-line title skeleton-shimmer"></div>
+                <div class="skeleton-line subtitle skeleton-shimmer"></div>
+              </div>
+            </div>
+            <div class="room-card skeleton-room-card">
+              <div class="room-preview skeleton-room-thumb skeleton-shimmer"></div>
+              <div class="room-info skeleton-room-body">
+                <div class="skeleton-line title skeleton-shimmer"></div>
+                <div class="skeleton-line subtitle skeleton-shimmer"></div>
+              </div>
+            </div>
+            <div class="room-card skeleton-room-card">
+              <div class="room-preview skeleton-room-thumb skeleton-shimmer"></div>
+              <div class="room-info skeleton-room-body">
+                <div class="skeleton-line title skeleton-shimmer"></div>
+                <div class="skeleton-line subtitle skeleton-shimmer"></div>
+              </div>
+            </div>
+          </div>
         </main>
 
         <main class="rooms-main" id="section-library" style="display: none">
@@ -8172,7 +8473,27 @@
           </div>
 
           <div id="library-grid" class="rooms-grid">
-            <!-- Videos inject here -->
+            <div class="room-card skeleton-room-card">
+              <div class="room-preview skeleton-room-thumb skeleton-shimmer"></div>
+              <div class="room-info skeleton-room-body">
+                <div class="skeleton-line title skeleton-shimmer"></div>
+                <div class="skeleton-line subtitle skeleton-shimmer"></div>
+              </div>
+            </div>
+            <div class="room-card skeleton-room-card">
+              <div class="room-preview skeleton-room-thumb skeleton-shimmer"></div>
+              <div class="room-info skeleton-room-body">
+                <div class="skeleton-line title skeleton-shimmer"></div>
+                <div class="skeleton-line subtitle skeleton-shimmer"></div>
+              </div>
+            </div>
+            <div class="room-card skeleton-room-card">
+              <div class="room-preview skeleton-room-thumb skeleton-shimmer"></div>
+              <div class="room-info skeleton-room-body">
+                <div class="skeleton-line title skeleton-shimmer"></div>
+                <div class="skeleton-line subtitle skeleton-shimmer"></div>
+              </div>
+            </div>
           </div>
         </main>
 
@@ -8343,7 +8664,27 @@
 
               <!-- Tickets List -->
               <div id="support-tickets-list" class="support-tickets-feed">
-                <!-- Tickets generated dynamically -->
+                <div class="skeleton-ticket-card">
+                  <div class="skeleton-ticket-avatar skeleton-shimmer"></div>
+                  <div class="skeleton-ticket-content">
+                    <div class="skeleton-line skeleton-shimmer" style="width: 75%; height: 14px;"></div>
+                    <div class="skeleton-line skeleton-shimmer" style="width: 45%; height: 10px;"></div>
+                  </div>
+                </div>
+                <div class="skeleton-ticket-card">
+                  <div class="skeleton-ticket-avatar skeleton-shimmer"></div>
+                  <div class="skeleton-ticket-content">
+                    <div class="skeleton-line skeleton-shimmer" style="width: 60%; height: 14px;"></div>
+                    <div class="skeleton-line skeleton-shimmer" style="width: 40%; height: 10px;"></div>
+                  </div>
+                </div>
+                <div class="skeleton-ticket-card">
+                  <div class="skeleton-ticket-avatar skeleton-shimmer"></div>
+                  <div class="skeleton-ticket-content">
+                    <div class="skeleton-line skeleton-shimmer" style="width: 80%; height: 14px;"></div>
+                    <div class="skeleton-line skeleton-shimmer" style="width: 50%; height: 10px;"></div>
+                  </div>
+                </div>
               </div>
 
               <!-- Sidebar Footer -->
@@ -9224,6 +9565,10 @@
               </button>
           </div>
           <div class="video-container glass-panel">
+            <div id="room-player-loading-bar" class="room-player-loading-bar" style="display: none;">
+              <span class="loading-pulse-dot"></span>
+              <span id="room-player-loading-text">Загрузка видео...</span>
+            </div>
             <button id="btn-exit-fullscreen" style="display: none; position: absolute; top: 20px; right: 20px; z-index: 1000; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2); border-radius: 12px; width: 44px; height: 44px; color: #fff; cursor: pointer; align-items: center; justify-content: center; backdrop-filter: blur(10px); transition: all 0.3s ease;">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>
             </button>

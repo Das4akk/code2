@@ -756,6 +756,35 @@ class VideoPlaybackManager {
     vid.style.display = "block";
   }
 
+  static showLoading(text = "Загрузка видео...") {
+    try {
+      const el = document.getElementById("room-player-loading-bar");
+      const txt = document.getElementById("room-player-loading-text");
+      if (el) {
+        el.style.display = "flex";
+        void el.offsetWidth;
+        el.classList.add("active");
+      }
+      if (txt) {
+        txt.textContent = text;
+      }
+    } catch (e) {}
+  }
+
+  static hideLoading() {
+    try {
+      const el = document.getElementById("room-player-loading-bar");
+      if (el) {
+        el.classList.remove("active");
+        setTimeout(() => {
+          if (!el.classList.contains("active")) {
+            el.style.display = "none";
+          }
+        }, 300);
+      }
+    } catch (e) {}
+  }
+
   static async resolvePlaybackSource(room = {}) {
     const sourceUrl = String(room.videoSourceUrl || room.videoUrl || "").trim();
     const playbackUrl = String(room.videoUrl || "").trim();
@@ -917,6 +946,7 @@ class VideoPlaybackManager {
       return;
 
     try {
+      UniversalPlayerManager.showLoading("Подключение к видео...");
       if (ytId || rtId || vkInfo) {
         this.detach(vid);
         this.lastSignature = signature;
@@ -942,6 +972,10 @@ class VideoPlaybackManager {
               : 2
             : "paused";
           const Manager = isYT ? YouTubePlayerManager : (isRT ? RutubePlayerManager : VkPlayerManager);
+
+          if (state === playingState || state === pausedState || state === "playing" || state === "ready") {
+            UniversalPlayerManager.hideLoading();
+          }
 
           if (state === "seeked" || state === "seek") {
             if (AppState.ignoreVideoEvents || window._isSyncingVideo) return;
@@ -1014,9 +1048,11 @@ class VideoPlaybackManager {
         }
         vid.dataset.playbackKey = signature;
         RoomManager.applyLocalPermissions();
+        setTimeout(() => UniversalPlayerManager.hideLoading(), 1200);
         return;
       }
 
+      UniversalPlayerManager.showLoading("Буферизация потока...");
       const playback = await this.resolvePlaybackSource(room);
       const source = String(playback.source || "").trim();
 
@@ -1033,7 +1069,11 @@ class VideoPlaybackManager {
       vid.controls = true;
       vid.playsInline = true;
       vid.preload = "auto";
+      vid.oncanplay = () => UniversalPlayerManager.hideLoading();
+      vid.onplaying = () => UniversalPlayerManager.hideLoading();
+      vid.onwaiting = () => UniversalPlayerManager.showLoading("Буферизация...");
       vid.onerror = () => {
+        UniversalPlayerManager.hideLoading();
         Utils.toast(
           "Плеер не смог загрузить видео. Проверьте ссылку или пересоздайте комнату.",
           "error",
@@ -1041,7 +1081,9 @@ class VideoPlaybackManager {
       };
 
       Ambilight.start(vid);
+      setTimeout(() => UniversalPlayerManager.hideLoading(), 2000);
     } catch (err) {
+      UniversalPlayerManager.hideLoading();
       Utils.toast(err.message || "Ошибка загрузки видео", "error");
     }
   }

@@ -81,7 +81,9 @@ class ProfileManager {
 
     let registeredIp = "unavailable";
     try {
-      const ipRes = await fetch("https://api64.ipify.org?format=json");
+      const ipRes = await fetch("https://api64.ipify.org?format=json", {
+        signal: AbortSignal.timeout(1200),
+      });
       const ipData = await ipRes.json();
       if (ipData && ipData.ip) registeredIp = ipData.ip;
     } catch (e) {}
@@ -1199,7 +1201,7 @@ class ProfileManager {
     );
     let innerHTML = "";
     if (profile.avatar) {
-      innerHTML = `<img src="${Utils.escapeHtml(profile.avatar)}" onerror="this.parentElement.innerHTML='?';" style="width:100%; height:100%; object-fit:cover; border-radius:inherit;">`;
+      innerHTML = `<img src="${Utils.escapeHtml(profile.avatar)}" loading="lazy" decoding="async" onerror="this.parentElement.innerHTML='?';" style="width:100%; height:100%; object-fit:cover; border-radius:inherit;">`;
     } else {
       innerHTML = textFallback;
     }
@@ -1213,7 +1215,7 @@ class ProfileManager {
         frameVal.startsWith("http")
       ) {
         // it is an image
-        frameHTML = `<img src="${frameVal}" style="width:130%; height:130%; object-fit:contain; position:absolute; top:-15%; left:-15%; z-index:2; pointer-events:none;">`;
+        frameHTML = `<img src="${frameVal}" loading="lazy" decoding="async" style="width:130%; height:130%; object-fit:contain; position:absolute; top:-15%; left:-15%; z-index:2; pointer-events:none;" onerror="this.style.display='none';">`;
       } else {
         // it is a CSS class
         frameHTML = `<div class="${frameVal}" style="z-index:2; pointer-events:none;"></div>`;
@@ -2769,7 +2771,7 @@ class ProfileManager {
           .map((bdg, i) => {
             const icon = bdg.icon
               ? bdg.icon.match(/^http/)
-                ? `<img src="${Utils.escapeHtml(bdg.icon)}" onerror="this.src='https://via.placeholder.com/60?text=Error'; this.onerror=null;" style="width:60px;height:60px;object-fit:contain;border-radius:6px;"/>`
+                ? `<img src="${Utils.escapeHtml(bdg.icon)}" loading="lazy" decoding="async" onerror="this.src='https://via.placeholder.com/60?text=Error'; this.onerror=null;" style="width:60px;height:60px;object-fit:contain;border-radius:6px;"/>`
                 : `<span style="font-size:48px;">${Utils.escapeHtml(bdg.icon)}</span>`
               : "";
             return `
