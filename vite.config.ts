@@ -48,6 +48,56 @@ function apiDevPlugin(): Plugin {
           }
         }
 
+        if (pathname === '/api/emoji-proxy') {
+          try {
+            let rawPath = (url.searchParams.get('path') || url.searchParams.get('url') || '').trim();
+            if (!rawPath) {
+              res.setHeader('Content-Type', 'image/webp');
+              res.end(Buffer.from('UklGRiQAAABXRUJQVlA4IBgAAAAwAQCdASoBAAEAAwA0JaQAA3AA/vuUAAA=', 'base64'));
+              return;
+            }
+            let emojiPath = rawPath
+              .replace(/^https?:\/\/[^\/]+\/(gh\/[^\/]+\/[^@]+@[^\/]+\/|main\/)?/, '')
+              .replace(/^Telegram-Animated-Emojis\/(main\/)?/, '')
+              .replace(/^\/+/, '');
+            try { emojiPath = decodeURIComponent(emojiPath); } catch (e) {}
+            const encodedPath = encodeURI(emojiPath);
+            const mirrors = [
+              `https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/${encodedPath}`,
+              `https://testingcf.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/${encodedPath}`,
+              `https://fastly.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/${encodedPath}`,
+              `https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/${encodedPath}`,
+              `https://cdn.statically.io/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/${encodedPath}`
+            ];
+            try {
+              const fetchWinner = await Promise.any(
+                mirrors.map(async (mirror) => {
+                  const fetchRes = await fetch(mirror, {
+                    signal: AbortSignal.timeout(5000),
+                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+                  });
+                  if (!fetchRes.ok) throw new Error('Not ok: ' + fetchRes.status);
+                  const arrayBuffer = await fetchRes.arrayBuffer();
+                  const contentType = fetchRes.headers.get('content-type') || 'image/webp';
+                  return { buffer: Buffer.from(arrayBuffer), contentType };
+                })
+              );
+              res.setHeader('Content-Type', fetchWinner.contentType);
+              res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+              res.end(fetchWinner.buffer);
+              return;
+            } catch (err) {
+              res.setHeader('Content-Type', 'image/webp');
+              res.end(Buffer.from('UklGRiQAAABXRUJQVlA4IBgAAAAwAQCdASoBAAEAAwA0JaQAA3AA/vuUAAA=', 'base64'));
+              return;
+            }
+          } catch (e: any) {
+            res.setHeader('Content-Type', 'image/webp');
+            res.end(Buffer.from('UklGRiQAAABXRUJQVlA4IBgAAAAwAQCdASoBAAEAAwA0JaQAA3AA/vuUAAA=', 'base64'));
+            return;
+          }
+        }
+
         next();
       });
     },

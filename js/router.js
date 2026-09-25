@@ -18,7 +18,8 @@ class Router {
     "/other": "nav-other",
     "/premium": "nav-premium",
     "/mystery": "nav-mystery",
-    "/help": "nav-support"
+    "/help": "nav-support",
+    "/support": "nav-support"
   };
 
   static isHandlingRoute = false;

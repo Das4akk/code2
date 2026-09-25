@@ -4,9 +4,15 @@
  */
 
 // Core Infrastructure & Shared State
-import Hls from "hls.js";
-if (typeof window !== "undefined") {
-  window.Hls = Hls;
+if (typeof window !== "undefined" && !window.Hls) {
+  try {
+    const hlsMod = await import("hls.js").catch(() => null);
+    if (hlsMod) {
+      window.Hls = hlsMod.default || hlsMod;
+    }
+  } catch (e) {
+    console.warn("[COWIO Core] Hls dynamic load notice:", e);
+  }
 }
 import "./js/firebase.js";
 import "./js/emojis.js";
