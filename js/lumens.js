@@ -438,9 +438,15 @@ class LumenManager {
     `;
 
     try {
-      const { get, ref, getDatabase } = await import("firebase/database");
-      const dbInstance = getDatabase();
-      const snap = await get(ref(dbInstance, "users"));
+      const database = window.db || db;
+      const getFn = window.get || get;
+      const refFn = window.ref || ref;
+
+      if (!database || !getFn || !refFn) {
+        throw new Error("Firebase database not initialized");
+      }
+
+      const snap = await getFn(refFn(database, "users"));
       if (!snap.exists()) {
         listEl.innerHTML = `<div style="text-align:center; padding:20px; color:rgba(255,255,255,0.4); font-size:13px;">Пока нет данных.</div>`;
         return;

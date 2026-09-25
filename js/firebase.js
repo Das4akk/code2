@@ -24,6 +24,13 @@ import {
   update,
   onChildAdded,
   off,
+  query,
+  limitToLast,
+  orderByChild,
+  equalTo,
+  startAt,
+  endAt,
+  child,
 } from "firebase/database";
 
 const firebaseConfig = {
@@ -37,6 +44,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getDatabase(app);
+window.app = app;
+window.auth = auth;
 window.db = db;
 window.ref = ref;
 window.set = set;
@@ -47,6 +56,15 @@ window.remove = remove;
 window.onValue = onValue;
 window.off = off;
 window.onDisconnect = onDisconnect;
+window.onChildAdded = onChildAdded;
+window.query = query;
+window.limitToLast = limitToLast;
+window.orderByChild = orderByChild;
+window.equalTo = equalTo;
+window.startAt = startAt;
+window.endAt = endAt;
+window.child = child;
+window.getDatabase = () => db;
 window.firebaseRef = ref;
 window.firebaseUpdate = update;
 window.firebaseSet = set;
@@ -63,6 +81,14 @@ window.firebaseDatabase = {
   off,
   onChildAdded,
   onDisconnect,
+  query,
+  limitToLast,
+  orderByChild,
+  equalTo,
+  startAt,
+  endAt,
+  child,
+  getDatabase: () => db,
 };
 
 const AppState = {

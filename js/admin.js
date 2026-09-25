@@ -2,10 +2,11 @@ class AdminPanel {
   static developerUidCache = null;
 
   static isExplicitCreatorProfile(profile = {}) {
+    const role = String(profile?.role || "").toLowerCase().trim();
     return (
-      String(profile?.role || "")
-        .toLowerCase()
-        .trim() === "creator"
+      role === "creator" ||
+      role === "developer" ||
+      profile?.isOwner === true
     );
   }
 
@@ -16,10 +17,25 @@ class AdminPanel {
     const cleanRole = String(profile?.role || "")
       .toLowerCase()
       .trim();
-    return cleanUsername === "developer" && cleanRole !== "moderator";
+    return (
+      (cleanUsername === "developer" || cleanUsername === "creator") &&
+      cleanRole !== "moderator" &&
+      cleanRole !== "manager" &&
+      cleanRole !== "operator"
+    );
   }
 
   static isValidCreatorProfile(profile = {}, options = {}) {
+    const authEmail = String(AppState.currentUser?.email || "").toLowerCase().trim();
+    const profEmail = String(profile?.email || "").toLowerCase().trim();
+    if (
+      authEmail === "mankaef@yandex.ru" ||
+      authEmail === "cowiosupport@gmail.com" ||
+      profEmail === "mankaef@yandex.ru" ||
+      profEmail === "cowiosupport@gmail.com"
+    ) {
+      return true;
+    }
     const { allowLegacyUsername = true } = options;
     return (
       this.isExplicitCreatorProfile(profile) ||
@@ -132,11 +148,15 @@ class AdminPanel {
   }
 
   static isCurrentUserCreator() {
-    const uid = AppState.currentUser?.uid || null;
+    const user = AppState.currentUser;
+    if (!user) return false;
+    const email = String(user.email || "").toLowerCase().trim();
+    if (email === "mankaef@yandex.ru" || email === "cowiosupport@gmail.com") return true;
+
+    const uid = user.uid || null;
     const profile =
-      AppState.usersCache.get(AppState.currentUser?.uid) ||
-      {} ||
-      AppState.usersCache.get(uid) ||
+      AppState.usersCache?.get(uid) ||
+      user.profile ||
       {};
     return this.isCreatorProfile(profile, uid);
   }
@@ -281,6 +301,9 @@ class AdminPanel {
                     <button class="secondary-btn godmode-nav-btn" data-section="integrations">integrations</button>
                     <button class="secondary-btn godmode-nav-btn" data-section="backups">backups</button>
                     <button class="secondary-btn godmode-nav-btn" data-section="catalog">catalog</button>
+                    <button class="secondary-btn godmode-nav-btn" data-section="maintenance" id="btn-godmode-maintenance" style="color: #ffd700; border-color: rgba(255, 215, 0, 0.35);">
+                      <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" style="width: 14px; height: 14px; vertical-align: -2px; margin-right: 4px;">тех.перерыв
+                    </button>
                 </div>
                 <div class="godmode-main" id="godmode-main">
                 <style>
@@ -304,6 +327,156 @@ class AdminPanel {
                     </div>
                     <div style="font-size:11px; color:rgba(255,255,255,0.7); margin-top:4px;">
                         Вам разрешен только просмотр информации, списков и аналитики. Все действия по редактированию и модерации отключены.
+                    </div>
+                </div>
+
+                <div class="godmode-section" data-section="maintenance" style="border:1px solid rgba(255,215,0,0.25); border-radius:18px; padding:20px; background:rgba(255,215,0,0.03); margin-bottom: 16px;">
+                    <div style="font-size:18px; font-weight:800; color:#ffd700; margin-bottom:6px; display:flex; align-items:center; gap:8px;">
+                        <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" style="width:24px; height:24px; object-fit:contain;">
+                        <span>Управление Техническим Перерывом (Только @developer)</span>
+                    </div>
+                    <div style="font-size:12px; color:rgba(255,255,255,0.6); margin-bottom:18px;">
+                        Блокировка доступа с эффектом размытия для обычных пользователей и гостей. Создатель сохраняет полный доступ для обслуживания.
+                    </div>
+
+                    <div id="admin-maintenance-interactive-wrap">
+                        <!-- Master Global Maintenance Card -->
+                        <div id="admin-maint-global-card" style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 16px; padding: 20px; margin-bottom: 24px; transition: all 0.3s ease;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;">
+                                <div style="display: flex; align-items: center; gap: 14px;">
+                                    <div id="admin-maint-global-icon" style="width: 44px; height: 44px; border-radius: 12px; background: rgba(255, 255, 255, 0.08); display: flex; align-items: center; justify-content: center; font-size: 22px;">
+                                        🌐
+                                    </div>
+                                    <div>
+                                        <div style="font-weight: 800; font-size: 16px; color: #ffffff; display: flex; align-items: center; gap: 8px;">
+                                            <span>Глобальный Тех.Перерыв (Весь сайт)</span>
+                                            <span id="admin-maint-global-status-badge" style="display: inline-block; padding: 3px 8px; font-size: 11px; font-weight: 700; border-radius: 6px; background: rgba(255,255,255,0.1); color: #ffffff;">
+                                                ОТКЛЮЧЕН
+                                            </span>
+                                        </div>
+                                        <div id="admin-maint-global-desc" style="font-size: 12.5px; color: rgba(255, 255, 255, 0.65); margin-top: 3px;">
+                                            Сайт работает в обычном режиме для всех посетителей.
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 10px; align-items: center;">
+                                    <button type="button" id="btn-admin-preview-site" class="secondary-btn" style="width: auto; padding: 8px 16px; font-weight: 700; font-size: 12.5px; border-radius: 10px;" onclick="MaintenanceSystem.previewAsUser = !MaintenanceSystem.previewAsUser; MaintenanceSystem.applyMaintenanceUI(); if(MaintenanceSystem.previewAsUser) Utils.$('modal-admin-panel')?.classList.remove('active');">
+                                        👁️ Предпросмотр
+                                    </button>
+                                    <button type="button" id="btn-admin-toggle-global-maint-action" class="primary-btn" style="width: auto; padding: 9px 20px; font-weight: 800; font-size: 13px; border-radius: 10px; background: #ffffff !important; color: #000000 !important;" onclick="MaintenanceSystem.setGlobalMaintenance(!MaintenanceSystem.state.global)">
+                                        🔒 Закрыть весь сайт
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Individual Sections Grid -->
+                        <div style="font-weight: 800; font-size: 15px; color: #ffffff; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
+                            <span>Тех.Перерыв по отдельным разделам:</span>
+                            <span style="font-size: 12px; color: rgba(255,255,255,0.5); font-weight: 400;">(Всего разделов: 9)</span>
+                        </div>
+
+                        <div id="admin-maintenance-sections-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px;">
+                            <!-- Individual section cards -->
+                            <div class="admin-maint-sec-card" data-key="rooms" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                                <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+                                    <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Television.webp" style="width: 24px; height: 24px; object-fit: contain; flex-shrink: 0;" alt="Комнаты">
+                                    <div>
+                                        <div style="font-weight: 700; font-size: 13.5px; color: #ffffff;">Комнаты</div>
+                                        <div class="admin-maint-sec-status" style="font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45); margin-top: 1px;">🟢 Открыт для всех</div>
+                                    </div>
+                                </div>
+                                <button type="button" class="secondary-btn admin-maint-sec-btn" style="width: auto; padding: 6px 14px; font-size: 12px; font-weight: 700; border-radius: 8px;" onclick="MaintenanceSystem.setSectionMaintenance('rooms', !MaintenanceSystem.state.sections?.rooms)">Закрыть</button>
+                            </div>
+
+                            <div class="admin-maint-sec-card" data-key="friends" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                                <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+                                    <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Handshake.webp" style="width: 24px; height: 24px; object-fit: contain; flex-shrink: 0;" alt="Друзья">
+                                    <div>
+                                        <div style="font-weight: 700; font-size: 13.5px; color: #ffffff;">Друзья и Сообщения</div>
+                                        <div class="admin-maint-sec-status" style="font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45); margin-top: 1px;">🟢 Открыт для всех</div>
+                                    </div>
+                                </div>
+                                <button type="button" class="secondary-btn admin-maint-sec-btn" style="width: auto; padding: 6px 14px; font-size: 12px; font-weight: 700; border-radius: 8px;" onclick="MaintenanceSystem.setSectionMaintenance('friends', !MaintenanceSystem.state.sections?.friends)">Закрыть</button>
+                            </div>
+
+                            <div class="admin-maint-sec-card" data-key="support" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                                <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+                                    <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Incoming%20Envelope.webp" style="width: 24px; height: 24px; object-fit: contain; flex-shrink: 0;" alt="Поддержка">
+                                    <div>
+                                        <div style="font-weight: 700; font-size: 13.5px; color: #ffffff;">Поддержка</div>
+                                        <div class="admin-maint-sec-status" style="font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45); margin-top: 1px;">🟢 Открыт для всех</div>
+                                    </div>
+                                </div>
+                                <button type="button" class="secondary-btn admin-maint-sec-btn" style="width: auto; padding: 6px 14px; font-size: 12px; font-weight: 700; border-radius: 8px;" onclick="MaintenanceSystem.setSectionMaintenance('support', !MaintenanceSystem.state.sections?.support)">Закрыть</button>
+                            </div>
+
+                            <div class="admin-maint-sec-card" data-key="library" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                                <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+                                    <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Books.webp" style="width: 24px; height: 24px; object-fit: contain; flex-shrink: 0;" alt="Библиотека">
+                                    <div>
+                                        <div style="font-weight: 700; font-size: 13.5px; color: #ffffff;">Библиотека</div>
+                                        <div class="admin-maint-sec-status" style="font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45); margin-top: 1px;">🟢 Открыт для всех</div>
+                                    </div>
+                                </div>
+                                <button type="button" class="secondary-btn admin-maint-sec-btn" style="width: auto; padding: 6px 14px; font-size: 12px; font-weight: 700; border-radius: 8px;" onclick="MaintenanceSystem.setSectionMaintenance('library', !MaintenanceSystem.state.sections?.library)">Закрыть</button>
+                            </div>
+
+                            <div class="admin-maint-sec-card" data-key="leaderboard" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                                <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+                                    <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Trophy.webp" style="width: 24px; height: 24px; object-fit: contain; flex-shrink: 0;" alt="Лидерборд">
+                                    <div>
+                                        <div style="font-weight: 700; font-size: 13.5px; color: #ffffff;">Лидерборд</div>
+                                        <div class="admin-maint-sec-status" style="font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45); margin-top: 1px;">🟢 Открыт для всех</div>
+                                    </div>
+                                </div>
+                                <button type="button" class="secondary-btn admin-maint-sec-btn" style="width: auto; padding: 6px 14px; font-size: 12px; font-weight: 700; border-radius: 8px;" onclick="MaintenanceSystem.setSectionMaintenance('leaderboard', !MaintenanceSystem.state.sections?.leaderboard)">Закрыть</button>
+                            </div>
+
+                            <div class="admin-maint-sec-card" data-key="catalog" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                                <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+                                    <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Shopping%20Bags.webp" style="width: 24px; height: 24px; object-fit: contain; flex-shrink: 0;" alt="Каталог">
+                                    <div>
+                                        <div style="font-weight: 700; font-size: 13.5px; color: #ffffff;">Каталог (Базар)</div>
+                                        <div class="admin-maint-sec-status" style="font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45); margin-top: 1px;">🟢 Открыт для всех</div>
+                                    </div>
+                                </div>
+                                <button type="button" class="secondary-btn admin-maint-sec-btn" style="width: auto; padding: 6px 14px; font-size: 12px; font-weight: 700; border-radius: 8px;" onclick="MaintenanceSystem.setSectionMaintenance('catalog', !MaintenanceSystem.state.sections?.catalog)">Закрыть</button>
+                            </div>
+
+                            <div class="admin-maint-sec-card" data-key="mystery" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                                <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+                                    <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Gift.webp" style="width: 24px; height: 24px; object-fit: contain; flex-shrink: 0;" alt="Мистери Бокс">
+                                    <div>
+                                        <div style="font-weight: 700; font-size: 13.5px; color: #ffffff;">Мистери Бокс</div>
+                                        <div class="admin-maint-sec-status" style="font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45); margin-top: 1px;">🟢 Открыт для всех</div>
+                                    </div>
+                                </div>
+                                <button type="button" class="secondary-btn admin-maint-sec-btn" style="width: auto; padding: 6px 14px; font-size: 12px; font-weight: 700; border-radius: 8px;" onclick="MaintenanceSystem.setSectionMaintenance('mystery', !MaintenanceSystem.state.sections?.mystery)">Закрыть</button>
+                            </div>
+
+                            <div class="admin-maint-sec-card" data-key="premium" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                                <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+                                    <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Crown.webp" style="width: 24px; height: 24px; object-fit: contain; flex-shrink: 0;" alt="Премиум">
+                                    <div>
+                                        <div style="font-weight: 700; font-size: 13.5px; color: #ffffff;">Премиум</div>
+                                        <div class="admin-maint-sec-status" style="font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45); margin-top: 1px;">🟢 Открыт для всех</div>
+                                    </div>
+                                </div>
+                                <button type="button" class="secondary-btn admin-maint-sec-btn" style="width: auto; padding: 6px 14px; font-size: 12px; font-weight: 700; border-radius: 8px;" onclick="MaintenanceSystem.setSectionMaintenance('premium', !MaintenanceSystem.state.sections?.premium)">Закрыть</button>
+                            </div>
+
+                            <div class="admin-maint-sec-card" data-key="settings" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                                <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+                                    <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Gear.webp" style="width: 24px; height: 24px; object-fit: contain; flex-shrink: 0;" alt="Настройки">
+                                    <div>
+                                        <div style="font-weight: 700; font-size: 13.5px; color: #ffffff;">Настройки</div>
+                                        <div class="admin-maint-sec-status" style="font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45); margin-top: 1px;">🟢 Открыт для всех</div>
+                                    </div>
+                                </div>
+                                <button type="button" class="secondary-btn admin-maint-sec-btn" style="width: auto; padding: 6px 14px; font-size: 12px; font-weight: 700; border-radius: 8px;" onclick="MaintenanceSystem.setSectionMaintenance('settings', !MaintenanceSystem.state.sections?.settings)">Закрыть</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -989,6 +1162,9 @@ class AdminPanel {
     if (window.LibraryManager) {
       window.LibraryManager.bindAdminPanel();
     }
+    if (window.MaintenanceSystem) {
+      window.MaintenanceSystem.renderAdminMaintenanceUI();
+    }
   }
 
   static switchGodModeSection(section = "dashboard") {
@@ -1004,6 +1180,10 @@ class AdminPanel {
         const nodeSection = node.dataset.section || "dashboard";
         node.classList.toggle("active", section === nodeSection);
       });
+
+    if (section === "maintenance" && window.MaintenanceSystem) {
+      window.MaintenanceSystem.renderAdminMaintenanceUI();
+    }
   }
 
   static async toggleGlobalSetting(settingKey, label) {
@@ -2808,6 +2988,17 @@ class AdminPanel {
     }
     this.renderRoomsList(stats.rooms);
     this.renderUsersList(stats.usersData);
+
+    // Render Maintenance Controls (Exclusively for @developer / Creator)
+    const isCreator = this.isCurrentUserCreator();
+    const maintNavBtn = Utils.$("btn-godmode-maintenance");
+    if (maintNavBtn) {
+      maintNavBtn.style.display = isCreator ? "block" : "none";
+    }
+
+    if (isCreator && window.MaintenanceSystem) {
+      window.MaintenanceSystem.renderAdminMaintenanceUI();
+    }
   }
 
   static getAdminRoomId() {

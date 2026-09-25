@@ -26,6 +26,7 @@ import "./js/room.js";
 import "./js/catalog.js";
 import "./js/fps.js";
 import "./js/router.js";
+import "./js/maintenance.js";
 
 // Application Runner & Initialization
 const runApp = () => {
@@ -795,10 +796,15 @@ window.loadLeaderboard = async function() {
     listEl.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding: 24px;">Загрузка рейтинга...</div>';
     
     try {
-        const { get, ref, getDatabase } = await import("firebase/database");
-        const db = getDatabase();
+        const database = window.db || (typeof getDatabase === "function" ? getDatabase() : null);
+        const getFn = window.get;
+        const refFn = window.ref;
 
-        const snap = await get(ref(db, "users"));
+        if (!database || !getFn || !refFn) {
+            throw new Error("Firebase database not initialized");
+        }
+
+        const snap = await getFn(refFn(database, "users"));
         if (!snap.exists()) {
             listEl.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding: 24px;">Пока нет данных.</div>';
             return;

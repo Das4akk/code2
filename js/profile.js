@@ -2509,15 +2509,15 @@ class ProfileManager {
       }
     }
 
-    const giftBtn = Utils.$("btn-gift-lumens");
+    const lumensGiftBtn = Utils.$("btn-gift-lumens");
     const currentUid = AppState.currentUser?.uid;
-    if (giftBtn) {
+    if (lumensGiftBtn) {
       if (currentUid && targetUid !== currentUid) {
-        giftBtn.style.display = "inline-flex";
-        giftBtn.onclick = () => ProfileManager.giftLumens(targetUid, profile);
+        lumensGiftBtn.style.display = "inline-flex";
+        lumensGiftBtn.onclick = () => ProfileManager.giftLumens(targetUid, profile);
       } else {
-        giftBtn.style.display = "none";
-        giftBtn.onclick = null;
+        lumensGiftBtn.style.display = "none";
+        lumensGiftBtn.onclick = null;
       }
     }
 
@@ -3003,47 +3003,112 @@ class ProfileManager {
     avatarEl.innerHTML = ProfileManager.getAvatarHtml(profile);
 
     const actionBtn = Utils.$("btn-dm-modal");
-                        if (targetUid === AppState.currentUser.uid) {
+    const giftBtn = Utils.$("btn-gift-lumens");
+    const reportBtn = Utils.$("btn-report-profile");
+    const manageUserBtn = Utils.$("btn-admin-manage-user");
+    const isSelf = targetUid === AppState.currentUser?.uid;
+
+    if (isSelf) {
       actionBtn.style.display = "inline-flex";
       actionBtn.innerText = "Изменить профиль";
       actionBtn.className = "primary-btn";
-      actionBtn.style.color = "#FFFFFF";
-      actionBtn.style.background = "rgba(255, 255, 255, 0.1)";
+      actionBtn.style.color = "#000000";
+      actionBtn.style.background = "#FFFFFF";
       actionBtn.style.border = "none";
-      actionBtn.style.padding = "6px 16px";
-      actionBtn.style.fontSize = "14px";
+      actionBtn.style.padding = "8px 16px";
+      actionBtn.style.fontSize = "13.5px";
+      actionBtn.style.fontWeight = "700";
+      actionBtn.style.borderRadius = "10px";
+      actionBtn.style.boxShadow = "0 4px 14px rgba(255, 255, 255, 0.18)";
+      actionBtn.style.cursor = "pointer";
       actionBtn.onclick = () => {
-         
-         ProfileManager.openEditProfileModal();
+        ProfileManager.openEditProfileModal();
       };
       
-          } else {
+      if (giftBtn) {
+        giftBtn.style.display = "none";
+        giftBtn.onclick = null;
+      }
+      if (reportBtn) {
+        reportBtn.style.display = "none";
+        reportBtn.onclick = null;
+      }
+    } else {
       actionBtn.style.display = "inline-flex";
       actionBtn.className = "primary-btn";
-      actionBtn.style.background = "#FFFFFF"; actionBtn.style.color = "#000000";
-      actionBtn.style.padding = "6px 16px";
-      actionBtn.style.fontSize = "14px";
-      actionBtn.innerText = "Написать сообщение";
+      actionBtn.style.background = "#FFFFFF";
+      actionBtn.style.color = "#000000";
+      actionBtn.style.padding = "8px 16px";
+      actionBtn.style.fontSize = "13.5px";
+      actionBtn.style.fontWeight = "700";
+      actionBtn.style.borderRadius = "10px";
       actionBtn.style.border = "none";
+      actionBtn.style.boxShadow = "0 4px 14px rgba(255, 255, 255, 0.18)";
+      actionBtn.style.cursor = "pointer";
       
-      const myFriendsSnap = await get(
-        ref(db, `users/${AppState.currentUser.uid}/friends/${targetUid}`),
-      );
-      const isFriend =
-        myFriendsSnap.exists() && myFriendsSnap.val().status === "accepted";
-      
-      if (isFriend) {
-        actionBtn.innerText = "Написать сообщение";
+      if (giftBtn && AppState.currentUser) {
+        giftBtn.style.display = "inline-flex";
+        giftBtn.onclick = () => ProfileManager.giftLumens(targetUid, profile);
+      }
+      if (reportBtn) {
+        reportBtn.style.display = "inline-flex";
+        reportBtn.onclick = () => {
+          if (window.ReportManager) ReportManager.openProfileReportModal(targetUid);
+        };
+      }
+
+      if (AppState.currentUser) {
+        const myFriendsSnap = await get(
+          ref(db, `users/${AppState.currentUser.uid}/friends/${targetUid}`),
+        );
+        const isFriend =
+          myFriendsSnap.exists() && myFriendsSnap.val().status === "accepted";
+        
+        if (isFriend) {
+          actionBtn.innerText = "Написать сообщение";
+          actionBtn.onclick = () => {
+            DirectMessages.openChat(targetUid, profile.name);
+          };
+        } else {
+          actionBtn.innerText = "Добавить в друзья";
+          actionBtn.onclick = () => {
+            FriendsManager.sendFriendRequest(targetUid);
+          };
+        }
+      } else {
+        actionBtn.innerText = "Войти для общения";
         actionBtn.onclick = () => {
-          
-          DirectMessages.openChat(targetUid, profile.name);
+          if (window.Auth) Auth.openAuthModal();
+        };
+      }
+    }
+
+    // Button: "Управление пользователем" for staff (Moderators, Admins, Creator)
+    if (manageUserBtn) {
+      const hasStaffAccess = typeof AdminPanel !== "undefined" && (
+        AdminPanel.isCurrentUserAdmin() ||
+        AdminPanel.isCurrentUserCreator()
+      );
+      if (hasStaffAccess && targetUid) {
+        manageUserBtn.style.display = "inline-flex";
+        manageUserBtn.style.padding = "8px 16px";
+        manageUserBtn.style.fontSize = "13.5px";
+        manageUserBtn.style.fontWeight = "700";
+        manageUserBtn.style.borderRadius = "10px";
+        manageUserBtn.style.border = "1px solid rgba(255, 255, 255, 0.18)";
+        manageUserBtn.style.background = "rgba(255, 255, 255, 0.08)";
+        manageUserBtn.style.backdropFilter = "blur(16px)";
+        manageUserBtn.style.webkitBackdropFilter = "blur(16px)";
+        manageUserBtn.style.color = "#ffffff";
+        manageUserBtn.style.cursor = "pointer";
+        manageUserBtn.style.boxShadow = "0 4px 14px rgba(0, 0, 0, 0.3)";
+        manageUserBtn.onclick = (e) => {
+          e.stopPropagation();
+          AdminPanel.openUserInAdmin(targetUid);
         };
       } else {
-        actionBtn.innerText = "Добавить в друзья";
-        actionBtn.onclick = () => {
-          FriendsManager.sendFriendRequest(targetUid);
-          
-        };
+        manageUserBtn.style.display = "none";
+        manageUserBtn.onclick = null;
       }
     }
     

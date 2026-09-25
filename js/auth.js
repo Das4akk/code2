@@ -424,33 +424,41 @@ class AuthManager {
           }
           AppState.currentUser = user;
           
-          import("firebase/database").then(({ ref, get, remove, getDatabase }) => {
-              const dbase = getDatabase();
-              get(ref(dbase, `users/${user.uid}/force_tutorial`)).then(snap => {
-                  if (snap.exists() && snap.val() === true) {
-                      TutorialManager.startTutorial(true);
-                      remove(ref(dbase, `users/${user.uid}/force_tutorial`));
-                  }
+          if (window.MaintenanceSystem) {
+            window.MaintenanceSystem.applyMaintenanceUI();
+          }
+
+          try {
+            const dbase = window.db;
+            if (dbase && window.ref && window.get && window.remove) {
+              window.get(window.ref(dbase, `users/${user.uid}/force_tutorial`)).then((snap) => {
+                if (snap.exists() && snap.val() === true) {
+                  TutorialManager.startTutorial(true);
+                  window.remove(window.ref(dbase, `users/${user.uid}/force_tutorial`));
+                }
               });
-          });
+            }
+          } catch (e) {}
           
           // --- Like Notifications ---
           let initialLikesLoad = true;
-          import("firebase/database").then(({ onChildAdded, ref, get, getDatabase }) => {
-              const dbase = getDatabase();
-              onChildAdded(ref(dbase, `users/${user.uid}/profile/likedBy`), (snap) => {
-                  if (initialLikesLoad) return;
-                  const likerUid = snap.key;
-                  get(ref(dbase, `users/${likerUid}/profile/name`)).then(nameSnap => {
-                      const likerName = nameSnap.val() || "Кто-то";
-                      get(ref(dbase, `users/${user.uid}/profile/likedBy`)).then(likesSnap => {
-                          const count = likesSnap.exists() ? Object.keys(likesSnap.val()).length : 1;
-                          Utils.toast(`Вы получили лайк от ${likerName} - теперь у вас ${count} лайков в профиле`, "info");
-                      });
+          try {
+            const dbase = window.db;
+            if (dbase && window.ref && window.onChildAdded && window.get) {
+              window.onChildAdded(window.ref(dbase, `users/${user.uid}/profile/likedBy`), (snap) => {
+                if (initialLikesLoad) return;
+                const likerUid = snap.key;
+                window.get(window.ref(dbase, `users/${likerUid}/profile/name`)).then((nameSnap) => {
+                  const likerName = nameSnap.val() || "Кто-то";
+                  window.get(window.ref(dbase, `users/${user.uid}/profile/likedBy`)).then((likesSnap) => {
+                    const count = likesSnap.exists() ? Object.keys(likesSnap.val()).length : 1;
+                    Utils.toast(`Вы получили лайк от ${likerName} - теперь у вас ${count} лайков в профиле`, "info");
                   });
+                });
               });
-              setTimeout(() => initialLikesLoad = false, 3000);
-          });
+              setTimeout(() => (initialLikesLoad = false), 3000);
+            }
+          } catch (e) {}
           // --------------------------
           
           const savedAccounts = JSON.parse(

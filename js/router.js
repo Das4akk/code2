@@ -208,6 +208,9 @@ class Router {
   }
 
   static triggerSectionInit(navId) {
+    if (window.MaintenanceSystem) {
+      window.MaintenanceSystem.applyMaintenanceUI();
+    }
     if (navId === "nav-catalog" && window.CatalogManager) {
       window.CatalogManager.renderCatalog();
     } else if (navId === "nav-library" && window.LibraryManager) {
