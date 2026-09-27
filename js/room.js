@@ -227,7 +227,7 @@ class RoomManager {
     let count = 0;
 
     const skeletons = grid.querySelectorAll(".skeleton-room-card");
-    if (skeletons.length > 0 && AppState.roomsCache && AppState.roomsCache.size > 0) {
+    if (skeletons.length > 0) {
       skeletons.forEach((s) => s.remove());
     }
 
@@ -298,15 +298,27 @@ class RoomManager {
       count++;
     });
 
-    if (count === 0 && !Utils.$("empty-rooms-msg")) {
-      const msg = document.createElement("div");
-      msg.id = "empty-rooms-msg";
-      msg.style.cssText =
-        "color:var(--text-muted); padding:20px; grid-column: 1 / -1;";
-      msg.innerText = search ? "Ничего не найдено" : "Нет активных комнат";
-      grid.appendChild(msg);
-    } else if (count > 0 && Utils.$("empty-rooms-msg"))
-      Utils.$("empty-rooms-msg").remove();
+    const emptyMsgEl = Utils.$("empty-rooms-msg");
+    if (count === 0) {
+      if (!emptyMsgEl) {
+        const msg = document.createElement("div");
+        msg.id = "empty-rooms-msg";
+        msg.style.cssText =
+          "color:rgba(255,255,255,0.6); padding:40px 20px; grid-column: 1 / -1; text-align:center; font-size:15px; font-weight:600; display:flex; flex-direction:column; align-items:center; gap:12px;";
+        msg.innerHTML = `
+          <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Television.webp" style="width:56px;height:56px;object-fit:contain;opacity:0.8;" alt="📺">
+          <div>${search ? 'По вашему запросу ничего не найдено' : 'Сейчас нет активных комнат.<br><span style="font-size:13px;color:rgba(255,255,255,0.4);font-weight:400;">Создайте комнату и пригласите друзей!</span>'}</div>
+        `;
+        grid.appendChild(msg);
+      } else {
+        emptyMsgEl.innerHTML = `
+          <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Television.webp" style="width:56px;height:56px;object-fit:contain;opacity:0.8;" alt="📺">
+          <div>${search ? 'По вашему запросу ничего не найдено' : 'Сейчас нет активных комнат.<br><span style="font-size:13px;color:rgba(255,255,255,0.4);font-weight:400;">Создайте комнату и пригласите друзей!</span>'}</div>
+        `;
+      }
+    } else if (emptyMsgEl) {
+      emptyMsgEl.remove();
+    }
   }
 
   static openRoomModal(roomId = null) {
@@ -696,38 +708,6 @@ class RoomManager {
     }
 
     VideoPlaybackManager.applyRoomVideo(roomData).catch(() => {});
-
-    if (
-      MediaResolverClient.extractYouTubeId(
-        roomData.videoSourceUrl || roomData.videoUrl,
-      )
-    ) {
-      const ytVpnNotice = document.createElement("div");
-      ytVpnNotice.style.cssText =
-        "position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(20,20,20,0.95); backdrop-filter: blur(10px); border: 2px solid #ff4757; border-radius: 16px; padding: 24px; z-index: 10000; color: #fff; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.5); max-width: 90%; width: 320px;";
-      ytVpnNotice.innerHTML = `
-                <div style="font-size: 32px; margin-bottom: 10px;">🔴</div>
-                <div style="font-size: 18px; font-weight: bold; margin-bottom: 10px;">Внимание: YouTube</div>
-                <div style="font-size: 14px; opacity: 0.9; line-height: 1.5; margin-bottom: 20px;">Для корректной загрузки и синхронизации видео с YouTube <b>обязательно включите VPN</b>.</div>
-                <button class="primary-btn" style="width: 100%;" onclick="this.parentElement.remove()">Я включил VPN</button>
-            `;
-      document.body.appendChild(ytVpnNotice);
-    }
-
-    let shareBtn = Utils.$("btn-share-room");
-    if (!shareBtn) {
-      shareBtn = document.createElement("button");
-      shareBtn.id = "btn-share-room";
-      shareBtn.className = "primary-btn";
-      shareBtn.style.width = "auto";
-      shareBtn.style.padding = "10px 16px";
-      shareBtn.innerText = "Поделиться";
-      Utils.$("btn-room-settings").parentNode.appendChild(shareBtn);
-    }
-    shareBtn.onclick = () => {
-      if (window._setRoomTab) window._setRoomTab("users");
-      Utils.toast('Нажмите "Пригласить" рядом с другом в списке', "info");
-    };
 
     // Кнопка настроек доступна оригинальному хосту и Разработчику
     const settingsBtn = Utils.$("btn-room-settings");
@@ -1176,8 +1156,8 @@ class RoomManager {
       } else {
         content = Utils.escapeHtml(msg.text || "");
         content = content.replace(
-          /(\d{1,2}:\d{2})/g,
-          '<span class="timecode-btn" data-time="$1">$1</span>',
+          /(?:(?:(\d{1,2}):)?(\d{1,2}):(\d{2}))/g,
+          '<span class="timecode-btn" data-time="$&" title="Перемотать на $&">⏱️ $&</span>',
         );
       }
 
@@ -1245,8 +1225,7 @@ class RoomManager {
         btn.onclick = () => {
           if (!this.hasPerm("player"))
             return Utils.toast("Нет прав на управление плеером", "error");
-          const parts = btn.dataset.time.split(":");
-          const secs = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+          const secs = Utils.parseTimecode(btn.dataset.time) || 0;
           AppState.ignoreVideoEvents = true;
           if (YouTubePlayerManager.player) {
             YouTubePlayerManager.seek(secs);
@@ -1263,6 +1242,7 @@ class RoomManager {
           }
           setTimeout(() => (AppState.ignoreVideoEvents = false), 500);
           set(syncRef, { type: "seek", state: "playing", time: secs, ts: Date.now() });
+          Utils.toast(`Перемотано на ${btn.dataset.time}`, "info");
         };
       });
       line.querySelectorAll(".chat-profile-link").forEach((btn) => {
@@ -1272,9 +1252,14 @@ class RoomManager {
 
       const chatBox = Utils.$("chat-messages");
       if (chatBox) {
+        const isNearBottom =
+          chatBox.scrollHeight - chatBox.scrollTop - chatBox.clientHeight < 140;
         chatBox.appendChild(line);
-        if (chatBox.childElementCount > 200) chatBox.firstElementChild?.remove();
-        chatBox.scrollTop = chatBox.scrollHeight;
+        // Smart buffer: cap at 100 messages to maintain lightning speed
+        if (chatBox.childElementCount > 100) chatBox.firstElementChild?.remove();
+        if (isNearBottom || isMe) {
+          chatBox.scrollTop = chatBox.scrollHeight;
+        }
       }
     });
     AppState.roomSubscriptions.push(cUnsub);
@@ -1573,31 +1558,23 @@ class RoomManager {
 
     const vid = Utils.$("native-player");
     if (vid) {
-      vid.controls = pPlayer;
+      vid.controls = true;
     }
 
     const overlay = Utils.$("room-video-overlay");
     if (overlay) {
-      overlay.style.pointerEvents = pPlayer ? "none" : "auto";
-      overlay.style.cursor = pPlayer ? "default" : "not-allowed";
-      overlay.onclick = (e) => {
-        if (!this.hasPerm("player")) {
-          e.preventDefault();
-          e.stopPropagation();
-          Utils.toast("Управление воспроизведением доступно только хосту", "info");
-        }
-      };
+      overlay.style.pointerEvents = "none";
     }
 
     const ytContainer = Utils.$("yt-player-container");
     if (ytContainer) {
       const iframe = ytContainer.querySelector("iframe");
       if (iframe) {
-        iframe.style.pointerEvents = pPlayer ? "auto" : "none";
+        iframe.style.pointerEvents = "auto";
       }
     }
     if (VkPlayerManager.iframe) {
-      VkPlayerManager.iframe.style.pointerEvents = pPlayer ? "auto" : "none";
+      VkPlayerManager.iframe.style.pointerEvents = "auto";
     }
 
     Utils.$("chat-input").disabled = !pChat;
@@ -1904,9 +1881,22 @@ class RoomManager {
       const isDirectSeek = d.type === "seek";
       const timeDiff = Math.abs(curTime - targetTime);
 
-      if (isDirectSeek || timeDiff > 1.2) {
+      if (isDirectSeek || timeDiff >= 1.8) {
         Manager.seek(targetTime);
+        if (typeof Manager.setPlaybackRate === "function") Manager.setPlaybackRate(1.0);
+      } else if (state === "playing" && timeDiff > 0.35) {
+        // Drift Smoothing: micro-speed adjustment instead of stuttering audio seek
+        const targetRate = curTime < targetTime ? 1.06 : 0.94;
+        if (typeof Manager.setPlaybackRate === "function") {
+          Manager.setPlaybackRate(targetRate);
+          setTimeout(() => {
+            if (typeof Manager.setPlaybackRate === "function") Manager.setPlaybackRate(1.0);
+          }, 2000);
+        }
+      } else if (timeDiff <= 0.35 && typeof Manager.setPlaybackRate === "function") {
+        Manager.setPlaybackRate(1.0);
       }
+
       if (state === "playing" && currentState !== "playing") {
         Manager.play();
       } else if (state === "paused" && currentState !== "paused") {
@@ -1926,8 +1916,20 @@ class RoomManager {
       window._isSyncingVideo = true;
       AppState.ignoreVideoEvents = true;
 
-      if (Math.abs(vid.currentTime - targetTime) > 1.5) {
+      const isDirectSeek = d.type === "seek";
+      const timeDiff = Math.abs(vid.currentTime - targetTime);
+
+      if (isDirectSeek || timeDiff >= 1.8) {
         vid.currentTime = targetTime;
+        vid.playbackRate = 1.0;
+      } else if (state === "playing" && timeDiff > 0.35) {
+        // Native Drift Smoothing
+        vid.playbackRate = vid.currentTime < targetTime ? 1.06 : 0.94;
+        setTimeout(() => {
+          if (vid) vid.playbackRate = 1.0;
+        }, 2000);
+      } else if (timeDiff <= 0.35) {
+        vid.playbackRate = 1.0;
       }
 
       if (state === "playing" && vid.paused) {
@@ -1946,7 +1948,7 @@ class RoomManager {
       setTimeout(() => {
         AppState.ignoreVideoEvents = false;
         window._isSyncingVideo = false;
-      }, 1500);
+      }, 1200);
     };
 
     if (vid.readyState >= 1) {
@@ -2467,13 +2469,133 @@ class RoomManager {
     }, 1700);
   }
 
-  static stopLoveHearts() {
-    if (this.heartsTimer) {
-      clearInterval(this.heartsTimer);
-      this.heartsTimer = null;
+  static isPipActive = false;
+  static isTheaterActive = false;
+
+  static getCurrentVideoTime() {
+    if (YouTubePlayerManager.player && typeof YouTubePlayerManager.getCurrentTime === "function") {
+      return YouTubePlayerManager.getCurrentTime() || 0;
     }
-    const layer = Utils.$("room-love-hearts");
-    if (layer) layer.innerHTML = "";
+    if (VkPlayerManager.player && typeof VkPlayerManager.getCurrentTime === "function") {
+      return VkPlayerManager.getCurrentTime() || 0;
+    }
+    const vid = Utils.$("native-player");
+    if (vid) return vid.currentTime || 0;
+    return 0;
+  }
+
+  static insertCurrentTimecodeToChat() {
+    const secs = this.getCurrentVideoTime();
+    const formatted = Utils.formatTime(secs);
+    const input = Utils.$("chat-input");
+    if (input) {
+      input.value = input.value ? `${input.value.trim()} ${formatted} ` : `${formatted} `;
+      input.focus();
+      Utils.toast(`Таймкод ${formatted} вставлен в чат`, "info");
+    }
+  }
+
+  static enablePiP() {
+    if (!AppState.currentRoomId) return;
+    this.isPipActive = true;
+    const pipWidget = Utils.$("room-pip-widget");
+    if (!pipWidget) return;
+
+    const currentRoom =
+      AppState.roomsCache?.get(AppState.currentRoomId) ||
+      AppState.currentRoomData ||
+      {};
+    const roomTitle = currentRoom.name || "Комната";
+    const hostName = currentRoom.hostName || "Хост";
+
+    const titleEl = Utils.$("pip-room-title");
+    if (titleEl) titleEl.textContent = roomTitle;
+    const hostEl = Utils.$("pip-room-host");
+    if (hostEl) hostEl.textContent = `Хост: ${hostName}`;
+
+    pipWidget.style.display = "flex";
+    requestAnimationFrame(() => pipWidget.classList.add("active"));
+  }
+
+  static disablePiP() {
+    this.isPipActive = false;
+    const pipWidget = Utils.$("room-pip-widget");
+    if (pipWidget) {
+      pipWidget.classList.remove("active");
+      setTimeout(() => {
+        if (!this.isPipActive) pipWidget.style.display = "none";
+      }, 300);
+    }
+  }
+
+  static returnFromPiPToRoom() {
+    if (!AppState.currentRoomId) return;
+    this.disablePiP();
+    Utils.showScreen("room-screen", true);
+  }
+
+  static shareRoom(roomId = AppState.currentRoomId) {
+    const id = roomId || AppState.currentRoomId;
+    if (!id) return Utils.toast("Комната не выбрана", "error");
+    const room =
+      AppState.roomsCache?.get(id) || AppState.currentRoomData || {};
+    const roomName = room.name || "Комната в COWIO";
+    const shareUrl = `${window.location.origin}/room/${id}`;
+    const text = `Смотри видео вместе со мной в комнате «${roomName}» на COWIO!`;
+
+    if (navigator.share && /mobile|android|iphone/i.test(navigator.userAgent)) {
+      navigator.share({
+        title: roomName,
+        text: text,
+        url: shareUrl,
+      }).catch(() => {});
+      return;
+    }
+
+    const modal = document.createElement("div");
+    modal.className = "modal active";
+    modal.style.zIndex = "100002";
+    modal.innerHTML = `
+      <div class="modal-content glass-panel" style="max-width: 440px; border-radius: 24px; padding: 24px; color: #fff; text-align: center;">
+        <div style="font-size: 20px; font-weight: 800; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Link.webp" style="width: 26px; height: 26px;" alt="🔗">
+          <span>Пригласить друзей</span>
+        </div>
+        <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">
+          Поделитесь ссылкой на комнату «<strong>${Utils.escapeHtml(roomName)}</strong>»
+        </div>
+        <div style="display: flex; gap: 10px; margin-bottom: 16px;">
+          <input type="text" id="share-room-input" readonly value="${shareUrl}" style="flex: 1; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; padding: 10px 14px; color: #fff; font-size: 13px;">
+          <button class="primary-btn" id="btn-share-copy" style="width: auto; padding: 0 16px; border-radius: 12px;">Копировать</button>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <a href="https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(text)}" target="_blank" class="secondary-btn" style="text-decoration: none; padding: 10px; border-radius: 12px; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; background: rgba(0, 136, 204, 0.15); border-color: rgba(0, 136, 204, 0.4); color: #0088cc;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
+            Telegram
+          </a>
+          <a href="https://vk.com/share.php?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(text)}" target="_blank" class="secondary-btn" style="text-decoration: none; padding: 10px; border-radius: 12px; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; background: rgba(0, 119, 255, 0.15); border-color: rgba(0, 119, 255, 0.4); color: #0077ff;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M15.684 0H8.316C2.992 0 0 2.992 0 8.316v7.368C0 21.008 2.992 24 8.316 24h7.368C21.008 24 24 21.008 24 15.684V8.316C24 2.992 21.008 0 15.684 0zm3.692 17.124h-1.744c-.66 0-.864-.525-2.055-1.716-1.04-1.01-1.5-1.144-1.758-1.144-.36 0-.464.103-.464.6v1.657c0 .422-.134.603-1.257.603-1.855 0-3.916-1.124-5.368-3.215-2.185-3.1-2.782-5.43-2.782-5.904 0-.258.103-.495.6-.495h1.744c.443 0 .608.206.783.69 1.134 3.287 3.03 6.172 3.824 6.172.299 0 .433-.134.433-.876v-3.39c-.093-1.35-.794-1.463-.794-1.948 0-.227.186-.454.495-.454h2.74c.371 0 .505.196.505.63v4.585c0 .381.165.515.278.515.227 0 .412-.134.835-.556 1.288-1.442 2.215-3.678 2.215-3.678.124-.268.33-.495.773-.495h1.742c.525 0 .639.268.525.63-.67 3.1-3.09 6.275-3.204 6.42-.227.32-.175.464 0 .742.124.196.536.525 1.216 1.185 1.051 1.02 1.865 1.875 2.081 2.463.227.577-.072.876-.628.876z"/></svg>
+            ВКонтакте
+          </a>
+        </div>
+        <button class="secondary-btn" id="btn-share-close" style="width: 100%; margin-top: 14px; border-radius: 12px; padding: 10px;">Закрыть</button>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    modal.querySelector("#btn-share-copy").onclick = () => {
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        Utils.toast("Ссылка скопирована в буфер обмена!", "success");
+      });
+    };
+    const close = () => {
+      modal.classList.remove("active");
+      setTimeout(() => modal.remove(), 300);
+    };
+    modal.querySelector("#btn-share-close").onclick = close;
+    modal.onclick = (e) => {
+      if (e.target === modal) close();
+    };
   }
 }
 

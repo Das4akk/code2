@@ -1,46 +1,40 @@
 class AdminPanel {
   static developerUidCache = null;
+  static subscriptions = [];
 
   static isExplicitCreatorProfile(profile = {}) {
-    const role = String(profile?.role || "").toLowerCase().trim();
-    return (
-      role === "creator" ||
-      role === "developer" ||
-      profile?.isOwner === true
-    );
+    if (!profile) return false;
+    const role = String(profile.role || "").toLowerCase().trim();
+    if (role === "creator" || role === "developer" || profile.isOwner === true) return true;
+
+    const email = String(profile.email || "").toLowerCase().trim();
+    if (email === "mankaef@yandex.ru" || email === "cowiosupport@gmail.com") return true;
+
+    const username = String(profile.username || "").toLowerCase().trim().replace(/^@/, "");
+    if (username === "developer" || username === "creator") return true;
+
+    return false;
   }
 
   static isLegacyCreatorProfile(profile = {}) {
-    const cleanUsername = String(profile?.username || "")
-      .toLowerCase()
-      .trim();
-    const cleanRole = String(profile?.role || "")
-      .toLowerCase()
-      .trim();
-    return (
-      (cleanUsername === "developer" || cleanUsername === "creator") &&
-      cleanRole !== "moderator" &&
-      cleanRole !== "manager" &&
-      cleanRole !== "operator"
-    );
+    if (!profile) return false;
+    const cleanUsername = String(profile.username || "").toLowerCase().trim().replace(/^@/, "");
+    return cleanUsername === "developer" || cleanUsername === "creator";
   }
 
   static isValidCreatorProfile(profile = {}, options = {}) {
-    const authEmail = String(AppState.currentUser?.email || "").toLowerCase().trim();
-    const profEmail = String(profile?.email || "").toLowerCase().trim();
-    if (
-      authEmail === "mankaef@yandex.ru" ||
-      authEmail === "cowiosupport@gmail.com" ||
-      profEmail === "mankaef@yandex.ru" ||
-      profEmail === "cowiosupport@gmail.com"
-    ) {
+    if (!profile) return false;
+    const profEmail = String(profile.email || "").toLowerCase().trim();
+    if (profEmail === "mankaef@yandex.ru" || profEmail === "cowiosupport@gmail.com") {
       return true;
     }
-    const { allowLegacyUsername = true } = options;
-    return (
-      this.isExplicitCreatorProfile(profile) ||
-      (allowLegacyUsername && this.isLegacyCreatorProfile(profile))
-    );
+
+    const cleanUsername = String(profile.username || "").toLowerCase().trim().replace(/^@/, "");
+    if (cleanUsername === "developer" || cleanUsername === "creator") {
+      return true;
+    }
+
+    return this.isExplicitCreatorProfile(profile);
   }
 
   static async persistCreatorIdentity(uid, profile = {}) {
@@ -117,24 +111,30 @@ class AdminPanel {
   }
 
   static isCreatorProfile(profile = {}, uid = null) {
+    if (!profile && !uid) return false;
     if (uid && AdminPanel.developerUidCache === uid) return true;
     return this.isValidCreatorProfile(profile);
   }
 
   static isModeratorProfile(profile = {}, uid = null) {
     return (
-      profile?.role === "moderator" && !this.isCreatorProfile(profile, uid)
+      String(profile?.role || "").toLowerCase().trim() === "moderator" &&
+      !this.isCreatorProfile(profile, uid)
     );
   }
 
   static isManagerProfile(profile = {}, uid = null) {
     return (
-      profile?.role === "manager" && !this.isCreatorProfile(profile, uid)
+      String(profile?.role || "").toLowerCase().trim() === "manager" &&
+      !this.isCreatorProfile(profile, uid)
     );
   }
 
   static isOperatorProfile(profile = {}, uid = null) {
-    return profile?.role === "operator" && !this.isCreatorProfile(profile, uid);
+    return (
+      String(profile?.role || "").toLowerCase().trim() === "operator" &&
+      !this.isCreatorProfile(profile, uid)
+    );
   }
 
   static isAdminProfile(profile = {}, uid = null) {
@@ -154,19 +154,21 @@ class AdminPanel {
     if (email === "mankaef@yandex.ru" || email === "cowiosupport@gmail.com") return true;
 
     const uid = user.uid || null;
+    if (uid && this.developerUidCache === uid) return true;
+
     const profile =
-      AppState.usersCache?.get(uid) ||
+      (uid && AppState.usersCache?.get(uid)) ||
       user.profile ||
       {};
-    return this.isCreatorProfile(profile, uid);
+
+    return this.isValidCreatorProfile(profile);
   }
 
   static isCurrentUserAdmin() {
     const uid = AppState.currentUser?.uid || null;
     const profile =
-      AppState.usersCache.get(AppState.currentUser?.uid) ||
-      {} ||
-      AppState.usersCache.get(uid) ||
+      AppState.usersCache?.get(uid) ||
+      AppState.currentUser?.profile ||
       {};
     return this.isAdminProfile(profile, uid);
   }
@@ -174,16 +176,15 @@ class AdminPanel {
   static isCurrentUserReadOnly() {
     const uid = AppState.currentUser?.uid || null;
     const profile =
-      AppState.usersCache.get(AppState.currentUser?.uid) ||
-      {} ||
-      AppState.usersCache.get(uid) ||
+      AppState.usersCache?.get(uid) ||
+      AppState.currentUser?.profile ||
       {};
     return this.isManagerProfile(profile, uid);
   }
 
   static isSystemReadOnlyForUser() {
     return (
-      Boolean(AppState.admin.settings.systemReadOnlyMode) &&
+      Boolean(AppState.admin.settings?.systemReadOnlyMode) &&
       !this.isCurrentUserAdmin()
     );
   }
@@ -191,21 +192,14 @@ class AdminPanel {
   static async isProtectedCreatorTarget(targetUid) {
     if (!targetUid) return false;
 
-    const [developerUid, profileSnap] = await Promise.all([
-      this.getDeveloperUid(),
-      get(ref(db, `users/${targetUid}/profile`)),
-    ]);
+    const developerUid = await this.getDeveloperUid();
+    if (developerUid && targetUid === developerUid) return true;
 
-    const profile = profileSnap.exists() ? profileSnap.val() || {} : {};
-    const cleanUsername = String(profile?.username || "")
-      .toLowerCase()
-      .trim();
+    const profileSnap = await get(ref(db, `users/${targetUid}/profile`));
+    if (!profileSnap.exists()) return false;
+    const profile = profileSnap.val() || {};
 
-    return Boolean(
-      (developerUid && targetUid === developerUid) ||
-      cleanUsername === "developer" ||
-      this.isValidCreatorProfile(profile),
-    );
+    return this.isValidCreatorProfile(profile);
   }
 
   static async isProtectedCreatorRoom(roomId) {
@@ -292,16 +286,15 @@ class AdminPanel {
                     <button class="secondary-btn godmode-nav-btn" data-section="people">people</button>
                     <button class="secondary-btn godmode-nav-btn" data-section="rooms">rooms</button>
                     <button class="secondary-btn godmode-nav-btn" data-section="library">library</button>
-                    <button class="secondary-btn godmode-nav-btn" data-section="badges">badges</button>
-                    <button class="secondary-btn godmode-nav-btn" data-section="logs">logs</button>
-                    <button class="secondary-btn godmode-nav-btn" data-section="settings">settings</button>
-                    <button class="secondary-btn godmode-nav-btn" data-section="security">security</button>
-                    <button class="secondary-btn godmode-nav-btn" data-section="automation">automation</button>
-                    <button class="secondary-btn godmode-nav-btn" data-section="broadcast">broadcast</button>
-                    <button class="secondary-btn godmode-nav-btn" data-section="integrations">integrations</button>
-                    <button class="secondary-btn godmode-nav-btn" data-section="backups">backups</button>
-                    <button class="secondary-btn godmode-nav-btn" data-section="catalog">catalog</button>
-                    <button class="secondary-btn godmode-nav-btn" data-section="maintenance" id="btn-godmode-maintenance" style="color: #ffd700; border-color: rgba(255, 215, 0, 0.35);">
+                    <button class="secondary-btn godmode-nav-btn" data-section="badges" data-dev-only="true">badges</button>
+                    <button class="secondary-btn godmode-nav-btn" data-section="logs" data-dev-only="true">logs</button>
+                    <button class="secondary-btn godmode-nav-btn" data-section="security" data-dev-only="true">security</button>
+                    <button class="secondary-btn godmode-nav-btn" data-section="automation" data-dev-only="true">automation</button>
+                    <button class="secondary-btn godmode-nav-btn" data-section="broadcast" data-dev-only="true">broadcast</button>
+                    <button class="secondary-btn godmode-nav-btn" data-section="integrations" data-dev-only="true">integrations</button>
+                    <button class="secondary-btn godmode-nav-btn" data-section="backups" data-dev-only="true">backups</button>
+                    <button class="secondary-btn godmode-nav-btn" data-section="catalog" data-dev-only="true">catalog</button>
+                    <button class="secondary-btn godmode-nav-btn" data-section="maintenance" id="btn-godmode-maintenance" data-dev-only="true" style="color: #ffd700; border-color: rgba(255, 215, 0, 0.35);">
                       <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" style="width: 14px; height: 14px; vertical-align: -2px; margin-right: 4px;">тех.перерыв
                     </button>
                 </div>
@@ -345,7 +338,7 @@ class AdminPanel {
                             <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;">
                                 <div style="display: flex; align-items: center; gap: 14px;">
                                     <div id="admin-maint-global-icon" style="width: 44px; height: 44px; border-radius: 12px; background: rgba(255, 255, 255, 0.08); display: flex; align-items: center; justify-content: center; font-size: 22px;">
-                                        🌐
+                                        <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Globe%20Showing%20Americas.webp" style="width:26px;height:26px;object-fit:contain;" alt="🌐">
                                     </div>
                                     <div>
                                         <div style="font-weight: 800; font-size: 16px; color: #ffffff; display: flex; align-items: center; gap: 8px;">
@@ -361,10 +354,10 @@ class AdminPanel {
                                 </div>
                                 <div style="display: flex; gap: 10px; align-items: center;">
                                     <button type="button" id="btn-admin-preview-site" class="secondary-btn" style="width: auto; padding: 8px 16px; font-weight: 700; font-size: 12.5px; border-radius: 10px;" onclick="MaintenanceSystem.previewAsUser = !MaintenanceSystem.previewAsUser; MaintenanceSystem.applyMaintenanceUI(); if(MaintenanceSystem.previewAsUser) Utils.$('modal-admin-panel')?.classList.remove('active');">
-                                        👁️ Предпросмотр
+                                        <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Eyes.webp" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;">Предпросмотр
                                     </button>
                                     <button type="button" id="btn-admin-toggle-global-maint-action" class="primary-btn" style="width: auto; padding: 9px 20px; font-weight: 800; font-size: 13px; border-radius: 10px; background: #ffffff !important; color: #000000 !important;" onclick="MaintenanceSystem.setGlobalMaintenance(!MaintenanceSystem.state.global)">
-                                        🔒 Закрыть весь сайт
+                                        <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;">Закрыть весь сайт
                                     </button>
                                 </div>
                             </div>
@@ -383,7 +376,7 @@ class AdminPanel {
                                     <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Television.webp" style="width: 24px; height: 24px; object-fit: contain; flex-shrink: 0;" alt="Комнаты">
                                     <div>
                                         <div style="font-weight: 700; font-size: 13.5px; color: #ffffff;">Комнаты</div>
-                                        <div class="admin-maint-sec-status" style="font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45); margin-top: 1px;">🟢 Открыт для всех</div>
+                                        <div class="admin-maint-sec-status" style="font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45); margin-top: 1px;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Check%20Mark%20Button.webp" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px;">Открыт для всех</div>
                                     </div>
                                 </div>
                                 <button type="button" class="secondary-btn admin-maint-sec-btn" style="width: auto; padding: 6px 14px; font-size: 12px; font-weight: 700; border-radius: 8px;" onclick="MaintenanceSystem.setSectionMaintenance('rooms', !MaintenanceSystem.state.sections?.rooms)">Закрыть</button>
@@ -394,7 +387,7 @@ class AdminPanel {
                                     <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Handshake.webp" style="width: 24px; height: 24px; object-fit: contain; flex-shrink: 0;" alt="Друзья">
                                     <div>
                                         <div style="font-weight: 700; font-size: 13.5px; color: #ffffff;">Друзья и Сообщения</div>
-                                        <div class="admin-maint-sec-status" style="font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45); margin-top: 1px;">🟢 Открыт для всех</div>
+                                        <div class="admin-maint-sec-status" style="font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45); margin-top: 1px;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Check%20Mark%20Button.webp" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px;">Открыт для всех</div>
                                     </div>
                                 </div>
                                 <button type="button" class="secondary-btn admin-maint-sec-btn" style="width: auto; padding: 6px 14px; font-size: 12px; font-weight: 700; border-radius: 8px;" onclick="MaintenanceSystem.setSectionMaintenance('friends', !MaintenanceSystem.state.sections?.friends)">Закрыть</button>
@@ -405,7 +398,7 @@ class AdminPanel {
                                     <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Incoming%20Envelope.webp" style="width: 24px; height: 24px; object-fit: contain; flex-shrink: 0;" alt="Поддержка">
                                     <div>
                                         <div style="font-weight: 700; font-size: 13.5px; color: #ffffff;">Поддержка</div>
-                                        <div class="admin-maint-sec-status" style="font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45); margin-top: 1px;">🟢 Открыт для всех</div>
+                                        <div class="admin-maint-sec-status" style="font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45); margin-top: 1px;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Check%20Mark%20Button.webp" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px;">Открыт для всех</div>
                                     </div>
                                 </div>
                                 <button type="button" class="secondary-btn admin-maint-sec-btn" style="width: auto; padding: 6px 14px; font-size: 12px; font-weight: 700; border-radius: 8px;" onclick="MaintenanceSystem.setSectionMaintenance('support', !MaintenanceSystem.state.sections?.support)">Закрыть</button>
@@ -416,7 +409,7 @@ class AdminPanel {
                                     <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Books.webp" style="width: 24px; height: 24px; object-fit: contain; flex-shrink: 0;" alt="Библиотека">
                                     <div>
                                         <div style="font-weight: 700; font-size: 13.5px; color: #ffffff;">Библиотека</div>
-                                        <div class="admin-maint-sec-status" style="font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45); margin-top: 1px;">🟢 Открыт для всех</div>
+                                        <div class="admin-maint-sec-status" style="font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45); margin-top: 1px;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Check%20Mark%20Button.webp" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px;">Открыт для всех</div>
                                     </div>
                                 </div>
                                 <button type="button" class="secondary-btn admin-maint-sec-btn" style="width: auto; padding: 6px 14px; font-size: 12px; font-weight: 700; border-radius: 8px;" onclick="MaintenanceSystem.setSectionMaintenance('library', !MaintenanceSystem.state.sections?.library)">Закрыть</button>
@@ -427,7 +420,7 @@ class AdminPanel {
                                     <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Trophy.webp" style="width: 24px; height: 24px; object-fit: contain; flex-shrink: 0;" alt="Лидерборд">
                                     <div>
                                         <div style="font-weight: 700; font-size: 13.5px; color: #ffffff;">Лидерборд</div>
-                                        <div class="admin-maint-sec-status" style="font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45); margin-top: 1px;">🟢 Открыт для всех</div>
+                                        <div class="admin-maint-sec-status" style="font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45); margin-top: 1px;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Check%20Mark%20Button.webp" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px;">Открыт для всех</div>
                                     </div>
                                 </div>
                                 <button type="button" class="secondary-btn admin-maint-sec-btn" style="width: auto; padding: 6px 14px; font-size: 12px; font-weight: 700; border-radius: 8px;" onclick="MaintenanceSystem.setSectionMaintenance('leaderboard', !MaintenanceSystem.state.sections?.leaderboard)">Закрыть</button>
@@ -438,7 +431,7 @@ class AdminPanel {
                                     <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Shopping%20Bags.webp" style="width: 24px; height: 24px; object-fit: contain; flex-shrink: 0;" alt="Каталог">
                                     <div>
                                         <div style="font-weight: 700; font-size: 13.5px; color: #ffffff;">Каталог (Базар)</div>
-                                        <div class="admin-maint-sec-status" style="font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45); margin-top: 1px;">🟢 Открыт для всех</div>
+                                        <div class="admin-maint-sec-status" style="font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45); margin-top: 1px;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Check%20Mark%20Button.webp" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px;">Открыт для всех</div>
                                     </div>
                                 </div>
                                 <button type="button" class="secondary-btn admin-maint-sec-btn" style="width: auto; padding: 6px 14px; font-size: 12px; font-weight: 700; border-radius: 8px;" onclick="MaintenanceSystem.setSectionMaintenance('catalog', !MaintenanceSystem.state.sections?.catalog)">Закрыть</button>
@@ -449,7 +442,7 @@ class AdminPanel {
                                     <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Gift.webp" style="width: 24px; height: 24px; object-fit: contain; flex-shrink: 0;" alt="Мистери Бокс">
                                     <div>
                                         <div style="font-weight: 700; font-size: 13.5px; color: #ffffff;">Мистери Бокс</div>
-                                        <div class="admin-maint-sec-status" style="font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45); margin-top: 1px;">🟢 Открыт для всех</div>
+                                        <div class="admin-maint-sec-status" style="font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45); margin-top: 1px;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Check%20Mark%20Button.webp" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px;">Открыт для всех</div>
                                     </div>
                                 </div>
                                 <button type="button" class="secondary-btn admin-maint-sec-btn" style="width: auto; padding: 6px 14px; font-size: 12px; font-weight: 700; border-radius: 8px;" onclick="MaintenanceSystem.setSectionMaintenance('mystery', !MaintenanceSystem.state.sections?.mystery)">Закрыть</button>
@@ -460,7 +453,7 @@ class AdminPanel {
                                     <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Crown.webp" style="width: 24px; height: 24px; object-fit: contain; flex-shrink: 0;" alt="Премиум">
                                     <div>
                                         <div style="font-weight: 700; font-size: 13.5px; color: #ffffff;">Премиум</div>
-                                        <div class="admin-maint-sec-status" style="font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45); margin-top: 1px;">🟢 Открыт для всех</div>
+                                        <div class="admin-maint-sec-status" style="font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45); margin-top: 1px;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Check%20Mark%20Button.webp" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px;">Открыт для всех</div>
                                     </div>
                                 </div>
                                 <button type="button" class="secondary-btn admin-maint-sec-btn" style="width: auto; padding: 6px 14px; font-size: 12px; font-weight: 700; border-radius: 8px;" onclick="MaintenanceSystem.setSectionMaintenance('premium', !MaintenanceSystem.state.sections?.premium)">Закрыть</button>
@@ -471,7 +464,7 @@ class AdminPanel {
                                     <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Gear.webp" style="width: 24px; height: 24px; object-fit: contain; flex-shrink: 0;" alt="Настройки">
                                     <div>
                                         <div style="font-weight: 700; font-size: 13.5px; color: #ffffff;">Настройки</div>
-                                        <div class="admin-maint-sec-status" style="font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45); margin-top: 1px;">🟢 Открыт для всех</div>
+                                        <div class="admin-maint-sec-status" style="font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45); margin-top: 1px;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Check%20Mark%20Button.webp" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px;">Открыт для всех</div>
                                     </div>
                                 </div>
                                 <button type="button" class="secondary-btn admin-maint-sec-btn" style="width: auto; padding: 6px 14px; font-size: 12px; font-weight: 700; border-radius: 8px;" onclick="MaintenanceSystem.setSectionMaintenance('settings', !MaintenanceSystem.state.sections?.settings)">Закрыть</button>
@@ -486,17 +479,6 @@ class AdminPanel {
                         <button class="primary-btn" id="btn-admin-add-catalog-item" onclick="CatalogManager.addNewAdminItem()" style="width:auto; padding:8px 16px;">+ Добавить Товар</button>
                     </div>
                     <div id="admin-catalog-list" style="display:flex; flex-direction:column; gap:10px;"></div>
-                </div>
-
-                <div class="godmode-section" data-section="settings" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02); margin-bottom: 16px;">
-                    <div style="font-weight:700; margin-bottom:10px;">Управление правами (Только для Создателя)</div>
-                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                        <input type="text" id="admin-mod-username" placeholder="ID пользователя (без @)" style="margin:0; flex:1; min-width:160px;">
-                        <button class="primary-btn" id="btn-admin-grant-mod" style="width:auto; padding:0 14px;">Модератор</button>
-                        <button class="primary-btn" id="btn-admin-grant-op" style="width:auto; padding:0 14px;">Оператор</button>
-                        <button class="primary-btn" id="btn-admin-grant-manager" style="width:auto; padding:0 14px; background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.25);">Менеджер</button>
-                        <button class="danger-btn" id="btn-admin-revoke-mod" style="width:auto; padding:0 14px;">Снять права</button>
-                    </div>
                 </div>
 
                 <div class="godmode-section" data-section="badges" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
@@ -597,12 +579,12 @@ class AdminPanel {
                             <div id="admin-rooms-list" style="display:flex; flex-direction:column; gap:8px; max-height:280px; overflow:auto;"></div>
                         </div>
                         <div style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02);">
-                            <div style="font-weight:700; margin-bottom:10px;">Быстрые действия (Rooms)</div>
+                            <div data-dev-only="true"><div style="font-weight:700; margin-bottom:10px;">Быстрые действия (Rooms)</div>
                             <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-bottom:16px;">
                                 <button class="danger-btn" id="btn-admin-delete-all-rooms">Удалить все комнаты</button>
                                 <button class="secondary-btn" id="btn-admin-purge-empty-rooms">Очистить пустые комнаты</button>
                                 <button class="secondary-btn" id="btn-admin-toggle-room-lock">Блокировать создание комнат</button>
-                            </div>
+                            </div></div>
                             <div style="font-weight:700; margin-bottom:10px;">Управление комнатами</div>
                             <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-bottom:10px;">
                                 <input type="text" id="admin-room-action-id" placeholder="ID комнаты" style="margin:0; grid-column:1/-1;">
@@ -667,7 +649,7 @@ class AdminPanel {
                             </div>
                             <div id="admin-online-users" style="display:flex; flex-direction:column; gap:8px; max-height:380px; overflow:auto;"></div>
                         </div>
-                        <div style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02); margin-bottom:16px;">
+                        <div data-dev-only="true" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02); margin-bottom:16px;">
                             <div style="font-weight:700; margin-bottom:10px;">Ивенты (Выдача всем онлайн)</div>
                             <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin-bottom:16px;">
                                 <div style="background:rgba(0,0,0,0.2); padding:12px; border-radius:12px;">
@@ -708,7 +690,7 @@ class AdminPanel {
                                 Выберите пользователя через поиск или клик по списку онлайна.
                             </div>
                         </div>
-                        <div style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02); margin-top:16px;">
+                        <div data-dev-only="true" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02); margin-top:16px;">
                             <div style="font-weight:700; margin-bottom:10px;">Массовые операции (People)</div>
                             <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px;">
                                 <button class="secondary-btn" id="btn-admin-export-users-csv">Экспорт users CSV</button>
@@ -726,7 +708,7 @@ class AdminPanel {
                         <div style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02); margin-top:16px;">
                              <button class="secondary-btn" id="btn-admin-refresh">Обновить данные</button>
                              <button class="secondary-btn" id="btn-admin-clear-user-editor" style="margin-left:8px;">Сбросить выбранного юзера</button>
-                             <button class="secondary-btn" id="btn-admin-export-snapshot" style="margin-top:8px;">Экспорт Snapshot</button>
+                             <button class="secondary-btn" id="btn-admin-export-snapshot" data-dev-only="true" style="margin-top:8px;">Экспорт Snapshot</button>
                         </div>
                     </div>
                 </div>
@@ -1048,13 +1030,10 @@ class AdminPanel {
       if (e.key === "Enter") this.findUser();
     };
 
-    Utils.$("btn-admin-grant-mod").onclick = () =>
-      this.toggleModRole("moderator");
-    Utils.$("btn-admin-grant-op").onclick = () =>
-      this.toggleModRole("operator");
-    Utils.$("btn-admin-grant-manager") && (Utils.$("btn-admin-grant-manager").onclick = () =>
-      this.toggleModRole("manager"));
-    Utils.$("btn-admin-revoke-mod").onclick = () => this.toggleModRole(null);
+    if (Utils.$("btn-admin-grant-mod")) Utils.$("btn-admin-grant-mod").onclick = () => this.toggleModRole("moderator");
+    if (Utils.$("btn-admin-grant-op")) Utils.$("btn-admin-grant-op").onclick = () => this.toggleModRole("operator");
+    if (Utils.$("btn-admin-grant-manager")) Utils.$("btn-admin-grant-manager").onclick = () => this.toggleModRole("manager");
+    if (Utils.$("btn-admin-revoke-mod")) Utils.$("btn-admin-revoke-mod").onclick = () => this.toggleModRole(null);
     Utils.$("btn-admin-badge-developer").onclick = () =>
       this.setAdminBadgeForUser("developer");
     Utils.$("btn-admin-badge-creator").onclick = () =>
@@ -1168,6 +1147,23 @@ class AdminPanel {
   }
 
   static switchGodModeSection(section = "dashboard") {
+    const isCreator = this.isCurrentUserCreator();
+    const devOnlySections = [
+      "security",
+      "automation",
+      "broadcast",
+      "integrations",
+      "backups",
+      "badges",
+      "logs",
+      "catalog",
+      "maintenance",
+    ];
+
+    if (!isCreator && devOnlySections.includes(section)) {
+      section = "dashboard";
+    }
+
     AppState.admin.activeSection = section;
     Utils.$("modal-admin-panel")
       ?.querySelectorAll(".godmode-nav-btn")
@@ -1413,17 +1409,17 @@ class AdminPanel {
       const command = EasterEggManager.COMMANDS.get(commandStr);
       if (command) {
         // ДОБАВЛЕНО: Индивидуальные мемы для каждой пасхалки
-        const memeTexts = {
-          moo: "Кто-то выпустил корову на пастбище... Му-у-у! 🐄",
-          grass: "Пора потрогать траву, друзья! 🌱",
-          milk: "кто-нибудь желает молока? 🥛",
-          popcorn: "Запасаемся попкорном, сейчас начнется кино! 🍿",
-          dvd: "Ждем, когда логотип ударится в угол... 📀",
+                const memeTexts = {
+          moo: 'Кто-то выпустил корову на пастбище... Му-у-у! <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Cow.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">',
+          grass: 'Пора потрогать траву, друзья! <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Seedling.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">',
+          milk: 'кто-нибудь желает молока? <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Food%20and%20Drink/Glass%20Of%20Milk.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">',
+          popcorn: 'Запасаемся попкорном, сейчас начнется кино! <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Food%20and%20Drink/Popcorn.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">',
+          dvd: 'Ждем, когда логотип ударится в угол... <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Dvd.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">',
           roll: 'Делаем бочку! Уууииии! <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Up%20Button.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">',
-          matrix: "Тук-тук, Нео. Матрица имеет тебя... 💻",
-          shh: "Тссс... Режим тишины активирован 🤫",
-          vader: "Люк, я твой отец... *тяжелое дыхание* ⚔️",
-          nyan: "Нян-кэт пролетает над сервером! 🐱🌈",
+          matrix: 'Тук-тук, Нео. Матрица имеет тебя... <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Laptop.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">',
+          shh: 'Тссс... Режим тишины активирован <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Shushing%20Face.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">',
+          vader: 'Люк, я твой отец... *тяжелое дыхание* <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Crossed%20Swords.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">',
+          nyan: 'Нян-кэт пролетает над сервером! <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Cat%20Face.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Travel%20and%20Places/Rainbow.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">',
         };
         const msg =
           memeTexts[command] ||
@@ -1462,18 +1458,21 @@ class AdminPanel {
       }
     });
 
+    let auditUnsub = null;
     if (this.isCurrentUserAdmin()) {
       import("firebase/database").then(({ query, limitToLast }) => {
         const auditQuery = query(auditRef, limitToLast(40));
-        const auditUnsub = onValue(auditQuery, (snap) => {
+        auditUnsub = onValue(auditQuery, (snap) => {
           const data = snap.val() || {};
           AppState.admin.logs = Object.entries(data)
             .map(([id, value]) => ({ id, ...(value || {}) }))
             .sort((a, b) => Number(b.ts || 0) - Number(a.ts || 0));
           this.renderAuditLog();
         });
-        this.subscriptions.push(auditUnsub);
-      });
+        if (Array.isArray(this.subscriptions)) {
+          this.subscriptions.push(auditUnsub);
+        }
+      }).catch((e) => console.warn("Audit query init error:", e));
     }
 
     const forceSignOutUnsub = onValue(forceSignOutRef, async (snap) => {
@@ -1989,6 +1988,24 @@ class AdminPanel {
                 <input type="number" id="admin-edit-likes" min="0" value="${Object.keys(profile.likedBy || {}).length}">
             </div>
             
+            <div data-dev-only="true" style="border:1px solid var(--border-light); border-radius:12px; padding:12px; background:rgba(255,255,255,0.03); margin-top:10px;">
+                <div style="font-weight:700; font-size:13px; margin-bottom:6px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px;">
+                    <span>Управление правами и ролью</span>
+                    <span style="font-size:11px; padding:3px 8px; border-radius:6px; background:rgba(255,255,255,0.08); font-weight:700; color:${profile.role ? '#ffd700' : 'rgba(255,255,255,0.6)'};">
+                        Роль: ${profile.role ? (profile.role === 'moderator' ? 'Модератор' : profile.role === 'operator' ? 'Оператор' : profile.role === 'manager' ? 'Менеджер' : profile.role) : 'Пользователь'}
+                    </span>
+                </div>
+                <div style="font-size:11.5px; color:var(--text-muted); margin-bottom:10px;">
+                    Назначение системных прав выбранному пользователю (Только Создатель).
+                </div>
+                <div style="display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:6px;">
+                    <button type="button" class="primary-btn" id="btn-editor-grant-mod" style="font-size:11.5px; padding:7px 4px; text-align:center; width:100%; ${profile.role === 'moderator' ? 'outline:2px solid #ffd700;' : ''}">Модератор</button>
+                    <button type="button" class="primary-btn" id="btn-editor-grant-op" style="font-size:11.5px; padding:7px 4px; text-align:center; width:100%; ${profile.role === 'operator' ? 'outline:2px solid #ffd700;' : ''}">Оператор</button>
+                    <button type="button" class="primary-btn" id="btn-editor-grant-manager" style="font-size:11.5px; padding:7px 4px; text-align:center; width:100%; background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.25); ${profile.role === 'manager' ? 'outline:2px solid #ffd700;' : ''}">Менеджер</button>
+                    <button type="button" class="danger-btn" id="btn-editor-revoke-role" style="font-size:11.5px; padding:7px 4px; text-align:center; width:100%;">Снять роль</button>
+                </div>
+            </div>
+            
             <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
                 <div style="font-weight:700; margin-bottom:6px;">Premium подписка</div>
                 <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">
@@ -2010,12 +2027,12 @@ class AdminPanel {
                 }
             </div>
 
-            <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
+            <div data-dev-only="true" style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
                 <div style="font-weight:700; margin-bottom:6px;">Стрик (Огонек)</div>
                 <input type="number" id="admin-edit-streak" min="0" value="${Utils.escapeHtml(profile.streak || 0)}" placeholder="Количество дней подряд">
             </div>
 
-            <div style="border:1px solid rgba(255, 215, 0, 0.35); border-radius:14px; padding:16px; background:linear-gradient(145deg, rgba(255, 215, 0, 0.1), rgba(0,0,0,0.45)); margin-top:12px; box-shadow:0 4px 16px rgba(0,0,0,0.3);">
+            <div data-dev-only="true" style="border:1px solid rgba(255, 215, 0, 0.35); border-radius:14px; padding:16px; background:linear-gradient(145deg, rgba(255, 215, 0, 0.1), rgba(0,0,0,0.45)); margin-top:12px; box-shadow:0 4px 16px rgba(0,0,0,0.3);">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
                     <div style="font-weight:800; font-size:14px; color:#ffd700; display:flex; align-items:center; gap:8px;">
                         <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width:20px; height:20px;" alt="✨">
@@ -2052,7 +2069,7 @@ class AdminPanel {
                 </button>
             </div>
 
-            <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
+            <div data-dev-only="true" style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
                 <div style="font-weight:700; margin-bottom:6px;">Уровень и XP</div>
                 <div style="display:flex; gap:10px;">
                     <div style="flex:1;">
@@ -2073,7 +2090,7 @@ class AdminPanel {
 
             <div style="font-size:12px; color:var(--text-muted); margin-top: 10px;">Email: ${Utils.escapeHtml(profile.email || "не указан")}</div>
             
-            <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
+            <div data-dev-only="true" style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
                 <div style="font-weight:700; margin-bottom:6px;">Управление второй половинкой</div>
                 <input type="text" id="admin-partner-target" placeholder="UID или юзернейм существующего юзера">
                 <div style="font-size: 11px; color: var(--text-muted); margin: 5px 0;">ИЛИ создать фиктивную:</div>
@@ -2086,7 +2103,7 @@ class AdminPanel {
                 <div style="font-size:11px; margin-top:4px;">Текущий партнер: ${Utils.escapeHtml(userData?.partner || profile?.partner || "нет")}</div>
             </div>
 
-            <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
+            <div data-dev-only="true" style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
                 <div style="font-weight:700; margin-bottom:6px;">Прямая выдача/удаление рамки</div>
                 <div style="display:flex; gap: 8px;">
                     <input type="text" id="admin-user-frame-id" placeholder="Изображение рамки (URL)" style="margin:0; flex:1;">
@@ -2120,10 +2137,10 @@ class AdminPanel {
             </div>
             <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px;">
                 <button class="primary-btn" id="btn-admin-save-user">Сохранить изменения</button>
-                <button class="secondary-btn" id="btn-admin-reset-user">Обнулить профиль</button>
-                <button class="danger-btn" id="btn-admin-delete-user">Удалить пользователя</button>
+                <button class="secondary-btn" id="btn-admin-reset-user" data-dev-only="true">Обнулить профиль</button>
+                <button class="danger-btn" id="btn-admin-delete-user" data-dev-only="true">Удалить пользователя</button>
                 <button class="secondary-btn" id="btn-admin-force-leave-current">Кикнуть из комнаты</button>
-                <button class="danger-btn" id="btn-admin-force-logout-current">Форс-выход</button>
+                <button class="danger-btn" id="btn-admin-force-logout-current" data-dev-only="true">Форс-выход</button>
                 <button class="secondary-btn" id="btn-admin-toggle-user-mute">${moderation.muted ? "Unmute user" : "Mute user"}</button>
                 <button class="secondary-btn" id="btn-admin-toggle-shadowban">${moderation.shadowban ? "Снять Shadowban" : "Shadowban"}</button>
                 <button class="secondary-btn" id="btn-admin-reset-password">Reset password</button>
@@ -2195,6 +2212,23 @@ class AdminPanel {
       };
     }
 
+    const editorGrantMod = Utils.$("btn-editor-grant-mod");
+    if (editorGrantMod) {
+      editorGrantMod.onclick = () => this.setUserRoleByUid(uid, "moderator");
+    }
+    const editorGrantOp = Utils.$("btn-editor-grant-op");
+    if (editorGrantOp) {
+      editorGrantOp.onclick = () => this.setUserRoleByUid(uid, "operator");
+    }
+    const editorGrantManager = Utils.$("btn-editor-grant-manager");
+    if (editorGrantManager) {
+      editorGrantManager.onclick = () => this.setUserRoleByUid(uid, "manager");
+    }
+    const editorRevokeRole = Utils.$("btn-editor-revoke-role");
+    if (editorRevokeRole) {
+      editorRevokeRole.onclick = () => this.setUserRoleByUid(uid, null);
+    }
+
     Utils.$("btn-admin-save-user").onclick = () => this.saveUserProfile();
 
     const levelInput = Utils.$("admin-edit-level");
@@ -2245,6 +2279,32 @@ class AdminPanel {
         btn.style.pointerEvents = "none";
       });
     }
+  }
+
+  static async setUserRoleByUid(targetUid, roleName) {
+    if (!this.isCurrentUserCreator()) {
+      return Utils.toast("Только Создатель может управлять правами", "error");
+    }
+    if (!targetUid) {
+      return Utils.toast("Пользователь не выбран", "error");
+    }
+
+    if (await this.isProtectedCreatorTarget(targetUid)) {
+      return Utils.toast("Нельзя изменить роль Создателя", "error");
+    }
+
+    await update(ref(db, `users/${targetUid}/profile`), {
+      role: roleName || null,
+    });
+    await this.pushAuditLog("role.change", { targetUid, role: roleName });
+    const roleTitles = {
+      moderator: "Модератор",
+      operator: "Оператор",
+      manager: "Менеджер (только просмотр)"
+    };
+    Utils.toast(roleName ? `Роль '${roleTitles[roleName] || roleName}' успешно выдана` : "Права сняты", "success");
+    await this.loadUserEditor(targetUid);
+    this.renderIfOpen();
   }
 
   static async grantPremiumToUser(uid) {
@@ -2989,11 +3049,29 @@ class AdminPanel {
     this.renderRoomsList(stats.rooms);
     this.renderUsersList(stats.usersData);
 
-    // Render Maintenance Controls (Exclusively for @developer / Creator)
+    // Developer-Only Access Control & Gating (Exclusively for @developer / Creator)
     const isCreator = this.isCurrentUserCreator();
-    const maintNavBtn = Utils.$("btn-godmode-maintenance");
-    if (maintNavBtn) {
-      maintNavBtn.style.display = isCreator ? "block" : "none";
+    const panel = Utils.$("modal-admin-panel");
+    if (panel) {
+      panel.querySelectorAll("[data-dev-only='true']").forEach((el) => {
+        el.style.display = isCreator ? "" : "none";
+      });
+    }
+
+    const devOnlySections = [
+      "security",
+      "automation",
+      "broadcast",
+      "integrations",
+      "backups",
+      "badges",
+      "logs",
+      "catalog",
+      "maintenance",
+    ];
+
+    if (!isCreator && devOnlySections.includes(AppState.admin.activeSection)) {
+      this.switchGodModeSection("dashboard");
     }
 
     if (isCreator && window.MaintenanceSystem) {

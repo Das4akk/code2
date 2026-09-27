@@ -3,7 +3,6 @@
  * Provides Real-Time Maintenance Mode for Global Site and Individual Sections.
  * Exclusively controlled by @developer / Creator (mankaef@yandex.ru).
  */
-
 import { ref, set, update, get, onValue } from "firebase/database";
 import { db } from "./firebase.js";
 
@@ -58,7 +57,7 @@ class MaintenanceSystem {
       icon: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Trophy.webp",
     },
     catalog: {
-      title: "Каталог (Базар)",
+      title: "Каталог",
       elementId: "section-catalog",
       navId: "nav-catalog",
       icon: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Shopping%20Bags.webp",
@@ -96,22 +95,31 @@ class MaintenanceSystem {
   static isCreator() {
     if (this.previewAsUser) return false;
 
+    // 1. Use AdminPanel creator validation if available
+    if (typeof window.AdminPanel !== "undefined" && typeof window.AdminPanel.isCurrentUserCreator === "function") {
+      try {
+        return window.AdminPanel.isCurrentUserCreator();
+      } catch (e) {}
+    }
+
     const user = window.AppState?.currentUser;
+    if (!user) return false;
+
+    // 2. Direct email check
     const userEmail = String(user?.email || "").toLowerCase().trim();
     if (userEmail === "mankaef@yandex.ru" || userEmail === "cowiosupport@gmail.com") return true;
 
-    if (typeof AdminPanel !== "undefined") {
-      if (typeof AdminPanel.isCurrentUserCreator === "function" && AdminPanel.isCurrentUserCreator()) return true;
-      if (typeof AdminPanel.isCurrentUserAdmin === "function" && AdminPanel.isCurrentUserAdmin()) return true;
-    }
+    // 3. Direct username / role check
     const myUid = user?.uid;
-    if (!myUid) return false;
+    const myProf = (myUid && window.AppState?.usersCache?.get(myUid)) || user.profile || {};
 
-    const myProf = window.AppState?.usersCache?.get(myUid) || {};
-    const username = String(myProf?.username || "").toLowerCase().trim();
+    const profEmail = String(myProf?.email || "").toLowerCase().trim();
+    if (profEmail === "mankaef@yandex.ru" || profEmail === "cowiosupport@gmail.com") return true;
+
+    const rawUsername = String(myProf?.username || "").toLowerCase().trim().replace(/^@/, "");
+    if (rawUsername === "developer" || rawUsername === "creator") return true;
+
     const role = String(myProf?.role || "").toLowerCase().trim();
-
-    if (username === "developer" || username === "creator") return true;
     if (role === "developer" || role === "creator" || myProf?.isOwner === true) return true;
 
     return false;
@@ -129,12 +137,15 @@ class MaintenanceSystem {
       left: 0;
       right: 0;
       z-index: 1000000;
-      background: linear-gradient(90deg, #ff3333, #e60000, #ff5500);
+      background: rgba(220, 38, 38, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
       color: #ffffff;
-      padding: 10px 16px;
+      padding: 10px 18px;
       font-size: 13px;
       font-weight: 700;
-      box-shadow: 0 4px 20px rgba(255, 0, 0, 0.45);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
       align-items: center;
       justify-content: space-between;
       box-sizing: border-box;
@@ -143,18 +154,21 @@ class MaintenanceSystem {
 
     banner.innerHTML = `
       <div style="display: flex; align-items: center; gap: 10px;">
-        <span style="font-size: 16px;">🛑</span>
-        <span><strong>ВНИМАНИЕ:</strong> Сайт закрыт на Тех.Перерыв для пользователей (Вы вошли как разработчик).</span>
+        <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Stop%20Sign.webp" style="width: 22px; height: 22px; object-fit: contain;" alt="🛑">
+        <span><strong>ВНИМАНИЕ:</strong> Сайт закрыт на Тех.Перерыв для пользователей (Вы вошли как @developer).</span>
       </div>
       <div style="display: flex; align-items: center; gap: 8px;">
-        <button type="button" id="btn-banner-preview-toggle" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); color: #fff; padding: 4px 12px; border-radius: 6px; font-size: 11.5px; font-weight: 700; cursor: pointer;">
-          👁️ Превью пользователя
+        <button type="button" id="btn-banner-preview-toggle" style="background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.35); color: #fff; padding: 5px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; backdrop-filter: blur(8px);">
+          <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Eyes.webp" style="width: 14px; height: 14px; vertical-align: middle;">
+          <span>Превью пользователя</span>
         </button>
-        <button type="button" id="btn-banner-open-admin" style="background: #ffffff; color: #cc0000; border: none; padding: 4px 12px; border-radius: 6px; font-size: 11.5px; font-weight: 800; cursor: pointer;">
-          ⚙️ Управление
+        <button type="button" id="btn-banner-open-admin" style="background: #ffffff; color: #b91c1c; border: none; padding: 5px 14px; border-radius: 8px; font-size: 12px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 10px rgba(0,0,0,0.2);">
+          <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Gear.webp" style="width: 14px; height: 14px; vertical-align: middle;">
+          <span>Управление</span>
         </button>
-        <button type="button" id="btn-banner-disable-maint" style="background: rgba(0,0,0,0.3); color: #ffffff; border: 1px solid rgba(255,255,255,0.3); padding: 4px 12px; border-radius: 6px; font-size: 11.5px; font-weight: 700; cursor: pointer;">
-          ✕ Снять тех.перерыв
+        <button type="button" id="btn-banner-disable-maint" style="background: rgba(0,0,0,0.35); color: #ffffff; border: 1px solid rgba(255,255,255,0.25); padding: 5px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+          <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Cross%20Mark.webp" style="width: 14px; height: 14px; vertical-align: middle;">
+          <span>Снять тех.перерыв</span>
         </button>
       </div>
     `;
@@ -164,9 +178,9 @@ class MaintenanceSystem {
     const openAdminBtn = banner.querySelector("#btn-banner-open-admin");
     if (openAdminBtn) {
       openAdminBtn.onclick = () => {
-        if (typeof AdminPanel !== "undefined") {
-          AdminPanel.openPanel();
-          AdminPanel.switchGodModeSection("maintenance");
+        if (typeof window.AdminPanel !== "undefined") {
+          window.AdminPanel.openPanel();
+          window.AdminPanel.switchGodModeSection("maintenance");
         }
       };
     }
@@ -182,7 +196,10 @@ class MaintenanceSystem {
     if (previewBtn) {
       previewBtn.onclick = () => {
         this.previewAsUser = !this.previewAsUser;
-        previewBtn.innerText = this.previewAsUser ? "Выйти из превью" : "👁️ Превью пользователя";
+        const textSpan = previewBtn.querySelector("span");
+        if (textSpan) {
+          textSpan.innerText = this.previewAsUser ? "Выйти из превью" : "Превью пользователя";
+        }
         this.applyMaintenanceUI();
       };
     }
@@ -198,9 +215,9 @@ class MaintenanceSystem {
       position: fixed;
       inset: 0;
       z-index: 9999999;
-      background: rgba(4, 4, 8, 0.78);
-      backdrop-filter: blur(36px) saturate(200%);
-      -webkit-backdrop-filter: blur(36px) saturate(200%);
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(32px) saturate(190%);
+      -webkit-backdrop-filter: blur(32px) saturate(190%);
       align-items: center;
       justify-content: center;
       padding: 24px;
@@ -210,29 +227,26 @@ class MaintenanceSystem {
 
     overlay.innerHTML = `
       <div style="
+        max-width: 540px;
         width: 100%;
-        max-width: 520px;
-        background: rgba(10, 10, 14, 0.72);
-        border: 1px solid rgba(255, 255, 255, 0.18);
-        border-radius: 28px;
-        padding: 44px 32px;
         text-align: center;
-        box-shadow: 0 32px 90px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+        padding: 20px;
         box-sizing: border-box;
-        animation: modalPop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
       ">
         <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" 
-             style="width: 82px; height: 82px; margin: 0 auto 22px; display: block; filter: drop-shadow(0 0 28px rgba(255, 215, 0, 0.45)); object-fit: contain;" 
+             style="width: 88px; height: 88px; margin: 0 auto 24px; display: block; object-fit: contain;" 
              alt="🔒">
-        <h1 style="font-size: 27px; font-weight: 800; color: #ffffff; margin: 0 0 14px 0; letter-spacing: -0.02em; line-height: 1.25;">
+        <h1 style="font-size: 28px; font-weight: 800; color: #ffffff; margin: 0 0 14px 0; letter-spacing: -0.02em; line-height: 1.25; text-shadow: 0 2px 20px rgba(0,0,0,0.8);">
           Сайт закрыт на Тех.Перерыв
         </h1>
-        <p style="font-size: 14px; color: rgba(255, 255, 255, 0.74); margin: 0; line-height: 1.6; font-weight: 400;">
+        <p style="font-size: 15px; color: rgba(255, 255, 255, 0.85); margin: 0; line-height: 1.6; font-weight: 500; text-shadow: 0 2px 12px rgba(0,0,0,0.7);">
           Приносим извинения за предоставленные неудобства, в скором времени все скоро наладится!
         </p>
-        <div id="maintenance-preview-exit-wrap" style="margin-top: 24px; display: none;">
-          <button type="button" class="secondary-btn" id="btn-exit-preview" style="padding: 8px 18px; font-size: 12.5px; border-radius: 10px; color: #fff; background: rgba(255,255,255,0.15);">
-            ✕ Выйти из режима предпросмотра
+        <div id="maintenance-preview-exit-wrap" style="margin-top: 26px; display: none;">
+          <button type="button" class="secondary-btn" id="btn-exit-preview" style="padding: 10px 22px; font-size: 13px; font-weight: 700; border-radius: 12px; color: #fff; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); backdrop-filter: blur(12px); display: inline-flex; align-items: center; gap: 8px; margin: 0 auto; box-shadow: 0 4px 20px rgba(0,0,0,0.4);">
+            <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Cross%20Mark.webp" style="width: 14px; height: 14px; vertical-align: middle;">
+            <span>Выйти из режима предпросмотра</span>
           </button>
         </div>
       </div>
@@ -325,16 +339,21 @@ class MaintenanceSystem {
           badge.style.cssText = `
             display: inline-flex;
             align-items: center;
+            gap: 3px;
             padding: 2px 6px;
             font-size: 10px;
             font-weight: 700;
-            background: rgba(255, 75, 75, 0.85);
+            background: rgba(239, 68, 68, 0.85);
+            backdrop-filter: blur(8px);
             color: #ffffff;
             border-radius: 6px;
             margin-left: 6px;
             line-height: 1;
           `;
-          badge.innerText = "тех.перерыв";
+          badge.innerHTML = `
+            <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" style="width: 10px; height: 10px; object-fit: contain;">
+            <span>тех.перерыв</span>
+          `;
           navEl.appendChild(badge);
         } else {
           badge.style.display = "inline-flex";
@@ -359,7 +378,7 @@ class MaintenanceSystem {
 
         if (isLocked) {
           if (!isDev) {
-            // Regular user view: full blur blocking overlay
+            // Regular user view: pure blur blocking overlay without opaque rectangular boxes
             if (devNotice) devNotice.style.display = "none";
             if (!overlay) {
               overlay = document.createElement("div");
@@ -368,9 +387,9 @@ class MaintenanceSystem {
                 position: absolute;
                 inset: 0;
                 z-index: 99999;
-                background: rgba(6, 6, 10, 0.78);
-                backdrop-filter: blur(30px) saturate(190%);
-                -webkit-backdrop-filter: blur(30px) saturate(190%);
+                background: rgba(0, 0, 0, 0.45);
+                backdrop-filter: blur(28px) saturate(180%);
+                -webkit-backdrop-filter: blur(28px) saturate(180%);
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -380,23 +399,19 @@ class MaintenanceSystem {
               `;
               overlay.innerHTML = `
                 <div style="
+                  max-width: 480px;
                   width: 100%;
-                  max-width: 460px;
-                  background: rgba(12, 12, 16, 0.72);
-                  border: 1px solid rgba(255, 255, 255, 0.18);
-                  border-radius: 22px;
-                  padding: 36px 26px;
                   text-align: center;
-                  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
-                  animation: modalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+                  padding: 20px;
+                  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
                 ">
                   <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" 
-                       style="width: 66px; height: 66px; margin: 0 auto 18px; display: block; filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.35)); object-fit: contain;" 
+                       style="width: 72px; height: 72px; margin: 0 auto 18px; display: block; object-fit: contain;" 
                        alt="🔒">
-                  <h2 style="font-size: 22px; font-weight: 800; color: #ffffff; margin: 0 0 12px 0; line-height: 1.3;">
+                  <h2 style="font-size: 22px; font-weight: 800; color: #ffffff; margin: 0 0 12px 0; line-height: 1.3; text-shadow: 0 2px 16px rgba(0,0,0,0.8);">
                     Раздел "${conf.title}" закрыт на Тех.Перерыв
                   </h2>
-                  <p style="font-size: 13.5px; color: rgba(255, 255, 255, 0.74); margin: 0; line-height: 1.6;">
+                  <p style="font-size: 14px; color: rgba(255, 255, 255, 0.85); margin: 0; line-height: 1.6; font-weight: 500; text-shadow: 0 2px 10px rgba(0,0,0,0.7);">
                     Приносим извинения за предоставленные неудобства, в скором времени все скоро наладится!
                   </p>
                 </div>
@@ -409,7 +424,7 @@ class MaintenanceSystem {
               overlay.style.display = "flex";
             }
           } else {
-            // Developer view: visible content + distinct top notice banner
+            // Developer view: visible content + sleek translucent glass notice
             if (overlay) overlay.style.display = "none";
             if (!devNotice) {
               devNotice = document.createElement("div");
@@ -419,21 +434,22 @@ class MaintenanceSystem {
                 align-items: center;
                 justify-content: space-between;
                 padding: 10px 16px;
-                background: rgba(255, 75, 75, 0.15);
-                border: 1px solid rgba(255, 75, 75, 0.4);
+                background: rgba(239, 68, 68, 0.18);
+                border: 1px solid rgba(239, 68, 68, 0.4);
+                backdrop-filter: blur(12px);
                 border-radius: 12px;
                 margin: 12px 16px;
-                color: #ff9999;
+                color: #fca5a5;
                 font-size: 12.5px;
-                font-weight: 600;
+                font-weight: 700;
               `;
               devNotice.innerHTML = `
                 <div style="display:flex; align-items:center; gap:8px;">
-                  <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" style="width:16px;height:16px;">
-                  <span>⚠️ Этот раздел закрыт на Тех.Перерыв (Видно только вам как разработчику)</span>
+                  <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Stop%20Sign.webp" style="width: 16px; height: 16px; object-fit: contain;">
+                  <span>Этот раздел закрыт на Тех.Перерыв (Видно только вам как @developer)</span>
                 </div>
                 <button type="button" class="danger-btn" style="padding:4px 10px; font-size:11px; width:auto; border-radius:6px;" onclick="MaintenanceSystem.setSectionMaintenance('${sectionKey}', false)">
-                  Разблокировать
+                  Открыть раздел
                 </button>
               `;
               sectionEl.insertBefore(devNotice, sectionEl.firstChild);
@@ -449,85 +465,90 @@ class MaintenanceSystem {
     }
   }
 
-  static async setGlobalMaintenance(active) {
+  static async setGlobalMaintenance(active, reason = "") {
     if (!this.isCreator()) {
-      if (window.Utils) window.Utils.toast("Доступно исключительно для @developer", "error");
+      window.Utils?.toast?.("Доступно исключительно для @developer", "error");
       return;
     }
 
     try {
-      await set(ref(db, "system/maintenance/global"), Boolean(active));
-      await set(ref(db, "system/maintenance/updatedAt"), Date.now());
-      if (window.Utils) {
-        window.Utils.toast(
-          active ? "Сайт успешно закрыт на Тех.Перерыв для пользователей!" : "Сайт снова открыт для всех пользователей!",
-          active ? "warning" : "success"
-        );
-      }
+      await update(ref(db, "system/maintenance"), {
+        global: Boolean(active),
+        reason: reason || "",
+        updatedAt: Date.now(),
+      });
+
       this.state.global = Boolean(active);
       this.applyMaintenanceUI();
       this.renderAdminMaintenanceUI();
+
+      window.Utils?.toast?.(
+        active ? "Сайт успешно закрыт на Тех.Перерыв для пользователей!" : "Сайт снова открыт для всех пользователей!",
+        "success"
+      );
     } catch (e) {
-      console.error("[Maintenance] Set global error:", e);
-      if (window.Utils) window.Utils.toast("Ошибка обновления статуса", "error");
+      console.error("[Maintenance] setGlobal error:", e);
+      window.Utils?.toast?.("Ошибка при сохранении: " + e.message, "error");
     }
   }
 
   static async setSectionMaintenance(sectionKey, active) {
     if (!this.isCreator()) {
-      if (window.Utils) window.Utils.toast("Доступно исключительно для @developer", "error");
+      window.Utils?.toast?.("Доступно исключительно для @developer", "error");
       return;
     }
 
     try {
-      await set(ref(db, `system/maintenance/sections/${sectionKey}`), Boolean(active));
-      await set(ref(db, "system/maintenance/updatedAt"), Date.now());
-      const title = this.SECTION_CONFIG[sectionKey]?.title || sectionKey;
-      if (window.Utils) {
-        window.Utils.toast(
-          active ? `Раздел "${title}" переведён в Тех.Перерыв` : `Раздел "${title}" открыт для пользователей`,
-          active ? "warning" : "success"
-        );
-      }
-      this.state.sections = this.state.sections || {};
+      const conf = this.SECTION_CONFIG[sectionKey];
+      const title = conf?.title || sectionKey;
+
+      await update(ref(db, `system/maintenance/sections`), {
+        [sectionKey]: Boolean(active),
+      });
+
+      if (!this.state.sections) this.state.sections = {};
       this.state.sections[sectionKey] = Boolean(active);
+
       this.applyMaintenanceUI();
       this.renderAdminMaintenanceUI();
+
+      window.Utils?.toast?.(
+        active ? `Раздел "${title}" переведён в Тех.Перерыв` : `Раздел "${title}" открыт для пользователей`,
+        "success"
+      );
     } catch (e) {
-      console.error("[Maintenance] Set section error:", e);
-      if (window.Utils) window.Utils.toast("Ошибка обновления раздела", "error");
+      console.error("[Maintenance] setSection error:", e);
+      window.Utils?.toast?.("Ошибка при сохранении: " + e.message, "error");
     }
   }
 
   static renderAdminMaintenanceUI() {
     const isGlobal = Boolean(this.state.global);
-    const globalCard = document.getElementById("admin-maint-global-card");
-    const globalIcon = document.getElementById("admin-maint-global-icon");
-    const globalStatusBadge = document.getElementById("admin-maint-global-status-badge");
-    const globalDesc = document.getElementById("admin-maint-global-desc");
-    const globalBtn = document.getElementById("btn-admin-toggle-global-maint-action");
 
+    // Global toggle card in Admin Panel
+    const globalCard = document.getElementById("admin-maint-global-card");
     if (globalCard) {
-      globalCard.style.background = isGlobal ? "rgba(255, 75, 75, 0.12)" : "rgba(255, 255, 255, 0.04)";
-      globalCard.style.borderColor = isGlobal ? "rgba(255, 75, 75, 0.45)" : "rgba(255, 255, 255, 0.14)";
+      globalCard.style.background = isGlobal ? "rgba(239, 68, 68, 0.12)" : "rgba(255, 255, 255, 0.04)";
+      globalCard.style.borderColor = isGlobal ? "rgba(239, 68, 68, 0.45)" : "rgba(255, 255, 255, 0.14)";
+      globalCard.style.backdropFilter = "blur(12px)";
     }
-    if (globalIcon) {
-      globalIcon.innerText = isGlobal ? "🔒" : "🌐";
-      globalIcon.style.background = isGlobal ? "rgba(255, 75, 75, 0.2)" : "rgba(255, 255, 255, 0.08)";
+
+    const globalStatusText = document.getElementById("admin-maint-global-status-text");
+    if (globalStatusText) {
+      globalStatusText.innerHTML = isGlobal
+        ? `<img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Cross%20Mark.webp" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px;">Сайт ЗАКРЫТ на тех.перерыв для обычных пользователей`
+        : `<img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Check%20Mark%20Button.webp" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px;">Сайт ОТКРЫТ и полностью доступен`;
+      globalStatusText.style.color = isGlobal ? "#fca5a5" : "#86efac";
     }
-    if (globalStatusBadge) {
-      globalStatusBadge.innerText = isGlobal ? "АКТИВЕН" : "ОТКЛЮЧЕН";
-      globalStatusBadge.style.background = isGlobal ? "#ff4b4b" : "rgba(255,255,255,0.1)";
-    }
-    if (globalDesc) {
-      globalDesc.innerText = isGlobal
-        ? "Сайт полностью заблокирован и размыт для всех пользователей и гостей."
-        : "Сайт работает в обычном режиме для всех посетителей.";
-    }
-    if (globalBtn) {
-      globalBtn.innerText = isGlobal ? "✕ Отключить тех.перерыв" : "🔒 Закрыть весь сайт";
-      globalBtn.style.setProperty("background", isGlobal ? "#ff4b4b" : "#ffffff", "important");
-      globalBtn.style.setProperty("color", isGlobal ? "#ffffff" : "#000000", "important");
+
+    const globalActionBtn = document.getElementById("btn-admin-toggle-global-maint-action");
+    if (globalActionBtn) {
+      globalActionBtn.innerHTML = isGlobal
+        ? `<img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Check%20Mark%20Button.webp" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;">Открыть сайт`
+        : `<img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;">Закрыть весь сайт`;
+      globalActionBtn.className = isGlobal ? "danger-btn" : "primary-btn";
+      globalActionBtn.style.background = isGlobal ? "#ef4444 !important" : "#ffffff !important";
+      globalActionBtn.style.color = isGlobal ? "#ffffff !important" : "#000000 !important";
     }
 
     // Update section cards in the grid
@@ -536,13 +557,16 @@ class MaintenanceSystem {
       if (!card) continue;
 
       const isLocked = Boolean(this.state.sections?.[key]);
-      card.style.background = isLocked ? "rgba(255, 75, 75, 0.08)" : "rgba(255, 255, 255, 0.03)";
-      card.style.borderColor = isLocked ? "rgba(255, 75, 75, 0.4)" : "rgba(255, 255, 255, 0.1)";
+      card.style.background = isLocked ? "rgba(239, 68, 68, 0.1)" : "rgba(255, 255, 255, 0.03)";
+      card.style.borderColor = isLocked ? "rgba(239, 68, 68, 0.4)" : "rgba(255, 255, 255, 0.1)";
+      card.style.backdropFilter = "blur(12px)";
 
       const statusEl = card.querySelector(".admin-maint-sec-status");
       if (statusEl) {
-        statusEl.innerText = isLocked ? "🔴 Закрыт на тех.перерыв" : "🟢 Открыт для всех";
-        statusEl.style.color = isLocked ? "#ff6b6b" : "rgba(255,255,255,0.45)";
+        statusEl.innerHTML = isLocked
+          ? `<img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Cross%20Mark.webp" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px;">Закрыт на тех.перерыв`
+          : `<img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Check%20Mark%20Button.webp" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px;">Открыт для всех`;
+        statusEl.style.color = isLocked ? "#fca5a5" : "rgba(255,255,255,0.55)";
       }
 
       const btn = card.querySelector(".admin-maint-sec-btn");

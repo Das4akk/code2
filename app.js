@@ -45,6 +45,7 @@ const runApp = () => {
     }
   };
 
+  initSystem("MaintenanceSystem", () => window.MaintenanceSystem?.init());
   initSystem("Router", () => window.Router?.init());
   initSystem("SecurityManager", () => SecurityManager.init());
   initSystem("TutorialManager", () => TutorialManager.init());
@@ -367,7 +368,7 @@ setTimeout(() => {
       rb.style.background = "#e91e63";
       rb.style.color = "#fff";
       rb.style.width = "auto";
-      rb.innerText = "🎲 Случайная комната";
+      rb.innerHTML = `<img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Game%20Die.webp" style="width:1.2em;height:1.2em;vertical-align:middle;margin-right:6px;" alt="🎲"> Случайная комната`;
       rb.onclick = () => {
         get(ref(db, "rooms")).then((snap) => {
           const rs = snap.val();
@@ -858,13 +859,13 @@ window.loadLeaderboard = async function() {
             
             if (idx === 0) { 
                 placeStyle = "color: #FFD700; font-size: 20px; font-weight: 900; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); display: flex; align-items: center; justify-content: center; gap: 4px;"; 
-                placeText = '1 <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Crown.webp" style="width: 28px; height: 28px;" alt="1">'; 
+                placeText = '1 <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Crown.webp" style="width: 28px; height: 28px;" alt="1">'; 
             } else if (idx === 1) { 
                 placeStyle = "color: #C0C0C0; font-size: 18px; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 4px;"; 
-                placeText = '2 <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Gem%20Stone.webp" style="width: 26px; height: 26px;" alt="2">'; 
+                placeText = '2 <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Gem%20Stone.webp" style="width: 26px; height: 26px;" alt="2">'; 
             } else if (idx === 2) { 
                 placeStyle = "color: #CD7F32; font-size: 18px; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 4px;"; 
-                placeText = '3 <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Animals%20and%20Nature/Star.webp" style="width: 24px; height: 24px;" alt="3">'; 
+                placeText = '3 <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Star.webp" style="width: 24px; height: 24px;" alt="3">'; 
             }
             
             const avHtml = ProfileManager.getAvatarHtml(u.profile);
@@ -872,11 +873,11 @@ window.loadLeaderboard = async function() {
             
             let scoreContent = "";
             if (cat === "lumens") {
-                scoreContent = `${u.score.toLocaleString()} <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Activity/Sparkles.webp" style="width: 20px; height: 20px;" alt="✨">`;
+                scoreContent = `${u.score.toLocaleString()} <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 20px; height: 20px;" alt="✨">`;
             } else if (cat === "likes") {
-                scoreContent = `${u.score.toLocaleString()} <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Symbols/Red%20Heart.webp" style="width: 20px; height: 20px;" alt="❤️">`;
+                scoreContent = `${u.score.toLocaleString()} <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Red%20Heart.webp" style="width: 20px; height: 20px;" alt="❤️">`;
             } else {
-                scoreContent = `${Utils.formatDuration(u.score)} <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Hourglass%20Done.webp" style="width: 20px; height: 20px;" alt="⏳">`;
+                scoreContent = `${Utils.formatDuration(u.score)} <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Hourglass%20Done.webp" style="width: 20px; height: 20px;" alt="⏳">`;
             }
 
             const scoreColor = cat === "lumens" ? "#ffd700" : (cat === "likes" ? "#ff4b4b" : "#60a5fa");

@@ -66,7 +66,41 @@ class Utils {
   }
 
   static formatExactDate(ts) {
-    return new Date(ts).toLocaleString();
+    return this.formatDate(ts, true);
+  }
+
+  static formatDate(ts, includeTime = false) {
+    if (!ts) return "";
+    const d = new Date(Number(ts) || ts);
+    if (isNaN(d.getTime())) return "";
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    if (!includeTime) return `${day}.${month}.${year}`;
+    const hours = String(d.getHours()).padStart(2, "0");
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    return `${day}.${month}.${year} ${hours}:${minutes}`;
+  }
+
+  static formatTime(seconds) {
+    const s = Math.max(0, Math.floor(Number(seconds) || 0));
+    const hrs = Math.floor(s / 3600);
+    const mins = Math.floor((s % 3600) / 60);
+    const secs = s % 60;
+    if (hrs > 0) {
+      return `${hrs}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+    }
+    return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  }
+
+  static parseTimecode(text) {
+    if (!text || typeof text !== "string") return null;
+    const match = text.match(/(?:(\d{1,2}):)?(\d{1,2}):(\d{2})/);
+    if (!match) return null;
+    if (match[1] !== undefined) {
+      return parseInt(match[1]) * 3600 + parseInt(match[2]) * 60 + parseInt(match[3]);
+    }
+    return parseInt(match[2]) * 60 + parseInt(match[3]);
   }
 
   static formatLastSeen(ts) {
@@ -75,7 +109,7 @@ class Utils {
     if (diff < 60000) return "Только что";
     if (diff < 3600000) return `${Math.floor(diff / 60000)} мин. назад`;
     if (diff < 86400000) return `${Math.floor(diff / 3600000)} ч. назад`;
-    return new Date(ts).toLocaleDateString();
+    return this.formatDate(ts, false);
   }
 
   static formatDuration(totalSeconds) {
@@ -363,7 +397,7 @@ class Utils {
         <div class="modal-content glass-panel" style="max-width: 420px; text-align: center; border-radius: 24px; padding: 40px 30px; background: rgba(15, 15, 20, 0.85); box-shadow: 0 0 50px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.1); backdrop-filter: blur(25px); position: relative; overflow: hidden; animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
           
           <div style="position: relative; z-index: 1;">
-            <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" style="width: 72px; height: 72px; margin-bottom: 20px; filter: drop-shadow(0 10px 15px rgba(0,0,0,0.5)); animation: float 3s ease-in-out infinite;">
+            <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" style="width: 72px; height: 72px; margin-bottom: 20px; animation: float 3s ease-in-out infinite;">
             <h3 style="margin-bottom: 12px; font-weight: 800; font-size: 26px; color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,0.5);">Код подтверждения</h3>
             <p style="margin-bottom: 30px; color: var(--text-muted); font-size: 15px; line-height: 1.5;">Мы отправили секретный код на<br><b style="color:#fff; background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 6px; display: inline-block; margin-top: 6px;">${Utils.escapeHtml(email)}</b></p>
             
@@ -1219,5 +1253,107 @@ class Utils {
   }
 }
 
+class ReactiveUserStore {
+  static listeners = new Map();
+  static unsubscribers = new Map();
+  static profileCache = new Map();
+
+  static get(uid) {
+    if (!uid) return null;
+    if (this.profileCache.has(uid)) return this.profileCache.get(uid);
+    if (window.AppState && window.AppState.usersCache && window.AppState.usersCache.has(uid)) {
+      const p = window.AppState.usersCache.get(uid);
+      this.profileCache.set(uid, p);
+      return p;
+    }
+    return null;
+  }
+
+  static set(uid, profile) {
+    if (!uid || !profile) return;
+    this.profileCache.set(uid, profile);
+    if (window.AppState && window.AppState.usersCache) {
+      window.AppState.usersCache.set(uid, profile);
+    }
+    const cbs = this.listeners.get(uid);
+    if (cbs && cbs.size > 0) {
+      cbs.forEach((cb) => {
+        try {
+          cb(profile);
+        } catch {}
+      });
+    }
+  }
+
+  static subscribe(uid, cb) {
+    if (!uid || typeof cb !== "function") return () => {};
+    if (!this.listeners.has(uid)) {
+      this.listeners.set(uid, new Set());
+    }
+    this.listeners.get(uid).add(cb);
+
+    const cached = this.get(uid);
+    if (cached) {
+      try {
+        cb(cached);
+      } catch {}
+    }
+
+    if (!this.unsubscribers.has(uid) && window.db) {
+      import("firebase/database").then(({ ref, onValue }) => {
+        if (!this.unsubscribers.has(uid)) {
+          const unsub = onValue(ref(window.db, `users/${uid}/profile`), (snap) => {
+            if (snap.exists()) {
+              const data = snap.val();
+              this.set(uid, data);
+            }
+          });
+          this.unsubscribers.set(uid, unsub);
+        }
+      }).catch(() => {});
+    }
+
+    return () => this.unsubscribe(uid, cb);
+  }
+
+  static unsubscribe(uid, cb) {
+    if (!uid) return;
+    const cbs = this.listeners.get(uid);
+    if (cbs) {
+      cbs.delete(cb);
+      if (cbs.size === 0) {
+        this.listeners.delete(uid);
+        const unsub = this.unsubscribers.get(uid);
+        if (typeof unsub === "function") {
+          try {
+            unsub();
+          } catch {}
+        }
+        this.unsubscribers.delete(uid);
+      }
+    }
+  }
+
+  static batchSubscribe(uids = []) {
+    if (!Array.isArray(uids) || !uids.length) return;
+    const uniqueUids = [...new Set(uids.filter(Boolean))];
+    uniqueUids.forEach((uid) => {
+      if (!this.unsubscribers.has(uid) && window.db) {
+        import("firebase/database").then(({ ref, onValue }) => {
+          if (!this.unsubscribers.has(uid)) {
+            const unsub = onValue(ref(window.db, `users/${uid}/profile`), (snap) => {
+              if (snap.exists()) {
+                this.set(uid, snap.val());
+              }
+            });
+            this.unsubscribers.set(uid, unsub);
+          }
+        }).catch(() => {});
+      }
+    });
+  }
+}
+
 window.Utils = Utils;
-export { Utils };
+window.ReactiveUserStore = ReactiveUserStore;
+export { Utils, ReactiveUserStore };

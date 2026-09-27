@@ -8,18 +8,12 @@ class MediaResolverClient {
   static RESOLVE_STALE_MS = 12 * 60 * 1000;
 
   static PLATFORM_RE =
-    /rutube\.ru|youtube\.com|youtu\.be|vk\.com|vkvideo\.ru|vimeo\.com|twitch\.tv/i;
+    /youtube\.com|youtu\.be|vk\.com|vkvideo\.ru|vk\.ru/i;
 
   static needsResolve(url = "") {
     const value = String(url || "").trim();
     if (!value) return false;
-    if (this.PLATFORM_RE.test(value)) return true;
-    try {
-      const host = new URL(value).hostname.toLowerCase();
-      return host.includes("rutube.ru");
-    } catch {
-      return false;
-    }
+    return this.PLATFORM_RE.test(value);
   }
 
   static extractYouTubeId(url) {

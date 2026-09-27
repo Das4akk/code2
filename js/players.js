@@ -142,6 +142,12 @@ class VkPlayerManager {
     this.destroy();
     this.onStateChange = onStateChangeCallback;
 
+    const ytContainer = Utils.$("yt-player-container");
+    if (ytContainer) {
+      ytContainer.style.display = "flex";
+      ytContainer.innerHTML = '<div id="yt-player" style="width: 100%; height: 100%; max-width: 100%; max-height: 100%; aspect-ratio: 16/9; display: flex; justify-content: center; align-items: center;"></div>';
+    }
+
     const container = Utils.$("yt-player");
     if (!container) return Promise.resolve(null);
     container.innerHTML = "";
@@ -151,7 +157,7 @@ class VkPlayerManager {
       finalSrc += (finalSrc.includes("?") ? "&" : "?") + "js_api=1";
     }
     if (!finalSrc.includes("autoplay=")) {
-      finalSrc += "&autoplay=0";
+      finalSrc += "&autoplay=1";
     }
     if (!finalSrc.includes("hd=")) {
       finalSrc += "&hd=2";
@@ -170,15 +176,7 @@ class VkPlayerManager {
     this.iframe.style.height = "100%";
     this.iframe.style.borderRadius = "16px";
     this.iframe.style.border = "none";
-
-    const hasControl = RoomManager.hasPerm("player");
-    this.iframe.style.pointerEvents = hasControl ? "auto" : "none";
-
-    const overlay = Utils.$("room-video-overlay");
-    if (overlay) {
-      overlay.style.pointerEvents = hasControl ? "none" : "auto";
-      overlay.style.cursor = hasControl ? "default" : "not-allowed";
-    }
+    this.iframe.style.pointerEvents = "auto";
 
     window.addEventListener("message", this.handleMessage);
 
@@ -258,6 +256,11 @@ class VkPlayerManager {
   static setQuality(quality) {
     if (!RoomManager.hasPerm("player") && !window._isSyncingVideo) return;
     this.post("set_quality", { quality: String(quality) });
+  }
+
+  static setPlaybackRate(rate) {
+    const r = Math.max(0.25, Math.min(2.0, Number(rate) || 1.0));
+    this.post("set_playback_rate", { rate: r });
   }
 
   static getCurrentTime() {
@@ -555,7 +558,12 @@ class YouTubePlayerManager {
   static async initPlayer(videoId, onStateChange) {
     await this.loadApi();
     return new Promise((resolve) => {
-      if (this.player && this.playerReady) {
+      const container = document.getElementById("yt-player-container");
+      if (container) {
+        container.style.display = "flex";
+      }
+
+      if (this.player && this.playerReady && typeof this.player.loadVideoById === "function") {
         try {
           const currentRoom = AppState.roomsCache?.get(AppState.currentRoomId) || AppState.currentRoomData || {};
           const pres = AppState.currentPresenceCache || currentRoom.presence || {};
@@ -572,67 +580,84 @@ class YouTubePlayerManager {
               this.player.pauseVideo();
             }
           }
-          this.player.getIframe().style.pointerEvents = "auto";
+          try {
+            if (this.player.getIframe()) this.player.getIframe().style.pointerEvents = "auto";
+          } catch (e) {}
           setTimeout(
             () =>
               typeof RoomManager !== "undefined" &&
               RoomManager.forceSyncVideo(),
-            800,
+            600,
           );
+          resolve(this.player);
+          return;
         } catch (e) {
-          console.error("Failed to load video on existing player", e);
+          console.warn("Re-creating YouTube player...", e);
         }
-        resolve(this.player);
-      } else {
-        this.playerReady = false;
-        this.player = new window.YT.Player("yt-player", {
-          videoId: videoId,
-          width: "100%",
-          height: "100%",
-          playerVars: {
-            autoplay: 0,
-            controls: 1,
-            disablekb: 0,
-            fs: 0,
-            modestbranding: 1,
-            rel: 0,
-            origin: window.location.origin,
-          },
-          events: {
-            onReady: () => {
-              this.playerReady = true;
-              try {
-                this.player.getIframe().style.pointerEvents = "auto";
-              } catch (e) {}
-              const currentRoom = AppState.roomsCache?.get(AppState.currentRoomId) || AppState.currentRoomData || {};
-              const pres = AppState.currentPresenceCache || currentRoom.presence || {};
-              const otherUsers = Object.keys(pres).filter(u => u !== AppState.currentUser?.uid);
-              const hostId = currentRoom.hostId || AppState.currentRoomData?.hostId;
-              const isHostInRoom = hostId ? Boolean(pres[hostId]) : false;
-              const preventAutoplay = !AppState.isHost && (otherUsers.length === 0 || !isHostInRoom || AppState.enteredEmptyRoomAsNonHost);
-              if (preventAutoplay && typeof this.player.pauseVideo === "function") {
-                try { this.player.pauseVideo(); } catch (e) {}
-              }
-              setTimeout(() => {
-                if (typeof RoomManager !== "undefined")
-                  RoomManager.forceSyncVideo();
-              }, 400);
-              resolve(this.player);
-            },
-            onStateChange: (e) => onStateChange(e),
-            onError: (e) => {
-              console.error("YouTube Player Error:", e.data);
-              Utils.toast(
-                e.data === 150
-                  ? "Владелец видео запретил его воспроизведение на других сайтах"
-                  : "Ошибка YouTube плеера (Код " + e.data + ")",
-                "error",
-              );
-              resolve(this.player);
-            },
-          },
-        });
       }
+
+      if (container) {
+        container.innerHTML = '<div id="yt-player" style="width: 100%; height: 100%; max-width: 100%; max-height: 100%; aspect-ratio: 16/9; display: flex; justify-content: center; align-items: center;"></div>';
+      }
+
+      this.playerReady = false;
+      this.player = new window.YT.Player("yt-player", {
+        videoId: videoId,
+        width: "100%",
+        height: "100%",
+        playerVars: {
+          autoplay: 1,
+          controls: 1,
+          disablekb: 0,
+          fs: 1,
+          playsinline: 1,
+          modestbranding: 1,
+          rel: 0,
+          enablejsapi: 1,
+          origin: window.location.origin,
+        },
+        events: {
+          onReady: () => {
+            this.playerReady = true;
+            try {
+              if (this.player && this.player.getIframe()) {
+                const iframe = this.player.getIframe();
+                iframe.style.width = "100%";
+                iframe.style.height = "100%";
+                iframe.style.borderRadius = "16px";
+                iframe.style.pointerEvents = "auto";
+              }
+            } catch (e) {}
+            const currentRoom = AppState.roomsCache?.get(AppState.currentRoomId) || AppState.currentRoomData || {};
+            const pres = AppState.currentPresenceCache || currentRoom.presence || {};
+            const otherUsers = Object.keys(pres).filter(u => u !== AppState.currentUser?.uid);
+            const hostId = currentRoom.hostId || AppState.currentRoomData?.hostId;
+            const isHostInRoom = hostId ? Boolean(pres[hostId]) : false;
+            const preventAutoplay = !AppState.isHost && (otherUsers.length === 0 || !isHostInRoom || AppState.enteredEmptyRoomAsNonHost);
+            if (preventAutoplay && typeof this.player.pauseVideo === "function") {
+              try { this.player.pauseVideo(); } catch (e) {}
+            }
+            setTimeout(() => {
+              if (typeof RoomManager !== "undefined")
+                RoomManager.forceSyncVideo();
+            }, 400);
+            resolve(this.player);
+          },
+          onStateChange: (e) => {
+            if (typeof onStateChange === "function") onStateChange(e);
+          },
+          onError: (e) => {
+            console.error("YouTube Player Error:", e.data);
+            Utils.toast(
+              e.data === 150
+                ? "Владелец видео запретил его воспроизведение на других сайтах"
+                : "Ошибка YouTube плеера (Код " + e.data + ")",
+              "error",
+            );
+            resolve(this.player);
+          },
+        },
+      });
     });
   }
 
@@ -663,6 +688,13 @@ class YouTubePlayerManager {
   static seek(time) {
     if (this.player && this.playerReady && this.player.seekTo)
       this.player.seekTo(time, true);
+  }
+  static setPlaybackRate(rate) {
+    if (this.player && this.playerReady && typeof this.player.setPlaybackRate === "function") {
+      try {
+        this.player.setPlaybackRate(Number(rate) || 1.0);
+      } catch (e) {}
+    }
   }
   static getCurrentTime() {
     return this.player && this.playerReady && this.player.getCurrentTime

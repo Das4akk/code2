@@ -251,7 +251,7 @@ class PartnerRelationshipPanel {
                         <div class="partner-ambilight-avatar heartbeat" id="partner-modal-my-avatar"></div>
                         <div class="partner-ambilight-link" aria-hidden="true">
                             <span class="partner-link-pulse"></span>
-                            <span class="partner-link-icon">💞</span>
+                            <span class="partner-link-icon"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Revolving%20Hearts.webp" style="width:24px;height:24px;object-fit:contain;" alt="💞"></span>
                         </div>
                         <div class="partner-ambilight-avatar heartbeat" id="partner-modal-their-avatar"></div>
                     </div>
@@ -271,7 +271,7 @@ class PartnerRelationshipPanel {
                     </div>
                     <div class="partner-metric-card">
                         <span class="metric-label">Тепло связи</span>
-                        <strong>${bond.totalWarmth} ✦</strong>
+                        <strong>${bond.totalWarmth} <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width:14px;height:14px;vertical-align:middle;" alt="✦"></strong>
                     </div>
                     ${
                       bond.streak && bond.streak > 1
@@ -298,7 +298,7 @@ class PartnerRelationshipPanel {
                     <div class="partner-path-tooltip" id="partner-path-tooltip" hidden></div>
                 </section>
                 <footer class="partner-ambilight-footer">
-                    <button type="button" class="partner-kiss-btn" id="btn-partner-modal-kiss">Поцелуй 💋</button>
+                    <button type="button" class="partner-kiss-btn" id="btn-partner-modal-kiss">Поцелуй <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Kiss%20Mark.webp" style="width:16px;height:16px;vertical-align:middle;margin-left:4px;" alt="💋"></button>
                     <button type="button" class="partner-checkin-btn" id="btn-partner-checkin" ${canCheckin ? "" : "disabled"}>${canCheckin ? 'Отметить день <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">' : "День отмечен"}</button>
                     <button type="button" class="secondary-btn btn-close-modal">Закрыть</button>
                 </footer>

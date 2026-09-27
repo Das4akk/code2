@@ -75,11 +75,13 @@ class Router {
     // Remove anti-flicker class from html root
     document.documentElement.classList.remove("route-non-lobby");
 
-    // 1. If currently in a room and moving to a lobby or external route
+    // 1. If currently in a room and moving to a lobby or external route, enable PiP mode
     if (!pathname.startsWith("/room/") && window.AppState && window.AppState.currentRoomId) {
-      if (window.RoomManager && typeof window.RoomManager.leaveRoom === "function") {
-        window.RoomManager.leaveRoom();
+      if (window.RoomManager && typeof window.RoomManager.enablePiP === "function") {
+        window.RoomManager.enablePiP();
       }
+    } else if (pathname.startsWith("/room/") && window.RoomManager && typeof window.RoomManager.disablePiP === "function") {
+      window.RoomManager.disablePiP();
     }
 
     // 2. Close profile overlay backdrop if open in room
@@ -108,7 +110,10 @@ class Router {
     if (pathname.startsWith("/room/")) {
       const roomId = pathname.slice(6);
       if (roomId && roomId !== "current") {
-        if (window.RoomManager && typeof window.RoomManager.joinRoom === "function") {
+        if (window.AppState?.currentRoomId === roomId) {
+          if (window.RoomManager) window.RoomManager.disablePiP();
+          if (window.Utils) window.Utils.showScreen("room-screen", false);
+        } else if (window.RoomManager && typeof window.RoomManager.joinRoom === "function") {
           window.RoomManager.joinRoom(roomId);
         } else if (window.Utils) {
           window.Utils.showScreen("room-screen", false);
