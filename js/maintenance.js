@@ -3,7 +3,7 @@
  * Provides Real-Time Maintenance Mode for Global Site and Individual Sections.
  * Exclusively controlled by @developer / Creator (mankaef@yandex.ru).
  */
-import { ref, set, update, get, onValue } from "firebase/database";
+import { ref, set, update, get, onValue } from "./firebase.js";
 import { db } from "./firebase.js";
 
 class MaintenanceSystem {

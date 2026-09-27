@@ -891,8 +891,8 @@ class AdminPanel {
             const existing = await get(ref(db, `usernames/${username}`));
             if (existing.exists()) throw new Error("Юзернейм уже занят");
             
-            const { initializeApp, deleteApp } = await import("firebase/app");
-            const { getAuth, createUserWithEmailAndPassword } = await import("firebase/auth");
+            const { initializeApp, deleteApp } = await import("./firebase.js");
+            const { getAuth, createUserWithEmailAndPassword } = await import("./firebase.js");
             
             const tempApp = initializeApp(app.options, "TempApp_" + Date.now());
             const tempAuth = getAuth(tempApp);
@@ -1460,7 +1460,7 @@ class AdminPanel {
 
     let auditUnsub = null;
     if (this.isCurrentUserAdmin()) {
-      import("firebase/database").then(({ query, limitToLast }) => {
+      import("./firebase.js").then(({ query, limitToLast }) => {
         const auditQuery = query(auditRef, limitToLast(40));
         auditUnsub = onValue(auditQuery, (snap) => {
           const data = snap.val() || {};

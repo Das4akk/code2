@@ -32,9 +32,9 @@
           if (el && el.tagName === "IMG" && el.src && el.src.includes("Telegram-Animated-Emojis") && !el.dataset.fallbackDone) {
             el.dataset.fallbackDone = "1";
             const currentSrc = el.src;
-            const rel = currentSrc.replace(/^https?:\/\/[^\/]+(\/gh\/[^\/]+\/[^@]+@[^\/]+\/|\/main\/)?/, "")
-                                  .replace(/^Telegram-Animated-Emojis\/(main\/)?/, "")
-                                  .replace(/^\/+/, "");
+            const rel = currentSrc.replace(/^https?://[^/]+(/gh/[^/]+/[^@]+@[^/]+/|/main/)?/, "")
+                                  .replace(/^Telegram-Animated-Emojis/(main/)?/, "")
+                                  .replace(/^/+/, "");
             el.src = "/api/emoji-proxy?path=" + encodeURIComponent(decodeURIComponent(rel));
           }
         }, true);
@@ -42,7 +42,7 @@
     </script>
 
     <script>
-      // Force animated emojis by default
+      // Force animated emojis by default - removed static emojis toggle
       localStorage.setItem("staticEmojis", "false");
       window.toggleSiteParticlesSetting = function (enabled) {
         localStorage.setItem("siteParticles", enabled ? "true" : "false");

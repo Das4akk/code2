@@ -829,7 +829,7 @@ class ProfileManager {
 
         try {
           const { updatePassword } =
-            await import("firebase/auth");
+            await import("./firebase.js");
           await updatePassword(auth.currentUser, newPass);
 
           // Save to fast-switch cache
@@ -1793,7 +1793,7 @@ class ProfileManager {
     }
 
     try {
-      const { update, ref, getDatabase, get } = await import("firebase/database");
+      const { update, ref, getDatabase, get } = await import("./firebase.js");
       const dbInstance = getDatabase();
 
       // Daily limit per recipient: up to 100 Lumens per day to a specific user
@@ -2297,7 +2297,7 @@ class ProfileManager {
                       </div>`;
                   }
                   
-                  const snap = await import("firebase/database").then(({get, ref, getDatabase}) => get(ref(getDatabase(), `users/${likeObj.uid}/profile`)));
+                  const snap = await import("./firebase.js").then(({get, ref, getDatabase}) => get(ref(getDatabase(), `users/${likeObj.uid}/profile`)));
                   const prof = snap.val() || {};
                   const avHtml = ProfileManager.getAvatarHtml(prof);
                   return `<div style="display:flex;align-items:center;padding:10px;background:rgba(255,255,255,0.05);border-radius:8px;cursor:pointer;transition:background 0.2s;" onclick="ProfileManager.openViewProfileModal('${likeObj.uid}')">
@@ -3227,7 +3227,7 @@ class ProfileManager {
     modal.classList.add("active");
 
     try {
-      const { get, ref, getDatabase } = await import("firebase/database");
+      const { get, ref, getDatabase } = await import("./firebase.js");
       const dbInstance = getDatabase();
       const friendsSnap = await get(ref(dbInstance, `users/${targetUid}/friends`));
       const friendsVal = friendsSnap.val() || {};

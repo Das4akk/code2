@@ -498,7 +498,7 @@ class CatalogManager {
     const currentProf = AppState.usersCache.get(uid) || {};
     const frameVal = item.image || item.id;
 
-    await import("firebase/database").then(
+    await import("./firebase.js").then(
       ({ update, ref, getDatabase }) =>
         update(ref(getDatabase()), {
           [`users/${uid}/profile/frame`]: frameVal,
@@ -734,7 +734,7 @@ window.openCatalogItemModal = function (itemId) {
         if (item.image && !currentInv.includes(item.image)) currentInv.push(item.image);
 
         const frameVal = item.image || item.id;
-        const { update, ref, getDatabase } = await import("firebase/database");
+        const { update, ref, getDatabase } = await import("./firebase.js");
         await update(ref(getDatabase()), {
           [`users/${uid}/profile/inventory`]: currentInv,
           [`users/${uid}/profile/frame`]: frameVal,
@@ -773,7 +773,7 @@ window.openCatalogItemModal = function (itemId) {
           const frameVal = item.image || item.id;
           const newLumens = curLumens - price;
 
-          const { update, ref, getDatabase } = await import("firebase/database");
+          const { update, ref, getDatabase } = await import("./firebase.js");
           await update(ref(getDatabase()), {
             [`users/${uid}/profile/inventory`]: currentInv,
             [`users/${uid}/profile/frame`]: frameVal,

@@ -1045,7 +1045,7 @@ class PremiumManager {
       const db = AppState?.db;
       if (db && user?.uid) {
         try {
-          const { ref, set } = await import("firebase/database");
+          const { ref, set } = await import("./firebase.js");
           await set(ref(db, `users/${user.uid}/profile/premium`), premiumData);
         } catch (dbErr) {
           console.warn("[Premium] DB direct write note:", dbErr);

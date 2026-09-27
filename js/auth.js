@@ -492,7 +492,9 @@ class AuthManager {
             if (window.Router) window.Router.navigate("/lobby", true);
           }
 
-          Utils.showScreen("lobby-screen", false);
+          if (!pathname.startsWith("/room/")) {
+            Utils.showScreen("lobby-screen", false);
+          }
           if (window.Router && typeof window.Router.handleRoute === "function") {
             window.Router.currentPath = null;
             window.Router.handleRoute(pathname, true);

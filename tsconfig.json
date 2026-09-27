@@ -28,12 +28,18 @@
     "strict": false,
     "incremental": true,
     "esModuleInterop": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
   },
   "include": [
-    "server.ts",
+    "app.js",
     "js/**/*.js",
-    "app.js"
+    "server.ts",
+    ".next/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

@@ -3,7 +3,7 @@ class LibraryManager {
   static allVideos = [];
   
   static async getDb() {
-      const fb = await import("firebase/database");
+      const fb = await import("./firebase.js");
       return { ...fb, db: window.db };
   }
 

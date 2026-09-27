@@ -978,7 +978,7 @@ class VideoPlaybackManager {
       return;
 
     try {
-      UniversalPlayerManager.showLoading("Подключение к видео...");
+      VideoPlaybackManager.showLoading("Подключение к видео...");
       if (ytId || rtId || vkInfo) {
         this.detach(vid);
         this.lastSignature = signature;
@@ -1006,7 +1006,7 @@ class VideoPlaybackManager {
           const Manager = isYT ? YouTubePlayerManager : (isRT ? RutubePlayerManager : VkPlayerManager);
 
           if (state === playingState || state === pausedState || state === "playing" || state === "ready") {
-            UniversalPlayerManager.hideLoading();
+            VideoPlaybackManager.hideLoading();
           }
 
           if (state === "seeked" || state === "seek") {
@@ -1080,11 +1080,11 @@ class VideoPlaybackManager {
         }
         vid.dataset.playbackKey = signature;
         RoomManager.applyLocalPermissions();
-        setTimeout(() => UniversalPlayerManager.hideLoading(), 1200);
+        setTimeout(() => VideoPlaybackManager.hideLoading(), 1200);
         return;
       }
 
-      UniversalPlayerManager.showLoading("Буферизация потока...");
+      VideoPlaybackManager.showLoading("Буферизация потока...");
       const playback = await this.resolvePlaybackSource(room);
       const source = String(playback.source || "").trim();
 
@@ -1101,11 +1101,11 @@ class VideoPlaybackManager {
       vid.controls = true;
       vid.playsInline = true;
       vid.preload = "auto";
-      vid.oncanplay = () => UniversalPlayerManager.hideLoading();
-      vid.onplaying = () => UniversalPlayerManager.hideLoading();
-      vid.onwaiting = () => UniversalPlayerManager.showLoading("Буферизация...");
+      vid.oncanplay = () => VideoPlaybackManager.hideLoading();
+      vid.onplaying = () => VideoPlaybackManager.hideLoading();
+      vid.onwaiting = () => VideoPlaybackManager.showLoading("Буферизация...");
       vid.onerror = () => {
-        UniversalPlayerManager.hideLoading();
+        VideoPlaybackManager.hideLoading();
         Utils.toast(
           "Плеер не смог загрузить видео. Проверьте ссылку или пересоздайте комнату.",
           "error",
@@ -1113,9 +1113,9 @@ class VideoPlaybackManager {
       };
 
       Ambilight.start(vid);
-      setTimeout(() => UniversalPlayerManager.hideLoading(), 2000);
+      setTimeout(() => VideoPlaybackManager.hideLoading(), 2000);
     } catch (err) {
-      UniversalPlayerManager.hideLoading();
+      VideoPlaybackManager.hideLoading();
       Utils.toast(err.message || "Ошибка загрузки видео", "error");
     }
   }
@@ -1219,6 +1219,7 @@ window.TwitchPlayerManager = TwitchPlayerManager;
 window.RutubePlayerManager = RutubePlayerManager;
 window.YouTubePlayerManager = YouTubePlayerManager;
 window.VideoPlaybackManager = VideoPlaybackManager;
+window.UniversalPlayerManager = VideoPlaybackManager;
 window.Ambilight = Ambilight;
 export {
   VkPlayerManager,
@@ -1227,5 +1228,6 @@ export {
   RutubePlayerManager,
   YouTubePlayerManager,
   VideoPlaybackManager,
+  VideoPlaybackManager as UniversalPlayerManager,
   Ambilight
 };

@@ -1,0 +1,134 @@
+<div class="modal" id="modal-dm-chat">
+      <div class="modal-content glass-panel dm-modal-content">
+        <div class="modal-drag-handle" style="
+            width: 100%;
+            position: absolute;
+            top: 0;
+            height: 15px;
+            z-index: 100;
+            cursor: move;
+          "></div>
+
+        <!-- Left Sidebar for Chats -->
+        <div class="dm-sidebar">
+          <div class="dm-sidebar-header">
+            <span>Чаты</span>
+            <button class="secondary-btn btn-close-modal" style="display: none; width: auto; padding: 6px 10px" id="btn-dm-sidebar-close">
+              ✕
+            </button>
+          </div>
+          <div class="dm-sidebar-list" id="dm-sidebar-list">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- Right Main Area for Chat -->
+        <div class="dm-main">
+          <div class="dm-modal-header" style="display: flex; align-items: center; gap: 10px">
+            <button class="secondary-btn" id="btn-dm-back" style="
+                display: none;
+                width: auto;
+                padding: 8px 12px;
+                border-radius: 10px;
+                font-size: 18px;
+              ">
+              ‹
+            </button>
+            <div style="flex: 1">
+              <h2 id="dm-chat-title" style="margin-bottom: 5px">
+                Личный чат
+                <span id="dm-typing-status" style="
+                    font-size: 12px;
+                    color: var(--text-muted);
+                    display: inline-block;
+                    margin-left: 10px;
+                    font-weight: normal;
+                  "></span>
+              </h2>
+              <p style="font-size: 12px; color: var(--text-muted)">
+                Приватные сообщения
+              </p>
+            </div>
+            <div class="dm-header-actions">
+              <button class="secondary-btn btn-close-modal" style="width: auto; padding: 8px 12px">
+                ✕
+              </button>
+            </div>
+          </div>
+          <div class="panel-love-hearts" id="dm-love-hearts"></div>
+          <div id="dm-messages" class="dm-messages"></div>
+
+          <div id="dm-media-picker" style="
+              display: none;
+              position: absolute;
+              bottom: 85px;
+              left: 20px;
+              right: 20px;
+              background: rgba(20, 20, 25, 0.95);
+              border: 1px solid var(--border-light);
+              border-radius: 12px;
+              padding: 10px;
+              z-index: 10;
+              flex-direction: column;
+              max-height: 400px;
+            ">
+            <div style="
+                font-weight: bold;
+                margin-bottom: 10px;
+                flex-shrink: 0;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+              ">
+              <span>Стикеры и Эмодзи</span>
+              <button id="btn-dm-media-cancel-top" style="
+                  background: transparent;
+                  border: none;
+                  color: var(--text-muted);
+                  cursor: pointer;
+                ">
+                ✕
+              </button>
+            </div>
+
+            <div id="dm-emoji-categories" style="
+                display: flex;
+                gap: 5px;
+                overflow-x: auto;
+                padding-bottom: 5px;
+                margin-bottom: 5px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                flex-shrink: 0;
+              ">
+              <!-- Categories injected here -->
+            </div>
+
+            <div id="dm-gif-results" style="
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                overflow-y: auto;
+                overflow-x: hidden;
+                padding-bottom: 5px;
+                height: 250px;
+                align-content: flex-start;
+              ">
+              <!-- Emojis injected here -->
+            </div>
+          </div>
+
+          <div class="dm-compose">
+            <button class="dm-compose-btn" id="btn-dm-attach-file" title="Прикрепить фото">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/File%20Folder.webp" style="width: 20px; height: 20px">
+            </button>
+            <button class="dm-compose-btn" id="btn-dm-attach" title="Прикрепить URL">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Briefcase.webp" style="width: 20px; height: 20px">
+            </button>
+            <input type="text" id="dm-input" placeholder="Написать сообщение..." autocomplete="off">
+            <button id="btn-dm-send" class="primary-btn" style="width: 50px; border-radius: 50%">
+              ↑
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>

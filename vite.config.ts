@@ -1,7 +1,34 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import fs from 'fs';
 import {defineConfig, Plugin} from 'vite';
+
+function resolveHtmlIncludes(content: string, baseDir: string = '.'): string {
+  const includeRegex = /<!--\s*@include\s+["']?([^"'\s>]+)["']?\s*-->/g;
+  return content.replace(includeRegex, (match, includePath) => {
+    const fullPath = path.resolve(baseDir, includePath);
+    if (fs.existsSync(fullPath)) {
+      const includedContent = fs.readFileSync(fullPath, 'utf8');
+      return resolveHtmlIncludes(includedContent, path.dirname(fullPath));
+    } else {
+      console.warn('Include file not found:', fullPath);
+      return match;
+    }
+  });
+}
+
+function htmlPartialsPlugin(): Plugin {
+  return {
+    name: 'html-partials-plugin',
+    transformIndexHtml: {
+      order: 'pre',
+      handler(html) {
+        return resolveHtmlIncludes(html, process.cwd());
+      }
+    }
+  };
+}
 
 function apiDevPlugin(): Plugin {
   return {
@@ -124,7 +151,7 @@ function apiDevPlugin(): Plugin {
 
 export default defineConfig(() => {
   return {
-    plugins: [react(), tailwindcss(), apiDevPlugin()],
+    plugins: [htmlPartialsPlugin(), react(), tailwindcss(), apiDevPlugin()],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

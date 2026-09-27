@@ -1,0 +1,173 @@
+<div class="modal" id="modal-catalog-item">
+      <div class="modal-content glass-panel" id="modal-catalog-content-panel">
+        <div style="position: absolute; top: 16px; right: 16px; z-index: 25">
+          <button class="secondary-btn btn-close-modal" style="
+              width: 34px;
+              height: 34px;
+              padding: 0;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              border-radius: 50%;
+              font-size: 14px;
+              background: rgba(0, 0, 0, 0.4);
+              border: 1px solid rgba(255, 255, 255, 0.1);
+              color: #ffffff;
+              cursor: pointer;
+            ">
+            ✕
+          </button>
+        </div>
+
+        <div class="catalog-modal-preview-stage" id="catalog-item-solo-preview">
+          <div id="catalog-item-bg-blur" style="
+              position: absolute;
+              inset: -20px;
+              background-size: cover;
+              background-position: center;
+              filter: blur(36px) opacity(0.28);
+              z-index: 0;
+              pointer-events: none;
+            "></div>
+
+          <!-- Avatar Circle for Try-on -->
+          <div id="catalog-item-avatar-bg" style="
+              width: 104px;
+              height: 104px;
+              border-radius: 50%;
+              background: #111216;
+              position: absolute;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%);
+              z-index: 1;
+              box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6), inset 0 0 12px rgba(0, 0, 0, 0.8);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              background-size: cover;
+              background-position: center;
+              overflow: hidden;
+              color: #fff;
+              font-size: 40px;
+              font-weight: 800;
+            "></div>
+
+          <!-- The Frame Image -->
+          <img id="catalog-item-image-solo" src="" style="
+              width: 146px;
+              height: 146px;
+              object-fit: contain;
+              filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.6));
+              position: relative;
+              z-index: 2;
+              pointer-events: none;
+              transition: transform 0.25s ease;
+            ">
+
+          <audio id="catalog-item-audio-solo" controls="" style="display: none; width: 80%; outline: none; z-index: 2"></audio>
+
+          <!-- Try-on Mode Toggle -->
+          <div class="catalog-modal-preview-toggle">
+            <button type="button" class="catalog-modal-toggle-btn active" id="btn-modal-view-tryon">
+              Примерить
+            </button>
+            <button type="button" class="catalog-modal-toggle-btn" id="btn-modal-view-solo">
+              Только рамка
+            </button>
+          </div>
+        </div>
+
+        <div class="catalog-modal-body">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+            <span id="catalog-item-type-label" style="
+                font-size: 11px;
+                font-weight: 700;
+                color: var(--text-muted);
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+              ">
+              РАМКА АВАТАРА
+            </span>
+            <span id="catalog-item-status-pill" style="
+                font-size: 11px;
+                font-weight: 700;
+                padding: 3px 8px;
+                border-radius: 6px;
+                background: rgba(255, 255, 255, 0.06);
+                color: var(--text-muted);
+              ">
+              Каталог
+            </span>
+          </div>
+
+          <div>
+            <h2 id="catalog-item-title" style="
+                margin: 0 0 6px 0;
+                font-weight: 800;
+                font-size: 22px;
+                color: #ffffff;
+                line-height: 1.25;
+              ">
+              Название товара
+            </h2>
+            <p id="catalog-item-desc" style="
+                color: var(--text-muted);
+                font-size: 13.5px;
+                margin: 0;
+                line-height: 1.5;
+              ">
+              Описание товара
+            </p>
+          </div>
+
+          <!-- Price & Requirement Info Box -->
+          <div class="catalog-modal-lvl-badge">
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Стоимость</span>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <img id="catalog-item-price-icon" src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 20px; height: 20px; object-fit: contain; display: none;" alt="✨">
+                <span id="catalog-item-price" style="font-size: 20px; color: #ffffff; font-weight: 800;">БЕСПЛАТНО</span>
+              </div>
+            </div>
+            <div id="catalog-modal-user-lumens-info" style="display: flex; flex-direction: column; align-items: flex-end; gap: 2px;">
+              <span style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Ваш баланс</span>
+              <span id="catalog-modal-user-lumens-val" style="font-size: 14px; font-weight: 700; color: #34d399; display: inline-flex; align-items: center; gap: 4px;">0 <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" class="inline-sparkles-icon" alt="✨"></span>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 10px; width: 100%; margin-top: 4px;">
+            <button id="btn-buy-catalog-item" style="
+                flex: 1;
+                font-weight: 700;
+                font-size: 15px;
+                padding: 14px 20px;
+                background: #ffffff;
+                color: #000000;
+                border-radius: 12px;
+                border: none;
+                cursor: pointer;
+                transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+              ">
+              Купить
+            </button>
+            <button class="secondary-btn" id="btn-preview-catalog-item" style="
+                display: none;
+                width: 48px;
+                align-items: center;
+                justify-content: center;
+                padding: 0;
+                background: rgba(255, 255, 255, 0.05);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 12px;
+                color: #ffffff;
+                cursor: pointer;
+              ">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Eyes.webp" style="width:20px;height:20px;vertical-align:middle;" alt="👁">
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Lumens Balance & Earn Guide -->

@@ -1,0 +1,100 @@
+<section id="room-screen" class="screen">
+      <div class="room-shell">
+        <div class="room-top-bar glass-panel">
+          <div class="room-top-left">
+            <button class="icon-btn" id="btn-leave-room" aria-label="Выйти" onclick="if(window.RoomManager) RoomManager.leaveRoom()" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 50%; width: 44px; height: 44px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s;">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+            <div class="room-title-wrapper">
+              <h2 id="room-title-text">Загрузка комнаты...</h2>
+              <div id="room-author-info" style="display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-muted); margin-top: 4px;">
+                  <div id="room-author-avatar" style="width: 24px; height: 24px; border-radius: 50%; overflow: hidden; background: rgba(255,255,255,0.1);"></div>
+                  <span id="room-author-name" style="font-weight: 600; color: #eee;">автор комнаты</span>
+                  <span id="room-typing-status" style="font-size: 13px; display: inline-block; animation: pulse 1.5s infinite;"></span>
+                  <div id="room-voice-speaker-badge" style="display: none; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: #2ed573; background: rgba(46, 213, 115, 0.12); padding: 2px 8px; border-radius: 12px; border: 1px solid rgba(46, 213, 115, 0.3);">
+                    <span style="width: 7px; height: 7px; border-radius: 50%; background: #2ed573; display: inline-block; box-shadow: 0 0 6px #2ed573;"></span>
+                    <span id="room-voice-speaker-text">Говорит: ...</span>
+                  </div>
+              </div>
+            </div>
+          </div>
+          
+          <div id="room-top-actions">
+            <!-- Room Lumens Balance Pill -->
+            <div class="header-lumens-pill room-lumens-pill" id="room-header-lumens-pill" title="Ваш баланс Люменов" onclick="if(window.CatalogManager && window.CatalogManager.openLumensModal) { CatalogManager.openLumensModal(); }">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" alt="Lumens" style="width: 17px; height: 17px; object-fit: contain; filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.4));">
+              <span id="room-lumens-count" style="font-size: 13.5px; font-weight: 700; color: #ffffff; letter-spacing: -0.2px;">0</span>
+            </div>
+            <button class="secondary-btn" title="Поделиться комнатой" id="btn-room-share" onclick="if(window.RoomManager) RoomManager.shareRoom()" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 12px; font-size: 18px; cursor: pointer; padding: 6px 10px; color: #fff; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s ease;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Incoming%20Envelope.webp" style="width:24px;height:24px;vertical-align:middle;object-fit:contain;" alt="Поделиться"></button>
+            <button class="secondary-btn" title="На весь экран" id="btn-fullscreen-toggle" onclick="if(window.RoomManager) RoomManager.toggleFullscreen()" style="background: transparent; border: none; font-size: 22px; cursor: pointer; padding: 8px;">⛶</button>
+            <button class="secondary-btn" id="btn-room-settings" title="Настройки комнаты" style="background: transparent; border: none; color: #fff; font-size: 16px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 8px;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Toolbox.webp" style="width:26px;height:26px;vertical-align:middle;"></button>
+          </div>
+        </div>
+
+      <div class="room-layout">
+        <div class="player-section">
+          <div class="reaction-bar">
+              <button class="react-btn" data-emoji="🔥" onclick="if(window.RoomManager) RoomManager.sendReaction('🔥')">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Fire.webp" style="width: 36px; height: 36px; pointer-events: none">
+              </button>
+              <button class="react-btn" data-emoji="😂" onclick="if(window.RoomManager) RoomManager.sendReaction('😂')">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Face%20With%20Tears%20Of%20Joy.webp" style="width: 36px; height: 36px; pointer-events: none">
+              </button>
+              <button class="react-btn" data-emoji="😱" onclick="if(window.RoomManager) RoomManager.sendReaction('😱')">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Face%20Screaming%20In%20Fear.webp" style="width: 36px; height: 36px; pointer-events: none">
+              </button>
+              <button class="react-btn" data-emoji="❤️" onclick="if(window.RoomManager) RoomManager.sendReaction('❤️')">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Red%20Heart.webp" style="width: 36px; height: 36px; pointer-events: none">
+              </button>
+              <button class="react-btn" data-emoji="👏" onclick="if(window.RoomManager) RoomManager.sendReaction('👏')">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Clapping%20Hands.webp" style="width: 36px; height: 36px; pointer-events: none">
+              </button>
+          </div>
+          <div class="video-container glass-panel">
+            <div id="room-player-loading-bar" class="room-player-loading-bar" style="display: none;">
+              <span class="loading-pulse-dot"></span>
+              <span id="room-player-loading-text">Загрузка видео...</span>
+            </div>
+            <button id="btn-exit-fullscreen" onclick="if(document.exitFullscreen) document.exitFullscreen()" style="display: none; position: absolute; top: 20px; right: 20px; z-index: 1000; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2); border-radius: 12px; width: 44px; height: 44px; color: #fff; cursor: pointer; align-items: center; justify-content: center; backdrop-filter: blur(10px); transition: all 0.3s ease;">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>
+            </button>
+            <video id="native-player" playsinline="" webkit-playsinline="" preload="auto" x5-video-player-type="h5" x5-video-player-fullscreen="true" controls="" style="object-fit: contain; width: 100%; height: 100%"></video>
+            <div id="yt-player-container" style="display: none; position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 16px; overflow: hidden; pointer-events: auto; z-index: 5; align-items: center; justify-content: center;">
+              <div id="yt-player" style="width: 100%; height: 100%; max-width: 100%; max-height: 100%; aspect-ratio: 16/9; display: flex; justify-content: center; align-items: center;"></div>
+            </div>
+            <div id="room-video-overlay" style="display: none !important; pointer-events: none !important;"></div>
+            <div id="chat-overlay-container" style="position: absolute; top: 15%; left: 50%; transform: translateX(-50%); width: 80%; pointer-events: none; z-index: 10; display: flex; flex-direction: column; gap: 8px;"></div>
+            <div id="room-player-speakers-overlay" class="room-player-speakers-overlay" style="display: none;"></div>
+          </div>
+        </div>
+        <div class="chat-section glass-panel">
+          <div class="panel-love-hearts" id="room-love-hearts"></div>
+          
+          <div class="chat-header" style="display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); gap: 12px;">
+            <button id="btn-tab-chat" onclick="if(window.RoomManager) RoomManager.setRoomTab('chat')" style="flex: 1; background: rgba(255,255,255,0.1); border: none; color: #fff; border-radius: 12px; padding: 10px; font-weight: bold; cursor: pointer; transition: background 0.2s;">Чат</button>
+            <button id="btn-tab-users" onclick="if(window.RoomManager) RoomManager.setRoomTab('users')" style="flex: 1; background: transparent; border: none; color: rgba(255,255,255,0.6); border-radius: 12px; padding: 10px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: background 0.2s, color 0.2s;">Люди <span id="users-count" style="font-size: 13px; color: rgba(255,255,255,0.4); background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 10px;">0</span></button>
+          </div>
+
+          <div class="chat-content-area" id="chat-messages" style="flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column;"></div>
+          <div class="chat-content-area" id="users-list" style="display: none; flex: 1; overflow-y: auto; padding: 16px; flex-direction: column;"></div>
+          <div class="chat-input-area" style="padding: 16px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; gap: 8px;">
+    <button id="btn-toggle-mic" class="mic-icon-btn" title="Микрофон (один говорит, все слушают)" aria-label="Включить микрофон" onclick="if(window.RTCManager) RTCManager.toggleMic()" style="cursor: pointer; border: 1px solid rgba(255,255,255,0.1);">
+      <svg id="mic-icon-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+        <line x1="12" y1="19" x2="12" y2="23"></line>
+        <line x1="8" y1="23" x2="16" y2="23"></line>
+      </svg>
+    </button>
+    <button id="btn-insert-timecode" class="mic-icon-btn" title="Вставить текущий таймкод" aria-label="Вставить таймкод" onclick="if(window.RoomManager) RoomManager.insertCurrentTimecodeToChat()" style="cursor: pointer; border: 1px solid rgba(255,255,255,0.1); width: 38px; height: 38px; border-radius: 50%; background: rgba(255,255,255,0.06); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;">⏱️</button>
+    <input type="text" id="chat-input" placeholder="Добавить сообщение..." onkeydown="if(event.key==='Enter'&&window.RoomManager){ RoomManager.sendChatMessage(); }" style="flex: 1; background: rgba(255,255,255,0.05); border: none; border-radius: 20px; padding: 12px 16px; color: #fff; font-size: 14px; outline: none;">
+    <button id="send-btn" onclick="if(window.RoomManager) RoomManager.sendChatMessage()" style="background: rgba(255,255,255,0.1); border: none; border-radius: 50%; width: 40px; height: 40px; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+    </button>
+</div>
+
+</div></div></div></div></section>
+
+    <!-- ========================================================================= -->
+    <!-- MODALS -->
+    <!-- ========================================================================= -->

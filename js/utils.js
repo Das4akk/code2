@@ -1225,7 +1225,7 @@ class Utils {
           const now = Date.now();
           if (!window._usersOnlineCache || now - (window._usersOnlineCacheTime || 0) > 120000) {
             const { get, ref } =
-              await import("firebase/database");
+              await import("./firebase.js");
             const snap = await get(ref(window.db || db, "users"));
             let activeNow = 0;
             if (snap.exists()) {
@@ -1300,7 +1300,7 @@ class ReactiveUserStore {
     }
 
     if (!this.unsubscribers.has(uid) && window.db) {
-      import("firebase/database").then(({ ref, onValue }) => {
+      import("./firebase.js").then(({ ref, onValue }) => {
         if (!this.unsubscribers.has(uid)) {
           const unsub = onValue(ref(window.db, `users/${uid}/profile`), (snap) => {
             if (snap.exists()) {
@@ -1339,7 +1339,7 @@ class ReactiveUserStore {
     const uniqueUids = [...new Set(uids.filter(Boolean))];
     uniqueUids.forEach((uid) => {
       if (!this.unsubscribers.has(uid) && window.db) {
-        import("firebase/database").then(({ ref, onValue }) => {
+        import("./firebase.js").then(({ ref, onValue }) => {
           if (!this.unsubscribers.has(uid)) {
             const unsub = onValue(ref(window.db, `users/${uid}/profile`), (snap) => {
               if (snap.exists()) {

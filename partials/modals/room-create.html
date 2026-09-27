@@ -1,0 +1,116 @@
+<div class="modal" id="modal-room">
+      <div class="modal-content glass-panel" style="width: min(560px, calc(100% - 32px)); max-width: 560px">
+        <div class="modal-drag-handle"></div>
+        <h2 id="room-modal-title">
+          <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+          Создать комнату
+        </h2>
+        <div style="display: flex; flex-direction: column; gap: 12px">
+          <div>
+            <div class="room-field-header">
+              <span class="room-field-label">Название комнаты</span>
+              <span id="room-name-autofill-hint" class="room-autofill-hint" style="display: none;">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 14px; height: 14px; vertical-align: middle;">
+                <span>Скопировано из видео</span>
+              </span>
+            </div>
+            <input type="text" id="room-input-name" placeholder="Название комнаты (заполнится автоматически при вставке ссылки)">
+          </div>
+
+          <div>
+            <div class="room-field-header">
+              <span class="room-field-label">Ссылка на видео</span>
+              <span id="room-url-loading-indicator" style="display: none; font-size: 11px; color: #10b981; font-weight: 600; align-items: center; gap: 4px;">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 14px; height: 14px; vertical-align: middle;">
+                <span>Получаем название...</span>
+              </span>
+            </div>
+            <input type="url" id="room-input-url" placeholder="Rutube, YouTube, VK, Vimeo, Twitch или прямая ссылка (mp4, m3u8)">
+          </div>
+
+          <div id="yt-create-note" style="
+              display: none;
+              font-size: 11px;
+              color: var(--danger);
+              margin-top: -8px;
+              background: rgba(255, 71, 87, 0.1);
+              padding: 6px;
+              border-radius: 6px;
+            ">
+            <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Double%20Exclamation%20Mark.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom; margin-right: 4px;"><b>Внимание:</b> При использовании ссылок YouTube может
+            потребоваться включенный ВПН (VPN) для корректной синхронизации и
+            воспроизведения из-за региональных ограничений.
+          </div>
+          <div id="room-media-status" class="room-media-status state-idle" style="display: none" aria-live="polite"></div>
+
+          <!-- Поиск видео по названию и платформе -->
+          <div class="room-search-card" id="room-video-search-container">
+            <div class="room-search-header">
+              <div class="room-search-title">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Magnifying%20Glass%20Tilted%20Right.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+                <span>Поиск по названию и платформе</span>
+              </div>
+              <span class="room-search-badge">VK Video & YouTube</span>
+            </div>
+
+            <div class="room-search-input-row">
+              <input type="text" id="room-search-video-input" placeholder="Напишите название видео для поиска..." autocomplete="off">
+              <button type="button" id="btn-room-search-video" class="secondary-btn room-search-btn">
+                Найти
+              </button>
+            </div>
+
+            <div class="room-search-platforms" id="room-search-platform-chips">
+              <button type="button" class="platform-chip active" data-platform="all" id="chip-plat-all">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 15px; height: 15px; vertical-align: middle; margin-right: 4px;">Все
+              </button>
+              <button type="button" class="platform-chip" data-platform="vk" id="chip-plat-vk">
+                <img src="https://cdn-icons-png.flaticon.com/128/145/145813.png" style="width: 15px; height: 15px; border-radius: 3px; object-fit: contain; vertical-align: middle; margin-right: 4px;">VK Video
+              </button>
+              <button type="button" class="platform-chip" data-platform="youtube" id="chip-plat-yt">
+                <img src="https://cdn-icons-png.flaticon.com/128/1384/1384060.png" style="width: 16px; height: 16px; object-fit: contain; vertical-align: middle; margin-right: 4px;">YouTube
+              </button>
+            </div>
+
+            <div id="room-search-loading" class="room-search-loading" style="display: none;">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Magnifying%20Glass%20Tilted%20Right.webp" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 6px;">
+              <span>Ищем видео на платформах...</span>
+            </div>
+            <div id="room-search-empty" class="room-search-empty" style="display: none;">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Thinking%20Face.webp" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 6px;">
+              <span>Ничего не найдено</span>
+            </div>
+
+            <div id="room-video-search-results" class="room-search-results-list oled-scrollbar" style="display: none;">
+              <!-- Results rendered via JS -->
+            </div>
+          </div>
+
+          <label style="
+              display: flex;
+              align-items: center;
+              gap: 10px;
+              font-size: 14px;
+              cursor: pointer;
+              margin-top: 5px;
+              color: var(--text-muted);
+            ">
+            <input type="checkbox" id="room-input-private" style="width: auto; margin: 0">
+            Сделать приватной (по паролю)
+          </label>
+          <input type="password" id="room-input-password" placeholder="Придумайте пароль" style="display: none">
+          <div class="hashtag-input-wrap">
+            <div class="hashtag-suggestions" id="room-hashtag-suggestions"></div>
+            <input type="text" id="room-input-hashtag" placeholder="#chill">
+          </div>
+
+          <div class="modal-actions">
+            <button class="secondary-btn btn-close-modal">Отмена</button>
+            <button class="primary-btn" id="btn-save-room">Готово</button>
+          </div>
+          <button class="danger-btn" id="btn-delete-room" style="display: none; margin-top: 10px">
+            Удалить комнату навсегда
+          </button>
+        </div>
+      </div>
+    </div>
