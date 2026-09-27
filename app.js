@@ -4,29 +4,74 @@
  */
 
 // Core Infrastructure & Shared State
-// window.Hls is provided by the global script tag or bundler
 const Hls = typeof window !== "undefined" ? window.Hls : null;
-import "./js/firebase.js";
+
+import {
+  auth,
+  db,
+  ref,
+  get,
+  set,
+  push,
+  update,
+  remove,
+  onValue,
+  off,
+  onDisconnect,
+  onChildAdded,
+  onAuthStateChanged,
+  AppState,
+} from "./js/firebase.js";
 import "./js/emojis.js";
-import "./js/security.js";
-import "./js/utils.js";
-import "./js/settings.js";
-import "./js/library.js";
-import "./js/premium.js";
-import "./js/media.js";
+import { Utils } from "./js/utils.js";
+import { SecurityManager, TutorialManager } from "./js/security.js";
+import { SettingSections, GlobalThemeManager, ThemeManager } from "./js/settings.js";
+import { LibraryManager } from "./js/library.js";
+import { PremiumManager } from "./js/premium.js";
+import { MediaResolverClient, RoomVideoSearchManager } from "./js/media.js";
 import "./js/players.js";
-import "./js/effects.js";
-import "./js/auth.js";
-import "./js/lumens.js";
-import "./js/profile.js";
-import "./js/social.js";
-import "./js/support.js";
-import "./js/admin.js";
-import "./js/room.js";
-import "./js/catalog.js";
-import "./js/fps.js";
-import "./js/router.js";
-import "./js/maintenance.js";
+import { BackgroundFX, EasterEggManager } from "./js/effects.js";
+import { BadgeManager, AuthManager } from "./js/auth.js";
+import { HashtagManager, LumenManager } from "./js/lumens.js";
+import { ProfileManager } from "./js/profile.js";
+import { FriendsManager, DirectMessages, ReportManager } from "./js/social.js";
+import { SupportSystem } from "./js/support.js";
+import { AdminPanel } from "./js/admin.js";
+import { RoomManager, RTCManager, MobileSwipeManager } from "./js/room.js";
+import { CatalogManager } from "./js/catalog.js";
+import { FpsCounter } from "./js/fps.js";
+import Router from "./js/router.js";
+import { MaintenanceSystem } from "./js/maintenance.js";
+
+// Make all critical singletons globally accessible
+window.AppState = AppState;
+window.Utils = Utils;
+window.AuthManager = AuthManager;
+window.BadgeManager = BadgeManager;
+window.ProfileManager = ProfileManager;
+window.FriendsManager = FriendsManager;
+window.DirectMessages = DirectMessages;
+window.ReportManager = ReportManager;
+window.RoomManager = RoomManager;
+window.CatalogManager = CatalogManager;
+window.SecurityManager = SecurityManager;
+window.TutorialManager = TutorialManager;
+window.ThemeManager = ThemeManager;
+window.GlobalThemeManager = GlobalThemeManager;
+window.HashtagManager = HashtagManager;
+window.LumenManager = LumenManager;
+window.BackgroundFX = BackgroundFX;
+window.EasterEggManager = EasterEggManager;
+window.MobileSwipeManager = MobileSwipeManager;
+window.PremiumManager = PremiumManager;
+window.LibraryManager = LibraryManager;
+window.MaintenanceSystem = MaintenanceSystem;
+window.Router = Router;
+window.AdminPanel = AdminPanel;
+window.SupportSystem = SupportSystem;
+window.MediaResolverClient = MediaResolverClient;
+window.RoomVideoSearchManager = RoomVideoSearchManager;
+window.FpsCounter = FpsCounter;
 
 // Application Runner & Initialization
 const runApp = () => {
@@ -45,21 +90,21 @@ const runApp = () => {
     }
   };
 
-  initSystem("MaintenanceSystem", () => window.MaintenanceSystem?.init());
-  initSystem("Router", () => window.Router?.init());
-  initSystem("SecurityManager", () => SecurityManager.init());
-  initSystem("TutorialManager", () => TutorialManager.init());
-  initSystem("BadgeManager", () => BadgeManager.init());
-  initSystem("GlobalThemeManager", () => GlobalThemeManager.init()); // [NEW]
-  initSystem("AuthManager", () => AuthManager.init());
-  initSystem("BackgroundFX", () => BackgroundFX.init());
-  initSystem("EasterEggManager", () => EasterEggManager.init());
-  initSystem("HashtagManager", () => HashtagManager.initHashtags());
-  initSystem("MobileSwipeManager", () => MobileSwipeManager.init()); // [NEW] Mobile Swipes initialization
-  initSystem("PremiumManager", () => PremiumManager.init());
-  initSystem("LibraryManager", () => window.LibraryManager.init());
-  initSystem("MysteryEventManager", () => MysteryEventManager.init());
-  initSystem("FpsCounter", () => window.FpsCounter?.checkAndToggle());
+  initSystem("MaintenanceSystem", () => (window.MaintenanceSystem || MaintenanceSystem)?.init());
+  initSystem("Router", () => (window.Router || Router)?.init());
+  initSystem("SecurityManager", () => (window.SecurityManager || SecurityManager)?.init());
+  initSystem("TutorialManager", () => (window.TutorialManager || TutorialManager)?.init());
+  initSystem("BadgeManager", () => (window.BadgeManager || BadgeManager)?.init());
+  initSystem("GlobalThemeManager", () => (window.GlobalThemeManager || GlobalThemeManager)?.init());
+  initSystem("AuthManager", () => (window.AuthManager || AuthManager)?.init());
+  initSystem("BackgroundFX", () => (window.BackgroundFX || BackgroundFX)?.init());
+  initSystem("EasterEggManager", () => (window.EasterEggManager || EasterEggManager)?.init());
+  initSystem("HashtagManager", () => (window.HashtagManager || HashtagManager)?.initHashtags());
+  initSystem("MobileSwipeManager", () => (window.MobileSwipeManager || MobileSwipeManager)?.init());
+  initSystem("PremiumManager", () => (window.PremiumManager || PremiumManager)?.init());
+  initSystem("LibraryManager", () => (window.LibraryManager || LibraryManager)?.init());
+  initSystem("MysteryEventManager", () => window.MysteryEventManager?.init());
+  initSystem("FpsCounter", () => (window.FpsCounter || FpsCounter)?.checkAndToggle());
 
   document.querySelectorAll(".btn-close-modal").forEach((btn) => {
     btn.addEventListener("click", (e) => {
@@ -85,18 +130,13 @@ const runApp = () => {
   });
 };
 
-
-// Application Routing & Event Wiring
-window.CatalogManager = CatalogManager;
-window.ProfileManager = ProfileManager;
-window.FriendsManager = FriendsManager;
-
-// Initialize on load so it's visible to guests too
+// Initialize catalog on load so it's visible to guests too
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", () => CatalogManager.init());
+  document.addEventListener("DOMContentLoaded", () => CatalogManager?.init());
 } else {
-  CatalogManager.init();
+  CatalogManager?.init();
 }
+
 
 setTimeout(() => {
   // Global listeners for the pushed events

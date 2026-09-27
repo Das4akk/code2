@@ -1214,37 +1214,30 @@ class Utils {
     if (originalBadge) originalBadge.classList.add("original-badge");
 
     const roomsMain = document.querySelector(".rooms-main");
-    if (roomsMain) {
+    if (roomsMain && !document.getElementById("custom-rooms-badge")) {
       const customBadge = document.createElement("div");
-      customBadge.id = "custom-online-badge";
-      customBadge.innerHTML = `Live актив: <span id="custom-online-count" style="color:var(--accent);">0</span>`;
+      customBadge.id = "custom-rooms-badge";
+      customBadge.style.cssText = "display:inline-flex; align-items:center; gap:6px; padding:6px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:100px; font-size:12.5px; font-weight:600; color:var(--text-muted); margin-bottom:16px; backdrop-filter:blur(8px);";
+      customBadge.innerHTML = `<img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Television.webp" style="width:16px; height:16px; object-fit:contain;" alt="Комнаты"> Комнат сейчас: <span id="custom-rooms-count" style="color:var(--accent); font-weight:700;">0</span>`;
       roomsMain.insertBefore(customBadge, roomsMain.firstChild);
 
-      const updateLiveActive = async () => {
+      const updateActiveRooms = async () => {
         try {
-          const now = Date.now();
-          if (!window._usersOnlineCache || now - (window._usersOnlineCacheTime || 0) > 120000) {
-            const { get, ref } =
-              await import("./firebase.js");
-            const snap = await get(ref(window.db || db, "users"));
-            let activeNow = 0;
-            if (snap.exists()) {
-              const usersData = snap.val();
-              for (let uid in usersData) {
-                if (usersData[uid]?.status?.online === true) activeNow++;
-              }
-            }
-            window._usersOnlineCache = activeNow;
-            window._usersOnlineCacheTime = now;
+          const { get, ref } = await import("./firebase.js");
+          const snap = await get(ref(window.db || db, "rooms"));
+          let count = 0;
+          if (snap.exists()) {
+            const data = snap.val() || {};
+            count = Object.keys(data).length;
           }
-          const el = document.getElementById("custom-online-count");
-          if (el) el.innerText = window._usersOnlineCache ?? 0;
+          const el = document.getElementById("custom-rooms-count");
+          if (el) el.innerText = count;
         } catch (e) {
-          console.warn("Live active error", e);
+          console.warn("Active rooms count error", e);
         }
       };
-      updateLiveActive();
-      setInterval(updateLiveActive, 60000);
+      updateActiveRooms();
+      setInterval(updateActiveRooms, 30000);
     }
 
     if (!Utils.hasInjectedAuthStyles) {

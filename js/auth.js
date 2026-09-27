@@ -1,3 +1,26 @@
+import {
+  auth,
+  db,
+  ref,
+  get,
+  set,
+  push,
+  update,
+  remove,
+  onValue,
+  off,
+  onDisconnect,
+  onChildAdded,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  updateProfile,
+  signInWithPopup,
+  GoogleAuthProvider,
+  AppState,
+} from "./firebase.js";
+
 class BadgeManager {
   static isRelationshipBadge(id, b) {
     if (!id && !b) return false;
@@ -391,7 +414,11 @@ window.BadgeManager = BadgeManager;
 
 class AuthManager {
   static init() {
-    Utils.injectFixes();
+    try {
+      Utils.injectFixes();
+    } catch (e) {
+      console.warn("[AuthManager] injectFixes error:", e);
+    }
 
     // Instant optimistic preload on F5
     try {
@@ -399,146 +426,168 @@ class AuthManager {
       const savedAccounts = JSON.parse(
         localStorage.getItem("cowio_saved_accounts") || "[]",
       );
-      if (lastRaw && savedAccounts.length > 0) {
+      if (lastRaw && Array.isArray(savedAccounts) && savedAccounts.length > 0) {
         const cachedP = JSON.parse(lastRaw);
-        const lastUid = cachedP.uid || savedAccounts[savedAccounts.length - 1]?.uid;
+        const lastUid = cachedP?.uid || savedAccounts[savedAccounts.length - 1]?.uid;
         if (lastUid && cachedP) {
           AppState.currentUser = { uid: lastUid, email: cachedP.email || savedAccounts[0]?.email };
           AppState.usersCache.set(lastUid, cachedP);
           if (window.ProfileManager && typeof ProfileManager.renderProfileUI === "function") {
-            ProfileManager.renderProfileUI(lastUid, cachedP);
+            try { ProfileManager.renderProfileUI(lastUid, cachedP); } catch (e) {}
           }
           const pathname = window.location.pathname;
           if (pathname === "/login" || pathname === "/register" || pathname === "/") {
-            Utils.showScreen("lobby-screen", false);
+            try { Utils.showScreen("lobby-screen", false); } catch (e) {}
           }
         }
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn("[AuthManager] Preload error:", e);
+    }
 
-    onAuthStateChanged(auth, async (user) => {
-      try {
-        if (user) {
-          if (!AppState.isRegistering) {
-            TutorialManager.markDeviceUsed();
-          }
-          AppState.currentUser = user;
-          
-          if (window.MaintenanceSystem) {
-            window.MaintenanceSystem.applyMaintenanceUI();
-          }
-
-          try {
-            const dbase = window.db;
-            if (dbase && window.ref && window.get && window.remove) {
-              window.get(window.ref(dbase, `users/${user.uid}/force_tutorial`)).then((snap) => {
-                if (snap.exists() && snap.val() === true) {
-                  TutorialManager.startTutorial(true);
-                  window.remove(window.ref(dbase, `users/${user.uid}/force_tutorial`));
-                }
-              });
-            }
-          } catch (e) {}
-          
-          // --- Like Notifications ---
-          let initialLikesLoad = true;
-          try {
-            const dbase = window.db;
-            if (dbase && window.ref && window.onChildAdded && window.get) {
-              window.onChildAdded(window.ref(dbase, `users/${user.uid}/profile/likedBy`), (snap) => {
-                if (initialLikesLoad) return;
-                const likerUid = snap.key;
-                window.get(window.ref(dbase, `users/${likerUid}/profile/name`)).then((nameSnap) => {
-                  const likerName = nameSnap.val() || "Кто-то";
-                  window.get(window.ref(dbase, `users/${user.uid}/profile/likedBy`)).then((likesSnap) => {
-                    const count = likesSnap.exists() ? Object.keys(likesSnap.val()).length : 1;
-                    Utils.toast(`Вы получили лайк от ${likerName} - теперь у вас ${count} лайков в профиле`, "info");
-                  });
-                });
-              });
-              setTimeout(() => (initialLikesLoad = false), 3000);
-            }
-          } catch (e) {}
-          // --------------------------
-          
-          const savedAccounts = JSON.parse(
-            localStorage.getItem("cowio_saved_accounts") || "[]",
-          );
-          const existingAcc = savedAccounts.find((a) => a.uid === user.uid);
-          if (!existingAcc) {
-            savedAccounts.push({ uid: user.uid, email: user.email });
-            localStorage.setItem(
-              "cowio_saved_accounts",
-              JSON.stringify(savedAccounts),
-            );
-          }
-
-          void AdminPanel.getDeveloperUid();
-
-          // Authoritative routing via Router
-          let pathname = window.location.pathname;
-          const intended = sessionStorage.getItem("cowio_intended_route");
-          if (intended && intended !== "/login" && intended !== "/") {
-            pathname = intended;
-            sessionStorage.removeItem("cowio_intended_route");
-          }
-
-          if (
-            pathname === "/login" ||
-            pathname === "/register" ||
-            pathname === "/"
-          ) {
-            pathname = "/lobby";
-            if (window.Router) window.Router.navigate("/lobby", true);
-          }
-
-          if (!pathname.startsWith("/room/")) {
-            Utils.showScreen("lobby-screen", false);
-          }
-          if (window.Router && typeof window.Router.handleRoute === "function") {
-            window.Router.currentPath = null;
-            window.Router.handleRoute(pathname, true);
-          }
-
-          ProfileManager.bindMyProfileListener();
-          FriendsManager.initListeners();
-          RoomManager.initLobbyListeners();
-          DirectMessages.startNotifications();
-          AdminPanel.init();
-          if (window.PremiumManager) {
-            PremiumManager.handlePostLoginReturn();
-            PremiumManager.updateThemeButtons();
-          }
-          if (window.SupportSystem) window.SupportSystem.initGlobalListener();
-          this.bindGlobalPresence();
-
-          // Non-blocking background checks
-          (async () => {
+    try {
+      onAuthStateChanged(auth, async (user) => {
+        try {
+          if (user) {
             try {
-              if (!AppState.isRegistering) {
-                await ProfileManager.ensureProfileExists(user);
+              if (!AppState.isRegistering && window.TutorialManager?.markDeviceUsed) {
+                TutorialManager.markDeviceUsed();
               }
-              const profSnap = await get(ref(db, `users/${user.uid}/profile`));
-              if (profSnap.exists()) {
-                await BadgeManager.checkLevelBadges(
-                  user.uid,
-                  Number(profSnap.val().xp) || 0,
+            } catch (e) {}
+            AppState.currentUser = user;
+            
+            try {
+              if (window.MaintenanceSystem?.applyMaintenanceUI) {
+                window.MaintenanceSystem.applyMaintenanceUI();
+              }
+            } catch (e) {}
+
+            try {
+              const dbase = window.db || db;
+              if (dbase && window.ref && window.get && window.remove) {
+                window.get(window.ref(dbase, `users/${user.uid}/force_tutorial`)).then((snap) => {
+                  if (snap.exists() && snap.val() === true) {
+                    if (window.TutorialManager?.startTutorial) TutorialManager.startTutorial(true);
+                    window.remove(window.ref(dbase, `users/${user.uid}/force_tutorial`));
+                  }
+                }).catch(() => {});
+              }
+            } catch (e) {}
+            
+            // --- Like Notifications ---
+            let initialLikesLoad = true;
+            try {
+              const dbase = window.db || db;
+              if (dbase && window.ref && window.onChildAdded && window.get) {
+                window.onChildAdded(window.ref(dbase, `users/${user.uid}/profile/likedBy`), (snap) => {
+                  if (initialLikesLoad) return;
+                  const likerUid = snap.key;
+                  window.get(window.ref(dbase, `users/${likerUid}/profile/name`)).then((nameSnap) => {
+                    const likerName = nameSnap.val() || "Кто-то";
+                    window.get(window.ref(dbase, `users/${user.uid}/profile/likedBy`)).then((likesSnap) => {
+                      const count = likesSnap.exists() ? Object.keys(likesSnap.val()).length : 1;
+                      Utils.toast(`Вы получили лайк от ${likerName} - теперь у вас ${count} лайков в профиле`, "info");
+                    });
+                  }).catch(() => {});
+                });
+                setTimeout(() => (initialLikesLoad = false), 3000);
+              }
+            } catch (e) {}
+            // --------------------------
+            
+            try {
+              const savedAccounts = JSON.parse(
+                localStorage.getItem("cowio_saved_accounts") || "[]",
+              );
+              const existingAcc = Array.isArray(savedAccounts) ? savedAccounts.find((a) => a.uid === user.uid) : null;
+              if (!existingAcc && Array.isArray(savedAccounts)) {
+                savedAccounts.push({ uid: user.uid, email: user.email });
+                localStorage.setItem(
+                  "cowio_saved_accounts",
+                  JSON.stringify(savedAccounts),
                 );
               }
-              await BadgeManager.checkRelationshipBadges(user.uid);
-            } catch (err) {
-              console.warn("Background profile/badge checks:", err);
-            }
-          })();
-        } else {
-          this.handleLogoutCleanup();
-        }
-      } finally {
-        this.finishAuthBootstrap();
-      }
-    });
+            } catch (e) {}
 
-    ThemeManager.init();
+            try {
+              if (window.AdminPanel?.getDeveloperUid) void AdminPanel.getDeveloperUid();
+            } catch (e) {}
+
+            // Authoritative routing via Router
+            let pathname = window.location.pathname;
+            const intended = sessionStorage.getItem("cowio_intended_route");
+            if (intended && intended !== "/login" && intended !== "/") {
+              pathname = intended;
+              sessionStorage.removeItem("cowio_intended_route");
+            }
+
+            if (
+              pathname === "/login" ||
+              pathname === "/register" ||
+              pathname === "/"
+            ) {
+              pathname = "/lobby";
+              if (window.Router) window.Router.navigate("/lobby", true);
+            }
+
+            if (!pathname.startsWith("/room/")) {
+              Utils.showScreen("lobby-screen", false);
+            }
+            if (window.Router && typeof window.Router.handleRoute === "function") {
+              window.Router.currentPath = null;
+              window.Router.handleRoute(pathname, true);
+            }
+
+            try { if (window.ProfileManager?.bindMyProfileListener) ProfileManager.bindMyProfileListener(); } catch (e) {}
+            try { if (window.FriendsManager?.initListeners) FriendsManager.initListeners(); } catch (e) {}
+            try { if (window.RoomManager?.initLobbyListeners) RoomManager.initLobbyListeners(); } catch (e) {}
+            try { if (window.DirectMessages?.startNotifications) DirectMessages.startNotifications(); } catch (e) {}
+            try { if (window.AdminPanel?.init) AdminPanel.init(); } catch (e) {}
+            try {
+              if (window.PremiumManager) {
+                PremiumManager.handlePostLoginReturn();
+                PremiumManager.updateThemeButtons();
+              }
+            } catch (e) {}
+            try { if (window.SupportSystem?.initGlobalListener) window.SupportSystem.initGlobalListener(); } catch (e) {}
+            try { this.bindGlobalPresence(); } catch (e) {}
+
+            // Non-blocking background checks
+            (async () => {
+              try {
+                if (!AppState.isRegistering && window.ProfileManager?.ensureProfileExists) {
+                  await ProfileManager.ensureProfileExists(user);
+                }
+                const profSnap = await get(ref(db, `users/${user.uid}/profile`));
+                if (profSnap.exists() && window.BadgeManager?.checkLevelBadges) {
+                  await BadgeManager.checkLevelBadges(
+                    user.uid,
+                    Number(profSnap.val().xp) || 0,
+                  );
+                }
+                if (window.BadgeManager?.checkRelationshipBadges) {
+                  await BadgeManager.checkRelationshipBadges(user.uid);
+                }
+              } catch (err) {
+                console.warn("Background profile/badge checks:", err);
+              }
+            })();
+          } else {
+            this.handleLogoutCleanup();
+          }
+        } catch (authErr) {
+          console.error("[AuthManager] onAuthStateChanged error:", authErr);
+        } finally {
+          this.finishAuthBootstrap();
+        }
+      });
+    } catch (e) {
+      console.error("[AuthManager] Failed to attach onAuthStateChanged:", e);
+    }
+
+    try {
+      if (window.ThemeManager?.init) ThemeManager.init();
+    } catch (e) {}
     this.bindUI();
   }
 
@@ -749,38 +798,44 @@ class AuthManager {
   }
 
   static bindUI() {
-    Utils.$("tab-login-btn").onclick = () => {
-      Utils.$("tab-login-btn").classList.add("active");
-      Utils.$("tab-reg-btn").classList.remove("active");
-      Utils.$("login-form").classList.add("active-form");
-      Utils.$("reg-form").classList.remove("active-form");
-      const leftLogin = Utils.$("auth-left-login");
-      const leftReg = Utils.$("auth-left-reg");
-      if (leftLogin) leftLogin.style.display = "block";
-      if (leftReg) leftReg.style.display = "none";
-    };
+    const tabLogin = Utils.$("tab-login-btn");
+    const tabReg = Utils.$("tab-reg-btn");
+    if (tabLogin) {
+      tabLogin.onclick = () => {
+        tabLogin.classList.add("active");
+        if (tabReg) tabReg.classList.remove("active");
+        Utils.$("login-form")?.classList.add("active-form");
+        Utils.$("reg-form")?.classList.remove("active-form");
+        const leftLogin = Utils.$("auth-left-login");
+        const leftReg = Utils.$("auth-left-reg");
+        if (leftLogin) leftLogin.style.display = "block";
+        if (leftReg) leftReg.style.display = "none";
+      };
+    }
     
     document.querySelectorAll('#login-form input').forEach(input => {
         input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') Utils.$("btn-do-login").click();
+            if (e.key === 'Enter') Utils.$("btn-do-login")?.click();
         });
     });
     document.querySelectorAll('#reg-form input').forEach(input => {
         input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') Utils.$("btn-do-reg").click();
+            if (e.key === 'Enter') Utils.$("btn-do-reg")?.click();
         });
     });
 
-    Utils.$("tab-reg-btn").onclick = () => {
-      Utils.$("tab-reg-btn").classList.add("active");
-      Utils.$("tab-login-btn").classList.remove("active");
-      Utils.$("reg-form").classList.add("active-form");
-      Utils.$("login-form").classList.remove("active-form");
-      const leftLogin = Utils.$("auth-left-login");
-      const leftReg = Utils.$("auth-left-reg");
-      if (leftLogin) leftLogin.style.display = "none";
-      if (leftReg) leftReg.style.display = "block";
-    };
+    if (tabReg) {
+      tabReg.onclick = () => {
+        tabReg.classList.add("active");
+        if (tabLogin) tabLogin.classList.remove("active");
+        Utils.$("reg-form")?.classList.add("active-form");
+        Utils.$("login-form")?.classList.remove("active-form");
+        const leftLogin = Utils.$("auth-left-login");
+        const leftReg = Utils.$("auth-left-reg");
+        if (leftLogin) leftLogin.style.display = "none";
+        if (leftReg) leftReg.style.display = "block";
+      };
+    }
 
     if (Utils.$("btn-forgot-password")) {
       Utils.$("btn-forgot-password").onclick = async () => {
@@ -1267,60 +1322,83 @@ class AuthManager {
       }
     };
 
-    Utils.$("btn-google-login").onclick = handleGoogleAuth;
-    Utils.$("btn-google-reg").onclick = handleGoogleAuth;
+    const btnGoogleLogin = Utils.$("btn-google-login");
+    if (btnGoogleLogin) btnGoogleLogin.onclick = handleGoogleAuth;
+    const btnGoogleReg = Utils.$("btn-google-reg");
+    if (btnGoogleReg) btnGoogleReg.onclick = handleGoogleAuth;
 
-    Utils.$("btn-logout").onclick = () => signOut(auth);
+    const btnLogout = Utils.$("btn-logout");
+    if (btnLogout) btnLogout.onclick = () => {
+      try { signOut(auth); } catch (e) { console.warn("Logout error:", e); }
+    };
   }
 
   static async bindGlobalPresence() {
-    const uid = AppState.currentUser.uid;
-    const connectedRef = ref(db, ".info/connected");
-    const userStatusRef = ref(db, `users/${uid}/status`);
-
-    let currentIp = "unavailable";
     try {
-      const ipRes = await fetch("https://api64.ipify.org?format=json", {
-        signal: AbortSignal.timeout(1200),
-      });
-      const ipData = await ipRes.json();
-      if (ipData && ipData.ip) {
-        currentIp = ipData.ip;
-      }
-    } catch (e) {
-      // ignore
-    }
+      const uid = AppState.currentUser?.uid;
+      if (!uid) return;
+      const connectedRef = ref(db, ".info/connected");
+      const userStatusRef = ref(db, `users/${uid}/status`);
 
-    onValue(connectedRef, (snap) => {
-      if (snap.val() === true) {
-        onDisconnect(userStatusRef)
-          .set({ online: false, lastActive: Date.now(), ip: currentIp })
-          .then(() =>
-            set(userStatusRef, {
-              online: true,
-              lastActive: Date.now(),
-              ip: currentIp,
-            }),
-          );
+      let currentIp = "unavailable";
+      try {
+        const ipRes = await fetch("https://api64.ipify.org?format=json", {
+          signal: AbortSignal.timeout(1200),
+        });
+        const ipData = await ipRes.json();
+        if (ipData && ipData.ip) {
+          currentIp = ipData.ip;
+        }
+      } catch (e) {
+        // ignore
       }
-    });
+
+      onValue(connectedRef, (snap) => {
+        if (snap.val() === true) {
+          onDisconnect(userStatusRef)
+            .set({ online: false, lastActive: Date.now(), ip: currentIp })
+            .then(() =>
+              set(userStatusRef, {
+                online: true,
+                lastActive: Date.now(),
+                ip: currentIp,
+              }),
+            )
+            .catch(() => {});
+        }
+      });
+    } catch (e) {
+      console.warn("[AuthManager] bindGlobalPresence error:", e);
+    }
   }
 
   static handleLogoutCleanup() {
-    AppState.currentUser = null;
-    if (window.location.pathname !== "/login") {
-      sessionStorage.setItem("cowio_intended_route", window.location.pathname);
+    try {
+      AppState.currentUser = null;
+      if (window.location.pathname !== "/login" && window.location.pathname !== "/register") {
+        sessionStorage.setItem("cowio_intended_route", window.location.pathname);
+      }
+      Utils.showScreen("auth-screen");
+      if (window.Router) {
+        window.Router.navigate("/login", true);
+      }
+      if (Utils.$("login-pass")) Utils.$("login-pass").value = "";
+      if (Utils.$("reg-pass")) Utils.$("reg-pass").value = "";
+      if (Utils.$("btn-do-login")) Utils.$("btn-do-login").disabled = false;
+      if (Utils.$("btn-do-reg")) Utils.$("btn-do-reg").disabled = false;
+      if (window.AdminPanel?.handleLogoutCleanup) AdminPanel.handleLogoutCleanup();
+      if (window.RoomManager?.leaveRoom) RoomManager.leaveRoom();
+      if (Array.isArray(AppState.activeSubscriptions)) {
+        AppState.activeSubscriptions.forEach((unsub) => {
+          try { if (typeof unsub === "function") unsub(); } catch (e) {}
+        });
+        AppState.activeSubscriptions = [];
+      }
+    } catch (e) {
+      console.warn("[AuthManager] handleLogoutCleanup error:", e);
     }
-    Utils.showScreen("auth-screen");
-    Utils.$("login-pass").value = "";
-    Utils.$("reg-pass").value = "";
-    Utils.$("btn-do-login").disabled = false;
-    Utils.$("btn-do-reg").disabled = false;
-    AdminPanel.handleLogoutCleanup();
-    RoomManager.leaveRoom();
-    AppState.activeSubscriptions.forEach((unsub) => unsub());
-    AppState.activeSubscriptions = [];
   }
+
 }
 
 window.BadgeManager = BadgeManager;

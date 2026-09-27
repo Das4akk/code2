@@ -90,22 +90,35 @@ class Router {
     const pClose = document.getElementById("profile-overlay-close");
     if (pClose) pClose.style.display = "none";
 
-    // 3. Route matching
-    if (pathname === "/" || pathname === "/lobby") {
-      this.showLobbySection("nav-rooms", "section-rooms");
-      return;
-    }
+    // 3. Auth Gate: If unauthenticated, redirect to /login
+    const isAuthenticated = Boolean(
+      window.AppState?.currentUser?.uid ||
+      localStorage.getItem("cowio_last_profile")
+    );
 
-    if (pathname === "/login" || pathname === "/register") {
-      if (window.AppState && window.AppState.currentUser) {
-        this.navigate("/lobby", true);
-        return;
+    if (!isAuthenticated) {
+      if (pathname !== "/login" && pathname !== "/register") {
+        sessionStorage.setItem("cowio_intended_route", pathname);
+        this.navigate("/login", true);
       }
       if (window.Utils && window.Utils.showScreen) {
         window.Utils.showScreen("auth-screen", false);
       }
       return;
     }
+
+    // 4. If authenticated and on login/register/root, redirect to /lobby
+    if (pathname === "/" || pathname === "/login" || pathname === "/register") {
+      this.navigate("/lobby", true);
+      this.showLobbySection("nav-rooms", "section-rooms");
+      return;
+    }
+
+    if (pathname === "/lobby") {
+      this.showLobbySection("nav-rooms", "section-rooms");
+      return;
+    }
+
 
     if (pathname.startsWith("/room/")) {
       const roomId = pathname.slice(6);

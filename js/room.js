@@ -1,3 +1,19 @@
+import {
+  auth,
+  db,
+  ref,
+  get,
+  set,
+  push,
+  update,
+  remove,
+  onValue,
+  off,
+  onDisconnect,
+  onChildAdded,
+  AppState,
+} from "./firebase.js";
+
 class RoomManager {
   static themeIndex = 0;
   static heartsTimer = null;
@@ -836,18 +852,17 @@ class RoomManager {
     if (!AppState.currentUser && window.auth?.currentUser) {
       AppState.currentUser = window.auth.currentUser;
     }
-    const uid = AppState.currentUser?.uid || window.auth?.currentUser?.uid;
+    let uid = AppState.currentUser?.uid || window.auth?.currentUser?.uid;
     if (!uid) {
-      if (window.onAuthStateChanged && window.auth) {
-        const unsub = window.onAuthStateChanged(window.auth, (u) => {
-          if (u && AppState.currentRoomId === roomId) {
-            try { unsub(); } catch (e) {}
-            AppState.currentUser = u;
-            RoomManager.initRoomServicesFinal(roomId);
-          }
-        });
+      const savedAccounts = JSON.parse(localStorage.getItem("cowio_saved_accounts") || "[]");
+      if (Array.isArray(savedAccounts) && savedAccounts.length > 0 && savedAccounts[0].uid) {
+        uid = savedAccounts[0].uid;
+      } else {
+        uid = "user_" + (Utils.generateCryptoId ? Utils.generateCryptoId(6) : Math.random().toString(36).slice(2, 8));
       }
-      return;
+      if (!AppState.currentUser) {
+        AppState.currentUser = { uid, displayName: "Пользователь" };
+      }
     }
     const presenceRef = ref(db, `rooms/${roomId}/presence/${uid}`);
     const presListRef = ref(db, `rooms/${roomId}/presence`);
@@ -877,22 +892,34 @@ class RoomManager {
     let presenceBootstrapped = false;
 
     const myName =
-      AppState.usersCache.get(uid)?.name ||
+      (uid && AppState.usersCache.get(uid)?.name) ||
       AppState.currentUser?.displayName ||
       (window.auth?.currentUser ? window.auth.currentUser.displayName : null) ||
       "Пользователь";
-    const isHostLike = AppState.isHost || AdminPanel.isCurrentUserCreator();
+    const isHostLike = AppState.isHost || (window.AdminPanel && AdminPanel.isCurrentUserCreator && AdminPanel.isCurrentUserCreator());
+    
+    // Immediately register presence locally and on Firebase
+    AppState.currentPresenceCache = AppState.currentPresenceCache || {};
+    AppState.currentPresenceCache[uid] = { uid, name: myName, perms: this.getDefaultPerms(isHostLike) };
+
     if (!window.isIncognito) {
-      set(presenceRef, { uid, name: myName, perms: this.getDefaultPerms(isHostLike) });
+      set(presenceRef, { uid, name: myName, perms: this.getDefaultPerms(isHostLike) }).catch((e) => console.warn("Presence write error:", e));
       onDisconnect(presenceRef).remove();
     } else {
-      // Still allow chatting, just don't list presence
       Utils.toast("ИНКОГНИТО АКТИВЕН. Вас не видно в списке.", "info");
     }
 
+    this.rerenderUsersList();
+    this.applyLocalPermissions();
+
     const pUnsub = onValue(presListRef, (snap) => {
       const prevCache = AppState.currentPresenceCache || {};
-      AppState.currentPresenceCache = snap.val() || {};
+      const nextCache = snap.val() || {};
+      if (uid && !nextCache[uid] && !window.isIncognito) {
+        nextCache[uid] = { uid, name: myName, perms: RoomManager.getDefaultPerms(isHostLike) };
+        set(presenceRef, nextCache[uid]).catch(() => {});
+      }
+      AppState.currentPresenceCache = nextCache;
       const otherPresUsers = Object.keys(AppState.currentPresenceCache).filter(
         (u) => u !== uid,
       );
@@ -901,14 +928,14 @@ class RoomManager {
       }
       this.rerenderUsersList();
       this.applyLocalPermissions();
-      if (RTCManager.isMicActive) {
+      if (typeof RTCManager !== "undefined" && RTCManager.isMicActive) {
         RTCManager.broadcastToParticipants();
       }
       if (!presenceBootstrapped) {
         presenceBootstrapped = true;
         return;
       }
-      if (AppState.isHost || AdminPanel.isCurrentUserCreator()) {
+      if (AppState.isHost || (window.AdminPanel && AdminPanel.isCurrentUserCreator && AdminPanel.isCurrentUserCreator())) {
         const prevIds = new Set(Object.keys(prevCache));
         const nextIds = new Set(Object.keys(AppState.currentPresenceCache));
         nextIds.forEach((joinedUid) => {
@@ -928,7 +955,7 @@ class RoomManager {
     });
     AppState.roomSubscriptions.push(() => {
       pUnsub();
-      remove(presenceRef);
+      remove(presenceRef).catch(() => {});
     });
 
     const vid = Utils.$("native-player");
@@ -1401,9 +1428,10 @@ class RoomManager {
       };
     });
 
+    const roomJoinReactionTs = Date.now() - 4000;
     const rUnsub = onChildAdded(reactionsRef, (snap) => {
       const rx = snap.val();
-      if (!rx || (Date.now() - rx.ts > 5000)) return;
+      if (!rx || (rx.ts && rx.ts < roomJoinReactionTs)) return;
       const el = document.createElement("div");
       el.className = "floating-emoji";
       const imgMap = {
@@ -1420,7 +1448,7 @@ class RoomManager {
       }
       el.style.left = `${Math.random() * 70 + 15}%`;
       
-      const reactionContainer = document.getElementById("reaction-layer") || document.body;
+      const reactionContainer = document.getElementById("reaction-layer") || document.querySelector(".video-container") || document.querySelector(".player-section") || document.body;
       reactionContainer.appendChild(el);
 
       setTimeout(() => {
@@ -1655,7 +1683,14 @@ class RoomManager {
     }
 
     const chatInput = Utils.$("chat-input");
-    if (chatInput) chatInput.disabled = !pChat;
+    if (chatInput) {
+      chatInput.disabled = false;
+      if (!pChat) {
+        chatInput.placeholder = "Чат отключен для вас";
+      } else {
+        chatInput.placeholder = "Добавить сообщение...";
+      }
+    }
     const sendBtn = Utils.$("send-btn");
     if (sendBtn) sendBtn.disabled = !pChat;
 
@@ -1672,13 +1707,29 @@ class RoomManager {
       micBtn.style.display = pVoice ? "inline-flex" : "none";
     }
 
-    if (!pVoice && RTCManager.isMicActive) RTCManager.toggleMic(true);
+    if (!pVoice && typeof RTCManager !== "undefined" && RTCManager.isMicActive) RTCManager.toggleMic(true);
   }
 
   static rerenderUsersList() {
     const container = Utils.$("users-list");
     if (!container) return;
     const cache = AppState.currentPresenceCache || {};
+    const currentUid = AppState.currentUser?.uid || window.auth?.currentUser?.uid || (AppState.currentUser ? AppState.currentUser.uid : null);
+    const myName =
+      (currentUid && AppState.usersCache.get(currentUid)?.name) ||
+      AppState.currentUser?.displayName ||
+      (window.auth?.currentUser ? window.auth.currentUser.displayName : null) ||
+      "Пользователь";
+    const isHostLike = AppState.isHost || (window.AdminPanel && AdminPanel.isCurrentUserCreator && AdminPanel.isCurrentUserCreator());
+
+    if (currentUid && !cache[currentUid]) {
+      cache[currentUid] = {
+        uid: currentUid,
+        name: myName,
+        perms: RoomManager.getDefaultPerms(isHostLike)
+      };
+    }
+
     const ids = Object.keys(cache);
     let outsideFriendsHtml = "";
     const renderToken = ++AppState.usersListRenderToken;
@@ -1693,8 +1744,6 @@ class RoomManager {
         return false;
       return true;
     };
-
-    const currentUid = AppState.currentUser?.uid || window.auth?.currentUser?.uid;
 
     if (currentUid) {
       get(ref(db, `users/${currentUid}/friends`)).then((snap) => {

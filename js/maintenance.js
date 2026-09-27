@@ -588,3 +588,5 @@ if (typeof window !== "undefined") {
 }
 
 export default MaintenanceSystem;
+export { MaintenanceSystem };
+
