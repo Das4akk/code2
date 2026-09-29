@@ -1,24 +1,5 @@
 {
-  "version": 2,
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "functions": {
-    "api/*.js": {
-      "runtime": "nodejs20.x"
-    }
-  },
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/api/index.js"
-    },
-    {
-      "source": "/emoji-proxy",
-      "destination": "/api/index.js"
-    },
-    {
-      "source": "/((?!api/|.*\\..*).*)",
-      "destination": "/index.html"
-    }
-  ]
+  "framework": "vite"
 }
