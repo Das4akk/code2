@@ -10,7 +10,6 @@ import { fileURLToPath } from 'url';
 import nodemailer from 'nodemailer';
 import admin from 'firebase-admin';
 import { createProxyMiddleware } from 'http-proxy-middleware';
-import { createServer as createViteServer } from 'vite';
 
 import { validateUrl, safeFetch, isDomainAllowed, isPrivateIp, ALLOWED_MEDIA_DOMAINS } from './utils/url-validator.js';
 import { sanitizeHtml, sanitizeText, sanitizeObject, prototypePollutionMiddleware } from './utils/sanitize.js';
@@ -189,24 +188,40 @@ try {
   const databaseURL = process.env.FIREBASE_DATABASE_URL || 'https://das4akk-1-default-rtdb.firebaseio.com';
 
   if (process.env.FIREBASE_ADMIN_KEY && !firebaseAdmin.apps?.length) {
-    const creds = JSON.parse(process.env.FIREBASE_ADMIN_KEY);
-    firebaseAdmin.initializeApp({
-      credential: firebaseAdmin.credential.cert(creds),
-      databaseURL
-    });
-    console.log('[COWIO] Firebase Admin SDK успешно запущен через FIREBASE_ADMIN_KEY env!');
-  } else {
-    const serviceAccountPath = path.join(__dirname, 'serviceAccountKey.json');
-    if (fs.existsSync(serviceAccountPath) && !firebaseAdmin.apps?.length) {
-      const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
-      if (serviceAccount.SMTP_USER) smtpUser = serviceAccount.SMTP_USER;
-      if (serviceAccount.SMTP_PASS) smtpPass = serviceAccount.SMTP_PASS;
-
+    try {
+      let creds = typeof process.env.FIREBASE_ADMIN_KEY === 'string'
+        ? JSON.parse(process.env.FIREBASE_ADMIN_KEY)
+        : process.env.FIREBASE_ADMIN_KEY;
+      if (creds && creds.private_key) {
+        creds.private_key = creds.private_key.replace(/\\n/g, '\n');
+      }
       firebaseAdmin.initializeApp({
-        credential: firebaseAdmin.credential.cert(serviceAccount),
+        credential: firebaseAdmin.credential.cert(creds),
         databaseURL
       });
-      console.log('[COWIO] Firebase Admin SDK успешно запущен из serviceAccountKey.json!');
+      console.log('[COWIO] Firebase Admin SDK успешно запущен через FIREBASE_ADMIN_KEY env!');
+    } catch (parseErr: any) {
+      console.error('[COWIO] Ошибка парсинга FIREBASE_ADMIN_KEY:', parseErr.message);
+    }
+  } else if (!firebaseAdmin.apps?.length) {
+    const serviceAccountPath = path.join(__dirname, 'serviceAccountKey.json');
+    if (fs.existsSync(serviceAccountPath)) {
+      try {
+        const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
+        if (serviceAccount.SMTP_USER) smtpUser = serviceAccount.SMTP_USER;
+        if (serviceAccount.SMTP_PASS) smtpPass = serviceAccount.SMTP_PASS;
+        if (serviceAccount.private_key) {
+          serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+        }
+
+        firebaseAdmin.initializeApp({
+          credential: firebaseAdmin.credential.cert(serviceAccount),
+          databaseURL
+        });
+        console.log('[COWIO] Firebase Admin SDK успешно запущен из serviceAccountKey.json!');
+      } catch (fileErr: any) {
+        console.error('[COWIO] Ошибка чтения serviceAccountKey.json:', fileErr.message);
+      }
     }
   }
 } catch (e: any) {
@@ -438,7 +453,13 @@ app.all('/api/auth/check-role', requireAuth, async (req: Request, res: Response)
       isAdmin: false
     });
   } catch (err: any) {
-    return res.status(500).json({ success: false, error: 'Ошибка проверки прав' });
+    return res.status(500).json({
+      success: false,
+      error: err.message || 'Ошибка проверки прав',
+      role: 'user',
+      isCreator: false,
+      isAdmin: false
+    });
   }
 });
 
@@ -1377,6 +1398,7 @@ app.use(
 const isProduction = process.env.NODE_ENV === 'production';
 
 if (!isProduction && process.env.NODE_ENV !== 'test') {
+  const { createServer: createViteServer } = await import('vite');
   const vite = await createViteServer({
     server: { middlewareMode: true, hmr: false },
     appType: 'custom'

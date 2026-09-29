@@ -847,14 +847,8 @@ class AuthManager {
             );
             const dbase = getDatabase();
             let resolvedUid = null;
-            if (cleanName === "developer") {
-              const devSnap = await get(ref(dbase, "admin/creatorUid"));
-              if (devSnap.exists()) resolvedUid = devSnap.val();
-            }
-            if (!resolvedUid) {
-              const snap = await get(ref(dbase, `usernames/${cleanName}`));
-              if (snap.exists()) resolvedUid = snap.val();
-            }
+            const snap = await get(ref(dbase, `usernames/${cleanName}`));
+            if (snap.exists()) resolvedUid = snap.val();
             if (resolvedUid) {
               const profileSnap = await get(ref(dbase, `users/${resolvedUid}/profile/email`));
               if (profileSnap.exists() && profileSnap.val()) {
@@ -1128,16 +1122,8 @@ class AuthManager {
             );
             const dbase = getDatabase();
             let resolvedUid = null;
-
-            if (cleanName === "developer") {
-              const devSnap = await get(ref(dbase, "admin/creatorUid"));
-              if (devSnap.exists()) resolvedUid = devSnap.val();
-            }
-
-            if (!resolvedUid) {
-              const snap = await get(ref(dbase, `usernames/${cleanName}`));
-              if (snap.exists()) resolvedUid = snap.val();
-            }
+            const snap = await get(ref(dbase, `usernames/${cleanName}`));
+            if (snap.exists()) resolvedUid = snap.val();
 
             if (resolvedUid) {
               const profileSnap = await get(ref(dbase, `users/${resolvedUid}/profile/email`));

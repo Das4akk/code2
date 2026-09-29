@@ -11,7 +11,6 @@ import { fileURLToPath as fileURLToPath2 } from "url";
 import nodemailer from "nodemailer";
 import admin2 from "firebase-admin";
 import { createProxyMiddleware } from "http-proxy-middleware";
-import { createServer as createViteServer } from "vite";
 
 // utils/url-validator.ts
 import dns from "dns";
@@ -1357,23 +1356,37 @@ var smtpPass = (process.env.SMTP_PASS || process.env.EMAIL_PASS || "").trim().re
 try {
   const databaseURL = process.env.FIREBASE_DATABASE_URL || "https://das4akk-1-default-rtdb.firebaseio.com";
   if (process.env.FIREBASE_ADMIN_KEY && !firebaseAdmin2.apps?.length) {
-    const creds = JSON.parse(process.env.FIREBASE_ADMIN_KEY);
-    firebaseAdmin2.initializeApp({
-      credential: firebaseAdmin2.credential.cert(creds),
-      databaseURL
-    });
-    console.log("[COWIO] Firebase Admin SDK \u0443\u0441\u043F\u0435\u0448\u043D\u043E \u0437\u0430\u043F\u0443\u0449\u0435\u043D \u0447\u0435\u0440\u0435\u0437 FIREBASE_ADMIN_KEY env!");
-  } else {
-    const serviceAccountPath = path2.join(__dirname2, "serviceAccountKey.json");
-    if (fs2.existsSync(serviceAccountPath) && !firebaseAdmin2.apps?.length) {
-      const serviceAccount = JSON.parse(fs2.readFileSync(serviceAccountPath, "utf8"));
-      if (serviceAccount.SMTP_USER) smtpUser = serviceAccount.SMTP_USER;
-      if (serviceAccount.SMTP_PASS) smtpPass = serviceAccount.SMTP_PASS;
+    try {
+      let creds = typeof process.env.FIREBASE_ADMIN_KEY === "string" ? JSON.parse(process.env.FIREBASE_ADMIN_KEY) : process.env.FIREBASE_ADMIN_KEY;
+      if (creds && creds.private_key) {
+        creds.private_key = creds.private_key.replace(/\\n/g, "\n");
+      }
       firebaseAdmin2.initializeApp({
-        credential: firebaseAdmin2.credential.cert(serviceAccount),
+        credential: firebaseAdmin2.credential.cert(creds),
         databaseURL
       });
-      console.log("[COWIO] Firebase Admin SDK \u0443\u0441\u043F\u0435\u0448\u043D\u043E \u0437\u0430\u043F\u0443\u0449\u0435\u043D \u0438\u0437 serviceAccountKey.json!");
+      console.log("[COWIO] Firebase Admin SDK \u0443\u0441\u043F\u0435\u0448\u043D\u043E \u0437\u0430\u043F\u0443\u0449\u0435\u043D \u0447\u0435\u0440\u0435\u0437 FIREBASE_ADMIN_KEY env!");
+    } catch (parseErr) {
+      console.error("[COWIO] \u041E\u0448\u0438\u0431\u043A\u0430 \u043F\u0430\u0440\u0441\u0438\u043D\u0433\u0430 FIREBASE_ADMIN_KEY:", parseErr.message);
+    }
+  } else if (!firebaseAdmin2.apps?.length) {
+    const serviceAccountPath = path2.join(__dirname2, "serviceAccountKey.json");
+    if (fs2.existsSync(serviceAccountPath)) {
+      try {
+        const serviceAccount = JSON.parse(fs2.readFileSync(serviceAccountPath, "utf8"));
+        if (serviceAccount.SMTP_USER) smtpUser = serviceAccount.SMTP_USER;
+        if (serviceAccount.SMTP_PASS) smtpPass = serviceAccount.SMTP_PASS;
+        if (serviceAccount.private_key) {
+          serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, "\n");
+        }
+        firebaseAdmin2.initializeApp({
+          credential: firebaseAdmin2.credential.cert(serviceAccount),
+          databaseURL
+        });
+        console.log("[COWIO] Firebase Admin SDK \u0443\u0441\u043F\u0435\u0448\u043D\u043E \u0437\u0430\u043F\u0443\u0449\u0435\u043D \u0438\u0437 serviceAccountKey.json!");
+      } catch (fileErr) {
+        console.error("[COWIO] \u041E\u0448\u0438\u0431\u043A\u0430 \u0447\u0442\u0435\u043D\u0438\u044F serviceAccountKey.json:", fileErr.message);
+      }
     }
   }
 } catch (e) {
@@ -1567,7 +1580,13 @@ app.all("/api/auth/check-role", requireAuth, async (req, res) => {
       isAdmin: false
     });
   } catch (err) {
-    return res.status(500).json({ success: false, error: "\u041E\u0448\u0438\u0431\u043A\u0430 \u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0438 \u043F\u0440\u0430\u0432" });
+    return res.status(500).json({
+      success: false,
+      error: err.message || "\u041E\u0448\u0438\u0431\u043A\u0430 \u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0438 \u043F\u0440\u0430\u0432",
+      role: "user",
+      isCreator: false,
+      isAdmin: false
+    });
   }
 });
 app.post(
@@ -2342,6 +2361,7 @@ app.use(
 );
 var isProduction = process.env.NODE_ENV === "production";
 if (!isProduction && process.env.NODE_ENV !== "test") {
+  const { createServer: createViteServer } = await import("vite");
   const vite = await createViteServer({
     server: { middlewareMode: true, hmr: false },
     appType: "custom"

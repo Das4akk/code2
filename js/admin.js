@@ -53,6 +53,7 @@ class AdminPanel {
           isAdmin: Boolean(data.isAdmin),
           timestamp: Date.now()
         };
+        try { this.syncSidebarButton(); } catch (_) {}
         return _serverRoleCache;
       }
     } catch (e) {
@@ -117,10 +118,14 @@ class AdminPanel {
   }
 
   static isAdminProfile(profile = {}, uid = null) {
+    if (uid && AppState.currentUser?.uid === uid && this.isCurrentUserAdmin()) {
+      return true;
+    }
     return (
       this.isCreatorProfile(profile, uid) ||
       this.isModeratorProfile(profile, uid) ||
-      this.isManagerProfile(profile, uid)
+      this.isManagerProfile(profile, uid) ||
+      this.isOperatorProfile(profile, uid)
     );
   }
 
