@@ -1349,4 +1349,43 @@ class ReactiveUserStore {
 
 window.Utils = Utils;
 window.ReactiveUserStore = ReactiveUserStore;
+
+window.togglePasswordVisibility = function(img, inputId) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  if (input.type === "password") {
+    input.type = "text";
+    if (img) img.style.opacity = "1";
+  } else {
+    input.type = "password";
+    if (img) img.style.opacity = "0.6";
+  }
+};
+
+window.openLegalModal = function(type) {
+  const modal = document.getElementById("modal-legal-info");
+  const title = document.getElementById("legal-modal-title");
+  const body = document.getElementById("legal-modal-body");
+  if (!modal || !title || !body) return;
+
+  if (type === "privacy") {
+    title.textContent = "Политика конфиденциальности";
+    body.innerHTML = `
+      <p style="margin-bottom: 12px;">Сервис COWIO уважает вашу конфиденциальность и обеспечивает защиту персональных данных.</p>
+      <p style="margin-bottom: 12px;">1. Мы не передаем ваши личные данные третьим лицам без вашего согласия.</p>
+      <p style="margin-bottom: 12px;">2. Пароли и токены хранятся в защищенном виде с применением стойкого криптографического хеширования.</p>
+      <p>3. Вы можете в любой момент изменить или удалить свои данные через настройки профиля.</p>
+    `;
+  } else {
+    title.textContent = "Пользовательское соглашение";
+    body.innerHTML = `
+      <p style="margin-bottom: 12px;">Добро пожаловать в COWIO — платформу совместного просмотра видео и общения.</p>
+      <p style="margin-bottom: 12px;">1. Пользователь обязуется не использовать сервис для распространения запрещенного или вредоносного контента.</p>
+      <p style="margin-bottom: 12px;">2. Администрация платформы оставляет за собой право модерации и блокировки нарушителей.</p>
+      <p>3. Сервис предоставляется на условиях совместного использования контента.</p>
+    `;
+  }
+  modal.classList.add("active");
+};
+
 export { Utils, ReactiveUserStore };
