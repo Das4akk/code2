@@ -79,18 +79,7 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: [
-          "'self'",
-          "'unsafe-inline'",
-          "'unsafe-eval'",
-          'https://www.gstatic.com',
-          'https://apis.google.com',
-          'https://*.googleapis.com',
-          'https://cdn.jsdelivr.net',
-          'https://*.jsdelivr.net',
-          'https://fastly.jsdelivr.net',
-          'https://cdn.statically.io'
-        ],
+        scriptSrc: ["'self'", "'unsafe-inline'", 'https://www.gstatic.com', 'https://apis.google.com'],
         styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
         fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
         imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
@@ -101,30 +90,13 @@ app.use(
           'https://*.googleapis.com',
           'https://firebaseinstallations.googleapis.com',
           'https://identitytoolkit.googleapis.com',
-          'https://securetoken.googleapis.com',
-          'https://cdn.jsdelivr.net',
-          'https://*.jsdelivr.net',
-          'https://fastly.jsdelivr.net',
-          'https://raw.githubusercontent.com',
-          'https://cdn.statically.io'
+          'https://securetoken.googleapis.com'
         ],
-        frameSrc: [
-          "'self'",
-          'https://www.youtube.com',
-          'https://rutube.ru',
-          'https://vk.com',
-          'https://vkvideo.ru',
-          'https://*.vk.com',
-          'https://*.vkvideo.ru'
-        ],
-        frameAncestors: null,
+        frameSrc: ['https://www.youtube.com', 'https://rutube.ru', 'https://vk.com'],
         objectSrc: ["'none'"],
         baseUri: ["'self'"]
       }
     },
-    frameguard: false,
-    crossOriginResourcePolicy: false,
-    crossOriginOpenerPolicy: false,
     crossOriginEmbedderPolicy: false
   })
 );
@@ -1379,24 +1351,9 @@ const isProduction = process.env.NODE_ENV === 'production';
 if (!isProduction && process.env.NODE_ENV !== 'test') {
   const vite = await createViteServer({
     server: { middlewareMode: true, hmr: false },
-    appType: 'custom'
+    appType: 'spa'
   });
   app.use(vite.middlewares);
-
-  app.use('*', async (req: Request, res: Response, next: NextFunction) => {
-    if (req.path.startsWith('/api/')) return next();
-    try {
-      const url = req.originalUrl || req.url;
-      const indexHtmlPath = path.resolve(__dirname, 'index.html');
-      if (!fs.existsSync(indexHtmlPath)) return next();
-      let template = fs.readFileSync(indexHtmlPath, 'utf-8');
-      template = await vite.transformIndexHtml(url, template);
-      res.status(200).set({ 'Content-Type': 'text/html; charset=utf-8' }).end(template);
-    } catch (e: any) {
-      vite.ssrFixStacktrace(e);
-      next(e);
-    }
-  });
 } else {
   const distPath = path.resolve(__dirname, 'dist');
   if (fs.existsSync(distPath)) {

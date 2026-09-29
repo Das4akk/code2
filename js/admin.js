@@ -1006,62 +1006,42 @@ class AdminPanel {
     if (Utils.$("btn-admin-grant-op")) Utils.$("btn-admin-grant-op").onclick = () => this.toggleModRole("operator");
     if (Utils.$("btn-admin-grant-manager")) Utils.$("btn-admin-grant-manager").onclick = () => this.toggleModRole("manager");
     if (Utils.$("btn-admin-revoke-mod")) Utils.$("btn-admin-revoke-mod").onclick = () => this.toggleModRole(null);
-    if (Utils.$("btn-admin-badge-developer")) {
-      Utils.$("btn-admin-badge-developer").onclick = () =>
-        this.setAdminBadgeForUser("developer");
-    }
-    if (Utils.$("btn-admin-badge-creator")) {
-      Utils.$("btn-admin-badge-creator").onclick = () =>
-        this.setAdminBadgeForUser("creator");
-    }
-    if (Utils.$("btn-admin-badge-moderator")) {
-      Utils.$("btn-admin-badge-moderator").onclick = () =>
-        this.setAdminBadgeForUser("moderator");
-    }
-    if (Utils.$("btn-admin-badge-hybrid")) {
-      Utils.$("btn-admin-badge-hybrid").onclick = () =>
-        this.setAdminBadgeForUser("creator_moderator");
-    }
-    if (Utils.$("btn-admin-badge-remove")) {
-      Utils.$("btn-admin-badge-remove").onclick = () =>
-        this.setAdminBadgeForUser(null);
-    }
-    if (Utils.$("btn-admin-badge-custom")) {
-      Utils.$("btn-admin-badge-custom").onclick = () =>
-        this.setAdminBadgeForUser("custom");
-    }
-    if (Utils.$("btn-admin-save-badge")) {
-      Utils.$("btn-admin-save-badge").onclick = () => BadgeManager.saveBadge();
-    }
-    if (Utils.$("btn-admin-reset-badge")) {
-      Utils.$("btn-admin-reset-badge").onclick = () => {
-        if (Utils.$("admin-badge-edit-id"))
-          Utils.$("admin-badge-edit-id").value = "";
-        if (Utils.$("admin-badge-edit-id"))
-          Utils.$("admin-badge-edit-id").readOnly = false;
-        if (Utils.$("admin-badge-edit-name"))
-          Utils.$("admin-badge-edit-name").value = "";
-        if (Utils.$("admin-badge-edit-desc"))
-          Utils.$("admin-badge-edit-desc").value = "";
-        if (Utils.$("admin-badge-edit-icon"))
-          Utils.$("admin-badge-edit-icon").value = "";
-        if (Utils.$("admin-badge-edit-color"))
-          Utils.$("admin-badge-edit-color").value = "#ffffff";
-        if (Utils.$("admin-badge-edit-bg"))
-          Utils.$("admin-badge-edit-bg").value = "#5d3fd3";
-        if (Utils.$("admin-badge-edit-border"))
-          Utils.$("admin-badge-edit-border").value = "#8d63ff";
-        if (window.updateAdminBadgePreview) window.updateAdminBadgePreview();
-      };
-    }
-    if (Utils.$("btn-admin-generate-rel-badges")) {
-      Utils.$("btn-admin-generate-rel-badges").onclick = () =>
-        BadgeManager.generateSystemBadges();
-    }
-    if (Utils.$("btn-admin-grant-event-badge")) {
-      Utils.$("btn-admin-grant-event-badge").onclick = () =>
-        BadgeManager.grantEventBadgeToOnline();
-    }
+    Utils.$("btn-admin-badge-developer").onclick = () =>
+      this.setAdminBadgeForUser("developer");
+    Utils.$("btn-admin-badge-creator").onclick = () =>
+      this.setAdminBadgeForUser("creator");
+    Utils.$("btn-admin-badge-moderator").onclick = () =>
+      this.setAdminBadgeForUser("moderator");
+    Utils.$("btn-admin-badge-hybrid").onclick = () =>
+      this.setAdminBadgeForUser("creator_moderator");
+    Utils.$("btn-admin-badge-remove").onclick = () =>
+      this.setAdminBadgeForUser(null);
+    Utils.$("btn-admin-badge-custom").onclick = () =>
+      this.setAdminBadgeForUser("custom");
+    Utils.$("btn-admin-save-badge").onclick = () => BadgeManager.saveBadge();
+    Utils.$("btn-admin-reset-badge").onclick = () => {
+      if (Utils.$("admin-badge-edit-id"))
+        Utils.$("admin-badge-edit-id").value = "";
+      if (Utils.$("admin-badge-edit-id"))
+        Utils.$("admin-badge-edit-id").readOnly = false;
+      if (Utils.$("admin-badge-edit-name"))
+        Utils.$("admin-badge-edit-name").value = "";
+      if (Utils.$("admin-badge-edit-desc"))
+        Utils.$("admin-badge-edit-desc").value = "";
+      if (Utils.$("admin-badge-edit-icon"))
+        Utils.$("admin-badge-edit-icon").value = "";
+      if (Utils.$("admin-badge-edit-color"))
+        Utils.$("admin-badge-edit-color").value = "#ffffff";
+      if (Utils.$("admin-badge-edit-bg"))
+        Utils.$("admin-badge-edit-bg").value = "#5d3fd3";
+      if (Utils.$("admin-badge-edit-border"))
+        Utils.$("admin-badge-edit-border").value = "#8d63ff";
+      if (window.updateAdminBadgePreview) window.updateAdminBadgePreview();
+    };
+    Utils.$("btn-admin-generate-rel-badges").onclick = () =>
+      BadgeManager.generateSystemBadges();
+    Utils.$("btn-admin-grant-event-badge").onclick = () =>
+      BadgeManager.grantEventBadgeToOnline();
 
     const updateBadgePreview = () => {
       const name = Utils.$("admin-badge-edit-name")?.value || "Новый бейдж";
@@ -2221,9 +2201,7 @@ class AdminPanel {
       editorRevokeRole.onclick = () => this.setUserRoleByUid(uid, null);
     }
 
-    if (Utils.$("btn-admin-save-user")) {
-      Utils.$("btn-admin-save-user").onclick = () => this.saveUserProfile();
-    }
+    Utils.$("btn-admin-save-user").onclick = () => this.saveUserProfile();
 
     const levelInput = Utils.$("admin-edit-level");
     const xpInput = Utils.$("admin-edit-xp");
@@ -2238,44 +2216,30 @@ class AdminPanel {
       };
     }
 
-    if (Utils.$("btn-admin-set-partner")) Utils.$("btn-admin-set-partner").onclick = () => this.forceSetPartner(uid);
-    if (Utils.$("btn-admin-reset-user")) Utils.$("btn-admin-reset-user").onclick = () => this.resetUserProfile();
-    if (Utils.$("btn-admin-delete-user")) {
-      Utils.$("btn-admin-delete-user").onclick = () =>
-        this.deleteUserCompletely(uid);
-    }
-    if (Utils.$("btn-admin-force-leave-current")) {
-      Utils.$("btn-admin-force-leave-current").onclick = () =>
-        this.forceLeaveRoom(uid);
-    }
-    if (Utils.$("btn-admin-force-logout-current")) {
-      Utils.$("btn-admin-force-logout-current").onclick = () =>
-        this.forceSignOut(uid);
-    }
-    if (Utils.$("btn-admin-toggle-user-mute")) {
-      Utils.$("btn-admin-toggle-user-mute").onclick = () =>
-        this.toggleUserMute(uid);
-    }
-    if (Utils.$("btn-admin-toggle-shadowban")) {
-      Utils.$("btn-admin-toggle-shadowban").onclick = () =>
-        this.toggleShadowban(uid);
-    }
-    if (Utils.$("btn-admin-reset-password")) {
-      Utils.$("btn-admin-reset-password").onclick = () =>
-        this.issuePasswordReset(uid);
-    }
-    if (Utils.$("btn-admin-cancel-tutorial")) {
-      Utils.$("btn-admin-cancel-tutorial").onclick = async () => {
-        if (!this.requireWritePermission()) return;
-        if (!(await Utils.confirm(`Отозвать туториал для пользователя ${uid}?`)))
-          return;
-        await set(ref(db, `admin/actions/cancelTutorial/${uid}`), {
-          ts: Date.now(),
-          by: AppState.currentUser.uid,
-        });
-        Utils.toast("Сигнал на отмену туториала отправлен.");
-      };
-    }
+    Utils.$("btn-admin-set-partner").onclick = () => this.forceSetPartner(uid);
+    Utils.$("btn-admin-reset-user").onclick = () => this.resetUserProfile();
+    Utils.$("btn-admin-delete-user").onclick = () =>
+      this.deleteUserCompletely(uid);
+    Utils.$("btn-admin-force-leave-current").onclick = () =>
+      this.forceLeaveRoom(uid);
+    Utils.$("btn-admin-force-logout-current").onclick = () =>
+      this.forceSignOut(uid);
+    Utils.$("btn-admin-toggle-user-mute").onclick = () =>
+      this.toggleUserMute(uid);
+    Utils.$("btn-admin-toggle-shadowban").onclick = () =>
+      this.toggleShadowban(uid);
+    Utils.$("btn-admin-reset-password").onclick = () =>
+      this.issuePasswordReset(uid);
+    Utils.$("btn-admin-cancel-tutorial").onclick = async () => {
+      if (!this.requireWritePermission()) return;
+      if (!(await Utils.confirm(`Отозвать туториал для пользователя ${uid}?`)))
+        return;
+      await set(ref(db, `admin/actions/cancelTutorial/${uid}`), {
+        ts: Date.now(),
+        by: AppState.currentUser.uid,
+      });
+      Utils.toast("Сигнал на отмену туториала отправлен.");
+    };
 
     if (isReadOnly) {
       editor.querySelectorAll("input, textarea, select").forEach((el) => {

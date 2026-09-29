@@ -115,34 +115,19 @@ class RoomManager {
     });
     AppState.activeSubscriptions.push(() => off(roomsRef, "value", unsub));
 
-    const btnOpenCreate = Utils.$("btn-open-create-room");
-    if (btnOpenCreate) btnOpenCreate.onclick = () => this.openRoomModal();
+    Utils.$("btn-open-create-room").onclick = () => this.openRoomModal();
+    Utils.$("btn-save-room").onclick = () => this.saveRoom();
+    Utils.$("search-rooms").oninput = Utils.debounce(
+      () => this.updateRoomsDOM(),
+      300,
+    );
 
-    const btnSaveRoom = Utils.$("btn-save-room");
-    if (btnSaveRoom) btnSaveRoom.onclick = () => this.saveRoom();
-
-    const searchRooms = Utils.$("search-rooms");
-    if (searchRooms) {
-      searchRooms.oninput = Utils.debounce(
-        () => this.updateRoomsDOM(),
-        300,
-      );
-    }
-
-    const roomInputPrivate = Utils.$("room-input-private");
-    if (roomInputPrivate) {
-      roomInputPrivate.onchange = (e) => {
-        const roomInputPassword = Utils.$("room-input-password");
-        if (roomInputPassword) {
-          roomInputPassword.style.display = e.target.checked
-            ? "block"
-            : "none";
-        }
-      };
-    }
-
-    const btnLeaveRoom = Utils.$("btn-leave-room");
-    if (btnLeaveRoom) btnLeaveRoom.onclick = () => this.leaveRoom();
+    Utils.$("room-input-private").onchange = (e) => {
+      Utils.$("room-input-password").style.display = e.target.checked
+        ? "block"
+        : "none";
+    };
+    Utils.$("btn-leave-room").onclick = () => this.leaveRoom();
     if (Utils.$("btn-fullscreen-toggle")) {
       Utils.$("btn-fullscreen-toggle").onclick = () => {
         const vidContainer = Utils.$("native-player")?.parentElement;
@@ -409,16 +394,13 @@ class RoomManager {
       RoomVideoSearchManager.reset();
       const hint = Utils.$("room-name-autofill-hint");
       if (hint) hint.style.display = "none";
-      const btnDelete = Utils.$("btn-delete-room");
-      if (btnDelete) {
-        btnDelete.onclick = async () => {
-          if (await Utils.confirm("Точно удалить комнату навсегда?")) {
-            modal.classList.remove("active");
-            this.leaveRoom();
-            await remove(ref(db, `rooms/${roomId}`));
-          }
-        };
-      }
+      Utils.$("btn-delete-room").onclick = async () => {
+        if (await Utils.confirm("Точно удалить комнату навсегда?")) {
+          modal.classList.remove("active");
+          this.leaveRoom();
+          await remove(ref(db, `rooms/${roomId}`));
+        }
+      };
     } else {
       Utils.$("room-input-name").value = "";
       Utils.$("room-input-url").value = "";
@@ -678,17 +660,14 @@ class RoomManager {
       AppState.pendingJoinRoomId = roomId;
       Utils.$("join-room-password").value = "";
       Utils.$("modal-password").classList.add("active");
-      const btnSubmitPass = Utils.$("btn-submit-password");
-      if (btnSubmitPass) {
-        btnSubmitPass.onclick = async () => {
-          const input = Utils.$("join-room-password")?.value || "";
-          const hashAttempt = await Utils.hashPassword(input, roomData.salt);
-          if (hashAttempt === roomData.hash) {
-            Utils.$("modal-password")?.classList.remove("active");
-            this.enterRoomFinal(roomId, roomData);
-          } else Utils.toast("Неверный пароль", "error");
-        };
-      }
+      Utils.$("btn-submit-password").onclick = async () => {
+        const input = Utils.$("join-room-password").value;
+        const hashAttempt = await Utils.hashPassword(input, roomData.salt);
+        if (hashAttempt === roomData.hash) {
+          Utils.$("modal-password").classList.remove("active");
+          this.enterRoomFinal(roomId, roomData);
+        } else Utils.toast("Неверный пароль", "error");
+      };
     } else {
       this.enterRoomFinal(roomId, roomData);
     }
