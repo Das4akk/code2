@@ -3,7 +3,6 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "runtime": "nodejs20.x"
   "scripts": {
     "dev": "tsx server.ts",
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=esm --packages=external --outfile=server.js",
@@ -50,8 +49,5 @@
     "tsx": "^4.21.0",
     "typescript": "^5.7.3",
     "vitest": "^2.1.8"
-  }
-    "engines": {
-    "node": ">=20.0.0"
   }
 }
