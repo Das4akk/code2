@@ -1,27 +1,25 @@
 {
   "name": "react-example",
-  "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx server.ts",
-    "build": "vite build && esbuild server.ts --bundle --platform=node --format=esm --packages=external --outfile=server.js",
-    "start": "node server.ts",
+    "dev": "vite",
+    "build": "vite build",
     "preview": "vite preview",
-    "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit"
+    "start": "node server.js",
+    "test": "vitest"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
     "@tailwindcss/vite": "^4.3.3",
-    "@vitejs/plugin-react": "^4.3.4",
+    "@vitejs/plugin-react": "4.3.4",
     "cheerio": "^1.2.0",
     "cors": "^2.8.6",
-    "dotenv": "^17.2.3",
+    "dotenv": "^17.4.2",
     "express": "^4.21.2",
     "express-rate-limit": "^8.7.0",
     "firebase": "^12.19.0",
-    "firebase-admin": "^14.4.0",
+    "firebase-admin": "^14.5.0",
     "helmet": "^8.3.0",
     "hls.js": "^1.7.3",
     "http-proxy-middleware": "^4.2.0",
@@ -31,7 +29,7 @@
     "nodemailer": "^10.0.10",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
-    "vite": "^5.4.10",
+    "vite": "5.4.21",
     "zod": "^4.6.5"
   },
   "devDependencies": {
