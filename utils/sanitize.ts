@@ -1,4 +1,3 @@
-import DOMPurify from 'isomorphic-dompurify';
 import { Request, Response, NextFunction } from 'express';
 
 /**
@@ -7,11 +6,13 @@ import { Request, Response, NextFunction } from 'express';
 export function sanitizeHtml(dirty: unknown): string {
   if (dirty === null || dirty === undefined) return '';
   const str = String(dirty);
-  return DOMPurify.sanitize(str, {
-    ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'span', 'p', 'br', 'picture', 'source', 'img'],
-    ALLOWED_ATTR: ['href', 'target', 'rel', 'src', 'alt', 'class', 'style', 'srcset', 'type', 'loading', 'width', 'height'],
-    ALLOW_DATA_ATTR: false
-  });
+  return str
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+    .replace(/on\w+="[^"]*"/gi, '')
+    .replace(/on\w+='[^']*'/gi, '')
+    .replace(/javascript:[^"']*/gi, '');
 }
 
 /**
@@ -49,26 +50,21 @@ export function sanitizeObject<T>(obj: T): T {
   if (obj === null || typeof obj !== 'object') {
     return obj;
   }
-
   if (Array.isArray(obj)) {
     return obj.map((item) => sanitizeObject(item)) as unknown as T;
   }
-
   const cleanObj: Record<string, any> = {};
-
   for (const [key, value] of Object.entries(obj)) {
     const lowerKey = key.toLowerCase().trim();
     if (lowerKey === '__proto__' || lowerKey === 'constructor' || lowerKey === 'prototype') {
       continue;
     }
-
     if (value !== null && typeof value === 'object') {
       cleanObj[key] = sanitizeObject(value);
     } else {
       cleanObj[key] = value;
     }
   }
-
   return cleanObj as T;
 }
 
