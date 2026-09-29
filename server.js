@@ -1507,7 +1507,7 @@ app.get("/api/health", (_req, res) => {
     env: process.env.NODE_ENV || "development"
   });
 });
-app.get("/api/auth/check-role", requireAuth, async (req, res) => {
+app.all("/api/auth/check-role", requireAuth, async (req, res) => {
   try {
     const uid = req.user.uid;
     const email = req.user.email;
@@ -1994,7 +1994,7 @@ var EMOJI_ALIASES_MAP = {
   "objects/envelope.webp": "Objects/Incoming Envelope.webp",
   "objects/package.webp": "Objects/Toolbox.webp"
 };
-app.get("/api/emoji-proxy", async (req, res) => {
+app.get(["/api/emoji-proxy", "/emoji-proxy"], async (req, res) => {
   try {
     let rawPath = (req.query.path || req.query.url || "").trim();
     if (!rawPath) {

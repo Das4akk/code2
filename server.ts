@@ -369,7 +369,7 @@ app.get('/api/health', (_req: Request, res: Response) => {
 // ----------------------------------------------------
 // ROLE CHECK ENDPOINT (SERVER-SIDE AUTHORIZATION)
 // ----------------------------------------------------
-app.get('/api/auth/check-role', requireAuth, async (req: Request, res: Response) => {
+app.all('/api/auth/check-role', requireAuth, async (req: Request, res: Response) => {
   try {
     const uid = req.user!.uid;
     const email = req.user!.email;
@@ -954,7 +954,7 @@ const EMOJI_ALIASES_MAP: Record<string, string> = {
   'objects/package.webp': 'Objects/Toolbox.webp'
 };
 
-app.get('/api/emoji-proxy', async (req: Request, res: Response) => {
+app.get(['/api/emoji-proxy', '/emoji-proxy'], async (req: Request, res: Response) => {
   try {
     let rawPath = ((req.query.path || req.query.url || '') as string).trim();
     if (!rawPath) {

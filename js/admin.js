@@ -23,7 +23,11 @@ class AdminPanel {
   static subscriptions = [];
 
   static async fetchServerRole(force = false) {
-    const user = AppState.currentUser;
+    const authUser = window.auth?.currentUser;
+    const user = (authUser && typeof authUser.getIdToken === 'function')
+      ? authUser
+      : (AppState.currentUser && typeof AppState.currentUser.getIdToken === 'function' ? AppState.currentUser : null);
+
     if (!user) {
       clearServerRoleCache();
       return { role: 'user', isCreator: false, isAdmin: false };

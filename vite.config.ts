@@ -44,6 +44,13 @@ function apiDevPlugin(): Plugin {
         const url = new URL(req.url, 'http://localhost:3000');
         const pathname = url.pathname;
 
+        if (pathname === '/api/auth/check-role') {
+          // If hit in standalone dev mode without Express server
+          res.setHeader('Content-Type', 'application/json; charset=utf-8');
+          res.end(JSON.stringify({ success: true, role: 'user', isCreator: false, isAdmin: false }));
+          return;
+        }
+
         if (pathname === '/api/video/search') {
           try {
             // @ts-ignore
@@ -164,6 +171,16 @@ export default defineConfig(() => {
     server: {
       hmr: false,
       watch: null,
+      proxy: {
+        '/api': {
+          target: process.env.BACKEND_URL || 'http://localhost:3000',
+          changeOrigin: true,
+        },
+        '/emoji-proxy': {
+          target: process.env.BACKEND_URL || 'http://localhost:3000',
+          changeOrigin: true,
+        },
+      },
     },
   };
 });

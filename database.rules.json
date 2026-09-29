@@ -95,7 +95,7 @@
     "rooms": {
       ".read": "auth != null",
       "$roomId": {
-        ".read": "auth != null && (data.child('isPrivate').val() !== true || data.child('members').child(auth.uid).exists() || data.child('owner').val() === auth.uid)",
+        ".read": "auth != null && (data.child('isPrivate').val() !== true || data.child('members').child(auth.uid).exists() || data.child('owner').val() === auth.uid || root.child('admins').child(auth.uid).exists())",
         ".write": "auth != null && (!data.exists() || data.child('owner').val() === auth.uid || data.child('members').child(auth.uid).exists() || root.child('admins').child(auth.uid).exists())"
       }
     },
@@ -119,13 +119,32 @@
       ".read": true,
       ".write": "root.child('admins').child(auth.uid).exists()"
     },
+    "library": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "public": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      },
+      "users": {
+        "$uid": {
+          ".read": "auth != null",
+          ".write": "$uid === auth.uid || root.child('admins').child(auth.uid).exists()"
+        }
+      }
+    },
+    "leaderboard": {
+      ".read": true,
+      ".write": "auth != null || root.child('admins').child(auth.uid).exists()"
+    },
     "system": {
       ".read": true,
       ".write": "root.child('admins').child(auth.uid).exists()"
     },
     "support_tickets": {
+      ".read": "auth != null",
       "$ticketId": {
-        ".read": "auth != null && (data.child('authorUid').val() === auth.uid || root.child('admins').child(auth.uid).exists())",
+        ".read": "auth != null && (data.child('authorUid').val() === auth.uid || root.child('admins').child(auth.uid).exists() || !data.exists())",
         ".write": "auth != null && (!data.exists() || data.child('authorUid').val() === auth.uid || root.child('admins').child(auth.uid).exists())"
       }
     },
@@ -138,7 +157,7 @@
       ".write": "root.child('admins').child(auth.uid).exists()"
     },
     "support_templates": {
-      ".read": "root.child('admins').child(auth.uid).exists()",
+      ".read": "auth != null",
       ".write": "root.child('admins').child(auth.uid).exists()"
     },
     "payments_log": {

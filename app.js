@@ -763,17 +763,7 @@ window.MediaResolverClient = MediaResolverClient;
 window.SecurityManager = SecurityManager;
 
 
-// Telegram Integration & Global Overlays
-const initTelegram = async () => {
-  // [INJECT TELEGRAM DM]
-  await import("./telegram_dm_inject.js");
-};
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initTelegram);
-} else {
-  initTelegram();
-}
 
 
 window.activeLeaderboardCategory = "lumens";
