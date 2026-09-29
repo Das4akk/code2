@@ -1,0 +1,44 @@
+<div class="modal" id="modal-claim-role">
+  <div class="modal-content glass-panel" style="max-width: 440px;">
+    <div class="modal-drag-handle"></div>
+    <h2>
+      <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Key.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom" alt="🔑">
+      Активация прав роли
+    </h2>
+    <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px; line-height: 1.5;">
+      Введите секретный ключ для автоматического получения прав <b>Создателя</b>, <b>Оператора</b>, <b>Менеджера</b> или <b>Модератора</b>.
+    </p>
+
+    <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 18px;">
+      <div>
+        <label for="claim-role-secret-input" style="display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">
+          Секретный ключ / Токен доступа
+        </label>
+        <div style="position: relative;">
+          <input type="password" id="claim-role-secret-input" placeholder="Введите секретный ключ..." style="width: 100%; padding-right: 40px; margin: 0;">
+          <button type="button" id="btn-toggle-claim-secret" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 14px; padding: 4px;" title="Показать/скрыть">
+            👁
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <label for="claim-role-select" style="display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">
+          Желаемая роль (опционально)
+        </label>
+        <select id="claim-role-select" style="width: 100%; padding: 10px 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-light); border-radius: 8px; color: var(--text-main); font-size: 13px;">
+          <option value="">Автоопределение по ключу</option>
+          <option value="creator">Создатель (Creator / Godmode)</option>
+          <option value="operator">Оператор поддержки (Operator)</option>
+          <option value="manager">Менеджер (Manager / ReadOnly)</option>
+          <option value="moderator">Модератор (Moderator)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="modal-actions" style="display: flex; gap: 10px; justify-content: flex-end;">
+      <button class="secondary-btn btn-close-modal" id="btn-close-claim-role">Отмена</button>
+      <button class="primary-btn" id="btn-submit-claim-role">Активировать права</button>
+    </div>
+  </div>
+</div>

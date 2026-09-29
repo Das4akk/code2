@@ -1,0 +1,1261 @@
+<section id="lobby-screen" class="screen">
+      <header class="lobby-app-bar">
+        <button id="toggle-sidebar" class="burger-btn" style="
+            pointer-events: auto;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            margin-left: -8px;
+            border-radius: 8px;
+            transition: background 0.2s;
+          ">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="4" x2="20" y1="12" y2="12"></line>
+            <line x1="4" x2="20" y1="6" y2="6"></line>
+            <line x1="4" x2="20" y1="18" y2="18"></line>
+          </svg>
+        </button>
+        <div class="lobby-app-bar-brand" onclick="if(window.Router) { Router.navigate('/lobby'); } else { window.history.pushState({}, '', '/lobby'); }" style="cursor: pointer;"><img src="/logo.png" onerror="this.onerror=null; this.src='https://s6.iimage.su/s/16/gCrqWaZxLG89wTzFtrJWUC3v29FIwSjhGbnij4ObO.png';" alt="COWIO" style="height: 44px; object-fit: contain;"></div>
+        <div class="tiktok-search-container"><input type="text" id="search-rooms" placeholder="Поиск комнат по названию..."></div>
+        
+      <div class="tiktok-right-container">
+        <!-- Lumens Balance Pill in Header -->
+        <div class="header-lumens-pill" id="lobby-header-lumens-pill" title="Ваш баланс Люменов" onclick="if(window.CatalogManager && window.CatalogManager.openLumensModal) { CatalogManager.openLumensModal(); } else if (window.FriendsManager && window.FriendsManager.setNavActive) { FriendsManager.setNavActive('nav-catalog'); if(window.CatalogManager) CatalogManager.renderCatalog(); }" style="display: flex; align-items: center; gap: 6px; padding: 6px 14px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 100px; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); user-select: none;">
+          <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" alt="Lumens" style="width: 17px; height: 17px; object-fit: contain; filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.4));">
+          <span id="header-lumens-count" style="font-size: 13.5px; font-weight: 700; color: #ffffff; letter-spacing: -0.2px;">0</span>
+        </div>
+        <button class="primary-btn" id="btn-open-create-room">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+              Создать комнату
+            </button><div class="lobby-app-bar-user" id="lobby-app-bar-profile" onclick="if(window.AppState && AppState.currentUser) { const myUname = AppState.usersCache.get(AppState.currentUser.uid)?.username; if(myUname && window.Router) { Router.navigate('/@' + myUname); } else if(window.Router) { Router.navigate('/profile'); } else if(window.ProfileManager) { window.ProfileManager.openViewProfileModal(AppState.currentUser.uid); } }">
+          <div class="avatar" id="lobby-app-bar-avatar"></div>
+        </div></div></header>
+
+      <div class="lobby-layout">
+        <div class="sidebar-overlay" id="sidebar-overlay"></div>
+        <aside class="sidebar" id="main-sidebar">
+          <div class="user-card" id="btn-open-my-profile" style="margin-top: 10px; display: none;">
+            <div class="avatar" id="my-avatar-display">?</div>
+            <div class="user-card-info">
+              <div class="user-card-name" id="my-name-display">Загрузка...</div>
+              <div class="user-card-username" id="my-username-display">
+                @loading
+              </div>
+              <div class="user-card-lumens" id="my-lumens-display" style="display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: rgba(255, 255, 255, 0.7); margin-top: 3px;">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" alt="Lumens" style="width: 14px; height: 14px; object-fit: contain;">
+                <span id="my-lumens-val">0</span> Люменов
+              </div>
+            </div>
+          </div>
+
+          <nav class="nav-menu">
+            <div class="section-title">Контент</div>
+            <div class="nav-item active" id="nav-rooms">
+              <span><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Television.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+                Комнаты</span>
+            </div>
+            <div class="nav-item" id="nav-library">
+              <span><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Open%20Book.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+                Библиотека</span>
+            </div>
+            <div class="nav-item" id="nav-catalog">
+              <span><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Shopping%20Bags.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+                Каталог</span>
+            </div>
+
+            <div class="nav-section-divider"></div>
+            <div class="section-title">Сообщество</div>
+            <div class="nav-item" id="nav-friends">
+              <span><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Busts%20In%20Silhouette.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+                Друзья</span>
+              <div class="nav-badge" id="friend-req-badge">0</div>
+            </div>
+            <div class="nav-item" id="nav-find-friend">
+              <span><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Magnifying%20Glass%20Tilted%20Left.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+                Найти друга</span>
+            </div>
+            <div class="nav-item" id="nav-leaderboard">
+              <span><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Fire.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+                Список лучших</span>
+            </div>
+            <div class="nav-item" id="nav-support" style="display: flex">
+              <span><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Woman%20Technologist.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+                Поддержка</span>
+            </div>
+            <div class="nav-item" id="nav-support-staff" style="display: none; color: #fff">
+              <span><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Briefcase.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+                Поддержка (Оператор)</span>
+            </div>
+
+            <div class="nav-section-divider"></div>
+            <div class="section-title">Аккаунт</div>
+            <div class="nav-item" id="nav-profile">
+              <span><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Bust%20In%20Silhouette.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+                Мой профиль</span>
+            </div>
+            <div class="nav-item" id="nav-settings">
+              <span><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Toolbox.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+                Настройки</span>
+            </div>
+            <div class="nav-item" id="nav-other">
+              <span><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Card%20Index%20Dividers.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+                Прочее</span>
+            </div>
+          </nav>
+
+          <div id="lobby-sidebar-actions" style="
+              margin-top: auto;
+              display: flex;
+              flex-direction: column;
+              gap: 10px;
+              padding-top: 20px;
+              flex-shrink: 0;
+            ">
+            <div class="nav-item" id="nav-premium" style="margin-bottom: 4px">
+              <span><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Star.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+                Premium</span>
+            </div>
+            <div class="nav-item" id="nav-mystery" style="margin-bottom: 4px">
+              <span><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Question%20Mark.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+                ???</span>
+            </div>
+            <button class="secondary-btn" id="btn-switch-account" style="
+                border-color: rgba(255, 255, 255, 0.1);
+                color: var(--text-muted);
+              ">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Up%20Button.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+              Сменить аккаунт
+            </button>
+            <button class="secondary-btn" id="btn-logout" style="
+                border-color: rgba(255, 255, 255, 0.1);
+                color: var(--text-muted);
+              ">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Travel%20and%20Places/House.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+              Выйти из аккаунта
+            </button>
+          </div>
+        </aside>
+
+        <div class="lobby-content">
+        <main class="rooms-main" id="section-rooms">
+          <header class="lobby-header glass-panel">
+
+          </header>
+
+          <div class="rooms-grid" id="rooms-grid">
+            <div class="room-card skeleton-room-card">
+              <div class="room-preview skeleton-room-thumb skeleton-shimmer"></div>
+              <div class="room-info skeleton-room-body">
+                <div class="skeleton-line title skeleton-shimmer"></div>
+                <div class="skeleton-line subtitle skeleton-shimmer"></div>
+              </div>
+            </div>
+            <div class="room-card skeleton-room-card">
+              <div class="room-preview skeleton-room-thumb skeleton-shimmer"></div>
+              <div class="room-info skeleton-room-body">
+                <div class="skeleton-line title skeleton-shimmer"></div>
+                <div class="skeleton-line subtitle skeleton-shimmer"></div>
+              </div>
+            </div>
+            <div class="room-card skeleton-room-card">
+              <div class="room-preview skeleton-room-thumb skeleton-shimmer"></div>
+              <div class="room-info skeleton-room-body">
+                <div class="skeleton-line title skeleton-shimmer"></div>
+                <div class="skeleton-line subtitle skeleton-shimmer"></div>
+              </div>
+            </div>
+          </div>
+        </main>
+
+        <main class="rooms-main" id="section-library" style="display: none">
+          <div class="lobby-top-bar" style="justify-content: space-between; margin-bottom: 20px">
+            <h2 style="
+                font-size: 24px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+              ">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Open%20Book.webp" style="width: 32px; height: 32px">
+              Библиотека
+            </h2>
+          </div>
+          <div style="display: flex; gap: 10px; margin-bottom: 20px">
+            <button class="primary-btn" id="btn-lib-public" style="flex: 1; border-radius: 12px">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Books.webp" style="
+                  width: 20px;
+                  height: 20px;
+                  vertical-align: middle;
+                  margin-right: 8px;
+                ">
+              Публичная библиотека
+            </button>
+            <button class="secondary-btn" id="btn-lib-my" style="flex: 1; border-radius: 12px">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Bust%20In%20Silhouette.webp" style="
+                  width: 20px;
+                  height: 20px;
+                  vertical-align: middle;
+                  margin-right: 8px;
+                ">
+              Моя библиотека
+            </button>
+          </div>
+          <div style="display: flex; gap: 10px; margin-bottom: 20px">
+            <input type="text" id="library-search" placeholder="Поиск видео..." class="settings-input" style="flex: 1; border-radius: 12px; padding-left: 15px">
+            <button class="primary-btn" id="btn-lib-add-video" style="border-radius: 12px; width: auto; padding: 0 20px">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="
+                  width: 20px;
+                  height: 20px;
+                  vertical-align: middle;
+                  margin-right: 5px;
+                ">
+              Добавить видео
+            </button>
+          </div>
+
+          <div id="library-grid" class="rooms-grid">
+            <div class="room-card skeleton-room-card">
+              <div class="room-preview skeleton-room-thumb skeleton-shimmer"></div>
+              <div class="room-info skeleton-room-body">
+                <div class="skeleton-line title skeleton-shimmer"></div>
+                <div class="skeleton-line subtitle skeleton-shimmer"></div>
+              </div>
+            </div>
+            <div class="room-card skeleton-room-card">
+              <div class="room-preview skeleton-room-thumb skeleton-shimmer"></div>
+              <div class="room-info skeleton-room-body">
+                <div class="skeleton-line title skeleton-shimmer"></div>
+                <div class="skeleton-line subtitle skeleton-shimmer"></div>
+              </div>
+            </div>
+            <div class="room-card skeleton-room-card">
+              <div class="room-preview skeleton-room-thumb skeleton-shimmer"></div>
+              <div class="room-info skeleton-room-body">
+                <div class="skeleton-line title skeleton-shimmer"></div>
+                <div class="skeleton-line subtitle skeleton-shimmer"></div>
+              </div>
+            </div>
+          </div>
+        </main>
+
+        <main class="rooms-main oled-scrollbar" id="section-leaderboard" style="display: none; overflow-y: auto !important; overflow-x: hidden !important; height: 100%; width: 100%; box-sizing: border-box; flex: 1;">
+          <div class="leaderboard-container" style="max-width: 960px; width: 100%; margin: 0 auto; padding: 24px 20px 80px; box-sizing: border-box;">
+            <div class="section-title" style="font-size: 28px; margin-bottom: 24px; text-align: center; color: var(--accent);">
+              Список лучших
+            </div>
+            <div style="display: flex; gap: 10px; margin-bottom: 20px; justify-content: center; flex-wrap: wrap;">
+               <button id="leaderboard-tab-lumens" class="primary-btn" onclick="if(window.switchLeaderboardCategory) window.switchLeaderboardCategory('lumens')" style="width: auto; padding: 8px 18px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                 <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 18px; height: 18px;" alt="✨">
+                 Топ Люменов
+               </button>
+               <button id="leaderboard-tab-likes" class="secondary-btn" onclick="if(window.switchLeaderboardCategory) window.switchLeaderboardCategory('likes')" style="width: auto; padding: 8px 18px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                 <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Red%20Heart.webp" style="width: 18px; height: 18px;" alt="❤️">
+                 Любимчики (Топ Лайков)
+               </button>
+               <button id="leaderboard-tab-time" class="secondary-btn" onclick="if(window.switchLeaderboardCategory) window.switchLeaderboardCategory('time')" style="width: auto; padding: 8px 18px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                 <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Hourglass%20Done.webp" style="width: 18px; height: 18px;" alt="⏳">
+                 Время в комнатах
+               </button>
+            </div>
+            <div id="leaderboard-list" style="display: flex; flex-direction: column; gap: 10px;">
+               <div style="color:var(--text-muted); text-align:center;">Загрузка...</div>
+            </div>
+          </div>
+        </main>
+        <main class="rooms-main" id="section-friends" style="display: none">
+          <div class="friends-container" style="
+              max-width: 800px;
+              width: 100%;
+              margin: 0 auto;
+              padding-top: 20px;
+            ">
+            <div class="section-title" style="font-size: 24px; margin-bottom: 20px">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Busts%20In%20Silhouette.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+              Ваши друзья
+            </div>
+
+            <div class="section-title" style="margin-top: 0">
+              Заявки в друзья
+            </div>
+            <div id="friend-requests-list" style="margin-bottom: 30px">
+              <div style="
+                  font-size: 14px;
+                  color: var(--text-muted);
+                  padding: 10px;
+                  text-align: center;
+                ">
+                Нет новых заявок
+              </div>
+            </div>
+
+            <div class="section-title">Мои друзья</div>
+            <div id="friends-list" style="
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                gap: 15px;
+              "></div>
+          </div>
+        </main>
+
+        <main class="rooms-main" id="section-find-friend" style="display: none">
+          <div class="friends-container" style="
+              max-width: 800px;
+              width: 100%;
+              margin: 0 auto;
+              padding-top: 20px;
+            ">
+            <div class="section-title" style="font-size: 24px; margin-bottom: 20px">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Magnifying%20Glass%20Tilted%20Left.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+              Найти человека
+            </div>
+            <div style="
+                display: flex;
+                gap: 12px;
+                margin-bottom: 25px;
+                flex-shrink: 0;
+              ">
+              <input type="text" id="find-friend-input" placeholder="Введите имя пользователя..." style="
+                  flex: 1;
+                  padding: 14px 20px;
+                  font-size: 16px;
+                  border-radius: 12px;
+                  background: rgba(0, 0, 0, 0.2);
+                  border: 1px solid rgba(255, 255, 255, 0.1);
+                  color: #fff;
+                ">
+              <button class="primary-btn" id="btn-find-friend" style="width: auto; padding: 0 24px; font-size: 16px">
+                Поиск
+              </button>
+            </div>
+            <div id="find-friend-results" style="
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                overflow-y: auto;
+              ">
+              <div style="
+                  font-size: 14px;
+                  color: var(--text-muted);
+                  text-align: center;
+                  padding: 40px;
+                ">
+                Введите username для поиска друзей
+              </div>
+            </div>
+          </div>
+        </main>
+
+        <main class="rooms-main" id="section-support" style="display: none; padding: 0; width: 100%; height: 100%; background: transparent; overflow: hidden; position: relative;">
+          <div id="support-grid-container" class="support-grid-layout">
+            <!-- Left Sidebar (Tickets Hub) -->
+            <aside class="support-sidebar">
+              <!-- Sidebar Header -->
+              <div class="support-sidebar-header">
+                <div class="support-brand">
+                  <div class="support-brand-icon">
+                    <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Memo.webp" alt="Support">
+                  </div>
+                  <div>
+                    <div class="support-brand-title">Центр поддержки</div>
+                    <div class="support-brand-status">
+                      <span class="support-online-dot"></span>
+                      <span>Операторы онлайн</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="support-header-actions">
+                  <button class="secondary-btn" title="Панель Создателя" id="btn-support-creator-panel" style="display: none; width: auto; padding: 6px 10px; font-size: 11.5px; border-radius: 8px;">
+                    <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Crown.webp" style="width: 14px; height: 14px; vertical-align: -2px; margin-right: 3px;">
+                    <span>Панель</span>
+                  </button>
+                  <button class="primary-btn" id="btn-open-create-ticket-modal" style="width: auto; padding: 6px 12px; font-size: 12px; font-weight: 700; border-radius: 8px;">
+                    <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Pencil.webp" style="width: 13px; height: 13px; vertical-align: -1px; margin-right: 4px;">
+                    <span>Создать</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Search & Filter Controls -->
+              <div class="support-controls-wrap">
+                <div class="support-search-bar">
+                  <svg class="support-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                  <input type="text" id="support-search-input" placeholder="Поиск по обращениям..." autocomplete="off">
+                  <button id="support-search-clear" style="display: none;" title="Очистить">&times;</button>
+                </div>
+                <div class="support-filter-tabs" id="support-filter-tabs">
+                  <button type="button" class="support-filter-tab active" data-filter="all">
+                    <span>Все</span>
+                    <span class="support-filter-badge" id="badge-count-all">0</span>
+                  </button>
+                  <button type="button" class="support-filter-tab" data-filter="open">
+                    <span class="tab-indicator-open"></span>
+                    <span>В работе</span>
+                    <span class="support-filter-badge" id="badge-count-open">0</span>
+                  </button>
+                  <button type="button" class="support-filter-tab" data-filter="closed">
+                    <span>Решённые</span>
+                    <span class="support-filter-badge" id="badge-count-closed">0</span>
+                  </button>
+                  <button type="button" class="support-filter-tab" data-filter="reports" id="tab-filter-reports" style="display: none;">
+                    <span><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Flags/Triangular%20Flag.webp" class="emoji-animated-sm" alt=""> Жалобы</span>
+                    <span class="support-filter-badge" id="badge-count-reports">0</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Tickets List -->
+              <div id="support-tickets-list" class="support-tickets-feed">
+                <div class="skeleton-ticket-card">
+                  <div class="skeleton-ticket-avatar skeleton-shimmer"></div>
+                  <div class="skeleton-ticket-content">
+                    <div class="skeleton-line skeleton-shimmer" style="width: 75%; height: 14px;"></div>
+                    <div class="skeleton-line skeleton-shimmer" style="width: 45%; height: 10px;"></div>
+                  </div>
+                </div>
+                <div class="skeleton-ticket-card">
+                  <div class="skeleton-ticket-avatar skeleton-shimmer"></div>
+                  <div class="skeleton-ticket-content">
+                    <div class="skeleton-line skeleton-shimmer" style="width: 60%; height: 14px;"></div>
+                    <div class="skeleton-line skeleton-shimmer" style="width: 40%; height: 10px;"></div>
+                  </div>
+                </div>
+                <div class="skeleton-ticket-card">
+                  <div class="skeleton-ticket-avatar skeleton-shimmer"></div>
+                  <div class="skeleton-ticket-content">
+                    <div class="skeleton-line skeleton-shimmer" style="width: 80%; height: 14px;"></div>
+                    <div class="skeleton-line skeleton-shimmer" style="width: 50%; height: 10px;"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Sidebar Footer -->
+              <div class="support-sidebar-footer">
+                <div class="support-footer-info">
+                  <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/High%20Voltage.webp" style="width: 15px; height: 15px; object-fit: contain;">
+                  <div style="flex:1;">Среднее время ответа: <strong>~10 минут</strong></div>
+                </div>
+              </div>
+            </aside>
+
+            <!-- Right Main Area (Active Ticket & Empty State) -->
+            <section class="support-main-area">
+              <!-- Active Ticket Workspace -->
+              <div id="support-active-ticket" style="display: none; flex-direction: column; height: 100%; overflow: hidden; position: relative;">
+                <!-- Ticket Top Bar -->
+                <header class="support-ticket-header">
+                  <div class="support-header-left">
+                    <button class="secondary-btn" id="btn-support-back" style="display: none; width: auto; padding: 7px 11px; border-radius: 10px;" title="Назад к списку">
+                      <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Top%20Arrow.webp" style="width: 14px; height: 14px; object-fit: contain; transform: rotate(-90deg);">
+                    </button>
+                    <div class="support-header-icon" id="support-ticket-category-icon">
+                      <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Memo.webp" style="width: 20px; height: 20px;">
+                    </div>
+                    <div class="support-header-meta">
+                      <div class="support-header-title-row">
+                        <h2 id="support-ticket-title-text">Загрузка обращения...</h2>
+                        <span id="support-ticket-id-chip" class="support-id-chip">#ID</span>
+                      </div>
+                      <div class="support-header-subrow">
+                        <span id="st-status" class="support-status-chip open">В работе</span>
+                        <span id="st-tag" class="support-category-chip" style="display: none;"></span>
+                        <span id="st-priority" class="support-priority-chip" style="display: none;"></span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Header Action Buttons -->
+                  <div class="support-header-actions" style="position: relative;">
+                    <button class="secondary-btn support-action-btn" id="btn-support-quick-actions" title="Действия оператора" style="display: none;">
+                      <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Toolbox.webp" style="width: 14px; height: 14px;">
+                      <span>Опции</span>
+                    </button>
+                    <div id="support-quick-actions-menu" class="support-popover-menu" style="display: none;"></div>
+
+                    <button class="secondary-btn support-action-btn" id="btn-support-close-ticket" style="display: none;">
+                      <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" style="width: 14px; height: 14px;">
+                      <span>Закрыть тикет</span>
+                    </button>
+                    <button class="primary-btn support-action-btn" id="btn-support-reopen-ticket" style="display: none;">
+                      <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Currency%20Exchange.webp" style="width: 14px; height: 14px;">
+                      <span>Возобновить</span>
+                    </button>
+                    <button class="danger-btn support-action-btn support-delete-btn" id="btn-support-delete-ticket" title="Удалить тикет" onclick="SupportSystem.deleteTicketLocally()">
+                      <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Cross%20Mark.webp" style="width: 14px; height: 14px;">
+                    </button>
+                  </div>
+                </header>
+
+                <!-- Operator Ticket Info (Report card or problem details) -->
+                <div id="support-operator-ticket-info" style="display: none;"></div>
+
+                <!-- Chat Scroll Body -->
+                <div class="support-chat-wrapper">
+                  <div id="support-ticket-chat" class="support-messages-scroll">
+                    <!-- MSGs rendered here -->
+                  </div>
+                </div>
+
+                <!-- Typing indicator -->
+                <div id="support-typing-indicator" style="display: none;">
+                  <span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>
+                  <span>Оператор печатает ответ...</span>
+                </div>
+
+                <!-- Inline templates (for staff) -->
+                <div id="support-inline-templates" class="support-templates-dock" style="display: none;">
+                  <!-- Template buttons inserted dynamically -->
+                </div>
+
+                <!-- Compose Dock (Active Ticket) -->
+                <div class="support-composer-dock" id="support-compose-dock">
+                  <div id="support-pending-attachment" class="support-pending-attachment" style="display: none;">
+                    <img id="support-pending-attachment-img" src="" alt="Attachment">
+                    <span id="support-pending-attachment-name">screenshot.png</span>
+                    <button type="button" id="btn-support-remove-pending-attachment" title="Удалить">&times;</button>
+                  </div>
+                  <div class="support-composer-inner">
+                    <button type="button" id="btn-support-attach" class="support-compose-attach-btn" title="Прикрепить скриншот">
+                      <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Memo.webp" style="width: 16px; height: 16px;">
+                    </button>
+                    <textarea id="support-msg-input" placeholder="Напишите ответ в поддержку..." rows="1"></textarea>
+                    <button type="button" id="btn-support-send" class="primary-btn support-send-btn">
+                      <span>Отправить</span>
+                      <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Incoming%20Envelope.webp" style="width: 14px; height: 14px;">
+                    </button>
+                  </div>
+                  <div class="support-composer-hint">Нажмите <strong>Enter</strong> для отправки, <strong>Shift + Enter</strong> для новой строки</div>
+                </div>
+
+                <!-- Closed Resolution Bar (When Closed) -->
+                <div id="support-closed-banner" class="support-closed-resolution-bar" style="display: none;">
+                  <div class="support-closed-bar-content">
+                    <div class="support-closed-bar-icon">
+                      <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" style="width: 20px; height: 20px;">
+                    </div>
+                    <div class="support-closed-bar-info">
+                      <div class="support-closed-bar-title">Обращение закрыто и сохранено в архиве</div>
+                      <div class="support-closed-bar-desc">История диалога доступна для чтения. Если проблема повторилась, возобновите тикет в один клик.</div>
+                    </div>
+                    <button type="button" class="primary-btn support-reopen-cta" id="btn-support-reopen-overlay">
+                      <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Currency%20Exchange.webp" style="width: 14px; height: 14px;">
+                      <span>Возобновить тикет</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Empty state (no active ticket) -->
+              <div id="support-no-ticket" class="support-empty-welcome">
+                <div class="support-welcome-card">
+                  <div class="support-welcome-icon-wrap">
+                    <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Travel%20and%20Places/Compass.webp" style="width: 44px; height: 44px;" alt="Support" onerror="this.src='https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Telephone%20Receiver.webp'">
+                  </div>
+                  <div class="support-welcome-title">Центр поддержки COWIO</div>
+                  <div class="support-welcome-subtitle">
+                    Мы готовы помочь в любой ситуации. Выберите обращение из списка слева или создайте новый тикет:
+                  </div>
+                  <button type="button" class="primary-btn support-welcome-cta" onclick="SupportSystem.openCreateModal()">
+                    <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Pencil.webp" style="width: 15px; height: 15px;">
+                    <span>Создать новое обращение</span>
+                  </button>
+
+                  <div class="support-quick-starters">
+                    <div class="support-starter-card" onclick="SupportSystem.openCreateModal('Вопрос')">
+                      <div class="starter-emoji">
+                        <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Speech%20Balloon.webp" alt="Вопрос">
+                      </div>
+                      <div class="starter-title">Вопрос по сервису</div>
+                      <div class="starter-desc">Помощь по комнатам, музыке, профилю и функциям</div>
+                    </div>
+                    <div class="support-starter-card" onclick="SupportSystem.openCreateModal('Баг')">
+                      <div class="starter-emoji">
+                        <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Bug.webp" alt="Баг">
+                      </div>
+                      <div class="starter-title">Сообщить о баге</div>
+                      <div class="starter-desc">Неполадки воспроизведения, звука или интерфейса</div>
+                    </div>
+                    <div class="support-starter-card" onclick="SupportSystem.openCreateModal('Жалоба')">
+                      <div class="starter-emoji">
+                        <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Flags/Triangular%20Flag.webp" alt="Жалоба">
+                      </div>
+                      <div class="starter-title">Жалоба на нарушение</div>
+                      <div class="starter-desc">Оскорбления, спам или неприемлемое поведение</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </main>
+
+        <main class="rooms-main" id="section-profile" style="display: none; width: 100% !important; height: 100% !important; padding: 0 !important; margin: 0 !important; overflow-y: auto !important; overflow-x: hidden !important; align-items: stretch !important;">
+  <div class="discord-profile-card">
+    <div id="profile-banner-wrapper" class="is-hidden" style="position: relative; width: calc(100% - 24px); margin: 12px 12px 0 12px; aspect-ratio: 21 / 6; min-height: 120px; border-radius: 12px; overflow: hidden; display: none; z-index: 1;">
+      <img id="profile-banner-img" style="width: 100%; height: 100%; object-fit: cover; object-position: center 50%; display: none; border-radius: 12px;" alt="">
+      <div id="profile-banner-overlay" style="position: absolute; inset: 0; background: rgba(0,0,0,0.3); border-radius: 12px; display: none;"></div>
+    </div>
+    <div class="tiktok-profile-container" style="position: relative; z-index: 2; height: auto !important; overflow-y: visible !important;">
+  <div class="tiktok-profile-header">
+    <div class="tiktok-profile-avatar-wrap">
+       <div class="avatar" id="view-avatar" style="position: relative;
+            width: 90px;
+            height: 90px;
+            font-size: 32px;
+            margin: 0;
+            border-radius: 50%;
+            overflow: visible;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #111;
+          ">
+          ?
+        </div>
+    </div>
+    <div class="tiktok-profile-info">
+      <div class="tiktok-profile-main-col">
+        <div class="tiktok-profile-title">
+          <h2 id="view-name" style="margin-bottom: 4px">Пользователь</h2>
+          <div id="view-username" style="
+             color: var(--accent);
+             font-size: 14px;
+             margin-bottom: 8px;
+             font-weight: 600;
+           ">
+           @user
+         </div>
+         <div id="view-status" style="font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 12px; display: flex; align-items: center;"></div>
+         <div id="view-friends-count" class="tiktok-friends-btn" style="
+             display: inline-flex;
+             align-items: center;
+             gap: 8px;
+             padding: 6px 14px;
+             background: rgba(255, 255, 255, 0.06);
+             border: 1px solid rgba(255, 255, 255, 0.12);
+             border-radius: 999px;
+             color: #ffffff;
+             font-size: 13.5px;
+             font-weight: 600;
+             margin-bottom: 12px;
+             cursor: pointer;
+             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+             user-select: none;
+             width: fit-content;
+           " onmouseover="this.style.background='rgba(255, 255, 255, 0.12)'; this.style.borderColor='rgba(255, 255, 255, 0.25)';" onmouseout="this.style.background='rgba(255, 255, 255, 0.06)'; this.style.borderColor='rgba(255, 255, 255, 0.12)';">
+           <span id="view-friends-count-text">Друзья · 0</span>
+           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+             <polyline points="9 18 15 12 9 6"></polyline>
+           </svg>
+         </div>
+         <div id="view-gender" style="color: var(--text-muted); font-size: 14px; margin-bottom: 12px; font-weight: 500; display: none;"></div>
+         <div class="tiktok-profile-badges-row" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;">
+           <div id="view-level-badge" style="
+               display: inline-flex;
+               align-items: center;
+               gap: 6px;
+               padding: 6px 14px;
+               background: rgba(34, 34, 34, 0.8);
+               border: 1px solid rgba(255, 255, 255, 0.08);
+               border-radius: 100px;
+               cursor: pointer;
+               transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+               box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+             ">
+             <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Star.webp" style="
+                 width: 18px;
+                 height: 18px;
+                 object-fit: contain;
+                 filter: drop-shadow(0 2px 4px rgba(255, 170, 0, 0.4));
+               " id="view-level-badge-icon">
+             <span id="view-level-badge-text" style="
+                 font-size: 14px;
+                 font-weight: 600;
+                 color: #fff;
+                 letter-spacing: -0.2px;
+               ">Уровень 0</span>
+             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 2px">
+               <polyline points="9 18 15 12 9 6"></polyline>
+             </svg>
+           </div>
+           <div id="view-lumens-badge" style="
+               display: inline-flex;
+               align-items: center;
+               gap: 6px;
+               padding: 6px 14px;
+               background: rgba(34, 34, 34, 0.8);
+               border: 1px solid rgba(255, 255, 255, 0.08);
+               border-radius: 100px;
+               box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+               cursor: default;
+             " title="Баланс Люменов">
+             <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="
+                 width: 18px;
+                 height: 18px;
+                 object-fit: contain;
+                 filter: drop-shadow(0 2px 6px rgba(255, 255, 255, 0.4));
+               " alt="Lumens">
+             <span id="view-lumens-count" style="
+                 font-size: 14px;
+                 font-weight: 600;
+                 color: #fff;
+                 letter-spacing: -0.2px;
+               ">0</span>
+             <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 16px; height: 16px; object-fit: contain; vertical-align: middle;" alt="Люмены">
+           </div>
+           <div id="view-streak" style="
+               display: none;
+               align-items: center;
+               gap: 6px;
+               padding: 6px 14px;
+               background: rgba(34, 34, 34, 0.8);
+               border: 1px solid rgba(255, 255, 255, 0.08);
+               border-radius: 100px;
+               box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+               cursor: default;
+             " title="Стрик активности">
+             <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Fire.webp" style="
+                 width: 18px;
+                 height: 18px;
+                 object-fit: contain;
+                 filter: drop-shadow(0 2px 4px rgba(255, 100, 0, 0.6));
+               " alt="Streak">
+             <span id="view-streak-count" style="
+                 font-size: 14px;
+                 font-weight: 600;
+                 color: #fff;
+                 letter-spacing: -0.2px;
+               ">0</span>
+             <span style="font-size: 12px; color: rgba(255,255,255,0.6); font-weight: 500;">дн.</span>
+           </div>
+         </div>
+        </div>
+
+        <div class="profile-bio-wrapper" style="width: 100%;">
+          <div class="view-bio" style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px; line-height: 1.5; padding-top: 15px;"></div>
+        </div>
+      </div>
+
+      <div class="tiktok-profile-side-col" style="width: 100%; max-width: 100%; box-sizing: border-box;">
+        <div class="tiktok-profile-actions-wrap" style="width: 100%; max-width: 100%; margin-bottom: 16px;">
+          <div id="view-profile-actions" style="display: flex; flex-direction: row; gap: 8px; align-items: center; flex-wrap: wrap; width: 100%; max-width: 100%; box-sizing: border-box;">
+            <button class="primary-btn" id="btn-dm-modal" style="background-color: #FFFFFF !important; color: #000000 !important; border: none; font-weight: 700; flex: 1 1 auto; min-width: 130px; padding: 8px 16px; font-size: 13.5px; border-radius: 10px; cursor: pointer; box-shadow: 0 4px 14px rgba(255, 255, 255, 0.18);">
+              Написать сообщение
+            </button> 
+            <button class="secondary-btn" id="btn-admin-manage-user" title="Управление пользователем" style="display: none; align-items: center; justify-content: center; gap: 6px; padding: 8px 16px; font-size: 13.5px; font-weight: 700; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.18); background: rgba(255, 255, 255, 0.08); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); color: #ffffff; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Toolbox.webp" style="width: 16px; height: 16px; object-fit: contain;">
+              <span>Управление пользователем</span>
+            </button>
+            <button class="secondary-btn" id="btn-like-profile" style="display: flex; align-items: center; justify-content: center; gap: 6px; padding: 7px 12px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06); border-radius: 10px; color: #fff; cursor: pointer; transition: 0.2s; flex-shrink: 0;">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Red%20Heart.webp" style="width: 20px; height: 20px; object-fit: contain; filter: grayscale(100%) opacity(50%); transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);" id="like-icon" alt="Like">
+              <span id="view-likes-count" style="font-weight: 700; font-size: 13px;">0</span>
+            </button>
+            <button class="secondary-btn" id="btn-gift-lumens" title="Подарить Люмены" aria-label="Подарить Люмены" style="display: none; align-items: center; justify-content: center; gap: 6px; padding: 7px 12px; border: 1px solid rgba(255, 215, 0, 0.35); background: linear-gradient(135deg, rgba(255, 215, 0, 0.14) 0%, rgba(255, 170, 0, 0.06) 100%); border-radius: 10px; color: #ffd700; cursor: pointer; transition: all 0.2s; flex-shrink: 0;">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 17px; height: 17px; object-fit: contain; filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.6));" alt="✨">
+              <span style="font-weight: 700; font-size: 13px;">Люмены</span>
+            </button>
+            <button class="secondary-btn" id="btn-report-profile" title="Пожаловаться на профиль" aria-label="Пожаловаться на профиль" style="display: flex; align-items: center; justify-content: center; padding: 7px 11px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06); cursor: pointer; flex-shrink: 0;">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Flags/Triangular%20Flag.webp" alt="Жалоба" style="width: 17px; height: 17px; object-fit: contain;">
+            </button>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 20px; width: 100%; flex-wrap: wrap;" class="profile-right-content-wrap">
+          <div style="flex: 1; min-width: 200px;">
+            <div id="view-badges-collection" style="width: 100%; margin-bottom: 15px;"></div>
+            <div class="hashtags-list" id="view-hashtags"></div>
+
+          </div>
+          <div style="flex: 0 0 200px;" class="profile-stats-container">
+            <div id="view-profile-stats" style="padding: 12px; background: rgba(34,34,34,0.5); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); width: 100%;">
+              <div style="font-size: 14px; color: var(--text-muted); font-weight: 500; margin-bottom: 8px;">Статистика</div>
+              <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+                 <span style="color: var(--text-muted);">Регистрация:</span>
+                 <span id="view-stat-created" style="color: #fff; font-weight: 600;">Неизвестно</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+                 <span style="color: var(--text-muted);">Вход:</span>
+                 <span id="view-stat-login" style="color: #fff; font-weight: 600;">Неизвестно</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+                 <span style="color: var(--text-muted);">В комнатах:</span>
+                 <span id="view-stat-room-time" style="color: #fff; font-weight: 600;">0 мин.</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+                 <span style="color: var(--text-muted);">ID:</span>
+                 <span id="view-stat-uid" style="color: #fff; font-weight: 600; font-family: monospace; font-size: 11px;"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div></main>
+
+        <main class="rooms-main" id="section-switch-account" style="display: none">
+          <div class="friends-container" style="
+              max-width: 500px;
+              width: 100%;
+              margin: 0 auto;
+              padding-top: 40px;
+              text-align: center;
+            ">
+            <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Up%20Button.webp" style="width: 80px; height: 80px; margin-bottom: 20px">
+            <h2 style="font-size: 28px; margin-bottom: 15px">Смена аккаунта</h2>
+            <div style="
+                color: var(--text-muted);
+                font-size: 15px;
+                margin-bottom: 20px;
+                line-height: 1.5;
+              ">
+              Вот сохраненные аккаунты, между которыми вы можете переключаться в
+              один клик.
+            </div>
+
+            <div id="saved-accounts-list" style="
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                margin-bottom: 30px;
+              ">
+              <!-- Saved accounts will be rendered here -->
+            </div>
+
+            <button class="primary-btn" id="btn-do-switch-account" style="width: 100%; font-size: 16px; padding: 14px">
+              + Добавить новый аккаунт
+            </button>
+            <button class="danger-btn" id="btn-do-switch-account-clear" style="
+                width: 100%;
+                font-size: 14px;
+                padding: 10px;
+                margin-top: 10px;
+                background: transparent;
+                border: 1px solid rgba(255, 0, 0, 0.5);
+                color: rgba(255, 100, 100, 0.8);
+              ">
+              Очистить список (полный выход)
+            </button>
+          </div>
+        </main>
+
+        <main class="rooms-main" id="section-catalog" style="display: none; position: relative; width: 100%; min-height: 100%;">
+          <div class="catalog-container">
+            <!-- Toolbar: Search + Categories + Custom Sort -->
+            <div class="catalog-toolbar-panel">
+              <div class="catalog-search-box">
+                <svg class="catalog-search-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" id="catalog-search-input" placeholder="Поиск рамки по названию..." autocomplete="off">
+                <button type="button" id="catalog-search-clear" style="display: none;">✕</button>
+              </div>
+
+              <div class="catalog-tabs" id="catalog-filters">
+                <button class="catalog-tab-btn active-filter" data-filter="all">
+                  <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Shopping%20Bags.webp" class="catalog-tab-emoji" alt="Все">
+                  <span>Все</span>
+                  <span class="catalog-tab-badge" id="cat-count-all">0</span>
+                </button>
+                <button class="catalog-tab-btn" data-filter="hot">
+                  <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Fire.webp" class="catalog-tab-emoji" alt="Акции">
+                  <span>Акции</span>
+                  <span class="catalog-tab-badge" id="cat-count-hot">0</span>
+                </button>
+                <button class="catalog-tab-btn" data-filter="free">
+                  <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" class="catalog-tab-emoji" alt="Бесплатные">
+                  <span>Бесплатные</span>
+                  <span class="catalog-tab-badge" id="cat-count-free">0</span>
+                </button>
+                <button class="catalog-tab-btn" data-filter="paid">
+                  <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" class="catalog-tab-emoji" alt="Люмены">
+                  <span>За Люмены</span>
+                  <span class="catalog-tab-badge" id="cat-count-paid">0</span>
+                </button>
+              </div>
+
+              <div class="catalog-sort-box">
+                <div class="catalog-custom-select" id="catalog-sort-custom">
+                  <button type="button" class="catalog-custom-select-trigger" id="catalog-sort-trigger" aria-haspopup="listbox" aria-expanded="false">
+                    <span class="catalog-sort-trigger-label" id="catalog-sort-label">Сначала рекомендуемые</span>
+                    <svg class="catalog-sort-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  </button>
+                  <div class="catalog-custom-select-menu" id="catalog-sort-menu" role="listbox">
+                    <div class="catalog-select-option active" data-value="featured" role="option" aria-selected="true">
+                      <span>Сначала рекомендуемые</span>
+                      <svg class="catalog-option-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    </div>
+                    <div class="catalog-select-option" data-value="price-asc" role="option" aria-selected="false">
+                      <span>Цена: по возрастанию</span>
+                      <svg class="catalog-option-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    </div>
+                    <div class="catalog-select-option" data-value="price-desc" role="option" aria-selected="false">
+                      <span>Цена: по убыванию</span>
+                      <svg class="catalog-option-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    </div>
+                    <div class="catalog-select-option" data-value="title-asc" role="option" aria-selected="false">
+                      <span>По названию (А–Я)</span>
+                      <svg class="catalog-option-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Items Grid -->
+            <div id="catalog-list" class="catalog-items-grid"></div>
+          </div>
+        </main>
+
+        <main class="rooms-main" id="section-premium" style="display: none; overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none; width: 100%; height: 100%; box-sizing: border-box;">
+          <div style="width: 100%; max-width: 100%; margin: 0; padding: 24px 32px 80px; box-sizing: border-box;">
+            <div id="premium-dynamic-content"></div>
+          </div>
+        </main>
+
+        <main class="rooms-main" id="section-mystery" style="display: none; position: relative">
+          <div class="mystery-event-shell">
+            <div class="mystery-event-blur"></div>
+            <div class="mystery-event-overlay">
+              <div class="mystery-question-row" aria-label="Секретный будущий ивент">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Question%20Mark.webp" alt="?">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Question%20Mark.webp" alt="?">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Question%20Mark.webp" alt="?">
+              </div>
+              <div class="mystery-countdown" aria-live="polite">
+                <div class="mystery-time-cell">
+                  <span class="mystery-time-value" id="mystery-days">30</span>
+                  <span class="mystery-time-label">дней</span>
+                </div>
+                <div class="mystery-time-cell">
+                  <span class="mystery-time-value" id="mystery-hours">00</span>
+                  <span class="mystery-time-label">часов</span>
+                </div>
+                <div class="mystery-time-cell">
+                  <span class="mystery-time-value" id="mystery-minutes">00</span>
+                  <span class="mystery-time-label">минут</span>
+                </div>
+                <div class="mystery-time-cell">
+                  <span class="mystery-time-value" id="mystery-seconds">00</span>
+                  <span class="mystery-time-label">секунд</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+
+        <main class="rooms-main" id="section-settings" style="display: none">
+          <div class="lobby-header">
+            <h2>
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Toolbox.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+              Настройки
+            </h2>
+          </div>
+          <div class="friends-container" style="padding: 20px" id="settings-dynamic-container">
+            <!-- Rendered by JS -->
+          </div>
+        </main>
+
+        <main class="rooms-main" id="section-other" style="display: none; overflow-y: auto;">
+          <div class="lobby-header">
+            <h2>
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Card%20Index%20Dividers.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+              Прочее
+            </h2>
+            <p style="color: var(--text-muted); font-size: 14px; margin-top: 4px;">
+              Информационный блок и полезные сведения
+            </p>
+          </div>
+          <div style="padding: 24px; display: flex; flex-direction: column; gap: 20px; max-width: 860px;">
+            <div class="glass-panel" style="padding: 24px; border-radius: 16px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08);">
+              <h3 style="display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; margin-bottom: 14px; color: var(--text-main);">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Open%20Book.webp" style="width: 24px; height: 24px;">
+                О проекте и информация
+              </h3>
+              <p style="color: var(--text-muted); font-size: 14px; line-height: 1.7; margin-bottom: 16px;">
+                Здесь расположен информационный блок сервиса. Вы можете заменить этот текст на правила комнаты, ссылки на ваши каналы, описание сообщества или любую другую информацию, которая будет полезна пользователям.
+              </p>
+              <div style="background: rgba(0, 0, 0, 0.25); border: 1px dashed rgba(255, 255, 255, 0.15); border-radius: 12px; padding: 18px; font-size: 13px; color: var(--text-muted); line-height: 1.6;">
+                <div style="font-weight: 600; color: var(--text-main); margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                  <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Light%20Bulb.webp" style="width: 18px; height: 18px;">
+                  Пользовательская заметка:
+                </div>
+                Добро пожаловать в COWIO! Здесь вы можете смотреть любимые видео вместе с друзьями синхронно в реальном времени, общаться в чате, делиться эмодзи и реакциями.
+              </div>
+            </div>
+
+            <div class="glass-panel" style="padding: 24px; border-radius: 16px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08);">
+              <h3 style="display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; margin-bottom: 14px; color: var(--text-main);">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Memo.webp" style="width: 24px; height: 24px;">
+                Правила и рекомендации
+              </h3>
+              <ul style="color: var(--text-muted); font-size: 14px; line-height: 1.7; margin: 0; padding-left: 20px;">
+                <li>Уважайте других участников совместного просмотра.</li>
+                <li>Не включайте неподобающий контент в открытых комнатах.</li>
+                <li>Для комфортного просмотра используйте наушники или настройте звук.</li>
+              </ul>
+            </div>
+
+            <!-- Контакты и связь (Mail & Telegram) -->
+            <div class="glass-panel" style="padding: 24px; border-radius: 16px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08);">
+              <h3 style="display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; margin-bottom: 8px; color: var(--text-main);">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Incoming%20Envelope.webp" style="width: 24px; height: 24px;">
+                Контакты и связь
+              </h3>
+              <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6; margin-bottom: 16px;">
+                Официальные каналы связи с администрацией COWIO для вопросов, предложений и сотрудничества.
+              </p>
+
+              <div style="display: flex; flex-direction: column; gap: 12px;">
+                <!-- Mail -->
+                <a href="mailto:support@cowio.ru" style="
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  padding: 14px 18px;
+                  border-radius: 14px;
+                  background: rgba(255, 255, 255, 0.02);
+                  border: 1px solid rgba(255, 255, 255, 0.07);
+                  text-decoration: none;
+                  color: inherit;
+                  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                " onmouseover="this.style.background='rgba(255, 255, 255, 0.05)'; this.style.borderColor='rgba(93, 120, 255, 0.4)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.background='rgba(255, 255, 255, 0.02)'; this.style.borderColor='rgba(255, 255, 255, 0.07)'; this.style.transform='none';">
+                  <div style="display: flex; align-items: center; gap: 14px;">
+                    <div style="
+                      width: 42px;
+                      height: 42px;
+                      border-radius: 12px;
+                      background: rgba(93, 120, 255, 0.12);
+                      border: 1px solid rgba(93, 120, 255, 0.3);
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      flex-shrink: 0;
+                    ">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7d9bff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect width="20" height="16" x="2" y="4" rx="2"/>
+                        <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <div style="font-weight: 700; font-size: 15px; color: #ffffff;">Электронная почта (Mail)</div>
+                      <div style="font-size: 12.5px; color: var(--text-muted); margin-top: 2px;">support@cowio.ru • Прямая связь по любым вопросам</div>
+                    </div>
+                  </div>
+                  <div style="
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    padding: 6px 14px;
+                    border-radius: 20px;
+                    background: rgba(93, 120, 255, 0.12);
+                    border: 1px solid rgba(93, 120, 255, 0.3);
+                    color: #9db2ff;
+                    font-size: 12px;
+                    font-weight: 600;
+                    flex-shrink: 0;
+                  ">
+                    <span>Написать</span>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M7 17l9.2-9.2M17 17V8H8"/>
+                    </svg>
+                  </div>
+                </a>
+
+                <!-- Telegram -->
+                <a href="https://t.me/ezkid" target="_blank" rel="noopener noreferrer" style="
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  padding: 14px 18px;
+                  border-radius: 14px;
+                  background: rgba(255, 255, 255, 0.02);
+                  border: 1px solid rgba(255, 255, 255, 0.07);
+                  text-decoration: none;
+                  color: inherit;
+                  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                " onmouseover="this.style.background='rgba(255, 255, 255, 0.05)'; this.style.borderColor='rgba(41, 169, 234, 0.4)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.background='rgba(255, 255, 255, 0.02)'; this.style.borderColor='rgba(255, 255, 255, 0.07)'; this.style.transform='none';">
+                  <div style="display: flex; align-items: center; gap: 14px;">
+                    <div style="
+                      width: 42px;
+                      height: 42px;
+                      border-radius: 12px;
+                      background: rgba(41, 169, 234, 0.12);
+                      border: 1px solid rgba(41, 169, 234, 0.3);
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      flex-shrink: 0;
+                    ">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#29a9ea" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                      </svg>
+                    </div>
+                    <div>
+                      <div style="font-weight: 700; font-size: 15px; color: #ffffff;">Telegram</div>
+                      <div style="font-size: 12.5px; color: var(--text-muted); margin-top: 2px;">@ezkid • Официальный контакт и новости платформы</div>
+                    </div>
+                  </div>
+                  <div style="
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    padding: 6px 14px;
+                    border-radius: 20px;
+                    background: rgba(41, 169, 234, 0.12);
+                    border: 1px solid rgba(41, 169, 234, 0.3);
+                    color: #5ec8ff;
+                    font-size: 12px;
+                    font-weight: 600;
+                    flex-shrink: 0;
+                  ">
+                    <span>Открыть</span>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M7 17l9.2-9.2M17 17V8H8"/>
+                    </svg>
+                  </div>
+                </a>
+              </div>
+            </div>
+
+            <!-- Правовая информация (Политика и Соглашение) -->
+            <div class="glass-panel" style="padding: 24px; border-radius: 16px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08);">
+              <h3 style="display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; margin-bottom: 8px; color: var(--text-main);">
+                <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" style="width: 24px; height: 24px;">
+                Правовая информация
+              </h3>
+              <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6; margin-bottom: 16px;">
+                Официальные юридические документы, правила работы сервиса и условия конфиденциальности.
+              </p>
+
+              <div style="display: flex; flex-direction: column; gap: 12px;">
+                <!-- Политика конфиденциальности -->
+                <div onclick="openLegalModal('privacy')" style="
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  padding: 14px 18px;
+                  border-radius: 14px;
+                  background: rgba(255, 255, 255, 0.02);
+                  border: 1px solid rgba(255, 255, 255, 0.07);
+                  cursor: pointer;
+                  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                " onmouseover="this.style.background='rgba(255, 255, 255, 0.05)'; this.style.borderColor='rgba(46, 213, 115, 0.4)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.background='rgba(255, 255, 255, 0.02)'; this.style.borderColor='rgba(255, 255, 255, 0.07)'; this.style.transform='none';">
+                  <div style="display: flex; align-items: center; gap: 14px;">
+                    <div style="
+                      width: 42px;
+                      height: 42px;
+                      border-radius: 12px;
+                      background: rgba(46, 213, 115, 0.12);
+                      border: 1px solid rgba(46, 213, 115, 0.3);
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      flex-shrink: 0;
+                    ">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2ed573" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <div style="font-weight: 700; font-size: 15px; color: #ffffff;">Политика конфиденциальности</div>
+                      <div style="font-size: 12.5px; color: var(--text-muted); margin-top: 2px;">Порядок сбора, хранения и защиты информации пользователей</div>
+                    </div>
+                  </div>
+                  <div style="
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    padding: 6px 14px;
+                    border-radius: 20px;
+                    background: rgba(46, 213, 115, 0.12);
+                    border: 1px solid rgba(46, 213, 115, 0.3);
+                    color: #55e691;
+                    font-size: 12px;
+                    font-weight: 600;
+                    flex-shrink: 0;
+                  ">
+                    <span>Читать</span>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M9 18l6-6-6-6"/>
+                    </svg>
+                  </div>
+                </div>
+
+                <!-- Пользовательское соглашение -->
+                <div onclick="openLegalModal('offer')" style="
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  padding: 14px 18px;
+                  border-radius: 14px;
+                  background: rgba(255, 255, 255, 0.02);
+                  border: 1px solid rgba(255, 255, 255, 0.07);
+                  cursor: pointer;
+                  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                " onmouseover="this.style.background='rgba(255, 255, 255, 0.05)'; this.style.borderColor='rgba(255, 205, 90, 0.4)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.background='rgba(255, 255, 255, 0.02)'; this.style.borderColor='rgba(255, 255, 255, 0.07)'; this.style.transform='none';">
+                  <div style="display: flex; align-items: center; gap: 14px;">
+                    <div style="
+                      width: 42px;
+                      height: 42px;
+                      border-radius: 12px;
+                      background: rgba(255, 205, 90, 0.12);
+                      border: 1px solid rgba(255, 205, 90, 0.3);
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      flex-shrink: 0;
+                    ">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffd56a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                        <polyline points="10 9 9 9 8 9"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <div style="font-weight: 700; font-size: 15px; color: #ffffff;">Пользовательское соглашение</div>
+                      <div style="font-size: 12.5px; color: var(--text-muted); margin-top: 2px;">Условия использования сервиса, публичная оферта и правила</div>
+                    </div>
+                  </div>
+                  <div style="
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    padding: 6px 14px;
+                    border-radius: 20px;
+                    background: rgba(255, 205, 90, 0.12);
+                    border: 1px solid rgba(255, 205, 90, 0.3);
+                    color: #ffd56a;
+                    font-size: 12px;
+                    font-weight: 600;
+                    flex-shrink: 0;
+                  ">
+                    <span>Читать</span>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M9 18l6-6-6-6"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- ROOM SCREEN -->
+    <!-- ========================================================================= -->
