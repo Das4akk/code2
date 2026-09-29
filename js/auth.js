@@ -415,31 +415,6 @@ class AuthManager {
       console.warn("[AuthManager] injectFixes error:", e);
     }
 
-    // Instant optimistic preload on F5
-    try {
-      const lastRaw = localStorage.getItem("cowio_last_profile");
-      const savedAccounts = JSON.parse(
-        localStorage.getItem("cowio_saved_accounts") || "[]",
-      );
-      if (lastRaw && Array.isArray(savedAccounts) && savedAccounts.length > 0) {
-        const cachedP = JSON.parse(lastRaw);
-        const lastUid = cachedP?.uid || savedAccounts[savedAccounts.length - 1]?.uid;
-        if (lastUid && cachedP) {
-          AppState.currentUser = { uid: lastUid, email: cachedP.email || savedAccounts[0]?.email };
-          AppState.usersCache.set(lastUid, cachedP);
-          if (window.ProfileManager && typeof ProfileManager.renderProfileUI === "function") {
-            try { ProfileManager.renderProfileUI(lastUid, cachedP); } catch (e) {}
-          }
-          const pathname = window.location.pathname;
-          if (pathname === "/login" || pathname === "/register" || pathname === "/") {
-            try { Utils.showScreen("lobby-screen", false); } catch (e) {}
-          }
-        }
-      }
-    } catch (e) {
-      console.warn("[AuthManager] Preload error:", e);
-    }
-
     try {
       onAuthStateChanged(auth, async (user) => {
         try {
@@ -758,51 +733,275 @@ class AuthManager {
       .join("");
   }
 
-  static async completeRegistration(pending) {
-    AppState.isRegistering = true;
-    const creds = await createUserWithEmailAndPassword(
-      auth,
-      pending.email,
-      pending.pass,
-    );
-    const savedAccounts = JSON.parse(
-      localStorage.getItem("cowio_saved_accounts") || "[]",
-    );
-    savedAccounts.push({
-      uid: creds.user.uid,
-      email: pending.email,
-      pass: pending.pass,
-    });
-    localStorage.setItem("cowio_saved_accounts", JSON.stringify(savedAccounts));
-    await updateProfile(creds.user, { displayName: pending.name });
-    await ProfileManager.createProfile(
-      creds.user.uid,
-      pending.name,
-      pending.username,
-      pending.email,
-      { provider: "email", emailVerified: true },
-      pending.gender,
-    );
-    TutorialManager.startTutorial();
-    AppState.isRegistering = false;
-    AuthManager.hideRegVerifyPanel();
-    Utils.toast("Аккаунт создан! Добро пожаловать", "success");
+  static formatAuthError(err) {
+    if (!err) return "Произошла ошибка аутентификации";
+    const code = err.code || "";
+    const msg = err.message || "";
+    if (code === "auth/invalid-credential" || code === "auth/wrong-password" || code === "auth/user-not-found") {
+      return "Неверный логин или пароль";
+    }
+    if (code === "auth/email-already-in-use") {
+      return "Эта почта уже зарегистрирована. Перейдите на вкладку «Вход».";
+    }
+    if (code === "auth/invalid-email") {
+      return "Указан некорректный адрес электронной почты";
+    }
+    if (code === "auth/weak-password") {
+      return "Слишком простой пароль (минимум 6 символов)";
+    }
+    if (code === "auth/popup-closed-by-user") {
+      return "Окно авторизации Google закрыто";
+    }
+    if (code === "auth/popup-blocked") {
+      return "Всплывающее окно Google заблокировано браузером";
+    }
+    if (code === "auth/network-request-failed") {
+      return "Ошибка сети. Проверьте подключение к интернету";
+    }
+    if (code === "auth/too-many-requests") {
+      return "Слишком много попыток. Подождите пару минут перед повтором";
+    }
+    return msg || "Ошибка аутентификации";
   }
 
-  static bindUI() {
+  static async completeRegistration(pending) {
+    AppState.isRegistering = true;
+    try {
+      const creds = await createUserWithEmailAndPassword(
+        auth,
+        pending.email,
+        pending.pass,
+      );
+      const savedAccounts = JSON.parse(
+        localStorage.getItem("cowio_saved_accounts") || "[]",
+      );
+      savedAccounts.push({
+        uid: creds.user.uid,
+        email: pending.email,
+        pass: pending.pass,
+      });
+      localStorage.setItem("cowio_saved_accounts", JSON.stringify(savedAccounts));
+      await updateProfile(creds.user, { displayName: pending.name });
+      await ProfileManager.createProfile(
+        creds.user.uid,
+        pending.name,
+        pending.username,
+        pending.email,
+        { provider: "email", emailVerified: true },
+        pending.gender,
+      );
+      TutorialManager.startTutorial();
+      AppState.isRegistering = false;
+      AuthManager.hideRegVerifyPanel();
+      Utils.toast("Аккаунт создан! Добро пожаловать", "success");
+    } catch (err) {
+      AppState.isRegistering = false;
+      throw new Error(this.formatAuthError(err));
+    }
+  }
+
+  static switchTab(tab) {
     const tabLogin = Utils.$("tab-login-btn");
     const tabReg = Utils.$("tab-reg-btn");
-    if (tabLogin) {
-      tabLogin.onclick = () => {
+    if (tabLogin && tabReg) {
+      if (tab === "login") {
         tabLogin.classList.add("active");
-        if (tabReg) tabReg.classList.remove("active");
+        tabReg.classList.remove("active");
         Utils.$("login-form")?.classList.add("active-form");
         Utils.$("reg-form")?.classList.remove("active-form");
         const leftLogin = Utils.$("auth-left-login");
         const leftReg = Utils.$("auth-left-reg");
         if (leftLogin) leftLogin.style.display = "block";
         if (leftReg) leftReg.style.display = "none";
-      };
+      } else {
+        tabReg.classList.add("active");
+        tabLogin.classList.remove("active");
+        Utils.$("reg-form")?.classList.add("active-form");
+        Utils.$("login-form")?.classList.remove("active-form");
+        const leftLogin = Utils.$("auth-left-login");
+        const leftReg = Utils.$("auth-left-reg");
+        if (leftLogin) leftLogin.style.display = "none";
+        if (leftReg) leftReg.style.display = "block";
+      }
+    }
+  }
+
+  static async doLogin() {
+    if (
+      !SecurityManager.validateAction("auth_login", {
+        count: 5,
+        timeWindowMs: 30000,
+      })
+    )
+      return;
+
+    const rawInput = Utils.$("login-email")?.value.trim() || "";
+    let email = rawInput;
+
+    const isEmail = rawInput.includes("@") && rawInput.includes(".") && !rawInput.startsWith("@");
+    if (!isEmail && rawInput) {
+      const cleanName = rawInput.replace(/^@+/, "").toLowerCase().trim();
+      try {
+        const { get, ref, getDatabase } = await import("firebase/database");
+        const dbase = getDatabase();
+        let resolvedUid = null;
+
+        if (cleanName === "developer") {
+          const devSnap = await get(ref(dbase, "admin/creatorUid"));
+          if (devSnap.exists()) resolvedUid = devSnap.val();
+        }
+
+        if (!resolvedUid) {
+          const snap = await get(ref(dbase, `usernames/${cleanName}`));
+          if (snap.exists()) resolvedUid = snap.val();
+        }
+
+        if (resolvedUid) {
+          const profileSnap = await get(ref(dbase, `users/${resolvedUid}/profile/email`));
+          if (profileSnap.exists() && profileSnap.val()) {
+            email = profileSnap.val();
+          }
+        }
+      } catch(e) {
+        console.log("Could not resolve username to email", e);
+      }
+    }
+
+    const pass = Utils.$("login-pass")?.value.trim() || "";
+    if (!email || !pass) return Utils.toast("Заполните все поля", "error");
+
+    try {
+      if (Utils.$("btn-do-login")) Utils.$("btn-do-login").disabled = true;
+      const cred = await signInWithEmailAndPassword(auth, email, pass);
+
+      if (Utils.$("login-pass")) Utils.$("login-pass").value = "";
+      if (Utils.$("btn-do-login")) Utils.$("btn-do-login").disabled = false;
+
+      const savedAccounts = JSON.parse(
+        localStorage.getItem("cowio_saved_accounts") || "[]",
+      );
+      const existingAcc = savedAccounts.find((a) => a.email === email);
+      if (existingAcc) existingAcc.pass = pass;
+      else
+        savedAccounts.push({ uid: cred.user.uid, email: email, pass: pass });
+      localStorage.setItem(
+        "cowio_saved_accounts",
+        JSON.stringify(savedAccounts),
+      );
+
+      Utils.showScreen("lobby-screen", false);
+
+      const intended = sessionStorage.getItem("cowio_intended_route");
+      const nextRoute =
+        intended && intended !== "/login" && intended !== "/"
+          ? intended
+          : "/lobby";
+      if (intended) sessionStorage.removeItem("cowio_intended_route");
+
+      if (window.Router && typeof window.Router.handleRoute === "function") {
+        window.Router.currentPath = null;
+        window.Router.navigate(nextRoute, true);
+        window.Router.handleRoute(nextRoute, true);
+      }
+    } catch (e) {
+      console.error("Login failed:", e);
+      Utils.toast(this.formatAuthError(e), "error");
+      if (Utils.$("btn-do-login")) Utils.$("btn-do-login").disabled = false;
+    }
+  }
+
+  static async doRegister() {
+    if (
+      !SecurityManager.validateAction("auth_register", {
+        count: 2,
+        timeWindowMs: 60000,
+      })
+    )
+      return;
+    if (AppState.admin.settings.globalRegistrationsBlocked)
+      return Utils.toast("Регистрация временно отключена", "error");
+    const email = Utils.$("reg-email")?.value.trim() || "";
+    const pass = Utils.$("reg-pass")?.value.trim() || "";
+    const name = Utils.$("reg-name")?.value.trim() || "";
+    let username = (Utils.$("reg-username")?.value || "")
+      .toLowerCase()
+      .trim()
+      .replace("@", "");
+    const agreementAccepted = Utils.$("reg-agreement")?.checked;
+    const gender =
+      document.querySelector('input[name="reg-gender"]:checked')?.value ||
+      "male";
+
+    if (!email || pass.length < 6 || !name || !username)
+      return Utils.toast("Заполните поля. Пароль от 6 символов.", "error");
+    if (!agreementAccepted)
+      return Utils.toast("Примите пользовательское соглашение", "error");
+    if (!/^[a-z0-9_]{3,15}$/.test(username))
+      return Utils.toast("ID: 3-15 символов, только a-z, 0-9 и _", "error");
+    if (username === "developer")
+      return Utils.toast("ID developer зарезервирован!", "error");
+
+    try {
+      if (Utils.$("btn-do-reg")) Utils.$("btn-do-reg").disabled = true;
+
+      const isAvail =
+        await ProfileManager.checkUsernameAvailability(username);
+      if (!isAvail)
+        throw new Error("Этот @ID уже занят другим пользователем!");
+
+      AppState.pendingRegistration = { email, pass, name, username, gender };
+      
+      if (AppState.admin.settings.emailVerificationBlocked) {
+         Utils.toast("Верификация отключена. Регистрация завершается...", "info");
+         await this.completeRegistration(AppState.pendingRegistration);
+      } else {
+         Utils.toast("Отправка кода на почту...", "info");
+         await this.sendAuthCode(email);
+         this.showRegVerifyPanel(email);
+         Utils.toast("Введите код из письма", "success");
+      }
+
+    } catch (e) {
+      Utils.toast(this.formatAuthError(e), "error");
+      if (Utils.$("btn-do-reg")) Utils.$("btn-do-reg").disabled = false;
+    }
+  }
+
+  static async handleGoogleAuth() {
+    try {
+      const result = await signInWithPopup(auth, new GoogleAuthProvider());
+      const snap = await get(ref(db, `users/${result.user.uid}/profile`));
+      if (!snap.exists()) {
+        AppState.isRegistering = true;
+        const baseName = result.user.displayName || "GoogleUser";
+        const rand = Utils.generateCryptoId(4);
+        await ProfileManager.createProfile(
+          result.user.uid,
+          baseName,
+          `user_${rand}`,
+          result.user.email,
+          {
+            provider: "google",
+            emailVerified: Boolean(result.user.emailVerified),
+          },
+        );
+        TutorialManager.startTutorial();
+        AppState.isRegistering = false;
+      }
+    } catch (e) {
+      console.warn("Google auth error:", e);
+      Utils.toast(this.formatAuthError(e), "error");
+    }
+  }
+
+  static bindUI() {
+    const tabLogin = Utils.$("tab-login-btn");
+    const tabReg = Utils.$("tab-reg-btn");
+    if (tabLogin) {
+      tabLogin.onclick = () => AuthManager.switchTab("login");
+    }
+    if (tabReg) {
+      tabReg.onclick = () => AuthManager.switchTab("reg");
     }
     
     document.querySelectorAll('#login-form input').forEach(input => {
@@ -815,19 +1014,6 @@ class AuthManager {
             if (e.key === 'Enter') Utils.$("btn-do-reg")?.click();
         });
     });
-
-    if (tabReg) {
-      tabReg.onclick = () => {
-        tabReg.classList.add("active");
-        if (tabLogin) tabLogin.classList.remove("active");
-        Utils.$("reg-form")?.classList.add("active-form");
-        Utils.$("login-form")?.classList.remove("active-form");
-        const leftLogin = Utils.$("auth-left-login");
-        const leftReg = Utils.$("auth-left-reg");
-        if (leftLogin) leftLogin.style.display = "none";
-        if (leftReg) leftReg.style.display = "block";
-      };
-    }
 
     if (Utils.$("btn-forgot-password")) {
       Utils.$("btn-forgot-password").onclick = async () => {
@@ -1099,102 +1285,15 @@ class AuthManager {
       };
     }
 
-    Utils.$("btn-do-login").onclick = async () => {
-      if (
-        !SecurityManager.validateAction("auth_login", {
-          count: 5,
-          timeWindowMs: 30000,
-        })
-      )
-        return;
-
-      const rawInput = Utils.$("login-email").value.trim();
-      let email = rawInput;
-
-      // Handle username input (with or without @ prefix, e.g. @developer or developer)
-      const isEmail = rawInput.includes("@") && rawInput.includes(".") && !rawInput.startsWith("@");
-      if (!isEmail && rawInput) {
-        const cleanName = rawInput.replace(/^@+/, "").toLowerCase().trim();
-        try {
-          const { get, ref, getDatabase } = await import(
-            "firebase/database"
-          );
-          const dbase = getDatabase();
-          let resolvedUid = null;
-
-          if (cleanName === "developer") {
-            const devSnap = await get(ref(dbase, "admin/creatorUid"));
-            if (devSnap.exists()) resolvedUid = devSnap.val();
-          }
-
-          if (!resolvedUid) {
-            const snap = await get(ref(dbase, `usernames/${cleanName}`));
-            if (snap.exists()) resolvedUid = snap.val();
-          }
-
-          if (resolvedUid) {
-            const profileSnap = await get(ref(dbase, `users/${resolvedUid}/profile/email`));
-            if (profileSnap.exists() && profileSnap.val()) {
-              email = profileSnap.val();
-            }
-          }
-        } catch(e) {
-          console.log("Could not resolve username to email", e);
-        }
-      }
-
-      const pass = Utils.$("login-pass").value.trim();
-      if (!email || !pass) return Utils.toast("Заполните все поля", "error");
-
-      try {
-        Utils.$("btn-do-login").disabled = true;
-        const cred = await signInWithEmailAndPassword(auth, email, pass);
-
-        // Reset password and enable button
-        Utils.$("login-pass").value = "";
-        Utils.$("btn-do-login").disabled = false;
-
-        // save password for 1-click login
-        const savedAccounts = JSON.parse(
-          localStorage.getItem("cowio_saved_accounts") || "[]",
-        );
-        const existingAcc = savedAccounts.find((a) => a.email === email);
-        if (existingAcc) existingAcc.pass = pass;
-        else
-          savedAccounts.push({ uid: cred.user.uid, email: email, pass: pass });
-        localStorage.setItem(
-          "cowio_saved_accounts",
-          JSON.stringify(savedAccounts),
-        );
-
-        // Instant UI transition to lobby
-        Utils.showScreen("lobby-screen", false);
-
-        const intended = sessionStorage.getItem("cowio_intended_route");
-        const nextRoute =
-          intended && intended !== "/login" && intended !== "/"
-            ? intended
-            : "/lobby";
-        if (intended) sessionStorage.removeItem("cowio_intended_route");
-
-        if (window.Router && typeof window.Router.handleRoute === "function") {
-          window.Router.currentPath = null;
-          window.Router.navigate(nextRoute, true);
-          window.Router.handleRoute(nextRoute, true);
-        }
-      } catch (e) {
-        console.error("Login failed:", e);
-        Utils.toast("Ошибка входа. Проверьте данные.", "error");
-        Utils.$("btn-do-login").disabled = false;
-      }
-    };
+    const btnDoLogin = Utils.$("btn-do-login");
+    if (btnDoLogin) btnDoLogin.onclick = () => AuthManager.doLogin();
 
     this.bindRegCodeInputs();
 
     if (Utils.$("btn-reg-verify-back")) {
       Utils.$("btn-reg-verify-back").onclick = () => {
         this.hideRegVerifyPanel();
-        Utils.$("btn-do-reg").disabled = false;
+        if (Utils.$("btn-do-reg")) Utils.$("btn-do-reg").disabled = false;
       };
     }
 
@@ -1230,94 +1329,13 @@ class AuthManager {
       };
     }
 
-    Utils.$("btn-do-reg").onclick = async () => {
-      if (
-        !SecurityManager.validateAction("auth_register", {
-          count: 2,
-          timeWindowMs: 60000,
-        })
-      )
-        return;
-      if (AppState.admin.settings.globalRegistrationsBlocked)
-        return Utils.toast("Регистрация временно отключена", "error");
-      const email = Utils.$("reg-email").value.trim();
-      const pass = Utils.$("reg-pass").value.trim();
-      const name = Utils.$("reg-name").value.trim();
-      let username = Utils.$("reg-username")
-        .value.toLowerCase()
-        .trim()
-        .replace("@", "");
-      const agreementAccepted = Utils.$("reg-agreement")?.checked;
-      const gender =
-        document.querySelector('input[name="reg-gender"]:checked')?.value ||
-        "male";
-
-      if (!email || pass.length < 6 || !name || !username)
-        return Utils.toast("Заполните поля. Пароль от 6 символов.", "error");
-      if (!agreementAccepted)
-        return Utils.toast("Примите пользовательское соглашение", "error");
-      if (!/^[a-z0-9_]{3,15}$/.test(username))
-        return Utils.toast("ID: 3-15 символов, только a-z, 0-9 и _", "error");
-      if (username === "developer")
-        return Utils.toast("ID developer зарезервирован!", "error");
-
-      try {
-        Utils.$("btn-do-reg").disabled = true;
-
-        const isAvail =
-          await ProfileManager.checkUsernameAvailability(username);
-        if (!isAvail)
-          throw new Error("Этот @ID уже занят другим пользователем!");
-
-        
-        AppState.pendingRegistration = { email, pass, name, username, gender };
-        
-        if (AppState.admin.settings.emailVerificationBlocked) {
-           Utils.toast("Верификация отключена. Регистрация завершается...", "info");
-           await this.completeRegistration(AppState.pendingRegistration);
-        } else {
-           Utils.toast("Отправка кода на почту...", "info");
-           await this.sendAuthCode(email);
-           this.showRegVerifyPanel(email);
-           Utils.toast("Введите код из письма", "success");
-        }
-
-      } catch (e) {
-        Utils.toast(e.message, "error");
-        Utils.$("btn-do-reg").disabled = false;
-      }
-    };
-
-    const handleGoogleAuth = async () => {
-      try {
-        const result = await signInWithPopup(auth, new GoogleAuthProvider());
-        const snap = await get(ref(db, `users/${result.user.uid}/profile`));
-        if (!snap.exists()) {
-          AppState.isRegistering = true;
-          const baseName = result.user.displayName || "GoogleUser";
-          const rand = Utils.generateCryptoId(4);
-          await ProfileManager.createProfile(
-            result.user.uid,
-            baseName,
-            `user_${rand}`,
-            result.user.email,
-            {
-              provider: "google",
-              emailVerified: Boolean(result.user.emailVerified),
-            },
-          );
-          TutorialManager.startTutorial();
-          AppState.isRegistering = false;
-        }
-      } catch (e) {
-        Utils.toast("Ошибка входа через Google", "error");
-      }
-    };
+    const btnDoReg = Utils.$("btn-do-reg");
+    if (btnDoReg) btnDoReg.onclick = () => AuthManager.doRegister();
 
     const btnGoogleLogin = Utils.$("btn-google-login");
-    if (btnGoogleLogin) btnGoogleLogin.onclick = handleGoogleAuth;
+    if (btnGoogleLogin) btnGoogleLogin.onclick = () => AuthManager.handleGoogleAuth();
     const btnGoogleReg = Utils.$("btn-google-reg");
-    if (btnGoogleReg) btnGoogleReg.onclick = handleGoogleAuth;
+    if (btnGoogleReg) btnGoogleReg.onclick = () => AuthManager.handleGoogleAuth();
 
     const btnLogout = Utils.$("btn-logout");
     if (btnLogout) btnLogout.onclick = () => {

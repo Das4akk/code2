@@ -134,9 +134,12 @@ class FriendsManager {
     };
     FriendsManager.setNavActive = setNavActive;
 
-    Utils.$("nav-friends").onclick = () => setNavActive("nav-friends");
-    Utils.$("nav-find-friend").onclick = () => setNavActive("nav-find-friend");
-    Utils.$("nav-rooms").onclick = () => setNavActive("nav-rooms");
+    if (Utils.$("nav-friends"))
+      Utils.$("nav-friends").onclick = () => setNavActive("nav-friends");
+    if (Utils.$("nav-find-friend"))
+      Utils.$("nav-find-friend").onclick = () => setNavActive("nav-find-friend");
+    if (Utils.$("nav-rooms"))
+      Utils.$("nav-rooms").onclick = () => setNavActive("nav-rooms");
     if (Utils.$("nav-library"))
       Utils.$("nav-library").onclick = () => {
         setNavActive("nav-library");

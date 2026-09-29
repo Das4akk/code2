@@ -264,15 +264,19 @@ class ProfileManager {
     });
     AppState.activeSubscriptions.push(() => off(profileRef, "value", unsub));
 
-    Utils.$("btn-open-my-profile").onclick = () => this.openEditProfileModal();
-    Utils.$("btn-profile-menu").onclick = (e) => {
-      e.stopPropagation();
-      this.toggleProfileMenu();
-    };
-    Utils.$("btn-open-security").onclick = () => {
-      Utils.$("modal-edit-profile").classList.remove("active");
-      document.getElementById("nav-settings").click();
-    };
+    if (Utils.$("btn-open-my-profile")) Utils.$("btn-open-my-profile").onclick = () => this.openEditProfileModal();
+    if (Utils.$("btn-profile-menu")) {
+      Utils.$("btn-profile-menu").onclick = (e) => {
+        e.stopPropagation();
+        this.toggleProfileMenu();
+      };
+    }
+    if (Utils.$("btn-open-security")) {
+      Utils.$("btn-open-security").onclick = () => {
+        Utils.$("modal-edit-profile")?.classList.remove("active");
+        document.getElementById("nav-settings")?.click();
+      };
+    }
     document.addEventListener("click", () => {
       Utils.$("profile-menu-dropdown")?.classList.remove("active");
     });
@@ -702,37 +706,43 @@ class ProfileManager {
       };
     }
 
-    Utils.$("edit-avatar-url").oninput = Utils.debounce(
-      (e) =>
-        this.updateAvatarPreview(e.target.value, Utils.$("edit-name").value),
-      300,
-    );
-    Utils.$("edit-name").oninput = Utils.debounce(
-      (e) =>
-        this.updateAvatarPreview(
-          Utils.$("edit-avatar-url").value,
-          e.target.value,
-        ),
-      300,
-    );
+    if (Utils.$("edit-avatar-url")) {
+      Utils.$("edit-avatar-url").oninput = Utils.debounce(
+        (e) =>
+          this.updateAvatarPreview(e.target.value, Utils.$("edit-name")?.value || ""),
+        300,
+      );
+    }
+    if (Utils.$("edit-name")) {
+      Utils.$("edit-name").oninput = Utils.debounce(
+        (e) =>
+          this.updateAvatarPreview(
+            Utils.$("edit-avatar-url")?.value || "",
+            e.target.value,
+          ),
+        300,
+      );
+    }
 
-    Utils.$("btn-save-profile").onclick = async () => {
-      const btn = Utils.$("btn-save-profile");
-      btn.disabled = true;
-      try {
-        await this.saveProfile();
-        Utils.$("modal-edit-profile").classList.remove("active");
-        Utils.toast("Профиль сохранен");
-        const uid = AppState.currentUser?.uid;
-        if (uid) {
-          this.openViewProfileModal(uid).catch(() => {});
+    if (Utils.$("btn-save-profile")) {
+      Utils.$("btn-save-profile").onclick = async () => {
+        const btn = Utils.$("btn-save-profile");
+        if (btn) btn.disabled = true;
+        try {
+          await this.saveProfile();
+          Utils.$("modal-edit-profile")?.classList.remove("active");
+          Utils.toast("Профиль сохранен");
+          const uid = AppState.currentUser?.uid;
+          if (uid) {
+            this.openViewProfileModal(uid).catch(() => {});
+          }
+        } catch (e) {
+          Utils.toast(e.message, "error");
+        } finally {
+          if (btn) btn.disabled = false;
         }
-      } catch (e) {
-        Utils.toast(e.message, "error");
-      } finally {
-        btn.disabled = false;
-      }
-    };
+      };
+    }
   }
 
   static normalizeProvider(user = null) {
@@ -2863,15 +2873,18 @@ class ProfileManager {
                 actionContainer.innerHTML = `<span style="color:var(--text-muted); font-size:12px;">Установлен как основной</span>`;
               } else {
                 actionContainer.innerHTML = `<button class="secondary-btn" id="btn-select-main-badge" style="padding: 4px 12px; font-size: 11px; width: auto; display: inline-block;">Выбрать основным</button>`;
-                Utils.$("btn-select-main-badge").onclick = () => {
-                  update(ref(db, `users/${targetUid}/profile`), {
-                    selectedBadge: activeBadge._id,
-                  }).then(() => {
-                    profile.selectedBadge = activeBadge._id;
-                    updateBadgeCarousel();
-                    Utils.toast("Бейдж установлен основным!");
-                  });
-                };
+                const btnSelectMain = Utils.$("btn-select-main-badge");
+                if (btnSelectMain) {
+                  btnSelectMain.onclick = () => {
+                    update(ref(db, `users/${targetUid}/profile`), {
+                      selectedBadge: activeBadge._id,
+                    }).then(() => {
+                      profile.selectedBadge = activeBadge._id;
+                      updateBadgeCarousel();
+                      Utils.toast("Бейдж установлен основным!");
+                    });
+                  };
+                }
               }
             } else {
               actionContainer.innerHTML = "";
@@ -2879,19 +2892,25 @@ class ProfileManager {
           }
         };
 
-        Utils.$("badge-prev").onclick = () => {
-          if (window.ProfileBadgesState.index > 0) {
-            window.ProfileBadgesState.index--;
-            updateBadgeCarousel();
-          }
-        };
+        const badgePrev = Utils.$("badge-prev");
+        if (badgePrev) {
+          badgePrev.onclick = () => {
+            if (window.ProfileBadgesState.index > 0) {
+              window.ProfileBadgesState.index--;
+              updateBadgeCarousel();
+            }
+          };
+        }
 
-        Utils.$("badge-next").onclick = () => {
-          if (window.ProfileBadgesState.index < userBadges.length - 1) {
-            window.ProfileBadgesState.index++;
-            updateBadgeCarousel();
-          }
-        };
+        const badgeNext = Utils.$("badge-next");
+        if (badgeNext) {
+          badgeNext.onclick = () => {
+            if (window.ProfileBadgesState.index < userBadges.length - 1) {
+              window.ProfileBadgesState.index++;
+              updateBadgeCarousel();
+            }
+          };
+        }
 
         let badgeStartX = 0;
         let badgeEndX = 0;

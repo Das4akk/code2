@@ -1,7 +1,7 @@
 <section id="auth-screen" class="screen active">
 
       <div class="auth-left">
-        <div id="auth-left-reg">
+        <div id="auth-left-reg" style="display: none">
           <img src="/logo.png" onerror="this.onerror=null; this.src='https://s6.iimage.su/s/16/gCrqWaZxLG89wTzFtrJWUC3v29FIwSjhGbnij4ObO.png';" alt="COWIO" style="height: 72px; margin-bottom: 20px; border-radius: 8px; animation: slideUpFade 0.6s ease-out forwards; opacity: 0; object-fit: contain;">
           <h1>Добро пожаловать</h1>
           <p class="subtitle">
@@ -25,7 +25,7 @@
           </div>
         </div>
 
-        <div id="auth-left-login" style="display: none">
+        <div id="auth-left-login">
           <img src="/logo.png" onerror="this.onerror=null; this.src='https://s6.iimage.su/s/16/gCrqWaZxLG89wTzFtrJWUC3v29FIwSjhGbnij4ObO.png';" alt="COWIO" style="height: 72px; margin-bottom: 20px; border-radius: 8px; animation: slideUpFade 0.6s ease-out forwards; opacity: 0; object-fit: contain;">
           <h1>С возвращением!</h1>
           <p class="subtitle">
@@ -51,17 +51,17 @@
 
       <div class="auth-right">
         <div class="auth-tabs-new">
-          <button id="tab-login-btn">
+          <button id="tab-login-btn" class="active" onclick="if(window.AuthManager) window.AuthManager.switchTab('login')">
             <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" style="width: 16px; height: 16px">
             Вход
           </button>
-          <button id="tab-reg-btn" class="active">
+          <button id="tab-reg-btn" onclick="if(window.AuthManager) window.AuthManager.switchTab('reg')">
             <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Memo.webp" style="width: 16px; height: 16px">
             Регистрация
           </button>
         </div>
 
-        <div id="login-form" class="auth-form-new">
+        <div id="login-form" class="auth-form-new active-form">
           <div class="form-group-new">
             <label>Электронная почта</label>
             <div class="auth-input-wrapper">
@@ -88,17 +88,17 @@
             ">
             Забыли пароль?
           </button>
-          <button class="submit-btn" id="btn-do-login" style="margin-top: 10px">
+          <button class="submit-btn" id="btn-do-login" onclick="if(window.AuthManager) window.AuthManager.doLogin()" style="margin-top: 10px">
             Войти в систему
             <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Travel%20and%20Places/Rocket.webp" style="width: 16px; height: 16px">
           </button>
-          <button id="btn-google-login" class="google-btn">
+          <button id="btn-google-login" class="google-btn" onclick="if(window.AuthManager) window.AuthManager.handleGoogleAuth()">
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width: 16px; height: 16px">
             Войти через Google
           </button>
         </div>
 
-        <div id="reg-form" class="auth-form-new active-form">
+        <div id="reg-form" class="auth-form-new">
           <div class="form-group-new">
             <label>Отображаемое имя</label>
             <div class="auth-input-wrapper">
@@ -193,11 +193,11 @@
             </label>
           </div>
 
-          <button class="submit-btn" id="btn-do-reg" style="margin-top: 10px">
+          <button class="submit-btn" id="btn-do-reg" onclick="if(window.AuthManager) window.AuthManager.doRegister()" style="margin-top: 10px">
             <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 16px; height: 16px; vertical-align: middle">
             Создать аккаунт
           </button>
-          <button id="btn-google-reg" class="google-btn">
+          <button id="btn-google-reg" class="google-btn" onclick="if(window.AuthManager) window.AuthManager.handleGoogleAuth()">
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width: 16px; height: 16px">
             Регистрация через Google
           </button>

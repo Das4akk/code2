@@ -161,6 +161,10 @@ export default defineConfig(() => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    build: {
+      outDir: 'dist',
+      emptyOutDir: true,
+    },
     server: {
       hmr: false,
       watch: null,

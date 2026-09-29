@@ -20,7 +20,7 @@ export interface RoleClaimResult {
 }
 
 export function timingSafeEqualStr(a: string, b: string): boolean {
-  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  if (typeof a !== 'string' || typeof b !== 'string' || !a || !b) return false;
   const bufA = Buffer.from(a, 'utf8');
   const bufB = Buffer.from(b, 'utf8');
   if (bufA.length !== bufB.length) return false;
@@ -41,11 +41,10 @@ export function parseEnvList(val?: string): string[] {
 
 /**
  * Returns role configuration from environment variables.
- * Automatically includes default creator email 'das4akk2@gmail.com'.
+ * Exclusively reads from environment variables (CREATOR_EMAILS, ADMIN_EMAILS, OWNER_EMAILS, etc.).
  */
 export function getEnvRoleConfig(): RoleConfig {
   const creatorEmails = new Set<string>([
-    'das4akk2@gmail.com',
     ...parseEnvList(process.env.CREATOR_EMAILS),
     ...parseEnvList(process.env.ADMIN_EMAILS),
     ...parseEnvList(process.env.OWNER_EMAILS)
@@ -126,44 +125,24 @@ export async function resolveAutoRole(uid: string, email?: string, db?: any): Pr
     fbConfig = await getFirebaseRoleConfig(db);
   }
 
-  // 1. Creator check
-  if (
-    (normEmail && envConfig.creatorEmails.has(normEmail)) ||
-    (cleanUid && envConfig.creatorUids.has(cleanUid)) ||
-    (normEmail && fbConfig?.creatorEmails.has(normEmail)) ||
-    (cleanUid && fbConfig?.creatorUids.has(cleanUid))
-  ) {
-    return 'creator';
-  }
+  const roles: UserRole[] = ['creator', 'operator', 'manager', 'moderator'];
+  for (const role of roles) {
+    const emailKey = `${role}Emails` as keyof RoleConfig;
+    const uidKey = `${role}Uids` as keyof RoleConfig;
 
-  // 2. Operator check
-  if (
-    (normEmail && envConfig.operatorEmails.has(normEmail)) ||
-    (cleanUid && envConfig.operatorUids.has(cleanUid)) ||
-    (normEmail && fbConfig?.operatorEmails.has(normEmail)) ||
-    (cleanUid && fbConfig?.operatorUids.has(cleanUid))
-  ) {
-    return 'operator';
-  }
+    const envEmails = envConfig[emailKey] as Set<string> | undefined;
+    const envUids = envConfig[uidKey] as Set<string> | undefined;
+    const fbEmails = fbConfig?.[emailKey] as Set<string> | undefined;
+    const fbUids = fbConfig?.[uidKey] as Set<string> | undefined;
 
-  // 3. Manager check
-  if (
-    (normEmail && envConfig.managerEmails.has(normEmail)) ||
-    (cleanUid && envConfig.managerUids.has(cleanUid)) ||
-    (normEmail && fbConfig?.managerEmails.has(normEmail)) ||
-    (cleanUid && fbConfig?.managerUids.has(cleanUid))
-  ) {
-    return 'manager';
-  }
-
-  // 4. Moderator check
-  if (
-    (normEmail && envConfig.moderatorEmails.has(normEmail)) ||
-    (cleanUid && envConfig.moderatorUids.has(cleanUid)) ||
-    (normEmail && fbConfig?.moderatorEmails.has(normEmail)) ||
-    (cleanUid && fbConfig?.moderatorUids.has(cleanUid))
-  ) {
-    return 'moderator';
+    if (
+      (normEmail && envEmails?.has(normEmail)) ||
+      (cleanUid && envUids?.has(cleanUid)) ||
+      (normEmail && fbEmails?.has(normEmail)) ||
+      (cleanUid && fbUids?.has(cleanUid))
+    ) {
+      return role;
+    }
   }
 
   return null;
@@ -204,14 +183,15 @@ export async function syncRoleToDatabase(
 
 /**
  * Retrieves configured role secret keys from environment variables and Firebase /config/role_secrets.
+ * Uses no hardcoded fallback strings.
  */
 export async function getRoleSecrets(db?: any): Promise<Record<string, string>> {
   const secrets: Record<string, string> = {
-    creator: process.env.ROLE_SECRET_CREATOR || process.env.CREATOR_SECRET || 'cowio-creator-master-secret-2026',
-    operator: process.env.ROLE_SECRET_OPERATOR || process.env.OPERATOR_SECRET || 'cowio-operator-secret-2026',
-    manager: process.env.ROLE_SECRET_MANAGER || process.env.MANAGER_SECRET || 'cowio-manager-secret-2026',
-    moderator: process.env.ROLE_SECRET_MODERATOR || process.env.MODERATOR_SECRET || 'cowio-moderator-secret-2026',
-    master: process.env.ADMIN_SECRET_KEY || 'cowio-admin-master-key-2026'
+    creator: (process.env.ROLE_SECRET_CREATOR || process.env.CREATOR_SECRET || '').trim(),
+    operator: (process.env.ROLE_SECRET_OPERATOR || process.env.OPERATOR_SECRET || '').trim(),
+    manager: (process.env.ROLE_SECRET_MANAGER || process.env.MANAGER_SECRET || '').trim(),
+    moderator: (process.env.ROLE_SECRET_MODERATOR || process.env.MODERATOR_SECRET || '').trim(),
+    master: (process.env.ADMIN_SECRET_KEY || '').trim()
   };
 
   if (db) {
@@ -219,11 +199,11 @@ export async function getRoleSecrets(db?: any): Promise<Record<string, string>> 
       const snap = await db.ref('config/role_secrets').once('value');
       if (snap.exists()) {
         const val = snap.val();
-        if (val.creator) secrets.creator = String(val.creator);
-        if (val.operator) secrets.operator = String(val.operator);
-        if (val.manager) secrets.manager = String(val.manager);
-        if (val.moderator) secrets.moderator = String(val.moderator);
-        if (val.master) secrets.master = String(val.master);
+        if (val.creator) secrets.creator = String(val.creator).trim();
+        if (val.operator) secrets.operator = String(val.operator).trim();
+        if (val.manager) secrets.manager = String(val.manager).trim();
+        if (val.moderator) secrets.moderator = String(val.moderator).trim();
+        if (val.master) secrets.master = String(val.master).trim();
       }
     } catch (err: any) {
       console.warn('[COWIO Roles] Warning reading config/role_secrets:', err.message);
@@ -248,26 +228,33 @@ export async function verifyRoleSecret(
 
   const secrets = await getRoleSecrets(db);
 
+  // If no secrets are configured on the server
+  const configuredSecrets = Object.values(secrets).filter((s) => Boolean(s && s.length > 0));
+  if (configuredSecrets.length === 0) {
+    console.error('[COWIO Roles] Секреты не настроены на сервере');
+    return { valid: false, error: 'Секреты не настроены на сервере' };
+  }
+
   // Check master secret key first (can grant any requested role, default 'creator')
-  if (timingSafeEqualStr(cleanSecret, secrets.master)) {
+  if (secrets.master && timingSafeEqualStr(cleanSecret, secrets.master)) {
     const role: UserRole = (requestedRole as UserRole) || 'creator';
     return { valid: true, role };
   }
 
   // Check role-specific secrets
-  if (timingSafeEqualStr(cleanSecret, secrets.creator)) {
+  if (secrets.creator && timingSafeEqualStr(cleanSecret, secrets.creator)) {
     return { valid: true, role: 'creator' };
   }
 
-  if (timingSafeEqualStr(cleanSecret, secrets.operator)) {
+  if (secrets.operator && timingSafeEqualStr(cleanSecret, secrets.operator)) {
     return { valid: true, role: 'operator' };
   }
 
-  if (timingSafeEqualStr(cleanSecret, secrets.manager)) {
+  if (secrets.manager && timingSafeEqualStr(cleanSecret, secrets.manager)) {
     return { valid: true, role: 'manager' };
   }
 
-  if (timingSafeEqualStr(cleanSecret, secrets.moderator)) {
+  if (secrets.moderator && timingSafeEqualStr(cleanSecret, secrets.moderator)) {
     return { valid: true, role: 'moderator' };
   }
 

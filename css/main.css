@@ -7586,7 +7586,9 @@
           height: 100%;
           overflow: hidden;
           background: transparent;
-          z-index: 2;
+          position: relative;
+          z-index: 50;
+          pointer-events: auto !important;
         }
 
         @media (max-width: 768px) {
@@ -7594,6 +7596,8 @@
             flex-direction: column;
             overflow-y: hidden;
             position: relative;
+            z-index: 50;
+            pointer-events: auto !important;
           }
           .auth-left {
             display: none !important;
@@ -7605,6 +7609,7 @@
             overflow-y: auto !important;
             height: 100%;
             padding: 20px !important;
+            pointer-events: auto !important;
           }
         }
 
@@ -7749,6 +7754,9 @@
           align-items: center;
           justify-content: center;
           gap: 8px;
+          position: relative;
+          z-index: 60;
+          pointer-events: auto !important;
         }
 
         .auth-tabs-new button.active {
@@ -7761,6 +7769,9 @@
           display: none;
           flex-direction: column;
           gap: 20px;
+          position: relative;
+          z-index: 55;
+          pointer-events: auto !important;
         }
 
         .auth-form-new.active-form {
