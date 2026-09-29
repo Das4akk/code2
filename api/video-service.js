@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { validateUrl, safeFetch } from '../utils/url-validator.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -143,6 +144,12 @@ export async function getVideoInfo(url) {
     return { success: false, error: 'Empty URL' };
   }
   const trimmed = url.trim();
+
+  // Validate URL to protect against SSRF and private IP access
+  const validation = await validateUrl(trimmed);
+  if (!validation.valid) {
+    return { success: false, error: validation.error || 'Blocked by SSRF protection' };
+  }
 
   // Instant check in recent search cache (guaranteed 100% correct metadata for clicked items)
   const normUrl = trimmed.replace(/^https?:\/\//, '').replace(/\/$/, '');

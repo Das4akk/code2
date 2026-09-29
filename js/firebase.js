@@ -34,11 +34,11 @@ import {
 } from "firebase/database";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCby2qPGnlHWRfxWAI3Y2aK_UndEh9nato",
-  authDomain: "das4akk-1.firebaseapp.com",
-  databaseURL: "https://das4akk-1-default-rtdb.firebaseio.com",
-  projectId: "das4akk-1",
-  storageBucket: "das4akk-1.firebasestorage.app",
+  apiKey: (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_FIREBASE_API_KEY) ? import.meta.env.VITE_FIREBASE_API_KEY : (window.ENV?.VITE_FIREBASE_API_KEY || ""),
+  authDomain: (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_FIREBASE_AUTH_DOMAIN) ? import.meta.env.VITE_FIREBASE_AUTH_DOMAIN : (window.ENV?.VITE_FIREBASE_AUTH_DOMAIN || "das4akk-1.firebaseapp.com"),
+  databaseURL: (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_FIREBASE_DATABASE_URL) ? import.meta.env.VITE_FIREBASE_DATABASE_URL : (window.ENV?.VITE_FIREBASE_DATABASE_URL || "https://das4akk-1-default-rtdb.firebaseio.com"),
+  projectId: (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_FIREBASE_PROJECT_ID) ? import.meta.env.VITE_FIREBASE_PROJECT_ID : (window.ENV?.VITE_FIREBASE_PROJECT_ID || "das4akk-1"),
+  storageBucket: (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_FIREBASE_STORAGE_BUCKET) ? import.meta.env.VITE_FIREBASE_STORAGE_BUCKET : (window.ENV?.VITE_FIREBASE_STORAGE_BUCKET || "das4akk-1.firebasestorage.app"),
 };
 
 const app = initializeApp(firebaseConfig);

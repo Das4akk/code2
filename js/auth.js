@@ -90,11 +90,6 @@ class BadgeManager {
     }
   }
 
-  static async checkRelationshipBadges(uid) {
-    // Partner-related badges removed
-    return;
-  }
-
   static async grantEventBadgeToOnline() {
     if (!AdminPanel.requireAdmin()) return;
     if (!AdminPanel.isCurrentUserCreator())
@@ -564,9 +559,6 @@ class AuthManager {
                     user.uid,
                     Number(profSnap.val().xp) || 0,
                   );
-                }
-                if (window.BadgeManager?.checkRelationshipBadges) {
-                  await BadgeManager.checkRelationshipBadges(user.uid);
                 }
               } catch (err) {
                 console.warn("Background profile/badge checks:", err);
@@ -1329,7 +1321,15 @@ class AuthManager {
 
     const btnLogout = Utils.$("btn-logout");
     if (btnLogout) btnLogout.onclick = () => {
-      try { signOut(auth); } catch (e) { console.warn("Logout error:", e); }
+      try {
+        localStorage.removeItem("cowio_developer_uid");
+        if (typeof window.clearServerRoleCache === "function") {
+          window.clearServerRoleCache();
+        }
+        signOut(auth);
+      } catch (e) {
+        console.warn("Logout error:", e);
+      }
     };
   }
 
@@ -1340,28 +1340,14 @@ class AuthManager {
       const connectedRef = ref(db, ".info/connected");
       const userStatusRef = ref(db, `users/${uid}/status`);
 
-      let currentIp = "unavailable";
-      try {
-        const ipRes = await fetch("https://api64.ipify.org?format=json", {
-          signal: AbortSignal.timeout(1200),
-        });
-        const ipData = await ipRes.json();
-        if (ipData && ipData.ip) {
-          currentIp = ipData.ip;
-        }
-      } catch (e) {
-        // ignore
-      }
-
       onValue(connectedRef, (snap) => {
         if (snap.val() === true) {
           onDisconnect(userStatusRef)
-            .set({ online: false, lastActive: Date.now(), ip: currentIp })
+            .set({ online: false, lastActive: Date.now() })
             .then(() =>
               set(userStatusRef, {
                 online: true,
                 lastActive: Date.now(),
-                ip: currentIp,
               }),
             )
             .catch(() => {});

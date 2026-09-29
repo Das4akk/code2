@@ -1,4 +1,6 @@
 
+import SettingsManager from './settings-manager.js';
+
 const SettingSections = [
   {
     title: "Внешний вид и лобби",
@@ -435,4 +437,5 @@ class ThemeManager {
 window.SettingSections = SettingSections;
 window.GlobalThemeManager = GlobalThemeManager;
 window.ThemeManager = ThemeManager;
-export { SettingSections, GlobalThemeManager, ThemeManager };
+window.SettingsManager = SettingsManager;
+export { SettingSections, GlobalThemeManager, ThemeManager, SettingsManager };

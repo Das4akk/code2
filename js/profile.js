@@ -72,22 +72,6 @@ class ProfileManager {
     gender = "male",
   ) {
     const cleanName = username.toLowerCase().trim();
-    const developerUid = await AdminPanel.getDeveloperUid();
-    const isDeveloperProfile = cleanName === "developer";
-
-    if (isDeveloperProfile && developerUid && developerUid !== uid) {
-      throw new Error("ID developer зарезервирован");
-    }
-
-    let registeredIp = "unavailable";
-    try {
-      const ipRes = await fetch("https://api64.ipify.org?format=json", {
-        signal: AbortSignal.timeout(1200),
-      });
-      const ipData = await ipRes.json();
-      if (ipData && ipData.ip) registeredIp = ipData.ip;
-    } catch (e) {}
-
     const profileData = {
       name,
       username: cleanName,
@@ -95,9 +79,9 @@ class ProfileManager {
       bio: "",
       avatar: "",
       gender,
-      registeredIp,
+      registeredIp: "unavailable",
       lumens: 1, // Приветственный бонус новичка
-      background: { color: "#111111", index: 1, url: "", dim: 0.5 }, // [UPDATE]
+      background: { color: "#111111", index: 1, url: "", dim: 0.5 },
       hashtags: [],
       createdAt: Date.now(),
       provider: security.provider || this.normalizeProvider(auth.currentUser),
@@ -106,12 +90,10 @@ class ProfileManager {
           ? security.emailVerified
           : Boolean(auth.currentUser?.emailVerified),
     };
-    if (isDeveloperProfile) profileData.role = "creator";
 
     const updates = {};
     updates[`usernames/${cleanName}`] = uid;
     updates[`users/${uid}/profile`] = profileData;
-    if (isDeveloperProfile) updates["admin/creatorUid"] = uid;
     await update(ref(db), updates);
 
     if (window.LumenManager) {

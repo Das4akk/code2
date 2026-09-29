@@ -95,7 +95,7 @@ class MaintenanceSystem {
   static isCreator() {
     if (this.previewAsUser) return false;
 
-    // 1. Use AdminPanel creator validation if available
+    // Use server-backed AdminPanel creator validation
     if (typeof window.AdminPanel !== "undefined" && typeof window.AdminPanel.isCurrentUserCreator === "function") {
       try {
         return window.AdminPanel.isCurrentUserCreator();
@@ -105,24 +105,10 @@ class MaintenanceSystem {
     const user = window.AppState?.currentUser;
     if (!user) return false;
 
-    // 2. Direct email check
-    const userEmail = String(user?.email || "").toLowerCase().trim();
-    if (userEmail === "mankaef@yandex.ru" || userEmail === "cowiosupport@gmail.com") return true;
-
-    // 3. Direct username / role check
     const myUid = user?.uid;
     const myProf = (myUid && window.AppState?.usersCache?.get(myUid)) || user.profile || {};
-
-    const profEmail = String(myProf?.email || "").toLowerCase().trim();
-    if (profEmail === "mankaef@yandex.ru" || profEmail === "cowiosupport@gmail.com") return true;
-
-    const rawUsername = String(myProf?.username || "").toLowerCase().trim().replace(/^@/, "");
-    if (rawUsername === "developer" || rawUsername === "creator") return true;
-
     const role = String(myProf?.role || "").toLowerCase().trim();
-    if (role === "developer" || role === "creator" || myProf?.isOwner === true) return true;
-
-    return false;
+    return role === "creator" || myProf?.isOwner === true;
   }
 
   static createDevTopBanner() {

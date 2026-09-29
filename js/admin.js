@@ -1,119 +1,94 @@
+// In-memory module cache for verified server roles (TTL 5 minutes)
+let _serverRoleCache = {
+  uid: null,
+  role: 'user',
+  isCreator: false,
+  isAdmin: false,
+  timestamp: 0
+};
+const ROLE_CACHE_TTL = 5 * 60 * 1000;
+
+export function clearServerRoleCache() {
+  _serverRoleCache = {
+    uid: null,
+    role: 'user',
+    isCreator: false,
+    isAdmin: false,
+    timestamp: 0
+  };
+}
+
 class AdminPanel {
   static developerUidCache = null;
   static subscriptions = [];
 
+  static async fetchServerRole(force = false) {
+    const user = AppState.currentUser;
+    if (!user) {
+      clearServerRoleCache();
+      return { role: 'user', isCreator: false, isAdmin: false };
+    }
+
+    if (!force && _serverRoleCache.uid === user.uid && Date.now() - _serverRoleCache.timestamp < ROLE_CACHE_TTL) {
+      return _serverRoleCache;
+    }
+
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('/api/auth/check-role', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        _serverRoleCache = {
+          uid: user.uid,
+          role: data.role || 'user',
+          isCreator: Boolean(data.isCreator),
+          isAdmin: Boolean(data.isAdmin),
+          timestamp: Date.now()
+        };
+        return _serverRoleCache;
+      }
+    } catch (e) {
+      console.warn('[AdminPanel] Error fetching server role:', e);
+    }
+    return _serverRoleCache;
+  }
+
   static isExplicitCreatorProfile(profile = {}) {
-    if (!profile) return false;
-    const role = String(profile.role || "").toLowerCase().trim();
-    if (role === "creator" || role === "developer" || profile.isOwner === true) return true;
-
-    const email = String(profile.email || "").toLowerCase().trim();
-    if (email === "mankaef@yandex.ru" || email === "cowiosupport@gmail.com") return true;
-
-    const username = String(profile.username || "").toLowerCase().trim().replace(/^@/, "");
-    if (username === "developer" || username === "creator") return true;
-
-    return false;
+    return this.isCurrentUserCreator();
   }
 
   static isLegacyCreatorProfile(profile = {}) {
-    if (!profile) return false;
-    const cleanUsername = String(profile.username || "").toLowerCase().trim().replace(/^@/, "");
-    return cleanUsername === "developer" || cleanUsername === "creator";
+    return this.isCurrentUserCreator();
   }
 
   static isValidCreatorProfile(profile = {}, options = {}) {
-    if (!profile) return false;
-    const profEmail = String(profile.email || "").toLowerCase().trim();
-    if (profEmail === "mankaef@yandex.ru" || profEmail === "cowiosupport@gmail.com") {
-      return true;
-    }
-
-    const cleanUsername = String(profile.username || "").toLowerCase().trim().replace(/^@/, "");
-    if (cleanUsername === "developer" || cleanUsername === "creator") {
-      return true;
-    }
-
-    return this.isExplicitCreatorProfile(profile);
+    return this.isCurrentUserCreator();
   }
 
   static async persistCreatorIdentity(uid, profile = {}) {
-    if (!uid || !this.isValidCreatorProfile(profile)) return null;
-
-    this.developerUidCache = uid;
-
-    const cleanUsername = String(profile?.username || "")
-      .toLowerCase()
-      .trim();
-    const updates = {
-      "admin/creatorUid": uid,
-    };
-
-    if (cleanUsername === "developer") updates["usernames/developer"] = uid;
-    if (profile?.role !== "creator")
-      updates[`users/${uid}/profile/role`] = "creator";
-
-    await update(ref(db), updates).catch(() => {});
     return uid;
   }
 
   static async getDeveloperUid(forceRefresh = false) {
-    if (!forceRefresh && this.developerUidCache) return this.developerUidCache;
-
-    const cachedStored = localStorage.getItem("cowio_developer_uid");
-    if (!forceRefresh && cachedStored) {
-      this.developerUidCache = cachedStored;
-      return cachedStored;
-    }
-
-    try {
-      const [creatorSnap, usernameSnap] = await Promise.all([
-        get(ref(db, "admin/creatorUid")),
-        get(ref(db, "usernames/developer")),
-      ]);
-
-      const storedCreatorUid = creatorSnap.exists() ? creatorSnap.val() : null;
-      const reservedDeveloperUid = usernameSnap.exists()
-        ? usernameSnap.val()
-        : null;
-
-      const candidateUid = storedCreatorUid || reservedDeveloperUid;
-      if (candidateUid) {
-        this.developerUidCache = candidateUid;
-        localStorage.setItem("cowio_developer_uid", candidateUid);
-        return candidateUid;
-      }
-    } catch (e) {
-      console.warn("Fast getDeveloperUid lookup failed:", e);
-    }
-
-    // Only if none found, check if current user is developer
-    if (AppState.currentUser) {
-      const myProfile = AppState.usersCache?.get(AppState.currentUser.uid);
-      if (myProfile && (this.isExplicitCreatorProfile(myProfile) || myProfile.username?.toLowerCase() === "developer")) {
-        const candidateUid = AppState.currentUser.uid;
-        this.developerUidCache = candidateUid;
-        localStorage.setItem("cowio_developer_uid", candidateUid);
-        void this.persistCreatorIdentity(candidateUid, myProfile);
-        return candidateUid;
-      }
-    }
-
-    this.developerUidCache = null;
-    return null;
+    // Legacy localStorage developer UID removed for security
+    localStorage.removeItem("cowio_developer_uid");
+    const roleInfo = await this.fetchServerRole(forceRefresh);
+    return roleInfo.isCreator ? roleInfo.uid : null;
   }
 
   static hydrateDeveloperUidFromProfile(uid, profile = {}) {
-    if (!uid || !this.isValidCreatorProfile(profile)) return;
-    if (this.developerUidCache && this.developerUidCache !== uid) return;
-
-    void this.persistCreatorIdentity(uid, profile);
+    localStorage.removeItem("cowio_developer_uid");
   }
 
   static isCreatorProfile(profile = {}, uid = null) {
-    if (!profile && !uid) return false;
-    if (uid && AdminPanel.developerUidCache === uid) return true;
-    return this.isValidCreatorProfile(profile);
+    if (uid && AppState.currentUser?.uid === uid) {
+      return this.isCurrentUserCreator();
+    }
+    return String(profile?.role || '').toLowerCase().trim() === 'creator';
   }
 
   static isModeratorProfile(profile = {}, uid = null) {
@@ -138,8 +113,6 @@ class AdminPanel {
   }
 
   static isAdminProfile(profile = {}, uid = null) {
-    // Operators only have support access, not full admin access.
-    // Managers have read-only admin panel access.
     return (
       this.isCreatorProfile(profile, uid) ||
       this.isModeratorProfile(profile, uid) ||
@@ -150,27 +123,26 @@ class AdminPanel {
   static isCurrentUserCreator() {
     const user = AppState.currentUser;
     if (!user) return false;
-    const email = String(user.email || "").toLowerCase().trim();
-    if (email === "mankaef@yandex.ru" || email === "cowiosupport@gmail.com") return true;
 
-    const uid = user.uid || null;
-    if (uid && this.developerUidCache === uid) return true;
+    if (_serverRoleCache.uid === user.uid && Date.now() - _serverRoleCache.timestamp < ROLE_CACHE_TTL) {
+      return Boolean(_serverRoleCache.isCreator);
+    }
 
-    const profile =
-      (uid && AppState.usersCache?.get(uid)) ||
-      user.profile ||
-      {};
-
-    return this.isValidCreatorProfile(profile);
+    // Refresh asynchronously in background
+    void this.fetchServerRole();
+    return Boolean(_serverRoleCache.isCreator);
   }
 
   static isCurrentUserAdmin() {
-    const uid = AppState.currentUser?.uid || null;
-    const profile =
-      AppState.usersCache?.get(uid) ||
-      AppState.currentUser?.profile ||
-      {};
-    return this.isAdminProfile(profile, uid);
+    const user = AppState.currentUser;
+    if (!user) return false;
+
+    if (_serverRoleCache.uid === user.uid && Date.now() - _serverRoleCache.timestamp < ROLE_CACHE_TTL) {
+      return Boolean(_serverRoleCache.isAdmin);
+    }
+
+    void this.fetchServerRole();
+    return Boolean(_serverRoleCache.isAdmin);
   }
 
   static isCurrentUserReadOnly() {

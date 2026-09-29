@@ -10,6 +10,14 @@
     <meta property="og:title" content="COWIO - Онлайн Кинотеатр Вместе">
     <meta property="og:description" content="Платформа совместного просмотра видео и фильмов с синхронизацией VK Video, Rutube и YouTube, поддержкой комнат и чата.">
 
+    <!-- Performance: Preconnect & DNS-Prefetch -->
+    <link rel="preconnect" href="https://firebaseio.com" crossorigin>
+    <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="dns-prefetch" href="https://www.youtube.com">
+    <link rel="dns-prefetch" href="https://rutube.ru">
+    <link rel="dns-prefetch" href="https://vk.com">
+
     <!-- Module Import Map for Native Browser ES Modules & Bundler compatibility -->
     <script type="importmap">
     {
@@ -42,8 +50,20 @@
     </script>
 
     <script>
-      // Force animated emojis by default - removed static emojis toggle
-      localStorage.setItem("staticEmojis", "false");
+      // Respect user choice and hardware capabilities for animated emojis
+      (function() {
+        const userPref = localStorage.getItem("staticEmojis");
+        const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        const saveData = navigator.connection && navigator.connection.saveData === true;
+        const lowSpecs = Boolean(navigator.hardwareConcurrency && navigator.hardwareConcurrency < 4);
+
+        const useStatic = userPref === "true" || (userPref === null && (prefersReducedMotion || saveData || lowSpecs));
+        window.__COWIO_USE_STATIC_EMOJIS = useStatic;
+        if (useStatic) {
+          document.documentElement.classList.add("use-static-emojis");
+        }
+      })();
+
       window.toggleSiteParticlesSetting = function (enabled) {
         localStorage.setItem("siteParticles", enabled ? "true" : "false");
         const canvas = document.getElementById("particle-canvas");

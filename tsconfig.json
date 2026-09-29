@@ -25,21 +25,21 @@
       ]
     },
     "noEmit": true,
-    "strict": false,
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
     "incremental": true,
     "esModuleInterop": true,
-    "resolveJsonModule": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ]
+    "resolveJsonModule": true
   },
   "include": [
-    "app.js",
-    "js/**/*.js",
     "server.ts",
-    ".next/types/**/*.ts"
+    "utils/**/*.ts",
+    "lib/**/*.ts",
+    "tests/**/*.ts",
+    "vite.config.ts"
   ],
   "exclude": [
     "node_modules",

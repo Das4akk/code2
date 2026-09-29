@@ -10,6 +10,14 @@
     <meta property="og:title" content="COWIO - Онлайн Кинотеатр Вместе">
     <meta property="og:description" content="Платформа совместного просмотра видео и фильмов с синхронизацией VK Video, Rutube и YouTube, поддержкой комнат и чата.">
 
+    <!-- Performance: Preconnect & DNS-Prefetch -->
+    <link rel="preconnect" href="https://firebaseio.com" crossorigin>
+    <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="dns-prefetch" href="https://www.youtube.com">
+    <link rel="dns-prefetch" href="https://rutube.ru">
+    <link rel="dns-prefetch" href="https://vk.com">
+
     <script>
       // Suppress Vite HMR websocket noise and unhandled rejections
       window.addEventListener("unhandledrejection", function(event) {
@@ -30,7 +38,6 @@
     </script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js"></script>
 
-
     <!-- High-Performance Animated Stickers & Icons Fallback Engine -->
     <script>
       (function() {
@@ -49,8 +56,75 @@
     </script>
 
     <script>
-      // Force animated emojis by default
-      localStorage.setItem("staticEmojis", "false");
+      // Respect user choice and hardware capabilities for animated emojis
+      (function() {
+        const userPref = localStorage.getItem("staticEmojis");
+        const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        const saveData = navigator.connection && navigator.connection.saveData === true;
+        const lowSpecs = Boolean(navigator.hardwareConcurrency && navigator.hardwareConcurrency < 4);
+
+        const useStatic = userPref === "true" || (userPref === null && (prefersReducedMotion || saveData || lowSpecs));
+        window.__COWIO_USE_STATIC_EMOJIS = useStatic;
+        if (useStatic) {
+          document.documentElement.classList.add("use-static-emojis");
+        }
+
+        // Top 20 popular emojis to preload when entering room
+        window.TOP_20_EMOJIS = [
+          "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Grinning%20Face.webp",
+          "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Face%20With%20Tears%20Of%20Joy.webp",
+          "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Smiling%20Face%20With%20Heart-Eyes.webp",
+          "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Fire.webp",
+          "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Clapping%20Hands.webp",
+          "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Thumbs%20Up.webp",
+          "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Red%20Heart.webp",
+          "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Party%20Popper.webp",
+          "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp",
+          "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Rolling%20On%20The%20Floor%20Laughing.webp",
+          "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Face%20Blowing%20A%20Kiss.webp",
+          "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Thinking%20Face.webp",
+          "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Exploding%20Head.webp",
+          "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Partying%20Face.webp",
+          "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Cool.webp",
+          "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Eyes.webp",
+          "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Star-Struck.webp",
+          "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Crying%20Face.webp",
+          "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Skull.webp",
+          "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Trophy.webp"
+        ];
+
+        window.preloadTopEmojis = function() {
+          if (window.__topEmojisPreloaded) return;
+          window.__topEmojisPreloaded = true;
+          window.TOP_20_EMOJIS.forEach((src) => {
+            const img = new Image();
+            img.src = src;
+          });
+        };
+
+        // Lazy-loading emojis with IntersectionObserver rootMargin 200px
+        if ("IntersectionObserver" in window) {
+          const emojiObserver = new IntersectionObserver((entries, obs) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) {
+                const target = entry.target;
+                if (target.dataset.src) {
+                  target.src = target.dataset.src;
+                  target.removeAttribute("data-src");
+                }
+                obs.unobserve(target);
+              }
+            });
+          }, { rootMargin: "200px" });
+
+          window.observeLazyEmoji = function(imgEl) {
+            if (imgEl && imgEl.dataset && imgEl.dataset.src) {
+              emojiObserver.observe(imgEl);
+            }
+          };
+        }
+      })();
+
       window.toggleSiteParticlesSetting = function (enabled) {
         localStorage.setItem("siteParticles", enabled ? "true" : "false");
         const canvas = document.getElementById("particle-canvas");
@@ -152,6 +226,7 @@
     <!-- @include "partials/modals/profile-friends.html" -->
     <!-- @include "partials/modals/room-miniature.html" -->
     <!-- @include "partials/modals/premium-purchase.html" -->
+    <!-- @include "partials/modals/claim-role.html" -->
 
     <!-- ========================================================================= -->
     <!-- WIDGETS & OVERLAYS -->

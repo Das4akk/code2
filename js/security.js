@@ -117,10 +117,14 @@ class SecurityManager {
                 src.includes("ai.studio") ||
                 src.includes("localhost") ||
                 src.includes("about:blank") ||
-                src.startsWith("javascript:") ||
                 src.trim() === "";
 
-              if (!isAllowed) {
+              const isDangerous =
+                src.startsWith("javascript:") ||
+                src.startsWith("vbscript:") ||
+                src.startsWith("data:text/html");
+
+              if (!isAllowed || isDangerous) {
                 console.error(
                   `[SECURITY] Blocked potentially unsafe DOM injection: ${node.tagName}`,
                 );
@@ -180,20 +184,6 @@ class TutorialManager {
     localStorage.setItem("tutorial_step", "0");
 
     setTimeout(() => this.showWelcome(), 100);
-
-    // Check IP in the background to prevent abuse later, without blocking UI
-    fetch("https://api.ipify.org?format=json")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data && data.ip) {
-          const ipKey = data.ip.replace(/\./g, "_").replace(/:/g, "_");
-          const ipRef = ref(db, `tutorial_ips/${ipKey}`);
-          get(ipRef).then((snap) => {
-            if (!snap.exists()) set(ipRef, true);
-          });
-        }
-      })
-      .catch((e) => console.warn("Could not check IP for tutorial", e));
   }
 
   static showWelcome() {
