@@ -163,6 +163,10 @@ class AdminPanel {
       return Boolean(_serverRoleCache.isCreator || _serverRoleCache.role === 'creator');
     }
 
+    const profile = (AppState.usersCache?.get ? AppState.usersCache.get(user.uid) : null) || user.profile || {};
+    const r = String(profile?.role || '').toLowerCase().trim();
+    if (r === 'creator' || profile?.isOwner === true) return true;
+
     // Refresh asynchronously in background
     void this._refreshRole();
     return false;
@@ -182,6 +186,10 @@ class AdminPanel {
       this._cachedRole = _serverRoleCache;
       return Boolean(_serverRoleCache.isAdmin || ['creator', 'operator', 'manager', 'moderator'].includes(_serverRoleCache.role));
     }
+
+    const profile = (AppState.usersCache?.get ? AppState.usersCache.get(user.uid) : null) || user.profile || {};
+    const r = String(profile?.role || '').toLowerCase().trim();
+    if (['creator', 'operator', 'manager', 'moderator'].includes(r) || profile?.isOwner === true) return true;
 
     void this._refreshRole();
     return false;

@@ -90,16 +90,17 @@ class Router {
     const pClose = document.getElementById("profile-overlay-close");
     if (pClose) pClose.style.display = "none";
 
-    // 3. Auth Gate: If unauthenticated, redirect to /login
     const isAuthenticated = Boolean(
       window.AppState?.currentUser?.uid ||
       window.auth?.currentUser?.uid
     );
 
-    if (!isAuthenticated) {
-      if (pathname !== "/login" && pathname !== "/register") {
-        sessionStorage.setItem("cowio_intended_route", pathname);
-        this.navigate("/login", true);
+    // 3. Explicit Auth Pages (/login and /register)
+    if (pathname === "/login" || pathname === "/register") {
+      if (isAuthenticated) {
+        this.navigate("/lobby", true);
+        this.showLobbySection("nav-rooms", "section-rooms");
+        return;
       }
       if (window.Utils && window.Utils.showScreen) {
         window.Utils.showScreen("auth-screen", false);
@@ -110,18 +111,14 @@ class Router {
       return;
     }
 
-    // 4. If authenticated and on login/register/root, redirect to /lobby
-    if (pathname === "/" || pathname === "/login" || pathname === "/register") {
-      this.navigate("/lobby", true);
+    // 4. Root / Lobby
+    if (pathname === "/" || pathname === "/lobby") {
+      if (pathname === "/") {
+        this.navigate("/lobby", true);
+      }
       this.showLobbySection("nav-rooms", "section-rooms");
       return;
     }
-
-    if (pathname === "/lobby") {
-      this.showLobbySection("nav-rooms", "section-rooms");
-      return;
-    }
-
 
     if (pathname.startsWith("/room/")) {
       const roomId = pathname.slice(6);
@@ -163,6 +160,7 @@ class Router {
 
     // Fallback: unknown path redirects strictly to /lobby
     this.navigate("/lobby", true);
+    this.showLobbySection("nav-rooms", "section-rooms");
   }
 
   static getSectionIdForNav(navId) {

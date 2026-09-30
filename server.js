@@ -251,16 +251,12 @@ function parseEnvList(val) {
   return val.split(/[,;\s]+/).map((s) => s.trim().toLowerCase()).filter(Boolean);
 }
 function getEnvRoleConfig() {
-  const defaultCreatorEmails = ["mankaef@yandex.ru", "das4akk2@gmail.com", "das4akk@gmail.com"];
-  const defaultCreatorUids = ["hOjOUa2ayfPIHk2j5unqAa1UUXi2"];
   const creatorEmails = /* @__PURE__ */ new Set([
-    ...defaultCreatorEmails,
     ...parseEnvList(process.env.CREATOR_EMAILS),
     ...parseEnvList(process.env.ADMIN_EMAILS),
     ...parseEnvList(process.env.OWNER_EMAILS)
   ]);
   const creatorUids = /* @__PURE__ */ new Set([
-    ...defaultCreatorUids,
     ...parseEnvList(process.env.CREATOR_UIDS),
     ...parseEnvList(process.env.ADMIN_UIDS)
   ]);
