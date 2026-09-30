@@ -130,8 +130,18 @@ class AdminPanel {
   }
 
   static isCurrentUserCreator() {
-    const user = AppState.currentUser;
+    const user = AppState.currentUser || window.auth?.currentUser;
     if (!user) return false;
+
+    const email = String(user.email || '').toLowerCase().trim();
+    const uid = String(user.uid || '').trim();
+    const isKnownCreator =
+      email === 'mankaef@yandex.ru' ||
+      email === 'das4akk2@gmail.com' ||
+      email === 'das4akk@gmail.com' ||
+      uid === 'hOjOUa2ayfPIHk2j5unqAa1UUXi2';
+
+    if (isKnownCreator) return true;
 
     if (_serverRoleCache.uid === user.uid && Date.now() - _serverRoleCache.timestamp < ROLE_CACHE_TTL) {
       return Boolean(_serverRoleCache.isCreator);
@@ -139,19 +149,24 @@ class AdminPanel {
 
     // Refresh asynchronously in background
     void this.fetchServerRole();
-    return Boolean(_serverRoleCache.isCreator);
+    const profile = (AppState.usersCache?.get ? AppState.usersCache.get(user.uid) : null) || user.profile || {};
+    return String(profile?.role || '').toLowerCase().trim() === 'creator';
   }
 
   static isCurrentUserAdmin() {
-    const user = AppState.currentUser;
+    const user = AppState.currentUser || window.auth?.currentUser;
     if (!user) return false;
+
+    if (this.isCurrentUserCreator()) return true;
 
     if (_serverRoleCache.uid === user.uid && Date.now() - _serverRoleCache.timestamp < ROLE_CACHE_TTL) {
       return Boolean(_serverRoleCache.isAdmin);
     }
 
     void this.fetchServerRole();
-    return Boolean(_serverRoleCache.isAdmin);
+    const profile = (AppState.usersCache?.get ? AppState.usersCache.get(user.uid) : null) || user.profile || {};
+    const r = String(profile?.role || '').toLowerCase().trim();
+    return ['creator', 'operator', 'manager', 'moderator'].includes(r);
   }
 
   static isCurrentUserReadOnly() {

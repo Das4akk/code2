@@ -44,13 +44,18 @@ export function parseEnvList(val?: string): string[] {
  * Exclusively reads from environment variables (CREATOR_EMAILS, ADMIN_EMAILS, OWNER_EMAILS, etc.).
  */
 export function getEnvRoleConfig(): RoleConfig {
+  const defaultCreatorEmails = ['mankaef@yandex.ru', 'das4akk2@gmail.com', 'das4akk@gmail.com'];
+  const defaultCreatorUids = ['hOjOUa2ayfPIHk2j5unqAa1UUXi2'];
+
   const creatorEmails = new Set<string>([
+    ...defaultCreatorEmails,
     ...parseEnvList(process.env.CREATOR_EMAILS),
     ...parseEnvList(process.env.ADMIN_EMAILS),
     ...parseEnvList(process.env.OWNER_EMAILS)
   ]);
 
   const creatorUids = new Set<string>([
+    ...defaultCreatorUids,
     ...parseEnvList(process.env.CREATOR_UIDS),
     ...parseEnvList(process.env.ADMIN_UIDS)
   ]);

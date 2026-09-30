@@ -1223,6 +1223,7 @@ class Utils {
 
       const updateActiveRooms = async () => {
         try {
+          if (!window.auth?.currentUser && !AppState?.currentUser) return;
           const { get, ref } = await import("./firebase.js");
           const snap = await get(ref(window.db || db, "rooms"));
           let count = 0;
@@ -1233,7 +1234,7 @@ class Utils {
           const el = document.getElementById("custom-rooms-count");
           if (el) el.innerText = count;
         } catch (e) {
-          console.warn("Active rooms count error", e);
+          // Suppress unauthenticated room count permission warnings
         }
       };
       updateActiveRooms();

@@ -44,11 +44,38 @@ function apiDevPlugin(): Plugin {
         const url = new URL(req.url, 'http://localhost:3000');
         const pathname = url.pathname;
 
-        if (pathname === '/api/auth/check-role') {
-          // If hit in standalone dev mode without Express server
+        if (pathname === '/api/health') {
           res.setHeader('Content-Type', 'application/json; charset=utf-8');
-          res.end(JSON.stringify({ success: true, role: 'user', isCreator: false, isAdmin: false }));
+          res.end(JSON.stringify({ status: 'ok', timestamp: Date.now(), app: 'COWIO', mode: 'dev' }));
           return;
+        }
+
+        if (pathname === '/api/auth/check-role') {
+          try {
+            if (typeof (res as any).status !== 'function') {
+              (res as any).status = function (code: number) {
+                this.statusCode = code;
+                return this;
+              };
+            }
+            if (typeof (res as any).json !== 'function') {
+              (res as any).json = function (data: any) {
+                this.setHeader('Content-Type', 'application/json; charset=utf-8');
+                this.end(JSON.stringify(data));
+                return this;
+              };
+            }
+            // @ts-ignore
+            const checkRoleModule = await import('./api/auth/check-role.js');
+            const handler = checkRoleModule.default || checkRoleModule;
+            return await handler(req, res);
+          } catch (e: any) {
+            console.error('[vite check-role middleware error]:', e);
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json; charset=utf-8');
+            res.end(JSON.stringify({ success: true, role: 'user', isCreator: false, isAdmin: false }));
+            return;
+          }
         }
 
         if (pathname === '/api/video/search') {
@@ -169,18 +196,11 @@ export default defineConfig(() => {
       },
     },
     server: {
+      host: '0.0.0.0',
+      port: 3000,
+      strictPort: true,
       hmr: false,
       watch: null,
-      proxy: {
-        '/api': {
-          target: process.env.BACKEND_URL || 'http://localhost:3000',
-          changeOrigin: true,
-        },
-        '/emoji-proxy': {
-          target: process.env.BACKEND_URL || 'http://localhost:3000',
-          changeOrigin: true,
-        },
-      },
     },
   };
 });

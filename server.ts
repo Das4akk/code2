@@ -1489,7 +1489,7 @@ if (hostIdx !== -1 && process.argv[hostIdx + 1]) {
   host = process.argv[hostIdx + 1]!;
 }
 
-if (process.env.NODE_ENV !== 'test' && !process.env.VITEST && !process.env.VERCEL) {
+if (process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
   app.listen(port, host, () => {
     console.log(`[COWIO] Server listening on http://${host}:${port}`);
   });

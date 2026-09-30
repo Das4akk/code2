@@ -2,17 +2,19 @@ import { Request, Response, NextFunction } from 'express';
 
 /**
  * Strips dangerous HTML tags and event handlers while preserving safe formatting if needed.
+ * Pure Node.js implementation to avoid loading jsdom / @exodus/bytes ESM dependencies in serverless.
  */
 export function sanitizeHtml(dirty: unknown): string {
   if (dirty === null || dirty === undefined) return '';
-  const str = String(dirty);
-  return str
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
-    .replace(/on\w+="[^"]*"/gi, '')
-    .replace(/on\w+='[^']*'/gi, '')
-    .replace(/javascript:[^"']*/gi, '');
+  let str = String(dirty);
+  // Remove dangerous executable tags and contents
+  str = str.replace(/<(script|iframe|object|embed|form|style|svg|base|link|meta)[^>]*>[\s\S]*?<\/\1>/gi, '');
+  str = str.replace(/<(script|iframe|object|embed|form|style|svg|base|link|meta)[^>]*\/?>/gi, '');
+  // Remove inline event handlers (onerror, onclick, onload, etc.)
+  str = str.replace(/\s*on\w+\s*=\s*(['"][^'"]*['"]|[^\s>]+)/gi, '');
+  // Remove javascript: and vbscript: URIs
+  str = str.replace(/(href|src|action)\s*=\s*(['"]?)\s*(javascript|vbscript):[^'"]*\2/gi, '');
+  return str;
 }
 
 /**
@@ -50,21 +52,26 @@ export function sanitizeObject<T>(obj: T): T {
   if (obj === null || typeof obj !== 'object') {
     return obj;
   }
+
   if (Array.isArray(obj)) {
     return obj.map((item) => sanitizeObject(item)) as unknown as T;
   }
+
   const cleanObj: Record<string, any> = {};
+
   for (const [key, value] of Object.entries(obj)) {
     const lowerKey = key.toLowerCase().trim();
     if (lowerKey === '__proto__' || lowerKey === 'constructor' || lowerKey === 'prototype') {
       continue;
     }
+
     if (value !== null && typeof value === 'object') {
       cleanObj[key] = sanitizeObject(value);
     } else {
       cleanObj[key] = value;
     }
   }
+
   return cleanObj as T;
 }
 
