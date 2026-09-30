@@ -535,6 +535,10 @@ class AdminPanel {
 
                 <div class="godmode-section active" data-section="dashboard">
                     <div id="admin-stats-grid" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:16px;"></div>
+                    <div style="margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; gap: 10px; align-items: center;">
+                        <button class="primary-btn" id="btn-admin-recalc-leaderboard" style="width: auto; padding: 8px 16px; font-size: 12.5px;">Пересчитать лидерборд</button>
+                        <span style="font-size: 11.5px; color: var(--text-muted);">Обновляет топ-100 в RTDB</span>
+                    </div>
                 </div>
 
                 <div class="godmode-section" data-section="broadcast" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02); margin-bottom:16px;">
@@ -898,6 +902,30 @@ class AdminPanel {
     Utils.$("btn-admin-global-maintenance").onclick = () =>
       this.toggleGlobalSetting("maintenanceMode", "Maintenance mode");
     Utils.$("btn-admin-clear-audit").onclick = () => this.clearAuditLog();
+    if (Utils.$("btn-admin-recalc-leaderboard")) {
+      Utils.$("btn-admin-recalc-leaderboard").onclick = async () => {
+        try {
+          const authObj = window.auth || (await import("./firebase.js")).auth;
+          const token = authObj.currentUser ? await authObj.currentUser.getIdToken() : "";
+          if (!token) return Utils.toast("Вы не авторизованы", "error");
+          Utils.toast("Пересчёт лидерборда...", "info");
+          const res = await fetch("/api/admin/recalc-leaderboard", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const data = await res.json();
+          if (data.success) {
+            Utils.toast(`Лидерборд пересчитан (${data.count} пользователей)`, "success");
+            if (window.loadLeaderboard) window.loadLeaderboard();
+          } else {
+            Utils.toast(`Ошибка: ${data.error}`, "error");
+          }
+        } catch (err) {
+          console.error(err);
+          Utils.toast("Ошибка пересчёта лидерборда", "error");
+        }
+      };
+    }
     
     Utils.$("btn-admin-create-account").onclick = async () => {
         const email = Utils.$("admin-create-email").value.trim();

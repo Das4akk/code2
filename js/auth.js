@@ -1142,6 +1142,11 @@ class AuthManager {
         try {
           if (Utils.$("btn-do-login")) Utils.$("btn-do-login").disabled = true;
           const cred = await signInWithEmailAndPassword(auth, email, pass);
+          if (auth.currentUser) {
+            try {
+              await auth.currentUser.getIdToken(true); // force refresh claims
+            } catch (tokErr) {}
+          }
 
           // Reset password and enable button
           if (Utils.$("login-pass")) Utils.$("login-pass").value = "";

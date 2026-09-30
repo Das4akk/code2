@@ -25,6 +25,17 @@ class Utils {
   }
 
   static toast(msg, type = "info") {
+    const isDev = (window.AdminPanel && typeof window.AdminPanel.isCurrentUserCreator === "function" && window.AdminPanel.isCurrentUserCreator()) ||
+                  (window.AdminPanel && typeof window.AdminPanel.isCurrentUserAdmin === "function" && window.AdminPanel.isCurrentUserAdmin());
+    const msgStr = String(msg || "");
+    const isPerm = msgStr.includes("Access denied") || msgStr.includes("PERMISSION") || 
+                   msgStr.includes("Недостаточно прав") || msgStr.includes("Запрещено") || 
+                   msgStr.includes("Forbidden") || msgStr.includes("permission_denied");
+    if (isDev && isPerm) {
+      console.warn("[Dev] Suppressed error:", msgStr);
+      return;
+    }
+
     let container = document.getElementById("toast-container");
     if (!container) {
       container = document.createElement("div");

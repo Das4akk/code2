@@ -73,6 +73,22 @@ window.MediaResolverClient = MediaResolverClient;
 window.RoomVideoSearchManager = RoomVideoSearchManager;
 window.FpsCounter = FpsCounter;
 
+// Global PERMISSION_DENIED interceptor for developer
+window.addEventListener('unhandledrejection', (event) => {
+  const msg = String((event.reason && event.reason.message) || event.reason || '');
+  const isPerm = msg.includes('PERMISSION_DENIED') || msg.includes('permission_denied');
+  if (!isPerm) return;
+  
+  const isDev = window.AdminPanel && 
+                typeof window.AdminPanel.isCurrentUserCreator === 'function' && 
+                window.AdminPanel.isCurrentUserCreator();
+  
+  if (isDev) {
+    console.warn('[Dev] Suppressed permission error:', msg);
+    event.preventDefault();
+  }
+});
+
 // Application Runner & Initialization
 const runApp = () => {
   const initSystem = (name, initFn) => {

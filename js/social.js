@@ -398,46 +398,66 @@ class FriendsManager {
       resContainer.innerHTML =
         '<div style="font-size: 12px; color: var(--text-muted); text-align: center;">Поиск...</div>';
       try {
-        const snap = await get(ref(db, "users"));
-        if (snap.exists()) {
-          const allUsers = snap.val();
-          let foundHtml = "";
-          let foundCount = 0;
-          for (const [uid, udata] of Object.entries(allUsers)) {
-            if (uid === AppState.currentUser.uid) continue;
-            if (
-              udata.profile &&
-              ((udata.profile.username &&
-                udata.profile.username.toLowerCase().includes(val)) ||
-                (udata.profile.extraUsernames &&
-                  udata.profile.extraUsernames.some((u) =>
-                    u.toLowerCase().includes(val),
-                  )))
-            ) {
-              foundCount++;
-              const isFriend =
-                udata.friends &&
-                udata.friends[AppState.currentUser.uid] &&
-                udata.friends[AppState.currentUser.uid].status === "accepted";
-              const avatar = `<div style=\"width:40px;height:40px;\">${ProfileManager.getAvatarHtml(udata.profile)}</div>`;
-              foundHtml += `
-                            <div class="user-card" onclick="ProfileManager.openProfileModal('${uid}')" style="cursor:pointer; display:flex; align-items:center; space-between; gap:10px;">
-                                ${avatar}
-                                <div class="user-card-info" style="flex:1;">
-                                    <div class="user-card-name">${Utils.escapeHtml(udata.profile.name)}</div>
-                                    <div class="user-card-username">@${Utils.escapeHtml(udata.profile.username)}</div>
-                                </div>
-                                ${isFriend ? '<span style="font-size:12px; color:var(--accent);">✓ Друг</span>' : '<button class="secondary-btn" style="width:auto; padding:4px 8px; font-size:10px;" onclick="event.stopPropagation(); FriendsManager.sendFriendRequest(\'' + uid + "')\">Добавить</button>"}
-                            </div>
-                            `;
+        const authObj = window.auth || (await import("./firebase.js")).auth;
+        const token = authObj.currentUser ? await authObj.currentUser.getIdToken() : "";
+        let results = [];
+
+        if (token) {
+          const res = await fetch(`/api/users/search?q=${encodeURIComponent(val)}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (res.ok) {
+            const data = await res.json();
+            results = data.results || [];
+          }
+        }
+
+        if (!results.length) {
+          // Direct fallback by username
+          const uSnap = await get(ref(db, `usernames/${val}`));
+          if (uSnap.exists()) {
+            const targetUid = uSnap.val();
+            const prof = await ProfileManager.loadUser(targetUid);
+            if (prof) {
+              results.push({
+                uid: targetUid,
+                username: prof.username || val,
+                name: prof.name || val,
+                avatar: prof.avatar || "",
+              });
             }
           }
-          if (foundCount > 0) resContainer.innerHTML = foundHtml;
-          else
-            resContainer.innerHTML =
-              '<div style="font-size: 12px; color: var(--text-muted); text-align: center;">Ничего не найдено</div>';
         }
+
+        let foundHtml = "";
+        let foundCount = 0;
+        for (const item of results) {
+          const uid = item.uid;
+          if (uid === AppState.currentUser?.uid) continue;
+          foundCount++;
+          const isFriend =
+            AppState.friendsCache &&
+            AppState.friendsCache[uid] &&
+            AppState.friendsCache[uid].status === "accepted";
+          const avatar = `<div style="width:40px;height:40px;">${ProfileManager.getAvatarHtml(item)}</div>`;
+          foundHtml += `
+            <div class="user-card" onclick="ProfileManager.openProfileModal('${uid}')" style="cursor:pointer; display:flex; align-items:center; space-between; gap:10px;">
+                ${avatar}
+                <div class="user-card-info" style="flex:1;">
+                    <div class="user-card-name">${Utils.escapeHtml(item.displayName || item.name || item.username)}</div>
+                    <div class="user-card-username">@${Utils.escapeHtml(item.username)}</div>
+                </div>
+                ${isFriend ? '<span style="font-size:12px; color:var(--accent);">✓ Друг</span>' : '<button class="secondary-btn" style="width:auto; padding:4px 8px; font-size:10px;" onclick="event.stopPropagation(); FriendsManager.sendFriendRequest(\'' + uid + "')\">Добавить</button>"}
+            </div>
+          `;
+        }
+
+        if (foundCount > 0) resContainer.innerHTML = foundHtml;
+        else
+          resContainer.innerHTML =
+            '<div style="font-size: 12px; color: var(--text-muted); text-align: center;">Ничего не найдено</div>';
       } catch (e) {
+        console.error("Search error:", e);
         resContainer.innerHTML =
           '<div style="font-size: 12px; color: var(--text-error); text-align: center;">Ошибка поиска</div>';
       }

@@ -1,85 +1,87 @@
 {
   "rules": {
     "users": {
+      ".read": "auth != null",
       "$uid": {
         ".read": "auth != null",
-        ".write": false,
+        ".write": "root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'",
         "profile": {
           ".read": true,
-          ".write": "$uid === auth.uid",
+          ".write": "$uid === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'",
           "role": {
-            ".write": false
+            ".write": "root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'"
           },
           "premium": {
-            ".write": false
+            ".write": "root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'"
           },
           "lumens": {
-            ".write": false
+            ".write": "root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'"
+          },
+          "xp": {
+            ".write": "root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'"
+          },
+          "streak": {
+            ".write": "root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'"
+          },
+          "level": {
+            ".write": "root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'"
           }
         },
         "role": {
-          ".write": false
+          ".write": "root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'"
         },
         "premium": {
-          ".write": false
+          ".write": "root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'"
         },
         "lumens": {
-          ".write": false
+          ".write": "root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'"
         },
         "private": {
-          ".read": "$uid === auth.uid",
-          ".write": "$uid === auth.uid"
+          ".read": "$uid === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'",
+          ".write": "$uid === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'"
         },
         "status": {
           ".read": true,
-          ".write": "$uid === auth.uid"
+          ".write": "$uid === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'"
         },
         "friends": {
           ".read": "auth != null",
-          ".write": "$uid === auth.uid"
+          ".write": "$uid === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'"
         },
         "friend-requests": {
-          ".read": "$uid === auth.uid",
+          ".read": "$uid === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'",
           ".write": "auth != null"
-        },
-        "loveRequests": {
-          ".read": "auth != null",
-          ".write": "auth != null"
-        },
-        "partner": {
-          ".read": "auth != null",
-          ".write": "$uid === auth.uid"
         },
         "force_tutorial": {
-          ".read": "$uid === auth.uid",
-          ".write": "$uid === auth.uid || root.child('admins').child(auth.uid).exists()"
+          ".read": "$uid === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'",
+          ".write": "$uid === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'"
         },
         "moderation": {
-          ".read": "$uid === auth.uid || root.child('admins').child(auth.uid).exists()",
-          ".write": "root.child('admins').child(auth.uid).exists()"
+          ".read": "$uid === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'",
+          ".write": "root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'"
         },
         "dailyGiftLumens": {
-          ".read": "$uid === auth.uid",
-          ".write": "$uid === auth.uid"
+          ".read": "$uid === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'",
+          ".write": "$uid === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'"
         },
         "dailyGiftTo": {
-          ".read": "$uid === auth.uid",
-          ".write": "$uid === auth.uid"
+          ".read": "$uid === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'",
+          ".write": "$uid === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'"
         },
         "lumenTransactions": {
-          ".read": "$uid === auth.uid || root.child('admins').child(auth.uid).exists()",
-          ".write": false
+          ".read": "$uid === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'",
+          ".write": "root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'"
         }
       }
     },
     "admins": {
-      ".read": "root.child('admins').child(auth.uid).exists()",
-      ".write": false
+      ".read": "root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'",
+      ".write": "root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'"
     },
     "config": {
       "roles": {
         ".read": "auth != null",
-        ".write": false
+        ".write": "root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'"
       },
       "role_secrets": {
         ".read": false,
@@ -89,35 +91,65 @@
     "usernames": {
       ".read": true,
       "$username": {
-        ".write": "auth != null && (!data.exists() || data.val() === auth.uid) && newData.val() === auth.uid"
+        ".write": "auth != null && (!data.exists() || data.val() === auth.uid) && newData.val() === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'"
       }
     },
     "rooms": {
       ".read": "auth != null",
       "$roomId": {
-        ".read": "auth != null && (data.child('isPrivate').val() !== true || data.child('members').child(auth.uid).exists() || data.child('owner').val() === auth.uid || root.child('admins').child(auth.uid).exists())",
-        ".write": "auth != null && (!data.exists() || data.child('owner').val() === auth.uid || data.child('members').child(auth.uid).exists() || root.child('admins').child(auth.uid).exists())"
+        ".read": "auth != null && (data.child('isPrivate').val() !== true || data.child('members').child(auth.uid).exists() || data.child('owner').val() === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com')",
+        ".write": "auth != null && (!data.exists() || data.child('owner').val() === auth.uid || data.child('members').child(auth.uid).exists() || root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com')",
+        "chat": {
+          ".read": "auth != null",
+          ".write": "auth != null"
+        },
+        "messages": {
+          ".read": "auth != null",
+          ".write": "auth != null"
+        },
+        "reactions": {
+          ".read": "auth != null",
+          ".write": "auth != null"
+        },
+        "voice": {
+          ".read": "auth != null",
+          ".write": "auth != null"
+        }
+      }
+    },
+    "reactions": {
+      ".read": "auth != null",
+      "$emoji": {
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'"
+        }
+      }
+    },
+    "signals": {
+      ".read": "auth != null",
+      "$targetUid": {
+        ".write": "auth != null || root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'"
       }
     },
     "direct-messages": {
       "$chatId": {
-        ".read": "auth != null && (data.child('participants').child(auth.uid).exists() || $chatId.contains(auth.uid))",
-        ".write": "auth != null && (!data.exists() || data.child('participants').child(auth.uid).exists() || $chatId.contains(auth.uid))"
+        ".read": "auth != null && (data.child('participants').child(auth.uid).exists() || $chatId.contains(auth.uid) || root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com')",
+        ".write": "auth != null && (!data.exists() || data.child('participants').child(auth.uid).exists() || $chatId.contains(auth.uid) || root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com')"
       }
     },
     "messages": {
       "$chatId": {
-        ".read": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists()",
-        ".write": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists()"
+        ".read": "auth != null && (root.child('chats').child($chatId).child('members').child(auth.uid).exists() || root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com')",
+        ".write": "auth != null && (root.child('chats').child($chatId).child('members').child(auth.uid).exists() || root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com')"
       }
     },
     "badges": {
       ".read": true,
-      ".write": "root.child('admins').child(auth.uid).exists()"
+      ".write": "root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'"
     },
     "catalog": {
       ".read": true,
-      ".write": "root.child('admins').child(auth.uid).exists()"
+      ".write": "root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'"
     },
     "library": {
       ".read": "auth != null",
@@ -129,23 +161,23 @@
       "users": {
         "$uid": {
           ".read": "auth != null",
-          ".write": "$uid === auth.uid || root.child('admins').child(auth.uid).exists()"
+          ".write": "$uid === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'"
         }
       }
     },
     "leaderboard": {
-      ".read": true,
-      ".write": "auth != null || root.child('admins').child(auth.uid).exists()"
+      ".read": "auth != null",
+      ".write": "root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'"
     },
     "system": {
       ".read": true,
-      ".write": "root.child('admins').child(auth.uid).exists()"
+      ".write": "root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'"
     },
     "support_tickets": {
       ".read": "auth != null",
       "$ticketId": {
-        ".read": "auth != null && (data.child('authorUid').val() === auth.uid || root.child('admins').child(auth.uid).exists() || !data.exists())",
-        ".write": "auth != null && (!data.exists() || data.child('authorUid').val() === auth.uid || root.child('admins').child(auth.uid).exists())"
+        ".read": "auth != null && (data.child('authorUid').val() === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com' || !data.exists())",
+        ".write": "auth != null && (!data.exists() || data.child('authorUid').val() === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com')"
       }
     },
     "support_tickets_typing": {
@@ -154,15 +186,15 @@
     },
     "support_bans": {
       ".read": "auth != null",
-      ".write": "root.child('admins').child(auth.uid).exists()"
+      ".write": "root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'"
     },
     "support_templates": {
       ".read": "auth != null",
-      ".write": "root.child('admins').child(auth.uid).exists()"
+      ".write": "root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'"
     },
     "payments_log": {
-      ".read": "root.child('admins').child(auth.uid).exists()",
-      ".write": false
+      ".read": "root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'",
+      ".write": "root.child('admins').child(auth.uid).exists() || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com'"
     }
   }
 }
