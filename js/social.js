@@ -273,6 +273,16 @@ class FriendsManager {
               Utils.toast("Аккаунт удален из списка");
               if (isCurrent && newSaved.length === 0) {
                 localStorage.removeItem("cowio_saved_accounts");
+                localStorage.removeItem("cowio_last_profile");
+                AppState.currentUser = null;
+                Utils.showScreen("auth-screen", false);
+                if (window.Router) {
+                  window.Router.currentPath = null;
+                  window.Router.navigate("/login", true);
+                }
+                if (window.AuthManager?.switchTab) {
+                  AuthManager.switchTab("login");
+                }
                 import("./firebase.js").then(
                   ({ signOut, getAuth }) => {
                     signOut(getAuth());
@@ -291,7 +301,18 @@ class FriendsManager {
             item.onclick = (e) => {
               if (e.target.tagName === "BUTTON") return;
               if (!acc.pass) {
-                Utils.toast("Пароль не сохранен. Войдите вручную.");
+                Utils.toast("Пароль не сохранен. Введите пароль для входа.");
+                if (Utils.$("login-email")) Utils.$("login-email").value = acc.email;
+                localStorage.removeItem("cowio_last_profile");
+                AppState.currentUser = null;
+                Utils.showScreen("auth-screen", false);
+                if (window.Router) {
+                  window.Router.currentPath = null;
+                  window.Router.navigate("/login", true);
+                }
+                if (window.AuthManager?.switchTab) {
+                  AuthManager.switchTab("login");
+                }
                 import("./firebase.js").then(
                   ({ signOut, getAuth }) => signOut(getAuth()),
                 );
@@ -317,22 +338,48 @@ class FriendsManager {
       };
     }
     if (Utils.$("btn-do-switch-account")) {
-      Utils.$("btn-do-switch-account").onclick = () => {
-        import("./firebase.js").then(
-          ({ signOut, getAuth }) => {
-            signOut(getAuth());
-          },
-        );
+      Utils.$("btn-do-switch-account").onclick = async () => {
+        try {
+          localStorage.removeItem("cowio_last_profile");
+          AppState.currentUser = null;
+          Utils.showScreen("auth-screen", false);
+          if (window.Router) {
+            window.Router.currentPath = null;
+            window.Router.navigate("/login", true);
+          }
+          if (window.AuthManager?.switchTab) {
+            AuthManager.switchTab("login");
+          }
+          const { signOut, getAuth } = await import("./firebase.js");
+          await signOut(getAuth());
+        } catch (e) {
+          console.warn("Switch account error:", e);
+          if (window.AuthManager?.handleLogoutCleanup) {
+            AuthManager.handleLogoutCleanup();
+          }
+        }
       };
     }
     if (Utils.$("btn-do-switch-account-clear")) {
-      Utils.$("btn-do-switch-account-clear").onclick = () => {
-        localStorage.removeItem("cowio_saved_accounts");
-        import("./firebase.js").then(
-          ({ signOut, getAuth }) => {
-            signOut(getAuth());
-          },
-        );
+      Utils.$("btn-do-switch-account-clear").onclick = async () => {
+        try {
+          localStorage.removeItem("cowio_saved_accounts");
+          localStorage.removeItem("cowio_last_profile");
+          AppState.currentUser = null;
+          Utils.showScreen("auth-screen", false);
+          if (window.Router) {
+            window.Router.currentPath = null;
+            window.Router.navigate("/login", true);
+          }
+          if (window.AuthManager?.switchTab) {
+            AuthManager.switchTab("login");
+          }
+          const { signOut, getAuth } = await import("./firebase.js");
+          await signOut(getAuth());
+          Utils.toast("Список сохраненных аккаунтов очищен", "info");
+        } catch (e) {
+          console.warn("Clear saved accounts error:", e);
+        }
       };
     }
     if (Utils.$("btn-open-my-profile-modal")) {

@@ -1316,15 +1316,26 @@ class AuthManager {
     if (btnGoogleReg) btnGoogleReg.onclick = handleGoogleAuth;
 
     const btnLogout = Utils.$("btn-logout");
-    if (btnLogout) btnLogout.onclick = () => {
+    if (btnLogout) btnLogout.onclick = async () => {
       try {
+        localStorage.removeItem("cowio_last_profile");
         localStorage.removeItem("cowio_developer_uid");
         if (typeof window.clearServerRoleCache === "function") {
           window.clearServerRoleCache();
         }
-        signOut(auth);
+        AppState.currentUser = null;
+        Utils.showScreen("auth-screen", false);
+        if (window.Router) {
+          window.Router.currentPath = null;
+          window.Router.navigate("/login", true);
+        }
+        if (window.AuthManager?.switchTab) {
+          AuthManager.switchTab("login");
+        }
+        await signOut(auth);
       } catch (e) {
         console.warn("Logout error:", e);
+        AuthManager.handleLogoutCleanup();
       }
     };
   }
@@ -1357,12 +1368,21 @@ class AuthManager {
   static handleLogoutCleanup() {
     try {
       AppState.currentUser = null;
+      localStorage.removeItem("cowio_last_profile");
+      localStorage.removeItem("cowio_developer_uid");
+      if (typeof window.clearServerRoleCache === "function") {
+        window.clearServerRoleCache();
+      }
       if (window.location.pathname !== "/login" && window.location.pathname !== "/register") {
         sessionStorage.setItem("cowio_intended_route", window.location.pathname);
       }
-      Utils.showScreen("auth-screen");
+      Utils.showScreen("auth-screen", false);
       if (window.Router) {
+        window.Router.currentPath = null;
         window.Router.navigate("/login", true);
+      }
+      if (window.AuthManager?.switchTab) {
+        AuthManager.switchTab("login");
       }
       if (Utils.$("login-pass")) Utils.$("login-pass").value = "";
       if (Utils.$("reg-pass")) Utils.$("reg-pass").value = "";

@@ -1,7 +1,7 @@
 /**
  * COWIO System Maintenance Engine
  * Provides Real-Time Maintenance Mode for Global Site and Individual Sections.
- * Exclusively controlled by @developer / Creator (mankaef@yandex.ru).
+ * Exclusively controlled by @developer / Creator.
  */
 import { ref, set, update, get, onValue } from "./firebase.js";
 import { db } from "./firebase.js";

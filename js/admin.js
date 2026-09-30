@@ -21,6 +21,24 @@ export function clearServerRoleCache() {
 class AdminPanel {
   static developerUidCache = null;
   static subscriptions = [];
+  static _cachedRole = null;
+
+  static async _refreshRole(force = false) {
+    try {
+      const roleInfo = await this.fetchServerRole(force);
+      this._cachedRole = roleInfo;
+      try { this.syncSidebarButton(); } catch (_) {}
+      try {
+        if (Utils.$("modal-admin-panel")?.classList.contains("active")) {
+          this.renderPanel();
+        }
+      } catch (_) {}
+      return roleInfo;
+    } catch (e) {
+      console.warn('[AdminPanel._refreshRole] error:', e);
+      return null;
+    }
+  }
 
   static async fetchServerRole(force = false) {
     const authUser = window.auth?.currentUser;
@@ -30,10 +48,12 @@ class AdminPanel {
 
     if (!user) {
       clearServerRoleCache();
-      return { role: 'user', isCreator: false, isAdmin: false };
+      this._cachedRole = { role: 'user', isCreator: false, isAdmin: false };
+      return this._cachedRole;
     }
 
     if (!force && _serverRoleCache.uid === user.uid && Date.now() - _serverRoleCache.timestamp < ROLE_CACHE_TTL) {
+      this._cachedRole = _serverRoleCache;
       return _serverRoleCache;
     }
 
@@ -53,6 +73,7 @@ class AdminPanel {
           isAdmin: Boolean(data.isAdmin),
           timestamp: Date.now()
         };
+        this._cachedRole = _serverRoleCache;
         try { this.syncSidebarButton(); } catch (_) {}
         return _serverRoleCache;
       }
@@ -133,24 +154,18 @@ class AdminPanel {
     const user = AppState.currentUser || window.auth?.currentUser;
     if (!user) return false;
 
-    const email = String(user.email || '').toLowerCase().trim();
-    const uid = String(user.uid || '').trim();
-    const isKnownCreator =
-      email === 'mankaef@yandex.ru' ||
-      email === 'das4akk2@gmail.com' ||
-      email === 'das4akk@gmail.com' ||
-      uid === 'hOjOUa2ayfPIHk2j5unqAa1UUXi2';
+    if (this._cachedRole && this._cachedRole.uid === user.uid) {
+      return Boolean(this._cachedRole.isCreator || this._cachedRole.role === 'creator');
+    }
 
-    if (isKnownCreator) return true;
-
-    if (_serverRoleCache.uid === user.uid && Date.now() - _serverRoleCache.timestamp < ROLE_CACHE_TTL) {
-      return Boolean(_serverRoleCache.isCreator);
+    if (_serverRoleCache && _serverRoleCache.uid === user.uid && Date.now() - _serverRoleCache.timestamp < ROLE_CACHE_TTL) {
+      this._cachedRole = _serverRoleCache;
+      return Boolean(_serverRoleCache.isCreator || _serverRoleCache.role === 'creator');
     }
 
     // Refresh asynchronously in background
-    void this.fetchServerRole();
-    const profile = (AppState.usersCache?.get ? AppState.usersCache.get(user.uid) : null) || user.profile || {};
-    return String(profile?.role || '').toLowerCase().trim() === 'creator';
+    void this._refreshRole();
+    return false;
   }
 
   static isCurrentUserAdmin() {
@@ -159,14 +174,17 @@ class AdminPanel {
 
     if (this.isCurrentUserCreator()) return true;
 
-    if (_serverRoleCache.uid === user.uid && Date.now() - _serverRoleCache.timestamp < ROLE_CACHE_TTL) {
-      return Boolean(_serverRoleCache.isAdmin);
+    if (this._cachedRole && this._cachedRole.uid === user.uid) {
+      return Boolean(this._cachedRole.isAdmin || ['creator', 'operator', 'manager', 'moderator'].includes(this._cachedRole.role));
     }
 
-    void this.fetchServerRole();
-    const profile = (AppState.usersCache?.get ? AppState.usersCache.get(user.uid) : null) || user.profile || {};
-    const r = String(profile?.role || '').toLowerCase().trim();
-    return ['creator', 'operator', 'manager', 'moderator'].includes(r);
+    if (_serverRoleCache && _serverRoleCache.uid === user.uid && Date.now() - _serverRoleCache.timestamp < ROLE_CACHE_TTL) {
+      this._cachedRole = _serverRoleCache;
+      return Boolean(_serverRoleCache.isAdmin || ['creator', 'operator', 'manager', 'moderator'].includes(_serverRoleCache.role));
+    }
+
+    void this._refreshRole();
+    return false;
   }
 
   static isCurrentUserReadOnly() {
@@ -1351,6 +1369,7 @@ class AdminPanel {
   static init() {
     this.ensureUI();
     if (!AppState.currentUser) return;
+    void this._refreshRole();
     if (this.initializedForUid === AppState.currentUser.uid) return;
     this.initializedForUid = AppState.currentUser.uid;
 

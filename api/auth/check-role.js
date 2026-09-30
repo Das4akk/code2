@@ -1,20 +1,7 @@
-const DEFAULT_CREATOR_EMAILS = [
-  'mankaef@yandex.ru',
-  'das4akk2@gmail.com',
-  'das4akk@gmail.com'
-];
-
-const DEFAULT_CREATOR_UIDS = [
-  'hOjOUa2ayfPIHk2j5unqAa1UUXi2'
-];
-
-const CREATOR_EMAILS = [
-  ...DEFAULT_CREATOR_EMAILS,
-  ...(process.env.CREATOR_EMAILS || '')
-    .split(/[,;\s]+/)
-    .map((s) => s.trim().toLowerCase())
-    .filter(Boolean)
-];
+const CREATOR_EMAILS = (process.env.CREATOR_EMAILS || '')
+  .split(/[,;\s]+/)
+  .map((s) => s.trim().toLowerCase())
+  .filter(Boolean);
 
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '')
   .split(/[,;\s]+/)
@@ -26,13 +13,10 @@ const OWNER_EMAILS = (process.env.OWNER_EMAILS || '')
   .map((s) => s.trim().toLowerCase())
   .filter(Boolean);
 
-const CREATOR_UIDS = [
-  ...DEFAULT_CREATOR_UIDS,
-  ...(process.env.CREATOR_UIDS || '')
-    .split(/[,;\s]+/)
-    .map((s) => s.trim())
-    .filter(Boolean)
-];
+const CREATOR_UIDS = (process.env.CREATOR_UIDS || '')
+  .split(/[,;\s]+/)
+  .map((s) => s.trim())
+  .filter(Boolean);
 
 const ADMIN_UIDS = (process.env.ADMIN_UIDS || '')
   .split(/[,;\s]+/)
@@ -102,7 +86,8 @@ export default async function handler(req, res) {
         role: 'user',
         isCreator: false,
         isAdmin: false,
-        isOwner: false
+        isOwner: false,
+        isDeveloper: false
       });
     }
 
@@ -154,37 +139,47 @@ export default async function handler(req, res) {
       } catch (_) {}
     }
 
+    const normEmail = (email || '').toLowerCase().trim();
+    const cleanUid = (uid || '').trim();
+
     // Check automatic role qualifications via environment variables
-    let role = getRoleFromEnv(uid, email);
+    let role = getRoleFromEnv(cleanUid, normEmail);
     let isCreator = role === 'creator';
     let isAdmin = isCreator;
+    let isOwner = isCreator;
+    let isDeveloper = isCreator;
 
     // Check /admins/{uid} in Firebase Realtime Database
-    if (admin.apps && admin.apps.length && uid) {
+    if (admin.apps && admin.apps.length && cleanUid) {
       try {
-        const snap = await admin.database().ref(`admins/${uid}`).once('value');
+        const adminRef = admin.database().ref(`admins/${cleanUid}`);
+        const snap = await adminRef.once('value');
         if (snap.exists()) {
           const data = snap.val() || {};
           if (data.role) role = String(data.role).toLowerCase().trim();
-          if (data.isOwner || role === 'creator') {
+          if (data.isOwner || data.isDeveloper || role === 'creator') {
             isCreator = true;
             isAdmin = true;
+            isOwner = true;
+            isDeveloper = true;
           } else if (['operator', 'manager', 'moderator'].includes(role)) {
             isAdmin = true;
           }
         } else if (isCreator) {
-          // Auto-sync role to /admins/{uid} and /users/{uid}/profile/role
+          // Auto-sync role to /admins/{uid} and /users/{uid}/profile/role for whitelisted creators
           try {
             await Promise.all([
-              admin.database().ref(`admins/${uid}`).set({
+              adminRef.set({
                 role: 'creator',
                 isOwner: true,
-                email: email || null,
+                isDeveloper: true,
+                email: normEmail || null,
                 grantedAt: Date.now(),
-                grantedBy: 'auto_env_sync'
+                grantedBy: 'auto_sync'
               }),
-              admin.database().ref(`users/${uid}/profile/role`).set('creator')
+              admin.database().ref(`users/${cleanUid}/profile/role`).set('creator')
             ]);
+            console.log(`[check-role] Auto-created /admins/${cleanUid} for ${normEmail || cleanUid}`);
           } catch (syncErr) {
             console.warn('[check-role] auto-sync error:', syncErr.message);
           }
@@ -199,9 +194,10 @@ export default async function handler(req, res) {
       role,
       isCreator,
       isAdmin,
-      isOwner: isCreator,
-      uid,
-      email
+      isOwner,
+      isDeveloper,
+      uid: cleanUid,
+      email: normEmail
     });
   } catch (err) {
     console.error('[check-role] FATAL:', err.message, err.stack);
@@ -211,6 +207,7 @@ export default async function handler(req, res) {
       isCreator: false,
       isAdmin: false,
       isOwner: false,
+      isDeveloper: false,
       error: err.message
     });
   }

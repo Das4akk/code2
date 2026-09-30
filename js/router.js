@@ -93,7 +93,7 @@ class Router {
     // 3. Auth Gate: If unauthenticated, redirect to /login
     const isAuthenticated = Boolean(
       window.AppState?.currentUser?.uid ||
-      localStorage.getItem("cowio_last_profile")
+      window.auth?.currentUser?.uid
     );
 
     if (!isAuthenticated) {
@@ -103,6 +103,9 @@ class Router {
       }
       if (window.Utils && window.Utils.showScreen) {
         window.Utils.showScreen("auth-screen", false);
+      }
+      if (window.AuthManager && typeof window.AuthManager.switchTab === "function") {
+        window.AuthManager.switchTab(pathname === "/register" ? "reg" : "login");
       }
       return;
     }
