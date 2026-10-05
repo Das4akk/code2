@@ -534,7 +534,10 @@ class BackgroundFX {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
     }
-    window.addEventListener("resize", resize);
+    const debouncedResize = (window.Utils && typeof Utils.debounce === "function") 
+      ? Utils.debounce(resize, 150) 
+      : resize;
+    window.addEventListener("resize", debouncedResize, { passive: true });
     resize();
 
     window.addEventListener("mousemove", (e) => {

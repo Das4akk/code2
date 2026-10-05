@@ -1,7 +1,13 @@
 node_modules/
 .next/
+dist/
+.vercel/
+.idx/
 coverage/
 .DS_Store
 *.log
-.env*
+.env
+.env.local
+.env.production
+.env*.local
 !.env.example

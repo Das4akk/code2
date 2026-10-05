@@ -1,0 +1,159 @@
+/* ==== Premium Lock Standard ==== */
+.premium-locked-wrapper {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+.premium-lock-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(6, 6, 9, 0.55);
+  backdrop-filter: blur(14px) saturate(180%);
+  -webkit-backdrop-filter: blur(14px) saturate(180%);
+  border-radius: inherit;
+  cursor: pointer;
+  z-index: 10;
+  transition: background 0.2s ease;
+}
+
+.premium-lock-overlay:hover {
+  background: rgba(6, 6, 9, 0.65);
+}
+
+.premium-lock-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.premium-lock-emoji {
+  font-size: 32px;
+  line-height: 1;
+  animation: premium-lock-bounce 2s ease-in-out infinite;
+  filter: drop-shadow(0 4px 12px rgba(255, 200, 0, 0.4));
+}
+
+.premium-lock-text {
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.3px;
+  color: #ffffff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  user-select: none;
+}
+
+@keyframes premium-lock-bounce {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25%      { transform: translateY(-4px) rotate(-8deg); }
+  75%      { transform: translateY(-4px) rotate(8deg); }
+}
+
+/* Малые элементы (кнопки, иконки) */
+.premium-lock-overlay.premium-lock-small .premium-lock-emoji {
+  font-size: 22px;
+}
+.premium-lock-overlay.premium-lock-small .premium-lock-text {
+  font-size: 12px;
+}
+
+/* Модальное окно Premium Lock */
+.premium-lock-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 9999;
+  animation: premium-lock-fade-in 0.2s ease;
+}
+
+.premium-lock-modal-content {
+  background: rgba(6, 6, 9, 0.85);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 22px;
+  padding: 32px 28px;
+  max-width: 420px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.8),
+              0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+              0 1px 0 0 rgba(255, 255, 255, 0.2) inset;
+  animation: premium-lock-pop 0.25s ease;
+}
+
+.premium-lock-emoji-large {
+  font-size: 64px;
+  line-height: 1;
+  margin-bottom: 16px;
+  animation: premium-lock-bounce 2s ease-in-out infinite;
+  filter: drop-shadow(0 8px 24px rgba(255, 200, 0, 0.5));
+}
+
+.premium-lock-title {
+  font-weight: 700;
+  font-size: 20px;
+  color: #fff;
+  margin: 0 0 10px;
+}
+
+.premium-lock-desc {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.75);
+  margin: 0 0 24px;
+  line-height: 1.5;
+}
+
+.premium-lock-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.premium-lock-btn {
+  padding: 12px 20px;
+  border-radius: 14px;
+  font-weight: 600;
+  font-size: 15px;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.premium-lock-btn:active { transform: scale(0.97); }
+
+.premium-lock-btn-primary {
+  background: linear-gradient(135deg, #ffd700, #ff9d00);
+  color: #0a0a0a;
+}
+
+.premium-lock-btn-primary:hover { opacity: 0.9; }
+
+.premium-lock-btn-secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.premium-lock-btn-secondary:hover { background: rgba(255, 255, 255, 0.14); }
+
+@keyframes premium-lock-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes premium-lock-pop {
+  from { transform: scale(0.92); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}

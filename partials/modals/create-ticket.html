@@ -2,7 +2,7 @@
       <div class="modal-content support-create-modal-content" style="position: relative;">
         <button type="button" class="btn-close-modal" style="position: absolute; top: 18px; right: 18px; width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; transition: 0.2s;" onclick="document.getElementById('modal-create-ticket').classList.remove('active')">✕</button>
         <div class="support-modal-badge">
-          <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Memo.webp" style="width: 28px; height: 28px; object-fit: contain;">
+          <img loading="lazy" decoding="async" src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Memo.webp" style="width: 28px; height: 28px; object-fit: contain;">
         </div>
         <h2 class="support-modal-heading">Новое обращение</h2>
         <p class="support-modal-subheading">Опишите ваш вопрос или проблему — операторы поддержки свяжутся с вами в ближайшее время</p>
@@ -12,19 +12,19 @@
           <label class="support-modal-label">Категория</label>
           <div class="support-category-selector" id="create-ticket-category-chips">
             <button type="button" class="category-chip active" data-cat="Вопрос">
-              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Speech%20Balloon.webp" alt="">
+              <img loading="lazy" decoding="async" src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Speech%20Balloon.webp" alt="">
               <span>Вопрос</span>
             </button>
             <button type="button" class="category-chip" data-cat="Баг">
-              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Bug.webp" alt="">
+              <img loading="lazy" decoding="async" src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Bug.webp" alt="">
               <span>Баг</span>
             </button>
             <button type="button" class="category-chip" data-cat="Жалоба">
-              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Flags/Triangular%20Flag.webp" alt="">
+              <img loading="lazy" decoding="async" src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Flags/Triangular%20Flag.webp" alt="">
               <span>Жалоба</span>
             </button>
             <button type="button" class="category-chip" data-cat="Идея">
-              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Light%20Bulb.webp" alt="">
+              <img loading="lazy" decoding="async" src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Light%20Bulb.webp" alt="">
               <span>Идея</span>
             </button>
           </div>
@@ -36,15 +36,15 @@
           <label class="support-modal-label">Приоритет</label>
           <div class="support-priority-selector" id="create-ticket-priority-chips">
             <button type="button" class="priority-chip" data-pri="Обычный">
-              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Green%20Heart.webp" alt="">
+              <img loading="lazy" decoding="async" src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Green%20Heart.webp" alt="">
               <span>Обычный</span>
             </button>
             <button type="button" class="priority-chip active" data-pri="Средний">
-              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Yellow%20Heart.webp" alt="">
+              <img loading="lazy" decoding="async" src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Yellow%20Heart.webp" alt="">
               <span>Средний</span>
             </button>
             <button type="button" class="priority-chip" data-pri="Высокий">
-              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Heart%20On%20Fire.webp" alt="">
+              <img loading="lazy" decoding="async" src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Heart%20On%20Fire.webp" alt="">
               <span>Высокий</span>
             </button>
           </div>
@@ -68,11 +68,11 @@
           <label class="support-modal-label">Скриншот или вложение (необязательно)</label>
           <div class="support-modal-attachment-row">
             <button type="button" id="btn-modal-ticket-attach" class="modal-attach-btn">
-              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Memo.webp" style="width: 14px; height: 14px;">
+              <img loading="lazy" decoding="async" src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Memo.webp" style="width: 14px; height: 14px;">
               <span id="modal-ticket-attach-label">Прикрепить картинку</span>
             </button>
             <div id="modal-ticket-attach-preview" style="display: none; align-items: center; gap: 8px;">
-              <img id="modal-ticket-preview-img" style="width: 32px; height: 32px; border-radius: 6px; object-fit: cover;" src="">
+              <img loading="lazy" decoding="async" id="modal-ticket-preview-img" style="width: 32px; height: 32px; border-radius: 6px; object-fit: cover;" src="">
               <button type="button" id="btn-modal-remove-attach" style="background:none; border:none; color: rgba(255,255,255,0.6); cursor:pointer; font-size:16px;" title="Удалить">&times;</button>
             </div>
           </div>

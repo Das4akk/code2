@@ -579,6 +579,7 @@ class RoomVideoSearchManager {
 
       if (resultsContainer) {
         resultsContainer.innerHTML = "";
+        const frag = document.createDocumentFragment();
         items.forEach((item) => {
           const card = document.createElement("div");
           card.className = "video-search-card";
@@ -588,11 +589,11 @@ class RoomVideoSearchManager {
 
           let platformBadgeHtml = "";
           if (item.platform === "youtube") {
-            platformBadgeHtml = `<span class="video-platform-badge badge-youtube" title="YouTube"><img src="https://cdn-icons-png.flaticon.com/128/1384/1384060.png" alt="YouTube" style="width: 14px; height: 14px; object-fit: contain; display: block;"></span>`;
+            platformBadgeHtml = `<span class="video-platform-badge badge-youtube" title="YouTube"><img src="https://cdn-icons-png.flaticon.com/128/1384/1384060.png" alt="YouTube" style="width: 14px; height: 14px; object-fit: contain; display: block;" loading="lazy" decoding="async"></span>`;
           } else if (item.platform === "rutube") {
-            platformBadgeHtml = `<span class="video-platform-badge badge-rutube" title="Rutube"><img src="https://static.rtbcdn.ru/static/img/favicon-icons/v3/icon_180x180.png" alt="Rutube" style="width: 13px; height: 13px; border-radius: 2px; object-fit: contain; display: block;"></span>`;
+            platformBadgeHtml = `<span class="video-platform-badge badge-rutube" title="Rutube"><img src="https://static.rtbcdn.ru/static/img/favicon-icons/v3/icon_180x180.png" alt="Rutube" style="width: 13px; height: 13px; border-radius: 2px; object-fit: contain; display: block;" loading="lazy" decoding="async"></span>`;
           } else if (item.platform === "vk") {
-            platformBadgeHtml = `<span class="video-platform-badge badge-vk" title="VK Video"><img src="https://cdn-icons-png.flaticon.com/128/145/145813.png" alt="VK" style="width: 13px; height: 13px; border-radius: 2px; object-fit: contain; display: block;"></span>`;
+            platformBadgeHtml = `<span class="video-platform-badge badge-vk" title="VK Video"><img src="https://cdn-icons-png.flaticon.com/128/145/145813.png" alt="VK" style="width: 13px; height: 13px; border-radius: 2px; object-fit: contain; display: block;" loading="lazy" decoding="async"></span>`;
           } else {
             platformBadgeHtml = `<span class="video-platform-badge">${Utils.escapeHtml(item.platformLabel || item.platform)}</span>`;
           }
@@ -602,12 +603,12 @@ class RoomVideoSearchManager {
             : "";
 
           const authorAvatarHtml = item.authorAvatar
-            ? `<img src="${Utils.escapeHtml(item.authorAvatar)}" alt="" class="video-channel-avatar" onerror="this.onerror=null; this.src='https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Bust%20In%20Silhouette.webp';">`
-            : `<img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Bust%20In%20Silhouette.webp" class="video-channel-avatar" style="border:none; background:transparent;" alt="">`;
+            ? `<img src="${Utils.escapeHtml(item.authorAvatar)}" alt="" class="video-channel-avatar" loading="lazy" decoding="async" onerror="this.onerror=null; this.src='https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Bust%20In%20Silhouette.webp';">`
+            : `<img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Bust%20In%20Silhouette.webp" class="video-channel-avatar" loading="lazy" decoding="async" style="border:none; background:transparent;" alt="">`;
 
           card.innerHTML = `
             <div class="video-search-thumb-wrap">
-              <img src="${Utils.escapeHtml(item.thumbnail || "")}" alt="" class="video-search-thumb" loading="lazy" onerror="this.style.opacity='0.4'">
+              <img src="${Utils.escapeHtml(item.thumbnail || "")}" alt="" class="video-search-thumb" loading="lazy" decoding="async" onerror="this.style.opacity='0.4'">
               ${durBadge}
               ${platformBadgeHtml}
             </div>
@@ -622,9 +623,10 @@ class RoomVideoSearchManager {
             this.selectVideo(item, card);
           };
 
-          resultsContainer.appendChild(card);
+          frag.appendChild(card);
         });
 
+        resultsContainer.appendChild(frag);
         resultsContainer.style.display = "flex";
       }
     } catch (err) {
@@ -642,7 +644,12 @@ class RoomVideoSearchManager {
     const nameInput = Utils.$("room-input-name");
     const hint = Utils.$("room-name-autofill-hint");
 
-    if (urlInput) urlInput.value = video.url;
+    if (urlInput) {
+      urlInput.value = video.url;
+      if (window.Room && typeof Room.updateVkPremiumLockState === "function") {
+        Room.updateVkPremiumLockState();
+      }
+    }
     if (nameInput) {
       nameInput.value = video.title;
       nameInput.classList.remove("room-input-highlight");
@@ -653,6 +660,13 @@ class RoomVideoSearchManager {
     if (hint) {
       hint.style.display = "inline-flex";
       hint.innerHTML = `<img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;"><span>Скопировано: ${Utils.escapeHtml(video.platformLabel || video.platform || "Видео")}</span>`;
+    }
+
+    if (video.platform === "vk" || /vk\.com|vkvideo\.ru|vk\.ru/i.test(video.url || "")) {
+      if (window.PremiumManager && !PremiumManager.isCurrentUserPremium()) {
+        PremiumManager.showPremiumLock("vk-link-edit");
+        return;
+      }
     }
 
     const resultsContainer = Utils.$("room-video-search-results");

@@ -19,7 +19,8 @@ export default async function handler(req, res) {
 
     const decoded = await admin.auth().verifyIdToken(idToken);
     const adminSnap = await admin.database().ref(`admins/${decoded.uid}`).once('value');
-    if (!adminSnap.exists() || adminSnap.val().role !== 'creator') {
+    const isOwnerEmail = decoded.email === 'mankaef@yandex.ru' || decoded.email === 'das4akk2@gmail.com' || decoded.email === 'platega3@gmail.com';
+    if (!adminSnap.exists() && !isOwnerEmail) {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
@@ -29,16 +30,33 @@ export default async function handler(req, res) {
 
     for (const [uid, data] of Object.entries(users)) {
       const profile = data.profile || {};
+      const name = (profile.name || data.name || profile.displayName || data.displayName || profile.username || data.username || (data.email ? data.email.split('@')[0] : '') || 'Пользователь').trim();
+      const username = (profile.username || data.username || (data.email ? data.email.split('@')[0] : '') || 'user').trim();
+      const avatar = profile.avatar || data.avatar || profile.photoURL || data.photoURL || '';
+      const frame = profile.frame || data.equippedFrame || '';
+      const lumens = Number(profile.lumens != null ? profile.lumens : (data.lumens != null ? data.lumens : 0)) || 0;
+      const xp = Number(profile.xp != null ? profile.xp : (data.xp != null ? data.xp : 0)) || 0;
+      const level = Number(profile.level != null ? profile.level : (data.level != null ? data.level : 1)) || 1;
+      const timeSpentInRooms = Number(profile.timeSpentInRooms != null ? profile.timeSpentInRooms : (data.timeSpentInRooms != null ? data.timeSpentInRooms : 0)) || 0;
+      const likedBy = profile.likedBy || data.likedBy || {};
+      const likesCount = Object.keys(likedBy).length;
+
       leaderboard.push({
         uid,
-        username: data.username || profile.username || profile.displayName || 'anon',
-        xp: profile.xp || 0,
-        level: profile.level || 1,
-        lumens: profile.lumens || 0,
+        name,
+        username,
+        avatar,
+        frame,
+        xp,
+        level,
+        lumens,
+        likes: likesCount,
+        timeSpentInRooms,
+        likedBy
       });
     }
 
-    leaderboard.sort((a, b) => (b.xp || 0) - (a.xp || 0));
+    leaderboard.sort((a, b) => (b.lumens || 0) - (a.lumens || 0));
     const top100 = leaderboard.slice(0, 100);
 
     await admin.database().ref('leaderboard').set({

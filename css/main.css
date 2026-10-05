@@ -243,6 +243,14 @@
         scrollbar-width: thin;
         scrollbar-color: rgba(255, 255, 255, 0.35) rgba(0, 0, 0, 0.25);
       }
+      #leaderboard-list,
+      .leaderboard-list,
+      [data-leaderboard] {
+        display: flex !important;
+        flex-direction: column !important;
+        visibility: visible !important;
+        min-height: 80px;
+      }
       #section-leaderboard::-webkit-scrollbar,
       .oled-scrollbar::-webkit-scrollbar,
       .oled-scroll::-webkit-scrollbar {
@@ -1484,6 +1492,25 @@
         width: 36px;
         height: 36px;
         font-size: 14px;
+        border-radius: 50% !important;
+        overflow: visible;
+        flex-shrink: 0;
+      }
+      .friend-item .avatar img,
+      .friend-item img,
+      .friend-item .avatar-inner-wrap,
+      .friend-request-item .avatar,
+      .friend-request-item img,
+      .friend-avatar,
+      .friends-list img,
+      .friend-requests-list img,
+      #friends-list img,
+      #find-friend-results img,
+      [class*="friend"] img:not([style*="pointer-events:none"]),
+      [class*="friend"] .avatar {
+        border-radius: 50% !important;
+        object-fit: cover !important;
+        flex-shrink: 0;
       }
       .friend-info-col {
         display: flex;

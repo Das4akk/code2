@@ -542,6 +542,7 @@ class AuthManager {
               if (window.PremiumManager) {
                 PremiumManager.handlePostLoginReturn();
                 PremiumManager.updateThemeButtons();
+                PremiumManager.syncLocks();
               }
             } catch (e) {}
             try { if (window.SupportSystem?.initGlobalListener) window.SupportSystem.initGlobalListener(); } catch (e) {}
@@ -563,6 +564,9 @@ class AuthManager {
               } catch (err) {
                 console.warn("Background profile/badge checks:", err);
               }
+              try {
+                if (window.loadLeaderboard) window.loadLeaderboard();
+              } catch (_) {}
             })();
           } else {
             this.handleLogoutCleanup();

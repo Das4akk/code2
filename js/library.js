@@ -96,8 +96,13 @@ class LibraryManager {
     try {
         const { ref: dbRef, onValue, db } = await this.getDb();
         
-        onValue(dbRef(db, "library"), (snap) => {
+        // TEMP DEBUG
+        console.log('[LIBRARY-DEBUG] loading library data from path: library');
+        onValue(
+          dbRef(db, "library"),
+          (snap) => {
             const data = snap.val() || {};
+            console.log('[LIBRARY-DEBUG] got data exists:', snap.exists(), 'keys:', Object.keys(data));
             const parsed = [];
             // public
             if (data.public) {
@@ -116,7 +121,11 @@ class LibraryManager {
             }
             this.allVideos = parsed.sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
             this.renderGrid();
-        });
+          },
+          (err) => {
+            console.error('[LIBRARY-DEBUG] error:', err.code, err.message);
+          }
+        );
     } catch(e) {
         console.error("[LibraryManager] DB listening error:", e);
     }
@@ -571,10 +580,9 @@ class LibraryManager {
                       <button id="btn-lib-desc-toggle" class="btn-text-link" style="display:none; margin-top:8px; font-size:13px; color:var(--accent);">Читать полностью</button>
                   </div>
 
-                  ${this.hasPremium()
-                    ? `<button class="primary-btn" id="btn-lib-create-room" style="font-size:16px; padding:16px; border-radius:12px; color:#000000 !important; background:var(--brand); font-weight:700;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Food%20and%20Drink/Popcorn.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom" /> <span style="color:#000000 !important; font-weight:700;">Создать комнату с этим видео</span></button>`
-                    : `<button class="primary-btn locked-feature-btn" id="btn-lib-create-room" style="font-size:14.5px; padding:14px; border-radius:12px; opacity: 0.95; color: #ffffff !important; background: rgba(255, 255, 255, 0.08); border: 1px dashed rgba(255, 213, 106, 0.6);"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 6px;" /><span style="color:#ffffff !important; font-weight:600;">Создать комнату</span> <span style="font-size: 11.5px; background: rgba(255, 213, 106, 0.25); border: 1px solid rgba(255, 213, 106, 0.6); color: #ffffff !important; font-weight: 700; padding: 2px 8px; border-radius: 6px; margin-left: 8px;">Доступно с Premium</span></button>`
-                  }
+                  <div class="premium-locked-wrapper" data-feature="${(/vk\.com|vkvideo\.ru|vk\.ru/i.test(v.url || '') || v.platform === 'vk') ? 'vk-link-edit' : ''}">
+                    <button class="primary-btn" id="btn-lib-create-room" style="font-size:16px; padding:16px; border-radius:12px; color:#000000 !important; background:var(--brand); font-weight:700; width:100%;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Food%20and%20Drink/Popcorn.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom" /> <span style="color:#000000 !important; font-weight:700;">Создать комнату с этим видео</span></button>
+                  </div>
               </div>
           </div>
       `;
@@ -607,13 +615,17 @@ class LibraryManager {
 
       modal.querySelector("#btn-lib-close-view").onclick = () => this.closeModal("modal-lib-view");
       
+      const isVkVideo = /vk\.com|vkvideo\.ru|vk\.ru/i.test(v.url || '') || v.platform === 'vk';
+      if (isVkVideo && window.PremiumManager) PremiumManager.applyLockUI("vk-link-edit");
+
       modal.querySelector("#btn-lib-create-room").onclick = () => {
-          if (!this.hasPremium()) {
-              if (window.Utils && window.Utils.toast) {
-                  window.Utils.toast("Создание комнат из библиотеки доступно с COWIO Premium", "warning");
+          if (isVkVideo && !this.hasPremium()) {
+              if (window.PremiumManager) {
+                  PremiumManager.showPremiumLock("vk-link-edit");
+              } else {
+                  const premModal = document.getElementById("modal-premium-purchase");
+                  if (premModal) premModal.classList.add("active");
               }
-              const premModal = document.getElementById("modal-premium-purchase");
-              if (premModal) premModal.classList.add("active");
               return;
           }
           this.closeModal("modal-lib-view");

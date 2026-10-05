@@ -25,6 +25,8 @@ class Utils {
   }
 
   static toast(msg, type = "info") {
+    // TEMP DEBUG - DISABLED
+    /*
     const isDev = (window.AdminPanel && typeof window.AdminPanel.isCurrentUserCreator === "function" && window.AdminPanel.isCurrentUserCreator()) ||
                   (window.AdminPanel && typeof window.AdminPanel.isCurrentUserAdmin === "function" && window.AdminPanel.isCurrentUserAdmin());
     const msgStr = String(msg || "");
@@ -35,6 +37,7 @@ class Utils {
       console.warn("[Dev] Suppressed error:", msgStr);
       return;
     }
+    */
 
     let container = document.getElementById("toast-container");
     if (!container) {
@@ -661,6 +664,31 @@ class Utils {
       clearTimeout(timeout);
       timeout = setTimeout(() => func(...args), wait);
     };
+  }
+
+  static throttle(fn, delay = 100) {
+    let last = 0;
+    return (...args) => {
+      const now = Date.now();
+      if (now - last >= delay) {
+        last = now;
+        fn(...args);
+      }
+    };
+  }
+
+  static _firebaseGetCache = new Map();
+  static async getCached(dbInstance, path, ttl = 30000) {
+    const cached = this._firebaseGetCache.get(path);
+    if (cached && Date.now() - cached.ts < ttl) return cached.data;
+    const { get, ref } = await import("./firebase.js");
+    const snap = await get(ref(dbInstance || window.db, path));
+    this._firebaseGetCache.set(path, { ts: Date.now(), data: snap });
+    if (this._firebaseGetCache.size > 250) {
+      const firstKey = this._firebaseGetCache.keys().next().value;
+      this._firebaseGetCache.delete(firstKey);
+    }
+    return snap;
   }
 
   // [ADD] File to Base64 (Compressed for performance/DB)

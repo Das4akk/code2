@@ -150,6 +150,18 @@ class AdminPanel {
     );
   }
 
+  static isCreator() {
+    return this.isCurrentUserCreator();
+  }
+
+  static isAdmin() {
+    return this.isCurrentUserAdmin();
+  }
+
+  static isModerator() {
+    return typeof this.isCurrentUserModerator === 'function' ? this.isCurrentUserModerator() : this.isCurrentUserAdmin();
+  }
+
   static isCurrentUserCreator() {
     const user = AppState.currentUser || window.auth?.currentUser;
     if (!user) return false;

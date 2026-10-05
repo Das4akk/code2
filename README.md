@@ -68,6 +68,12 @@
 
 ---
 
+## 👑 Стандарты разработки и Premium-ограничений (Premium Lock Standard)
+* Подробная инструкция и правила оформления закрытых функций: [docs/PREMIUM_LOCK_STANDARD.md](docs/PREMIUM_LOCK_STANDARD.md).
+* Все закрытые функции оформляются строго через обёртку `.premium-locked-wrapper[data-feature="..."]` с блюром (frosted glass), анимированным замком 🔒 и вызовом `PremiumManager.showPremiumLock()`.
+
+---
+
 ## 🚀 Запуск и разработка
 
 ```bash

@@ -855,27 +855,27 @@ class VideoPlaybackManager {
 
     const useHls = isHls || /\.m3u8(\?|#|$)/i.test(source);
     if (useHls && window.Hls && window.Hls.isSupported()) {
+      // TEMP DEBUG - Optimized HLS configuration
       this.hlsInstance = new window.Hls({
+        lowLatencyMode: false,
         enableWorker: true,
-        lowLatencyMode: true,
-        maxBufferLength: 600,
-        maxMaxBufferLength: 2400,
-        maxBufferSize: 600 * 1024 * 1024,
-        backBufferLength: 300,
-        autoStartLoad: true,
+        backBufferLength: 30,
+        maxBufferLength: 30,
+        maxMaxBufferLength: 60,
+        maxBufferSize: 60 * 1024 * 1024,
         startLevel: -1,
+        capLevelToPlayerSize: true,
+        progressive: false,
+        autoStartLoad: true,
         startFragPrefetch: true,
-        fragLoadingTimeOut: 40000,
-        manifestLoadingTimeOut: 40000,
-        levelLoadingTimeOut: 40000,
-        fragLoadingMaxRetry: 10,
-        manifestLoadingMaxRetry: 10,
+        fragLoadingTimeOut: 15000,
+        manifestLoadingTimeOut: 15000,
+        levelLoadingTimeOut: 15000,
+        fragLoadingMaxRetry: 5,
+        manifestLoadingMaxRetry: 5,
         liveSyncDurationCount: 3,
         liveMaxLatencyDurationCount: 10,
         enableSoftwareAES: true,
-        capLevelToPlayerSize: false,
-
-        levelLoadingTimeOut: 30000,
       });
       this.hlsInstance.loadSource(source);
       this.hlsInstance.attachMedia(vid);
@@ -922,6 +922,10 @@ class VideoPlaybackManager {
     const vid = Utils.$("native-player");
     if (!vid) return;
 
+    // TEMP DEBUG
+    console.time('[PLAYER] load');
+    console.time('[PLAYER] parse');
+
     vid.onloadedmetadata = () => {
       if (typeof RoomManager !== "undefined") RoomManager.forceSyncVideo();
     };
@@ -936,6 +940,8 @@ class VideoPlaybackManager {
     const vkInfo = MediaResolverClient.extractVkInfo(
       room.videoSourceUrl || room.videoUrl,
     );
+
+    console.timeEnd('[PLAYER] parse');
 
     if (rtId && window.AppState && window.AppState.useProxy) {
       window.AppState.wasProxyEnabled = true;
@@ -1081,6 +1087,7 @@ class VideoPlaybackManager {
         vid.dataset.playbackKey = signature;
         RoomManager.applyLocalPermissions();
         setTimeout(() => VideoPlaybackManager.hideLoading(), 1200);
+        try { console.timeEnd('[PLAYER] load'); } catch (e) {}
         return;
       }
 
@@ -1101,7 +1108,10 @@ class VideoPlaybackManager {
       vid.controls = true;
       vid.playsInline = true;
       vid.preload = "auto";
-      vid.oncanplay = () => VideoPlaybackManager.hideLoading();
+      vid.oncanplay = () => {
+        VideoPlaybackManager.hideLoading();
+        try { console.timeEnd('[PLAYER] load'); } catch (e) {}
+      };
       vid.onplaying = () => VideoPlaybackManager.hideLoading();
       vid.onwaiting = () => VideoPlaybackManager.showLoading("Буферизация...");
       vid.onerror = () => {
@@ -1116,6 +1126,7 @@ class VideoPlaybackManager {
       setTimeout(() => VideoPlaybackManager.hideLoading(), 2000);
     } catch (err) {
       VideoPlaybackManager.hideLoading();
+      try { console.timeEnd('[PLAYER] load'); } catch (e) {}
       Utils.toast(err.message || "Ошибка загрузки видео", "error");
     }
   }

@@ -706,6 +706,122 @@ class PremiumManager {
     return Boolean(prem?.active);
   }
 
+  static isCurrentUserPremium() {
+    const uid = AppState.currentUser?.uid || window.auth?.currentUser?.uid;
+    if (!uid) return false;
+
+    // Staff bypass
+    const myProfile = AppState.usersCache?.get(uid) || AppState.myProfile;
+    if (this.isStaff(myProfile, uid)) return true;
+    if (window.AdminPanel) {
+      if (typeof AdminPanel.isCreator === "function" && AdminPanel.isCreator()) return true;
+      if (typeof AdminPanel.isCurrentUserCreator === "function" && AdminPanel.isCurrentUserCreator()) return true;
+      if (typeof AdminPanel.isCurrentUserAdmin === "function" && AdminPanel.isCurrentUserAdmin()) return true;
+      if (typeof AdminPanel.isAdmin === "function" && AdminPanel.isAdmin()) return true;
+    }
+
+    if (myProfile && this.isPremiumActive(myProfile, uid)) {
+      return true;
+    }
+
+    try {
+      const local = JSON.parse(localStorage.getItem("userPremium") || "{}");
+      if (local.uid === uid && (!local.expiresAt || local.expiresAt > Date.now())) return true;
+    } catch {}
+
+    return false;
+  }
+
+  static applyLockUI(featureName) {
+    const wrappers = document.querySelectorAll(`[data-feature="${featureName}"]`);
+    wrappers.forEach((wrapper) => {
+      const old = wrapper.querySelector(".premium-lock-overlay");
+      if (old) old.remove();
+
+      if (this.isCurrentUserPremium()) return;
+
+      const isSmall = wrapper.dataset.lockSize === "small" || wrapper.classList.contains("lock-small");
+      const overlay = document.createElement("div");
+      overlay.className = `premium-lock-overlay ${isSmall ? "premium-lock-small" : ""}`;
+      overlay.innerHTML = `
+        <div class="premium-lock-inner">
+          <span class="premium-lock-emoji">🔒</span>
+          <span class="premium-lock-text">Доступно с COWIO Premium</span>
+        </div>
+      `;
+      overlay.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.showPremiumLock(featureName);
+      });
+      wrapper.appendChild(overlay);
+    });
+  }
+
+  static syncLocks() {
+    const features = ["create-room", "vk-link-edit", "lib-add-video"];
+    features.forEach((f) => this.applyLockUI(f));
+  }
+
+  static showPremiumLock(featureName = "") {
+    if (document.getElementById("premium-lock-modal")) return;
+
+    let title = "Доступно с COWIO Premium";
+    let desc = "Эта функция доступна только подписчикам Premium. Оформите подписку, чтобы открыть её.";
+
+    if (featureName === "create-room") {
+      title = "Создание комнат с COWIO Premium";
+      desc = "Создание собственных комнат и онлайн-кинотеатров доступно владельцам подписки Premium.";
+    } else if (featureName === "vk-link-edit") {
+      title = "Синхронизация VK Video с Premium";
+      desc = "Выбор, изменение и просмотр видео из VK Video доступны по подписке COWIO Premium.";
+    }
+
+    const modal = document.createElement("div");
+    modal.id = "premium-lock-modal";
+    modal.className = "premium-lock-modal";
+    modal.innerHTML = `
+      <div class="premium-lock-modal-content">
+        <div class="premium-lock-emoji-large">🔒</div>
+        <h3 class="premium-lock-title">${Utils.escapeHtml(title)}</h3>
+        <p class="premium-lock-desc">${Utils.escapeHtml(desc)}</p>
+        <div class="premium-lock-actions">
+          <button type="button" class="premium-lock-btn premium-lock-btn-primary" id="btn-lock-modal-buy">
+            Оформить Premium
+          </button>
+          <button type="button" class="premium-lock-btn premium-lock-btn-secondary" id="btn-lock-modal-close">
+            Позже
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    modal.querySelector("#btn-lock-modal-buy").onclick = () => {
+      this.openPremiumPage();
+    };
+    modal.querySelector("#btn-lock-modal-close").onclick = () => {
+      modal.remove();
+    };
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) modal.remove();
+    });
+  }
+
+  static openPremiumPage() {
+    const modal = document.getElementById("premium-lock-modal");
+    if (modal) modal.remove();
+    if (window.Router && typeof Router.navigate === "function") {
+      Router.navigate("/premium");
+    } else if (window.FriendsManager && typeof FriendsManager.setNavActive === "function") {
+      FriendsManager.setNavActive("nav-premium");
+      if (typeof this.renderPremiumSection === "function") this.renderPremiumSection();
+    } else {
+      location.hash = "#/premium";
+    }
+  }
+
   static getUserLevel(profile) {
     if (!profile) return 0;
     const totalXp = Number(profile.xp) || 0;

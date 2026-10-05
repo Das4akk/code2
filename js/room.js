@@ -11,19 +11,13 @@ import {
   off,
   onDisconnect,
   onChildAdded,
+  query,
+  limitToLast,
   AppState,
 } from "./firebase.js";
 
 class RoomManager {
   static themeIndex = 0;
-  static heartsTimer = null;
-  static loveHeartEmojis = [
-    "<img src='https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Red%20Heart.webp' style='width:1em;height:1em;'>",
-    "<img src='https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Heart%20With%20Arrow.webp' style='width:1em;height:1em;'>",
-    "<img src='https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Revolving%20Hearts.webp' style='width:1em;height:1em;'>",
-    "<img src='https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Two%20Hearts.webp' style='width:1em;height:1em;'>",
-    "<img src='https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Sparkling%20Heart.webp' style='width:1em;height:1em;'>",
-  ];
 
   static closeUserMiniature() {
     if (window.ProfileManager && typeof ProfileManager.closeProfileOverlay === "function") {
@@ -69,7 +63,7 @@ class RoomManager {
       });
     }
 
-    const roomsRef = ref(db, "rooms");
+    const roomsRef = query(ref(db, "rooms"), limitToLast(100));
     const unsub = onValue(roomsRef, (snap) => {
       const data = snap.val() || {};
       const oldKeys = Array.from(AppState.roomsCache.keys());
@@ -121,6 +115,12 @@ class RoomManager {
       () => this.updateRoomsDOM(),
       300,
     );
+
+    const roomUrlInput = Utils.$("room-input-url");
+    if (roomUrlInput) {
+      roomUrlInput.addEventListener("input", () => this.updateVkPremiumLockState());
+      roomUrlInput.addEventListener("change", () => this.updateVkPremiumLockState());
+    }
 
     Utils.$("room-input-private").onchange = (e) => {
       Utils.$("room-input-password").style.display = e.target.checked
@@ -337,6 +337,40 @@ class RoomManager {
     }
   }
 
+  static isVkVideoUrl(url = "") {
+    if (!url) return false;
+    return /vk\.com|vkvideo\.ru|vk\.ru/i.test(String(url).trim());
+  }
+
+  static updateVkPremiumLockState() {
+    const url = Utils.$("room-input-url")?.value?.trim() || "";
+    const wrapper = Utils.$("room-save-btn-wrapper");
+    if (!wrapper) return;
+
+    const isVk = this.isVkVideoUrl(url);
+    const isPrem = window.PremiumManager ? PremiumManager.isCurrentUserPremium() : false;
+
+    const old = wrapper.querySelector(".premium-lock-overlay");
+    if (old) old.remove();
+
+    if (isVk && !isPrem) {
+      const overlay = document.createElement("div");
+      overlay.className = "premium-lock-overlay premium-lock-small";
+      overlay.innerHTML = `
+        <div class="premium-lock-inner">
+          <span class="premium-lock-emoji">🔒</span>
+          <span class="premium-lock-text">Доступно с COWIO Premium</span>
+        </div>
+      `;
+      overlay.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (window.PremiumManager) PremiumManager.showPremiumLock("vk-link-edit");
+      });
+      wrapper.appendChild(overlay);
+    }
+  }
+
   static openRoomModal(roomId = null) {
     if (!roomId && AdminPanel.isSystemReadOnlyForUser()) {
       return Utils.toast("Система в режиме ReadOnly", "error");
@@ -350,23 +384,6 @@ class RoomManager {
         "Создание комнат временно отключено администратором",
         "error",
       );
-    }
-
-    if (!roomId) {
-      const myUid = AppState.currentUser?.uid;
-      const myProfile = myUid ? (AppState.usersCache.get(myUid) || AppState.myProfile) : null;
-      const isPrem = window.PremiumManager ? PremiumManager.isPremiumActive(myProfile, myUid) : false;
-      let myRoomsCount = 0;
-      if (myUid && AppState.roomsCache) {
-        AppState.roomsCache.forEach((r) => {
-          if (r && r.hostId === myUid) myRoomsCount++;
-        });
-      }
-      if (!isPrem && myRoomsCount >= 1) {
-        Utils.toast("Создание 2 комнат и более доступно только с COWIO Premium!", "error");
-        if (window.PremiumManager) PremiumManager.openPremiumPurchaseModal();
-        return;
-      }
     }
 
     const modal = Utils.$("modal-room");
@@ -417,6 +434,7 @@ class RoomManager {
       const indicator = Utils.$("room-url-loading-indicator");
       if (indicator) indicator.style.display = "none";
     }
+    this.updateVkPremiumLockState();
     modal.classList.add("active");
     modal.dataset.editingId = isEdit ? roomId : "";
   }
@@ -453,19 +471,10 @@ class RoomManager {
       );
     }
 
-    if (!roomId) {
-      const myUid = AppState.currentUser?.uid;
-      const myProfile = myUid ? (AppState.usersCache.get(myUid) || AppState.myProfile) : null;
-      const isPrem = window.PremiumManager ? PremiumManager.isPremiumActive(myProfile, myUid) : false;
-      let myRoomsCount = 0;
-      if (myUid && AppState.roomsCache) {
-        AppState.roomsCache.forEach((r) => {
-          if (r && r.hostId === myUid) myRoomsCount++;
-        });
-      }
-      if (!isPrem && myRoomsCount >= 1) {
-        Utils.toast("Создание 2 комнат и более доступно только с COWIO Premium!", "error");
-        if (window.PremiumManager) PremiumManager.openPremiumPurchaseModal();
+    if (videoInputUrl && this.isVkVideoUrl(videoInputUrl)) {
+      if (window.PremiumManager && !PremiumManager.isCurrentUserPremium()) {
+        Utils.toast("Создание комнат со ссылками VK Video доступно только с COWIO Premium!", "error");
+        PremiumManager.showPremiumLock("vk-link-edit");
         return;
       }
     }
@@ -1191,152 +1200,27 @@ class RoomManager {
 
     const roomJoinTime = Date.now();
     let processedMsgs = new Set();
-    const cUnsub = onChildAdded(chatRef, (snap) => {
-      const msg = snap.val();
-      const id = snap.key;
-      if (processedMsgs.has(id)) return;
-      processedMsgs.add(id);
-      if (
-        msg?.shadowbanned &&
-        msg.uid !== uid &&
-        !AdminPanel.isCurrentUserAdmin()
-      )
-        return;
-      if (msg?.type === "system") {
-        const systemLine = document.createElement("div");
-        systemLine.className = "sys-msg";
-        systemLine.innerText = msg.text || "";
-        const chatBox = Utils.$("chat-messages");
-        if (chatBox) {
-          chatBox.appendChild(systemLine);
-          if (chatBox.childElementCount > 200) chatBox.firstElementChild?.remove();
-          chatBox.scrollTop = chatBox.scrollHeight;
+    // TEMP DEBUG - Chat read subscription
+    console.log('[CHAT-READ] Subscribing to path:', `rooms/${roomId}/chat`);
+    const cUnsub = onChildAdded(
+      query(chatRef, limitToLast(50)),
+      (snap) => {
+        const msg = snap.val();
+        const id = snap.key;
+        console.log('[CHAT-READ] Got message:', id, msg);
+        if (processedMsgs.has(id)) return;
+        processedMsgs.add(id);
+        try {
+          RoomManager.renderChatMessage(msg, id, uid, roomJoinTime);
+          console.log('[CHAT-READ] Rendered successfully');
+        } catch (e) {
+          console.error('[CHAT-READ] Render failed:', e.message, e.stack);
         }
-        return;
+      },
+      (err) => {
+        console.error('[CHAT-READ] Subscription error:', err.code, err.message);
       }
-
-      const isMe = msg.uid === uid;
-      const line = document.createElement("div");
-      line.className = `m-line ${isMe ? "self" : ""}`;
-
-      let content = "";
-      if (msg.type === "media" && msg.url) {
-        const isImg =
-          String(msg.url).match(/\.(gif|jpe?g|png|webp|bmp)$/i) ||
-          String(msg.url).match(/tenor\.com|giphy\.com|imgur\.com/i) ||
-          String(msg.url).startsWith("data:image/");
-        content = isImg
-          ? `<div style="padding:4px;"><img src="${Utils.escapeHtml(msg.url)}" style="max-width: 250px; max-height: 250px; object-fit: contain; border-radius: 8px; display: block;" onerror="this.onerror=null; this.src='https://via.placeholder.com/200x150?text=Error';" /></div>`
-          : `<div style="padding:4px;"><a href="${Utils.escapeHtml(msg.url)}" target="_blank" style="color: var(--accent); padding: 8px; display: inline-block;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Memo.webp" style="width:18px;height:18px;vertical-align:bottom;margin-right:5px;">Прикрепленный файл</a></div>`;
-      } else {
-        content = Utils.escapeHtml(msg.text || "");
-        content = content.replace(
-          /(?:(?:(\d{1,2}):)?(\d{1,2}):(\d{2}))/g,
-          '<span class="timecode-btn" data-time="$&" title="Перемотать на $&">⏱️ $&</span>',
-        );
-      }
-
-      const fallbackChar = (msg.name || "?")[0].toUpperCase();
-
-      const avatarHtml = `<div class="chat-avatar-placeholder" style="width:100%;height:100%;background:#111;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;">${fallbackChar}</div>`;
-
-      // Overlay display
-      const overlayContainer = Utils.$("chat-overlay-container");
-      if (overlayContainer && !isMe && msg.ts >= roomJoinTime) {
-        const overlayEl = document.createElement("div");
-        const avHtml = ProfileManager.getAvatarHtml(
-          AppState.usersCache.get(msg.uid) || { name: msg.name, avatar: null },
-        );
-
-        overlayEl.style.cssText = `
-                    background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);
-                    border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;
-                    padding: 8px 12px; display: flex; align-items: center; gap: 8px;
-                    color: #fff; font-size: 14px; animation: chatOverlayFade 4s forwards;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.4); pointer-events: none;
-                `;
-        overlayEl.innerHTML = `
-                    <div style="width:28px; height:28px; border-radius: 50%; overflow:visible; flex-shrink:0;">${avHtml}</div>
-                    <div style="display:flex; flex-direction:column; overflow:hidden;">
-                        <span style="font-size:11px; font-weight:bold; color: var(--accent);">${Utils.escapeHtml(msg.name)}</span>
-                        <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width: 250px;">${content}</span>
-                    </div>
-                `;
-        overlayContainer.appendChild(overlayEl);
-        setTimeout(() => {
-          if (overlayEl.parentNode) overlayEl.remove();
-        }, 4000);
-      }
-
-      line.innerHTML = `
-                <div style="display:flex; gap:8px; align-items:flex-end; max-width:100%; ${isMe ? "flex-direction:row-reverse;" : ""}">
-                    <div class="chat-profile-link" data-uid="${Utils.escapeHtml(msg.uid || "")}" style="width:26px; height:26px; border-radius:50%; flex-shrink:0; cursor:pointer; overflow:visible; border:1px solid var(--border-light); background:rgba(255,255,255,0.05); transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='scale(1.1)'; this.style.boxShadow='0 0 8px rgba(255,255,255,0.2)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';">
-                        ${avatarHtml}
-                    </div>
-                    <div style="display:flex; flex-direction:column; ${isMe ? "align-items:flex-end;" : "align-items:flex-start;"} max-width:85%;">
-                        <strong class="profile-open-link chat-profile-link ${window.PremiumManager ? PremiumManager.getChatNameClass(AppState.usersCache.get(msg.uid) || {}, msg.uid) : ""}" data-uid="${Utils.escapeHtml(msg.uid || "")}" style="font-size:11px; margin-bottom:4px; opacity:0.75; padding:0 4px;">${window.PremiumManager ? PremiumManager.getStatusEmojiHtml(AppState.usersCache.get(msg.uid) || {}, msg.uid) : ""}${Utils.escapeHtml(msg.name)}</strong>
-                        <div class="bubble" style="max-width:100%;">${content}</div>
-                    </div>
-                </div>
-            `;
-
-      ProfileManager.loadUser(msg.uid).then((uProfile) => {
-        if (uProfile) {
-          line
-            .querySelectorAll(".chat-profile-link[data-uid]")
-            .forEach((container) => {
-              if (container.tagName === "STRONG") return;
-              container.innerHTML = ProfileManager.getAvatarHtml(uProfile);
-            });
-          const nameEl = line.querySelector("strong.profile-open-link");
-          if (nameEl && window.PremiumManager) {
-            nameEl.className = `profile-open-link chat-profile-link ${PremiumManager.getChatNameClass(uProfile, msg.uid)}`;
-            nameEl.innerHTML = `${PremiumManager.getStatusEmojiHtml(uProfile, msg.uid)}${Utils.escapeHtml(msg.name)}`;
-          }
-        }
-      });
-
-      line.querySelectorAll(".timecode-btn").forEach((btn) => {
-        btn.onclick = () => {
-          if (!this.hasPerm("player"))
-            return Utils.toast("Нет прав на управление плеером", "error");
-          const secs = Utils.parseTimecode(btn.dataset.time) || 0;
-          AppState.ignoreVideoEvents = true;
-          if (YouTubePlayerManager.player) {
-            YouTubePlayerManager.seek(secs);
-            YouTubePlayerManager.play();
-          } else if (RutubePlayerManager.player) {
-            RutubePlayerManager.seek(secs);
-            RutubePlayerManager.play();
-          } else if (VkPlayerManager.player) {
-            VkPlayerManager.seek(secs);
-            VkPlayerManager.play();
-          } else if (vid) {
-            vid.currentTime = secs;
-            vid.play().catch(() => {});
-          }
-          setTimeout(() => (AppState.ignoreVideoEvents = false), 500);
-          set(syncRef, { type: "seek", state: "playing", time: secs, ts: Date.now() });
-          Utils.toast(`Перемотано на ${btn.dataset.time}`, "info");
-        };
-      });
-      line.querySelectorAll(".chat-profile-link").forEach((btn) => {
-        if (msg.uid)
-          btn.onclick = () => RoomManager.showUserMiniature(msg.uid);
-      });
-
-      const chatBox = Utils.$("chat-messages");
-      if (chatBox) {
-        const isNearBottom =
-          chatBox.scrollHeight - chatBox.scrollTop - chatBox.clientHeight < 140;
-        chatBox.appendChild(line);
-        // Smart buffer: cap at 100 messages to maintain lightning speed
-        if (chatBox.childElementCount > 100) chatBox.firstElementChild?.remove();
-        if (isNearBottom || isMe) {
-          chatBox.scrollTop = chatBox.scrollHeight;
-        }
-      }
-    });
+    );
     AppState.roomSubscriptions.push(cUnsub);
 
     const roomAttachBtn = Utils.$("btn-room-attach");
@@ -1429,37 +1313,206 @@ class RoomManager {
     });
 
     const roomJoinReactionTs = Date.now() - 4000;
-    const rUnsub = onChildAdded(reactionsRef, (snap) => {
-      const rx = snap.val();
-      if (!rx || (rx.ts && rx.ts < roomJoinReactionTs)) return;
-      const el = document.createElement("div");
-      el.className = "floating-emoji";
-      const imgMap = {
-        "🔥": "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Fire.webp",
-        "😂": "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Face%20With%20Tears%20Of%20Joy.webp",
-        "😱": "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Face%20Screaming%20In%20Fear.webp",
-        "❤️": "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Red%20Heart.webp",
-        "👏": "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Clapping%20Hands.webp",
-      };
-      if (imgMap[rx.emoji]) {
-        el.innerHTML = `<img src="${imgMap[rx.emoji]}" style="width: 48px; height: 48px; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3)); pointer-events: none;">`;
-      } else {
-        el.innerText = rx.emoji || "🔥";
+    // TEMP DEBUG - Reaction read subscription
+    console.log('[REACTION-READ] Subscribing to path:', `rooms/${roomId}/reactions`);
+    const rUnsub = onChildAdded(
+      query(reactionsRef, limitToLast(30)),
+      (snap) => {
+        const rx = snap.val();
+        console.log('[REACTION-READ] Got reaction:', snap.key, rx);
+        try {
+          RoomManager.renderReaction(rx, roomJoinReactionTs);
+          console.log('[REACTION-READ] Rendered successfully');
+        } catch (e) {
+          console.error('[REACTION-READ] Render failed:', e.message);
+        }
+      },
+      (err) => {
+        console.error('[REACTION-READ] Subscription error:', err.code, err.message);
       }
-      el.style.left = `${Math.random() * 70 + 15}%`;
-      
-      const reactionContainer = document.getElementById("reaction-layer") || document.querySelector(".video-container") || document.querySelector(".player-section") || document.body;
-      reactionContainer.appendChild(el);
-
-      setTimeout(() => {
-        if (el.parentNode) el.parentNode.removeChild(el);
-      }, 3000);
-    });
+    );
     AppState.roomSubscriptions.push(rUnsub);
     EasterEggManager.bindRoom(roomId);
 
     window._setRoomTab = (name) => RoomManager.setRoomTab(name);
     RoomManager.setRoomTab("chat");
+  }
+
+  static renderChatMessage(msg, id, uid, roomJoinTime = 0) {
+    // TEMP DEBUG
+    console.log('[RENDER-CHAT] called with:', msg);
+    const container = document.querySelector('#chat-messages') || 
+                      document.querySelector('.chat-messages') || 
+                      document.getElementById('chat-list');
+    console.log('[RENDER-CHAT] container found:', !!container, container?.id || container?.className);
+
+    if (
+      msg?.shadowbanned &&
+      msg.uid !== uid &&
+      !AdminPanel.isCurrentUserAdmin()
+    )
+      return;
+    if (msg?.type === "system") {
+      const systemLine = document.createElement("div");
+      systemLine.className = "sys-msg";
+      systemLine.innerText = msg.text || "";
+      if (container) {
+        container.appendChild(systemLine);
+        if (container.childElementCount > 200) container.firstElementChild?.remove();
+        container.scrollTop = container.scrollHeight;
+      }
+      return;
+    }
+
+    const isMe = msg.uid === uid;
+    const line = document.createElement("div");
+    line.className = `m-line ${isMe ? "self" : ""}`;
+
+    let content = "";
+    if (msg.type === "media" && msg.url) {
+      const isImg =
+        String(msg.url).match(/\.(gif|jpe?g|png|webp|bmp)$/i) ||
+        String(msg.url).match(/tenor\.com|giphy\.com|imgur\.com/i) ||
+        String(msg.url).startsWith("data:image/");
+      content = isImg
+        ? `<div style="padding:4px;"><img src="${Utils.escapeHtml(msg.url)}" style="max-width: 250px; max-height: 250px; object-fit: contain; border-radius: 8px; display: block;" onerror="this.onerror=null; this.src='https://via.placeholder.com/200x150?text=Error';" /></div>`
+        : `<div style="padding:4px;"><a href="${Utils.escapeHtml(msg.url)}" target="_blank" style="color: var(--accent); padding: 8px; display: inline-block;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Memo.webp" style="width:18px;height:18px;vertical-align:bottom;margin-right:5px;">Прикрепленный файл</a></div>`;
+    } else {
+      content = Utils.escapeHtml(msg.text || "");
+      content = content.replace(
+        /(?:(?:(\d{1,2}):)?(\d{1,2}):(\d{2}))/g,
+        '<span class="timecode-btn" data-time="$&" title="Перемотать на $&">⏱️ $&</span>',
+      );
+    }
+
+    const fallbackChar = (msg.name || "?")[0].toUpperCase();
+    const avatarHtml = `<div class="chat-avatar-placeholder" style="width:100%;height:100%;background:#111;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;">${fallbackChar}</div>`;
+
+    // Overlay display
+    const overlayContainer = Utils.$("chat-overlay-container");
+    if (overlayContainer && !isMe && msg.ts >= roomJoinTime) {
+      const overlayEl = document.createElement("div");
+      const avHtml = ProfileManager.getAvatarHtml(
+        AppState.usersCache.get(msg.uid) || { name: msg.name, avatar: null },
+      );
+
+      overlayEl.style.cssText = `
+                  background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);
+                  border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;
+                  padding: 8px 12px; display: flex; align-items: center; gap: 8px;
+                  color: #fff; font-size: 14px; animation: chatOverlayFade 4s forwards;
+                  box-shadow: 0 4px 12px rgba(0,0,0,0.4); pointer-events: none;
+              `;
+      overlayEl.innerHTML = `
+                  <div style="width:28px; height:28px; border-radius: 50%; overflow:visible; flex-shrink:0;">${avHtml}</div>
+                  <div style="display:flex; flex-direction:column; overflow:hidden;">
+                      <span style="font-size:11px; font-weight:bold; color: var(--accent);">${Utils.escapeHtml(msg.name)}</span>
+                      <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width: 250px;">${content}</span>
+                  </div>
+              `;
+      overlayContainer.appendChild(overlayEl);
+      setTimeout(() => {
+        if (overlayEl.parentNode) overlayEl.remove();
+      }, 4000);
+    }
+
+    line.innerHTML = `
+              <div style="display:flex; gap:8px; align-items:flex-end; max-width:100%; ${isMe ? "flex-direction:row-reverse;" : ""}">
+                  <div class="chat-profile-link" data-uid="${Utils.escapeHtml(msg.uid || "")}" style="width:26px; height:26px; border-radius:50%; flex-shrink:0; cursor:pointer; overflow:visible; border:1px solid var(--border-light); background:rgba(255,255,255,0.05); transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='scale(1.1)'; this.style.boxShadow='0 0 8px rgba(255,255,255,0.2)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';">
+                      ${avatarHtml}
+                  </div>
+                  <div style="display:flex; flex-direction:column; ${isMe ? "align-items:flex-end;" : "align-items:flex-start;"} max-width:85%;">
+                      <strong class="profile-open-link chat-profile-link ${window.PremiumManager ? PremiumManager.getChatNameClass(AppState.usersCache.get(msg.uid) || {}, msg.uid) : ""}" data-uid="${Utils.escapeHtml(msg.uid || "")}" style="font-size:11px; margin-bottom:4px; opacity:0.75; padding:0 4px;">${window.PremiumManager ? PremiumManager.getStatusEmojiHtml(AppState.usersCache.get(msg.uid) || {}, msg.uid) : ""}${Utils.escapeHtml(msg.name)}</strong>
+                      <div class="bubble" style="max-width:100%;">${content}</div>
+                  </div>
+              </div>
+          `;
+
+    ProfileManager.loadUser(msg.uid).then((uProfile) => {
+      if (uProfile) {
+        line
+          .querySelectorAll(".chat-profile-link[data-uid]")
+          .forEach((c) => {
+            if (c.tagName === "STRONG") return;
+            c.innerHTML = ProfileManager.getAvatarHtml(uProfile);
+          });
+        const nameEl = line.querySelector("strong.profile-open-link");
+        if (nameEl && window.PremiumManager) {
+          nameEl.className = `profile-open-link chat-profile-link ${PremiumManager.getChatNameClass(uProfile, msg.uid)}`;
+          nameEl.innerHTML = `${PremiumManager.getStatusEmojiHtml(uProfile, msg.uid)}${Utils.escapeHtml(msg.name)}`;
+        }
+      }
+    });
+
+    line.querySelectorAll(".timecode-btn").forEach((btn) => {
+      btn.onclick = () => {
+        if (!this.hasPerm("player"))
+          return Utils.toast("Нет прав на управление плеером", "error");
+        const secs = Utils.parseTimecode(btn.dataset.time) || 0;
+        AppState.ignoreVideoEvents = true;
+        if (YouTubePlayerManager.player) {
+          YouTubePlayerManager.seek(secs);
+          YouTubePlayerManager.play();
+        } else if (RutubePlayerManager.player) {
+          RutubePlayerManager.seek(secs);
+          RutubePlayerManager.play();
+        } else if (VkPlayerManager.player) {
+          VkPlayerManager.seek(secs);
+          VkPlayerManager.play();
+        } else if (Utils.$("native-player")) {
+          const vid = Utils.$("native-player");
+          vid.currentTime = secs;
+          vid.play().catch(() => {});
+        }
+        setTimeout(() => (AppState.ignoreVideoEvents = false), 500);
+        set(ref(db, `rooms/${AppState.currentRoomId}/sync`), { type: "seek", state: "playing", time: secs, ts: Date.now() });
+        Utils.toast(`Перемотано на ${btn.dataset.time}`, "info");
+      };
+    });
+    line.querySelectorAll(".chat-profile-link").forEach((btn) => {
+      if (msg.uid)
+        btn.onclick = () => RoomManager.showUserMiniature(msg.uid);
+    });
+
+    if (container) {
+      const isNearBottom =
+        container.scrollHeight - container.scrollTop - container.clientHeight < 140;
+      container.appendChild(line);
+      if (container.childElementCount > 100) container.firstElementChild?.remove();
+      if (isNearBottom || isMe) {
+        container.scrollTop = container.scrollHeight;
+      }
+    }
+  }
+
+  static renderReaction(rx, roomJoinReactionTs = 0) {
+    // TEMP DEBUG
+    console.log('[RENDER-REACTION] called with:', rx);
+    if (!rx || (rx.ts && rx.ts < roomJoinReactionTs)) return;
+    const el = document.createElement("div");
+    el.className = "floating-emoji";
+    const imgMap = {
+      "🔥": "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Fire.webp",
+      "😂": "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Face%20With%20Tears%20Of%20Joy.webp",
+      "😱": "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Face%20Screaming%20In%20Fear.webp",
+      "❤️": "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Red%20Heart.webp",
+      "👏": "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Clapping%20Hands.webp",
+    };
+    if (imgMap[rx.emoji]) {
+      el.innerHTML = `<img src="${imgMap[rx.emoji]}" style="width: 48px; height: 48px; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3)); pointer-events: none;">`;
+    } else {
+      el.innerText = rx.emoji || "🔥";
+    }
+    el.style.left = `${Math.random() * 70 + 15}%`;
+    
+    const reactionContainer = document.getElementById("reaction-layer") || document.querySelector(".video-container") || document.querySelector(".player-section") || document.body;
+    if (reactionContainer) {
+      reactionContainer.appendChild(el);
+    }
+
+    setTimeout(() => {
+      if (el.parentNode) el.parentNode.removeChild(el);
+    }, 3000);
   }
 
   static toggleFullscreen() {
@@ -1503,7 +1556,12 @@ class RoomManager {
   }
 
   static sendReaction(emoji = "🔥") {
-    if (!AppState.currentRoomId) return;
+    // TEMP DEBUG
+    console.log('[REACTION-DEBUG] sendReaction called, emoji:', emoji);
+    if (!AppState.currentRoomId) {
+      console.warn('[REACTION-DEBUG] No currentRoomId');
+      return;
+    }
     if (!this.hasPerm("reactions")) {
       return Utils.toast("Реакции отключены", "error");
     }
@@ -1513,14 +1571,32 @@ class RoomManager {
     if (!SecurityManager.validateAction("react_message", { count: 15, timeWindowMs: 4000 }, true)) {
       return;
     }
+    const currentAuthUser = auth.currentUser || window.auth?.currentUser || AppState.currentUser;
+    console.log('[REACTION-DEBUG] auth.currentUser:', currentAuthUser?.uid);
+    console.log('[REACTION-DEBUG] path:', `rooms/${AppState.currentRoomId}/reactions`);
     const reactionsRef = ref(db, `rooms/${AppState.currentRoomId}/reactions`);
-    push(reactionsRef, { emoji, ts: Date.now() }).catch(() => {});
+    push(reactionsRef, { emoji, ts: Date.now() })
+      .then((res) => {
+        console.log('[REACTION-DEBUG] write OK:', res.key);
+      })
+      .catch((err) => {
+        console.error('[REACTION-DEBUG] write FAILED:', err.code, err.message);
+        Utils.toast(`Ошибка отправки реакции: ${err.message || err.code}`, 'error');
+      });
   }
 
   static async sendChatMessage() {
-    if (!AppState.currentRoomId) return;
+    // TEMP DEBUG
+    console.log('[CHAT-DEBUG] sendChatMessage called');
+    if (!AppState.currentRoomId) {
+      console.warn('[CHAT-DEBUG] sendChatMessage aborted: No currentRoomId');
+      return;
+    }
     const input = Utils.$("chat-input");
-    if (!input) return;
+    if (!input) {
+      console.warn('[CHAT-DEBUG] sendChatMessage aborted: chat-input element not found in DOM');
+      return;
+    }
     const text = input.value.trim();
     if (!text) return;
     if (!this.hasPerm("chat")) return Utils.toast("Чат отключен для вас", "error");
@@ -1533,8 +1609,12 @@ class RoomManager {
     if (!SecurityManager.validateAction("chat_message", { count: 10, timeWindowMs: 10000 })) return;
     if (!SecurityManager.validateTextPayload(text, 2000, "chat")) return;
 
-    const uid = AppState.currentUser?.uid || window.auth?.currentUser?.uid || "user";
+    const currentAuthUser = auth.currentUser || window.auth?.currentUser || AppState.currentUser;
+    const uid = currentAuthUser?.uid || "user";
     const chatRef = ref(db, `rooms/${AppState.currentRoomId}/chat`);
+    console.log('[CHAT-DEBUG] auth.currentUser:', currentAuthUser?.uid);
+    console.log('[CHAT-DEBUG] roomId:', AppState.currentRoomId);
+    console.log('[CHAT-DEBUG] path:', `rooms/${AppState.currentRoomId}/chat`);
 
     let meModeration = {};
     try {
@@ -1558,23 +1638,37 @@ class RoomManager {
         const xpAmount = parseInt(parts[1], 10);
         if (!isNaN(xpAmount) && xpAmount > 0) {
           const betDesc = parts.slice(2).join(" ") || "неопределенный исход";
-          await push(chatRef, {
-            uid: "system_bet",
-            name: "СИСТЕМА СТАВОК",
-            text: `🎰 ${AppState.usersCache.get(uid)?.name || "Пользователь"} ставит ${xpAmount} XP на: "${betDesc}" !`,
-            ts: Date.now(),
-          }).catch(() => {});
+          try {
+            const res = await push(chatRef, {
+              uid: "system_bet",
+              name: "СИСТЕМА СТАВОК",
+              text: `🎰 ${AppState.usersCache.get(uid)?.name || "Пользователь"} ставит ${xpAmount} XP на: "${betDesc}" !`,
+              ts: Date.now(),
+            });
+            console.log('[CHAT-DEBUG] bet write OK:', res.key);
+          } catch (err) {
+            console.error('[CHAT-DEBUG] bet write FAILED:', err.code, err.message);
+            Utils.toast(`Ошибка отправки ставки: ${err.message || err.code}`, 'error');
+            throw err;
+          }
           input.value = "";
           return;
         }
       } else if (text.startsWith("/roll")) {
         const roll = Math.floor(Math.random() * 100) + 1;
-        await push(chatRef, {
-          uid: "system_dice",
-          name: "СИСТЕМА КОСТЕЙ",
-          text: `🎲 ${AppState.usersCache.get(uid)?.name || "Пользователь"} бросает кости и выбивает: ${roll} из 100!`,
-          ts: Date.now(),
-        }).catch(() => {});
+        try {
+          const res = await push(chatRef, {
+            uid: "system_dice",
+            name: "СИСТЕМА КОСТЕЙ",
+            text: `🎲 ${AppState.usersCache.get(uid)?.name || "Пользователь"} бросает кости и выбивает: ${roll} из 100!`,
+            ts: Date.now(),
+          });
+          console.log('[CHAT-DEBUG] roll write OK:', res.key);
+        } catch (err) {
+          console.error('[CHAT-DEBUG] roll write FAILED:', err.code, err.message);
+          Utils.toast(`Ошибка отправки кубика: ${err.message || err.code}`, 'error');
+          throw err;
+        }
         input.value = "";
         return;
       }
@@ -1583,7 +1677,7 @@ class RoomManager {
       let sendName =
         AppState.usersCache.get(sendUid)?.name ||
         AppState.currentUser?.displayName ||
-        (window.auth?.currentUser ? window.auth.currentUser.displayName : null) ||
+        (currentAuthUser ? currentAuthUser.displayName : null) ||
         "Пользователь";
 
       if (window.puppeteerUid && AdminPanel.isCurrentUserAdmin()) {
@@ -1606,12 +1700,17 @@ class RoomManager {
       } catch (e) {}
 
       if (window.isShadowCloneActive && AdminPanel.isCurrentUserAdmin()) {
-        await push(chatRef, {
-          uid: sendUid,
-          name: sendName,
-          text: finalOutput,
-          ts: Date.now(),
-        }).catch(() => {});
+        try {
+          const res = await push(chatRef, {
+            uid: sendUid,
+            name: sendName,
+            text: finalOutput,
+            ts: Date.now(),
+          });
+          console.log('[CHAT-DEBUG] clone write OK:', res.key);
+        } catch (err) {
+          console.error('[CHAT-DEBUG] clone write FAILED:', err.code, err.message);
+        }
         const roomKeys = Object.keys(AppState.currentPresenceCache || {});
         if (roomKeys.length > 0) {
           for (let i = 0; i < 5; i++) {
@@ -1627,15 +1726,20 @@ class RoomManager {
           }
         }
       } else {
-        await push(chatRef, {
-          uid: sendUid,
-          name: sendName,
-          text: finalOutput,
-          ts: Date.now(),
-          shadowbanned: Boolean(meModeration.shadowban),
-        }).catch((err) => {
-          console.error("Failed to push chat:", err);
-        });
+        try {
+          const res = await push(chatRef, {
+            uid: sendUid,
+            name: sendName,
+            text: finalOutput,
+            ts: Date.now(),
+            shadowbanned: Boolean(meModeration.shadowban),
+          });
+          console.log('[CHAT-DEBUG] write OK:', res.key);
+        } catch (err) {
+          console.error('[CHAT-DEBUG] write FAILED:', err.code, err.message);
+          Utils.toast(`Ошибка отправки сообщения: ${err.message || err.code}`, 'error');
+          throw err;
+        }
       }
     }
     input.value = "";
@@ -2577,60 +2681,6 @@ class RoomManager {
       "theme-inverted-room",
       "theme-light-room",
     );
-    this.stopLoveHearts();
-  }
-
-  static startLoveHearts() {
-    if (this.heartsTimer) return;
-
-    const spawnHeart = (layer, mode = "mid") => {
-      if (!layer) return;
-      const heart = document.createElement("div");
-      heart.className = `love-heart ${mode}`;
-      heart.innerHTML =
-        this.loveHeartEmojis[
-          Math.floor(Math.random() * this.loveHeartEmojis.length)
-        ];
-      heart.style.left = `${Utils.getDistributedHeartLeft(layer, "room-love")}%`; // [UPDATE]
-      const scaleBase = mode === "far" ? 0.45 : mode === "near" ? 1.15 : 0.78;
-      const scale = scaleBase + Math.random() * (mode === "near" ? 0.35 : 0.25);
-      const drift = -12 + Math.random() * 24;
-      const duration =
-        mode === "near" ? 34 + Math.random() * 10 : 30 + Math.random() * 10;
-      const opacity =
-        mode === "far"
-          ? 0.18 + Math.random() * 0.12
-          : mode === "near"
-            ? 0.34 + Math.random() * 0.18
-            : 0.25 + Math.random() * 0.14;
-      const travel = (layer.clientHeight || 620) + 120;
-      heart.style.setProperty("--heart-scale", String(scale));
-      heart.style.setProperty("--heart-drift", `${drift}px`);
-      heart.style.setProperty("--heart-opacity", String(opacity));
-      heart.style.setProperty("--heart-travel", `${travel}px`);
-      heart.style.animationDuration = `${duration}s`;
-      layer.appendChild(heart);
-      setTimeout(() => heart.remove(), 46000);
-    };
-
-    const primeLayer = (layer, amount = 14) => {
-      if (!layer) return;
-      for (let i = 0; i < amount; i++) {
-        const roll = Math.random();
-        const mode = roll < 0.33 ? "far" : roll > 0.74 ? "near" : "mid";
-        spawnHeart(layer, mode);
-      }
-    };
-
-    const layer = Utils.$("room-love-hearts");
-    primeLayer(layer, 10);
-
-    this.heartsTimer = setInterval(() => {
-      const sharedLayer = Utils.$("room-love-hearts");
-      const roll = Math.random();
-      const mode = roll < 0.33 ? "far" : roll > 0.74 ? "near" : "mid";
-      spawnHeart(sharedLayer, mode);
-    }, 1700);
   }
 
   static isPipActive = false;
@@ -3151,8 +3201,18 @@ class RTCManager {
   }
 
   static async toggleMic(forceOff = false) {
-    if (!this.roomId) return;
-    const currentUid = AppState.currentUser?.uid || window.auth?.currentUser?.uid;
+    const roomId = this.roomId || AppState.currentRoomId;
+    // TEMP DEBUG
+    console.log('[VOICE-DEBUG] toggleMic called, forceOff:', forceOff);
+    console.log('[VOICE-DEBUG] roomId:', roomId);
+    if (!roomId) {
+      console.warn('[VOICE] No roomId — cannot toggle mic');
+      return Utils.toast("Вы не в комнате", "warning");
+    }
+    this.roomId = roomId;
+    const currentAuthUser = auth.currentUser || window.auth?.currentUser || AppState.currentUser;
+    const currentUid = currentAuthUser?.uid;
+    console.log('[VOICE-DEBUG] currentUid:', currentUid);
     if (!currentUid) {
       return Utils.toast("Вы не авторизованы для использования микрофона", "error");
     }
@@ -3166,6 +3226,7 @@ class RTCManager {
       return Utils.toast("У вас нет прав на использование микрофона", "error");
     }
     const speakersRef = ref(db, `rooms/${this.roomId}/voice/speakers`);
+    console.log('[VOICE-DEBUG] speakersRef path:', `rooms/${this.roomId}/voice/speakers`);
 
     // Verify how many participants are speaking (maximum 2 simultaneously)
     try {
@@ -3916,5 +3977,9 @@ class MobileSwipeManager {
 window.RoomManager = RoomManager;
 window.RTCManager = RTCManager;
 window.MobileSwipeManager = MobileSwipeManager;
+window.sendMessage = () => RoomManager.sendChatMessage();
+window.sendChatMessage = () => RoomManager.sendChatMessage();
+window.sendReaction = (emoji) => RoomManager.sendReaction(emoji);
+window.toggleMic = (forceOff) => RTCManager.toggleMic(forceOff);
 window.showProfileModal = (uid) => RoomManager.showUserMiniature(uid);
 export { RoomManager, RTCManager, MobileSwipeManager };

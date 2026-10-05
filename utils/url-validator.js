@@ -29,24 +29,18 @@ const BLOCKED_HOSTNAMES = new Set([
   'instance-data',
 ]);
 
-function isPrivateIp(ip: string): boolean {
+function isPrivateIp(ip) {
   if (!ip) return false;
   return PRIVATE_IP_REGEXES.some((reg) => reg.test(ip));
 }
 
-export interface UrlValidationResult {
-  valid: boolean;
-  error?: string;
-  url?: URL;
-}
-
-export async function validateUrl(rawUrl: string, options: Record<string, any> = {}): Promise<UrlValidationResult> {
+export async function validateUrl(rawUrl, options = {}) {
   if (!rawUrl || typeof rawUrl !== 'string') {
     return { valid: false, error: 'Empty or invalid URL string' };
   }
 
   const trimmed = rawUrl.trim();
-  let parsed: URL;
+  let parsed;
   try {
     parsed = new URL(trimmed);
   } catch {
@@ -77,13 +71,13 @@ export async function validateUrl(rawUrl: string, options: Record<string, any> =
       }
     }
   } catch (err) {
-    // If DNS resolution fails, let it proceed to fetch which will fail safely
+    // If DNS resolution fails, allow if not an explicitly blocked hostname (or will fail on fetch)
   }
 
   return { valid: true, url: parsed };
 }
 
-export async function safeFetch(url: string | URL, options: Record<string, any> = {}): Promise<Response> {
+export async function safeFetch(url, options = {}) {
   const validation = await validateUrl(typeof url === 'string' ? url : url.toString(), options);
   if (!validation.valid) {
     throw new Error(validation.error || 'Blocked by SSRF protection');

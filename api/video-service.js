@@ -939,39 +939,63 @@ export async function searchRutube(query, limit = 18) {
   return merged.slice(0, limit);
 }
 
+const searchCache = new Map();
+const SEARCH_CACHE_TTL = 5 * 60 * 1000; // 5 min TTL
+
+function getSearchCached(key) {
+  const item = searchCache.get(key);
+  if (item && Date.now() - item.ts < SEARCH_CACHE_TTL) return item.data;
+  searchCache.delete(key);
+  return null;
+}
+
+function setSearchCached(key, data) {
+  searchCache.set(key, { ts: Date.now(), data });
+  if (searchCache.size > 200) {
+    const firstKey = searchCache.keys().next().value;
+    searchCache.delete(firstKey);
+  }
+}
+
 export async function searchVideos(query, platform = 'all') {
   const q = String(query || '').trim();
   if (!q) return { success: true, results: [] };
   const normPlat = String(platform || 'all').toLowerCase();
+  const cacheKey = `${normPlat}:${q.toLowerCase()}`;
 
+  const cached = getSearchCached(cacheKey);
+  if (cached) return cached;
+
+  let result;
   if (normPlat === 'youtube') {
     const yt = await searchYouTube(q, 24);
-    return { success: true, results: yt };
-  }
-
-  if (normPlat === 'vk') {
+    result = { success: true, results: yt };
+  } else if (normPlat === 'vk') {
     const vk = await searchVK(q, 24);
-    return { success: true, results: vk };
-  }
+    result = { success: true, results: vk };
+  } else {
+    // 'all': Search ONLY VK Video and YouTube simultaneously
+    const [vk, yt] = await Promise.all([
+      searchVK(q, 20).catch(() => []),
+      searchYouTube(q, 20).catch(() => [])
+    ]);
 
-  // 'all': Search ONLY VK Video and YouTube simultaneously
-  const [vk, yt] = await Promise.all([
-    searchVK(q, 20).catch(() => []),
-    searchYouTube(q, 20).catch(() => [])
-  ]);
+    const all = [...vk, ...yt];
+    const seen = new Set();
+    const unique = [];
 
-  const all = [...vk, ...yt];
-  const seen = new Set();
-  const unique = [];
-
-  for (const item of all) {
-    const key = item.url || item.id;
-    if (!seen.has(key)) {
-      seen.add(key);
-      unique.push(item);
+    for (const item of all) {
+      const key = item.url || item.id;
+      if (!seen.has(key)) {
+        seen.add(key);
+        unique.push(item);
+      }
     }
+
+    unique.sort((a, b) => (b._score || 0) - (a._score || 0));
+    result = { success: true, results: unique.slice(0, 30) };
   }
 
-  unique.sort((a, b) => (b._score || 0) - (a._score || 0));
-  return { success: true, results: unique.slice(0, 30) };
+  setSearchCached(cacheKey, result);
+  return result;
 }

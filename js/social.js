@@ -244,7 +244,7 @@ class FriendsManager {
           const isCurrent = AppState.currentUser?.uid === acc.uid;
           const nameStr = profile ? profile.name : acc.email;
           const avatarStr = profile
-            ? `<div style=\"width:40px;height:40px;\">${ProfileManager.getAvatarHtml(profile)}</div>`
+            ? `<div class="avatar" style=\"width:40px;height:40px;border-radius:50%;overflow:visible;\">${ProfileManager.getAvatarHtml(profile)}</div>`
             : `<div style=\"width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:18px;\">${(nameStr || "?")[0]}</div>`;
 
           const item = document.createElement("div");
@@ -397,35 +397,53 @@ class FriendsManager {
       }
       resContainer.innerHTML =
         '<div style="font-size: 12px; color: var(--text-muted); text-align: center;">Поиск...</div>';
+      // TEMP DEBUG
+      console.log('[FRIEND-SEARCH-DEBUG] searching for:', val);
       try {
         const authObj = window.auth || (await import("./firebase.js")).auth;
         const token = authObj.currentUser ? await authObj.currentUser.getIdToken() : "";
         let results = [];
 
         if (token) {
-          const res = await fetch(`/api/users/search?q=${encodeURIComponent(val)}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (res.ok) {
-            const data = await res.json();
-            results = data.results || [];
+          try {
+            const res = await fetch(`/api/users/search?q=${encodeURIComponent(val)}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.ok) {
+              const data = await res.json();
+              results = data.results || [];
+              console.log('[FRIEND-SEARCH-DEBUG] api results count:', results.length);
+            }
+          } catch (apiErr) {
+            console.warn('[FRIEND-SEARCH-DEBUG] api search error, falling back to direct db:', apiErr);
           }
         }
 
         if (!results.length) {
-          // Direct fallback by username
-          const uSnap = await get(ref(db, `usernames/${val}`));
-          if (uSnap.exists()) {
-            const targetUid = uSnap.val();
-            const prof = await ProfileManager.loadUser(targetUid);
-            if (prof) {
-              results.push({
-                uid: targetUid,
-                username: prof.username || val,
-                name: prof.name || val,
-                avatar: prof.avatar || "",
-              });
+          // Direct fallback by username and substring matching
+          try {
+            const uAllSnap = await get(ref(db, "usernames"));
+            if (uAllSnap.exists()) {
+              const allUsernames = uAllSnap.val() || {};
+              for (const [uName, targetUid] of Object.entries(allUsernames)) {
+                if (uName.toLowerCase().includes(val)) {
+                  const prof = await ProfileManager.loadUser(targetUid);
+                  if (prof) {
+                    results.push({
+                      uid: targetUid,
+                      username: prof.username || uName,
+                      name: prof.name || prof.displayName || uName,
+                      displayName: prof.displayName || prof.name || uName,
+                      avatar: prof.avatar || "",
+                    });
+                  }
+                  if (results.length >= 20) break;
+                }
+              }
+              console.log('[FRIEND-SEARCH-DEBUG] db fallback results count:', results.length);
             }
+          } catch (dbErr) {
+            console.error('[FRIEND-SEARCH-DEBUG] db fallback error:', dbErr);
           }
         }
 
@@ -439,7 +457,7 @@ class FriendsManager {
             AppState.friendsCache &&
             AppState.friendsCache[uid] &&
             AppState.friendsCache[uid].status === "accepted";
-          const avatar = `<div style="width:40px;height:40px;">${ProfileManager.getAvatarHtml(item)}</div>`;
+          const avatar = `<div class="avatar" style="width:40px;height:40px;border-radius:50%;overflow:visible;">${ProfileManager.getAvatarHtml(item)}</div>`;
           foundHtml += `
             <div class="user-card" onclick="ProfileManager.openProfileModal('${uid}')" style="cursor:pointer; display:flex; align-items:center; space-between; gap:10px;">
                 ${avatar}
@@ -723,7 +741,6 @@ class DirectMessages {
     AppState.currentDirectChat = null;
     const modal = Utils.$("modal-dm-chat");
     if (modal) modal.classList.remove("active");
-    this.stopLoveHearts();
     if (Utils.$("dm-input")) Utils.$("dm-input").value = "";
     if (Utils.$("dm-messages")) Utils.$("dm-messages").innerHTML = "";
     if (Utils.$("dm-chat-title"))
@@ -849,6 +866,7 @@ class DirectMessages {
 
     // Ensure active user is present even if newly opened
     sidebar.innerHTML = "";
+    const frag = document.createDocumentFragment();
     listItems.forEach((item) => {
       const el = document.createElement("div");
       el.className = `dm-chat-item ${item.isActive ? "active" : ""} ${item.isPinned ? "pinned" : ""}`;
@@ -858,7 +876,7 @@ class DirectMessages {
                     <div class="dm-chat-name">${Utils.escapeHtml(item.name)}</div>
                     <div class="dm-chat-last-msg">${Utils.escapeHtml(item.lastText) || "<i>Нет сообщений</i>"}</div>
                 </div>
-                <button class="dm-pin-btn" title="Закрепить">${item.isPinned ? '<img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Reminder%20Ribbon.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;">' : '<img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Reminder%20Ribbon.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;opacity:0.4;filter:grayscale(100%);">'}</button>
+                <button class="dm-pin-btn" title="Закрепить">${item.isPinned ? '<img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Reminder%20Ribbon.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;" loading="lazy" decoding="async">' : '<img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Reminder%20Ribbon.webp" style="width:1.2em;height:1.2em;vertical-align:bottom;opacity:0.4;filter:grayscale(100%);" loading="lazy" decoding="async">'}</button>
             `;
 
       el.onclick = (e) => {
@@ -876,8 +894,9 @@ class DirectMessages {
           this.openChat(item.uid, item.name);
         }
       };
-      sidebar.appendChild(el);
+      frag.appendChild(el);
     });
+    sidebar.appendChild(frag);
   }
 
   static openChat(targetUid, targetName) {
@@ -1258,7 +1277,6 @@ class DirectMessages {
       })
       .join("");
     list.scrollTop = list.scrollHeight;
-    if (this.theme === "love") this.startLoveHearts();
   }
 
   static bindThemeControls() {}
@@ -1276,56 +1294,6 @@ class DirectMessages {
   }
 
   static applyTheme() {}
-
-  static startLoveHearts() {
-    if (this.theme !== "love") return;
-    if (this.heartsTimer) return;
-
-    const spawnHeart = () => {
-      const layer = Utils.$("dm-love-hearts");
-      if (!layer) return;
-      const heart = document.createElement("div");
-      const roll = Math.random();
-      const mode = roll < 0.33 ? "far" : roll > 0.74 ? "near" : "mid";
-      heart.className = `love-heart ${mode}`;
-      heart.innerHTML =
-        RoomManager.loveHeartEmojis[
-          Math.floor(Math.random() * RoomManager.loveHeartEmojis.length)
-        ];
-      heart.style.left = `${Utils.getDistributedHeartLeft(layer, "dm-love")}%`; // [UPDATE]
-      const scaleBase = mode === "far" ? 0.45 : mode === "near" ? 1.15 : 0.78;
-      const scale = scaleBase + Math.random() * (mode === "near" ? 0.35 : 0.25);
-      const drift = -12 + Math.random() * 24;
-      const duration =
-        mode === "near" ? 34 + Math.random() * 10 : 30 + Math.random() * 10;
-      const opacity =
-        mode === "far"
-          ? 0.18 + Math.random() * 0.12
-          : mode === "near"
-            ? 0.34 + Math.random() * 0.18
-            : 0.25 + Math.random() * 0.14;
-      const travel = (layer.clientHeight || 620) + 120;
-      heart.style.setProperty("--heart-scale", String(scale));
-      heart.style.setProperty("--heart-drift", `${drift}px`);
-      heart.style.setProperty("--heart-opacity", String(opacity));
-      heart.style.setProperty("--heart-travel", `${travel}px`);
-      heart.style.animationDuration = `${duration}s`;
-      layer.appendChild(heart);
-      setTimeout(() => heart.remove(), 46000);
-    };
-
-    for (let i = 0; i < 8; i++) spawnHeart();
-    this.heartsTimer = setInterval(spawnHeart, 1700);
-  }
-
-  static stopLoveHearts() {
-    if (this.heartsTimer) {
-      clearInterval(this.heartsTimer);
-      this.heartsTimer = null;
-    }
-    const layer = Utils.$("dm-love-hearts");
-    if (layer) layer.innerHTML = "";
-  }
 
   static async sendRoomInvite(targetUid) {
     if (

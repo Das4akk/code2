@@ -113,6 +113,16 @@ class Router {
 
     // 4. Root / Lobby
     if (pathname === "/" || pathname === "/lobby") {
+      if (!isAuthenticated) {
+        this.navigate("/login", true);
+        if (window.Utils && window.Utils.showScreen) {
+          window.Utils.showScreen("auth-screen", false);
+        }
+        if (window.AuthManager && typeof window.AuthManager.switchTab === "function") {
+          window.AuthManager.switchTab("login");
+        }
+        return;
+      }
       if (pathname === "/") {
         this.navigate("/lobby", true);
       }
@@ -229,6 +239,9 @@ class Router {
   static triggerSectionInit(navId) {
     if (window.MaintenanceSystem) {
       window.MaintenanceSystem.applyMaintenanceUI();
+    }
+    if (window.PremiumManager?.syncLocks) {
+      window.PremiumManager.syncLocks();
     }
     if (navId === "nav-catalog" && window.CatalogManager) {
       window.CatalogManager.renderCatalog();

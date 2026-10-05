@@ -1378,15 +1378,24 @@ class ProfileManager {
   }
 
   static async loadUser(uid) {
-    // If we want up-to-date avatar/frame, it might be better to skip cache, but let's keep it
     if (AppState.usersCache.has(uid)) return AppState.usersCache.get(uid);
     try {
       const snap = await get(ref(db, `users/${uid}`));
-      if (!snap.exists()) return { name: "Unknown", username: "unknown" };
-      const node = snap.val();
-      const data = node.profile || { name: "Unknown", username: "unknown" };
+      if (!snap.exists()) return { name: "Пользователь", username: "user" };
+      const node = snap.val() || {};
+      const prof = node.profile || {};
+      const name = (prof.name || node.name || prof.displayName || node.displayName || prof.username || node.username || (node.email ? node.email.split('@')[0] : '') || "Пользователь").trim();
+      const username = (prof.username || node.username || (node.email ? node.email.split('@')[0] : '') || "user").trim();
+      const avatar = prof.avatar || node.avatar || prof.photoURL || node.photoURL || "";
+      const data = {
+        ...node,
+        ...prof,
+        name,
+        username,
+        avatar,
+      };
 
-      const eqFrame = node.equippedFrame;
+      const eqFrame = node.equippedFrame || prof.frame;
       if (
         eqFrame &&
         AppState.catalog &&
@@ -2017,10 +2026,11 @@ class ProfileManager {
                 
                 const layer = Utils.$("reaction-layer");
                 if (layer) {
+                    const heartFrag = document.createDocumentFragment();
                     for (let i = 0; i < 8; i++) {
                         const heart = document.createElement("div");
                         heart.className = "floating-emoji";
-                        heart.innerHTML = '<img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Red%20Heart.webp" style="width: 48px; height: 48px; filter: drop-shadow(0 4px 12px rgba(255, 0, 0, 0.4));">';
+                        heart.innerHTML = '<img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Red%20Heart.webp" style="width: 48px; height: 48px; filter: drop-shadow(0 4px 12px rgba(255, 0, 0, 0.4));" loading="lazy" decoding="async">';
                         
                         // Start position around bottom center of screen or button
                         heart.style.left = `${Math.random() * 40 + 30}%`; // 30% to 70%
@@ -2030,9 +2040,10 @@ class ProfileManager {
                         heart.style.animationDelay = `${Math.random() * 0.3}s`;
                         heart.style.animationDuration = `${2 + Math.random() * 1}s`;
                         
-                        layer.appendChild(heart);
+                        heartFrag.appendChild(heart);
                         setTimeout(() => heart.remove(), 3500);
                     }
+                    layer.appendChild(heartFrag);
                 }
              }
              

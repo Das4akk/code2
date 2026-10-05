@@ -73,6 +73,8 @@ window.MediaResolverClient = MediaResolverClient;
 window.RoomVideoSearchManager = RoomVideoSearchManager;
 window.FpsCounter = FpsCounter;
 
+// TEMP DEBUG - DISABLED
+/*
 // Global PERMISSION_DENIED interceptor for developer
 window.addEventListener('unhandledrejection', (event) => {
   const msg = String((event.reason && event.reason.message) || event.reason || '');
@@ -88,6 +90,10 @@ window.addEventListener('unhandledrejection', (event) => {
     event.preventDefault();
   }
 });
+*/
+
+// TEMP DEBUG - Verify room.js loading
+console.log('[APP] room.js loaded. RoomManager:', typeof RoomManager, 'RTCManager:', typeof RTCManager);
 
 // Application Runner & Initialization
 const runApp = () => {
@@ -113,14 +119,26 @@ const runApp = () => {
   initSystem("BadgeManager", () => (window.BadgeManager || BadgeManager)?.init());
   initSystem("GlobalThemeManager", () => (window.GlobalThemeManager || GlobalThemeManager)?.init());
   initSystem("AuthManager", () => (window.AuthManager || AuthManager)?.init());
-  initSystem("BackgroundFX", () => (window.BackgroundFX || BackgroundFX)?.init());
-  initSystem("EasterEggManager", () => (window.EasterEggManager || EasterEggManager)?.init());
-  initSystem("HashtagManager", () => (window.HashtagManager || HashtagManager)?.initHashtags());
-  initSystem("MobileSwipeManager", () => (window.MobileSwipeManager || MobileSwipeManager)?.init());
   initSystem("PremiumManager", () => (window.PremiumManager || PremiumManager)?.init());
   initSystem("LibraryManager", () => (window.LibraryManager || LibraryManager)?.init());
-  initSystem("MysteryEventManager", () => window.MysteryEventManager?.init());
-  initSystem("FpsCounter", () => (window.FpsCounter || FpsCounter)?.checkAndToggle());
+  try { if (window.PremiumManager?.syncLocks) PremiumManager.syncLocks(); } catch (e) {}
+
+  const deferInit = (fn) => {
+    if (typeof requestIdleCallback === "function") {
+      requestIdleCallback(fn, { timeout: 1500 });
+    } else {
+      setTimeout(fn, 120);
+    }
+  };
+
+  deferInit(() => {
+    initSystem("BackgroundFX", () => (window.BackgroundFX || BackgroundFX)?.init());
+    initSystem("EasterEggManager", () => (window.EasterEggManager || EasterEggManager)?.init());
+    initSystem("HashtagManager", () => (window.HashtagManager || HashtagManager)?.initHashtags());
+    initSystem("MobileSwipeManager", () => (window.MobileSwipeManager || MobileSwipeManager)?.init());
+    initSystem("MysteryEventManager", () => window.MysteryEventManager?.init());
+    initSystem("FpsCounter", () => (window.FpsCounter || FpsCounter)?.checkAndToggle());
+  });
 
   document.querySelectorAll(".btn-close-modal").forEach((btn) => {
     btn.addEventListener("click", (e) => {
@@ -835,122 +853,300 @@ window.switchLeaderboardCategory = function(cat) {
     window.loadLeaderboard();
 };
 
+window.renderLeaderboard = function(usersArray, cat = "lumens") {
+    // TEMP DEBUG
+    console.log('[RENDER-LEADERBOARD] called with data:', usersArray);
+    let container = document.querySelector('#leaderboard-list') || 
+                    document.querySelector('.leaderboard-list') ||
+                    document.querySelector('[data-leaderboard]');
+    
+    // Dynamic fallback if container was removed or not found
+    if (!container) {
+        const parentSec = document.querySelector('#section-leaderboard') || document.querySelector('.leaderboard-container');
+        if (parentSec) {
+            container = document.createElement('div');
+            container.id = 'leaderboard-list';
+            container.style.cssText = 'display: flex; flex-direction: column; gap: 10px;';
+            parentSec.appendChild(container);
+        }
+    }
+
+    console.log('[RENDER-LEADERBOARD] container found:', !!container);
+
+    if (!container) {
+        console.error('[RENDER-LEADERBOARD] container could not be found or created!');
+        return;
+    }
+
+    const topUsers = (Array.isArray(usersArray) ? usersArray : []).slice(0, 50);
+
+    if (topUsers.length === 0) {
+        const emptyLabel = cat === "lumens" ? "Люменов" : (cat === "likes" ? "лайков" : "проведённого времени в комнатах");
+        container.innerHTML = `<div style="color:var(--text-muted); text-align:center; padding: 32px 16px;">Пока ни у кого нет ${emptyLabel}.</div>`;
+        return;
+    }
+
+    let html = "";
+    topUsers.forEach((u, idx) => {
+        let placeStyle = "color: var(--text-muted); font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center;";
+        let placeText = `${idx + 1}`;
+        
+        if (idx === 0) { 
+            placeStyle = "color: #FFD700; font-size: 20px; font-weight: 900; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); display: flex; align-items: center; justify-content: center; gap: 4px;"; 
+            placeText = '1 <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Crown.webp" style="width: 28px; height: 28px;" alt="1">'; 
+        } else if (idx === 1) { 
+            placeStyle = "color: #C0C0C0; font-size: 18px; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 4px;"; 
+            placeText = '2 <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Gem%20Stone.webp" style="width: 26px; height: 26px;" alt="2">'; 
+        } else if (idx === 2) { 
+            placeStyle = "color: #CD7F32; font-size: 18px; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 4px;"; 
+            placeText = '3 <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Star.webp" style="width: 24px; height: 24px;" alt="3">'; 
+        }
+
+        const cached = (window.AppState && AppState.usersCache && AppState.usersCache.has(u.uid)) ? AppState.usersCache.get(u.uid) : null;
+        const uProfile = u.profile || cached || {};
+        
+        const rawName = uProfile.name || u.name || cached?.name || uProfile.displayName || u.displayName || uProfile.username || u.username || (uProfile.email ? uProfile.email.split('@')[0] : '') || "Пользователь";
+        const safeName = String(rawName).trim() || "Пользователь";
+        
+        const rawUsername = uProfile.username || u.username || cached?.username || (uProfile.email ? uProfile.email.split('@')[0] : '') || "";
+        const safeUsername = String(rawUsername).trim();
+        
+        const safeProfile = {
+            ...uProfile,
+            name: safeName,
+            username: safeUsername,
+            avatar: uProfile.avatar || cached?.avatar || "",
+            frame: uProfile.frame || cached?.frame || ""
+        };
+
+        const avHtml = (window.ProfileManager && typeof ProfileManager.getAvatarHtml === "function") 
+            ? ProfileManager.getAvatarHtml(safeProfile) 
+            : `<div style="width:100%;height:100%;border-radius:50%;background:#111;display:flex;align-items:center;justify-content:center;">${Utils.escapeHtml((safeName || "?")[0])}</div>`;
+        const isMe = AppState.currentUser?.uid === u.uid;
+        
+        let scoreContent = "";
+        const scoreVal = Number(u.score != null ? u.score : (cat === "lumens" ? safeProfile.lumens : (cat === "likes" ? Object.keys(safeProfile.likedBy || {}).length : safeProfile.xp))) || 0;
+        if (cat === "lumens") {
+            scoreContent = `${scoreVal.toLocaleString()} <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 20px; height: 20px;" alt="✨">`;
+        } else if (cat === "likes") {
+            scoreContent = `${scoreVal.toLocaleString()} <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Red%20Heart.webp" style="width: 20px; height: 20px;" alt="❤️">`;
+        } else {
+            scoreContent = `${Utils.formatDuration ? Utils.formatDuration(scoreVal) : scoreVal + ' сек'} <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Hourglass%20Done.webp" style="width: 20px; height: 20px;" alt="⏳">`;
+        }
+
+        const scoreColor = cat === "lumens" ? "#ffd700" : (cat === "likes" ? "#ff4b4b" : "#60a5fa");
+
+        html += `<div style="display:flex;align-items:center;padding:12px 16px;background:${isMe ? 'rgba(255,215,0,0.08)' : 'rgba(255,255,255,0.03)'};border:1px solid ${isMe ? 'rgba(255,215,0,0.3)' : 'rgba(255,255,255,0.05)'};border-radius:12px;cursor:pointer;transition:transform 0.2s, background 0.2s;" onmouseover="this.style.background='${isMe ? 'rgba(255,215,0,0.14)' : 'rgba(255,255,255,0.08)'}'" onmouseout="this.style.background='${isMe ? 'rgba(255,215,0,0.08)' : 'rgba(255,255,255,0.03)'}'" onclick="if(window.ProfileManager) ProfileManager.openViewProfileModal('${u.uid}')">
+            <div style="width: 60px; text-align:center; margin-right:16px; font-weight:bold; ${placeStyle}">${placeText}</div>
+            <div class="avatar" style="width:46px;height:46px;margin-right:16px;border-radius:50%;overflow:visible;flex-shrink:0;">${avHtml}</div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:2px;min-width:0;">
+                <div style="font-weight:700;font-size:16px;color:var(--text-main);display:flex;align-items:center;gap:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                    <span>${Utils.escapeHtml(safeName)}</span>
+                    ${isMe ? '<span style="font-size:10px;padding:2px 6px;background:rgba(255,215,0,0.2);color:#ffd700;border-radius:4px;font-weight:800;flex-shrink:0;">ВЫ</span>' : ''}
+                </div>
+                <span style="font-size:12px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${safeUsername ? '@' + Utils.escapeHtml(safeUsername) : ''}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;font-weight:700;font-size:16px;color:${scoreColor};flex-shrink:0;">
+                ${scoreContent}
+            </div>
+        </div>`;
+    });
+    
+    container.innerHTML = html;
+    // TEMP DEBUG
+    console.log('[RENDER-LEADERBOARD] container children after:', container.children.length);
+};
+
 window.loadLeaderboard = async function() {
     const listEl = Utils.$("leaderboard-list");
-    if (!listEl) return;
+    if (listEl) {
+        listEl.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding: 24px;">Загрузка рейтинга...</div>';
+    }
     
     const cat = window.activeLeaderboardCategory || "lumens";
-    listEl.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding: 24px;">Загрузка рейтинга...</div>';
+    // TEMP DEBUG
+    console.log('[LEADERBOARD] loading data for category:', cat);
+    let authObj = window.auth || (window.firebase && window.firebase.auth ? window.firebase.auth() : null);
     
+    // 1. Wait for auth if not ready
+    if (!authObj?.currentUser) {
+        console.warn('[LEADERBOARD] no currentUser, waiting for onAuthStateChanged...');
+        if (authObj && typeof authObj.onAuthStateChanged === "function") {
+            await new Promise((resolve) => {
+                const unsub = authObj.onAuthStateChanged((u) => {
+                    if (u) {
+                        unsub();
+                        resolve();
+                    }
+                });
+                setTimeout(resolve, 2000); // safety timeout
+            });
+        }
+    }
+
+    if (authObj?.currentUser && typeof authObj.currentUser.getIdToken === "function") {
+        try {
+            await authObj.currentUser.getIdToken(true);
+            console.log('[LEADERBOARD] token refreshed for:', authObj.currentUser.uid);
+        } catch (tokErr) {
+            console.warn('[LEADERBOARD] token refresh warning:', tokErr.message);
+        }
+    }
+
+    console.log('[LEADERBOARD] auth current user:', authObj?.currentUser?.uid || window.AppState?.currentUser?.uid);
+
     try {
-        const database = window.db || (typeof getDatabase === "function" ? getDatabase() : null);
-        const getFn = window.get;
-        const refFn = window.ref;
+        const database = window.db || db;
+        const getFn = (typeof get === "function") ? get : (window.get || (window.firebase && window.firebase.get));
+        const refFn = (typeof ref === "function") ? ref : (window.ref || (window.firebase && window.firebase.ref));
 
         if (!database || !getFn || !refFn) {
             throw new Error("Firebase database not initialized");
         }
 
-        const snap = await getFn(refFn(database, "users"));
-        if (!snap.exists()) {
-            listEl.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding: 24px;">Пока нет данных.</div>';
-            return;
+        function extractUserProfile(uid, uData = {}) {
+            const prof = uData.profile || uData;
+            const rawName = prof.name || uData.name || prof.displayName || uData.displayName || prof.username || uData.username || (prof.email ? prof.email.split('@')[0] : (uData.email ? uData.email.split('@')[0] : '')) || 'Пользователь';
+            const rawUsername = prof.username || uData.username || (prof.email ? prof.email.split('@')[0] : (uData.email ? uData.email.split('@')[0] : '')) || '';
+            const avatar = prof.avatar || uData.avatar || prof.photoURL || uData.photoURL || '';
+            const frame = prof.frame || uData.equippedFrame || uData.frame || '';
+            const lumens = Number(prof.lumens != null ? prof.lumens : (uData.lumens != null ? uData.lumens : 0)) || 0;
+            const xp = Number(prof.xp != null ? prof.xp : (uData.xp != null ? uData.xp : 0)) || 0;
+            const timeSpentInRooms = Number(prof.timeSpentInRooms != null ? prof.timeSpentInRooms : (uData.timeSpentInRooms != null ? uData.timeSpentInRooms : 0)) || 0;
+            const likedBy = prof.likedBy || uData.likedBy || {};
+
+            return {
+                ...uData,
+                ...prof,
+                name: String(rawName).trim() || 'Пользователь',
+                username: String(rawUsername).trim(),
+                avatar,
+                frame,
+                lumens,
+                xp,
+                timeSpentInRooms,
+                likedBy
+            };
         }
-        
-        const allUsers = snap.val() || {};
+
+        // Strategy 1: Read /users
+        let usersMap = {};
+        for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+                const snap = await getFn(refFn(database, "users"));
+                if (snap.exists()) {
+                    usersMap = snap.val() || {};
+                    console.log('[LEADERBOARD] got users map exists:', true, 'count:', Object.keys(usersMap).length);
+                    break;
+                }
+            } catch (uErr) {
+                console.warn('[LEADERBOARD] /users read notice attempt', attempt + 1, uErr.code, uErr.message);
+                if (attempt < 2) await new Promise((r) => setTimeout(r, 1000));
+            }
+        }
+
+        // Strategy 2: If /users was restricted or empty, fetch /usernames & each profile
+        if (Object.keys(usersMap).length === 0) {
+            try {
+                const unSnap = await getFn(refFn(database, "usernames"));
+                if (unSnap.exists()) {
+                    const unObj = unSnap.val() || {};
+                    console.log('[LEADERBOARD] loaded usernames list:', Object.keys(unObj).length);
+                    const uidList = Object.values(unObj);
+                    const profFetches = uidList.map(async (targetUid) => {
+                        try {
+                            const pSnap = await getFn(refFn(database, `users/${targetUid}/profile`));
+                            if (pSnap.exists()) {
+                                usersMap[targetUid] = { profile: pSnap.val() };
+                            }
+                        } catch (_) {}
+                    });
+                    await Promise.all(profFetches);
+                }
+            } catch (unErr) {
+                console.warn('[LEADERBOARD] /usernames read notice:', unErr.message);
+            }
+        }
+
+        // Strategy 3: Check /leaderboard
+        let precalcList = null;
+        try {
+            const lbSnap = await getFn(refFn(database, "leaderboard"));
+            const rawVal = lbSnap.val();
+            if (rawVal) {
+                precalcList = Array.isArray(rawVal) ? rawVal : (rawVal.users || Object.values(rawVal));
+                console.log('[LEADERBOARD] got /leaderboard items:', precalcList?.length);
+            }
+        } catch (lbErr) {
+            console.warn('[LEADERBOARD] /leaderboard read notice:', lbErr.message);
+        }
+
         let usersArray = [];
 
-        if (cat === "lumens") {
-            for (const [uid, uData] of Object.entries(allUsers)) {
-                if (!uData.profile) continue;
-                const lumens = Number(uData.profile.lumens) || 0;
-                if (lumens > 0) {
-                    usersArray.push({ uid, profile: uData.profile, score: lumens, type: "lumens" });
+        if (Object.keys(usersMap).length > 0) {
+            for (const [uid, uData] of Object.entries(usersMap)) {
+                const prof = extractUserProfile(uid, uData);
+                let score = 0;
+                if (cat === "lumens") {
+                    score = prof.lumens;
+                } else if (cat === "likes") {
+                    score = Object.keys(prof.likedBy || {}).length;
+                } else if (cat === "time") {
+                    score = prof.timeSpentInRooms;
+                } else {
+                    score = prof.xp;
                 }
+                usersArray.push({ uid, profile: prof, score, type: cat });
             }
-            usersArray.sort((a, b) => b.score - a.score);
-        } else if (cat === "likes") {
-            for (const [uid, uData] of Object.entries(allUsers)) {
-                if (!uData.profile) continue;
-                const likedBy = uData.profile.likedBy || {};
-                const likesCount = Object.keys(likedBy).length;
-                if (likesCount > 0) {
-                    usersArray.push({ uid, profile: uData.profile, score: likesCount, type: "likes" });
+        } else if (precalcList && precalcList.length > 0) {
+            for (const item of precalcList) {
+                const uid = item.uid || item.id || "anon";
+                const prof = extractUserProfile(uid, item);
+                let score = 0;
+                if (cat === "lumens") {
+                    score = prof.lumens;
+                } else if (cat === "likes") {
+                    score = Number(item.likes != null ? item.likes : Object.keys(prof.likedBy || {}).length);
+                } else if (cat === "time") {
+                    score = prof.timeSpentInRooms;
+                } else {
+                    score = prof.xp;
                 }
+                usersArray.push({ uid, profile: prof, score, type: cat });
             }
-            usersArray.sort((a, b) => b.score - a.score);
-        } else if (cat === "time") {
-            for (const [uid, uData] of Object.entries(allUsers)) {
-                if (!uData.profile) continue;
-                const roomTime = Number(uData.profile.timeSpentInRooms) || 0;
-                if (roomTime > 0) {
-                    usersArray.push({ uid, profile: uData.profile, score: roomTime, type: "time" });
-                }
-            }
-            usersArray.sort((a, b) => b.score - a.score);
         }
 
-        const topUsers = usersArray.slice(0, 50);
-        
-        if (topUsers.length === 0) {
-            const emptyLabel = cat === "lumens" ? "Люменов" : (cat === "likes" ? "лайков" : "проведённого времени в комнатах");
-            listEl.innerHTML = `<div style="color:var(--text-muted); text-align:center; padding: 32px 16px;">Пока ни у кого нет ${emptyLabel}.</div>`;
-            return;
-        }
-        
-        let html = "";
-        topUsers.forEach((u, idx) => {
-            let placeStyle = "color: var(--text-muted); font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center;";
-            let placeText = `${idx + 1}`;
-            
-            if (idx === 0) { 
-                placeStyle = "color: #FFD700; font-size: 20px; font-weight: 900; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); display: flex; align-items: center; justify-content: center; gap: 4px;"; 
-                placeText = '1 <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Crown.webp" style="width: 28px; height: 28px;" alt="1">'; 
-            } else if (idx === 1) { 
-                placeStyle = "color: #C0C0C0; font-size: 18px; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 4px;"; 
-                placeText = '2 <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Gem%20Stone.webp" style="width: 26px; height: 26px;" alt="2">'; 
-            } else if (idx === 2) { 
-                placeStyle = "color: #CD7F32; font-size: 18px; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 4px;"; 
-                placeText = '3 <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Star.webp" style="width: 24px; height: 24px;" alt="3">'; 
+        // Enrich any profile if name/avatar is missing or generic
+        const enrichList = usersArray.map(async (u) => {
+            if (!u.profile?.name || u.profile.name === 'Пользователь' || u.profile.name === 'Unknown' || !u.profile.avatar) {
+                if (window.ProfileManager && typeof ProfileManager.loadUser === "function") {
+                    try {
+                        const loaded = await ProfileManager.loadUser(u.uid);
+                        if (loaded && loaded.name && loaded.name !== 'Unknown') {
+                            u.profile.name = loaded.name;
+                            if (loaded.username) u.profile.username = loaded.username;
+                            if (loaded.avatar) u.profile.avatar = loaded.avatar;
+                            if (loaded.frame) u.profile.frame = loaded.frame;
+                        }
+                    } catch (_) {}
+                }
             }
-            
-            const avHtml = ProfileManager.getAvatarHtml(u.profile);
-            const isMe = AppState.currentUser?.uid === u.uid;
-            
-            let scoreContent = "";
-            if (cat === "lumens") {
-                scoreContent = `${u.score.toLocaleString()} <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 20px; height: 20px;" alt="✨">`;
-            } else if (cat === "likes") {
-                scoreContent = `${u.score.toLocaleString()} <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Red%20Heart.webp" style="width: 20px; height: 20px;" alt="❤️">`;
-            } else {
-                scoreContent = `${Utils.formatDuration(u.score)} <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Hourglass%20Done.webp" style="width: 20px; height: 20px;" alt="⏳">`;
-            }
-
-            const scoreColor = cat === "lumens" ? "#ffd700" : (cat === "likes" ? "#ff4b4b" : "#60a5fa");
-
-            html += `<div style="display:flex;align-items:center;padding:12px 16px;background:${isMe ? 'rgba(255,215,0,0.08)' : 'rgba(255,255,255,0.03)'};border:1px solid ${isMe ? 'rgba(255,215,0,0.3)' : 'rgba(255,255,255,0.05)'};border-radius:12px;cursor:pointer;transition:transform 0.2s, background 0.2s;" onmouseover="this.style.background='${isMe ? 'rgba(255,215,0,0.14)' : 'rgba(255,255,255,0.08)'}'" onmouseout="this.style.background='${isMe ? 'rgba(255,215,0,0.08)' : 'rgba(255,255,255,0.03)'}'" onclick="ProfileManager.openViewProfileModal('${u.uid}')">
-                <div style="width: 60px; text-align:center; margin-right:16px; font-weight:bold; ${placeStyle}">${placeText}</div>
-                <div style="width:46px;height:46px;margin-right:16px;border-radius:50%;overflow:visible;">${avHtml}</div>
-                <div style="flex:1;display:flex;flex-direction:column;gap:2px;">
-                    <div style="font-weight:700;font-size:16px;color:var(--text-main);display:flex;align-items:center;gap:6px;">
-                        <span>${Utils.escapeHtml(u.profile.name || "Пользователь")}</span>
-                        ${isMe ? '<span style="font-size:10px;padding:2px 6px;background:rgba(255,215,0,0.2);color:#ffd700;border-radius:4px;font-weight:800;">ВЫ</span>' : ''}
-                    </div>
-                    <span style="font-size:12px;color:var(--text-muted);">@${Utils.escapeHtml(u.profile.username || "")}</span>
-                </div>
-                <div style="display:flex;align-items:center;gap:6px;font-weight:700;font-size:16px;color:${scoreColor};">
-                    ${scoreContent}
-                </div>
-            </div>`;
         });
-        
-        listEl.innerHTML = html;
-        
-    } catch (e) {
-        console.error(e);
-        listEl.innerHTML = '<div style="color:red; text-align:center; padding:24px;">Ошибка загрузки рейтинга.</div>';
+        await Promise.all(enrichList);
+
+        usersArray.sort((a, b) => b.score - a.score);
+
+        console.log('[LEADERBOARD] final usersArray count:', usersArray.length, 'first:', usersArray[0]);
+        window.renderLeaderboard(usersArray, cat);
+    } catch (err) {
+        console.error('[LEADERBOARD] error:', err.code, err.message);
+        if (listEl) {
+            listEl.innerHTML = '<div style="color:var(--text-error, #ff4b4b); text-align:center; padding:24px;">Ошибка загрузки рейтинга. Попробуйте обновить страницу.</div>';
+        }
     }
 };
+
+window.loadAndRenderLeaderboard = window.loadLeaderboard;
 
 document.addEventListener("DOMContentLoaded", () => {
     const closeBtn = document.getElementById("btn-chat-close-x");
