@@ -344,30 +344,23 @@ class RoomManager {
 
   static updateVkPremiumLockState() {
     const url = Utils.$("room-input-url")?.value?.trim() || "";
-    const wrapper = Utils.$("room-save-btn-wrapper");
-    if (!wrapper) return;
+    const btnSave = Utils.$("btn-save-room");
+    const btnLock = Utils.$("btn-room-vk-premium-lock");
+    if (!btnSave) return;
 
     const isVk = this.isVkVideoUrl(url);
     const isPrem = window.PremiumManager ? PremiumManager.isCurrentUserPremium() : false;
 
-    const old = wrapper.querySelector(".premium-lock-overlay");
-    if (old) old.remove();
-
     if (isVk && !isPrem) {
-      const overlay = document.createElement("div");
-      overlay.className = "premium-lock-overlay premium-lock-small";
-      overlay.innerHTML = `
-        <div class="premium-lock-inner">
-          <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" class="premium-lock-emoji" alt="🔒">
-          <span class="premium-lock-text">Доступно только с Premium</span>
-        </div>
-      `;
-      overlay.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (window.PremiumManager) PremiumManager.showPremiumLock("vk-link-edit");
-      });
-      wrapper.appendChild(overlay);
+      btnSave.style.display = "none";
+      if (btnLock) {
+        btnLock.style.display = "inline-flex";
+      }
+    } else {
+      btnSave.style.display = "inline-flex";
+      if (btnLock) {
+        btnLock.style.display = "none";
+      }
     }
   }
 

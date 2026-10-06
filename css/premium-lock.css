@@ -5,6 +5,60 @@
   width: 100%;
 }
 
+/* Dedicated Action Button in modals (Frosted Glass / Tech Break style) */
+.premium-lock-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 18px;
+  height: 44px;
+  border-radius: 12px !important;
+  font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  color: #ffffff;
+  background: rgba(6, 6, 9, 0.45) !important;
+  backdrop-filter: blur(28px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5),
+              0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+              0 1px 0 0 rgba(255, 255, 255, 0.2) inset !important;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.premium-lock-action-btn:hover {
+  background: rgba(255, 215, 0, 0.12) !important;
+  border-color: rgba(255, 215, 0, 0.45) !important;
+  color: #ffd700 !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.6),
+              0 0 16px rgba(255, 215, 0, 0.25),
+              0 0 0 1px rgba(255, 215, 0, 0.2) inset !important;
+  transform: translateY(-1px);
+}
+
+.premium-lock-action-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.premium-lock-action-btn img {
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px !important;
+  min-height: 20px !important;
+  max-width: 20px !important;
+  max-height: 20px !important;
+  object-fit: contain !important;
+  vertical-align: middle !important;
+  flex-shrink: 0 !important;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
+}
+
 .premium-lock-overlay {
   position: absolute;
   inset: 0;
@@ -43,9 +97,11 @@
 }
 
 .premium-lock-emoji {
-  width: 22px;
-  height: 22px;
-  object-fit: contain;
+  width: 22px !important;
+  height: 22px !important;
+  max-width: 22px !important;
+  max-height: 22px !important;
+  object-fit: contain !important;
   display: inline-block;
   vertical-align: middle;
   flex-shrink: 0;

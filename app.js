@@ -857,13 +857,27 @@ window.loadLeaderboard = async function() {
 
         // 1. Sync current user's profile to public /leaderboard node if authenticated
         const curUser = AppState.currentUser || (window.auth && window.auth.currentUser);
+        let myProf = curUser?.uid ? (AppState.usersCache?.get(curUser.uid) || null) : null;
+        if (curUser?.uid && (!myProf || !myProf.username)) {
+            try {
+                const rawLocal = localStorage.getItem(`cowio_cached_profile_${curUser.uid}`) || localStorage.getItem("cowio_last_profile");
+                if (rawLocal) {
+                    const parsed = JSON.parse(rawLocal);
+                    if (parsed && typeof parsed === "object") {
+                        myProf = parsed;
+                        AppState.usersCache.set(curUser.uid, parsed);
+                    }
+                }
+            } catch (_) {}
+        }
+
         if (curUser?.uid && setFn) {
             try {
                 const myUid = curUser.uid;
-                const cachedProfile = AppState.usersCache.get(myUid) || {};
-                const name = (cachedProfile.name || curUser.displayName || "Пользователь").trim();
+                const cachedProfile = myProf || {};
+                const name = (cachedProfile.name || cachedProfile.displayName || curUser.displayName || "Пользователь").trim();
                 const username = (cachedProfile.username || "user").trim();
-                const avatar = cachedProfile.avatar || cachedProfile.photoURL || curUser.photoURL || "";
+                const avatar = (cachedProfile.avatar || cachedProfile.photoURL || curUser.photoURL || "").trim();
                 const frame = cachedProfile.frame || "";
                 const lumens = Number(cachedProfile.lumens) || 0;
                 const streak = Number(cachedProfile.streak) || 0;
@@ -895,9 +909,9 @@ window.loadLeaderboard = async function() {
         const usernameToUid = new Map();
 
         const myUid = curUser?.uid || "";
-        const myCachedProfile = myUid ? (AppState.usersCache?.get(myUid) || {}) : {};
+        const myCachedProfile = myProf || (myUid ? (AppState.usersCache?.get(myUid) || {}) : {});
         const myUsername = String(myCachedProfile.username || "").toLowerCase().replace(/^@/, "").trim();
-        const myName = String(curUser?.displayName || myCachedProfile.name || "").toLowerCase().trim();
+        const myName = String(myCachedProfile.name || myCachedProfile.displayName || curUser?.displayName || "").toLowerCase().trim();
 
         const addOrMergeUser = (rawItem, fallbackKey) => {
             if (!rawItem || typeof rawItem !== "object") return;
@@ -907,7 +921,6 @@ window.loadLeaderboard = async function() {
             // Exclude non-user meta keys or numeric array index keys if no real uid is present
             if (!cleanUid || cleanUid === "users" || cleanUid === "updatedAt") return;
             if (/^\d+$/.test(cleanUid) && !rawUid) {
-                // If it's just an array index with no real uid
                 cleanUid = `idx_${cleanUid}`;
             }
 
@@ -932,19 +945,36 @@ window.loadLeaderboard = async function() {
             }
 
             const isCurUser = Boolean(myUid && myUid === cleanUid);
-            const cachedProf = AppState.usersCache?.get(cleanUid) || {};
+            const cachedProf = (cleanUid ? AppState.usersCache?.get(cleanUid) : null) || (isCurUser ? myCachedProfile : {}) || {};
 
-            const name = isCurUser
-                ? (curUser.displayName || cachedProf.name || rawItem.name || "Пользователь")
-                : (cachedProf.name || rawItem.name || rawItem.profile?.name || rawItem.displayName || "Пользователь");
+            // Site profile (cachedProf) ALWAYS takes precedence over Google Auth (curUser)
+            const name = (
+                cachedProf.name ||
+                cachedProf.displayName ||
+                rawItem.name ||
+                rawItem.profile?.name ||
+                rawItem.displayName ||
+                (isCurUser ? curUser?.displayName : "") ||
+                "Пользователь"
+            ).trim();
 
-            const username = isCurUser
-                ? (cachedProf.username || myUsername || "user")
-                : (cachedProf.username || rawItem.username || rawItem.profile?.username || "user");
+            const username = (
+                cachedProf.username ||
+                rawItem.username ||
+                rawItem.profile?.username ||
+                (isCurUser ? myUsername : "") ||
+                "user"
+            ).trim();
 
-            const avatar = isCurUser
-                ? (curUser.photoURL || cachedProf.avatar || rawItem.avatar || "")
-                : (cachedProf.avatar || rawItem.avatar || rawItem.profile?.avatar || rawItem.photoURL || "");
+            const avatar = (
+                cachedProf.avatar ||
+                cachedProf.photoURL ||
+                rawItem.avatar ||
+                rawItem.profile?.avatar ||
+                rawItem.photoURL ||
+                (isCurUser ? curUser?.photoURL : "") ||
+                ""
+            ).trim();
 
             const frame = cachedProf.frame || rawItem.frame || rawItem.profile?.frame || "";
             
@@ -991,8 +1021,9 @@ window.loadLeaderboard = async function() {
                 existing.streak = Math.max(existing.streak, userRecord.streak);
                 existing.timeSpentInRooms = Math.max(existing.timeSpentInRooms, userRecord.timeSpentInRooms);
                 existing.likes = Math.max(existing.likes, userRecord.likes);
-                if (!existing.avatar && userRecord.avatar) existing.avatar = userRecord.avatar;
-                if ((!existing.name || existing.name === "Пользователь") && userRecord.name) existing.name = userRecord.name;
+                if (userRecord.avatar) existing.avatar = userRecord.avatar;
+                if (userRecord.name && userRecord.name !== "Пользователь") existing.name = userRecord.name;
+                if (userRecord.username && userRecord.username !== "user") existing.username = userRecord.username;
                 existing.profile = { ...existing.profile, ...userRecord.profile };
             }
         };
@@ -1021,17 +1052,17 @@ window.loadLeaderboard = async function() {
 
         // Always ensure current user is added/merged with latest data
         if (curUser?.uid) {
-            const myProf = AppState.usersCache?.get(curUser.uid) || {};
+            const myLatestProf = (AppState.usersCache?.get(curUser.uid)) || myProf || {};
             addOrMergeUser({
                 uid: curUser.uid,
-                name: curUser.displayName || myProf.name || "Пользователь",
-                username: myProf.username || "user",
-                avatar: curUser.photoURL || myProf.avatar || "",
-                frame: myProf.frame || "",
-                lumens: Number(myProf.lumens || 0),
-                streak: Number(myProf.streak || 0),
-                timeSpentInRooms: Number(myProf.timeSpentInRooms || 0),
-                likedBy: myProf.likedBy || {}
+                name: myLatestProf.name || myLatestProf.displayName || curUser.displayName || "Пользователь",
+                username: myLatestProf.username || "user",
+                avatar: myLatestProf.avatar || myLatestProf.photoURL || curUser.photoURL || "",
+                frame: myLatestProf.frame || "",
+                lumens: Number(myLatestProf.lumens || 0),
+                streak: Number(myLatestProf.streak || 0),
+                timeSpentInRooms: Number(myLatestProf.timeSpentInRooms || 0),
+                likedBy: myLatestProf.likedBy || {}
             }, curUser.uid);
         }
 
