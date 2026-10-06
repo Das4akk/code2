@@ -38,6 +38,7 @@ export default async function handler(req, res) {
       const xp = Number(profile.xp != null ? profile.xp : (data.xp != null ? data.xp : 0)) || 0;
       const level = Number(profile.level != null ? profile.level : (data.level != null ? data.level : 1)) || 1;
       const timeSpentInRooms = Number(profile.timeSpentInRooms != null ? profile.timeSpentInRooms : (data.timeSpentInRooms != null ? data.timeSpentInRooms : 0)) || 0;
+      const streak = Number(profile.streak != null ? profile.streak : (data.streak != null ? data.streak : 0)) || 0;
       const likedBy = profile.likedBy || data.likedBy || {};
       const likesCount = Object.keys(likedBy).length;
 
@@ -50,6 +51,7 @@ export default async function handler(req, res) {
         xp,
         level,
         lumens,
+        streak,
         likes: likesCount,
         timeSpentInRooms,
         likedBy

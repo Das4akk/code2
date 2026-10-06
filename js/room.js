@@ -358,8 +358,8 @@ class RoomManager {
       overlay.className = "premium-lock-overlay premium-lock-small";
       overlay.innerHTML = `
         <div class="premium-lock-inner">
-          <span class="premium-lock-emoji">🔒</span>
-          <span class="premium-lock-text">Доступно с COWIO Premium</span>
+          <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" class="premium-lock-emoji" alt="🔒">
+          <span class="premium-lock-text">Доступно только с Premium</span>
         </div>
       `;
       overlay.addEventListener("click", (e) => {
@@ -537,6 +537,8 @@ class RoomManager {
         hashtags,
         theme: "default",
         hostId: AppState.currentUser.uid,
+        owner: AppState.currentUser.uid,
+        members: { [AppState.currentUser.uid]: true },
         hostName:
           AppState.usersCache.get(AppState.currentUser.uid)?.name ||
           AppState.currentUser.displayName ||
@@ -875,10 +877,16 @@ class RoomManager {
     }
     const presenceRef = ref(db, `rooms/${roomId}/presence/${uid}`);
     const presListRef = ref(db, `rooms/${roomId}/presence`);
+    const membersRef = ref(db, `rooms/${roomId}/members/${uid}`);
     const syncRef = ref(db, `rooms/${roomId}/sync`);
     const chatRef = ref(db, `rooms/${roomId}/chat`);
     const reactionsRef = ref(db, `rooms/${roomId}/reactions`);
     const typingRef = ref(db, `rooms/${roomId}/typing`);
+
+    if (uid && !uid.startsWith("user_")) {
+      set(membersRef, true).catch(() => {});
+      onDisconnect(membersRef).remove();
+    }
 
     const typingUnsub = onValue(typingRef, (snap) => {
       const typings = snap.val() || {};

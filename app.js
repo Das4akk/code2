@@ -38,15 +38,19 @@ import { FriendsManager, DirectMessages, ReportManager } from "./js/social.js";
 import { SupportSystem } from "./js/support.js";
 import { AdminPanel } from "./js/admin.js";
 import { RoomManager, RTCManager, MobileSwipeManager } from "./js/room.js";
+// TEMP DEBUG
+console.log('[APP] room.js loaded');
 import { CatalogManager } from "./js/catalog.js";
 import { FpsCounter } from "./js/fps.js";
 import Router from "./js/router.js";
 import { MaintenanceSystem } from "./js/maintenance.js";
+import { SessionManager } from "./js/sessions.js";
 
 // Make all critical singletons globally accessible
 window.AppState = AppState;
 window.Utils = Utils;
 window.AuthManager = AuthManager;
+window.SessionManager = SessionManager;
 window.BadgeManager = BadgeManager;
 window.ProfileManager = ProfileManager;
 window.FriendsManager = FriendsManager;
@@ -73,28 +77,6 @@ window.MediaResolverClient = MediaResolverClient;
 window.RoomVideoSearchManager = RoomVideoSearchManager;
 window.FpsCounter = FpsCounter;
 
-// TEMP DEBUG - DISABLED
-/*
-// Global PERMISSION_DENIED interceptor for developer
-window.addEventListener('unhandledrejection', (event) => {
-  const msg = String((event.reason && event.reason.message) || event.reason || '');
-  const isPerm = msg.includes('PERMISSION_DENIED') || msg.includes('permission_denied');
-  if (!isPerm) return;
-  
-  const isDev = window.AdminPanel && 
-                typeof window.AdminPanel.isCurrentUserCreator === 'function' && 
-                window.AdminPanel.isCurrentUserCreator();
-  
-  if (isDev) {
-    console.warn('[Dev] Suppressed permission error:', msg);
-    event.preventDefault();
-  }
-});
-*/
-
-// TEMP DEBUG - Verify room.js loading
-console.log('[APP] room.js loaded. RoomManager:', typeof RoomManager, 'RTCManager:', typeof RTCManager);
-
 // Application Runner & Initialization
 const runApp = () => {
   const initSystem = (name, initFn) => {
@@ -119,26 +101,14 @@ const runApp = () => {
   initSystem("BadgeManager", () => (window.BadgeManager || BadgeManager)?.init());
   initSystem("GlobalThemeManager", () => (window.GlobalThemeManager || GlobalThemeManager)?.init());
   initSystem("AuthManager", () => (window.AuthManager || AuthManager)?.init());
+  initSystem("BackgroundFX", () => (window.BackgroundFX || BackgroundFX)?.init());
+  initSystem("EasterEggManager", () => (window.EasterEggManager || EasterEggManager)?.init());
+  initSystem("HashtagManager", () => (window.HashtagManager || HashtagManager)?.initHashtags());
+  initSystem("MobileSwipeManager", () => (window.MobileSwipeManager || MobileSwipeManager)?.init());
   initSystem("PremiumManager", () => (window.PremiumManager || PremiumManager)?.init());
   initSystem("LibraryManager", () => (window.LibraryManager || LibraryManager)?.init());
-  try { if (window.PremiumManager?.syncLocks) PremiumManager.syncLocks(); } catch (e) {}
-
-  const deferInit = (fn) => {
-    if (typeof requestIdleCallback === "function") {
-      requestIdleCallback(fn, { timeout: 1500 });
-    } else {
-      setTimeout(fn, 120);
-    }
-  };
-
-  deferInit(() => {
-    initSystem("BackgroundFX", () => (window.BackgroundFX || BackgroundFX)?.init());
-    initSystem("EasterEggManager", () => (window.EasterEggManager || EasterEggManager)?.init());
-    initSystem("HashtagManager", () => (window.HashtagManager || HashtagManager)?.initHashtags());
-    initSystem("MobileSwipeManager", () => (window.MobileSwipeManager || MobileSwipeManager)?.init());
-    initSystem("MysteryEventManager", () => window.MysteryEventManager?.init());
-    initSystem("FpsCounter", () => (window.FpsCounter || FpsCounter)?.checkAndToggle());
-  });
+  initSystem("MysteryEventManager", () => window.MysteryEventManager?.init());
+  initSystem("FpsCounter", () => (window.FpsCounter || FpsCounter)?.checkAndToggle());
 
   document.querySelectorAll(".btn-close-modal").forEach((btn) => {
     btn.addEventListener("click", (e) => {
@@ -807,6 +777,7 @@ window.switchLeaderboardCategory = function(cat) {
     const btnLumens = Utils.$("leaderboard-tab-lumens");
     const btnLikes = Utils.$("leaderboard-tab-likes");
     const btnTime = Utils.$("leaderboard-tab-time");
+    const btnStreak = Utils.$("leaderboard-tab-streak");
 
     if (btnLumens) {
         if (cat === "lumens") {
@@ -850,303 +821,320 @@ window.switchLeaderboardCategory = function(cat) {
         }
     }
 
-    window.loadLeaderboard();
-};
-
-window.renderLeaderboard = function(usersArray, cat = "lumens") {
-    // TEMP DEBUG
-    console.log('[RENDER-LEADERBOARD] called with data:', usersArray);
-    let container = document.querySelector('#leaderboard-list') || 
-                    document.querySelector('.leaderboard-list') ||
-                    document.querySelector('[data-leaderboard]');
-    
-    // Dynamic fallback if container was removed or not found
-    if (!container) {
-        const parentSec = document.querySelector('#section-leaderboard') || document.querySelector('.leaderboard-container');
-        if (parentSec) {
-            container = document.createElement('div');
-            container.id = 'leaderboard-list';
-            container.style.cssText = 'display: flex; flex-direction: column; gap: 10px;';
-            parentSec.appendChild(container);
-        }
-    }
-
-    console.log('[RENDER-LEADERBOARD] container found:', !!container);
-
-    if (!container) {
-        console.error('[RENDER-LEADERBOARD] container could not be found or created!');
-        return;
-    }
-
-    const topUsers = (Array.isArray(usersArray) ? usersArray : []).slice(0, 50);
-
-    if (topUsers.length === 0) {
-        const emptyLabel = cat === "lumens" ? "Люменов" : (cat === "likes" ? "лайков" : "проведённого времени в комнатах");
-        container.innerHTML = `<div style="color:var(--text-muted); text-align:center; padding: 32px 16px;">Пока ни у кого нет ${emptyLabel}.</div>`;
-        return;
-    }
-
-    let html = "";
-    topUsers.forEach((u, idx) => {
-        let placeStyle = "color: var(--text-muted); font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center;";
-        let placeText = `${idx + 1}`;
-        
-        if (idx === 0) { 
-            placeStyle = "color: #FFD700; font-size: 20px; font-weight: 900; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); display: flex; align-items: center; justify-content: center; gap: 4px;"; 
-            placeText = '1 <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Crown.webp" style="width: 28px; height: 28px;" alt="1">'; 
-        } else if (idx === 1) { 
-            placeStyle = "color: #C0C0C0; font-size: 18px; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 4px;"; 
-            placeText = '2 <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Gem%20Stone.webp" style="width: 26px; height: 26px;" alt="2">'; 
-        } else if (idx === 2) { 
-            placeStyle = "color: #CD7F32; font-size: 18px; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 4px;"; 
-            placeText = '3 <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Star.webp" style="width: 24px; height: 24px;" alt="3">'; 
-        }
-
-        const cached = (window.AppState && AppState.usersCache && AppState.usersCache.has(u.uid)) ? AppState.usersCache.get(u.uid) : null;
-        const uProfile = u.profile || cached || {};
-        
-        const rawName = uProfile.name || u.name || cached?.name || uProfile.displayName || u.displayName || uProfile.username || u.username || (uProfile.email ? uProfile.email.split('@')[0] : '') || "Пользователь";
-        const safeName = String(rawName).trim() || "Пользователь";
-        
-        const rawUsername = uProfile.username || u.username || cached?.username || (uProfile.email ? uProfile.email.split('@')[0] : '') || "";
-        const safeUsername = String(rawUsername).trim();
-        
-        const safeProfile = {
-            ...uProfile,
-            name: safeName,
-            username: safeUsername,
-            avatar: uProfile.avatar || cached?.avatar || "",
-            frame: uProfile.frame || cached?.frame || ""
-        };
-
-        const avHtml = (window.ProfileManager && typeof ProfileManager.getAvatarHtml === "function") 
-            ? ProfileManager.getAvatarHtml(safeProfile) 
-            : `<div style="width:100%;height:100%;border-radius:50%;background:#111;display:flex;align-items:center;justify-content:center;">${Utils.escapeHtml((safeName || "?")[0])}</div>`;
-        const isMe = AppState.currentUser?.uid === u.uid;
-        
-        let scoreContent = "";
-        const scoreVal = Number(u.score != null ? u.score : (cat === "lumens" ? safeProfile.lumens : (cat === "likes" ? Object.keys(safeProfile.likedBy || {}).length : safeProfile.xp))) || 0;
-        if (cat === "lumens") {
-            scoreContent = `${scoreVal.toLocaleString()} <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 20px; height: 20px;" alt="✨">`;
-        } else if (cat === "likes") {
-            scoreContent = `${scoreVal.toLocaleString()} <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Red%20Heart.webp" style="width: 20px; height: 20px;" alt="❤️">`;
+    if (btnStreak) {
+        if (cat === "streak") {
+            btnStreak.className = "primary-btn";
+            btnStreak.style.background = "linear-gradient(135deg, rgba(255, 120, 0, 0.25), rgba(255, 69, 0, 0.25))";
+            btnStreak.style.borderColor = "rgba(255, 120, 0, 0.4)";
+            btnStreak.style.color = "#ff7800";
         } else {
-            scoreContent = `${Utils.formatDuration ? Utils.formatDuration(scoreVal) : scoreVal + ' сек'} <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Hourglass%20Done.webp" style="width: 20px; height: 20px;" alt="⏳">`;
+            btnStreak.className = "secondary-btn";
+            btnStreak.style.background = "transparent";
+            btnStreak.style.borderColor = "rgba(255, 255, 255, 0.1)";
+            btnStreak.style.color = "rgba(255, 255, 255, 0.6)";
         }
+    }
 
-        const scoreColor = cat === "lumens" ? "#ffd700" : (cat === "likes" ? "#ff4b4b" : "#60a5fa");
-
-        html += `<div style="display:flex;align-items:center;padding:12px 16px;background:${isMe ? 'rgba(255,215,0,0.08)' : 'rgba(255,255,255,0.03)'};border:1px solid ${isMe ? 'rgba(255,215,0,0.3)' : 'rgba(255,255,255,0.05)'};border-radius:12px;cursor:pointer;transition:transform 0.2s, background 0.2s;" onmouseover="this.style.background='${isMe ? 'rgba(255,215,0,0.14)' : 'rgba(255,255,255,0.08)'}'" onmouseout="this.style.background='${isMe ? 'rgba(255,215,0,0.08)' : 'rgba(255,255,255,0.03)'}'" onclick="if(window.ProfileManager) ProfileManager.openViewProfileModal('${u.uid}')">
-            <div style="width: 60px; text-align:center; margin-right:16px; font-weight:bold; ${placeStyle}">${placeText}</div>
-            <div class="avatar" style="width:46px;height:46px;margin-right:16px;border-radius:50%;overflow:visible;flex-shrink:0;">${avHtml}</div>
-            <div style="flex:1;display:flex;flex-direction:column;gap:2px;min-width:0;">
-                <div style="font-weight:700;font-size:16px;color:var(--text-main);display:flex;align-items:center;gap:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-                    <span>${Utils.escapeHtml(safeName)}</span>
-                    ${isMe ? '<span style="font-size:10px;padding:2px 6px;background:rgba(255,215,0,0.2);color:#ffd700;border-radius:4px;font-weight:800;flex-shrink:0;">ВЫ</span>' : ''}
-                </div>
-                <span style="font-size:12px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${safeUsername ? '@' + Utils.escapeHtml(safeUsername) : ''}</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:6px;font-weight:700;font-size:16px;color:${scoreColor};flex-shrink:0;">
-                ${scoreContent}
-            </div>
-        </div>`;
-    });
-    
-    container.innerHTML = html;
-    // TEMP DEBUG
-    console.log('[RENDER-LEADERBOARD] container children after:', container.children.length);
+    window.loadLeaderboard();
 };
 
 window.loadLeaderboard = async function() {
     const listEl = Utils.$("leaderboard-list");
-    if (listEl) {
-        listEl.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding: 24px;">Загрузка рейтинга...</div>';
-    }
+    if (!listEl) return;
     
     const cat = window.activeLeaderboardCategory || "lumens";
-    // TEMP DEBUG
-    console.log('[LEADERBOARD] loading data for category:', cat);
-    let authObj = window.auth || (window.firebase && window.firebase.auth ? window.firebase.auth() : null);
+    listEl.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding: 24px;">Загрузка рейтинга...</div>';
     
-    // 1. Wait for auth if not ready
-    if (!authObj?.currentUser) {
-        console.warn('[LEADERBOARD] no currentUser, waiting for onAuthStateChanged...');
-        if (authObj && typeof authObj.onAuthStateChanged === "function") {
-            await new Promise((resolve) => {
-                const unsub = authObj.onAuthStateChanged((u) => {
-                    if (u) {
-                        unsub();
-                        resolve();
-                    }
-                });
-                setTimeout(resolve, 2000); // safety timeout
-            });
-        }
-    }
-
-    if (authObj?.currentUser && typeof authObj.currentUser.getIdToken === "function") {
-        try {
-            await authObj.currentUser.getIdToken(true);
-            console.log('[LEADERBOARD] token refreshed for:', authObj.currentUser.uid);
-        } catch (tokErr) {
-            console.warn('[LEADERBOARD] token refresh warning:', tokErr.message);
-        }
-    }
-
-    console.log('[LEADERBOARD] auth current user:', authObj?.currentUser?.uid || window.AppState?.currentUser?.uid);
-
     try {
-        const database = window.db || db;
-        const getFn = (typeof get === "function") ? get : (window.get || (window.firebase && window.firebase.get));
-        const refFn = (typeof ref === "function") ? ref : (window.ref || (window.firebase && window.firebase.ref));
+        const database = window.db || (typeof getDatabase === "function" ? getDatabase() : null);
+        const getFn = window.get;
+        const setFn = window.set;
+        const refFn = window.ref;
 
         if (!database || !getFn || !refFn) {
             throw new Error("Firebase database not initialized");
         }
 
-        function extractUserProfile(uid, uData = {}) {
-            const prof = uData.profile || uData;
-            const rawName = prof.name || uData.name || prof.displayName || uData.displayName || prof.username || uData.username || (prof.email ? prof.email.split('@')[0] : (uData.email ? uData.email.split('@')[0] : '')) || 'Пользователь';
-            const rawUsername = prof.username || uData.username || (prof.email ? prof.email.split('@')[0] : (uData.email ? uData.email.split('@')[0] : '')) || '';
-            const avatar = prof.avatar || uData.avatar || prof.photoURL || uData.photoURL || '';
-            const frame = prof.frame || uData.equippedFrame || uData.frame || '';
-            const lumens = Number(prof.lumens != null ? prof.lumens : (uData.lumens != null ? uData.lumens : 0)) || 0;
-            const xp = Number(prof.xp != null ? prof.xp : (uData.xp != null ? uData.xp : 0)) || 0;
-            const timeSpentInRooms = Number(prof.timeSpentInRooms != null ? prof.timeSpentInRooms : (uData.timeSpentInRooms != null ? uData.timeSpentInRooms : 0)) || 0;
-            const likedBy = prof.likedBy || uData.likedBy || {};
+        // 1. Sync current user's profile to public /leaderboard node if authenticated
+        const curUser = AppState.currentUser || (window.auth && window.auth.currentUser);
+        if (curUser?.uid && setFn) {
+            try {
+                const myUid = curUser.uid;
+                const cachedProfile = AppState.usersCache.get(myUid) || {};
+                const name = (cachedProfile.name || curUser.displayName || "Пользователь").trim();
+                const username = (cachedProfile.username || "user").trim();
+                const avatar = cachedProfile.avatar || cachedProfile.photoURL || curUser.photoURL || "";
+                const frame = cachedProfile.frame || "";
+                const lumens = Number(cachedProfile.lumens) || 0;
+                const streak = Number(cachedProfile.streak) || 0;
+                const timeSpent = Number(cachedProfile.timeSpentInRooms) || 0;
+                const likesCount = Object.keys(cachedProfile.likedBy || {}).length;
 
-            return {
-                ...uData,
-                ...prof,
-                name: String(rawName).trim() || 'Пользователь',
-                username: String(rawUsername).trim(),
+                setFn(refFn(database, `leaderboard/${myUid}`), {
+                    uid: myUid,
+                    name,
+                    username,
+                    avatar,
+                    frame,
+                    lumens,
+                    streak,
+                    likes: likesCount,
+                    timeSpentInRooms: timeSpent,
+                    level: Number(cachedProfile.level || 1),
+                    xp: Number(cachedProfile.xp || 0),
+                    updatedAt: Date.now()
+                }).catch(() => {});
+            } catch (_) {}
+        }
+
+        // 2. Fetch public /leaderboard node (safe, allowed by Security Rules .read: true)
+        const snap = await getFn(refFn(database, "leaderboard"));
+        const rawData = snap.exists() ? snap.val() : {};
+        
+        const canonicalUsers = new Map();
+        const usernameToUid = new Map();
+
+        const myUid = curUser?.uid || "";
+        const myCachedProfile = myUid ? (AppState.usersCache?.get(myUid) || {}) : {};
+        const myUsername = String(myCachedProfile.username || "").toLowerCase().replace(/^@/, "").trim();
+        const myName = String(curUser?.displayName || myCachedProfile.name || "").toLowerCase().trim();
+
+        const addOrMergeUser = (rawItem, fallbackKey) => {
+            if (!rawItem || typeof rawItem !== "object") return;
+            const rawUid = rawItem.uid || rawItem.id || rawItem.profile?.uid;
+            let cleanUid = rawUid ? String(rawUid).trim() : (fallbackKey ? String(fallbackKey).trim() : "");
+            
+            // Exclude non-user meta keys or numeric array index keys if no real uid is present
+            if (!cleanUid || cleanUid === "users" || cleanUid === "updatedAt") return;
+            if (/^\d+$/.test(cleanUid) && !rawUid) {
+                // If it's just an array index with no real uid
+                cleanUid = `idx_${cleanUid}`;
+            }
+
+            const itemUsername = String(rawItem.username || rawItem.profile?.username || "").toLowerCase().replace(/^@/, "").trim();
+            const itemName = String(rawItem.name || rawItem.profile?.name || "").toLowerCase().trim();
+
+            // Match current logged in user and canonicalize to myUid
+            if (myUid && (cleanUid === myUid || (itemUsername && myUsername && itemUsername === myUsername) || (itemName && myName && itemName === myName && cleanUid.startsWith("idx_")))) {
+                cleanUid = myUid;
+            }
+
+            // Deduplicate by username if username is already mapped to a real UID
+            if (itemUsername) {
+                if (usernameToUid.has(itemUsername)) {
+                    const existingUid = usernameToUid.get(itemUsername);
+                    if (existingUid !== cleanUid) {
+                        cleanUid = existingUid;
+                    }
+                } else {
+                    usernameToUid.set(itemUsername, cleanUid);
+                }
+            }
+
+            const isCurUser = Boolean(myUid && myUid === cleanUid);
+            const cachedProf = AppState.usersCache?.get(cleanUid) || {};
+
+            const name = isCurUser
+                ? (curUser.displayName || cachedProf.name || rawItem.name || "Пользователь")
+                : (cachedProf.name || rawItem.name || rawItem.profile?.name || rawItem.displayName || "Пользователь");
+
+            const username = isCurUser
+                ? (cachedProf.username || myUsername || "user")
+                : (cachedProf.username || rawItem.username || rawItem.profile?.username || "user");
+
+            const avatar = isCurUser
+                ? (curUser.photoURL || cachedProf.avatar || rawItem.avatar || "")
+                : (cachedProf.avatar || rawItem.avatar || rawItem.profile?.avatar || rawItem.photoURL || "");
+
+            const frame = cachedProf.frame || rawItem.frame || rawItem.profile?.frame || "";
+            
+            const rawLumens = Number(rawItem.lumens != null ? rawItem.lumens : (rawItem.profile?.lumens || 0)) || 0;
+            const lumens = Math.max(Number(cachedProf.lumens || 0), rawLumens);
+
+            const rawStreak = Number(rawItem.streak != null ? rawItem.streak : (rawItem.profile?.streak || 0)) || 0;
+            const streak = Math.max(Number(cachedProf.streak || 0), rawStreak);
+
+            const rawTime = Number(rawItem.timeSpentInRooms != null ? rawItem.timeSpentInRooms : (rawItem.profile?.timeSpentInRooms || 0)) || 0;
+            const timeSpentInRooms = Math.max(Number(cachedProf.timeSpentInRooms || 0), rawTime);
+
+            const likedByObj = rawItem.likedBy || rawItem.profile?.likedBy || cachedProf.likedBy || {};
+            const likesCount = typeof rawItem.likes === "number" ? Math.max(rawItem.likes, Object.keys(likedByObj).length) : Object.keys(likedByObj).length;
+
+            const userRecord = {
+                uid: cleanUid,
+                name,
+                username,
                 avatar,
                 frame,
                 lumens,
-                xp,
+                streak,
                 timeSpentInRooms,
-                likedBy
+                likes: likesCount,
+                profile: {
+                    name,
+                    username,
+                    avatar,
+                    photoURL: avatar,
+                    frame,
+                    lumens,
+                    streak,
+                    timeSpentInRooms,
+                    likedBy: likedByObj
+                }
             };
+
+            if (!canonicalUsers.has(cleanUid)) {
+                canonicalUsers.set(cleanUid, userRecord);
+            } else {
+                const existing = canonicalUsers.get(cleanUid);
+                existing.lumens = Math.max(existing.lumens, userRecord.lumens);
+                existing.streak = Math.max(existing.streak, userRecord.streak);
+                existing.timeSpentInRooms = Math.max(existing.timeSpentInRooms, userRecord.timeSpentInRooms);
+                existing.likes = Math.max(existing.likes, userRecord.likes);
+                if (!existing.avatar && userRecord.avatar) existing.avatar = userRecord.avatar;
+                if ((!existing.name || existing.name === "Пользователь") && userRecord.name) existing.name = userRecord.name;
+                existing.profile = { ...existing.profile, ...userRecord.profile };
+            }
+        };
+
+        // Parse any structure without generating duplicate keys
+        if (rawData.users && Array.isArray(rawData.users)) {
+            rawData.users.forEach((u, i) => addOrMergeUser(u, u?.uid || `user_${i}`));
+        } else if (rawData.users && typeof rawData.users === "object") {
+            Object.entries(rawData.users).forEach(([k, u]) => addOrMergeUser(u, u?.uid || k));
         }
 
-        // Strategy 1: Read /users
-        let usersMap = {};
-        for (let attempt = 0; attempt < 3; attempt++) {
-            try {
-                const snap = await getFn(refFn(database, "users"));
-                if (snap.exists()) {
-                    usersMap = snap.val() || {};
-                    console.log('[LEADERBOARD] got users map exists:', true, 'count:', Object.keys(usersMap).length);
-                    break;
+        Object.entries(rawData).forEach(([k, v]) => {
+            if (k !== "users" && k !== "updatedAt" && v && typeof v === "object") {
+                addOrMergeUser(v, v?.uid || k);
+            }
+        });
+
+        // Merge local in-memory users cache
+        if (AppState.usersCache && typeof AppState.usersCache.forEach === "function") {
+            AppState.usersCache.forEach((prof, uUid) => {
+                if (prof && uUid) {
+                    addOrMergeUser(prof, uUid);
                 }
-            } catch (uErr) {
-                console.warn('[LEADERBOARD] /users read notice attempt', attempt + 1, uErr.code, uErr.message);
-                if (attempt < 2) await new Promise((r) => setTimeout(r, 1000));
-            }
+            });
         }
 
-        // Strategy 2: If /users was restricted or empty, fetch /usernames & each profile
-        if (Object.keys(usersMap).length === 0) {
-            try {
-                const unSnap = await getFn(refFn(database, "usernames"));
-                if (unSnap.exists()) {
-                    const unObj = unSnap.val() || {};
-                    console.log('[LEADERBOARD] loaded usernames list:', Object.keys(unObj).length);
-                    const uidList = Object.values(unObj);
-                    const profFetches = uidList.map(async (targetUid) => {
-                        try {
-                            const pSnap = await getFn(refFn(database, `users/${targetUid}/profile`));
-                            if (pSnap.exists()) {
-                                usersMap[targetUid] = { profile: pSnap.val() };
-                            }
-                        } catch (_) {}
-                    });
-                    await Promise.all(profFetches);
-                }
-            } catch (unErr) {
-                console.warn('[LEADERBOARD] /usernames read notice:', unErr.message);
-            }
-        }
-
-        // Strategy 3: Check /leaderboard
-        let precalcList = null;
-        try {
-            const lbSnap = await getFn(refFn(database, "leaderboard"));
-            const rawVal = lbSnap.val();
-            if (rawVal) {
-                precalcList = Array.isArray(rawVal) ? rawVal : (rawVal.users || Object.values(rawVal));
-                console.log('[LEADERBOARD] got /leaderboard items:', precalcList?.length);
-            }
-        } catch (lbErr) {
-            console.warn('[LEADERBOARD] /leaderboard read notice:', lbErr.message);
+        // Always ensure current user is added/merged with latest data
+        if (curUser?.uid) {
+            const myProf = AppState.usersCache?.get(curUser.uid) || {};
+            addOrMergeUser({
+                uid: curUser.uid,
+                name: curUser.displayName || myProf.name || "Пользователь",
+                username: myProf.username || "user",
+                avatar: curUser.photoURL || myProf.avatar || "",
+                frame: myProf.frame || "",
+                lumens: Number(myProf.lumens || 0),
+                streak: Number(myProf.streak || 0),
+                timeSpentInRooms: Number(myProf.timeSpentInRooms || 0),
+                likedBy: myProf.likedBy || {}
+            }, curUser.uid);
         }
 
         let usersArray = [];
 
-        if (Object.keys(usersMap).length > 0) {
-            for (const [uid, uData] of Object.entries(usersMap)) {
-                const prof = extractUserProfile(uid, uData);
-                let score = 0;
-                if (cat === "lumens") {
-                    score = prof.lumens;
-                } else if (cat === "likes") {
-                    score = Object.keys(prof.likedBy || {}).length;
-                } else if (cat === "time") {
-                    score = prof.timeSpentInRooms;
-                } else {
-                    score = prof.xp;
+        if (cat === "lumens") {
+            for (const uData of canonicalUsers.values()) {
+                const lumens = Number(uData.lumens || 0);
+                if (lumens > 0) {
+                    usersArray.push({ uid: uData.uid, profile: uData.profile, score: lumens, type: "lumens" });
                 }
-                usersArray.push({ uid, profile: prof, score, type: cat });
             }
-        } else if (precalcList && precalcList.length > 0) {
-            for (const item of precalcList) {
-                const uid = item.uid || item.id || "anon";
-                const prof = extractUserProfile(uid, item);
-                let score = 0;
-                if (cat === "lumens") {
-                    score = prof.lumens;
-                } else if (cat === "likes") {
-                    score = Number(item.likes != null ? item.likes : Object.keys(prof.likedBy || {}).length);
-                } else if (cat === "time") {
-                    score = prof.timeSpentInRooms;
-                } else {
-                    score = prof.xp;
+            usersArray.sort((a, b) => b.score - a.score);
+        } else if (cat === "likes") {
+            for (const uData of canonicalUsers.values()) {
+                const likesCount = Number(uData.likes || 0);
+                if (likesCount > 0) {
+                    usersArray.push({ uid: uData.uid, profile: uData.profile, score: likesCount, type: "likes" });
                 }
-                usersArray.push({ uid, profile: prof, score, type: cat });
             }
+            usersArray.sort((a, b) => b.score - a.score);
+        } else if (cat === "time") {
+            for (const uData of canonicalUsers.values()) {
+                const roomTime = Number(uData.timeSpentInRooms || 0);
+                if (roomTime > 0) {
+                    usersArray.push({ uid: uData.uid, profile: uData.profile, score: roomTime, type: "time" });
+                }
+            }
+            usersArray.sort((a, b) => b.score - a.score);
+        } else if (cat === "streak") {
+            for (const uData of canonicalUsers.values()) {
+                const streak = Number(uData.streak || 0);
+                if (streak > 0) {
+                    usersArray.push({ uid: uData.uid, profile: uData.profile, score: streak, type: "streak" });
+                }
+            }
+            usersArray.sort((a, b) => b.score - a.score);
         }
 
-        // Enrich any profile if name/avatar is missing or generic
-        const enrichList = usersArray.map(async (u) => {
-            if (!u.profile?.name || u.profile.name === 'Пользователь' || u.profile.name === 'Unknown' || !u.profile.avatar) {
-                if (window.ProfileManager && typeof ProfileManager.loadUser === "function") {
-                    try {
-                        const loaded = await ProfileManager.loadUser(u.uid);
-                        if (loaded && loaded.name && loaded.name !== 'Unknown') {
-                            u.profile.name = loaded.name;
-                            if (loaded.username) u.profile.username = loaded.username;
-                            if (loaded.avatar) u.profile.avatar = loaded.avatar;
-                            if (loaded.frame) u.profile.frame = loaded.frame;
-                        }
-                    } catch (_) {}
-                }
+        const topUsers = usersArray.slice(0, 50);
+        
+        if (topUsers.length === 0) {
+            const emptyLabel = cat === "lumens" ? "Люменов" : (cat === "likes" ? "лайков" : (cat === "streak" ? "активной серии огонька" : "проведённого времени в комнатах"));
+            listEl.innerHTML = `<div style="color:var(--text-muted); text-align:center; padding: 32px 16px;">Пока ни у кого нет ${emptyLabel}.</div>`;
+            return;
+        }
+        
+        let html = "";
+        topUsers.forEach((u, idx) => {
+            let placeStyle = "color: var(--text-muted); font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center;";
+            let placeText = `${idx + 1}`;
+            
+            if (idx === 0) { 
+                placeStyle = "color: #FFD700; font-size: 20px; font-weight: 900; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); display: flex; align-items: center; justify-content: center; gap: 4px;"; 
+                placeText = '1 <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Crown.webp" style="width: 28px; height: 28px;" alt="1">'; 
+            } else if (idx === 1) { 
+                placeStyle = "color: #C0C0C0; font-size: 18px; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 4px;"; 
+                placeText = '2 <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Gem%20Stone.webp" style="width: 26px; height: 26px;" alt="2">'; 
+            } else if (idx === 2) { 
+                placeStyle = "color: #CD7F32; font-size: 18px; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 4px;"; 
+                placeText = '3 <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Star.webp" style="width: 24px; height: 24px;" alt="3">'; 
             }
+            
+            const avHtml = ProfileManager.getAvatarHtml(u.profile);
+            const isMe = AppState.currentUser?.uid === u.uid;
+            
+            let scoreContent = "";
+            if (cat === "lumens") {
+                scoreContent = `${u.score.toLocaleString()} <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 20px; height: 20px;" alt="✨">`;
+            } else if (cat === "likes") {
+                scoreContent = `${u.score.toLocaleString()} <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Red%20Heart.webp" style="width: 20px; height: 20px;" alt="❤️">`;
+            } else if (cat === "streak") {
+                const dayWord = u.score === 1 ? 'день' : (u.score < 5 ? 'дня' : 'дней');
+                scoreContent = `${u.score} ${dayWord} <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Fire.webp" style="width: 20px; height: 20px;" alt="🔥">`;
+            } else {
+                scoreContent = `${Utils.formatDuration(u.score)} <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Hourglass%20Done.webp" style="width: 20px; height: 20px;" alt="⏳">`;
+            }
+
+            const scoreColor = cat === "lumens" ? "#ffd700" : (cat === "likes" ? "#ff4b4b" : (cat === "streak" ? "#ff7800" : "#60a5fa"));
+
+            html += `<div style="display:flex;align-items:center;padding:12px 16px;background:${isMe ? 'rgba(255,215,0,0.08)' : 'rgba(255,255,255,0.03)'};border:1px solid ${isMe ? 'rgba(255,215,0,0.3)' : 'rgba(255,255,255,0.05)'};border-radius:12px;cursor:pointer;transition:transform 0.2s, background 0.2s;" onmouseover="this.style.background='${isMe ? 'rgba(255,215,0,0.14)' : 'rgba(255,255,255,0.08)'}'" onmouseout="this.style.background='${isMe ? 'rgba(255,215,0,0.08)' : 'rgba(255,255,255,0.03)'}'" onclick="ProfileManager.openViewProfileModal('${u.uid}')">
+                <div style="width: 60px; text-align:center; margin-right:16px; font-weight:bold; ${placeStyle}">${placeText}</div>
+                <div style="width:46px;height:46px;margin-right:16px;border-radius:50%;overflow:visible;">${avHtml}</div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:2px;">
+                    <div style="font-weight:700;font-size:16px;color:var(--text-main);display:flex;align-items:center;gap:6px;">
+                        <span>${Utils.escapeHtml(u.profile.name || "Пользователь")}</span>
+                        ${isMe ? '<span style="font-size:10px;padding:2px 6px;background:rgba(255,215,0,0.2);color:#ffd700;border-radius:4px;font-weight:800;">ВЫ</span>' : ''}
+                    </div>
+                    <span style="font-size:12px;color:var(--text-muted);">@${Utils.escapeHtml(u.profile.username || "")}</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;font-weight:700;font-size:16px;color:${scoreColor};">
+                    ${scoreContent}
+                </div>
+            </div>`;
         });
-        await Promise.all(enrichList);
-
-        usersArray.sort((a, b) => b.score - a.score);
-
-        console.log('[LEADERBOARD] final usersArray count:', usersArray.length, 'first:', usersArray[0]);
-        window.renderLeaderboard(usersArray, cat);
-    } catch (err) {
-        console.error('[LEADERBOARD] error:', err.code, err.message);
-        if (listEl) {
-            listEl.innerHTML = '<div style="color:var(--text-error, #ff4b4b); text-align:center; padding:24px;">Ошибка загрузки рейтинга. Попробуйте обновить страницу.</div>';
-        }
+        
+        listEl.innerHTML = html;
+        
+    } catch (e) {
+        console.error("[Leaderboard] Load error:", e);
+        listEl.innerHTML = '<div style="color:#ff6b6b; text-align:center; padding:24px;">Ошибка загрузки рейтинга.</div>';
     }
 };
-
-window.loadAndRenderLeaderboard = window.loadLeaderboard;
 
 document.addEventListener("DOMContentLoaded", () => {
     const closeBtn = document.getElementById("btn-chat-close-x");

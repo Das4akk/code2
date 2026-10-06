@@ -50,6 +50,19 @@ function apiDevPlugin(): Plugin {
           return;
         }
 
+        if (pathname === '/api/auth/geo') {
+          try {
+            res.setHeader('Content-Type', 'application/json; charset=utf-8');
+            res.end(JSON.stringify({ success: true, country: 'RU', countryName: 'Россия', ip: '127.0.0.1' }));
+            return;
+          } catch (e: any) {
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json; charset=utf-8');
+            res.end(JSON.stringify({ success: true, country: 'RU', countryName: 'Россия' }));
+            return;
+          }
+        }
+
         if (pathname === '/api/auth/check-role') {
           try {
             if (typeof (res as any).status !== 'function') {
@@ -200,7 +213,7 @@ export default defineConfig(() => {
       port: 3000,
       strictPort: true,
       cors: true,
-      allowedHosts: true,
+      allowedHosts: ['.google.com', '.googleusercontent.com', '.idx.dev', 'localhost'],
       hmr: false,
     },
     build: {

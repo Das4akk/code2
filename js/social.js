@@ -167,7 +167,12 @@ class FriendsManager {
       };
     
     if (Utils.$("nav-settings"))
-      Utils.$("nav-settings").onclick = () => setNavActive("nav-settings");
+      Utils.$("nav-settings").onclick = () => {
+        setNavActive("nav-settings");
+        requestAnimationFrame(() => {
+          if (window.SessionManager?.refreshSessionsUI) window.SessionManager.refreshSessionsUI();
+        });
+      };
     if (Utils.$("nav-other"))
       Utils.$("nav-other").onclick = () => setNavActive("nav-other");
     if (Utils.$("nav-premium"))

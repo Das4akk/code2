@@ -745,8 +745,8 @@ class PremiumManager {
       overlay.className = `premium-lock-overlay ${isSmall ? "premium-lock-small" : ""}`;
       overlay.innerHTML = `
         <div class="premium-lock-inner">
-          <span class="premium-lock-emoji">🔒</span>
-          <span class="premium-lock-text">Доступно с COWIO Premium</span>
+          <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" class="premium-lock-emoji" alt="🔒">
+          <span class="premium-lock-text">Доступно только с Premium</span>
         </div>
       `;
       overlay.addEventListener("click", (e) => {
@@ -766,7 +766,7 @@ class PremiumManager {
   static showPremiumLock(featureName = "") {
     if (document.getElementById("premium-lock-modal")) return;
 
-    let title = "Доступно с COWIO Premium";
+    let title = "Доступно только с Premium";
     let desc = "Эта функция доступна только подписчикам Premium. Оформите подписку, чтобы открыть её.";
 
     if (featureName === "create-room") {
@@ -782,7 +782,7 @@ class PremiumManager {
     modal.className = "premium-lock-modal";
     modal.innerHTML = `
       <div class="premium-lock-modal-content">
-        <div class="premium-lock-emoji-large">🔒</div>
+        <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" class="premium-lock-emoji-large" alt="🔒">
         <h3 class="premium-lock-title">${Utils.escapeHtml(title)}</h3>
         <p class="premium-lock-desc">${Utils.escapeHtml(desc)}</p>
         <div class="premium-lock-actions">

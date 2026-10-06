@@ -554,6 +554,9 @@ class AuthManager {
                 if (!AppState.isRegistering && window.ProfileManager?.ensureProfileExists) {
                   await ProfileManager.ensureProfileExists(user);
                 }
+                if (window.SessionManager?.registerCurrentSession) {
+                  await SessionManager.registerCurrentSession(user);
+                }
                 const profSnap = await get(ref(db, `users/${user.uid}/profile`));
                 if (profSnap.exists() && window.BadgeManager?.checkLevelBadges) {
                   await BadgeManager.checkLevelBadges(

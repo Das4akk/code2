@@ -334,10 +334,43 @@ function initSettingsRenderer() {
           </div>
         </div>
       </div>
+
+      <!-- Active Sessions & Devices -->
+      <div class="settings-security-card" id="security-sessions-card" style="background: rgba(255,255,255,0.02); border-radius: 16px; border: 1px solid var(--border-light); margin-top: 12px; overflow: hidden; transition: all 0.3s; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+        <div style="padding: 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05);">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 40px; height: 40px; background: rgba(46, 213, 115, 0.12); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Laptop.webp" style="width: 24px; height: 24px; object-fit: contain;">
+            </div>
+            <div>
+              <div style="font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 8px;">
+                <span>Устройства и сессии</span>
+                <span id="settings-sessions-count-badge" style="font-size: 11px; font-weight: 800; background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 10px; color: #fff;">Активно</span>
+              </div>
+              <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Список активных устройств, ПК, смартфонов и геолокация входа</div>
+            </div>
+          </div>
+          <button type="button" class="secondary-btn" id="btn-refresh-sessions" onclick="if(window.SessionManager) SessionManager.refreshSessionsUI();" style="width: auto; padding: 6px 12px; font-size: 12px; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px;">
+            <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Counterclockwise%20Arrows%20Button.webp" style="width: 14px; height: 14px; vertical-align: middle;">
+            Обновить
+          </button>
+        </div>
+        
+        <div id="settings-sessions-list-container" style="padding: 18px 20px;">
+          <div style="color:var(--text-muted); font-size:13px; text-align:center;">Загрузка списка устройств...</div>
+        </div>
+      </div>
    </div>
   `;
 
   container.innerHTML = html;
+
+  if (window.SessionManager) {
+    const sessContainer = document.getElementById("settings-sessions-list-container");
+    if (sessContainer) {
+      window.SessionManager.renderSessionsContainer(sessContainer);
+    }
+  }
 
   // Add event listeners
   SettingSections.forEach((s) => {

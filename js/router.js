@@ -249,6 +249,8 @@ class Router {
       window.LibraryManager.renderGrid();
     } else if (navId === "nav-leaderboard" && window.loadLeaderboard) {
       window.loadLeaderboard();
+    } else if (navId === "nav-settings" && window.SessionManager) {
+      window.SessionManager.refreshSessionsUI();
     } else if (navId === "nav-premium" && window.PremiumManager) {
       window.PremiumManager.renderPremiumSection();
     } else if (navId === "nav-mystery" && window.MysteryEventManager) {
