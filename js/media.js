@@ -646,8 +646,9 @@ class RoomVideoSearchManager {
 
     if (urlInput) {
       urlInput.value = video.url;
-      if (window.Room && typeof Room.updateVkPremiumLockState === "function") {
-        Room.updateVkPremiumLockState();
+      const roomMgr = window.RoomManager || window.Room;
+      if (roomMgr && typeof roomMgr.updateVkPremiumLockState === "function") {
+        roomMgr.updateVkPremiumLockState();
       }
     }
     if (nameInput) {

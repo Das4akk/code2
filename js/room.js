@@ -3974,6 +3974,7 @@ class MobileSwipeManager {
     });
   }
 }
+window.Room = RoomManager;
 window.RoomManager = RoomManager;
 window.RTCManager = RTCManager;
 window.MobileSwipeManager = MobileSwipeManager;
@@ -3982,4 +3983,4 @@ window.sendChatMessage = () => RoomManager.sendChatMessage();
 window.sendReaction = (emoji) => RoomManager.sendReaction(emoji);
 window.toggleMic = (forceOff) => RTCManager.toggleMic(forceOff);
 window.showProfileModal = (uid) => RoomManager.showUserMiniature(uid);
-export { RoomManager, RTCManager, MobileSwipeManager };
+export { RoomManager as Room, RoomManager, RTCManager, MobileSwipeManager };

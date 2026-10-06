@@ -296,12 +296,6 @@ class Utils {
     });
   }
 
-  static showScreen(id, push = true) {
-      document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
-      const screen = document.getElementById(id);
-      if (screen) screen.classList.add("active");
-  }
-
   static alert(msg) {
     return new Promise((resolve) => {
       const modal = document.createElement("div");
