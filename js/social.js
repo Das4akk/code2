@@ -411,7 +411,7 @@ class FriendsManager {
 
         if (token) {
           try {
-            const res = await fetch(`/api/users/search?q=${encodeURIComponent(val)}`, {
+            const res = await fetch(`/api/users?action=search&q=${encodeURIComponent(val)}`, {
               headers: { Authorization: `Bearer ${token}` },
             });
             if (res.ok) {

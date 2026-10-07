@@ -287,7 +287,7 @@ class LibraryManager {
                 inputTitle.disabled = true;
                 inputDesc.disabled = true;
                 
-                const res = await fetch("/api/library/fetch-metadata", {
+                const res = await fetch("/api/video?action=fetch-metadata", {
                     method: "POST",
                     headers: {"Content-Type": "application/json"},
                     body: JSON.stringify({ url: val })
@@ -716,7 +716,7 @@ class LibraryManager {
               if (isYoutube && !name) {
                   window.Utils.toast("Получение данных с YouTube...", "info");
                   try {
-                      const res = await fetch("/api/library/fetch-metadata", {
+                      const res = await fetch("/api/video?action=fetch-metadata", {
                           method: "POST", headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({ url })
                       });

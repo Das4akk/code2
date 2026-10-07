@@ -173,7 +173,7 @@ class SessionManager {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 2500);
-      const res = await fetch("/api/auth/geo", { signal: controller.signal });
+      const res = await fetch("/api/auth?action=geo", { signal: controller.signal });
       clearTimeout(timeoutId);
       if (res.ok) {
         const data = await res.json();

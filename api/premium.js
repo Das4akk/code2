@@ -10,8 +10,9 @@ export default async function handler(req, res) {
     if (!action) {
       const urlPath = req.url.split('?')[0];
       const segments = urlPath.split('/').filter(Boolean);
-      if (segments.length > 1 && segments[0] === 'premium') {
-        action = segments[segments.length - 1];
+      const last = segments[segments.length - 1];
+      if (last && last !== 'premium' && last !== 'api') {
+        action = last;
       }
     }
 

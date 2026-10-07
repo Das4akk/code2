@@ -12,5 +12,14 @@
         { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
       ]
     }
+  ],
+  "rewrites": [
+    { "source": "/api/admin/:action*", "destination": "/api/admin?action=:action" },
+    { "source": "/api/auth/:action*", "destination": "/api/auth?action=:action" },
+    { "source": "/api/users/:action*", "destination": "/api/users?action=:action" },
+    { "source": "/api/chat/:action*", "destination": "/api/chat?action=:action" },
+    { "source": "/api/video/:action*", "destination": "/api/video?action=:action" },
+    { "source": "/api/library/:action*", "destination": "/api/video?action=:action" },
+    { "source": "/api/premium/:action*", "destination": "/api/premium?action=:action" }
   ]
 }

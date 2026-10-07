@@ -49,7 +49,11 @@ export default async function handler(req, res) {
 
     res.setHeader('Content-Type', fetchRes.headers.get('content-type') || 'image/webp');
     res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-    return res.status(200).send(buffer);
+    if (typeof res.send === 'function') {
+      return res.status(200).send(buffer);
+    }
+    res.statusCode = 200;
+    return res.end(buffer);
   } catch (err) {
     console.error('[emoji-proxy error]:', err.message);
     return res.status(500).json({ error: err.message });

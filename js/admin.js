@@ -59,7 +59,7 @@ class AdminPanel {
 
     try {
       const token = await user.getIdToken();
-      const res = await fetch('/api/auth/check-role', {
+      const res = await fetch('/api/auth?action=check-role', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -921,7 +921,7 @@ class AdminPanel {
           const token = authObj.currentUser ? await authObj.currentUser.getIdToken() : "";
           if (!token) return Utils.toast("Вы не авторизованы", "error");
           Utils.toast("Пересчёт лидерборда...", "info");
-          const res = await fetch("/api/admin/recalc-leaderboard", {
+          const res = await fetch("/api/admin?action=recalc-leaderboard", {
             method: "POST",
             headers: { Authorization: `Bearer ${token}` },
           });

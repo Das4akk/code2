@@ -147,7 +147,7 @@ class MediaResolverClient {
     const normalized = String(url || "").trim();
     if (!normalized) return null;
     try {
-      const res = await fetch(`/api/video/info?url=${encodeURIComponent(normalized)}`);
+      const res = await fetch(`/api/video?action=info&url=${encodeURIComponent(normalized)}`);
       if (res.ok) {
         const data = await res.json();
         if (data && data.success) return data;

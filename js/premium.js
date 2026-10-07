@@ -1304,7 +1304,7 @@ class PremiumManager {
 
       // 1. Try server backend endpoint first
       try {
-        const res = await fetch("/api/premium/create-payment", {
+        const res = await fetch("/api/premium?action=create-payment", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -1436,7 +1436,7 @@ class PremiumManager {
     try {
       let data = null;
       try {
-        const res = await fetch(`/api/premium/status?${q}`);
+        const res = await fetch(`/api/premium?action=status&${q}`);
         if (res.ok) {
           data = await res.json().catch(() => null);
         }

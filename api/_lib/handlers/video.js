@@ -1,5 +1,5 @@
 import { getVideoInfo, searchVideos } from '../video-service.js';
-import { validateUrl, safeFetch } from '../../utils/url-validator.js';
+import { validateUrl, safeFetch } from '../../../utils/url-validator.js';
 import { setCors } from '../helpers/auth.js';
 
 export async function info(req, res) {
