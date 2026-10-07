@@ -12,9 +12,7 @@ const ROLE_DISPLAY_NAMES = {
 
 export async function checkRole(req, res) {
   setCors(req, res);
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+  if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
     const decoded = await verifyToken(req);
@@ -30,26 +28,53 @@ export async function checkRole(req, res) {
     }
 
     const uid = decoded.uid || '';
-    const email = decoded.email || '';
-    let role = getRoleFromEnv(uid, email);
+    const email = (decoded.email || '').toLowerCase().trim();
 
-    if (role !== 'creator') {
+    // ШАГ 1: Проверяем ENV-whitelist. Абсолютный приоритет.
+    let role = getRoleFromEnv(uid, email);
+    const isInEnvWhitelist = (role === 'creator');
+
+    // ШАГ 2: Если не в ENV-whitelist — читаем из БД /admins/{uid}.
+    if (!isInEnvWhitelist) {
       try {
         const db = getDb();
-        const [adminSnap, userSnap] = await Promise.all([
-          db.ref(`admins/${uid}`).once('value'),
-          db.ref(`users/${uid}/role`).once('value')
-        ]);
+        const adminSnap = await db.ref(`admins/${uid}`).once('value');
         if (adminSnap.exists()) {
-          role = 'creator';
-        } else if (userSnap.exists()) {
-          role = String(userSnap.val() || 'user').toLowerCase();
+          const admVal = adminSnap.val();
+          role = (typeof admVal === 'object' && admVal?.role)
+            ? String(admVal.role).toLowerCase()
+            : 'creator';
         }
-      } catch (dbErr) {}
+      } catch (dbErr) {
+        console.warn('[check-role DB Warning]:', dbErr.message);
+      }
     }
 
     const isCreator = role === 'creator';
-    const isAdmin = isCreator || role === 'admin' || role === 'moderator' || role === 'manager';
+    const isAdmin = isCreator || ['admin', 'operator', 'moderator', 'manager'].includes(role);
+
+    // ШАГ 3: Синхронизация /admins/{uid} только если нужно.
+    if (isAdmin) {
+      try {
+        const db = getDb();
+        const existing = (await db.ref(`admins/${uid}`).once('value')).val();
+        const needsSync = !existing
+          || existing.role !== role
+          || existing.isOwner !== isCreator
+          || existing.isDeveloper !== isCreator;
+        if (needsSync) {
+          await db.ref(`admins/${uid}`).update({
+            role: role,
+            isOwner: isCreator,
+            isDeveloper: isCreator,
+            email: email,
+            updatedAt: Date.now()
+          });
+        }
+      } catch (syncErr) {
+        console.warn('[check-role Sync Warning]:', syncErr.message);
+      }
+    }
 
     return res.status(200).json({
       success: true,
@@ -57,12 +82,16 @@ export async function checkRole(req, res) {
       isCreator,
       isAdmin,
       isOwner: isCreator,
-      isDeveloper: isCreator
+      isDeveloper: isCreator,
+      uid,
+      email
     });
+
   } catch (err) {
-    console.error('[auth/check-role]', err.message);
-    return res.status(200).json({
-      success: true,
+    console.error('[check-role FATAL]:', err.message, err.stack);
+    return res.status(500).json({
+      success: false,
+      error: err.message,
       role: 'user',
       isCreator: false,
       isAdmin: false,

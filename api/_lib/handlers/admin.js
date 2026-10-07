@@ -1,5 +1,5 @@
 import { getDb } from '../helpers/firebase.js';
-import { requireAdmin } from '../helpers/auth.js';
+import { requireAdmin, requireCreator } from '../helpers/auth.js';
 
 export async function recalcLeaderboard(req, res) {
   try {
@@ -52,6 +52,57 @@ export async function recalcLeaderboard(req, res) {
     return res.status(200).json({ success: true, count: top100.length });
   } catch (err) {
     console.error('[admin/recalc-leaderboard]', err.message);
+    return res.status(500).json({ error: err.message });
+  }
+}
+
+export async function setUserRole(req, res, decoded) {
+  try {
+    const user = decoded || (await requireCreator(req));
+    if (!user) {
+      return res.status(403).json({ error: 'Forbidden: creator only' });
+    }
+
+    const { targetUid, newRole } = req.body || {};
+    if (!targetUid) {
+      return res.status(400).json({ error: 'Missing targetUid' });
+    }
+
+    const db = getDb();
+    const requesterSnap = await db.ref(`admins/${user.uid}`).once('value');
+    const requester = requesterSnap.val();
+
+    // Только creator может менять роли
+    if (!requester || requester.role !== 'creator') {
+      return res.status(403).json({ error: 'Forbidden: creator only' });
+    }
+
+    // Защита: нельзя понизить другого creator
+    const targetSnap = await db.ref(`admins/${targetUid}`).once('value');
+    const target = targetSnap.val();
+    if (target?.role === 'creator' && newRole && newRole !== 'creator') {
+      return res.status(400).json({ error: 'Cannot downgrade creator' });
+    }
+
+    if (newRole) {
+      await db.ref(`admins/${targetUid}`).update({
+        role: newRole,
+        isOwner: newRole === 'creator',
+        isDeveloper: newRole === 'creator',
+        updatedAt: Date.now(),
+        updatedBy: user.uid
+      });
+      await db.ref(`users/${targetUid}/profile/role`).set(newRole);
+      await db.ref(`users/${targetUid}/role`).set(newRole);
+    } else {
+      await db.ref(`admins/${targetUid}`).remove();
+      await db.ref(`users/${targetUid}/profile/role`).remove();
+      await db.ref(`users/${targetUid}/role`).remove();
+    }
+
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    console.error('[set-user-role]', err.message);
     return res.status(500).json({ error: err.message });
   }
 }

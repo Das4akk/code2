@@ -1,38 +1,55 @@
 import { getAuth, getDb } from './firebase.js';
 
-const DEFAULT_CREATOR_EMAILS = [
-  'mankaef@yandex.ru',
-  'das4akk@gmail.com',
-  'das4akk2@gmail.com',
-  'cowiosupport@gmail.com'
-];
+const CREATOR_EMAILS = new Set(
+  (process.env.CREATOR_EMAILS || '')
+    .split(/[,;\s]+/)
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean)
+);
 
-const CREATOR_EMAILS = [
-  ...DEFAULT_CREATOR_EMAILS,
-  ...(process.env.CREATOR_EMAILS || '').split(/[,;\s]+/)
-]
-  .map((s) => s.trim().toLowerCase())
-  .filter(Boolean);
+const CREATOR_UIDS = new Set(
+  (process.env.CREATOR_UIDS || '')
+    .split(/[,;\s]+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+);
 
-const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '')
-  .split(/[,;\s]+/)
-  .map((s) => s.trim().toLowerCase())
-  .filter(Boolean);
+const ADMIN_EMAILS = new Set(
+  (process.env.ADMIN_EMAILS || '')
+    .split(/[,;\s]+/)
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean)
+);
 
-const OWNER_EMAILS = (process.env.OWNER_EMAILS || '')
-  .split(/[,;\s]+/)
-  .map((s) => s.trim().toLowerCase())
-  .filter(Boolean);
+const ADMIN_UIDS = new Set(
+  (process.env.ADMIN_UIDS || '')
+    .split(/[,;\s]+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+);
 
-const CREATOR_UIDS = (process.env.CREATOR_UIDS || '')
-  .split(/[,;\s]+/)
-  .map((s) => s.trim())
-  .filter(Boolean);
+// Fail-safe: если ENV не настроены — логируем предупреждение, но не падаем
+if (CREATOR_EMAILS.size === 0 && CREATOR_UIDS.size === 0) {
+  console.warn('[SECURITY] CREATOR_EMAILS и CREATOR_UIDS не заданы в ENV. Только /admins/{uid} даёт права.');
+}
 
-const ADMIN_UIDS = (process.env.ADMIN_UIDS || '')
-  .split(/[,;\s]+/)
-  .map((s) => s.trim())
-  .filter(Boolean);
+export function isInCreatorWhitelist(uid, email) {
+  const normEmail = (email || '').toLowerCase().trim();
+  const cleanUid = (uid || '').trim();
+  return CREATOR_EMAILS.has(normEmail) || CREATOR_UIDS.has(cleanUid);
+}
+
+export function isInAdminWhitelist(uid, email) {
+  const normEmail = (email || '').toLowerCase().trim();
+  const cleanUid = (uid || '').trim();
+  return ADMIN_EMAILS.has(normEmail) || ADMIN_UIDS.has(cleanUid);
+}
+
+export function getRoleFromEnv(uid, email) {
+  if (isInCreatorWhitelist(uid, email)) return 'creator';
+  if (isInAdminWhitelist(uid, email)) return 'admin';
+  return 'user';
+}
 
 const ALLOWED_ORIGINS = [
   'https://cowio.vercel.app',
@@ -50,21 +67,6 @@ export function setCors(req, res) {
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS,PUT,DELETE');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With');
-}
-
-export function getRoleFromEnv(uid, email) {
-  const normEmail = (email || '').toLowerCase().trim();
-  const cleanUid = (uid || '').trim();
-  if (
-    CREATOR_EMAILS.includes(normEmail) ||
-    ADMIN_EMAILS.includes(normEmail) ||
-    OWNER_EMAILS.includes(normEmail) ||
-    CREATOR_UIDS.includes(cleanUid) ||
-    ADMIN_UIDS.includes(cleanUid)
-  ) {
-    return 'creator';
-  }
-  return 'user';
 }
 
 export async function verifyToken(req) {
@@ -87,7 +89,7 @@ export async function requireAuth(req) {
 export async function requireAdmin(req) {
   const decoded = await verifyToken(req);
   if (!decoded) return null;
-  const isEnvAdmin = getRoleFromEnv(decoded.uid, decoded.email) === 'creator';
+  const isEnvAdmin = isInCreatorWhitelist(decoded.uid, decoded.email) || isInAdminWhitelist(decoded.uid, decoded.email);
   if (isEnvAdmin) return decoded;
 
   try {
@@ -101,12 +103,15 @@ export async function requireAdmin(req) {
 export async function requireCreator(req) {
   const decoded = await verifyToken(req);
   if (!decoded) return null;
-  const isEnvCreator = getRoleFromEnv(decoded.uid, decoded.email) === 'creator';
+  const isEnvCreator = isInCreatorWhitelist(decoded.uid, decoded.email);
   if (isEnvCreator) return decoded;
 
   try {
     const snap = await getDb().ref(`admins/${decoded.uid}`).once('value');
-    if (snap.exists()) return decoded;
+    if (snap.exists()) {
+      const data = snap.val();
+      if (data?.role === 'creator' || data?.isOwner === true) return decoded;
+    }
   } catch (e) {}
 
   return null;

@@ -166,20 +166,23 @@ class AdminPanel {
     const user = AppState.currentUser || window.auth?.currentUser;
     if (!user) return false;
 
+    // Проверка через серверный кэш (получен из /api/auth?action=check-role)
     if (this._cachedRole && this._cachedRole.uid === user.uid) {
       return Boolean(this._cachedRole.isCreator || this._cachedRole.role === 'creator');
     }
-
-    if (_serverRoleCache && _serverRoleCache.uid === user.uid && Date.now() - _serverRoleCache.timestamp < ROLE_CACHE_TTL) {
+    if (_serverRoleCache && _serverRoleCache.uid === user.uid &&
+        Date.now() - _serverRoleCache.timestamp < ROLE_CACHE_TTL) {
       this._cachedRole = _serverRoleCache;
       return Boolean(_serverRoleCache.isCreator || _serverRoleCache.role === 'creator');
     }
 
-    const profile = (AppState.usersCache?.get ? AppState.usersCache.get(user.uid) : null) || user.profile || {};
+    // Проверка через профиль пользователя в БД (не хардкод)
+    const profile = (AppState.usersCache?.get ? AppState.usersCache.get(user.uid) : null) 
+                    || user.profile || {};
     const r = String(profile?.role || '').toLowerCase().trim();
     if (r === 'creator' || profile?.isOwner === true) return true;
 
-    // Refresh asynchronously in background
+    // Если кэша нет — запускаем асинхронную проверку через API
     void this._refreshRole();
     return false;
   }
@@ -1417,7 +1420,7 @@ class AdminPanel {
   static init() {
     this.ensureUI();
     if (!AppState.currentUser) return;
-    void this._refreshRole();
+    void this.fetchServerRole(true);
     if (this.initializedForUid === AppState.currentUser.uid) return;
     this.initializedForUid = AppState.currentUser.uid;
 
@@ -2544,9 +2547,32 @@ class AdminPanel {
       return Utils.toast("Нельзя изменить роль Создателя", "error");
     }
 
-    await update(ref(db, `users/${targetUid}/profile`), {
-      role: roleName || null,
-    });
+    try {
+      const token = await (window.auth?.currentUser?.getIdToken ? window.auth.currentUser.getIdToken() : null);
+      if (token) {
+        const res = await fetch('/api/admin?action=set-user-role', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ targetUid, newRole: roleName || null })
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          return Utils.toast(err.error || 'Ошибка обновления роли', 'error');
+        }
+      } else {
+        await update(ref(db, `users/${targetUid}/profile`), {
+          role: roleName || null,
+        });
+      }
+    } catch (e) {
+      await update(ref(db, `users/${targetUid}/profile`), {
+        role: roleName || null,
+      });
+    }
+
     await this.pushAuditLog("role.change", { targetUid, role: roleName });
     const roleTitles = {
       moderator: "Модератор",

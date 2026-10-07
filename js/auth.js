@@ -533,6 +533,11 @@ class AuthManager {
               window.Router.handleRoute(pathname, true);
             }
 
+            try {
+              if (user && typeof user.getIdToken === "function") {
+                await user.getIdToken(true);
+              }
+            } catch (_) {}
             try { if (window.ProfileManager?.bindMyProfileListener) ProfileManager.bindMyProfileListener(); } catch (e) {}
             try { if (window.FriendsManager?.initListeners) FriendsManager.initListeners(); } catch (e) {}
             try { if (window.RoomManager?.initLobbyListeners) RoomManager.initLobbyListeners(); } catch (e) {}
