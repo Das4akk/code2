@@ -2101,9 +2101,18 @@ class ProfileManager {
     vModal.classList.add("active");
 
     const fetchPromises = [
-      profile ? Promise.resolve(profile) : this.loadUser(targetUid).catch(() => ({ uid: targetUid, name: "Пользователь", username: "user" })),
-      get(ref(db, `users/${targetUid}/friends`)).catch(() => ({ exists: () => false, val: () => ({}) })),
-      get(ref(db, `users/${targetUid}/status`)).catch(() => ({ exists: () => false, val: () => ({}) }))
+      profile ? Promise.resolve(profile) : this.loadUser(targetUid).catch((err) => {
+        console.error('[profile-read] loadUser:', err?.code, err?.message, `users/${targetUid}/profile`);
+        return { uid: targetUid, name: "Пользователь", username: "user" };
+      }),
+      get(ref(db, `users/${targetUid}/friends`)).catch((err) => {
+        console.error('[profile-read] friends:', err?.code, err?.message, `users/${targetUid}/friends`);
+        return { exists: () => false, val: () => ({}) };
+      }),
+      get(ref(db, `users/${targetUid}/status`)).catch((err) => {
+        console.error('[profile-read] status:', err?.code, err?.message, `users/${targetUid}/status`);
+        return { exists: () => false, val: () => ({}) };
+      })
     ];
 
     const [loadedProfile, friendsSnap, statusSnap] = await Promise.all(fetchPromises);
@@ -2752,7 +2761,7 @@ class ProfileManager {
               }
             });
           })
-          .catch((e) => console.error(e));
+          .catch((err) => console.error('[profile-read]', err?.code, err?.message, err?.path || 'users (root badge stats)'));
       }
     }
 
@@ -2844,7 +2853,10 @@ class ProfileManager {
         if (AppState.currentUser) {
           const myFriendsSnap = await get(
             ref(db, `users/${AppState.currentUser.uid}/friends/${targetUid}`),
-          );
+          ).catch((err) => {
+            console.error('[profile-read] friends check:', err?.code, err?.message, `users/${AppState.currentUser.uid}/friends/${targetUid}`);
+            return { exists: () => false, val: () => ({}) };
+          });
           const isFriend =
             myFriendsSnap.exists() && myFriendsSnap.val().status === "accepted";
           
@@ -3365,9 +3377,15 @@ class ProfileManager {
       };
 
       const targetUserRef = ref(db, `users/${targetUid}`);
-      const inspUnsub = onValue(targetUserRef, (snap) => {
-        renderLiveInspector(snap.val() || {});
-      });
+      const inspUnsub = onValue(
+        targetUserRef,
+        (snap) => {
+          renderLiveInspector(snap.val() || {});
+        },
+        (err) => {
+          console.error('[profile-read] live-inspector:', err?.code, err?.message, `users/${targetUid}`);
+        }
+      );
       if (this.viewUnsubs) {
         this.viewUnsubs.push(() => off(targetUserRef, "value", inspUnsub));
       }

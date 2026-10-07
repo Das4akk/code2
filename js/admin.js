@@ -25,17 +25,19 @@ class AdminPanel {
 
   static async _refreshRole(force = false) {
     try {
-      const roleInfo = await this.fetchServerRole(force);
-      this._cachedRole = roleInfo;
-      try { this.syncSidebarButton(); } catch (_) {}
-      try {
-        if (Utils.$("modal-admin-panel")?.classList.contains("active")) {
-          this.renderPanel();
+      const role = await this.fetchServerRole(force);
+      this._cachedRole = role;
+      // ВАЖНО: после обновления роли вызываем перерисовку
+      try { 
+        this.renderPanel?.(); 
+        this.syncSidebarButton?.(); 
+        if (typeof window !== 'undefined' && window.dispatchEvent) {
+          window.dispatchEvent(new CustomEvent('cowio:role-updated', { detail: role }));
         }
-      } catch (_) {}
-      return roleInfo;
+      } catch (e) {}
+      return role;
     } catch (e) {
-      console.warn('[AdminPanel._refreshRole] error:', e);
+      console.warn('[AdminPanel] _refreshRole failed:', e.message);
       return null;
     }
   }
@@ -3767,4 +3769,17 @@ class AdminPanel {
 }
 
 window.AdminPanel = AdminPanel;
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('cowio:role-updated', (e) => {
+    const role = e.detail;
+    if (role?.role === 'creator' || role?.isCreator) {
+      console.log('[AdminPanel] Role updated → creator, re-rendering');
+      try { AdminPanel.renderPanel?.(); } catch(_) {}
+      try { AdminPanel.syncSidebarButton?.(); } catch(_) {}
+      try { AdminPanel.ensureUI?.(); } catch(_) {}
+    }
+  });
+}
+
 export { AdminPanel };
