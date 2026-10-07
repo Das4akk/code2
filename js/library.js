@@ -580,8 +580,18 @@ class LibraryManager {
                       <button id="btn-lib-desc-toggle" class="btn-text-link" style="display:none; margin-top:8px; font-size:13px; color:var(--accent);">Читать полностью</button>
                   </div>
 
-                  <div class="premium-locked-wrapper" data-feature="${(/vk\.com|vkvideo\.ru|vk\.ru/i.test(v.url || '') || v.platform === 'vk') ? 'vk-link-edit' : ''}">
-                    <button class="primary-btn" id="btn-lib-create-room" style="font-size:16px; padding:16px; border-radius:12px; color:#000000 !important; background:var(--brand); font-weight:700; width:100%;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Food%20and%20Drink/Popcorn.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom" /> <span style="color:#000000 !important; font-weight:700;">Создать комнату с этим видео</span></button>
+                  <div class="premium-locked-wrapper" style="width:100%;">
+                    ${((/vk\.com|vkvideo\.ru|vk\.ru/i.test(v.url || '') || v.platform === 'vk') && !this.hasPremium()) ? `
+                      <button type="button" class="premium-lock-action-btn locked-feature-btn" id="btn-lib-create-room" style="width:100%; height:52px; font-size:15px; padding:0 20px; border-radius:14px; display:inline-flex !important; align-items:center !important; justify-content:center !important; gap:10px !important; color:#ffffff !important; background:linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 100%) !important; backdrop-filter:blur(28px) saturate(190%) !important; -webkit-backdrop-filter:blur(28px) saturate(190%) !important; border:1px solid rgba(255, 255, 255, 0.22) !important; box-shadow:0 8px 28px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.24) !important; font-weight:700; text-align:center;">
+                        <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" style="width:20px; height:20px; object-fit:contain; vertical-align:middle; flex-shrink:0; margin:0;" alt="🔒" />
+                        <span style="color:#ffffff !important; font-weight:700; line-height:1.2;">Доступно только с Premium</span>
+                      </button>
+                    ` : `
+                      <button type="button" class="primary-btn" id="btn-lib-create-room" style="font-size:16px; padding:16px; border-radius:12px; color:#000000 !important; background:var(--brand); font-weight:700; width:100%; display:inline-flex; align-items:center; justify-content:center; gap:8px;">
+                        <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Food%20and%20Drink/Popcorn.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom" />
+                        <span style="color:#000000 !important; font-weight:700;">Создать комнату с этим видео</span>
+                      </button>
+                    `}
                   </div>
               </div>
           </div>
@@ -616,7 +626,6 @@ class LibraryManager {
       modal.querySelector("#btn-lib-close-view").onclick = () => this.closeModal("modal-lib-view");
       
       const isVkVideo = /vk\.com|vkvideo\.ru|vk\.ru/i.test(v.url || '') || v.platform === 'vk';
-      if (isVkVideo && window.PremiumManager) PremiumManager.applyLockUI("vk-link-edit");
 
       modal.querySelector("#btn-lib-create-room").onclick = () => {
           if (isVkVideo && !this.hasPremium()) {

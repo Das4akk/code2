@@ -2821,58 +2821,469 @@ class ProfileManager {
       if (!inspector) {
         inspector = document.createElement("div");
         inspector.id = "live-user-inspector";
-        inspector.style.position = "fixed";
-        inspector.style.bottom = "20px";
-        inspector.style.left = "20px";
-        inspector.style.padding = "16px 20px";
-        inspector.style.background = "rgba(10, 10, 14, 0.94)";
-        inspector.style.backdropFilter = "blur(14px)";
-        inspector.style.border = "1px solid rgba(255, 255, 255, 0.15)";
-        inspector.style.borderRadius = "16px";
-        inspector.style.color = "#fff";
-        inspector.style.zIndex = "9999";
-        inspector.style.pointerEvents = "auto";
-        inspector.style.fontFamily = "Consolas, monospace";
-        inspector.style.fontSize = "12px";
-        inspector.style.boxShadow = "0 12px 40px rgba(0,0,0,0.8)";
-        inspector.style.textAlign = "left";
-        inspector.style.minWidth = "260px";
+        inspector.style.cssText = `
+          position: fixed;
+          bottom: 20px;
+          left: 20px;
+          width: min(390px, calc(100vw - 32px));
+          background: rgba(10, 11, 16, 0.90);
+          backdrop-filter: blur(28px) saturate(190%);
+          -webkit-backdrop-filter: blur(28px) saturate(190%);
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          border-radius: 18px;
+          color: #ffffff;
+          z-index: 9999;
+          pointer-events: auto;
+          font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+          font-size: 12px;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+          text-align: left;
+          overflow: hidden;
+          transition: box-shadow 0.2s ease, border-color 0.2s ease;
+        `;
         vModal.appendChild(inspector);
+
+        // Draggable window support
+        let isDragging = false;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+        inspector.addEventListener("mousedown", (e) => {
+          const handle = e.target.closest(".live-inspector-drag-handle");
+          if (!handle || e.target.closest("button")) return;
+          isDragging = true;
+          const rect = inspector.getBoundingClientRect();
+          dragOffsetX = e.clientX - rect.left;
+          dragOffsetY = e.clientY - rect.top;
+          inspector.style.bottom = "auto";
+          inspector.style.right = "auto";
+          inspector.style.left = `${rect.left}px`;
+          inspector.style.top = `${rect.top}px`;
+          e.preventDefault();
+        });
+        window.addEventListener("mousemove", (e) => {
+          if (!isDragging) return;
+          const maxX = Math.max(0, window.innerWidth - inspector.offsetWidth - 8);
+          const maxY = Math.max(0, window.innerHeight - inspector.offsetHeight - 8);
+          const nextX = Math.min(Math.max(8, e.clientX - dragOffsetX), maxX);
+          const nextY = Math.min(Math.max(8, e.clientY - dragOffsetY), maxY);
+          inspector.style.left = `${nextX}px`;
+          inspector.style.top = `${nextY}px`;
+        });
+        window.addEventListener("mouseup", () => {
+          isDragging = false;
+        });
       } else {
         inspector.style.display = "block";
       }
 
-      const userData = await get(ref(db, `users/${targetUid}`)).then(
-        (s) => s.val() || {},
-      );
-      const moderation = userData?.moderation || {};
-      const lastSessionDate = userData?.status?.lastActive
-        ? Utils.formatExactDate(userData.status.lastActive)
-        : profile.lastLoginDate || "unknown";
+      if (!inspector.dataset.activeTab) {
+        inspector.dataset.activeTab = "overview";
+      }
+      const isCollapsed = inspector.dataset.collapsed === "true";
 
-      inspector.innerHTML = `
-          <div style="display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.12); padding-bottom:6px;">
-            <div style="font-weight:800; font-family:var(--font-sans); font-size:14px; color:var(--accent);">Live Inspector</div>
-            <button id="btn-close-live-inspector" style="background:rgba(255,255,255,0.1); border:none; color:#fff; cursor:pointer; width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; line-height:1; transition:0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'" title="Закрыть">✕</button>
-          </div>
-          <div style="line-height: 1.6;">
-            <div>UID: <span style="color:#aaa;">${targetUid}</span></div>
-            <div>Current IP: <span style="color:#0ff">${Utils.escapeHtml(userData?.status?.ip || "unavailable")}</span></div>
-            <div>Reg IP: <span style="color:#0ff">${Utils.escapeHtml(profile.registeredIp || "unknown")}</span></div>
-            <div>Last Active: <span style="color:#0f0">${lastSessionDate}</span></div>
-            <div>Reg: <span style="color:#ddd">${profile.createdAt ? Utils.formatExactDate(profile.createdAt) : "unknown"}</span></div>
-            <div>Bans: <span style="color:${Array.isArray(moderation.banHistory) && moderation.banHistory.length > 0 ? '#ff4757' : '#aaa'}">${Array.isArray(moderation.banHistory) ? moderation.banHistory.length : 0}</span></div>
-            <div>Muted: <span style="color:${moderation.muted ? '#ff4757' : '#0f0'}">${moderation.muted ? "Yes" : "No"}</span></div>
-            <div>Shadowban: <span style="color:${moderation.shadowban ? '#ff4757' : '#0f0'}">${moderation.shadowban ? "Yes" : "No"}</span></div>
-          </div>
-      `;
+      const renderLiveInspector = (userData) => {
+        if (!inspector) return;
+        const prof = userData?.profile || profile || {};
+        const moderation = userData?.moderation || {};
+        const status = userData?.status || {};
+        const sessionsObj = prof?.sessions || {};
+        const sessionsList = Object.entries(sessionsObj)
+          .map(([sid, s]) => ({ ...(s || {}), sessionId: sid }))
+          .sort((a, b) => (b.lastActiveAt || 0) - (a.lastActiveAt || 0));
 
-      const closeBtn = inspector.querySelector("#btn-close-live-inspector");
-      if (closeBtn) {
-        closeBtn.onclick = (e) => {
-          e.stopPropagation();
-          inspector.style.display = "none";
-        };
+        const isOnline = Boolean(status.online);
+        const lastSessionDate = status.lastActive
+          ? Utils.formatExactDate(status.lastActive)
+          : prof.lastLoginDate || "unknown";
+        const regDate = prof.createdAt
+          ? Utils.formatExactDate(prof.createdAt)
+          : "unknown";
+        const roomMeta =
+          typeof AdminPanel !== "undefined" &&
+          typeof AdminPanel.getCurrentRoomForUid === "function"
+            ? AdminPanel.getCurrentRoomForUid(targetUid)
+            : null;
+
+        const isCreator =
+          typeof AdminPanel !== "undefined" &&
+          AdminPanel.isCreatorProfile(prof, targetUid);
+        const roleLabel = isCreator
+          ? "Создатель"
+          : prof.role === "moderator"
+            ? "Модератор"
+            : prof.role === "operator"
+              ? "Оператор"
+              : prof.role === "manager"
+                ? "Менеджер"
+                : "Пользователь";
+
+        const expMath = ProfileManager.getExpMath(Number(prof.xp) || 0);
+        const isPremActive =
+          window.PremiumManager &&
+          PremiumManager.isPremiumActive(prof, targetUid);
+        const premExpiry =
+          prof?.premium?.expiresAt && Number(prof.premium.expiresAt) > Date.now()
+            ? new Date(Number(prof.premium.expiresAt)).toLocaleDateString("ru-RU")
+            : null;
+        const friendsCount = Object.values(userData?.friends || {}).filter(
+          (f) => f && f.status === "accepted"
+        ).length;
+        const likesCount = Object.keys(prof.likedBy || {}).length;
+        const bansCount = Array.isArray(moderation.banHistory)
+          ? moderation.banHistory.length
+          : 0;
+
+        const latestSess = sessionsList[0] || null;
+        const displayIp =
+          status.ip && status.ip !== "online"
+            ? status.ip
+            : latestSess?.ip && latestSess.ip !== "online"
+              ? latestSess.ip
+              : status.ip || "online";
+        const regIp = prof.registeredIp || "unknown";
+        const countryName = latestSess?.countryName || "Россия";
+        const countryFlag =
+          latestSess?.countryFlag ||
+          window.SessionManager?.COUNTRY_FLAGS?.[latestSess?.countryCode]?.flag ||
+          "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Flags/Flag%20Russia.webp";
+
+        const activeTab = inspector.dataset.activeTab || "overview";
+        const collapsed = inspector.dataset.collapsed === "true";
+
+        inspector.innerHTML = `
+          <div class="live-inspector-drag-handle" style="
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 12px 14px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
+            border-bottom: ${collapsed ? "none" : "1px solid rgba(255, 255, 255, 0.1)"};
+            cursor: move;
+            user-select: none;
+          ">
+            <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+              <span style="
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background: ${isOnline ? "#2ed573" : "#64748b"};
+                box-shadow: ${isOnline ? "0 0 10px #2ed573" : "none"};
+                flex-shrink: 0;
+              "></span>
+              <div style="display: flex; flex-direction: column; min-width: 0;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span style="font-weight: 800; font-size: 13px; color: #ffffff; letter-spacing: -0.2px;">Live Inspector</span>
+                  <span style="font-size: 9.5px; font-weight: 800; padding: 1px 6px; border-radius: 6px; background: rgba(46, 213, 115, 0.15); border: 1px solid rgba(46, 213, 115, 0.35); color: #2ed573;">REALTIME</span>
+                </div>
+                <div style="font-size: 11px; color: rgba(255, 255, 255, 0.55); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                  ${Utils.escapeHtml(prof.name || "Без имени")} • @${Utils.escapeHtml(prof.username || targetUid.slice(0, 8))}
+                </div>
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 5px; flex-shrink: 0;">
+              <button type="button" id="btn-refresh-live-inspector" title="Обновить данные" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14); color: #ffffff; cursor: pointer; width: 24px; height: 24px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; padding: 0;">↻</button>
+              <button type="button" id="btn-collapse-live-inspector" title="${collapsed ? "Развернуть" : "Свернуть"}" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14); color: #ffffff; cursor: pointer; width: 24px; height: 24px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; padding: 0;">${collapsed ? "□" : "—"}</button>
+              <button type="button" id="btn-close-live-inspector" title="Закрыть" style="background: rgba(255,71,87,0.16); border: 1px solid rgba(255,71,87,0.32); color: #ff6b81; cursor: pointer; width: 24px; height: 24px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; padding: 0;">✕</button>
+            </div>
+          </div>
+
+          ${
+            collapsed
+              ? ""
+              : `
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 8px 12px 4px; background: rgba(0, 0, 0, 0.25);">
+              <button type="button" class="live-insp-tab" data-tab="overview" style="
+                padding: 6px 8px;
+                border-radius: 8px;
+                font-size: 11.5px;
+                font-weight: 700;
+                border: 1px solid ${activeTab === "overview" ? "rgba(255,255,255,0.28)" : "transparent"};
+                background: ${activeTab === "overview" ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.04)"};
+                color: ${activeTab === "overview" ? "#ffffff" : "rgba(255,255,255,0.6)"};
+                cursor: pointer;
+              ">Обзор</button>
+              <button type="button" class="live-insp-tab" data-tab="sessions" style="
+                padding: 6px 8px;
+                border-radius: 8px;
+                font-size: 11.5px;
+                font-weight: 700;
+                border: 1px solid ${activeTab === "sessions" ? "rgba(255,255,255,0.28)" : "transparent"};
+                background: ${activeTab === "sessions" ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.04)"};
+                color: ${activeTab === "sessions" ? "#ffffff" : "rgba(255,255,255,0.6)"};
+                cursor: pointer;
+              ">Сессии (${sessionsList.length})</button>
+              <button type="button" class="live-insp-tab" data-tab="actions" style="
+                padding: 6px 8px;
+                border-radius: 8px;
+                font-size: 11.5px;
+                font-weight: 700;
+                border: 1px solid ${activeTab === "actions" ? "rgba(255,255,255,0.28)" : "transparent"};
+                background: ${activeTab === "actions" ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.04)"};
+                color: ${activeTab === "actions" ? "#ffffff" : "rgba(255,255,255,0.6)"};
+                cursor: pointer;
+              ">Dev & Мод</button>
+            </div>
+
+            <div style="padding: 12px 14px 14px; max-height: 340px; overflow-y: auto;" class="oled-scrollbar">
+              ${
+                activeTab === "overview"
+                  ? `
+                  <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 10px; border-radius: 10px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); font-family: Consolas, monospace; font-size: 11.5px;">
+                      <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: rgba(255,255,255,0.85);">UID: <strong style="color:#fff;">${Utils.escapeHtml(targetUid)}</strong></span>
+                      <button type="button" id="btn-insp-copy-uid" style="background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); color: #fff; font-size: 10.5px; font-weight: 700; padding: 3px 8px; border-radius: 6px; cursor: pointer; width: auto; flex-shrink: 0;">Копировать</button>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px;">
+                      <div style="padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);">
+                        <div style="font-size: 10.5px; color: rgba(255,255,255,0.5);">Роль / Доступ</div>
+                        <div style="font-size: 12.5px; font-weight: 700; color: #ffffff; margin-top: 2px;">${Utils.escapeHtml(roleLabel)}</div>
+                      </div>
+                      <div style="padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);">
+                        <div style="font-size: 10.5px; color: rgba(255,255,255,0.5);">Premium</div>
+                        <div style="font-size: 12.5px; font-weight: 700; color: ${isPremActive ? "#ffd700" : "rgba(255,255,255,0.7)"}; margin-top: 2px;">
+                          ${isPremActive ? (premExpiry ? `Активен (до ${premExpiry})` : "Активен (Staff)") : "Не активен"}
+                        </div>
+                      </div>
+                      <div style="padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);">
+                        <div style="font-size: 10.5px; color: rgba(255,255,255,0.5);">Баланс / Уровень</div>
+                        <div style="font-size: 12.5px; font-weight: 700; color: #ffffff; margin-top: 2px;">
+                          ${(Number(prof.lumens) || 0).toLocaleString()} ✨ • Ур. ${expMath.level} (${(Number(prof.xp) || 0).toLocaleString()} XP)
+                        </div>
+                      </div>
+                      <div style="padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);">
+                        <div style="font-size: 10.5px; color: rgba(255,255,255,0.5);">Соц. метрики</div>
+                        <div style="font-size: 12.5px; font-weight: 700; color: #ffffff; margin-top: 2px;">
+                          ❤️ ${likesCount} • 👥 ${friendsCount} • 🔥 ${Number(prof.streak) || 0}д
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style="padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                      <div style="min-width: 0;">
+                        <div style="font-size: 10.5px; color: rgba(255,255,255,0.5);">Текущая комната</div>
+                        <div style="font-size: 12px; font-weight: 700; color: ${roomMeta ? "#2ed573" : "rgba(255,255,255,0.75)"}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                          ${roomMeta ? Utils.escapeHtml(roomMeta.room.name || roomMeta.roomId) : "Вне комнаты (Лобби)"}
+                        </div>
+                      </div>
+                      ${
+                        roomMeta
+                          ? `<button type="button" id="btn-insp-join-room" style="background: rgba(46,213,115,0.16); border: 1px solid rgba(46,213,115,0.38); color: #2ed573; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 8px; cursor: pointer; width: auto; flex-shrink: 0;">Войти</button>`
+                          : ""
+                      }
+                    </div>
+
+                    <div style="padding: 8px 10px; border-radius: 10px; background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.07); font-family: Consolas, monospace; font-size: 11.5px; line-height: 1.55;">
+                      <div>Current IP: <span style="color:#ffffff; font-weight:700;">${Utils.escapeHtml(displayIp)}</span></div>
+                      <div>Reg IP: <span style="color:#ffffff; font-weight:700;">${Utils.escapeHtml(regIp)}</span></div>
+                      <div style="display:flex; align-items:center; gap:5px;">
+                        <span>Country:</span>
+                        <img src="${countryFlag}" style="width:14px; height:14px; object-fit:contain;" alt="Flag">
+                        <span style="color:#ffffff !important; font-weight:700;">${Utils.escapeHtml(countryName)}</span>
+                      </div>
+                      <div>Last Active: <span style="color:#2ed573;">${Utils.escapeHtml(lastSessionDate)}</span></div>
+                      <div>Registered: <span style="color:#ddd;">${Utils.escapeHtml(regDate)}</span></div>
+                      <div>Partner: <span style="color:#ffffff;">${Utils.escapeHtml(userData?.partner || prof?.partner || "none")}</span></div>
+                    </div>
+                  </div>
+                `
+                  : activeTab === "sessions"
+                    ? `
+                  <div style="display: flex; flex-direction: column; gap: 8px;">
+                    ${
+                      sessionsList.length === 0
+                        ? `<div style="padding: 16px; text-align: center; color: rgba(255,255,255,0.5); border: 1px dashed rgba(255,255,255,0.12); border-radius: 10px;">Нет записанных сессий у пользователя</div>`
+                        : sessionsList
+                            .map((sess) => {
+                              const sessOnline =
+                                Date.now() - (sess.lastActiveAt || 0) < 300000;
+                              const sCountry = sess.countryName || "Россия";
+                              const sFlag =
+                                sess.countryFlag ||
+                                window.SessionManager?.COUNTRY_FLAGS?.[sess.countryCode]?.flag ||
+                                "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Flags/Flag%20Russia.webp";
+                              const sBrowser = sess.browser || "Веб-браузер";
+                              return `
+                                <div style="padding: 9px 11px; border-radius: 10px; background: ${sessOnline ? "rgba(46,213,115,0.06)" : "rgba(255,255,255,0.03)"}; border: 1px solid ${sessOnline ? "rgba(46,213,115,0.28)" : "rgba(255,255,255,0.09)"}; display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;">
+                                  <div style="min-width: 0; flex: 1;">
+                                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                      <span style="font-weight: 700; font-size: 12px; color: #ffffff;">${Utils.escapeHtml(sess.deviceName || "Устройство")}</span>
+                                      ${sessOnline ? `<span style="font-size: 9.5px; font-weight: 800; color: #2ed573; background: rgba(46,213,115,0.14); padding: 1px 5px; border-radius: 5px;">ONLINE</span>` : ""}
+                                    </div>
+                                    <div style="font-size: 11.5px; color: #ffffff; display: flex; align-items: center; gap: 6px; margin-top: 2px; flex-wrap: wrap;">
+                                      <span style="color: #ffffff;">${Utils.escapeHtml(sBrowser)}</span>
+                                      <span style="opacity: 0.35;">•</span>
+                                      <span style="display: inline-flex; align-items: center; gap: 4px; color: #ffffff !important; font-weight: 600;">
+                                        <img src="${sFlag}" style="width: 14px; height: 14px; object-fit: contain;" alt="Flag">
+                                        <span style="color: #ffffff !important;">${Utils.escapeHtml(sCountry)}</span>
+                                      </span>
+                                    </div>
+                                    <div style="font-size: 10.5px; color: rgba(255,255,255,0.5); margin-top: 3px;">
+                                      Активность: ${window.SessionManager ? window.SessionManager.formatRelative(sess.lastActiveAt) : Utils.formatExactDate(sess.lastActiveAt)}
+                                    </div>
+                                  </div>
+                                  <button type="button" class="btn-insp-kill-sess" data-sid="${Utils.escapeHtml(sess.sessionId)}" style="background: rgba(255,71,87,0.15); border: 1px solid rgba(255,71,87,0.32); color: #ff6b81; font-size: 10.5px; font-weight: 700; padding: 4px 8px; border-radius: 7px; cursor: pointer; width: auto; flex-shrink: 0;">Сброс</button>
+                                </div>
+                              `;
+                            })
+                            .join("")
+                    }
+                  </div>
+                `
+                    : `
+                  <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; text-align: center;">
+                      <div style="padding: 7px; border-radius: 9px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);">
+                        <div style="font-size: 10px; color: rgba(255,255,255,0.5);">Muted</div>
+                        <div style="font-size: 12px; font-weight: 800; color: ${moderation.muted ? "#ff4757" : "#2ed573"};">${moderation.muted ? "YES" : "NO"}</div>
+                      </div>
+                      <div style="padding: 7px; border-radius: 9px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);">
+                        <div style="font-size: 10px; color: rgba(255,255,255,0.5);">Shadowban</div>
+                        <div style="font-size: 12px; font-weight: 800; color: ${moderation.shadowban ? "#ff4757" : "#2ed573"};">${moderation.shadowban ? "YES" : "NO"}</div>
+                      </div>
+                      <div style="padding: 7px; border-radius: 9px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);">
+                        <div style="font-size: 10px; color: rgba(255,255,255,0.5);">Bans</div>
+                        <div style="font-size: 12px; font-weight: 800; color: ${bansCount > 0 ? "#ff4757" : "#ffffff"};">${bansCount}</div>
+                      </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px;">
+                      <button type="button" id="btn-insp-open-admin" style="padding: 8px 10px; border-radius: 9px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #ffffff; font-size: 11.5px; font-weight: 700; cursor: pointer; width: 100%;">⚙️ В Админ-панель</button>
+                      <button type="button" id="btn-insp-copy-json" style="padding: 8px 10px; border-radius: 9px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); color: #ffffff; font-size: 11.5px; font-weight: 700; cursor: pointer; width: 100%;">📋 Копировать JSON</button>
+                      <button type="button" id="btn-insp-toggle-mute" style="padding: 8px 10px; border-radius: 9px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); color: #ffffff; font-size: 11.5px; font-weight: 700; cursor: pointer; width: 100%;">${moderation.muted ? "🔊 Unmute" : "🔇 Mute"}</button>
+                      <button type="button" id="btn-insp-toggle-shadow" style="padding: 8px 10px; border-radius: 9px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); color: #ffffff; font-size: 11.5px; font-weight: 700; cursor: pointer; width: 100%;">${moderation.shadowban ? "✨ Снять Shadow" : "👻 Shadowban"}</button>
+                      <button type="button" id="btn-insp-kick-room" style="padding: 8px 10px; border-radius: 9px; background: rgba(255,165,2,0.14); border: 1px solid rgba(255,165,2,0.32); color: #ffa502; font-size: 11.5px; font-weight: 700; cursor: pointer; width: 100%;">🚪 Кик из комнаты</button>
+                      <button type="button" id="btn-insp-force-logout" style="padding: 8px 10px; border-radius: 9px; background: rgba(255,71,87,0.15); border: 1px solid rgba(255,71,87,0.32); color: #ff6b81; font-size: 11.5px; font-weight: 700; cursor: pointer; width: 100%;">⚡ Форс-выход</button>
+                    </div>
+                  </div>
+                `
+              }
+            </div>
+          `
+          }
+        `;
+
+        const closeBtn = inspector.querySelector("#btn-close-live-inspector");
+        if (closeBtn) {
+          closeBtn.onclick = (e) => {
+            e.stopPropagation();
+            inspector.style.display = "none";
+          };
+        }
+
+        const collapseBtn = inspector.querySelector("#btn-collapse-live-inspector");
+        if (collapseBtn) {
+          collapseBtn.onclick = (e) => {
+            e.stopPropagation();
+            inspector.dataset.collapsed =
+              inspector.dataset.collapsed === "true" ? "false" : "true";
+            renderLiveInspector(userData);
+          };
+        }
+
+        const refreshBtn = inspector.querySelector("#btn-refresh-live-inspector");
+        if (refreshBtn) {
+          refreshBtn.onclick = async (e) => {
+            e.stopPropagation();
+            const freshSnap = await get(ref(db, `users/${targetUid}`));
+            renderLiveInspector(freshSnap.val() || {});
+            Utils.toast("Live Inspector обновлён", "info");
+          };
+        }
+
+        inspector.querySelectorAll(".live-insp-tab").forEach((tabBtn) => {
+          tabBtn.onclick = (e) => {
+            e.stopPropagation();
+            inspector.dataset.activeTab = tabBtn.dataset.tab;
+            renderLiveInspector(userData);
+          };
+        });
+
+        const copyUidBtn = inspector.querySelector("#btn-insp-copy-uid");
+        if (copyUidBtn) {
+          copyUidBtn.onclick = (e) => {
+            e.stopPropagation();
+            navigator.clipboard?.writeText(targetUid);
+            Utils.toast("UID скопирован", "success");
+          };
+        }
+
+        const joinRoomBtn = inspector.querySelector("#btn-insp-join-room");
+        if (joinRoomBtn && roomMeta) {
+          joinRoomBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (window.RoomManager) {
+              RoomManager.enterRoomFinal(roomMeta.roomId, roomMeta.room);
+            }
+          };
+        }
+
+        inspector.querySelectorAll(".btn-insp-kill-sess").forEach((btn) => {
+          btn.onclick = async (e) => {
+            e.stopPropagation();
+            const sid = btn.dataset.sid;
+            if (!sid) return;
+            await AdminPanel.terminateUserSession(targetUid, sid);
+          };
+        });
+
+        const openAdminBtn = inspector.querySelector("#btn-insp-open-admin");
+        if (openAdminBtn) {
+          openAdminBtn.onclick = (e) => {
+            e.stopPropagation();
+            AdminPanel.openUserInAdmin(targetUid);
+          };
+        }
+
+        const copyJsonBtn = inspector.querySelector("#btn-insp-copy-json");
+        if (copyJsonBtn) {
+          copyJsonBtn.onclick = (e) => {
+            e.stopPropagation();
+            navigator.clipboard?.writeText(JSON.stringify(userData || {}, null, 2));
+            Utils.toast("JSON пользователя скопирован в буфер", "success");
+          };
+        }
+
+        const muteBtn = inspector.querySelector("#btn-insp-toggle-mute");
+        if (muteBtn) {
+          muteBtn.onclick = async (e) => {
+            e.stopPropagation();
+            await AdminPanel.toggleUserMute(targetUid);
+          };
+        }
+
+        const shadowBtn = inspector.querySelector("#btn-insp-toggle-shadow");
+        if (shadowBtn) {
+          shadowBtn.onclick = async (e) => {
+            e.stopPropagation();
+            await AdminPanel.toggleShadowban(targetUid);
+          };
+        }
+
+        const kickBtn = inspector.querySelector("#btn-insp-kick-room");
+        if (kickBtn) {
+          kickBtn.onclick = async (e) => {
+            e.stopPropagation();
+            await AdminPanel.forceLeaveRoom(targetUid);
+          };
+        }
+
+        const logoutBtn = inspector.querySelector("#btn-insp-force-logout");
+        if (logoutBtn) {
+          logoutBtn.onclick = async (e) => {
+            e.stopPropagation();
+            await AdminPanel.forceSignOut(targetUid);
+          };
+        }
+      };
+
+      const targetUserRef = ref(db, `users/${targetUid}`);
+      const inspUnsub = onValue(targetUserRef, (snap) => {
+        renderLiveInspector(snap.val() || {});
+      });
+      if (this.viewUnsubs) {
+        this.viewUnsubs.push(() => off(targetUserRef, "value", inspUnsub));
       }
     }
   }

@@ -2189,14 +2189,40 @@ class AdminPanel {
                 </div>
             </div>
 
-            <div style="border:1px solid var(--border-light); border-radius:12px; padding:10px; background:rgba(0,0,0,0.2); margin-top:10px;">
-                <div style="font-weight:700; margin-bottom:6px;">Live User Inspector</div>
-                <div style="font-size:12px; font-family:Consolas,monospace;">Current IP: ${Utils.escapeHtml(userData?.status?.ip || "unavailable")}</div>
-                <div style="font-size:12px; font-family:Consolas,monospace;">Reg IP: ${Utils.escapeHtml(profile.registeredIp || "unknown")}</div>
-                <div style="font-size:12px; font-family:Consolas,monospace;">Last Active: ${userData?.status?.lastActive ? Utils.formatExactDate(userData.status.lastActive) : "unknown"}</div>
-                <div style="font-size:12px; font-family:Consolas,monospace;">Partner: ${Utils.escapeHtml(userData?.partner || profile?.partner || "none")}</div>
-                <div style="font-size:12px; font-family:Consolas,monospace;">Registered: ${profile.createdAt ? Utils.formatExactDate(profile.createdAt) : "unknown"}</div>
-                <div style="font-size:12px; font-family:Consolas,monospace;">Ban history: ${Array.isArray(moderation.banHistory) ? moderation.banHistory.length : 0}</div>
+            <div style="border:1px solid rgba(255,255,255,0.14); border-radius:14px; padding:14px; background:rgba(255,255,255,0.03); backdrop-filter:blur(16px); margin-top:12px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Laptop.webp" style="width:18px; height:18px; object-fit:contain;" alt="💻">
+                        <span style="font-weight:800; font-size:13.5px; color:#ffffff;">Устройства и сессии</span>
+                        <span id="admin-user-sessions-count" style="font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; background:rgba(255,255,255,0.1); color:#ffffff;">
+                            ${Object.keys(profile.sessions || {}).length}
+                        </span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                        <button type="button" class="secondary-btn" id="btn-admin-refresh-user-sessions" style="width:auto; padding:5px 10px; font-size:11.5px; border-radius:8px;">↻ Обновить</button>
+                        ${!isReadOnly ? `
+                        <button type="button" class="danger-btn" id="btn-admin-terminate-all-sessions" style="width:auto; padding:5px 10px; font-size:11.5px; border-radius:8px;">Завершить все</button>
+                        ` : ""}
+                    </div>
+                </div>
+                <div id="admin-user-sessions-list" style="display:flex; flex-direction:column; gap:8px;">
+                    <div style="font-size:12px; color:var(--text-muted); padding:8px;">Загрузка сессий пользователя...</div>
+                </div>
+            </div>
+
+            <div style="border:1px solid var(--border-light); border-radius:12px; padding:12px; background:rgba(0,0,0,0.28); margin-top:10px;">
+                <div style="font-weight:700; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between;">
+                    <span>Live User Inspector</span>
+                    <span style="font-size:10.5px; color:${userData?.status?.online ? '#2ed573' : 'var(--text-muted)'}; font-weight:700;">${userData?.status?.online ? '● ONLINE' : '○ OFFLINE'}</span>
+                </div>
+                <div style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:6px; font-size:12px; font-family:Consolas,monospace;">
+                    <div>Current IP: <span style="color:#ffffff;">${Utils.escapeHtml(userData?.status?.ip || "unavailable")}</span></div>
+                    <div>Reg IP: <span style="color:#ffffff;">${Utils.escapeHtml(profile.registeredIp || "unknown")}</span></div>
+                    <div>Last Active: <span style="color:#2ed573;">${userData?.status?.lastActive ? Utils.formatExactDate(userData.status.lastActive) : "unknown"}</span></div>
+                    <div>Registered: <span style="color:#ddd;">${profile.createdAt ? Utils.formatExactDate(profile.createdAt) : "unknown"}</span></div>
+                    <div>Partner: <span style="color:#ffffff;">${Utils.escapeHtml(userData?.partner || profile?.partner || "none")}</span></div>
+                    <div>Ban history: <span style="color:${Array.isArray(moderation.banHistory) && moderation.banHistory.length > 0 ? '#ff4757' : '#aaa'};">${Array.isArray(moderation.banHistory) ? moderation.banHistory.length : 0}</span></div>
+                </div>
             </div>
             <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px;">
                 <button class="primary-btn" id="btn-admin-save-user">Сохранить изменения</button>
@@ -2212,6 +2238,16 @@ class AdminPanel {
         `;
 
     BadgeManager.renderUserEditorBadges(uid, profile.assignedBadges);
+    this.renderAdminUserSessions(uid, isReadOnly);
+
+    const refreshSessionsBtn = Utils.$("btn-admin-refresh-user-sessions");
+    if (refreshSessionsBtn) {
+      refreshSessionsBtn.onclick = () => this.renderAdminUserSessions(uid, isReadOnly);
+    }
+    const terminateAllSessionsBtn = Utils.$("btn-admin-terminate-all-sessions");
+    if (terminateAllSessionsBtn) {
+      terminateAllSessionsBtn.onclick = () => this.terminateAllUserSessions(uid);
+    }
 
     const lumensInput = Utils.$("admin-edit-lumens");
     document.querySelectorAll(".admin-lumens-quick-btn").forEach((b) => {
@@ -2341,6 +2377,158 @@ class AdminPanel {
         btn.style.opacity = "0.5";
         btn.style.pointerEvents = "none";
       });
+    }
+  }
+
+  static async renderAdminUserSessions(uid, isReadOnly = false) {
+    const listEl = Utils.$("admin-user-sessions-list");
+    const countEl = Utils.$("admin-user-sessions-count");
+    if (!listEl || !uid) return;
+
+    try {
+      const snap = await get(ref(db, `users/${uid}/profile/sessions`));
+      const val = snap.exists() ? snap.val() || {} : {};
+      const mySid = window.SessionManager ? window.SessionManager.getSessionId() : "";
+      const sessions = Object.entries(val)
+        .map(([sid, data]) => ({
+          ...(data || {}),
+          sessionId: sid,
+          isAdminOwnCurrent: uid === AppState.currentUser?.uid && sid === mySid,
+        }))
+        .sort((a, b) => (b.lastActiveAt || 0) - (a.lastActiveAt || 0));
+
+      if (countEl) {
+        countEl.textContent = String(sessions.length);
+      }
+
+      if (!sessions.length) {
+        listEl.innerHTML = `
+          <div style="font-size:12.5px; color:var(--text-muted); padding:10px 12px; border:1px dashed rgba(255,255,255,0.12); border-radius:10px; text-align:center;">
+            Нет активных или сохранённых сессий у этого пользователя
+          </div>
+        `;
+        return;
+      }
+
+      const formatTs = (ts) => {
+        if (!ts) return "Недавно";
+        if (window.SessionManager && typeof window.SessionManager.formatDate === "function") {
+          return window.SessionManager.formatDate(ts);
+        }
+        return new Date(ts).toLocaleString("ru-RU");
+      };
+      const formatRel = (ts) => {
+        if (!ts) return "Недавно";
+        if (window.SessionManager && typeof window.SessionManager.formatRelative === "function") {
+          return window.SessionManager.formatRelative(ts);
+        }
+        return formatTs(ts);
+      };
+
+      listEl.innerHTML = sessions
+        .map((sess) => {
+          const isOnline = sess.isAdminOwnCurrent || Date.now() - (sess.lastActiveAt || 0) < 300000;
+          const icon =
+            sess.icon ||
+            (sess.deviceType === "mobile"
+              ? "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Mobile%20Phone.webp"
+              : "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Laptop.webp");
+          const browserName = sess.browser || "Веб-браузер";
+          const countryName =
+            sess.countryName ||
+            (sess.country
+              ? String(sess.country).replace(/[^\w\sа-яА-ЯёЁ]/gi, "").trim()
+              : "Россия");
+          const flagUrl =
+            sess.countryFlag ||
+            (window.SessionManager?.COUNTRY_FLAGS?.[sess.countryCode]?.flag ||
+              "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Flags/Flag%20Russia.webp");
+
+          return `
+            <div style="
+              background: ${isOnline ? "rgba(46, 213, 115, 0.05)" : "rgba(255, 255, 255, 0.03)"};
+              border: 1px solid ${isOnline ? "rgba(46, 213, 115, 0.28)" : "rgba(255, 255, 255, 0.09)"};
+              border-radius: 12px;
+              padding: 12px 14px;
+              display: flex;
+              align-items: flex-start;
+              justify-content: space-between;
+              gap: 10px;
+              flex-wrap: wrap;
+            ">
+              <div style="display:flex; gap:10px; align-items:flex-start; flex:1; min-width:200px;">
+                <div style="width:38px; height:38px; border-radius:10px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <img src="${icon}" style="width:22px; height:22px; object-fit:contain;" alt="Device">
+                </div>
+                <div style="display:flex; flex-direction:column; gap:3px; min-width:0;">
+                  <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                    <span style="font-weight:700; font-size:13.5px; color:#ffffff;">${Utils.escapeHtml(sess.deviceName || "Неизвестное устройство")}</span>
+                    ${
+                      isOnline
+                        ? `<span style="font-size:10px; font-weight:800; color:#2ed573; background:rgba(46,213,115,0.14); border:1px solid rgba(46,213,115,0.3); padding:1px 6px; border-radius:6px;">Онлайн</span>`
+                        : `<span style="font-size:10px; font-weight:600; color:rgba(255,255,255,0.45); background:rgba(255,255,255,0.06); padding:1px 6px; border-radius:6px;">Офлайн</span>`
+                    }
+                  </div>
+                  <div style="font-size:12px; color:#ffffff; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                    <span style="color:#ffffff; font-weight:500;">${Utils.escapeHtml(browserName)}</span>
+                    <span style="opacity:0.35;">•</span>
+                    <span style="display:inline-flex; align-items:center; gap:4px; color:#ffffff !important; font-weight:600;">
+                      <img src="${flagUrl}" style="width:15px; height:15px; object-fit:contain; vertical-align:middle;" alt="Flag">
+                      <span style="color:#ffffff !important;">${Utils.escapeHtml(countryName)}</span>
+                    </span>
+                  </div>
+                  <div style="font-size:11px; color:var(--text-muted); margin-top:2px; line-height:1.45;">
+                    <div><strong>Вход:</strong> ${formatTs(sess.loginAt)}</div>
+                    <div><strong>Активность:</strong> ${formatRel(sess.lastActiveAt)} (${formatTs(sess.lastActiveAt)})</div>
+                    <div style="font-family:Consolas,monospace; font-size:10.5px; opacity:0.7;">ID: ${Utils.escapeHtml(sess.sessionId)}</div>
+                  </div>
+                </div>
+              </div>
+              ${
+                !isReadOnly
+                  ? `<button type="button" class="danger-btn admin-terminate-sess-btn" data-sid="${Utils.escapeHtml(sess.sessionId)}" style="width:auto; padding:6px 12px; font-size:11.5px; border-radius:8px; flex-shrink:0;">Завершить</button>`
+                  : ""
+              }
+            </div>
+          `;
+        })
+        .join("");
+
+      listEl.querySelectorAll(".admin-terminate-sess-btn").forEach((btn) => {
+        btn.onclick = () => this.terminateUserSession(uid, btn.dataset.sid);
+      });
+    } catch (err) {
+      console.warn("[AdminPanel] Failed to load user sessions:", err);
+      listEl.innerHTML = `<div style="font-size:12px; color:#ff6b6b; padding:8px;">Ошибка загрузки сессий</div>`;
+    }
+  }
+
+  static async terminateUserSession(uid, sessionId) {
+    if (!this.requireWritePermission()) return;
+    if (!uid || !sessionId) return;
+    if (!(await this.checkModRestrictionsForTarget(uid))) return;
+    try {
+      await remove(ref(db, `users/${uid}/profile/sessions/${sessionId}`));
+      await this.pushAuditLog("admin.user.session.terminate", { uid, sessionId });
+      Utils.toast("Сессия пользователя завершена", "success");
+      await this.renderAdminUserSessions(uid, this.isCurrentUserReadOnly());
+    } catch (err) {
+      Utils.toast("Не удалось завершить сессию", "error");
+    }
+  }
+
+  static async terminateAllUserSessions(uid) {
+    if (!this.requireWritePermission()) return;
+    if (!uid) return;
+    if (!(await this.checkModRestrictionsForTarget(uid))) return;
+    if (!(await Utils.confirm("Завершить все сессии этого пользователя?"))) return;
+    try {
+      await remove(ref(db, `users/${uid}/profile/sessions`));
+      await this.pushAuditLog("admin.user.sessions.terminateAll", { uid });
+      Utils.toast("Все сессии пользователя завершены", "success");
+      await this.renderAdminUserSessions(uid, this.isCurrentUserReadOnly());
+    } catch (err) {
+      Utils.toast("Ошибка при завершении сессий", "error");
     }
   }
 

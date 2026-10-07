@@ -352,14 +352,24 @@ class RoomManager {
     const isPrem = window.PremiumManager ? PremiumManager.isCurrentUserPremium() : false;
 
     if (isVk && !isPrem) {
-      btnSave.style.display = "none";
+      btnSave.style.setProperty("display", "none", "important");
       if (btnLock) {
-        btnLock.style.display = "inline-flex";
+        btnLock.style.setProperty("display", "inline-flex", "important");
+        btnLock.style.setProperty("align-items", "center", "important");
+        btnLock.style.setProperty("justify-content", "center", "important");
+        btnLock.style.setProperty("gap", "10px", "important");
+        btnLock.style.setProperty("background", "linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 100%)", "important");
+        btnLock.style.setProperty("backdrop-filter", "blur(28px) saturate(190%)", "important");
+        btnLock.style.setProperty("-webkit-backdrop-filter", "blur(28px) saturate(190%)", "important");
+        btnLock.style.setProperty("border", "1px solid rgba(255, 255, 255, 0.22)", "important");
+        btnLock.style.setProperty("color", "#ffffff", "important");
       }
     } else {
-      btnSave.style.display = "inline-flex";
+      btnSave.style.setProperty("display", "inline-flex", "important");
+      btnSave.style.setProperty("align-items", "center", "important");
+      btnSave.style.setProperty("justify-content", "center", "important");
       if (btnLock) {
-        btnLock.style.display = "none";
+        btnLock.style.setProperty("display", "none", "important");
       }
     }
   }

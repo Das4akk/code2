@@ -54,29 +54,22 @@ class SessionManager {
   static getBrowserDetails() {
     const ua = navigator.userAgent;
     let name = "Веб-браузер";
-    let icon = "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Compass.webp";
 
     if (/yaBrowser/i.test(ua)) {
       name = "Яндекс Браузер";
-      icon = "https://cdn-icons-png.flaticon.com/128/9986/9986062.png";
     } else if (/edg\//i.test(ua)) {
       name = "Microsoft Edge";
-      icon = "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/edge/edge-original.svg";
     } else if (/chrome|crios/i.test(ua)) {
       name = "Google Chrome";
-      icon = "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/chrome/chrome-original.svg";
     } else if (/firefox|fxios/i.test(ua)) {
       name = "Mozilla Firefox";
-      icon = "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/firefox/firefox-original.svg";
     } else if (/safari/i.test(ua) && !/chrome/i.test(ua)) {
       name = "Apple Safari";
-      icon = "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/safari/safari-original.svg";
     } else if (/opera|opr\//i.test(ua)) {
       name = "Opera";
-      icon = "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/opera/opera-original.svg";
     }
 
-    return { name, icon };
+    return { name, icon: "" };
   }
 
   static getDeviceInfo() {
@@ -369,17 +362,8 @@ class SessionManager {
         ? "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Mobile%20Phone.webp"
         : "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Laptop.webp");
 
-      // Browser logo
+      // Browser name (no browser icons)
       const browserName = sess.browser || "Веб-браузер";
-      const browserIcon = sess.browserIcon || (
-        /chrome/i.test(browserName)
-          ? "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/chrome/chrome-original.svg"
-          : (/safari/i.test(browserName)
-            ? "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/safari/safari-original.svg"
-            : (/yandex/i.test(browserName)
-              ? "https://cdn-icons-png.flaticon.com/128/9986/9986062.png"
-              : "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Compass.webp"))
-      );
 
       // Country Flag Sticker
       const countryName = sess.countryName || (sess.country ? String(sess.country).replace(/[^\w\sа-яА-ЯёЁ]/gi, '').trim() : "Россия");
@@ -447,14 +431,13 @@ class SessionManager {
               </div>
 
               <div style="font-size: 13px; color: rgba(255, 255, 255, 0.85); display: flex; align-items: center; gap: 8px; margin-top: 2px; flex-wrap: wrap;">
-                <span style="display: inline-flex; align-items: center; gap: 5px;">
-                  <img src="${browserIcon}" style="width: 15px; height: 15px; object-fit: contain; vertical-align: middle;" alt="${Utils.escapeHtml(browserName)}">
+                <span style="display: inline-flex; align-items: center; color: #ffffff; font-weight: 500;">
                   <span>${Utils.escapeHtml(browserName)}</span>
                 </span>
                 <span style="opacity: 0.3;">•</span>
-                <span style="display: inline-flex; align-items: center; gap: 5px; color: #ffd700; font-weight: 600;">
+                <span style="display: inline-flex; align-items: center; gap: 5px; color: #ffffff !important; font-weight: 600;">
                   <img src="${flagUrl}" style="width: 18px; height: 18px; object-fit: contain; vertical-align: middle;" alt="Flag">
-                  <span>${Utils.escapeHtml(countryName)}</span>
+                  <span style="color: #ffffff !important;">${Utils.escapeHtml(countryName)}</span>
                 </span>
               </div>
 
