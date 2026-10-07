@@ -43,11 +43,9 @@ class SessionManager {
   }
 
   static getDeviceType() {
-    const ua = navigator.userAgent.toLowerCase();
-    const isMobile = /mobile|iphone|ipod|android.*mobile|windows phone|blackberry/i.test(ua);
-    const isTablet = /ipad|tablet|(android(?!.*mobile))/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    if (isTablet) return "tablet";
-    if (isMobile) return "mobile";
+    const ua = navigator.userAgent;
+    if (/iPad|Tablet|PlayBook|Silk/i.test(ua)) return "tablet";
+    if (/Mobi|Android|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua)) return "mobile";
     return "desktop";
   }
 
@@ -55,18 +53,18 @@ class SessionManager {
     const ua = navigator.userAgent;
     let name = "Веб-браузер";
 
-    if (/yaBrowser/i.test(ua)) {
+    if (/YaBrowser/i.test(ua)) {
       name = "Яндекс Браузер";
-    } else if (/edg\//i.test(ua)) {
+    } else if (/Edg\//i.test(ua)) {
       name = "Microsoft Edge";
-    } else if (/chrome|crios/i.test(ua)) {
-      name = "Google Chrome";
-    } else if (/firefox|fxios/i.test(ua)) {
-      name = "Mozilla Firefox";
-    } else if (/safari/i.test(ua) && !/chrome/i.test(ua)) {
-      name = "Apple Safari";
-    } else if (/opera|opr\//i.test(ua)) {
+    } else if (/OPR\//i.test(ua) || /Opera/i.test(ua)) {
       name = "Opera";
+    } else if (/Chrome|CriOS/i.test(ua)) {
+      name = "Google Chrome";
+    } else if (/Firefox|FxIOS/i.test(ua)) {
+      name = "Mozilla Firefox";
+    } else if (/Safari/i.test(ua) && !/Chrome|CriOS/i.test(ua)) {
+      name = "Apple Safari";
     }
 
     return { name, icon: "" };
@@ -74,40 +72,52 @@ class SessionManager {
 
   static getDeviceInfo() {
     const ua = navigator.userAgent;
-    const devType = this.getDeviceType();
-    const browser = this.getBrowserDetails();
+    let type = 'desktop';
+    let os = 'Неизвестная ОС';
+    let browser = 'Веб-браузер';
 
-    // Detect OS
-    let os = "Неизвестная ОС";
-    if (/windows nt 10\.0/i.test(ua)) os = "Windows 11 / 10";
-    else if (/windows nt 6\.3/i.test(ua)) os = "Windows 8.1";
-    else if (/windows nt 6\.1/i.test(ua)) os = "Windows 7";
-    else if (/windows/i.test(ua)) os = "Windows PC";
-    else if (/iphone/i.test(ua)) os = "iPhone (iOS)";
-    else if (/ipad/i.test(ua)) os = "iPad (iPadOS)";
-    else if (/macintosh|mac os x/i.test(ua)) os = "macOS (MacBook/iMac)";
-    else if (/android/i.test(ua)) os = "Android Смартфон";
-    else if (/linux/i.test(ua)) os = "Linux PC";
+    // Тип устройства (сначала мобильные и планшеты)
+    if (/Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua)) {
+      type = /iPad|Tablet|PlayBook|Silk/i.test(ua) ? 'tablet' : 'mobile';
+    }
+
+    // ОС (сначала мобильные ОС!)
+    if (/Android/i.test(ua)) os = 'Android';
+    else if (/iPhone/i.test(ua)) os = 'iOS (iPhone)';
+    else if (/iPad|iPod/i.test(ua)) os = 'iOS (iPad)';
+    else if (/Windows/i.test(ua)) os = 'Windows';
+    else if (/Mac OS X/i.test(ua) && !/iPhone|iPad/i.test(ua)) os = 'macOS';
+    else if (/Linux/i.test(ua)) os = 'Linux';
+    else if (/CrOS/i.test(ua)) os = 'ChromeOS';
+
+    // Браузер
+    if (/YaBrowser/i.test(ua)) browser = 'Яндекс Браузер';
+    else if (/Edg\//i.test(ua)) browser = 'Microsoft Edge';
+    else if (/OPR\//i.test(ua) || /Opera/i.test(ua)) browser = 'Opera';
+    else if (/Chrome|CriOS/i.test(ua)) browser = 'Google Chrome';
+    else if (/Firefox|FxIOS/i.test(ua)) browser = 'Mozilla Firefox';
+    else if (/Safari/i.test(ua) && !/Chrome|CriOS/i.test(ua)) browser = 'Apple Safari';
 
     let icon = "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Laptop.webp";
     let typeName = "Компьютер / ПК";
 
-    if (devType === "mobile") {
+    if (type === "mobile") {
       icon = "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Mobile%20Phone.webp";
-      typeName = "Смартфон";
-    } else if (devType === "tablet") {
+      typeName = os.startsWith("iOS") ? "iPhone" : "Смартфон";
+    } else if (type === "tablet") {
       icon = "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Mobile%20Phone.webp";
-      typeName = "Планшет";
+      typeName = os.startsWith("iOS") ? "iPad" : "Планшет";
     }
 
     const deviceName = `${typeName} (${os})`;
 
     return {
-      devType,
+      type,
+      devType: type,
       typeName,
       os,
-      browser: browser.name,
-      browserIcon: browser.icon,
+      browser,
+      browserIcon: "",
       deviceName,
       icon
     };

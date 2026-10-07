@@ -1,7 +1,16 @@
 import { getAuth, getDb } from './firebase.js';
 
-const CREATOR_EMAILS = (process.env.CREATOR_EMAILS || '')
-  .split(/[,;\s]+/)
+const DEFAULT_CREATOR_EMAILS = [
+  'mankaef@yandex.ru',
+  'das4akk@gmail.com',
+  'das4akk2@gmail.com',
+  'cowiosupport@gmail.com'
+];
+
+const CREATOR_EMAILS = [
+  ...DEFAULT_CREATOR_EMAILS,
+  ...(process.env.CREATOR_EMAILS || '').split(/[,;\s]+/)
+]
   .map((s) => s.trim().toLowerCase())
   .filter(Boolean);
 

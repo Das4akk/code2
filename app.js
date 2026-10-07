@@ -144,6 +144,8 @@ if (document.readyState === "loading") {
 
 setTimeout(() => {
   // Global listeners for the pushed events
+  const safeNoop = () => {};
+
   onValue(ref(db, "admin/actions/globalGhostWhispers"), (snap) => {
     const payload = snap.val();
     if (!payload?.ts || Date.now() - Number(payload.ts) > 60000) return;
@@ -184,7 +186,7 @@ setTimeout(() => {
         });
       }, Math.random() * 3000);
     }
-  });
+  }, safeNoop);
 
   // Teleport Listener (inside setTimout 1000 so AppState is ready)
   setTimeout(() => {
@@ -203,6 +205,7 @@ setTimeout(() => {
           RoomManager.joinRoom(data.roomId);
         }, 500);
       },
+      safeNoop
     );
   }, 2000);
 
@@ -256,7 +259,7 @@ setTimeout(() => {
         txtEl.innerHTML = "";
       }, 1000); // clear after fade out
     }, totalDuration);
-  });
+  }, safeNoop);
 
   onValue(ref(db, "admin/actions/globalFlashbang"), (snap) => {
     const payload = snap.val();
@@ -274,7 +277,7 @@ setTimeout(() => {
     setTimeout(() => {
       el.remove();
     }, 4300);
-  });
+  }, safeNoop);
 
   onValue(ref(db, "admin/actions/showTutorial"), (snap) => {
     const payload = snap.val();
@@ -288,7 +291,7 @@ setTimeout(() => {
         TutorialManager.startTutorial(true);
       }
     }
-  });
+  }, safeNoop);
 
   onValue(ref(db, "admin/actions/globalScreenShake"), (snap) => {
     const payload = snap.val();
@@ -301,7 +304,7 @@ setTimeout(() => {
     setTimeout(() => {
       document.body.classList.remove("screen-shake-active");
     }, 3000);
-  });
+  }, safeNoop);
 
   onValue(ref(db, "admin/actions/globalVideoHijack"), (snap) => {
     const payload = snap.val();
@@ -320,7 +323,7 @@ setTimeout(() => {
       });
       Utils.toast("СИЛОВОЙ УГОН ВИДЕО СОВЕРШЕН!", "error");
     }
-  });
+  }, safeNoop);
 
   // Watch Party Draw System
 
