@@ -17,8 +17,10 @@ export async function checkRole(req, res) {
   try {
     const decoded = await verifyToken(req);
     if (!decoded) {
-      return res.status(200).json({
-        success: true,
+      console.warn('[check-role] Unauthorized: verifyToken returned null');
+      return res.status(401).json({
+        success: false,
+        error: 'Unauthorized: token invalid or FIREBASE_ADMIN_KEY missing/malformed',
         role: 'user',
         isCreator: false,
         isAdmin: false,
@@ -32,13 +34,14 @@ export async function checkRole(req, res) {
 
     // ШАГ 1: Проверяем ENV-whitelist. Абсолютный приоритет.
     let role = getRoleFromEnv(uid, email);
-    const isInEnvWhitelist = (role === 'creator');
+    console.log('[check-role] env role=', role, 'uid=', uid, 'email=', email);
 
     // ШАГ 2: Если не в ENV-whitelist — читаем из БД /admins/{uid}.
-    if (!isInEnvWhitelist) {
+    if (role !== 'creator') {
       try {
         const db = getDb();
         const adminSnap = await db.ref(`admins/${uid}`).once('value');
+        console.log('[check-role] /admins/' + uid + ' exists=', adminSnap.exists(), 'val=', adminSnap.val());
         if (adminSnap.exists()) {
           const admVal = adminSnap.val();
           role = (typeof admVal === 'object' && admVal?.role)
@@ -46,14 +49,31 @@ export async function checkRole(req, res) {
             : 'creator';
         }
       } catch (dbErr) {
-        console.warn('[check-role DB Warning]:', dbErr.message);
+        console.error('[check-role DB ERROR]:', dbErr.message, dbErr.stack);
+      }
+    }
+
+    // ШАГ 3 (TEMP FALLBACK): Проверяем /config/roles/creators если роль осталась 'user'
+    if (role === 'user') {
+      const normEmail = (email || '').toLowerCase().trim();
+      const cleanUid = (uid || '').trim();
+      try {
+        const db = getDb();
+        const cfgSnap = await db.ref('config/roles/creators').once('value');
+        const cfg = cfgSnap.val() || {};
+        if (cfg[normEmail] || cfg[cleanUid]) {
+          role = 'creator';
+          console.log('[check-role] role resolved to creator from /config/roles/creators');
+        }
+      } catch (cfgErr) {
+        console.warn('[check-role config/roles fallback warning]:', cfgErr.message);
       }
     }
 
     const isCreator = role === 'creator';
     const isAdmin = isCreator || ['admin', 'operator', 'moderator', 'manager'].includes(role);
 
-    // ШАГ 3: Синхронизация /admins/{uid} только если нужно.
+    // ШАГ 4: Синхронизация /admins/{uid} только если нужно.
     if (isAdmin) {
       try {
         const db = getDb();

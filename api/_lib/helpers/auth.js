@@ -28,6 +28,9 @@ const ADMIN_UIDS = new Set(
     .filter(Boolean)
 );
 
+console.log('[whitelist] CREATOR_EMAILS count:', CREATOR_EMAILS.size, 'CREATOR_UIDS count:', CREATOR_UIDS.size);
+console.log('[whitelist] CREATOR_EMAILS values:', Array.from(CREATOR_EMAILS));
+
 // Fail-safe: если ENV не настроены — логируем предупреждение, но не падаем
 if (CREATOR_EMAILS.size === 0 && CREATOR_UIDS.size === 0) {
   console.warn('[SECURITY] CREATOR_EMAILS и CREATOR_UIDS не заданы в ENV. Только /admins/{uid} даёт права.');
@@ -72,10 +75,17 @@ export function setCors(req, res) {
 export async function verifyToken(req) {
   const authHeader = req.headers?.authorization || '';
   const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : null;
-  if (!idToken) return null;
+  if (!idToken) {
+    console.warn('[verifyToken] No Bearer token');
+    return null;
+  }
   try {
-    return await getAuth().verifyIdToken(idToken);
+    const auth = getAuth();
+    const decoded = await auth.verifyIdToken(idToken);
+    console.log('[verifyToken] OK uid=' + decoded.uid + ' email=' + decoded.email);
+    return decoded;
   } catch (e) {
+    console.error('[verifyToken] FAILED:', e.code || e.message, e.stack);
     return null;
   }
 }
