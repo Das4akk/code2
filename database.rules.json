@@ -116,12 +116,8 @@
       }
     },
     "leaderboard": {
-      ".read": true,
-      ".write": "auth != null",
-      "$uid": {
-        ".read": true,
-        ".write": "auth != null"
-      }
+      ".read": "auth != null",
+      ".write": false
     },
     "system": {
       ".read": true,

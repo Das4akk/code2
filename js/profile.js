@@ -1948,7 +1948,7 @@ class ProfileManager {
     
     
     const likeBtn = document.getElementById("btn-like-profile");
-    if (likeBtn) {
+    if (likeBtn && likeBtn.parentNode) {
        likeBtn.style.display = "flex";
        
        // Remove previous listener to avoid duplicates
@@ -2380,23 +2380,23 @@ class ProfileManager {
     // Убираем баг с пропаданием информации. Даем height: auto при разворачивании. 
     const LIMIT = 200;
 
-    const statCreated = document.getElementById("view-stat-created");
-    if (statCreated) {
-       const createdTs = profile.createdAt || profile.profile?.createdAt;
-       statCreated.innerText = createdTs ? new Date(createdTs).toLocaleDateString("ru-RU") : "Неизвестно";
-    }
-    const statUid = document.getElementById("view-stat-uid");
-    if (statUid) {
-       statUid.innerText = targetUid || profile.uid || profile.profile?.uid || "Неизвестно";
-    }
-    const statLastLogin = document.getElementById("view-stat-login");
-    if (statLastLogin) {
-       statLastLogin.innerText = profile.lastLoginDate || profile.profile?.lastLoginDate || (profile.lastSeen ? new Date(profile.lastSeen).toLocaleDateString("ru-RU") : "Неизвестно");
-    }
-    const statRoomTime = document.getElementById("view-stat-room-time");
-    if (statRoomTime) {
-       const spent = profile.timeSpentInRooms !== undefined ? profile.timeSpentInRooms : (profile.profile?.timeSpentInRooms || 0);
-       statRoomTime.innerText = Utils.formatDuration(spent || 0);
+    // TEMP DEBUG: STATS
+    console.log('[STATS-DEBUG] load called for uid:', targetUid);
+    try {
+      const statCreated = document.getElementById("view-stat-created");
+      const statUid = document.getElementById("view-stat-uid");
+      const statLastLogin = document.getElementById("view-stat-login");
+      const statRoomTime = document.getElementById("view-stat-room-time");
+      
+      const createdTs = profile.createdAt || profile.profile?.createdAt;
+      if (statCreated) statCreated.innerText = createdTs ? new Date(createdTs).toLocaleDateString("ru-RU") : "Неизвестно";
+      if (statUid) statUid.innerText = targetUid || profile.uid || profile.profile?.uid || "Неизвестно";
+      if (statLastLogin) statLastLogin.innerText = profile.lastLoginDate || profile.profile?.lastLoginDate || (profile.lastSeen ? new Date(profile.lastSeen).toLocaleDateString("ru-RU") : "Неизвестно");
+      const spent = profile.timeSpentInRooms !== undefined ? profile.timeSpentInRooms : (profile.profile?.timeSpentInRooms || 0);
+      if (statRoomTime) statRoomTime.innerText = Utils.formatDuration(spent || 0);
+      console.log('[STATS-DEBUG] rendered stats:', { createdTs, uid: targetUid, lastLogin: profile.lastLoginDate, roomTime: spent });
+    } catch (err) {
+      console.error('[STATS-DEBUG] failed:', err.message);
     }
 
     const needsExpansion = safeBio.length > LIMIT;
@@ -2439,8 +2439,12 @@ class ProfileManager {
       }
     }, 50);
 
+    // TEMP DEBUG: BADGES
+    console.log('[BADGES-DEBUG] load called for uid:', targetUid);
     const badgesContainer = Utils.$("view-badges-collection");
-    if (badgesContainer) {
+    if (!badgesContainer) {
+      console.error('[BADGES-DEBUG] container not found! selector: #view-badges-collection');
+    } else {
       badgesContainer.innerHTML = "";
 
       let userBadges = [];
@@ -2451,6 +2455,7 @@ class ProfileManager {
       } else if (rawBadges && typeof rawBadges === "object") {
         assignedBadgesList = Object.keys(rawBadges).filter(k => rawBadges[k]);
       }
+      console.log('[BADGES-DEBUG] raw assigned badges:', rawBadges, 'parsed list:', assignedBadgesList);
 
       if (!AppState.customBadges || Object.keys(AppState.customBadges).length === 0) {
         try {
@@ -2522,6 +2527,8 @@ class ProfileManager {
           userBadges.unshift(sb);
         }
       }
+
+      console.log('[BADGES-DEBUG] final userBadges count:', userBadges.length);
 
       if (userBadges.length > 0) {
         window.ProfileBadgesState = { index: 0 };
@@ -2749,22 +2756,28 @@ class ProfileManager {
       }
     }
 
+    // TEMP DEBUG: HASHTAGS
+    console.log('[HASHTAGS-DEBUG] load called for uid:', targetUid);
     const hashtagsEl = Utils.$("view-hashtags");
-    const rawTags = profile.hashtags || profile.profile?.hashtags || [];
-    let profileTags = [];
-    if (Array.isArray(rawTags)) {
-      profileTags = rawTags;
-    } else if (typeof rawTags === "object" && rawTags !== null) {
-      profileTags = Object.values(rawTags);
-    } else if (typeof rawTags === "string") {
-      profileTags = rawTags.split(/[\s,#]+/).filter(Boolean);
-    }
-    if (hashtagsEl) {
+    if (!hashtagsEl) {
+      console.error('[HASHTAGS-DEBUG] container not found! selector: #view-hashtags');
+    } else {
+      const rawTags = profile.hashtags || profile.profile?.hashtags || [];
+      let profileTags = [];
+      if (Array.isArray(rawTags)) {
+        profileTags = rawTags;
+      } else if (typeof rawTags === "object" && rawTags !== null) {
+        profileTags = Object.values(rawTags);
+      } else if (typeof rawTags === "string") {
+        profileTags = rawTags.split(/[\s,#]+/).filter(Boolean);
+      }
+      console.log('[HASHTAGS-DEBUG] raw tags:', rawTags, 'parsed tags count:', profileTags.length);
       hashtagsEl.innerHTML = profileTags
         .map(
           (tag) => `<span class="hashtag-chip">${Utils.escapeHtml(tag)}</span>`,
         )
         .join("");
+      console.log('[HASHTAGS-DEBUG] rendered tags, child elements:', hashtagsEl.children.length);
     }
 
     const avatarEl = Utils.$("view-avatar");

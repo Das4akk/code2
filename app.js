@@ -855,7 +855,7 @@ window.loadLeaderboard = async function() {
             throw new Error("Firebase database not initialized");
         }
 
-        // 1. Sync current user's profile to public /leaderboard node if authenticated
+        // 1. Retrieve current user's profile for local leaderboard merge (client-side write to /leaderboard removed)
         const curUser = AppState.currentUser || (window.auth && window.auth.currentUser);
         let myProf = curUser?.uid ? (AppState.usersCache?.get(curUser.uid) || null) : null;
         if (curUser?.uid && (!myProf || !myProf.username)) {
