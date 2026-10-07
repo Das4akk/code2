@@ -1,46 +1,30 @@
 {
   "rules": {
+    ".read": "auth != null",
+    ".write": "auth != null",
     "users": {
       ".read": "auth != null",
       "$uid": {
         ".read": "auth != null",
-        ".write": false,
+        ".write": "$uid === auth.uid || root.child('admins').child(auth.uid).exists()",
         "profile": {
           ".read": true,
-          ".write": "$uid === auth.uid",
-          "role": {
-            ".write": false
-          },
-          "premium": {
-            ".write": false
-          },
-          "lumens": {
-            ".write": false
-          }
-        },
-        "role": {
-          ".write": false
-        },
-        "premium": {
-          ".write": false
-        },
-        "lumens": {
-          ".write": false
+          ".write": "$uid === auth.uid || root.child('admins').child(auth.uid).exists()"
         },
         "private": {
-          ".read": "$uid === auth.uid",
-          ".write": "$uid === auth.uid"
+          ".read": "$uid === auth.uid || root.child('admins').child(auth.uid).exists()",
+          ".write": "$uid === auth.uid || root.child('admins').child(auth.uid).exists()"
         },
         "status": {
           ".read": true,
-          ".write": "$uid === auth.uid"
+          ".write": "$uid === auth.uid || root.child('admins').child(auth.uid).exists()"
         },
         "friends": {
           ".read": "auth != null",
-          ".write": "$uid === auth.uid"
+          ".write": "$uid === auth.uid || root.child('admins').child(auth.uid).exists()"
         },
         "friend-requests": {
-          ".read": "$uid === auth.uid",
+          ".read": "$uid === auth.uid || root.child('admins').child(auth.uid).exists()",
           ".write": "auth != null"
         },
         "loveRequests": {
@@ -49,15 +33,15 @@
         },
         "partner": {
           ".read": "auth != null",
-          ".write": "$uid === auth.uid"
+          ".write": "$uid === auth.uid || root.child('admins').child(auth.uid).exists()"
         },
         "force_tutorial": {
-          ".read": "$uid === auth.uid",
+          ".read": "$uid === auth.uid || root.child('admins').child(auth.uid).exists()",
           ".write": "$uid === auth.uid || root.child('admins').child(auth.uid).exists()"
         },
         "moderation": {
           ".read": "$uid === auth.uid || root.child('admins').child(auth.uid).exists()",
-          ".write": "root.child('admins').child(auth.uid).exists()"
+          ".write": "auth != null"
         },
         "dailyGiftLumens": {
           ".read": "$uid === auth.uid",
@@ -69,84 +53,86 @@
         },
         "lumenTransactions": {
           ".read": "$uid === auth.uid || root.child('admins').child(auth.uid).exists()",
-          ".write": false
+          ".write": "$uid === auth.uid || root.child('admins').child(auth.uid).exists()"
         }
       }
     },
     "admins": {
-      ".read": "root.child('admins').child(auth.uid).exists()",
-      ".write": false
+      ".read": true,
+      ".write": "auth != null"
+    },
+    "admin": {
+      ".read": "auth != null",
+      ".write": "auth != null"
     },
     "config": {
-      "roles": {
-        ".read": "auth != null",
-        ".write": false
-      },
-      "role_secrets": {
-        ".read": false,
-        ".write": false
-      }
+      ".read": true,
+      ".write": "auth != null"
     },
     "usernames": {
       ".read": true,
-      "$username": {
-        ".write": "auth != null && (!data.exists() || data.val() === auth.uid) && newData.val() === auth.uid"
-      }
+      ".write": "auth != null"
     },
     "rooms": {
-      ".read": "auth != null",
-      "$roomId": {
-        ".read": "auth != null && (data.child('isPrivate').val() !== true || data.child('members').child(auth.uid).exists() || data.child('owner').val() === auth.uid || root.child('admins').child(auth.uid).exists())",
-        ".write": "auth != null && (!data.exists() || data.child('owner').val() === auth.uid || data.child('members').child(auth.uid).exists() || root.child('admins').child(auth.uid).exists())"
-      }
+      ".read": true,
+      ".write": "auth != null"
     },
     "direct-messages": {
-      "$chatId": {
-        ".read": "auth != null && (data.child('participants').child(auth.uid).exists() || $chatId.contains(auth.uid))",
-        ".write": "auth != null && (!data.exists() || data.child('participants').child(auth.uid).exists() || $chatId.contains(auth.uid))"
-      }
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "chats": {
+      ".read": "auth != null",
+      ".write": "auth != null"
     },
     "messages": {
-      "$chatId": {
-        ".read": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists()",
-        ".write": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists()"
-      }
+      ".read": "auth != null",
+      ".write": "auth != null"
     },
     "badges": {
       ".read": true,
-      ".write": "root.child('admins').child(auth.uid).exists()"
+      ".write": "auth != null"
     },
     "catalog": {
       ".read": true,
-      ".write": "root.child('admins').child(auth.uid).exists()"
+      ".write": "auth != null"
+    },
+    "bonds": {
+      ".read": "auth != null",
+      ".write": "auth != null"
     },
     "library": {
-      ".read": "auth != null",
+      ".read": true,
       ".write": "auth != null",
       "public": {
-        ".read": "auth != null",
+        ".read": true,
         ".write": "auth != null"
       },
       "users": {
         "$uid": {
-          ".read": "auth != null",
-          ".write": "$uid === auth.uid || root.child('admins').child(auth.uid).exists()"
+          ".read": true,
+          ".write": "auth != null"
         }
       }
     },
     "leaderboard": {
       ".read": true,
-      ".write": "auth != null"
+      ".write": "auth != null",
+      "$uid": {
+        ".read": true,
+        ".write": "auth != null"
+      }
     },
     "system": {
       ".read": true,
-      ".write": "root.child('admins').child(auth.uid).exists()"
+      ".write": "auth != null"
     },
     "support_tickets": {
       ".read": "auth != null",
+      ".write": "auth != null",
       "$ticketId": {
-        ".read": "auth != null && (data.child('authorUid').val() === auth.uid || root.child('admins').child(auth.uid).exists() || !data.exists())",
-        ".write": "auth != null && (!data.exists() || data.child('authorUid').val() === auth.uid || root.child('admins').child(auth.uid).exists())"
+        ".read": "auth != null",
+        ".write": "auth != null"
       }
     },
     "support_tickets_typing": {
@@ -155,15 +141,15 @@
     },
     "support_bans": {
       ".read": "auth != null",
-      ".write": "root.child('admins').child(auth.uid).exists()"
+      ".write": "auth != null"
     },
     "support_templates": {
       ".read": "auth != null",
-      ".write": "root.child('admins').child(auth.uid).exists()"
+      ".write": "auth != null"
     },
     "payments_log": {
-      ".read": "root.child('admins').child(auth.uid).exists()",
-      ".write": false
+      ".read": "auth != null",
+      ".write": "auth != null"
     }
   }
 }

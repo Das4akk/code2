@@ -92,42 +92,53 @@ class LibraryManager {
   }
 
   static async startListening() {
-    // Listen to library db
     try {
-        const { ref: dbRef, onValue, db } = await this.getDb();
-        
-        // TEMP DEBUG
-        console.log('[LIBRARY-DEBUG] loading library data from path: library');
-        onValue(
-          dbRef(db, "library"),
-          (snap) => {
-            const data = snap.val() || {};
-            console.log('[LIBRARY-DEBUG] got data exists:', snap.exists(), 'keys:', Object.keys(data));
-            const parsed = [];
-            // public
-            if (data.public) {
-                for (let [id, val] of Object.entries(data.public)) {
-                    parsed.push({ ...val, id, isPublic: true });
-                }
+      const { ref: dbRef, onValue, db } = await this.getDb();
+      if (!db || !dbRef || !onValue) return;
+
+      if (this._libUnsub) {
+        try { this._libUnsub(); } catch (e) {}
+      }
+
+      this._libUnsub = onValue(
+        dbRef(db, "library"),
+        (snap) => {
+          const data = snap.val() || {};
+          const parsed = [];
+          // public
+          if (data.public) {
+            for (let [id, val] of Object.entries(data.public)) {
+              parsed.push({ ...val, id, isPublic: true });
             }
-            // users (my library)
-            if (data.users && window.AppState && window.AppState.currentUser) {
-                const myData = data.users[window.AppState.currentUser.uid];
-                if (myData) {
-                    for (let [id, val] of Object.entries(myData)) {
-                        parsed.push({ ...val, id, isPublic: false });
-                    }
-                }
-            }
-            this.allVideos = parsed.sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
-            this.renderGrid();
-          },
-          (err) => {
-            console.error('[LIBRARY-DEBUG] error:', err.code, err.message);
           }
-        );
-    } catch(e) {
-        console.error("[LibraryManager] DB listening error:", e);
+          // users (my library)
+          const currentUid = window.AppState?.currentUser?.uid;
+          if (data.users && currentUid && data.users[currentUid]) {
+            const myData = data.users[currentUid];
+            for (let [id, val] of Object.entries(myData)) {
+              parsed.push({ ...val, id, isPublic: false });
+            }
+          }
+          this.allVideos = parsed.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+          this.renderGrid();
+        },
+        () => {
+          // If root /library read fails due to permissions, try listening to /library/public
+          try {
+            onValue(dbRef(db, "library/public"), (pSnap) => {
+              const pData = pSnap.val() || {};
+              const parsed = [];
+              for (let [id, val] of Object.entries(pData)) {
+                parsed.push({ ...val, id, isPublic: true });
+              }
+              this.allVideos = parsed.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+              this.renderGrid();
+            }, () => {});
+          } catch (e) {}
+        }
+      );
+    } catch (e) {
+      console.warn("[LibraryManager] DB listening note:", e);
     }
   }
 

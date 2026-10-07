@@ -36,25 +36,28 @@ class SupportSystem {
       ? AdminPanel.isCreatorProfile(profile, uid)
       : false;
 
-    // Use implicit import for onValue/ref
-    if (typeof onValue !== "undefined") {
-      onValue(ref(db, "support_bans"), (snap) => {
-        this.BANNED_USERS = new Set(Object.keys(snap.val() || {}));
-      }, (err) => { console.warn("[Support] bans listener note:", err); });
-      onValue(ref(db, "support_templates"), (snap) => {
-        if (snap.exists())
-          this.TEMPLATES = {
-            Приветствие: "Здравствуйте! Чем я могу вам помочь?",
-            Ожидание: "Пожалуйста, подождите, мы уточняем информацию.",
-            Закрытие: "Рады были помочь! Тикет закрывается.",
-            ...snap.val(),
-          };
-      }, (err) => { console.warn("[Support] templates listener note:", err); });
+    // Staff-only listeners
+    if (isStaff && typeof onValue !== "undefined") {
+      try {
+        onValue(ref(db, "support_bans"), (snap) => {
+          this.BANNED_USERS = new Set(Object.keys(snap.val() || {}));
+        }, () => {});
+        onValue(ref(db, "support_templates"), (snap) => {
+          if (snap.exists())
+            this.TEMPLATES = {
+              Приветствие: "Здравствуйте! Чем я могу вам помочь?",
+              Ожидание: "Пожалуйста, подождите, мы уточняем информацию.",
+              Закрытие: "Рады были помочь! Тикет закрывается.",
+              ...snap.val(),
+            };
+        }, () => {});
+      } catch (e) {}
     }
 
     if (this.globalUnsub) this.globalUnsub();
 
-    this.globalUnsub = onValue(ref(db, "support_tickets"), (snap) => {
+    try {
+      this.globalUnsub = onValue(ref(db, "support_tickets"), (snap) => {
       const val = snap.val() || {};
       let hasUnread = false;
 
@@ -119,10 +122,9 @@ class SupportSystem {
           }
         }
       });
-    }, (err) => {
-      console.warn("[Support] Global tickets listener note:", err);
-    });
-  }
+    }, () => {});
+  } catch (e) {}
+}
 
   static viewImage(src) {
     if (!src) return;
@@ -1298,11 +1300,14 @@ class SupportSystem {
         input.style.height = Math.min(input.scrollHeight, 120) + "px";
 
         if (this.typingTimer) clearTimeout(this.typingTimer);
-        set(ref(db, `support_tickets_typing/${id}/${uid}`), Date.now());
-        this.typingTimer = setTimeout(
-          () => remove(ref(db, `support_tickets_typing/${id}/${uid}`)),
-          3000
-        );
+        try {
+          set(ref(db, `support_tickets_typing/${id}/${uid}`), Date.now()).catch(() => {});
+        } catch (_) {}
+        this.typingTimer = setTimeout(() => {
+          try {
+            remove(ref(db, `support_tickets_typing/${id}/${uid}`)).catch(() => {});
+          } catch (_) {}
+        }, 3000);
       };
     }
 
@@ -1409,7 +1414,9 @@ class SupportSystem {
       if (attachWrap) attachWrap.style.display = "none";
 
       if (this.typingTimer) clearTimeout(this.typingTimer);
-      remove(ref(db, `support_tickets_typing/${ticketId}/${uid}`));
+      try {
+        remove(ref(db, `support_tickets_typing/${ticketId}/${uid}`)).catch(() => {});
+      } catch (_) {}
 
       const chat = Utils.$("support-ticket-chat");
       if (chat) {

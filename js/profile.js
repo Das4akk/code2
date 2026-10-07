@@ -1378,24 +1378,59 @@ class ProfileManager {
   }
 
   static async loadUser(uid) {
-    if (AppState.usersCache.has(uid)) return AppState.usersCache.get(uid);
+    if (!uid) return null;
+    if (AppState.usersCache && AppState.usersCache.has(uid)) {
+      const cached = AppState.usersCache.get(uid);
+      if (cached && (cached.name || cached.username)) return cached;
+    }
     try {
-      const snap = await get(ref(db, `users/${uid}`));
-      if (!snap.exists()) return { name: "Пользователь", username: "user" };
-      const node = snap.val() || {};
-      const prof = node.profile || {};
+      let node = {};
+      let prof = {};
+      
+      // Try reading users/${uid}
+      try {
+        const snap = await get(ref(db, `users/${uid}`));
+        if (snap && snap.exists()) {
+          node = snap.val() || {};
+          prof = node.profile || {};
+        }
+      } catch (_) {}
+
+      // If prof was empty (e.g. users node permission restricted), read users/${uid}/profile directly
+      if (!prof.name && !prof.username) {
+        try {
+          const pSnap = await get(ref(db, `users/${uid}/profile`));
+          if (pSnap && pSnap.exists()) {
+            prof = pSnap.val() || {};
+          }
+        } catch (_) {}
+      }
+
+      // Check localStorage cached profile if self
+      if (!prof.name && !prof.username && AppState.currentUser?.uid === uid) {
+        try {
+          const localData = localStorage.getItem(`cowio_cached_profile_${uid}`) || localStorage.getItem("cowio_last_profile");
+          if (localData) {
+            const parsed = JSON.parse(localData);
+            if (parsed && typeof parsed === "object") prof = parsed;
+          }
+        } catch (_) {}
+      }
+
       const name = (prof.name || node.name || prof.displayName || node.displayName || prof.username || node.username || (node.email ? node.email.split('@')[0] : '') || "Пользователь").trim();
       const username = (prof.username || node.username || (node.email ? node.email.split('@')[0] : '') || "user").trim();
       const avatar = prof.avatar || node.avatar || prof.photoURL || node.photoURL || "";
       const data = {
         ...node,
         ...prof,
+        uid,
         name,
         username,
         avatar,
+        profile: { ...prof, name, username, avatar }
       };
 
-      const eqFrame = node.equippedFrame || prof.frame;
+      const eqFrame = node.equippedFrame || prof.frame || data.frame;
       if (
         eqFrame &&
         AppState.catalog &&
@@ -1404,10 +1439,12 @@ class ProfileManager {
       ) {
         data.frame = AppState.catalog.frames[eqFrame].url || eqFrame;
       }
-      AppState.usersCache.set(uid, data);
+      if (AppState.usersCache) {
+        AppState.usersCache.set(uid, data);
+      }
       return data;
     } catch (e) {
-      return null;
+      return { uid, name: "Пользователь", username: "user" };
     }
   }
 
@@ -1741,20 +1778,21 @@ class ProfileManager {
 
   static async openViewProfileModal(targetUid, forceOverlay = false) {
     if (!targetUid) return;
-    if (!this._profileReqCounter) this._profileReqCounter = 0;
-    const thisReqId = ++this._profileReqCounter;
-    this._currentlyOpenUid = targetUid;
+    try {
+      if (!this._profileReqCounter) this._profileReqCounter = 0;
+      const thisReqId = ++this._profileReqCounter;
+      this._currentlyOpenUid = targetUid;
 
-    // Immediately stop listening to previous profile to prevent stale updates/sticking
-    if (this.viewUnsubs) {
-      this.viewUnsubs.forEach((f) => { try { f(); } catch (e) {} });
-      this.viewUnsubs = [];
-    } else {
-      this.viewUnsubs = [];
-    }
+      // Immediately stop listening to previous profile to prevent stale updates/sticking
+      if (this.viewUnsubs) {
+        this.viewUnsubs.forEach((f) => { try { f(); } catch (e) {} });
+        this.viewUnsubs = [];
+      } else {
+        this.viewUnsubs = [];
+      }
 
-    const sProfile = document.getElementById("section-profile");
-    if (!sProfile) return;
+      const sProfile = document.getElementById("section-profile");
+      if (!sProfile) return;
     const vModal = sProfile;
 
     const isRoom = forceOverlay || document.getElementById("room-screen")?.classList.contains("active");
@@ -2063,9 +2101,9 @@ class ProfileManager {
     vModal.classList.add("active");
 
     const fetchPromises = [
-      profile ? Promise.resolve(profile) : this.loadUser(targetUid),
-      get(ref(db, `users/${targetUid}/friends`)),
-      get(ref(db, `users/${targetUid}/status`))
+      profile ? Promise.resolve(profile) : this.loadUser(targetUid).catch(() => ({ uid: targetUid, name: "Пользователь", username: "user" })),
+      get(ref(db, `users/${targetUid}/friends`)).catch(() => ({ exists: () => false, val: () => ({}) })),
+      get(ref(db, `users/${targetUid}/status`)).catch(() => ({ exists: () => false, val: () => ({}) }))
     ];
 
     const [loadedProfile, friendsSnap, statusSnap] = await Promise.all(fetchPromises);
@@ -2249,17 +2287,19 @@ class ProfileManager {
     const bottomSheetOverlay = Utils.$("level-bottom-sheet-overlay");
     const bottomSheet = Utils.$("level-bottom-sheet");
     const badgeBtn = Utils.$("view-level-badge");
-    const closeBtn = bottomSheet.querySelector(".btn-close-drawer");
+    const closeBtn = bottomSheet ? bottomSheet.querySelector(".btn-close-drawer") : null;
 
     const closeDrawer = () => {
-      bottomSheet.style.transform = "translateY(100%)";
-      bottomSheetOverlay.style.opacity = "0";
-      setTimeout(() => {
-        bottomSheetOverlay.style.display = "none";
-      }, 300);
+      if (bottomSheet) bottomSheet.style.transform = "translateY(100%)";
+      if (bottomSheetOverlay) {
+        bottomSheetOverlay.style.opacity = "0";
+        setTimeout(() => {
+          bottomSheetOverlay.style.display = "none";
+        }, 300);
+      }
     };
 
-    if (badgeBtn) {
+    if (badgeBtn && bottomSheet && bottomSheetOverlay) {
       badgeBtn.onclick = () => {
         bottomSheetOverlay.style.display = "block";
         // Trigger reflow
@@ -2342,19 +2382,21 @@ class ProfileManager {
 
     const statCreated = document.getElementById("view-stat-created");
     if (statCreated) {
-       statCreated.innerText = profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() : "Неизвестно";
+       const createdTs = profile.createdAt || profile.profile?.createdAt;
+       statCreated.innerText = createdTs ? new Date(createdTs).toLocaleDateString("ru-RU") : "Неизвестно";
     }
     const statUid = document.getElementById("view-stat-uid");
     if (statUid) {
-       statUid.innerText = targetUid || "Неизвестно";
+       statUid.innerText = targetUid || profile.uid || profile.profile?.uid || "Неизвестно";
     }
     const statLastLogin = document.getElementById("view-stat-login");
     if (statLastLogin) {
-       statLastLogin.innerText = profile.lastLoginDate || "Неизвестно";
+       statLastLogin.innerText = profile.lastLoginDate || profile.profile?.lastLoginDate || (profile.lastSeen ? new Date(profile.lastSeen).toLocaleDateString("ru-RU") : "Неизвестно");
     }
     const statRoomTime = document.getElementById("view-stat-room-time");
     if (statRoomTime) {
-       statRoomTime.innerText = Utils.formatDuration(profile.timeSpentInRooms || 0);
+       const spent = profile.timeSpentInRooms !== undefined ? profile.timeSpentInRooms : (profile.profile?.timeSpentInRooms || 0);
+       statRoomTime.innerText = Utils.formatDuration(spent || 0);
     }
 
     const needsExpansion = safeBio.length > LIMIT;
@@ -2402,7 +2444,24 @@ class ProfileManager {
       badgesContainer.innerHTML = "";
 
       let userBadges = [];
-      if (profile.assignedBadges && Array.isArray(profile.assignedBadges)) {
+      const rawBadges = profile.assignedBadges || profile.profile?.assignedBadges;
+      let assignedBadgesList = [];
+      if (Array.isArray(rawBadges)) {
+        assignedBadgesList = rawBadges;
+      } else if (rawBadges && typeof rawBadges === "object") {
+        assignedBadgesList = Object.keys(rawBadges).filter(k => rawBadges[k]);
+      }
+
+      if (!AppState.customBadges || Object.keys(AppState.customBadges).length === 0) {
+        try {
+          const bSnap = await get(ref(db, "badges")).catch(() => null);
+          if (bSnap && bSnap.exists()) {
+            AppState.customBadges = bSnap.val() || {};
+          }
+        } catch (_) {}
+      }
+
+      if (assignedBadgesList.length > 0) {
         const systemFallbacks = {
           lvl_10: {
             name: "Ветеран",
@@ -2441,7 +2500,7 @@ class ProfileManager {
             border: "#ffeb3b",
           },
         };
-        profile.assignedBadges.forEach((bId) => {
+        assignedBadgesList.forEach((bId) => {
           if (BadgeManager.isRelationshipBadge(bId)) return;
           const b =
             (AppState.customBadges && AppState.customBadges[bId]) ||
@@ -2453,9 +2512,10 @@ class ProfileManager {
       }
 
       // Put selected badge first
-      if (profile.selectedBadge) {
+      const selBadgeId = profile.selectedBadge || profile.profile?.selectedBadge;
+      if (selBadgeId) {
         const selectedIdx = userBadges.findIndex(
-          (b) => b._id === profile.selectedBadge,
+          (b) => b._id === selBadgeId,
         );
         if (selectedIdx > -1) {
           const sb = userBadges.splice(selectedIdx, 1)[0];
@@ -2532,14 +2592,14 @@ class ProfileManager {
           const gap = 20;
           const step = itemWidth + gap;
 
-          const wrapElem = badgesContainer.querySelector(
+          const wrapElem = badgesContainer ? badgesContainer.querySelector(
             ".badge-carousel-wrap",
-          );
+          ) : null;
           let wrapWidth = 0;
           if (wrapElem && wrapElem.clientWidth > 0) {
             wrapWidth = wrapElem.clientWidth;
           } else {
-            let modalParent = badgesContainer.closest(".modal-content");
+            let modalParent = badgesContainer ? badgesContainer.closest(".modal-content") : null;
             if (modalParent && modalParent.clientWidth > 0) {
               wrapWidth = modalParent.clientWidth - 48;
             } else {
@@ -2575,7 +2635,7 @@ class ProfileManager {
           const actionContainer = Utils.$("badge-action-container");
           const activeBadge = userBadges[window.ProfileBadgesState.index];
           if (actionContainer && activeBadge) {
-            if (targetUid === AppState.currentUser.uid && activeBadge._id) {
+            if (targetUid === AppState.currentUser?.uid && activeBadge._id) {
               if (profile.selectedBadge === activeBadge._id) {
                 actionContainer.innerHTML = `<span style="color:var(--text-muted); font-size:12px;">Установлен как основной</span>`;
               } else {
@@ -2690,16 +2750,27 @@ class ProfileManager {
     }
 
     const hashtagsEl = Utils.$("view-hashtags");
-    const profileTags = Array.isArray(profile.hashtags) ? profile.hashtags : [];
-    hashtagsEl.innerHTML = profileTags
-      .map(
-        (tag) => `<span class="hashtag-chip">${Utils.escapeHtml(tag)}</span>`,
-      )
-      .join("");
-    
+    const rawTags = profile.hashtags || profile.profile?.hashtags || [];
+    let profileTags = [];
+    if (Array.isArray(rawTags)) {
+      profileTags = rawTags;
+    } else if (typeof rawTags === "object" && rawTags !== null) {
+      profileTags = Object.values(rawTags);
+    } else if (typeof rawTags === "string") {
+      profileTags = rawTags.split(/[\s,#]+/).filter(Boolean);
+    }
+    if (hashtagsEl) {
+      hashtagsEl.innerHTML = profileTags
+        .map(
+          (tag) => `<span class="hashtag-chip">${Utils.escapeHtml(tag)}</span>`,
+        )
+        .join("");
+    }
 
     const avatarEl = Utils.$("view-avatar");
-    avatarEl.innerHTML = ProfileManager.getAvatarHtml(profile);
+    if (avatarEl) {
+      avatarEl.innerHTML = ProfileManager.getAvatarHtml(profile);
+    }
 
     const actionBtn = Utils.$("btn-dm-modal");
     const giftBtn = Utils.$("btn-gift-lumens");
@@ -2707,78 +2778,80 @@ class ProfileManager {
     const manageUserBtn = Utils.$("btn-admin-manage-user");
     const isSelf = targetUid === AppState.currentUser?.uid;
 
-    if (isSelf) {
-      actionBtn.style.display = "inline-flex";
-      actionBtn.innerText = "Изменить профиль";
-      actionBtn.className = "primary-btn";
-      actionBtn.style.color = "#000000";
-      actionBtn.style.background = "#FFFFFF";
-      actionBtn.style.border = "none";
-      actionBtn.style.padding = "8px 16px";
-      actionBtn.style.fontSize = "13.5px";
-      actionBtn.style.fontWeight = "700";
-      actionBtn.style.borderRadius = "10px";
-      actionBtn.style.boxShadow = "0 4px 14px rgba(255, 255, 255, 0.18)";
-      actionBtn.style.cursor = "pointer";
-      actionBtn.onclick = () => {
-        ProfileManager.openEditProfileModal();
-      };
-      
-      if (giftBtn) {
-        giftBtn.style.display = "none";
-        giftBtn.onclick = null;
-      }
-      if (reportBtn) {
-        reportBtn.style.display = "none";
-        reportBtn.onclick = null;
-      }
-    } else {
-      actionBtn.style.display = "inline-flex";
-      actionBtn.className = "primary-btn";
-      actionBtn.style.background = "#FFFFFF";
-      actionBtn.style.color = "#000000";
-      actionBtn.style.padding = "8px 16px";
-      actionBtn.style.fontSize = "13.5px";
-      actionBtn.style.fontWeight = "700";
-      actionBtn.style.borderRadius = "10px";
-      actionBtn.style.border = "none";
-      actionBtn.style.boxShadow = "0 4px 14px rgba(255, 255, 255, 0.18)";
-      actionBtn.style.cursor = "pointer";
-      
-      if (giftBtn && AppState.currentUser) {
-        giftBtn.style.display = "inline-flex";
-        giftBtn.onclick = () => ProfileManager.giftLumens(targetUid, profile);
-      }
-      if (reportBtn) {
-        reportBtn.style.display = "inline-flex";
-        reportBtn.onclick = () => {
-          if (window.ReportManager) ReportManager.openProfileReportModal(targetUid);
+    if (actionBtn) {
+      if (isSelf) {
+        actionBtn.style.display = "inline-flex";
+        actionBtn.innerText = "Изменить профиль";
+        actionBtn.className = "primary-btn";
+        actionBtn.style.color = "#000000";
+        actionBtn.style.background = "#FFFFFF";
+        actionBtn.style.border = "none";
+        actionBtn.style.padding = "8px 16px";
+        actionBtn.style.fontSize = "13.5px";
+        actionBtn.style.fontWeight = "700";
+        actionBtn.style.borderRadius = "10px";
+        actionBtn.style.boxShadow = "0 4px 14px rgba(255, 255, 255, 0.18)";
+        actionBtn.style.cursor = "pointer";
+        actionBtn.onclick = () => {
+          ProfileManager.openEditProfileModal();
         };
-      }
-
-      if (AppState.currentUser) {
-        const myFriendsSnap = await get(
-          ref(db, `users/${AppState.currentUser.uid}/friends/${targetUid}`),
-        );
-        const isFriend =
-          myFriendsSnap.exists() && myFriendsSnap.val().status === "accepted";
         
-        if (isFriend) {
-          actionBtn.innerText = "Написать сообщение";
-          actionBtn.onclick = () => {
-            DirectMessages.openChat(targetUid, profile.name);
-          };
-        } else {
-          actionBtn.innerText = "Добавить в друзья";
-          actionBtn.onclick = () => {
-            FriendsManager.sendFriendRequest(targetUid);
-          };
+        if (giftBtn) {
+          giftBtn.style.display = "none";
+          giftBtn.onclick = null;
+        }
+        if (reportBtn) {
+          reportBtn.style.display = "none";
+          reportBtn.onclick = null;
         }
       } else {
-        actionBtn.innerText = "Войти для общения";
-        actionBtn.onclick = () => {
-          if (window.Auth) Auth.openAuthModal();
-        };
+        actionBtn.style.display = "inline-flex";
+        actionBtn.className = "primary-btn";
+        actionBtn.style.background = "#FFFFFF";
+        actionBtn.style.color = "#000000";
+        actionBtn.style.padding = "8px 16px";
+        actionBtn.style.fontSize = "13.5px";
+        actionBtn.style.fontWeight = "700";
+        actionBtn.style.borderRadius = "10px";
+        actionBtn.style.border = "none";
+        actionBtn.style.boxShadow = "0 4px 14px rgba(255, 255, 255, 0.18)";
+        actionBtn.style.cursor = "pointer";
+        
+        if (giftBtn && AppState.currentUser) {
+          giftBtn.style.display = "inline-flex";
+          giftBtn.onclick = () => ProfileManager.giftLumens(targetUid, profile);
+        }
+        if (reportBtn) {
+          reportBtn.style.display = "inline-flex";
+          reportBtn.onclick = () => {
+            if (window.ReportManager) ReportManager.openProfileReportModal(targetUid);
+          };
+        }
+
+        if (AppState.currentUser) {
+          const myFriendsSnap = await get(
+            ref(db, `users/${AppState.currentUser.uid}/friends/${targetUid}`),
+          );
+          const isFriend =
+            myFriendsSnap.exists() && myFriendsSnap.val().status === "accepted";
+          
+          if (isFriend) {
+            actionBtn.innerText = "Написать сообщение";
+            actionBtn.onclick = () => {
+              DirectMessages.openChat(targetUid, profile.name);
+            };
+          } else {
+            actionBtn.innerText = "Добавить в друзья";
+            actionBtn.onclick = () => {
+              FriendsManager.sendFriendRequest(targetUid);
+            };
+          }
+        } else {
+          actionBtn.innerText = "Войти для общения";
+          actionBtn.onclick = () => {
+            if (window.Auth) Auth.openAuthModal();
+          };
+        }
       }
     }
 
@@ -2817,7 +2890,7 @@ class ProfileManager {
       typeof AdminPanel !== "undefined" &&
       AdminPanel.isCurrentUserCreator()
     ) {
-      let inspector = vModal.querySelector("#live-user-inspector");
+      let inspector = vModal ? vModal.querySelector("#live-user-inspector") : document.getElementById("live-user-inspector");
       if (!inspector) {
         inspector = document.createElement("div");
         inspector.id = "live-user-inspector";
@@ -3286,7 +3359,10 @@ class ProfileManager {
         this.viewUnsubs.push(() => off(targetUserRef, "value", inspUnsub));
       }
     }
+  } catch (err) {
+    console.warn("[ProfileManager] openViewProfileModal safe caught error:", err);
   }
+}
 
   static closeFriendsListModal() {
     const modal = document.getElementById("modal-profile-friends");

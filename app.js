@@ -871,36 +871,6 @@ window.loadLeaderboard = async function() {
             } catch (_) {}
         }
 
-        if (curUser?.uid && setFn) {
-            try {
-                const myUid = curUser.uid;
-                const cachedProfile = myProf || {};
-                const name = (cachedProfile.name || cachedProfile.displayName || curUser.displayName || "Пользователь").trim();
-                const username = (cachedProfile.username || "user").trim();
-                const avatar = (cachedProfile.avatar || cachedProfile.photoURL || curUser.photoURL || "").trim();
-                const frame = cachedProfile.frame || "";
-                const lumens = Number(cachedProfile.lumens) || 0;
-                const streak = Number(cachedProfile.streak) || 0;
-                const timeSpent = Number(cachedProfile.timeSpentInRooms) || 0;
-                const likesCount = Object.keys(cachedProfile.likedBy || {}).length;
-
-                setFn(refFn(database, `leaderboard/${myUid}`), {
-                    uid: myUid,
-                    name,
-                    username,
-                    avatar,
-                    frame,
-                    lumens,
-                    streak,
-                    likes: likesCount,
-                    timeSpentInRooms: timeSpent,
-                    level: Number(cachedProfile.level || 1),
-                    xp: Number(cachedProfile.xp || 0),
-                    updatedAt: Date.now()
-                }).catch(() => {});
-            } catch (_) {}
-        }
-
         // 2. Fetch public /leaderboard node (safe, allowed by Security Rules .read: true)
         const snap = await getFn(refFn(database, "leaderboard"));
         const rawData = snap.exists() ? snap.val() : {};
