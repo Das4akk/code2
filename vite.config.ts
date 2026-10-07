@@ -65,6 +65,30 @@ function apiDevPlugin(): Plugin {
           };
         }
 
+        // Parse request body for POST/PUT/PATCH if needed
+        if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method || '')) {
+          if (!(req as any).body) {
+            try {
+              const buffers: Buffer[] = [];
+              for await (const chunk of req) {
+                buffers.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+              }
+              const rawBody = Buffer.concat(buffers).toString('utf8');
+              if (rawBody) {
+                try {
+                  (req as any).body = JSON.parse(rawBody);
+                } catch {
+                  (req as any).body = rawBody;
+                }
+              } else {
+                (req as any).body = {};
+              }
+            } catch (bodyErr) {
+              (req as any).body = {};
+            }
+          }
+        }
+
         // Attach query params to req.query
         (req as any).query = Object.fromEntries(url.searchParams.entries());
 
@@ -72,6 +96,12 @@ function apiDevPlugin(): Plugin {
           if (pathname.startsWith('/api/auth')) {
             // @ts-ignore
             const mod = await import('./api/auth.js');
+            return await (mod.default || mod)(req, res);
+          }
+
+          if (pathname.startsWith('/api/custom-auth')) {
+            // @ts-ignore
+            const mod = await import('./api/custom-auth.js');
             return await (mod.default || mod)(req, res);
           }
 
@@ -90,6 +120,12 @@ function apiDevPlugin(): Plugin {
           if (pathname.startsWith('/api/chat')) {
             // @ts-ignore
             const mod = await import('./api/chat.js');
+            return await (mod.default || mod)(req, res);
+          }
+
+          if (pathname === '/api/resolve-media') {
+            // @ts-ignore
+            const mod = await import('./api/resolve-media.js');
             return await (mod.default || mod)(req, res);
           }
 

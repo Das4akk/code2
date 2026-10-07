@@ -1,4 +1,10 @@
 {
+  "functions": {
+    "api/*.js": {
+      "includeFiles": "api/_lib/**",
+      "maxDuration": 30
+    }
+  },
   "headers": [
     {
       "source": "/assets/(.*)",
@@ -16,10 +22,15 @@
   "rewrites": [
     { "source": "/api/admin/:action*", "destination": "/api/admin?action=:action" },
     { "source": "/api/auth/:action*", "destination": "/api/auth?action=:action" },
+    { "source": "/api/custom-auth/:action*", "destination": "/api/custom-auth?action=:action" },
     { "source": "/api/users/:action*", "destination": "/api/users?action=:action" },
     { "source": "/api/chat/:action*", "destination": "/api/chat?action=:action" },
     { "source": "/api/video/:action*", "destination": "/api/video?action=:action" },
     { "source": "/api/library/:action*", "destination": "/api/video?action=:action" },
-    { "source": "/api/premium/:action*", "destination": "/api/premium?action=:action" }
+    { "source": "/api/resolve-media", "destination": "/api/resolve-media" },
+    { "source": "/api/emoji-proxy", "destination": "/api/emoji-proxy" },
+    { "source": "/api/premium/:action*", "destination": "/api/premium?action=:action" },
+    { "source": "/api/health", "destination": "/api/health" },
+    { "source": "/((?!api/|assets/|css/|js/|partials/|public/|.*\\..*).*)", "destination": "/index.html" }
   ]
 }

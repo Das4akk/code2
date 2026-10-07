@@ -23,6 +23,8 @@ export default async function handler(req, res) {
     switch (action) {
       case 'check-role':
         return await authHandler.checkRole(req, res);
+      case 'claim-role':
+        return await authHandler.claimRole(req, res);
       case 'geo':
         return await authHandler.geo(req, res);
       default:

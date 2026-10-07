@@ -58,17 +58,26 @@ function rememberSearchItem(item) {
 
 function loadPriorityCatalog() {
   try {
-    const jsonPath = path.join(__dirname, 'rutube_priority_channels.json');
-    if (fs.existsSync(jsonPath)) {
-      const data = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
-      if (Array.isArray(data)) {
-        priorityCatalog = data;
-        priorityCatalogById.clear();
-        for (const item of priorityCatalog) {
-          if (item.id) priorityCatalogById.set(item.id, item);
-          if (item.url) priorityCatalogById.set(item.url, item);
+    const candidatePaths = [
+      path.join(__dirname, 'rutube_priority_channels.json'),
+      path.join(process.cwd(), 'api/_lib/rutube_priority_channels.json'),
+      path.join(process.cwd(), 'rutube_priority_channels.json'),
+    ];
+    let loaded = false;
+    for (const jsonPath of candidatePaths) {
+      if (fs.existsSync(jsonPath)) {
+        const data = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+        if (Array.isArray(data)) {
+          priorityCatalog = data;
+          priorityCatalogById.clear();
+          for (const item of priorityCatalog) {
+            if (item.id) priorityCatalogById.set(item.id, item);
+            if (item.url) priorityCatalogById.set(item.url, item);
+          }
+          console.log(`[Rutube] Loaded ${priorityCatalog.length} priority channel videos into catalog.`);
+          loaded = true;
+          break;
         }
-        console.log(`[Rutube] Loaded ${priorityCatalog.length} priority channel videos into catalog.`);
       }
     }
   } catch (err) {
