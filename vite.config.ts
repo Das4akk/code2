@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
@@ -154,7 +155,12 @@ function apiDevPlugin(): Plugin {
           return;
         }
 
-        next();
+        if (!res.writableEnded) {
+          res.statusCode = 404;
+          res.setHeader('Content-Type', 'application/json; charset=utf-8');
+          res.end(JSON.stringify({ error: `API route not found: ${pathname}` }));
+        }
+        return;
       });
     },
   };

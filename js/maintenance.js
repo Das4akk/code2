@@ -108,7 +108,7 @@ class MaintenanceSystem {
     const myUid = user?.uid;
     const myProf = (myUid && window.AppState?.usersCache?.get(myUid)) || user.profile || {};
     const role = String(myProf?.role || "").toLowerCase().trim();
-    return role === "creator" || myProf?.isOwner === true;
+    return role === "creator";
   }
 
   static createDevTopBanner() {
@@ -451,6 +451,31 @@ class MaintenanceSystem {
     }
   }
 
+  static async _saveToServerMaintenance(payload) {
+    const authObj = window.auth || (await import("./firebase.js")).auth;
+    const token = authObj?.currentUser ? await authObj.currentUser.getIdToken() : "";
+    if (!token) throw new Error("Пользователь не авторизован");
+    const res = await fetch("/api/admin?action=set-maintenance", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
+    });
+    const text = await res.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (_) {
+      throw new Error(`Сервер ответил ошибкой (${res.status}): ${text.slice(0, 120)}`);
+    }
+    if (!res.ok || data.error) {
+      throw new Error(data.error || "Ошибка сохранения на сервере");
+    }
+    return data;
+  }
+
   static async setGlobalMaintenance(active, reason = "") {
     if (!this.isCreator()) {
       window.Utils?.toast?.("Доступно исключительно для @developer", "error");
@@ -458,11 +483,20 @@ class MaintenanceSystem {
     }
 
     try {
-      await update(ref(db, "system/maintenance"), {
-        global: Boolean(active),
-        reason: reason || "",
-        updatedAt: Date.now(),
-      });
+      try {
+        await update(ref(db, "system/maintenance"), {
+          global: Boolean(active),
+          reason: reason || "",
+          updatedAt: Date.now(),
+        });
+      } catch (clientErr) {
+        console.warn("[Maintenance] Client write to /system/maintenance failed, trying server API fallback:", clientErr);
+        await this._saveToServerMaintenance({
+          type: "global",
+          global: Boolean(active),
+          reason: reason || "",
+        });
+      }
 
       this.state.global = Boolean(active);
       this.applyMaintenanceUI();
@@ -488,9 +522,18 @@ class MaintenanceSystem {
       const conf = this.SECTION_CONFIG[sectionKey];
       const title = conf?.title || sectionKey;
 
-      await update(ref(db, `system/maintenance/sections`), {
-        [sectionKey]: Boolean(active),
-      });
+      try {
+        await update(ref(db, `system/maintenance/sections`), {
+          [sectionKey]: Boolean(active),
+        });
+      } catch (clientErr) {
+        console.warn("[Maintenance] Client write to /system/maintenance/sections failed, trying server API fallback:", clientErr);
+        await this._saveToServerMaintenance({
+          type: "section",
+          sectionKey,
+          active: Boolean(active),
+        });
+      }
 
       if (!this.state.sections) this.state.sections = {};
       this.state.sections[sectionKey] = Boolean(active);

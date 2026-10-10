@@ -10,6 +10,10 @@
               <div id="room-author-info" style="display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-muted); margin-top: 4px;">
                   <div id="room-author-avatar" style="width: 24px; height: 24px; border-radius: 50%; overflow: hidden; background: rgba(255,255,255,0.1);"></div>
                   <span id="room-author-name" style="font-weight: 600; color: #eee;">автор комнаты</span>
+                  <button type="button" id="btn-room-tip-host" class="btn-tip-host" title="Отправить 50 Люменов автору комнаты" style="display: none; align-items: center; gap: 5px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 14px; padding: 3px 9px; font-size: 11.5px; font-weight: 700; color: #ffffff; cursor: pointer; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); transition: all 0.2s ease;">
+                    <img loading="lazy" decoding="async" src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" alt="✨" style="width: 13px; height: 13px; object-fit: contain;">
+                    <span>Чаевые</span>
+                  </button>
                   <span id="room-typing-status" style="font-size: 13px; display: inline-block; animation: pulse 1.5s infinite;"></span>
                   <div id="room-voice-speaker-badge" style="display: none; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: #2ed573; background: rgba(46, 213, 115, 0.12); padding: 2px 8px; border-radius: 12px; border: 1px solid rgba(46, 213, 115, 0.3);">
                     <span style="width: 7px; height: 7px; border-radius: 50%; background: #2ed573; display: inline-block; box-shadow: 0 0 6px #2ed573;"></span>
@@ -35,19 +39,19 @@
         <div class="player-section">
           <div class="reaction-bar">
               <button class="react-btn" data-emoji="🔥" onclick="if(window.RoomManager) RoomManager.sendReaction('🔥')">
-                <img loading="lazy" decoding="async" src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Fire.webp" style="width: 36px; height: 36px; pointer-events: none">
+                <img loading="lazy" decoding="async" class="room-reaction-anim" data-is-room-reaction="1" src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Fire.webp" style="width: 36px; height: 36px; pointer-events: none">
               </button>
               <button class="react-btn" data-emoji="😂" onclick="if(window.RoomManager) RoomManager.sendReaction('😂')">
-                <img loading="lazy" decoding="async" src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Face%20With%20Tears%20Of%20Joy.webp" style="width: 36px; height: 36px; pointer-events: none">
+                <img loading="lazy" decoding="async" class="room-reaction-anim" data-is-room-reaction="1" src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Face%20With%20Tears%20Of%20Joy.webp" style="width: 36px; height: 36px; pointer-events: none">
               </button>
               <button class="react-btn" data-emoji="😱" onclick="if(window.RoomManager) RoomManager.sendReaction('😱')">
-                <img loading="lazy" decoding="async" src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Face%20Screaming%20In%20Fear.webp" style="width: 36px; height: 36px; pointer-events: none">
+                <img loading="lazy" decoding="async" class="room-reaction-anim" data-is-room-reaction="1" src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Face%20Screaming%20In%20Fear.webp" style="width: 36px; height: 36px; pointer-events: none">
               </button>
               <button class="react-btn" data-emoji="❤️" onclick="if(window.RoomManager) RoomManager.sendReaction('❤️')">
-                <img loading="lazy" decoding="async" src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Red%20Heart.webp" style="width: 36px; height: 36px; pointer-events: none">
+                <img loading="lazy" decoding="async" class="room-reaction-anim" data-is-room-reaction="1" src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Red%20Heart.webp" style="width: 36px; height: 36px; pointer-events: none">
               </button>
               <button class="react-btn" data-emoji="👏" onclick="if(window.RoomManager) RoomManager.sendReaction('👏')">
-                <img loading="lazy" decoding="async" src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Clapping%20Hands.webp" style="width: 36px; height: 36px; pointer-events: none">
+                <img loading="lazy" decoding="async" class="room-reaction-anim" data-is-room-reaction="1" src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Clapping%20Hands.webp" style="width: 36px; height: 36px; pointer-events: none">
               </button>
           </div>
           <div class="video-container glass-panel">

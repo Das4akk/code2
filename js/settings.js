@@ -113,6 +113,23 @@ const SettingSections = [
     icon: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Keyboard.webp",
     items: [
       {
+        id: "site-settings-static-emojis",
+        type: "toggle",
+        title: "Изменить эмодзи на статичные",
+        desc: "Абсолютно все эмодзи становятся статичными без загрузки анимаций (кроме реакций в комнате)",
+        icon: "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp",
+        default: false,
+        onChange: (val) => {
+          localStorage.setItem("staticEmojis", val ? "true" : "false");
+          if (window.SettingsManager) {
+            window.SettingsManager.set("staticEmojis", val);
+          }
+          if (typeof window.applyStaticEmojisMode === "function") {
+            window.applyStaticEmojisMode(val);
+          }
+        },
+      },
+      {
         id: "site-set-dyslexia",
         type: "toggle",
         title: "Шрифт для дислексиков",

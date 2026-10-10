@@ -60,13 +60,12 @@ class SettingsManager {
       type: "boolean",
       default: false,
       apply: (val) => {
-        const prefersReducedMotion = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        const saveData = typeof navigator !== "undefined" && navigator.connection?.saveData === true;
-        const lowSpecs = typeof navigator !== "undefined" && Boolean(navigator.hardwareConcurrency && navigator.hardwareConcurrency < 4);
-
-        const useStatic = val || prefersReducedMotion || saveData || lowSpecs;
+        const useStatic = Boolean(val);
         window.__COWIO_USE_STATIC_EMOJIS = useStatic;
         document.documentElement.classList.toggle("use-static-emojis", useStatic);
+        if (typeof window.applyStaticEmojisMode === "function") {
+          window.applyStaticEmojisMode(useStatic);
+        }
       }
     }
   };

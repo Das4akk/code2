@@ -2713,6 +2713,17 @@
       .modal.active .modal-content {
         transform: translateY(0) scale(1);
       }
+      #modal-admin-panel,
+      .godmode-modal {
+        z-index: 100100 !important;
+      }
+      .confirm-dialog,
+      .custom-confirm-modal,
+      .custom-prompt-modal,
+      #custom-confirm-modal,
+      #custom-prompt-modal {
+        z-index: 2000000 !important;
+      }
       .modal h2 {
         margin-bottom: 20px;
         font-size: 22px;
@@ -4537,7 +4548,10 @@
         display: none;
       }
       .lobby-app-bar .burger-btn {
-        display: none;
+        display: none !important;
+      }
+      .sidebar-mobile-header {
+        display: none !important;
       }
       .sidebar-overlay {
         display: none;
@@ -4588,41 +4602,58 @@
           padding: 0;
         }
         .lobby-app-bar .burger-btn {
-          display: flex;
+          display: flex !important;
+          pointer-events: auto !important;
+          cursor: pointer !important;
+          position: relative !important;
+          z-index: 1005 !important;
+          touch-action: manipulation !important;
+          -webkit-tap-highlight-color: transparent !important;
+        }
+        .sidebar-mobile-header {
+          display: flex !important;
         }
         .lobby-content {
           padding: 15px;
         }
         .sidebar-overlay {
-          display: block;
-          position: fixed;
-          inset: 0;
-          background: rgba(0, 0, 0, 0.6);
-          backdrop-filter: blur(2px);
-          z-index: 499;
-          opacity: 0;
-          pointer-events: none;
-          transition: opacity 0.3s ease;
+          display: block !important;
+          position: fixed !important;
+          inset: 0 !important;
+          background: rgba(0, 0, 0, 0.7) !important;
+          backdrop-filter: blur(4px) !important;
+          -webkit-backdrop-filter: blur(4px) !important;
+          z-index: 1090 !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
+          transition: opacity 0.3s ease !important;
         }
         .sidebar-overlay.open {
-          opacity: 1;
-          pointer-events: auto;
+          opacity: 1 !important;
+          pointer-events: auto !important;
         }
-        .sidebar {
-          position: fixed;
-          left: -100%;
-          top: 0;
-          height: 100%;
-          width: 280px;
-          z-index: 500;
-          background: #050505;
-          border-right: none !important; border: none !important;;
-          transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-          padding: calc(env(safe-area-inset-top) + 20px) 20px 20px 20px;
-          box-shadow: 20px 0 50px rgba(0, 0, 0, 0.8);
+        .sidebar, #main-sidebar {
+          position: fixed !important;
+          left: -100% !important;
+          top: 0 !important;
+          height: 100% !important;
+          height: 100dvh !important;
+          width: 285px !important;
+          max-width: 85vw !important;
+          z-index: 1100 !important;
+          background: #080808 !important;
+          border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+          border-left: none !important;
+          border-top: none !important;
+          border-bottom: none !important;
+          transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+          padding: calc(env(safe-area-inset-top) + 16px) 18px 24px 18px !important;
+          box-shadow: 20px 0 50px rgba(0, 0, 0, 0.85) !important;
+          overflow-y: auto !important;
+          -webkit-overflow-scrolling: touch !important;
         }
-        .sidebar.open {
-          left: 0;
+        .sidebar.open, #main-sidebar.open {
+          left: 0 !important;
         }
         .rooms-main {
           padding: 0;
@@ -6798,10 +6829,12 @@
       margin-top: 60px !important;
       height: calc(100vh - 60px) !important;
     }
-    /* Let sidebar be full height on mobile if toggled */
+    /* Let sidebar be full height on mobile if toggled, starting from the very top */
     #main-sidebar {
-      top: 60px !important;
-      height: calc(100vh - 60px) !important;
+      top: 0 !important;
+      bottom: 0 !important;
+      height: 100% !important;
+      height: 100dvh !important;
     }
   }
 
@@ -9582,4 +9615,35 @@
       font-weight: 700 !important;
       border-radius: 10px !important;
     }
+
+    /* Global Animated Emoji Hardware Acceleration & Frame Containment */
+    img[src*="Telegram-Animated-Emojis"],
+    img[src*="emoji-proxy"],
+    img[src^="/emoji/"] {
+      content-visibility: auto;
+      contain: paint layout;
+      transform: translateZ(0);
+      backface-visibility: hidden;
+      image-rendering: -webkit-optimize-contrast;
+    }
+
+    /* Floating room reaction animations keep hardware layering */
+    .floating-emoji img,
+    .room-reaction-anim {
+      contain: paint;
+      transform: translateZ(0);
+      will-change: transform, opacity;
+    }
+
+    /* Static Emojis High-Efficiency Performance Mode */
+    html.use-static-emojis img[src*="Telegram-Animated-Emojis"]:not(.room-reaction-anim),
+    html.use-static-emojis img[src*="emoji-proxy"]:not(.room-reaction-anim),
+    html.use-static-emojis img[src^="/emoji/"]:not(.room-reaction-anim) {
+      content-visibility: auto;
+      contain: paint layout style;
+      image-rendering: auto;
+      will-change: auto;
+    }
+
+
   

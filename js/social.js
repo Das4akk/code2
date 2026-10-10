@@ -108,6 +108,16 @@ class FriendsManager {
         activeNavEl = targetNavEl;
       }
 
+      // Automatically close mobile sidebar if open
+      if (typeof window.closeMainSidebar === "function") {
+        window.closeMainSidebar();
+      } else {
+        const s = document.getElementById("main-sidebar");
+        const o = document.getElementById("sidebar-overlay");
+        if (s) s.classList.remove("open");
+        if (o) o.classList.remove("open");
+      }
+
       // Targeted section display toggle to avoid full-tree layout thrashing
       const targetConfig = navSectionMap[id];
       const targetSectionId = targetConfig ? targetConfig[0] : null;

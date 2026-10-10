@@ -1,11 +1,14 @@
 class Utils {
-  static fixEmojiUrl(url) {
+  static fixEmojiUrl(url, isReaction = false) {
     if (!url || typeof url !== "string") return url;
     if (url.includes("raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/")) {
-      return url.replace(
+      url = url.replace(
         "raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/",
         "cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/",
       );
+    }
+    if (typeof window !== "undefined" && typeof window.getOptimizedEmojiUrl === "function") {
+      return window.getOptimizedEmojiUrl(url, isReaction);
     }
     return url;
   }
@@ -323,22 +326,24 @@ class Utils {
   static confirm(msg) {
     return new Promise((resolve) => {
       const modal = document.createElement("div");
-      modal.className = "modal active";
-      modal.style.zIndex = "99999";
+      modal.id = "custom-confirm-modal";
+      modal.className = "modal active confirm-dialog custom-confirm-modal";
+      modal.style.cssText =
+        "z-index: 2000000 !important; position: fixed !important; inset: 0 !important; display: flex !important; align-items: center !important; justify-content: center !important; background: rgba(0, 0, 0, 0.75) !important;";
       modal.innerHTML = `
-        <div class="modal-content glass-panel" style="max-width: 400px; text-align: center; border-radius: 20px; padding: 30px;">
+        <div class="modal-content glass-panel" style="max-width: 420px; text-align: center; border-radius: 20px; padding: 28px; position: relative; z-index: 2000001 !important; box-shadow: 0 30px 90px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.15) inset;">
           <h3 style="margin-bottom: 12px; font-weight: 800; font-size: 22px;">Подтверждение</h3>
           <p style="margin-bottom: 24px; color: var(--text-muted); font-size: 15px; line-height: 1.5;">${this.escapeHtml(msg)}</p>
           <div style="display: flex; gap: 10px;">
-            <button class="secondary-btn" id="custom-confirm-cancel" style="flex: 1; border-radius: 12px; padding: 14px;">Отмена</button>
-            <button class="primary-btn" id="custom-confirm-ok" style="flex: 1; border-radius: 12px; padding: 14px;">Да</button>
+            <button class="secondary-btn" id="custom-confirm-cancel" style="flex: 1; border-radius: 12px; padding: 14px; cursor: pointer;">Отмена</button>
+            <button class="primary-btn" id="custom-confirm-ok" style="flex: 1; border-radius: 12px; padding: 14px; cursor: pointer;">Да</button>
           </div>
         </div>
       `;
       document.body.appendChild(modal);
       const cleanup = () => {
         modal.classList.remove("active");
-        setTimeout(() => modal.remove(), 400);
+        setTimeout(() => modal.remove(), 250);
       };
       modal.querySelector("#custom-confirm-cancel").onclick = () => {
         cleanup();
@@ -354,16 +359,18 @@ class Utils {
   static prompt(msg, defaultVal = "") {
     return new Promise((resolve) => {
       const modal = document.createElement("div");
-      modal.className = "modal active";
-      modal.style.zIndex = "99999";
+      modal.id = "custom-prompt-modal";
+      modal.className = "modal active confirm-dialog custom-prompt-modal";
+      modal.style.cssText =
+        "z-index: 2000000 !important; position: fixed !important; inset: 0 !important; display: flex !important; align-items: center !important; justify-content: center !important; background: rgba(0, 0, 0, 0.75) !important;";
       modal.innerHTML = `
-        <div class="modal-content glass-panel" style="max-width: 400px; text-align: center; border-radius: 20px; padding: 30px;">
+        <div class="modal-content glass-panel" style="max-width: 420px; text-align: center; border-radius: 20px; padding: 28px; position: relative; z-index: 2000001 !important; box-shadow: 0 30px 90px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.15) inset;">
           <h3 style="margin-bottom: 12px; font-weight: 800; font-size: 22px;">Ввод данных</h3>
           <p style="margin-bottom: 20px; color: var(--text-muted); font-size: 15px; line-height: 1.5;">${Utils.escapeHtml(msg)}</p>
           <input type="text" id="custom-prompt-input" class="input" value="${Utils.escapeHtml(defaultVal)}" style="margin-bottom: 0px; width: 100%; border-radius: 12px; padding: 12px;">
           <div style="display: flex; gap: 10px; margin-top: 24px;">
-            <button class="secondary-btn" id="custom-prompt-cancel" style="flex: 1;">Отмена</button>
-            <button class="primary-btn" id="custom-prompt-ok" style="flex: 1;">ОК</button>
+            <button class="secondary-btn" id="custom-prompt-cancel" style="flex: 1; cursor: pointer;">Отмена</button>
+            <button class="primary-btn" id="custom-prompt-ok" style="flex: 1; cursor: pointer;">ОК</button>
           </div>
         </div>
       `;
@@ -374,7 +381,7 @@ class Utils {
 
       const cleanup = () => {
         modal.classList.remove("active");
-        setTimeout(() => modal.remove(), 400);
+        setTimeout(() => modal.remove(), 250);
       };
 
       modal.querySelector("#custom-prompt-cancel").onclick = () => {
@@ -1125,6 +1132,9 @@ class Utils {
                 50% { transform: scaleY(1.6); }
             }
 
+            .godmode-modal {
+                z-index: 100000;
+            }
             .godmode-modal .modal-content {
                 width: 100vw !important;
                 height: 100dvh !important;
@@ -1135,8 +1145,107 @@ class Utils {
                 grid-template-columns: 260px minmax(0, 1fr);
                 gap: 0;
                 background: radial-gradient(circle at top, rgba(255, 255, 255, 0.09), rgba(9, 9, 9, 0.98));
+                box-sizing: border-box;
             }
-            @media (max-width: 1024px) {
+            .godmode-mobile-handle {
+                display: none;
+            }
+            @media (max-width: 768px) {
+                .godmode-modal {
+                    align-items: flex-end !important;
+                    justify-content: center !important;
+                    padding: 0 !important;
+                    background: rgba(0, 0, 0, 0.5) !important;
+                    backdrop-filter: blur(12px) !important;
+                    -webkit-backdrop-filter: blur(12px) !important;
+                }
+                .godmode-modal .modal-content {
+                    width: 100% !important;
+                    height: 94dvh !important;
+                    max-height: 94dvh !important;
+                    border-radius: 26px 26px 0 0 !important;
+                    border-top: 1px solid rgba(255, 255, 255, 0.22) !important;
+                    border-left: 1px solid rgba(255, 255, 255, 0.14) !important;
+                    border-right: 1px solid rgba(255, 255, 255, 0.14) !important;
+                    border-bottom: none !important;
+                    display: flex !important;
+                    flex-direction: column !important;
+                    padding: 12px 14px 28px 14px !important;
+                    background: rgba(8, 8, 12, 0.94) !important;
+                    backdrop-filter: blur(35px) saturate(190%) !important;
+                    -webkit-backdrop-filter: blur(35px) saturate(190%) !important;
+                    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.1) inset !important;
+                    animation: slideUpAdminDrawer 0.32s cubic-bezier(0.16, 1, 0.3, 1) !important;
+                    overflow: hidden !important;
+                }
+                @keyframes slideUpAdminDrawer {
+                    from { transform: translateY(100%); }
+                    to { transform: translateY(0); }
+                }
+                .godmode-mobile-handle {
+                    display: block !important;
+                    width: 44px;
+                    height: 5px;
+                    border-radius: 4px;
+                    background: rgba(255, 255, 255, 0.35);
+                    margin: 0 auto 10px auto;
+                    cursor: grab;
+                    touch-action: none;
+                    flex-shrink: 0;
+                }
+                .godmode-sidebar {
+                    flex-direction: row !important;
+                    overflow-x: auto !important;
+                    white-space: nowrap !important;
+                    padding: 4px 2px 10px 2px !important;
+                    gap: 6px !important;
+                    border-right: none !important;
+                    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+                    background: transparent !important;
+                    scrollbar-width: none !important;
+                    -webkit-overflow-scrolling: touch !important;
+                    flex-shrink: 0 !important;
+                }
+                .godmode-sidebar::-webkit-scrollbar {
+                    display: none !important;
+                }
+                .godmode-sidebar button {
+                    flex-shrink: 0 !important;
+                    width: auto !important;
+                    padding: 8px 14px !important;
+                    font-size: 12px !important;
+                    font-weight: 700 !important;
+                    border-radius: 12px !important;
+                    background: rgba(255, 255, 255, 0.06) !important;
+                    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+                    color: rgba(255, 255, 255, 0.85) !important;
+                    text-align: center !important;
+                }
+                .godmode-sidebar button.active {
+                    background: #ffffff !important;
+                    color: #000000 !important;
+                    border-color: #ffffff !important;
+                    box-shadow: 0 4px 16px rgba(255, 255, 255, 0.25) !important;
+                }
+                .godmode-main {
+                    flex: 1 !important;
+                    padding: 12px 2px 30px 2px !important;
+                    overflow-y: auto !important;
+                    -webkit-overflow-scrolling: touch !important;
+                    overflow-x: hidden !important;
+                }
+                .godmode-main [style*="grid-template-columns"] {
+                    grid-template-columns: 1fr !important;
+                }
+                .godmode-main [style*="justify-content:space-between"] {
+                    flex-wrap: wrap !important;
+                    gap: 10px !important;
+                }
+                .godmode-main .secondary-btn, .godmode-main .primary-btn {
+                    min-height: 42px !important;
+                }
+            }
+            @media (min-width: 769px) and (max-width: 1024px) {
                 .godmode-modal .modal-content {
                     grid-template-columns: 1fr;
                     grid-template-rows: auto 1fr;

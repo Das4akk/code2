@@ -49,38 +49,178 @@
     }
     </script>
 
-    <!-- High-Performance Animated Stickers & Icons Fallback Engine -->
+    <!-- COWIO Ultra-Optimized Animated & Static Emoji Engine -->
     <script>
-      (function() {
-        window.addEventListener("error", function(e) {
-          const el = e.target;
-          if (el && el.tagName === "IMG" && el.src && el.src.includes("Telegram-Animated-Emojis") && !el.dataset.fallbackDone) {
-            el.dataset.fallbackDone = "1";
-            const currentSrc = el.src;
-            const rel = currentSrc.replace(/^https?:\/\/[^\/]+(\/gh\/[^\/]+\/[^@]+@[^\/]+\/|\/main\/)?/, "")
-                                  .replace(/^Telegram-Animated-Emojis\/(main\/)?/, "")
-                                  .replace(/^\/+/, "");
-            el.src = "/api/emoji-proxy?path=" + encodeURIComponent(decodeURIComponent(rel));
-          }
-        }, true);
-      })();
-    </script>
-
-    <script>
-      // Respect user choice and hardware capabilities for animated emojis
       (function() {
         const userPref = localStorage.getItem("staticEmojis");
-        const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        const saveData = navigator.connection && navigator.connection.saveData === true;
-        const lowSpecs = Boolean(navigator.hardwareConcurrency && navigator.hardwareConcurrency < 4);
-
-        const useStatic = userPref === "true" || (userPref === null && (prefersReducedMotion || saveData || lowSpecs));
+        const useStatic = userPref === "true";
         window.__COWIO_USE_STATIC_EMOJIS = useStatic;
         if (useStatic) {
           document.documentElement.classList.add("use-static-emojis");
         }
 
-        // Top 20 popular emojis to preload when entering room
+        function isTelegramEmojiUrl(url) {
+          if (!url || typeof url !== "string") return false;
+          return url.includes("Telegram-Animated-Emojis") ||
+                 url.includes("/api/emoji-proxy") ||
+                 url.includes("/emoji-proxy");
+        }
+
+        function extractEmojiRelPath(url) {
+          if (!url || typeof url !== "string") return "";
+          try {
+            if (url.includes("/api/emoji-proxy") || url.includes("/emoji-proxy")) {
+              const u = new URL(url, window.location.origin);
+              const p = u.searchParams.get("path") || u.searchParams.get("url") || "";
+              return decodeURIComponent(p);
+            }
+          } catch (e) {}
+
+          const rel = url.replace(/^https?:\/\/[^\/]+(\/gh\/[^\/]+\/[^@]+@[^\/]+\/|\/main\/)?/, "")
+                         .replace(/^Telegram-Animated-Emojis\/(main\/)?/, "")
+                         .replace(/^\/+/, "");
+          try {
+            return decodeURIComponent(rel);
+          } catch (e) {
+            return rel;
+          }
+        }
+
+        function isRoomReaction(el) {
+          if (!el || !(el instanceof Element)) return false;
+          if (el.dataset && (el.dataset.isRoomReaction === "1" || el.dataset.roomReaction === "true")) return true;
+          if (el.classList && el.classList.contains("room-reaction-anim")) return true;
+          if (el.closest && el.closest(".floating-emoji, #reaction-layer, .reaction-layer, .reaction-bar, .react-btn")) return true;
+          return false;
+        }
+
+        window.getOptimizedEmojiUrl = function(rawUrl, isReaction = false) {
+          if (!isTelegramEmojiUrl(rawUrl)) return rawUrl;
+          const cleanPath = extractEmojiRelPath(rawUrl);
+          if (!cleanPath) return rawUrl;
+
+          const wantStatic = window.__COWIO_USE_STATIC_EMOJIS && !isReaction;
+          if (wantStatic) {
+            return "/api/emoji-proxy?path=" + encodeURIComponent(cleanPath) + "&static=1";
+          }
+          // In animated mode: route to high-speed server proxy with local disk cache & ETag
+          return "/api/emoji-proxy?path=" + encodeURIComponent(cleanPath);
+        };
+
+        // Intercept <img> .src assignment
+        const imgProto = HTMLImageElement.prototype;
+        const origSrcDesc = Object.getOwnPropertyDescriptor(imgProto, "src");
+        if (origSrcDesc && origSrcDesc.set) {
+          Object.defineProperty(imgProto, "src", {
+            get: function() {
+              return origSrcDesc.get.call(this);
+            },
+            set: function(val) {
+              if (typeof val === "string" && isTelegramEmojiUrl(val)) {
+                this.dataset.originalEmojiSrc = val;
+                const isRx = isRoomReaction(this);
+                const optimized = window.getOptimizedEmojiUrl(val, isRx);
+                return origSrcDesc.set.call(this, optimized);
+              }
+              return origSrcDesc.set.call(this, val);
+            },
+            configurable: true,
+            enumerable: true
+          });
+        }
+
+        // Intercept setAttribute("src", ...)
+        const origSetAttr = imgProto.setAttribute;
+        imgProto.setAttribute = function(attrName, val) {
+          if (String(attrName).toLowerCase() === "src" && typeof val === "string" && isTelegramEmojiUrl(val)) {
+            this.dataset.originalEmojiSrc = val;
+            const isRx = isRoomReaction(this);
+            const optimized = window.getOptimizedEmojiUrl(val, isRx);
+            return origSetAttr.call(this, attrName, optimized);
+          }
+          return origSetAttr.call(this, attrName, val);
+        };
+
+        function processImageElement(img) {
+          if (!img || img.tagName !== "IMG") return;
+          const currentSrc = img.getAttribute("src") || img.src;
+          if (!isTelegramEmojiUrl(currentSrc)) return;
+
+          const isRx = isRoomReaction(img);
+          if (!img.dataset.originalEmojiSrc) {
+            img.dataset.originalEmojiSrc = currentSrc;
+          }
+          const targetUrl = window.getOptimizedEmojiUrl(img.dataset.originalEmojiSrc, isRx);
+          if (img.getAttribute("src") !== targetUrl) {
+            origSetAttr.call(img, "src", targetUrl);
+          }
+          if (!img.getAttribute("loading") && !isRx) {
+            origSetAttr.call(img, "loading", "lazy");
+          }
+          if (!img.getAttribute("decoding")) {
+            origSetAttr.call(img, "decoding", "async");
+          }
+        }
+
+        // Dynamic DOM mutation observer
+        const observer = new MutationObserver(function(mutations) {
+          for (let i = 0; i < mutations.length; i++) {
+            const m = mutations[i];
+            for (let j = 0; j < m.addedNodes.length; j++) {
+              const node = m.addedNodes[j];
+              if (node.nodeType === 1) {
+                if (node.tagName === "IMG") {
+                  processImageElement(node);
+                } else if (node.querySelectorAll) {
+                  const imgs = node.querySelectorAll("img");
+                  for (let k = 0; k < imgs.length; k++) {
+                    processImageElement(imgs[k]);
+                  }
+                }
+              }
+            }
+          }
+        });
+        observer.observe(document.documentElement, { childList: true, subtree: true });
+
+        // Process all existing images on DOMContentLoaded
+        document.addEventListener("DOMContentLoaded", function() {
+          const imgs = document.querySelectorAll("img");
+          imgs.forEach(processImageElement);
+        });
+
+        // Global switcher for settings
+        window.applyStaticEmojisMode = function(isStatic) {
+          window.__COWIO_USE_STATIC_EMOJIS = Boolean(isStatic);
+          document.documentElement.classList.toggle("use-static-emojis", Boolean(isStatic));
+
+          const imgs = document.querySelectorAll("img");
+          imgs.forEach(function(img) {
+            const orig = img.dataset.originalEmojiSrc || img.getAttribute("src") || img.src;
+            if (!isTelegramEmojiUrl(orig)) return;
+            const isRx = isRoomReaction(img);
+            if (isRx) return; // Keep room reactions animated!
+
+            const targetUrl = window.getOptimizedEmojiUrl(orig, false);
+            if (img.getAttribute("src") !== targetUrl) {
+              origSetAttr.call(img, "src", targetUrl);
+            }
+          });
+        };
+
+        // Fallback for image load errors
+        window.addEventListener("error", function(e) {
+          const el = e.target;
+          if (el && el.tagName === "IMG" && isTelegramEmojiUrl(el.src) && !el.dataset.fallbackDone) {
+            el.dataset.fallbackDone = "1";
+            const isRx = isRoomReaction(el);
+            const path = extractEmojiRelPath(el.src);
+            const wantStatic = window.__COWIO_USE_STATIC_EMOJIS && !isRx;
+            origSetAttr.call(el, "src", "/api/emoji-proxy?path=" + encodeURIComponent(path) + (wantStatic ? "&static=1" : ""));
+          }
+        }, true);
+
+        // Top 20 popular emojis to preload
         window.TOP_20_EMOJIS = [
           "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Grinning%20Face.webp",
           "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Face%20With%20Tears%20Of%20Joy.webp",
@@ -109,10 +249,14 @@
           window.__topEmojisPreloaded = true;
           window.TOP_20_EMOJIS.forEach((src) => {
             const img = new Image();
-            img.src = src;
+            img.src = window.getOptimizedEmojiUrl(src);
           });
         };
+      })();
+    </script>
 
+    <script>
+      (function() {
         // Lazy-loading emojis with IntersectionObserver rootMargin 200px
         if ("IntersectionObserver" in window) {
           const emojiObserver = new IntersectionObserver((entries, obs) => {
@@ -232,6 +376,7 @@
     <!-- @include "partials/modals/badge-info.html" -->
     <!-- @include "partials/modals/report-profile.html" -->
     <!-- @include "partials/modals/gift-lumens.html" -->
+    <!-- @include "partials/modals/tip-host.html" -->
     <!-- @include "partials/modals/create-ticket.html" -->
     <!-- @include "partials/modals/support-creator.html" -->
     <!-- @include "partials/modals/like-stats.html" -->

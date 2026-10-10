@@ -139,3 +139,75 @@ export async function updateUserField(req, res) {
     return res.status(500).json({ error: err.message });
   }
 }
+
+export async function setMaintenance(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  try {
+    const creatorUser = await requireCreator(req);
+    if (!creatorUser) return res.status(403).json({ error: 'Forbidden: creator only' });
+
+    const { type, global, reason, sectionKey, active } = req.body || {};
+    const db = getDb();
+
+    if (db) {
+      if (type === 'global' || global !== undefined) {
+        await db.ref('system/maintenance').update({
+          global: Boolean(global),
+          reason: reason || '',
+          updatedAt: Date.now()
+        });
+        return res.status(200).json({ success: true, global: Boolean(global) });
+      }
+
+      if (type === 'section' || sectionKey) {
+        if (!sectionKey) return res.status(400).json({ error: 'Missing sectionKey' });
+        await db.ref('system/maintenance/sections').update({
+          [sectionKey]: Boolean(active)
+        });
+        return res.status(200).json({ success: true, sectionKey, active: Boolean(active) });
+      }
+    } else {
+      // REST API fallback using user's token or database URL
+      const dbUrl = process.env.FIREBASE_DATABASE_URL || 'https://das4akk-1-default-rtdb.firebaseio.com';
+      const authParam = creatorUser.idToken ? `?auth=${encodeURIComponent(creatorUser.idToken)}` : '';
+      if (type === 'global' || global !== undefined) {
+        const patchRes = await fetch(`${dbUrl}/system/maintenance.json${authParam}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            global: Boolean(global),
+            reason: reason || '',
+            updatedAt: Date.now()
+          })
+        });
+        const patchData = await patchRes.json();
+        if (!patchRes.ok || patchData.error) {
+          throw new Error(patchData.error || `HTTP ${patchRes.status}`);
+        }
+        return res.status(200).json({ success: true, global: Boolean(global) });
+      }
+
+      if (type === 'section' || sectionKey) {
+        if (!sectionKey) return res.status(400).json({ error: 'Missing sectionKey' });
+        const patchRes = await fetch(`${dbUrl}/system/maintenance/sections.json${authParam}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            [sectionKey]: Boolean(active)
+          })
+        });
+        const patchData = await patchRes.json();
+        if (!patchRes.ok || patchData.error) {
+          throw new Error(patchData.error || `HTTP ${patchRes.status}`);
+        }
+        return res.status(200).json({ success: true, sectionKey, active: Boolean(active) });
+      }
+    }
+
+    return res.status(400).json({ error: 'Invalid maintenance payload' });
+  } catch (err) {
+    console.error('[admin/set-maintenance]', err.message);
+    return res.status(500).json({ error: err.message });
+  }
+}
+

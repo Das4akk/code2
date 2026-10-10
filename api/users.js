@@ -23,6 +23,9 @@ export default async function handler(req, res) {
     switch (action) {
       case 'search':
         return await usersHandler.search(req, res);
+      case 'send-tip':
+      case 'tip':
+        return await usersHandler.sendTip(req, res);
       default:
         return res.status(404).json({ error: `Unknown users action: ${action}` });
     }

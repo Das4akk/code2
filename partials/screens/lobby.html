@@ -1,22 +1,30 @@
 <section id="lobby-screen" class="screen">
       <header class="lobby-app-bar">
-        <button id="toggle-sidebar" class="burger-btn" style="
-            pointer-events: auto;
-            background: none;
-            border: none;
+        <button id="toggle-sidebar" class="burger-btn" type="button" aria-label="Открыть меню" title="Меню" onclick="if(window.toggleMainSidebar){window.toggleMainSidebar(event);}else{const s=document.getElementById('main-sidebar');const o=document.getElementById('sidebar-overlay');if(s)s.classList.toggle('open');if(o)o.classList.toggle('open');}" style="
+            pointer-events: auto !important;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             font-size: 24px;
             cursor: pointer;
             color: var(--text-main);
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 40px;
-            height: 40px;
-            margin-left: -8px;
-            border-radius: 8px;
-            transition: background 0.2s;
+            min-width: 42px;
+            min-height: 42px;
+            width: 42px;
+            height: 42px;
+            margin-right: 6px;
+            border-radius: 10px;
+            transition: background 0.2s, transform 0.1s;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 1005;
           ">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none;">
             <line x1="4" x2="20" y1="12" y2="12"></line>
             <line x1="4" x2="20" y1="6" y2="6"></line>
             <line x1="4" x2="20" y1="18" y2="18"></line>
@@ -41,6 +49,13 @@
       <div class="lobby-layout">
         <div class="sidebar-overlay" id="sidebar-overlay"></div>
         <aside class="sidebar" id="main-sidebar">
+          <div class="sidebar-mobile-header" style="display: none; align-items: center; justify-content: space-between; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.08);">
+            <div style="font-weight: 800; font-size: 15px; color: #fff; display: flex; align-items: center; gap: 8px;">
+              <img loading="lazy" decoding="async" src="/logo.png" onerror="this.onerror=null; this.src='https://s6.iimage.su/s/16/gCrqWaZxLG89wTzFtrJWUC3v29FIwSjhGbnij4ObO.png';" alt="COWIO" style="height: 26px; object-fit: contain;">
+              Меню
+            </div>
+            <button id="btn-close-sidebar" type="button" aria-label="Закрыть меню" class="sidebar-close-btn" onclick="if(window.closeMainSidebar){window.closeMainSidebar(event);}else{const s=document.getElementById('main-sidebar');const o=document.getElementById('sidebar-overlay');if(s)s.classList.remove('open');if(o)o.classList.remove('open');}" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.12); color: #fff; width: 34px; height: 34px; border-radius: 10px; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; touch-action: manipulation;">✕</button>
+          </div>
           <div class="user-card" id="btn-open-my-profile" style="margin-top: 10px; display: none;">
             <div class="avatar" id="my-avatar-display">?</div>
             <div class="user-card-info">

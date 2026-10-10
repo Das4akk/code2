@@ -757,13 +757,28 @@ class RoomManager {
             });
         });
         
-        function renderHost(name, photo) {
+        function renderHost(name, photo, pData = {}) {
             authorNameEl.innerText = Utils.escapeHtml(name);
             
             if (photo) {
                 authorAvatarEl.innerHTML = `<img src="${Utils.escapeHtml(photo)}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
             } else {
                 authorAvatarEl.innerHTML = `<div style="width:100%; height:100%; background: #555; border-radius: 50%;"></div>`;
+            }
+
+            const tipBtn = Utils.$("btn-room-tip-host");
+            if (tipBtn) {
+                const myUid = AppState.currentUser?.uid;
+                const isMyOwnRoom = Boolean(myUid && roomData.hostId === myUid);
+                if (!isMyOwnRoom && roomData.hostId) {
+                    tipBtn.style.display = "inline-flex";
+                    tipBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        RoomManager.openTipHostModal(roomData.hostId, name, photo);
+                    };
+                } else {
+                    tipBtn.style.display = "none";
+                }
             }
         }
     }
@@ -1213,11 +1228,18 @@ class RoomManager {
     let processedMsgs = new Set();
     // TEMP DEBUG - Chat read subscription
     console.log('[CHAT-READ] Subscribing to path:', `rooms/${roomId}/chat`);
+    RoomManager.hasMoreOlderChat = true;
+    RoomManager.isLoadingOlderChat = false;
+    RoomManager.oldestLoadedChatKey = null;
+
     const cUnsub = onChildAdded(
       query(chatRef, limitToLast(50)),
       (snap) => {
         const msg = snap.val();
         const id = snap.key;
+        if (!RoomManager.oldestLoadedChatKey) {
+          RoomManager.oldestLoadedChatKey = id;
+        }
         console.log('[CHAT-READ] Got message:', id, msg);
         if (processedMsgs.has(id)) return;
         processedMsgs.add(id);
@@ -1233,6 +1255,54 @@ class RoomManager {
       }
     );
     AppState.roomSubscriptions.push(cUnsub);
+
+    const chatContainer = Utils.$("chat-messages") || document.querySelector(".chat-messages");
+    if (chatContainer) {
+      chatContainer.onscroll = async () => {
+        if (chatContainer.scrollTop <= 15 && !RoomManager.isLoadingOlderChat && RoomManager.hasMoreOlderChat && RoomManager.oldestLoadedChatKey) {
+          RoomManager.isLoadingOlderChat = true;
+          const prevScrollHeight = chatContainer.scrollHeight;
+          try {
+            const { get, query: fbQuery, orderByKey, endBefore, limitToLast: fbLimitToLast } = await import("./firebase.js");
+            const olderQuery = fbQuery(
+              chatRef,
+              orderByKey(),
+              endBefore(RoomManager.oldestLoadedChatKey),
+              fbLimitToLast(50)
+            );
+            const olderSnap = await get(olderQuery);
+            if (!olderSnap.exists() || olderSnap.size === 0) {
+              RoomManager.hasMoreOlderChat = false;
+              RoomManager.isLoadingOlderChat = false;
+              return;
+            }
+            const olderItems = [];
+            olderSnap.forEach((child) => {
+              olderItems.push({ id: child.key, msg: child.val() });
+            });
+            if (olderItems.length < 50) {
+              RoomManager.hasMoreOlderChat = false;
+            }
+            if (olderItems.length > 0) {
+              RoomManager.oldestLoadedChatKey = olderItems[0].id;
+              const firstChild = chatContainer.firstElementChild;
+              for (let i = olderItems.length - 1; i >= 0; i--) {
+                const item = olderItems[i];
+                if (!processedMsgs.has(item.id)) {
+                  processedMsgs.add(item.id);
+                  RoomManager.renderChatMessage(item.msg, item.id, uid, roomJoinTime, { prependBefore: firstChild });
+                }
+              }
+              chatContainer.scrollTop = chatContainer.scrollHeight - prevScrollHeight;
+            }
+          } catch (err) {
+            console.warn('[CHAT-READ] Older chat load error:', err?.message);
+          } finally {
+            RoomManager.isLoadingOlderChat = false;
+          }
+        }
+      };
+    }
 
     const roomAttachBtn = Utils.$("btn-room-attach");
     if (roomAttachBtn) {
@@ -1349,7 +1419,7 @@ class RoomManager {
     RoomManager.setRoomTab("chat");
   }
 
-  static renderChatMessage(msg, id, uid, roomJoinTime = 0) {
+  static renderChatMessage(msg, id, uid, roomJoinTime = 0, options = {}) {
     // TEMP DEBUG
     console.log('[RENDER-CHAT] called with:', msg);
     const container = document.querySelector('#chat-messages') || 
@@ -1368,9 +1438,13 @@ class RoomManager {
       systemLine.className = "sys-msg";
       systemLine.innerText = msg.text || "";
       if (container) {
-        container.appendChild(systemLine);
-        if (container.childElementCount > 200) container.firstElementChild?.remove();
-        container.scrollTop = container.scrollHeight;
+        if (options.prependBefore) {
+          container.insertBefore(systemLine, options.prependBefore);
+        } else {
+          container.appendChild(systemLine);
+          if (container.childElementCount > 200) container.firstElementChild?.remove();
+          container.scrollTop = container.scrollHeight;
+        }
       }
       return;
     }
@@ -1486,12 +1560,16 @@ class RoomManager {
     });
 
     if (container) {
-      const isNearBottom =
-        container.scrollHeight - container.scrollTop - container.clientHeight < 140;
-      container.appendChild(line);
-      if (container.childElementCount > 100) container.firstElementChild?.remove();
-      if (isNearBottom || isMe) {
-        container.scrollTop = container.scrollHeight;
+      if (options.prependBefore) {
+        container.insertBefore(line, options.prependBefore);
+      } else {
+        const isNearBottom =
+          container.scrollHeight - container.scrollTop - container.clientHeight < 140;
+        container.appendChild(line);
+        if (container.childElementCount > 100) container.firstElementChild?.remove();
+        if (isNearBottom || isMe) {
+          container.scrollTop = container.scrollHeight;
+        }
       }
     }
   }
@@ -1510,7 +1588,7 @@ class RoomManager {
       "👏": "https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/People/Clapping%20Hands.webp",
     };
     if (imgMap[rx.emoji]) {
-      el.innerHTML = `<img src="${imgMap[rx.emoji]}" style="width: 48px; height: 48px; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3)); pointer-events: none;">`;
+      el.innerHTML = `<img src="${imgMap[rx.emoji]}" class="room-reaction-anim" data-is-room-reaction="1" style="width: 48px; height: 48px; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3)); pointer-events: none;">`;
     } else {
       el.innerText = rx.emoji || "🔥";
     }
@@ -2900,6 +2978,211 @@ class RoomManager {
       if (e.target === modal) close();
     };
   }
+
+  static async openTipHostModal(hostUid, hostName = "Хост", hostAvatar = "") {
+    if (!hostUid) return;
+    const currentUid = AppState.currentUser?.uid;
+    if (!currentUid) {
+      return Utils.toast("Войдите в аккаунт, чтобы отправлять чаевые", "warn");
+    }
+    if (currentUid === hostUid) {
+      return Utils.toast("Вы не можете отправлять чаевые самому себе", "warn");
+    }
+
+    const modal = Utils.$("modal-tip-host");
+    if (!modal) return Utils.toast("Модальное окно чаевых не найдено", "error");
+
+    const hostNameEl = Utils.$("tip-host-name");
+    const hostAvatarEl = Utils.$("tip-host-avatar");
+    const myLumensEl = Utils.$("tip-my-lumens");
+    const afterLumensEl = Utils.$("tip-after-lumens");
+    const statusMsgEl = Utils.$("tip-host-status-msg");
+    const confirmBtn = Utils.$("btn-confirm-tip-host");
+    const cancelBtn = Utils.$("btn-cancel-tip-host");
+    const closeBtn = Utils.$("btn-close-tip-host-modal");
+
+    if (hostNameEl) hostNameEl.textContent = hostName;
+    if (hostAvatarEl) {
+      if (hostAvatar) {
+        hostAvatarEl.innerHTML = `<img src="${Utils.escapeHtml(hostAvatar)}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+      } else {
+        hostAvatarEl.innerHTML = `<div style="width: 100%; height: 100%; background: #444; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff;">${(hostName[0] || "Х").toUpperCase()}</div>`;
+      }
+    }
+
+    const myProfile = (AppState.usersCache && AppState.usersCache.get(currentUid)) || AppState.currentUser?.profile || {};
+    const myLumens = Number(myProfile.lumens) || 0;
+    if (myLumensEl) myLumensEl.textContent = myLumens.toLocaleString();
+    if (afterLumensEl) afterLumensEl.textContent = Math.max(0, myLumens - 50).toLocaleString();
+
+    // Check 12-hour cooldown
+    const COOLDOWN_MS = 12 * 60 * 60 * 1000;
+    const localLastTip = Number(localStorage.getItem(`cowio_last_tip_${hostUid}`)) || 0;
+    let dbLastTip = 0;
+    try {
+      const { get, ref, getDatabase } = await import("./firebase.js");
+      const snap = await get(ref(getDatabase(), `users/${currentUid}/tipsSent/${hostUid}`));
+      if (snap.exists()) dbLastTip = Number(snap.val()) || 0;
+    } catch (_) {}
+
+    const lastTip = Math.max(localLastTip, dbLastTip);
+    const now = Date.now();
+    const isCooldown = (now - lastTip < COOLDOWN_MS);
+
+    if (statusMsgEl) {
+      if (myLumens < 50) {
+        statusMsgEl.style.display = "block";
+        statusMsgEl.style.background = "rgba(255, 71, 87, 0.15)";
+        statusMsgEl.style.border = "1px solid rgba(255, 71, 87, 0.35)";
+        statusMsgEl.style.color = "#ff6b81";
+        statusMsgEl.textContent = `Недостаточно Люменов (требуется 50, у вас ${myLumens}).`;
+        if (confirmBtn) {
+          confirmBtn.disabled = true;
+          confirmBtn.style.opacity = "0.5";
+          confirmBtn.style.cursor = "not-allowed";
+        }
+      } else if (isCooldown) {
+        const remainingMs = COOLDOWN_MS - (now - lastTip);
+        const hours = Math.floor(remainingMs / (3600 * 1000));
+        const mins = Math.ceil((remainingMs % (3600 * 1000)) / (60 * 1000));
+        const timeStr = hours > 0 ? `${hours} ч. ${mins} мин.` : `${mins} мин.`;
+        statusMsgEl.style.display = "block";
+        statusMsgEl.style.background = "rgba(255, 215, 0, 0.12)";
+        statusMsgEl.style.border = "1px solid rgba(255, 215, 0, 0.3)";
+        statusMsgEl.style.color = "#ffd700";
+        statusMsgEl.textContent = `Чаевые этому автору уже отправлялись. Повторить можно через ${timeStr}.`;
+        if (confirmBtn) {
+          confirmBtn.disabled = true;
+          confirmBtn.style.opacity = "0.5";
+          confirmBtn.style.cursor = "not-allowed";
+        }
+      } else {
+        statusMsgEl.style.display = "none";
+        statusMsgEl.textContent = "";
+        if (confirmBtn) {
+          confirmBtn.disabled = false;
+          confirmBtn.style.opacity = "1";
+          confirmBtn.style.cursor = "pointer";
+          confirmBtn.innerHTML = `<span>Отправить 50 ✨</span>`;
+        }
+      }
+    }
+
+    const closeModal = () => modal.classList.remove("active");
+    if (cancelBtn) cancelBtn.onclick = closeModal;
+    if (closeBtn) closeBtn.onclick = closeModal;
+    modal.onclick = (e) => {
+      if (e.target === modal) closeModal();
+    };
+
+    if (confirmBtn) {
+      confirmBtn.onclick = async () => {
+        if (confirmBtn.disabled) return;
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = `<span>Отправка...</span>`;
+
+        try {
+          let serverSuccess = false;
+          const authObj = window.auth || (await import("./firebase.js")).auth;
+          const token = authObj?.currentUser ? await authObj.currentUser.getIdToken() : "";
+          
+          if (token) {
+            try {
+              const res = await fetch("/api/users?action=send-tip", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                  hostUid,
+                  roomId: AppState.currentRoomId
+                })
+              });
+              const data = await res.json();
+              if (res.ok && data.success && !data.useClientFallback) {
+                serverSuccess = true;
+                localStorage.setItem(`cowio_last_tip_${hostUid}`, String(Date.now()));
+                if (window.LumenManager) {
+                  LumenManager.updateBalance(data.newSenderLumens, {
+                    diff: -50,
+                    reason: `Чаевые для @${hostName}`,
+                    source: "tip",
+                    showFloater: true,
+                    saveTx: true,
+                    txType: "expense",
+                    txIcon: "sparkles"
+                  });
+                }
+              } else if (!res.ok && data.error && !data.useClientFallback) {
+                throw new Error(data.error);
+              }
+            } catch (apiErr) {
+              if (apiErr.message && !apiErr.message.includes("404") && !apiErr.message.includes("Failed to fetch")) {
+                throw apiErr;
+              }
+            }
+          }
+
+          if (!serverSuccess) {
+            // Direct client RTDB fallback
+            const { get, ref, update, push, getDatabase } = await import("./firebase.js");
+            const db = getDatabase();
+            const nowTs = Date.now();
+
+            const hostSnap = await get(ref(db, `users/${hostUid}/profile`));
+            const hostData = hostSnap.val() || {};
+            const hostCurrentLumens = Number(hostData.lumens) || 0;
+
+            const myNewLumens = Math.max(0, myLumens - 50);
+            const hostNewLumens = hostCurrentLumens + 50;
+
+            await update(ref(db), {
+              [`users/${currentUid}/profile/lumens`]: myNewLumens,
+              [`users/${hostUid}/profile/lumens`]: hostNewLumens,
+              [`users/${currentUid}/tipsSent/${hostUid}`]: nowTs
+            });
+
+            localStorage.setItem(`cowio_last_tip_${hostUid}`, String(nowTs));
+
+            // Push system chat message
+            if (AppState.currentRoomId) {
+              const myName = myProfile.name || myProfile.displayName || myProfile.username || "Пользователь";
+              await push(ref(db, `rooms/${AppState.currentRoomId}/chat`), {
+                type: "system",
+                uid: "system_tip",
+                name: "СИСТЕМА ЧАЕВЫХ",
+                text: `🌟 ${myName} отправил(а) 50 Люменов хосту ${hostName}!`,
+                ts: nowTs
+              }).catch(() => {});
+            }
+
+            if (window.LumenManager) {
+              LumenManager.updateBalance(myNewLumens, {
+                diff: -50,
+                reason: `Чаевые для @${hostName}`,
+                source: "tip",
+                showFloater: true,
+                saveTx: true,
+                txType: "expense",
+                txIcon: "sparkles"
+              });
+            }
+          }
+
+          closeModal();
+          Utils.toast("🌟 Чаевые 50 Люменов успешно отправлены хосту!", "success");
+        } catch (err) {
+          console.error("[TipHost] Error:", err);
+          Utils.toast(err.message || "Ошибка отправки чаевых", "error");
+          confirmBtn.disabled = false;
+          confirmBtn.innerHTML = `<span>Отправить 50 ✨</span>`;
+        }
+      };
+    }
+
+    modal.classList.add("active");
+  }
 }
 
 // ============================================================================
@@ -3864,8 +4147,104 @@ class RTCManager {
 // ============================================================================
 
 class MobileSwipeManager {
+  static initSidebar() {
+    const sidebar = document.getElementById("main-sidebar");
+    const sidebarOverlay = document.getElementById("sidebar-overlay");
+    const btnToggle = document.getElementById("toggle-sidebar");
+    const btnClose = document.getElementById("btn-close-sidebar");
+
+    window.openMainSidebar = (e) => {
+      if (e && e.stopPropagation) e.stopPropagation();
+      const s = document.getElementById("main-sidebar");
+      const o = document.getElementById("sidebar-overlay");
+      if (s) s.classList.add("open");
+      if (o) o.classList.add("open");
+    };
+
+    window.closeMainSidebar = (e) => {
+      if (e && e.stopPropagation) e.stopPropagation();
+      const s = document.getElementById("main-sidebar");
+      const o = document.getElementById("sidebar-overlay");
+      if (s) s.classList.remove("open");
+      if (o) o.classList.remove("open");
+    };
+
+    window.toggleMainSidebar = (e) => {
+      if (e) {
+        if (e.preventDefault) e.preventDefault();
+        if (e.stopPropagation) e.stopPropagation();
+      }
+      const s = document.getElementById("main-sidebar");
+      if (!s) return;
+      if (s.classList.contains("open")) {
+        window.closeMainSidebar(e);
+      } else {
+        window.openMainSidebar(e);
+      }
+    };
+
+    if (btnToggle) {
+      let lastTap = 0;
+      const handleToggle = (e) => {
+        const now = Date.now();
+        if (now - lastTap < 250) return;
+        lastTap = now;
+        window.toggleMainSidebar(e);
+      };
+      btnToggle.onclick = handleToggle;
+      btnToggle.addEventListener(
+        "touchend",
+        (e) => {
+          e.preventDefault();
+          handleToggle(e);
+        },
+        { passive: false }
+      );
+    }
+
+    if (sidebarOverlay) {
+      sidebarOverlay.onclick = (e) => {
+        if (localStorage.getItem("tutorial_active") !== "true") {
+          window.closeMainSidebar(e);
+        }
+      };
+      sidebarOverlay.addEventListener(
+        "touchend",
+        (e) => {
+          if (localStorage.getItem("tutorial_active") !== "true") {
+            e.preventDefault();
+            window.closeMainSidebar(e);
+          }
+        },
+        { passive: false }
+      );
+    }
+
+    if (btnClose) {
+      btnClose.onclick = (e) => window.closeMainSidebar(e);
+    }
+
+    if (sidebar) {
+      const navItems = sidebar.querySelectorAll(".nav-item, #btn-open-my-profile");
+      navItems.forEach((item) => {
+        item.addEventListener("click", () => {
+          if (window.innerWidth <= 1024) {
+            window.closeMainSidebar();
+          }
+        });
+      });
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        window.closeMainSidebar();
+      }
+    });
+  }
+
   static init() {
-    if (window.innerWidth > 1024) return; // Only mobile
+    this.initSidebar();
+    if (window.innerWidth > 1024) return; // Only mobile for gestures
 
     // Setup modal swipe to close
     document.querySelectorAll(".modal").forEach((modal) => {

@@ -36,6 +36,8 @@ import {
 } from './lib/roles.js';
 // @ts-ignore
 import { getVideoInfo, searchVideos } from './api/video-service.js';
+// @ts-ignore
+import { handleEmojiRequest } from './api/emoji-service.js';
 
 const firebaseAdmin: any = admin;
 const __filename = fileURLToPath(import.meta.url);
@@ -958,91 +960,10 @@ app.post('/api/library/fetch-metadata', requireAuth, async (req: Request, res: R
 });
 
 // ----------------------------------------------------
-// EMOJI & STICKER SERVING
+// EMOJI & STICKER SERVING (HIGH-PERFORMANCE MULTI-TIER ENGINE)
 // ----------------------------------------------------
-const emojiCache = new Map<string, { buffer: Buffer; contentType: string; timestamp: number }>();
-const fallbackWebpBuffer = Buffer.from('UklGRiQAAABXRUJQVlA4IBgAAAAwAQCdASoBAAEAAwA0JaQAA3AA/vuUAAA=', 'base64');
-
-const EMOJI_ALIASES_MAP: Record<string, string> = {
-  'objects/pen.webp': 'Objects/Pencil.webp',
-  'symbols/back arrow.webp': 'Symbols/Top Arrow.webp',
-  'symbols/back%20arrow.webp': 'Symbols/Top Arrow.webp',
-  'symbols/counterclockwise arrows button.webp': 'Symbols/Currency Exchange.webp',
-  'symbols/counterclockwise%20arrows%20button.webp': 'Symbols/Currency Exchange.webp',
-  'objects/wastebasket.webp': 'Symbols/Cross Mark.webp',
-  'objects/paperclip.webp': 'Objects/Memo.webp',
-  'objects/envelope.webp': 'Objects/Incoming Envelope.webp',
-  'objects/package.webp': 'Objects/Toolbox.webp'
-};
-
-app.get(['/api/emoji-proxy', '/emoji-proxy'], async (req: Request, res: Response) => {
-  try {
-    let rawPath = ((req.query.path || req.query.url || '') as string).trim();
-    if (!rawPath) {
-      res.setHeader('Content-Type', 'image/webp');
-      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-      return res.status(200).send(fallbackWebpBuffer);
-    }
-
-    let emojiPath = rawPath
-      .replace(/^https?:\/\/[^\/]+\/(gh\/[^\/]+\/[^@]+@[^\/]+\/|main\/)?/, '')
-      .replace(/^Telegram-Animated-Emojis\/(main\/)?/, '')
-      .replace(/^\/+/, '');
-
-    try {
-      emojiPath = decodeURIComponent(emojiPath);
-    } catch {}
-
-    const lowerKey = emojiPath.toLowerCase();
-    if (EMOJI_ALIASES_MAP[lowerKey]) {
-      emojiPath = EMOJI_ALIASES_MAP[lowerKey]!;
-    }
-
-    // Check if local emoji file exists in public/emoji/
-    const localEmojiPath = path.join(__dirname, 'public/emoji', emojiPath);
-    if (fs.existsSync(localEmojiPath)) {
-      res.setHeader('Content-Type', 'image/webp');
-      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-      return res.sendFile(localEmojiPath);
-    }
-
-    const cacheKey = emojiPath;
-    const cached = emojiCache.get(cacheKey);
-    if (cached && Date.now() - cached.timestamp < 7 * 24 * 3600 * 1000) {
-      res.setHeader('Content-Type', cached.contentType);
-      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-      return res.send(cached.buffer);
-    }
-
-    const encodedPath = encodeURI(emojiPath);
-    const mirror = `https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/${encodedPath}`;
-
-    const fetchRes = await safeFetch(mirror, {
-      allowedDomains: ['cdn.jsdelivr.net'],
-      timeoutMs: 5000,
-      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
-    });
-
-    if (!fetchRes.ok) {
-      res.setHeader('Content-Type', 'image/webp');
-      res.setHeader('Cache-Control', 'public, max-age=3600');
-      return res.send(fallbackWebpBuffer);
-    }
-
-    const arrayBuffer = await fetchRes.arrayBuffer();
-    const contentType = fetchRes.headers.get('content-type') || 'image/webp';
-    const buffer = Buffer.from(arrayBuffer);
-
-    emojiCache.set(cacheKey, { buffer, contentType, timestamp: Date.now() });
-
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-    return res.send(buffer);
-  } catch (err) {
-    res.setHeader('Content-Type', 'image/webp');
-    res.setHeader('Cache-Control', 'public, max-age=60');
-    return res.send(fallbackWebpBuffer);
-  }
+app.get(['/api/emoji-proxy', '/emoji-proxy'], (req: Request, res: Response) => {
+  return handleEmojiRequest(req, res);
 });
 
 // ----------------------------------------------------

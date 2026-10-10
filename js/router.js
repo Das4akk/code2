@@ -234,6 +234,16 @@ class Router {
         lobbyContent.classList.remove("support-active-view");
       }
     }
+
+    // 5. Close mobile sidebar if open
+    if (typeof window.closeMainSidebar === "function") {
+      window.closeMainSidebar();
+    } else {
+      const s = document.getElementById("main-sidebar");
+      const o = document.getElementById("sidebar-overlay");
+      if (s) s.classList.remove("open");
+      if (o) o.classList.remove("open");
+    }
   }
 
   static triggerSectionInit(navId) {

@@ -40,13 +40,15 @@ export async function checkRole(req, res) {
     if (role !== 'creator') {
       try {
         const db = getDb();
-        const adminSnap = await db.ref(`admins/${uid}`).once('value');
-        console.log('[check-role] /admins/' + uid + ' exists=', adminSnap.exists(), 'val=', adminSnap.val());
-        if (adminSnap.exists()) {
-          const admVal = adminSnap.val();
-          role = (typeof admVal === 'object' && admVal?.role)
-            ? String(admVal.role).toLowerCase()
-            : 'creator';
+        if (db) {
+          const adminSnap = await db.ref(`admins/${uid}`).once('value');
+          console.log('[check-role] /admins/' + uid + ' exists=', adminSnap.exists(), 'val=', adminSnap.val());
+          if (adminSnap.exists()) {
+            const admVal = adminSnap.val();
+            role = (typeof admVal === 'object' && admVal?.role)
+              ? String(admVal.role).toLowerCase()
+              : 'creator';
+          }
         }
       } catch (dbErr) {
         console.error('[check-role DB ERROR]:', dbErr.message, dbErr.stack);
@@ -59,11 +61,13 @@ export async function checkRole(req, res) {
       const cleanUid = (uid || '').trim();
       try {
         const db = getDb();
-        const cfgSnap = await db.ref('config/roles/creators').once('value');
-        const cfg = cfgSnap.val() || {};
-        if (cfg[normEmail] || cfg[cleanUid]) {
-          role = 'creator';
-          console.log('[check-role] role resolved to creator from /config/roles/creators');
+        if (db) {
+          const cfgSnap = await db.ref('config/roles/creators').once('value');
+          const cfg = cfgSnap.val() || {};
+          if (cfg[normEmail] || cfg[cleanUid]) {
+            role = 'creator';
+            console.log('[check-role] role resolved to creator from /config/roles/creators');
+          }
         }
       } catch (cfgErr) {
         console.warn('[check-role config/roles fallback warning]:', cfgErr.message);
@@ -77,19 +81,21 @@ export async function checkRole(req, res) {
     if (isAdmin) {
       try {
         const db = getDb();
-        const existing = (await db.ref(`admins/${uid}`).once('value')).val();
-        const needsSync = !existing
-          || existing.role !== role
-          || existing.isOwner !== isCreator
-          || existing.isDeveloper !== isCreator;
-        if (needsSync) {
-          await db.ref(`admins/${uid}`).update({
-            role: role,
-            isOwner: isCreator,
-            isDeveloper: isCreator,
-            email: email,
-            updatedAt: Date.now()
-          });
+        if (db) {
+          const existing = (await db.ref(`admins/${uid}`).once('value')).val();
+          const needsSync = !existing
+            || existing.role !== role
+            || existing.isOwner !== isCreator
+            || existing.isDeveloper !== isCreator;
+          if (needsSync) {
+            await db.ref(`admins/${uid}`).update({
+              role: role,
+              isOwner: isCreator,
+              isDeveloper: isCreator,
+              email: email,
+              updatedAt: Date.now()
+            });
+          }
         }
       } catch (syncErr) {
         console.warn('[check-role Sync Warning]:', syncErr.message);

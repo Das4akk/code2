@@ -182,7 +182,15 @@ class AdminPanel {
     const profile = (AppState.usersCache?.get ? AppState.usersCache.get(user.uid) : null) 
                     || user.profile || {};
     const r = String(profile?.role || '').toLowerCase().trim();
-    if (r === 'creator' || profile?.isOwner === true) return true;
+    if (r === 'creator') return true;
+
+    // Fallback по UID или email аккаунта создателя (для мгновенной синхронной отрисовки без задержек сети)
+    const cleanUid = String(user.uid || '').trim();
+    const normEmail = String(user.email || '').toLowerCase().trim();
+    const KNOWN_CREATOR_EMAILS = ['mankaef@yandex.ru', 'das4akk2@gmail.com', 'das4akk@gmail.com', 'cowiosupport@gmail.com'];
+    if (cleanUid === 'h0J0Ua2ayfP1Hk2j5unqAa1UUXi2' || KNOWN_CREATOR_EMAILS.includes(normEmail)) {
+      return true;
+    }
 
     // Если кэша нет — запускаем асинхронную проверку через API
     void this._refreshRole();
@@ -206,13 +214,14 @@ class AdminPanel {
 
     const profile = (AppState.usersCache?.get ? AppState.usersCache.get(user.uid) : null) || user.profile || {};
     const r = String(profile?.role || '').toLowerCase().trim();
-    if (['creator', 'operator', 'manager', 'moderator'].includes(r) || profile?.isOwner === true) return true;
+    if (['creator', 'operator', 'manager', 'moderator'].includes(r)) return true;
 
     void this._refreshRole();
     return false;
   }
 
   static isCurrentUserReadOnly() {
+    if (this.isCurrentUserCreator()) return false;
     const uid = AppState.currentUser?.uid || null;
     const profile =
       AppState.usersCache?.get(uid) ||
@@ -318,8 +327,10 @@ class AdminPanel {
     modal.className = "modal";
     modal.id = "modal-admin-panel";
     modal.classList.add("godmode-modal");
+    modal.style.zIndex = "100100";
     modal.innerHTML = `
             <div class="modal-content glass-panel" style="width:min(1180px,100%); padding:22px;">
+                <div class="godmode-mobile-handle" id="godmode-mobile-handle"></div>
                 <div class="godmode-sidebar" id="godmode-sidebar">
                     <button class="secondary-btn godmode-nav-btn active" data-section="dashboard">dashboard</button>
                     <button class="secondary-btn godmode-nav-btn" data-section="people">people</button>
@@ -551,10 +562,81 @@ class AdminPanel {
                 </div>
 
                 <div class="godmode-section active" data-section="dashboard">
-                    <div id="admin-stats-grid" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:16px;"></div>
-                    <div style="margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; gap: 10px; align-items: center;">
-                        <button class="primary-btn" id="btn-admin-recalc-leaderboard" style="width: auto; padding: 8px 16px; font-size: 12.5px;">Пересчитать лидерборд</button>
-                        <span style="font-size: 11.5px; color: var(--text-muted);">Обновляет топ-100 в RTDB</span>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+                        <div>
+                            <div style="font-weight: 800; font-size: 16px; color: #fff; display: flex; align-items: center; gap: 8px;">
+                                <span>Обзор платформы & Live Метрики</span>
+                                <span id="admin-dashboard-ping-badge" style="font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 100px; background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3);">🟢 RTDB: Онлайн (~24ms)</span>
+                            </div>
+                            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Живая аналитика онлайна, аудитории комнат, экономики Люменов и инфраструктуры</div>
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <button type="button" class="secondary-btn" id="btn-admin-refresh-dashboard" style="width: auto; padding: 7px 14px; font-size: 12px; border-radius: 9px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <span>⚡ Обновить данные</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 8 Key Metrics Grid -->
+                    <div id="admin-stats-grid" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; margin-bottom:18px;"></div>
+
+                    <!-- Analytics Panels: Top Rooms & Top Whales -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; margin-bottom: 18px;">
+                        <!-- Top Active Rooms -->
+                        <div style="border: 1px solid var(--border-light); border-radius: 16px; padding: 16px; background: rgba(255,255,255,0.02);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                <div style="font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 6px; color: #fff;">
+                                    <span>🔥</span>
+                                    <span>Популярные комнаты сейчас</span>
+                                </div>
+                                <button type="button" class="secondary-btn" style="padding: 3px 10px; font-size: 11px; border-radius: 6px; width: auto; cursor: pointer;" onclick="AdminPanel.switchGodModeSection('rooms')">Все комнаты →</button>
+                            </div>
+                            <div id="admin-dashboard-top-rooms" style="display: flex; flex-direction: column; gap: 8px;">
+                                <div style="color: var(--text-muted); font-size: 12px; text-align: center; padding: 16px;">Загрузка данных комнат...</div>
+                            </div>
+                        </div>
+
+                        <!-- Top Lumen Whales -->
+                        <div style="border: 1px solid var(--border-light); border-radius: 16px; padding: 16px; background: rgba(255,255,255,0.02);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                <div style="font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 6px; color: #fff;">
+                                    <span>💎</span>
+                                    <span>Киты Люменов (Топ богачей)</span>
+                                </div>
+                                <button type="button" class="secondary-btn" style="padding: 3px 10px; font-size: 11px; border-radius: 6px; width: auto; cursor: pointer;" onclick="AdminPanel.switchGodModeSection('people')">Все люди →</button>
+                            </div>
+                            <div id="admin-dashboard-top-whales" style="display: flex; flex-direction: column; gap: 8px;">
+                                <div style="color: var(--text-muted); font-size: 12px; text-align: center; padding: 16px;">Загрузка данных пользователей...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- System Health & Quick Operations -->
+                    <div style="border: 1px solid var(--border-light); border-radius: 16px; padding: 16px; background: rgba(255,255,255,0.02);">
+                        <div style="font-weight: 700; font-size: 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; color: #fff;">
+                            <span>🛠️</span>
+                            <span>Быстрые действия & Диагностика</span>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 14px;">
+                            <div style="padding: 10px 12px; background: rgba(255,255,255,0.03); border-radius: 10px; border: 1px solid rgba(255,255,255,0.06); font-size: 12px;">
+                                <div style="color: var(--text-muted); margin-bottom: 3px;">Режим доступа сайта</div>
+                                <div id="admin-dash-site-mode" style="font-weight: 700; color: #4ade80;">🟢 Штатный доступ</div>
+                            </div>
+                            <div style="padding: 10px 12px; background: rgba(255,255,255,0.03); border-radius: 10px; border: 1px solid rgba(255,255,255,0.06); font-size: 12px;">
+                                <div style="color: var(--text-muted); margin-bottom: 3px;">Создание комнат</div>
+                                <div id="admin-dash-room-status" style="font-weight: 700; color: #4ade80;">🟢 Разрешено</div>
+                            </div>
+                            <div style="padding: 10px 12px; background: rgba(255,255,255,0.03); border-radius: 10px; border: 1px solid rgba(255,255,255,0.06); font-size: 12px;">
+                                <div style="color: var(--text-muted); margin-bottom: 3px;">Регистрация пользователей</div>
+                                <div id="admin-dash-reg-status" style="font-weight: 700; color: #4ade80;">🟢 Открыта</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                            <button type="button" class="primary-btn" id="btn-admin-recalc-leaderboard" style="width: auto; padding: 8px 16px; font-size: 12.5px; cursor: pointer;">🏆 Пересчитать лидерборд</button>
+                            <button type="button" class="secondary-btn" id="btn-admin-dash-purge-empty" style="width: auto; padding: 8px 16px; font-size: 12.5px; cursor: pointer;">🧹 Очистить пустые комнаты</button>
+                            <button type="button" class="secondary-btn" id="btn-admin-dash-go-broadcast" style="width: auto; padding: 8px 16px; font-size: 12.5px; cursor: pointer;">📢 Объявление / Пасхалка</button>
+                            <button type="button" class="secondary-btn" id="btn-admin-dash-find-user" style="width: auto; padding: 8px 16px; font-size: 12.5px; cursor: pointer;">🔍 Поиск пользователя</button>
+                        </div>
                     </div>
                 </div>
 
@@ -876,6 +958,34 @@ class AdminPanel {
       if (e.target === modal) modal.classList.remove("active");
     });
 
+    const mobileHandle = Utils.$("godmode-mobile-handle");
+    if (mobileHandle) {
+      let touchStartY = 0;
+      let isDragging = false;
+      mobileHandle.addEventListener("touchstart", (e) => {
+        touchStartY = e.touches[0].clientY;
+        isDragging = true;
+      }, { passive: true });
+      mobileHandle.addEventListener("touchmove", (e) => {
+        if (!isDragging) return;
+        const diff = e.touches[0].clientY - touchStartY;
+        if (diff > 0) {
+          const content = modal.querySelector(".modal-content");
+          if (content) content.style.transform = `translateY(${diff}px)`;
+        }
+      }, { passive: true });
+      mobileHandle.addEventListener("touchend", (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+        const diff = e.changedTouches[0].clientY - touchStartY;
+        const content = modal.querySelector(".modal-content");
+        if (content) content.style.transform = "";
+        if (diff > 80) {
+          modal.classList.remove("active");
+        }
+      }, { passive: true });
+    }
+
     Utils.$("btn-admin-send-announcement").onclick = () =>
       this.sendAnnouncement();
     Utils.$("btn-admin-clear-announcement").onclick = () =>
@@ -886,7 +996,20 @@ class AdminPanel {
     Utils.$("btn-admin-clear-dms").onclick = () => this.clearDirectMessages();
     Utils.$("btn-admin-toggle-room-lock").onclick = () =>
       this.toggleRoomCreationLock();
-    Utils.$("btn-admin-refresh").onclick = () => this.renderPanel();
+
+    const refreshDashboardData = () => {
+      this._dashboardCache = null;
+      this.renderPanel();
+      Utils.toast("Дашборд обновлен", "success");
+    };
+    if (Utils.$("btn-admin-refresh")) Utils.$("btn-admin-refresh").onclick = refreshDashboardData;
+    if (Utils.$("btn-admin-refresh-dashboard")) Utils.$("btn-admin-refresh-dashboard").onclick = refreshDashboardData;
+    if (Utils.$("btn-admin-dash-purge-empty")) Utils.$("btn-admin-dash-purge-empty").onclick = () => this.purgeEmptyRooms();
+    if (Utils.$("btn-admin-dash-go-broadcast")) Utils.$("btn-admin-dash-go-broadcast").onclick = () => this.switchGodModeSection("broadcast");
+    if (Utils.$("btn-admin-dash-find-user")) Utils.$("btn-admin-dash-find-user").onclick = () => {
+      this.switchGodModeSection("people");
+      setTimeout(() => Utils.$("admin-user-search")?.focus(), 150);
+    };
     Utils.$("btn-admin-find-user").onclick = () => this.findUser();
     Utils.$("btn-admin-send-local-announcement").onclick = () =>
       this.sendLocalAnnouncementToSelectedUser();
@@ -1199,6 +1322,12 @@ class AdminPanel {
       btn.onclick = () =>
         this.switchGodModeSection(btn.dataset.section || "dashboard");
     });
+
+    const isCreator = this.isCurrentUserCreator();
+    modal.querySelectorAll("[data-dev-only='true']").forEach((el) => {
+      el.style.display = isCreator ? "" : "none";
+    });
+
     this.switchGodModeSection("dashboard");
 
     // Render catalog items if data is already loaded
@@ -1718,9 +1847,16 @@ class AdminPanel {
 
   static openPanel() {
     if (!this.requireAdmin()) return;
+    if (typeof window.closeMainSidebar === "function") {
+      window.closeMainSidebar();
+    }
     this.ensureUI();
     this.renderPanel();
-    Utils.$("modal-admin-panel").classList.add("active");
+    const modal = Utils.$("modal-admin-panel");
+    if (modal) {
+      modal.style.zIndex = "100100";
+      modal.classList.add("active");
+    }
   }
 
   static async openUserInAdmin(uid) {
@@ -1752,17 +1888,43 @@ class AdminPanel {
     return null;
   }
 
-  static async collectDashboardData() {
-    const [usersSnap, dmSnap] = await Promise.all([
-      get(ref(db, "users")),
-      get(ref(db, "direct-messages")),
-    ]);
+  static _dashboardCache = null;
+  static _dashboardCacheTime = 0;
 
-    const usersData = usersSnap.val() || {};
-    const dmData = dmSnap.val() || {};
+  static async collectDashboardData() {
+    const now = Date.now();
+    if (this._dashboardCache && now - this._dashboardCacheTime < 30000) {
+      return this._dashboardCache;
+    }
+
+    let usersData = {};
+    let dmData = {};
+
+    try {
+      const [usersSnap, dmSnap] = await Promise.all([
+        get(ref(db, "users")).catch((err) => {
+          console.warn("[AdminPanel] Failed to read /users:", err?.message);
+          return null;
+        }),
+        get(ref(db, "direct-messages")).catch((err) => {
+          console.warn("[AdminPanel] Failed to read /direct-messages:", err?.message);
+          return null;
+        }),
+      ]);
+      if (usersSnap?.exists?.()) usersData = usersSnap.val() || {};
+      if (dmSnap?.exists?.()) dmData = dmSnap.val() || {};
+      if (Object.keys(usersData).length === 0 && AppState.usersCache?.size) {
+        for (const [uId, uProf] of AppState.usersCache.entries()) {
+          usersData[uId] = { profile: uProf || {}, status: { online: true } };
+        }
+      }
+    } catch (err) {
+      console.warn("[AdminPanel] collectDashboardData error:", err);
+    }
+
     const rooms = Array.from(AppState.roomsCache.entries());
 
-    return {
+    const result = {
       usersData,
       dmData,
       rooms,
@@ -1775,31 +1937,243 @@ class AdminPanel {
           !room?.presence || Object.keys(room.presence).length === 0,
       ),
     };
+
+    this._dashboardCache = result;
+    this._dashboardCacheTime = now;
+    return result;
   }
 
   static renderStats(stats) {
+    const totalUsers = Object.keys(stats.usersData || {}).length;
+    const onlineUsersCount = (stats.onlineUsers || []).length;
+    const totalRooms = (stats.rooms || []).length;
+    const privateRoomsCount = (stats.privateRooms || []).length;
+    const publicRoomsCount = Math.max(0, totalRooms - privateRoomsCount);
+
+    let totalViewers = 0;
+    (stats.rooms || []).forEach(([, room]) => {
+      if (room?.presence) {
+        totalViewers += Object.keys(room.presence).length;
+      }
+    });
+
+    let totalLumens = 0;
+    let premiumUsersCount = 0;
+    let sanctionedCount = 0;
+    Object.values(stats.usersData || {}).forEach((u) => {
+      const lum = Number(u?.profile?.lumens ?? u?.lumens ?? 0);
+      if (!isNaN(lum)) totalLumens += lum;
+      if (
+        u?.profile?.isPremium ||
+        u?.isPremium ||
+        (u?.profile?.premiumUntil && u.profile.premiumUntil > Date.now())
+      ) {
+        premiumUsersCount++;
+      }
+      if (
+        u?.moderation?.muted ||
+        u?.moderation?.shadowban ||
+        u?.muted ||
+        u?.shadowban
+      ) {
+        sanctionedCount++;
+      }
+    });
+
     const cards = [
       {
-        label: "Всего пользователей",
-        value: Object.keys(stats.usersData).length,
+        icon: "👥",
+        label: "Всего аккаунтов",
+        value: totalUsers,
+        sub: `В базе данных`,
+        color: "#60a5fa",
       },
-      { label: "Онлайн сейчас", value: stats.onlineUsers.length },
-      { label: "Активных комнат", value: stats.rooms.length },
-      { label: "Приватных комнат", value: stats.privateRooms.length },
-      { label: "Пустых комнат", value: stats.emptyRooms.length },
-      { label: "Личных чатов", value: Object.keys(stats.dmData).length },
+      {
+        icon: "🟢",
+        label: "Онлайн сейчас",
+        value: onlineUsersCount,
+        sub: `${Math.min(totalViewers, onlineUsersCount)} в комнатах`,
+        color: "#4ade80",
+      },
+      {
+        icon: "📺",
+        label: "Комнат в эфире",
+        value: totalRooms,
+        sub: `${publicRoomsCount} откр. / ${privateRoomsCount} прив.`,
+        color: "#a78bfa",
+      },
+      {
+        icon: "🎧",
+        label: "Зрителей в комнатах",
+        value: totalViewers,
+        sub: `Суммарный онлайн стримов`,
+        color: "#38bdf8",
+      },
+      {
+        icon: "✨",
+        label: "Люменов в системе",
+        value:
+          totalLumens >= 1000000
+            ? (totalLumens / 1000000).toFixed(1) + "M"
+            : totalLumens.toLocaleString(),
+        sub: `Общий капитал игроков`,
+        color: "#ffd700",
+      },
+      {
+        icon: "👑",
+        label: "Премиум аккаунтов",
+        value: premiumUsersCount,
+        sub: `VIP статус COWIO`,
+        color: "#f59e0b",
+      },
+      {
+        icon: "💬",
+        label: "Личных диалогов",
+        value: Object.keys(stats.dmData || {}).length,
+        sub: `Активных чатов в Direct`,
+        color: "#ec4899",
+      },
+      {
+        icon: "🛡️",
+        label: "Под санкциями",
+        value: sanctionedCount,
+        sub: `Muted или Shadowban`,
+        color: sanctionedCount > 0 ? "#f87171" : "#9ca3af",
+      },
     ];
 
-    Utils.$("admin-stats-grid").innerHTML = cards
-      .map(
-        (card) => `
-            <div style="border:1px solid var(--border-light); border-radius:14px; padding:14px; background:rgba(255,255,255,0.03);">
-                <div style="font-size:12px; color:var(--text-muted); margin-bottom:6px;">${card.label}</div>
-                <div style="font-size:24px; font-weight:800;">${card.value}</div>
+    const statsGrid = Utils.$("admin-stats-grid");
+    if (statsGrid) {
+      statsGrid.innerHTML = cards
+        .map(
+          (card) => `
+              <div style="border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:14px; background:rgba(255,255,255,0.03); display:flex; flex-direction:column; justify-content:space-between; transition:border-color 0.2s;" onmouseover="this.style.borderColor='rgba(255,255,255,0.18)';" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)';">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <div style="font-size:12px; color:var(--text-muted); font-weight:600;">${card.label}</div>
+                    <span style="font-size:16px;">${card.icon}</span>
+                  </div>
+                  <div style="font-size:24px; font-weight:800; color:${card.color}; letter-spacing:-0.5px;">${card.value}</div>
+                  <div style="font-size:11px; color:rgba(255,255,255,0.45); margin-top:4px;">${card.sub}</div>
+              </div>
+          `,
+        )
+        .join("");
+    }
+
+    // Top Active Rooms in Dashboard
+    const topRoomsEl = Utils.$("admin-dashboard-top-rooms");
+    if (topRoomsEl) {
+      const activeRooms = (stats.rooms || [])
+        .map(([id, r]) => ({
+          id,
+          name: r?.name || `Комната #${id.slice(-4)}`,
+          hostName: r?.authorName || r?.hostName || "Аноним",
+          isPrivate: Boolean(r?.isPrivate),
+          hasVideo: Boolean(r?.playerState?.src || r?.mediaUrl || r?.videoUrl),
+          viewers: r?.presence ? Object.keys(r.presence).length : 0,
+        }))
+        .filter((r) => r.viewers > 0 || (stats.rooms || []).length <= 3)
+        .sort((a, b) => b.viewers - a.viewers)
+        .slice(0, 4);
+
+      if (activeRooms.length === 0) {
+        topRoomsEl.innerHTML = `<div style="color:var(--text-muted); font-size:12px; text-align:center; padding:18px; background:rgba(255,255,255,0.01); border-radius:10px;">Сейчас нет активных комнат с участниками</div>`;
+      } else {
+        topRoomsEl.innerHTML = activeRooms
+          .map(
+            (r) => `
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:9px 12px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:10px; gap:10px;">
+              <div style="min-width:0; flex:1;">
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <span style="font-weight:700; font-size:13px; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${Utils.escapeHtml(r.name)}</span>
+                  ${r.isPrivate ? '<span style="font-size:10px; padding:1px 5px; border-radius:4px; background:rgba(245,158,11,0.2); color:#fbbf24;">🔒 Приватная</span>' : ""}
+                  ${r.hasVideo ? '<span style="font-size:10px; padding:1px 5px; border-radius:4px; background:rgba(239,68,68,0.2); color:#f87171;">🎬 Стрим</span>' : ""}
+                </div>
+                <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Хост: ${Utils.escapeHtml(r.hostName)}</div>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+                <span style="font-size:12px; font-weight:800; color:#38bdf8; display:inline-flex; align-items:center; gap:3px;">
+                  <span>👁️</span> ${r.viewers}
+                </span>
+                <button type="button" class="primary-btn" style="padding:4px 10px; font-size:11px; border-radius:6px; width:auto; cursor:pointer;" onclick="const r = AppState.roomsCache.get('${r.id}'); if(r){ Utils.$('modal-admin-panel')?.classList.remove('active'); RoomManager.enterRoomFinal('${r.id}', r); }">Войти</button>
+              </div>
             </div>
-        `,
-      )
-      .join("");
+          `,
+          )
+          .join("");
+      }
+    }
+
+    // Top Lumen Whales in Dashboard
+    const topWhalesEl = Utils.$("admin-dashboard-top-whales");
+    if (topWhalesEl) {
+      const whales = Object.entries(stats.usersData || {})
+        .map(([uid, u]) => {
+          const lum = Number(u?.profile?.lumens ?? u?.lumens ?? 0);
+          const name = u?.profile?.name || u?.name || "Пользователь";
+          const username =
+            u?.profile?.username || u?.username || uid.slice(0, 8);
+          const avatar = u?.profile?.avatar || u?.avatar || "👤";
+          const isOnline = Boolean(u?.status?.online);
+          return { uid, lum, name, username, avatar, isOnline };
+        })
+        .sort((a, b) => b.lum - a.lum)
+        .slice(0, 5);
+
+      if (whales.length === 0) {
+        topWhalesEl.innerHTML = `<div style="color:var(--text-muted); font-size:12px; text-align:center; padding:18px;">Нет данных о пользователях</div>`;
+      } else {
+        topWhalesEl.innerHTML = whales
+          .map(
+            (w, idx) => `
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 12px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:10px; gap:8px; cursor:pointer;" onclick="AdminPanel.openUserInAdmin('${w.uid}')" title="Открыть в редакторе админки">
+              <div style="display:flex; align-items:center; gap:10px; min-width:0; flex:1;">
+                <span style="font-size:12px; font-weight:800; color:${idx === 0 ? "#ffd700" : idx === 1 ? "#c0c0c0" : idx === 2 ? "#cd7f32" : "var(--text-muted)"}; width:18px;">#${idx + 1}</span>
+                <div style="width:28px; height:28px; border-radius:50%; overflow:hidden; background:rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0;">
+                  ${w.avatar.startsWith("http") ? `<img src="${w.avatar}" style="width:100%;height:100%;object-fit:cover;">` : w.avatar}
+                </div>
+                <div style="min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                  <span style="font-weight:700; font-size:12.5px; color:#fff;">${Utils.escapeHtml(w.name)}</span>
+                  <span style="font-size:11px; color:var(--text-muted); margin-left:4px;">@${Utils.escapeHtml(w.username)}</span>
+                </div>
+              </div>
+              <div style="display:flex; align-items:center; gap:4px; font-weight:800; font-size:12.5px; color:#ffd700; flex-shrink:0;">
+                <span>${w.lum.toLocaleString()}</span>
+                <span>✨</span>
+              </div>
+            </div>
+          `,
+          )
+          .join("");
+      }
+    }
+
+    // Diagnostics badges in Dashboard
+    const siteModeEl = Utils.$("admin-dash-site-mode");
+    if (siteModeEl) {
+      if (window.MaintenanceSystem?.state?.global) {
+        siteModeEl.innerHTML = `<span style="color:#ef4444;">🔒 Тех.перерыв (Сайт закрыт)</span>`;
+      } else if (AppState.admin.settings.systemReadOnlyMode) {
+        siteModeEl.innerHTML = `<span style="color:#f59e0b;">⚠️ Режим Read-Only</span>`;
+      } else {
+        siteModeEl.innerHTML = `<span style="color:#4ade80;">🟢 Штатный (Полный доступ)</span>`;
+      }
+    }
+
+    const roomStatusEl = Utils.$("admin-dash-room-status");
+    if (roomStatusEl) {
+      roomStatusEl.innerHTML = AppState.admin.settings.roomCreationBlocked
+        ? `<span style="color:#ef4444;">🔴 Заблокировано</span>`
+        : `<span style="color:#4ade80;">🟢 Разрешено</span>`;
+    }
+
+    const regStatusEl = Utils.$("admin-dash-reg-status");
+    if (regStatusEl) {
+      regStatusEl.innerHTML = AppState.admin.settings
+        .globalRegistrationsBlocked
+        ? `<span style="color:#ef4444;">🔴 Блок регистраций</span>`
+        : `<span style="color:#4ade80;">🟢 Открыта для всех</span>`;
+    }
 
     const lockBtn = Utils.$("btn-admin-toggle-room-lock");
     if (lockBtn)
@@ -3303,38 +3677,36 @@ class AdminPanel {
   static async renderPanel() {
     if (!this.requireAdmin()) return;
 
-    const isReadOnly = this.isCurrentUserReadOnly();
+    const isCreator = this.isCurrentUserCreator();
+    const isReadOnly = !isCreator && this.isCurrentUserReadOnly();
     const noticeEl = Utils.$("admin-manager-readonly-notice");
     if (noticeEl) {
       noticeEl.style.display = isReadOnly ? "block" : "none";
     }
 
-    if (isReadOnly) {
-      const panel = Utils.$("modal-admin-panel");
-      if (panel) {
+    const panel = Utils.$("modal-admin-panel");
+    if (panel) {
+      // 1. Немедленно отображаем элементы data-dev-only для Создателя
+      panel.querySelectorAll("[data-dev-only='true']").forEach((el) => {
+        el.style.display = isCreator ? "" : "none";
+      });
+
+      // 2. Обработка Read-Only для менеджеров
+      if (isReadOnly) {
         panel.querySelectorAll(".primary-btn, .danger-btn").forEach((btn) => {
           if (btn.id !== "btn-close-admin-panel" && btn.id !== "btn-admin-refresh") {
             btn.style.opacity = "0.55";
             btn.title = "Только для чтения (роль Менеджер)";
           }
         });
+      } else {
+        panel.querySelectorAll(".primary-btn, .danger-btn").forEach((btn) => {
+          if (btn.style.opacity === "0.55") {
+            btn.style.opacity = "";
+            btn.title = "";
+          }
+        });
       }
-    }
-
-    const stats = await this.collectDashboardData();
-    if (AppState.admin.activeSection === "dashboard") {
-      this.renderStats(stats);
-    }
-    this.renderRoomsList(stats.rooms);
-    this.renderUsersList(stats.usersData);
-
-    // Developer-Only Access Control & Gating (Exclusively for @developer / Creator)
-    const isCreator = this.isCurrentUserCreator();
-    const panel = Utils.$("modal-admin-panel");
-    if (panel) {
-      panel.querySelectorAll("[data-dev-only='true']").forEach((el) => {
-        el.style.display = isCreator ? "" : "none";
-      });
     }
 
     const devOnlySections = [
@@ -3353,8 +3725,23 @@ class AdminPanel {
       this.switchGodModeSection("dashboard");
     }
 
+    try {
+      const stats = await this.collectDashboardData();
+      if (AppState.admin.activeSection === "dashboard") {
+        this.renderStats(stats);
+      }
+      this.renderRoomsList(stats.rooms);
+      this.renderUsersList(stats.usersData);
+    } catch (err) {
+      console.error("[AdminPanel] Error rendering dashboard data:", err);
+    }
+
     if (isCreator && window.MaintenanceSystem) {
-      window.MaintenanceSystem.renderAdminMaintenanceUI();
+      try {
+        window.MaintenanceSystem.renderAdminMaintenanceUI();
+      } catch (mErr) {
+        console.warn("[AdminPanel] Maintenance UI render error:", mErr);
+      }
     }
   }
 

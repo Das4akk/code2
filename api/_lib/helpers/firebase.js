@@ -1,16 +1,19 @@
-import admin from 'firebase-admin';
+import { initializeApp, cert, getApps } from 'firebase-admin/app';
+import { getDatabase } from 'firebase-admin/database';
+import { getAuth as getAdminAuth } from 'firebase-admin/auth';
 
-let initialized = false;
+let appInstance = null;
 
 export function initAdmin() {
-  if (initialized || admin.apps.length) {
-    initialized = true;
-    return admin;
+  const apps = getApps();
+  if (apps.length > 0) {
+    appInstance = apps[0];
+    return appInstance;
   }
   const raw = process.env.FIREBASE_ADMIN_KEY;
   if (!raw) {
     console.warn('[initAdmin] FIREBASE_ADMIN_KEY is not set in environment');
-    return admin;
+    return null;
   }
   try {
     let cleaned = raw.trim();
@@ -30,26 +33,38 @@ export function initAdmin() {
     if (sa.private_key && sa.private_key.includes('\\n')) {
       sa.private_key = sa.private_key.replace(/\\n/g, '\n');
     }
-    admin.initializeApp({
-      credential: admin.credential.cert(sa),
-      databaseURL: process.env.FIREBASE_DATABASE_URL || 'https://cowio-dfc77-default-rtdb.firebaseio.com',
+    appInstance = initializeApp({
+      credential: cert(sa),
+      databaseURL: process.env.FIREBASE_DATABASE_URL || 'https://das4akk-1-default-rtdb.firebaseio.com',
     });
-    initialized = true;
     console.log('[initAdmin] Firebase Admin successfully initialized for project:', sa.project_id);
+    return appInstance;
   } catch (err) {
     console.error('[initAdmin] Firebase Admin Init Error:', err.message, err.stack);
+    return null;
   }
-  return admin;
 }
 
 export function getDb() {
   initAdmin();
-  return admin.database();
+  const apps = getApps();
+  if (apps.length === 0) {
+    return null;
+  }
+  return getDatabase(apps[0]);
 }
 
 export function getAuth() {
   initAdmin();
-  return admin.auth();
+  const apps = getApps();
+  if (apps.length === 0) {
+    return null;
+  }
+  return getAdminAuth(apps[0]);
 }
 
-export default admin;
+export default {
+  initAdmin,
+  getDb,
+  getAuth,
+};

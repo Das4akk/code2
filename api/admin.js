@@ -27,6 +27,8 @@ export default async function handler(req, res) {
         return await adminHandler.updateUserField(req, res);
       case 'set-user-role':
         return await adminHandler.setUserRole(req, res);
+      case 'set-maintenance':
+        return await adminHandler.setMaintenance(req, res);
       default:
         return res.status(404).json({ error: `Unknown admin action: ${action}` });
     }
