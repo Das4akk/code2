@@ -307,8 +307,27 @@ class RoomManager {
         card.querySelector(".rm-title").innerHTML =
           `${platformBadge}${lock}${Utils.escapeHtml(room.name)} <span style="opacity:0.7;font-size:0.9em">${Utils.escapeHtml(room.hashtags[0])}</span>`;
       }
-      card.querySelector(".rm-host").innerText =
-        `Хост: ${room.hostName || "Неизвестно"}`;
+      const hostId = room.hostId || room.hostUid;
+      const hostProfile = (hostId && AppState.usersCache.get(hostId)) || { name: room.hostName || "Неизвестно" };
+      const hostAvatarHtml = ProfileManager.getAvatarHtml(hostProfile);
+      const hostEl = card.querySelector(".rm-host");
+      if (hostEl) {
+        hostEl.innerHTML = `
+          <span class="rm-host-avatar" title="Хост: ${Utils.escapeHtml(room.hostName || hostProfile.name || "Неизвестно")}">${hostAvatarHtml}</span>
+          <span class="rm-host-name">${Utils.escapeHtml(room.hostName || hostProfile.name || "Неизвестно")}</span>
+        `;
+      }
+      if (hostId && !AppState.usersCache.has(hostId)) {
+        ProfileManager.loadUser(hostId).then((p) => {
+          if (!p) return;
+          const curCard = Utils.$(`room-card-${id}`);
+          if (!curCard) return;
+          const curAvatar = curCard.querySelector(".rm-host-avatar");
+          if (curAvatar) curAvatar.innerHTML = ProfileManager.getAvatarHtml(p);
+          const curName = curCard.querySelector(".rm-host-name");
+          if (curName && p.name) curName.textContent = p.name;
+        });
+      }
       card.querySelector(".rm-count").innerHTML =
         `<span class="avatars-stack">${this.getRoomAvatarsStack(room)}</span>`;
       count++;
@@ -1903,6 +1922,21 @@ class RoomManager {
     if (!pVoice && typeof RTCManager !== "undefined" && RTCManager.isMicActive) RTCManager.toggleMic(true);
   }
 
+  static async inviteFriendToRoom(fid, btn) {
+    if (!fid) return;
+    if (btn) {
+      btn.disabled = true;
+      btn.style.opacity = "0.7";
+      btn.innerHTML = `<span style="display:inline-flex;align-items:center;gap:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/></svg>Отправка...</span>`;
+    }
+    await DirectMessages.sendRoomInvite(fid);
+    if (btn) {
+      btn.classList.add("invited");
+      btn.style.opacity = "1";
+      btn.innerHTML = `<span style="display:inline-flex;align-items:center;gap:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Приглашен</span>`;
+    }
+  }
+
   static rerenderUsersList() {
     const container = Utils.$("users-list");
     if (!container) return;
@@ -1947,33 +1981,70 @@ class RoomManager {
           (k) => fr[k].status === "accepted" && !ids.includes(k),
         );
         if (friendsIds.length > 0) {
-          let inviteHtml = `<div style="font-size:11px; color:var(--text-muted); margin: 15px 0 5px; text-transform:uppercase;">Друзья вне комнаты</div>`;
+          let inviteHtml = `
+            <div class="room-outside-friends-section" style="margin-top: 20px; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.08);">
+              <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; justify-content: space-between;">
+                <span>Друзья вне комнаты</span>
+                <span style="background: rgba(255, 255, 255, 0.08); padding: 2px 7px; border-radius: 10px; font-size: 10px; color: #fff;">${friendsIds.length}</span>
+              </div>
+              <div class="room-outside-friends-list">
+          `;
           friendsIds.forEach((fid) => {
             const cachedP = AppState.usersCache.get(fid);
             const initName = cachedP ? Utils.escapeHtml(cachedP.name) : "Загрузка...";
+            const roleBadgeHtml = cachedP ? ProfileManager.getRoleBadgeHtml(cachedP, fid) : "";
+            const avatarHtml = ProfileManager.getAvatarHtml(cachedP || { name: initName });
             inviteHtml += `
-                            <div class="user-item" style="background: rgba(46,213,115,0.05); border: 1px solid rgba(46,213,115,0.2);">
-                                <div class="user-main" style="flex:1;"><span class="user-name" id="inv-name-${fid}">${initName}</span></div>
-                                <button class="primary-btn" style="width:auto; padding:4px 8px; font-size:11px;" onclick="DirectMessages.sendRoomInvite('${fid}')">Пригласить</button>
-                            </div>
-                        `;
+              <div class="room-outside-friend-card" id="room-outside-friend-${fid}">
+                <div class="avatar room-outside-friend-avatar" onclick="ProfileManager.openViewProfileModal('${fid}')" style="position:relative; overflow:visible; background:transparent; width:36px; height:36px; flex-shrink:0; cursor:pointer;" title="Профиль">
+                  ${avatarHtml}
+                </div>
+                <div class="friend-info-col" style="flex:1; min-width:0; cursor:pointer;" onclick="ProfileManager.openViewProfileModal('${fid}')">
+                  <div class="friend-name" style="display:flex; align-items:center; gap:4px; font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                    <span id="inv-name-${fid}">${initName}</span>
+                    <span id="inv-badge-${fid}">${roleBadgeHtml}</span>
+                  </div>
+                  <div class="friend-status" id="inv-status-${fid}" style="font-size:11px; color:var(--text-muted); margin-top:2px; display:flex; align-items:center; gap:5px;">
+                    <div class="status-dot" style="width:7px; height:7px; border-radius:50%; background:#888; flex-shrink:0;"></div>
+                    <span>Офлайн</span>
+                  </div>
+                </div>
+                <button class="room-invite-friend-btn" onclick="RoomManager.inviteFriendToRoom('${fid}', this)">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                  <span>Пригласить</span>
+                </button>
+              </div>
+            `;
             ProfileManager.loadUser(fid).then(async (p) => {
               if (!ensureActualRender() || !p) return;
+              const card = Utils.$(`room-outside-friend-${fid}`);
+              if (!card) return;
               const st =
                 (await get(ref(db, `users/${fid}/status`)).catch(() => null))?.val() || {};
               if (!ensureActualRender()) return;
-              const isOnline = st.online;
+              const isOnline = Boolean(st.online);
               const statusText = isOnline
                 ? "Онлайн"
                 : st.lastSeen
                   ? `Был(а) ${Utils.formatLastSeen(st.lastSeen)}`
                   : "Офлайн";
-              if (Utils.$(`inv-name-${fid}`)) {
-                Utils.$(`inv-name-${fid}`).innerHTML =
-                  `<div style="display:flex; flex-direction:column;"><div style="display:flex; align-items:center;"><div class="indicator ${isOnline ? "online" : ""}" style="width:8px;height:8px;border-radius:50%;background:${isOnline ? "#4caf50" : "#888"};margin-right:6px;"></div>${Utils.escapeHtml(p.name)}</div><span style="font-size:10px; color:var(--text-muted); margin-top:2px;">${statusText}</span></div>`;
+
+              const av = card.querySelector(".room-outside-friend-avatar");
+              if (av) av.innerHTML = ProfileManager.getAvatarHtml(p);
+
+              const nameEl = Utils.$(`inv-name-${fid}`);
+              if (nameEl) nameEl.textContent = p.name || "Пользователь";
+
+              const badgeEl = Utils.$(`inv-badge-${fid}`);
+              if (badgeEl) badgeEl.innerHTML = ProfileManager.getRoleBadgeHtml(p, fid);
+
+              const statusEl = Utils.$(`inv-status-${fid}`);
+              if (statusEl) {
+                statusEl.innerHTML = `<div class="status-dot ${isOnline ? "online" : ""}" style="width:7px; height:7px; border-radius:50%; background:${isOnline ? "#4caf50" : "#888"}; flex-shrink:0;"></div><span>${statusText}</span>`;
               }
             });
           });
+          inviteHtml += `</div></div>`;
           outsideFriendsHtml = inviteHtml;
         }
         renderRoomUsers(fr);

@@ -140,6 +140,11 @@ class FriendsManager {
         } else {
           lobbyContent.classList.remove("support-active-view");
         }
+        if (targetSectionId === "section-catalog") {
+          lobbyContent.classList.add("catalog-active-view");
+        } else {
+          lobbyContent.classList.remove("catalog-active-view");
+        }
       }
     };
     FriendsManager.setNavActive = setNavActive;

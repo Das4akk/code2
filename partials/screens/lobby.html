@@ -39,9 +39,17 @@
           <img loading="lazy" decoding="async" src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" alt="Lumens" style="width: 17px; height: 17px; object-fit: contain; filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.4));">
           <span id="header-lumens-count" style="font-size: 13.5px; font-weight: 700; color: #ffffff; letter-spacing: -0.2px;">0</span>
         </div>
-        <button class="primary-btn" id="btn-open-create-room">
-          <img loading="lazy" decoding="async" src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
-          Создать комнату
+        <button class="primary-btn" id="btn-open-create-room" aria-label="Создать комнату" title="Создать комнату">
+          <span class="create-room-text-full">
+            <img loading="lazy" decoding="async" src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 1.2em; height: 1.2em; vertical-align: bottom">
+            Создать комнату
+          </span>
+          <span class="create-room-text-mobile" style="display: none;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </span>
         </button><div class="lobby-app-bar-user" id="lobby-app-bar-profile" onclick="if(window.AppState && AppState.currentUser) { const myUname = AppState.usersCache.get(AppState.currentUser.uid)?.username; if(myUname && window.Router) { Router.navigate('/@' + myUname); } else if(window.Router) { Router.navigate('/profile'); } else if(window.ProfileManager) { window.ProfileManager.openViewProfileModal(AppState.currentUser.uid); } }">
           <div class="avatar" id="lobby-app-bar-avatar"></div>
         </div></div></header>
@@ -52,7 +60,6 @@
           <div class="sidebar-mobile-header" style="display: none; align-items: center; justify-content: space-between; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.08);">
             <div style="font-weight: 800; font-size: 15px; color: #fff; display: flex; align-items: center; gap: 8px;">
               <img loading="lazy" decoding="async" src="/logo.png" onerror="this.onerror=null; this.src='https://s6.iimage.su/s/16/gCrqWaZxLG89wTzFtrJWUC3v29FIwSjhGbnij4ObO.png';" alt="COWIO" style="height: 26px; object-fit: contain;">
-              Меню
             </div>
             <button id="btn-close-sidebar" type="button" aria-label="Закрыть меню" class="sidebar-close-btn" onclick="if(window.closeMainSidebar){window.closeMainSidebar(event);}else{const s=document.getElementById('main-sidebar');const o=document.getElementById('sidebar-overlay');if(s)s.classList.remove('open');if(o)o.classList.remove('open');}" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.12); color: #fff; width: 34px; height: 34px; border-radius: 10px; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; touch-action: manipulation;">✕</button>
           </div>
@@ -126,11 +133,12 @@
           </nav>
 
           <div id="lobby-sidebar-actions" style="
-              margin-top: auto;
+              margin-top: 12px;
               display: flex;
               flex-direction: column;
-              gap: 10px;
-              padding-top: 20px;
+              gap: 8px;
+              padding-top: 10px;
+              border-top: 1px solid rgba(255, 255, 255, 0.08);
               flex-shrink: 0;
             ">
             <div class="nav-item" id="nav-premium" style="margin-bottom: 4px">
