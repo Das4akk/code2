@@ -559,10 +559,16 @@ class RoomVideoSearchManager {
     if (resultsContainer) resultsContainer.style.display = "none";
 
     try {
-      const res = await fetch(
-        `/api/video/search?q=${encodeURIComponent(trimmed)}&platform=${encodeURIComponent(platform)}`,
-      );
-      if (!res.ok) throw new Error("Ошибка поиска видео");
+      const qParam = encodeURIComponent(trimmed);
+      const platParam = encodeURIComponent(platform);
+      let res = await fetch(`/api/video/search?q=${qParam}&platform=${platParam}`);
+      if (!res.ok) {
+        res = await fetch(`/api/video?action=search&q=${qParam}&platform=${platParam}`);
+      }
+      if (!res.ok) {
+        res = await fetch(`/api?endpoint=video/search&q=${qParam}&platform=${platParam}`);
+      }
+      if (!res.ok) throw new Error("Ошибка поиска видео: HTTP " + res.status);
       const data = await res.json();
       const items = data.results || [];
 

@@ -25,6 +25,8 @@
   "rewrites": [
     { "source": "/api/custom-auth/(.*)", "destination": "/api/custom-auth?action=$1" },
     { "source": "/api/custom-auth", "destination": "/api/custom-auth" },
+    { "source": "/api/video/(.*)", "destination": "/api/video?action=$1" },
+    { "source": "/api/video", "destination": "/api/video" },
     { "source": "/api/health", "destination": "/api/health" },
     { "source": "/api/(.*)", "destination": "/api/index?endpoint=$1" },
     { "source": "/api", "destination": "/api/index" },
