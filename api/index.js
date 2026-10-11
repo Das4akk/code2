@@ -19,30 +19,14 @@ export default async function handler(req, res) {
     };
   }
 
-  // Parse body if JSON string or readable stream
+  // Safe body parsing: Vercel's @vercel/node runtime parses req.body before invocation
   if (typeof req.body === 'string') {
     try {
       req.body = JSON.parse(req.body);
     } catch (_) {}
-  } else if (!req.body && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method || '')) {
-    try {
-      const buffers = [];
-      for await (const chunk of req) {
-        buffers.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-      }
-      const raw = Buffer.concat(buffers).toString('utf8');
-      if (raw) {
-        try {
-          req.body = JSON.parse(raw);
-        } catch (_) {
-          req.body = raw;
-        }
-      } else {
-        req.body = {};
-      }
-    } catch (_) {
-      req.body = {};
-    }
+  }
+  if (!req.body || typeof req.body !== 'object') {
+    req.body = {};
   }
 
   // Parse URL & Query params

@@ -5,7 +5,7 @@
   "functions": {
     "api/index.js": {
       "includeFiles": "api/**",
-      "maxDuration": 30
+      "maxDuration": 15
     }
   },
   "headers": [

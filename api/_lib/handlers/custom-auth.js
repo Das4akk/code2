@@ -255,9 +255,9 @@ function getMailTransporter(useSsl = true) {
         tls: {
           rejectUnauthorized: false,
         },
-        connectionTimeout: 12000,
-        greetingTimeout: 12000,
-        socketTimeout: 15000,
+        connectionTimeout: 3500,
+        greetingTimeout: 3500,
+        socketTimeout: 4500,
       });
       return { transporter, user, host: 'smtp.gmail.com', port: 465 };
     } else {
@@ -272,9 +272,9 @@ function getMailTransporter(useSsl = true) {
           rejectUnauthorized: false,
           minVersion: 'TLSv1.2',
         },
-        connectionTimeout: 12000,
-        greetingTimeout: 12000,
-        socketTimeout: 15000,
+        connectionTimeout: 3500,
+        greetingTimeout: 3500,
+        socketTimeout: 4500,
       });
       return { transporter, user, host: 'smtp.gmail.com', port: 587 };
     }
@@ -295,10 +295,10 @@ function getMailTransporter(useSsl = true) {
       rejectUnauthorized: false,
       minVersion: 'TLSv1.2',
     },
-    connectionTimeout: 12000,
-    greetingTimeout: 12000,
-    socketTimeout: 15000,
-    dnsTimeout: 10000,
+    connectionTimeout: 3500,
+    greetingTimeout: 3500,
+    socketTimeout: 4500,
+    dnsTimeout: 3000,
   });
 
   return { transporter, user, host, port };
@@ -405,22 +405,10 @@ export async function sendCode(req, res) {
       const fromEmail = user.includes('@') ? user : `${user}@yandex.ru`;
       const fromHeader = `"COWIO" <${fromEmail}>`;
 
-      try {
-        const { transporter, host, port } = getMailTransporter(true);
-        console.log(`[COWIO Auth] Attempting SMTP SSL delivery via ${host}:${port} as ${fromEmail}...`);
-        await transporter.sendMail({
-          from: fromHeader,
-          to: normalizedEmail,
-          subject: 'Код подтверждения COWIO',
-          html: htmlContent
-        });
-        emailSent = true;
-        console.log(`[COWIO Auth] Email delivered successfully to ${normalizedEmail}`);
-      } catch (err1) {
-        lastError = err1;
-        console.warn(`[COWIO Auth] SSL delivery failed (${err1.message}), trying STARTTLS...`);
+      const sendSmtpAttempts = async () => {
         try {
-          const { transporter, host, port } = getMailTransporter(false);
+          const { transporter, host, port } = getMailTransporter(true);
+          console.log(`[COWIO Auth] Attempting SMTP SSL delivery via ${host}:${port} as ${fromEmail}...`);
           await transporter.sendMail({
             from: fromHeader,
             to: normalizedEmail,
@@ -428,11 +416,35 @@ export async function sendCode(req, res) {
             html: htmlContent
           });
           emailSent = true;
-          console.log(`[COWIO Auth] Email delivered successfully via fallback STARTTLS to ${normalizedEmail}`);
-        } catch (err2) {
-          lastError = err2;
-          console.error('[COWIO Auth] All SMTP attempts failed:', err2.message);
+          console.log(`[COWIO Auth] Email delivered successfully to ${normalizedEmail}`);
+        } catch (err1) {
+          lastError = err1;
+          console.warn(`[COWIO Auth] SSL delivery failed (${err1.message}), trying STARTTLS...`);
+          try {
+            const { transporter, host, port } = getMailTransporter(false);
+            await transporter.sendMail({
+              from: fromHeader,
+              to: normalizedEmail,
+              subject: 'Код подтверждения COWIO',
+              html: htmlContent
+            });
+            emailSent = true;
+            console.log(`[COWIO Auth] Email delivered successfully via fallback STARTTLS to ${normalizedEmail}`);
+          } catch (err2) {
+            lastError = err2;
+            console.error('[COWIO Auth] All SMTP attempts failed:', err2.message);
+          }
         }
+      };
+
+      try {
+        await Promise.race([
+          sendSmtpAttempts(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Превышено время ожидания ответа почтового сервера (таймаут 6.5с)')), 6500))
+        ]);
+      } catch (tErr) {
+        lastError = tErr;
+        console.warn('[COWIO Auth] SMTP deadline reached:', tErr.message);
       }
     } else if (!emailSent && (!user || !pass)) {
       console.warn('[COWIO Auth] SMTP credentials not set in environment (SMTP_USER / SMTP_PASS)');
