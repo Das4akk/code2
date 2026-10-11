@@ -256,6 +256,7 @@ class Router {
     if (navId === "nav-catalog" && window.CatalogManager) {
       window.CatalogManager.renderCatalog();
     } else if (navId === "nav-library" && window.LibraryManager) {
+      if (window.LibraryManager.startListening) window.LibraryManager.startListening();
       window.LibraryManager.renderGrid();
     } else if (navId === "nav-leaderboard" && window.loadLeaderboard) {
       window.loadLeaderboard();

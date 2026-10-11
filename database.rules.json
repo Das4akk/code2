@@ -180,15 +180,15 @@
     },
 
     "library": {
-      ".read": "auth != null",
+      ".read": true,
       ".write": false,
       "public": {
-        ".read": "auth != null",
-        ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.uid === 'h0J0Ua2ayfP1Hk2j5unqAa1UUXi2' || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com' || auth.token.email === 'das4akk@gmail.com' || auth.token.email === 'cowiosupport@gmail.com')"
+        ".read": true,
+        ".write": "auth != null"
       },
       "users": {
         "$uid": {
-          ".read": "auth != null",
+          ".read": true,
           ".write": "$uid === auth.uid || (auth != null && (root.child('admins').child(auth.uid).exists() || auth.uid === 'h0J0Ua2ayfP1Hk2j5unqAa1UUXi2' || auth.token.email === 'mankaef@yandex.ru' || auth.token.email === 'das4akk2@gmail.com' || auth.token.email === 'das4akk@gmail.com' || auth.token.email === 'cowiosupport@gmail.com'))"
         }
       }

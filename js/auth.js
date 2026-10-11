@@ -575,6 +575,9 @@ class AuthManager {
               try {
                 if (window.loadLeaderboard) window.loadLeaderboard();
               } catch (_) {}
+              try {
+                if (window.LibraryManager?.startListening) window.LibraryManager.startListening();
+              } catch (_) {}
             })();
           } else {
             this.handleLogoutCleanup();
@@ -634,10 +637,18 @@ class AuthManager {
       } catch (e) {}
     }
     const displayCode = data.code || data.devCode;
-    if (displayCode) {
-      console.log(`[COWIO] Код подтверждения для ${normalizedEmail}: ${displayCode}`);
+    window.__lastAuthCode = displayCode;
+
+    if (!data.emailSent) {
+      const notice = data.smtpNotice ? `: ${data.smtpNotice}` : "";
+      console.warn(`[COWIO] Email not sent (${notice}). Check SMTP settings in Vercel.`);
       if (window.Utils && typeof Utils.toast === "function") {
-        Utils.toast(`Код подтверждения: ${displayCode}`, "info");
+        Utils.toast(`Не удалось отправить письмо${notice}. Проверьте почтовые переменные окружения в Vercel.`, "error", 12000);
+      }
+    } else {
+      console.log(`[COWIO] Email delivered to ${normalizedEmail}`);
+      if (window.Utils && typeof Utils.toast === "function") {
+        Utils.toast("Код подтверждения отправлен на вашу почту!", "success");
       }
     }
     return data;
@@ -1290,9 +1301,11 @@ class AuthManager {
              await this.completeRegistration(AppState.pendingRegistration);
           } else {
              Utils.toast("Отправка кода на почту...", "info");
-             await this.sendAuthCode(email);
+             const codeRes = await this.sendAuthCode(email);
              this.showRegVerifyPanel(email);
-             Utils.toast("Введите код из письма", "success");
+             if (codeRes && codeRes.emailSent) {
+               Utils.toast("Введите код из письма", "success");
+             }
           }
 
         } catch (e) {

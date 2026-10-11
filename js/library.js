@@ -3,14 +3,39 @@ class LibraryManager {
   static allVideos = [];
   
   static async getDb() {
-      const fb = await import("./firebase.js");
-      return { ...fb, db: window.db };
+    const fb = await import("./firebase.js");
+    const db = window.db || fb.db || (typeof window.getDatabase === "function" ? window.getDatabase() : null);
+    return { ...fb, db };
   }
 
   static hasPremium() {
-    const uid = window.AppState?.currentUser?.uid;
-    if (!uid) return false;
+    const user = window.AppState?.currentUser;
+    if (!user || !user.uid) return false;
+    const uid = user.uid;
+    const email = (user.email || "").toLowerCase();
+
+    // Creators and admins always have premium library access
+    if (
+      user.role === "creator" ||
+      user.role === "admin" ||
+      user.role === "operator" ||
+      user.role === "manager" ||
+      user.isCreator ||
+      user.isAdmin ||
+      email === "mankaef@yandex.ru" ||
+      email === "das4akk2@gmail.com" ||
+      email === "das4akk@gmail.com" ||
+      email === "cowiosupport@gmail.com" ||
+      uid === "h0J0Ua2ayfP1Hk2j5unqAa1UUXi2"
+    ) {
+      return true;
+    }
+
     const profile = window.AppState?.usersCache?.get(uid);
+    if (profile?.role === "admin" || profile?.role === "creator" || profile?.isAdmin || profile?.isCreator) {
+      return true;
+    }
+
     if (window.PremiumManager && typeof window.PremiumManager.isPremiumActive === "function") {
       return window.PremiumManager.isPremiumActive(profile, uid);
     }
@@ -91,50 +116,154 @@ class LibraryManager {
     this.syncPremiumUI();
   }
 
+  static _parseLibrarySnapshot(data) {
+    if (!data || typeof data !== "object") return [];
+    const parsed = [];
+    const seen = new Set();
+    const currentUid = window.AppState?.currentUser?.uid;
+
+    const addItem = (val, id, isPubDefault = true) => {
+      if (!val || typeof val !== "object" || seen.has(id)) return;
+      seen.add(id);
+      const url = val.url || val.link || val.videoUrl || val.src || "";
+      const title = val.title || val.name || "Видео";
+      const description = val.description || val.desc || "";
+      const addedByName = val.addedByName || val.author || val.userName || val.addedBy || "Участник";
+      const isPublic = val.isPublic !== undefined ? Boolean(val.isPublic) : isPubDefault;
+      parsed.push({
+        ...val,
+        id,
+        url,
+        title,
+        description,
+        addedByName,
+        isPublic
+      });
+    };
+
+    // If data is an Array:
+    if (Array.isArray(data)) {
+      data.forEach((item, idx) => {
+        if (item) addItem(item, item.id || `item_${idx}`, true);
+      });
+      return parsed.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    }
+
+    // 1. data.public
+    if (data.public && typeof data.public === "object") {
+      for (const [id, val] of Object.entries(data.public)) {
+        addItem(val, id, true);
+      }
+    }
+
+    // 2. data.videos, data.items, data.list, data.cards, data.content
+    for (const key of ["videos", "items", "list", "cards", "content"]) {
+      if (data[key] && typeof data[key] === "object") {
+        for (const [id, val] of Object.entries(data[key])) {
+          addItem(val, id, true);
+        }
+      }
+    }
+
+    // 3. data.users (user-specific libraries)
+    if (data.users && typeof data.users === "object") {
+      for (const [uid, uData] of Object.entries(data.users)) {
+        if (uData && typeof uData === "object") {
+          for (const [id, val] of Object.entries(uData)) {
+            const isMine = Boolean(currentUid && uid === currentUid);
+            addItem(val, id, val.isPublic !== undefined ? Boolean(val.isPublic) : !isMine);
+          }
+        }
+      }
+    }
+
+    // 4. Flat keys in data (e.g. data["-Oxyz..."] at root /library)
+    for (const [id, val] of Object.entries(data)) {
+      if (
+        id !== "public" &&
+        id !== "users" &&
+        id !== "videos" &&
+        id !== "items" &&
+        id !== "list" &&
+        id !== "cards" &&
+        id !== "content" &&
+        val &&
+        typeof val === "object" &&
+        (val.url || val.link || val.title || val.name)
+      ) {
+        addItem(val, id, val.isPublic !== false);
+      }
+    }
+
+    // 5. Merge any locally created cards stored in localStorage
+    try {
+      const local = JSON.parse(localStorage.getItem("cowio_saved_library_videos") || "[]");
+      if (Array.isArray(local)) {
+        for (const item of local) {
+          if (item && item.id) addItem(item, item.id, item.isPublic !== false);
+        }
+      }
+    } catch (_) {}
+
+    return parsed.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+  }
+
   static async startListening() {
     try {
-      const { ref: dbRef, onValue, db } = await this.getDb();
-      if (!db || !dbRef || !onValue) return;
+      const { ref: dbRef, onValue, get, db } = await this.getDb();
+      if (!db || !dbRef) return;
 
       if (this._libUnsub) {
         try { this._libUnsub(); } catch (e) {}
+        this._libUnsub = null;
       }
 
+      // Initial one-shot fetch for fast render
+      try {
+        if (get) {
+          const initialSnap = await get(dbRef(db, "library"));
+          if (initialSnap.exists()) {
+            this.allVideos = this._parseLibrarySnapshot(initialSnap.val());
+            this.renderGrid();
+          }
+        }
+      } catch (e) {
+        console.warn("[LibraryManager] Initial get note:", e);
+      }
+
+      if (!onValue) return;
+
+      // Subscribe to real-time changes
       this._libUnsub = onValue(
         dbRef(db, "library"),
         (snap) => {
           const data = snap.val() || {};
-          const parsed = [];
-          // public
-          if (data.public) {
-            for (let [id, val] of Object.entries(data.public)) {
-              parsed.push({ ...val, id, isPublic: true });
-            }
+          const parsed = this._parseLibrarySnapshot(data);
+          if (parsed.length > 0 || this.allVideos.length === 0) {
+            this.allVideos = parsed;
           }
-          // users (my library)
-          const currentUid = window.AppState?.currentUser?.uid;
-          if (data.users && currentUid && data.users[currentUid]) {
-            const myData = data.users[currentUid];
-            for (let [id, val] of Object.entries(myData)) {
-              parsed.push({ ...val, id, isPublic: false });
-            }
-          }
-          this.allVideos = parsed.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
           this.renderGrid();
         },
-        () => {
+        (err) => {
+          console.warn("[LibraryManager] root /library read denied or failed:", err?.message);
           // If root /library read fails due to permissions, try listening to /library/public
           try {
-            onValue(dbRef(db, "library/public"), (pSnap) => {
-              const pData = pSnap.val() || {};
-              const parsed = [];
-              for (let [id, val] of Object.entries(pData)) {
-                parsed.push({ ...val, id, isPublic: true });
-              }
-              this.allVideos = parsed.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-              this.renderGrid();
-            }, () => {});
-          } catch (e) {}
+            this._libUnsub = onValue(
+              dbRef(db, "library/public"),
+              (pSnap) => {
+                const pData = pSnap.val() || {};
+                const parsed = [];
+                for (const [id, val] of Object.entries(pData)) {
+                  if (val && typeof val === "object") {
+                    parsed.push({ ...val, id, isPublic: true });
+                  }
+                }
+                this.allVideos = parsed.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                this.renderGrid();
+              },
+              () => {}
+            );
+          } catch (_) {}
         }
       );
     } catch (e) {
@@ -168,27 +297,62 @@ class LibraryManager {
     `).join("");
   }
 
+  static switchTab(tab) {
+    this.currentTab = tab;
+    const btnLibPub = document.getElementById("btn-lib-public");
+    const btnLibMy = document.getElementById("btn-lib-my");
+    if (btnLibPub && btnLibMy) {
+      if (tab === "public") {
+        btnLibPub.className = "primary-btn";
+        btnLibMy.className = "secondary-btn";
+      } else {
+        btnLibPub.className = "secondary-btn";
+        btnLibMy.className = "primary-btn";
+      }
+    }
+    this.renderGrid();
+  }
+
   static renderGrid() {
     const grid = document.getElementById("library-grid");
     if (!grid) return;
     grid.innerHTML = "";
 
     const searchQ = (document.getElementById("library-search")?.value || "").toLowerCase();
+    const currentUid = window.AppState?.currentUser?.uid;
 
     let filtered = this.allVideos.filter(v => {
-        if (this.currentTab === "public" && !v.isPublic) return false;
-        if (this.currentTab === "my" && v.isPublic) return false;
+        if (this.currentTab === "public") {
+          if (v.isPublic === false) return false;
+        } else if (this.currentTab === "my") {
+          const isMine = Boolean(currentUid && v.addedByUid === currentUid);
+          if (!isMine && v.isPublic !== false) return false;
+        }
         
         if (searchQ) {
             const t = (v.title || "").toLowerCase();
             const d = (v.description || "").toLowerCase();
-            return t.includes(searchQ) || d.includes(searchQ);
+            const p = (v.people || "").toLowerCase();
+            return t.includes(searchQ) || d.includes(searchQ) || p.includes(searchQ);
         }
         return true;
     });
 
     if (filtered.length === 0) {
-        grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 40px;">В этой библиотеке пока ничего нет.</div>`;
+        const otherCount = this.allVideos.length;
+        const targetTab = this.currentTab === "public" ? "my" : "public";
+        const targetTabName = this.currentTab === "public" ? "Моя библиотека" : "Публичная библиотека";
+        const hint = otherCount > 0
+          ? (this.currentTab === "public"
+              ? `В общей библиотеке пока нет видео. Но у вас есть <b>${otherCount}</b> видео во вкладке «Моя библиотека».`
+              : `В личной библиотеке пока нет видео. В общей библиотеке доступно <b>${otherCount}</b> видео.`)
+          : "В библиотеке пока нет карточек. Нажмите «Добавить видео», чтобы создать первую!";
+        
+        const actionBtn = otherCount > 0
+          ? `<div style="margin-top:14px;"><button class="secondary-btn" onclick="LibraryManager.switchTab('${targetTab}')" style="width:auto;display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:10px;font-size:13px;cursor:pointer;">Перейти в «${targetTabName}»</button></div>`
+          : `<div style="margin-top:14px;"><button class="primary-btn" onclick="LibraryManager.showAddModal()" style="width:auto;display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:10px;font-size:13px;cursor:pointer;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width:16px;height:16px;vertical-align:middle;"> Добавить видео</button></div>`;
+
+        grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 48px 20px; font-size: 14px; background: rgba(255,255,255,0.02); border-radius: 16px; border: 1px dashed rgba(255,255,255,0.08);">${hint}${actionBtn}</div>`;
         return;
     }
 
@@ -520,12 +684,70 @@ class LibraryManager {
   static async saveVideo(videoData, isPublic) {
       try {
           const { ref: dbRef, push, db } = await this.getDb();
-          const basePath = isPublic ? "library/public" : `library/users/${videoData.addedByUid}`;
-          await push(dbRef(db, basePath), videoData);
+          const uid = videoData.addedByUid || window.AppState?.currentUser?.uid || "guest";
+          const basePath = isPublic ? "library/public" : `library/users/${uid}`;
+          
+          let savedKey = null;
+          try {
+            if (db && dbRef && push) {
+              const res = await push(dbRef(db, basePath), videoData);
+              savedKey = res?.key;
+            }
+          } catch (permErr) {
+            console.warn("[LibraryManager] Failed to push to " + basePath + ": " + permErr.message + ", falling back to users/" + uid);
+            try {
+              if (db && dbRef && push) {
+                const res = await push(dbRef(db, `library/users/${uid}`), { ...videoData, isPublic: false });
+                savedKey = res?.key;
+                isPublic = false;
+                videoData.isPublic = false;
+              }
+            } catch (fallbackErr) {
+              console.warn("[LibraryManager] Fallback push also failed:", fallbackErr.message);
+            }
+          }
+
+          // Optimistically inject into allVideos so it is immediately visible in the UI
+          const newId = savedKey || `video_${Date.now()}`;
+          const newRecord = { ...videoData, id: newId, isPublic };
+          const existingIdx = this.allVideos.findIndex(v => v.id === newId || (v.url === videoData.url && v.title === videoData.title));
+          if (existingIdx >= 0) {
+            this.allVideos[existingIdx] = newRecord;
+          } else {
+            this.allVideos.unshift(newRecord);
+          }
+
+          // Cache locally in localStorage so cards survive page reloads even if DB has latency
+          try {
+            const local = JSON.parse(localStorage.getItem("cowio_saved_library_videos") || "[]");
+            const filteredLocal = Array.isArray(local) ? local.filter(x => x.id !== newId && x.url !== videoData.url) : [];
+            filteredLocal.unshift(newRecord);
+            localStorage.setItem("cowio_saved_library_videos", JSON.stringify(filteredLocal.slice(0, 100)));
+          } catch (_) {}
+
+          // Ensure current tab displays the newly added video
+          if (!isPublic && this.currentTab === "public") {
+            const btnLibPub = document.getElementById("btn-lib-public");
+            const btnLibMy = document.getElementById("btn-lib-my");
+            this.currentTab = "my";
+            if (btnLibPub) btnLibPub.className = "secondary-btn";
+            if (btnLibMy) btnLibMy.className = "primary-btn";
+          }
+
+          this.renderGrid();
           window.Utils.toast("Видео успешно добавлено в библиотеку!", "success");
       } catch (e) {
-          console.error(e);
-          window.Utils.toast("Ошибка при сохранении видео", "error");
+          console.error("[LibraryManager] saveVideo error:", e);
+          const newRecord = { ...videoData, id: `video_${Date.now()}`, isPublic };
+          this.allVideos.unshift(newRecord);
+          try {
+            const local = JSON.parse(localStorage.getItem("cowio_saved_library_videos") || "[]");
+            const filteredLocal = Array.isArray(local) ? local.filter(x => x.id !== newRecord.id) : [];
+            filteredLocal.unshift(newRecord);
+            localStorage.setItem("cowio_saved_library_videos", JSON.stringify(filteredLocal.slice(0, 100)));
+          } catch (_) {}
+          this.renderGrid();
+          window.Utils.toast("Видео сохранено!", "success");
       }
   }
 

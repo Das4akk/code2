@@ -1085,18 +1085,18 @@ window.loadLeaderboard = async function() {
         
         let html = "";
         topUsers.forEach((u, idx) => {
-            let placeStyle = "color: var(--text-muted); font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center;";
+            let placeStyle = "color: var(--text-muted); font-size: 16px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0;";
             let placeText = `${idx + 1}`;
             
             if (idx === 0) { 
-                placeStyle = "color: #FFD700; font-size: 20px; font-weight: 900; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); display: flex; align-items: center; justify-content: center; gap: 4px;"; 
-                placeText = '1 <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Crown.webp" style="width: 28px; height: 28px;" alt="1">'; 
+                placeStyle = "color: #FFD700; font-size: 18px; font-weight: 900; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); display: flex; align-items: center; justify-content: center; gap: 4px; flex-shrink: 0;"; 
+                placeText = '1 <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Crown.webp" style="width: 24px; height: 24px; min-width: 24px; min-height: 24px; flex-shrink: 0; object-fit: contain; display: inline-block; vertical-align: middle;" alt="1">'; 
             } else if (idx === 1) { 
-                placeStyle = "color: #C0C0C0; font-size: 18px; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 4px;"; 
-                placeText = '2 <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Gem%20Stone.webp" style="width: 26px; height: 26px;" alt="2">'; 
+                placeStyle = "color: #C0C0C0; font-size: 16px; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 4px; flex-shrink: 0;"; 
+                placeText = '2 <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Gem%20Stone.webp" style="width: 22px; height: 22px; min-width: 22px; min-height: 22px; flex-shrink: 0; object-fit: contain; display: inline-block; vertical-align: middle;" alt="2">'; 
             } else if (idx === 2) { 
-                placeStyle = "color: #CD7F32; font-size: 18px; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 4px;"; 
-                placeText = '3 <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Star.webp" style="width: 24px; height: 24px;" alt="3">'; 
+                placeStyle = "color: #CD7F32; font-size: 16px; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 4px; flex-shrink: 0;"; 
+                placeText = '3 <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Star.webp" style="width: 20px; height: 20px; min-width: 20px; min-height: 20px; flex-shrink: 0; object-fit: contain; display: inline-block; vertical-align: middle;" alt="3">'; 
             }
             
             const avHtml = ProfileManager.getAvatarHtml(u.profile);
@@ -1104,29 +1104,29 @@ window.loadLeaderboard = async function() {
             
             let scoreContent = "";
             if (cat === "lumens") {
-                scoreContent = `${u.score.toLocaleString()} <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 20px; height: 20px;" alt="✨">`;
+                scoreContent = `${u.score.toLocaleString()} <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" style="width: 18px; height: 18px; min-width: 18px; min-height: 18px; flex-shrink: 0; object-fit: contain; display: inline-block; vertical-align: middle;" alt="✨">`;
             } else if (cat === "likes") {
-                scoreContent = `${u.score.toLocaleString()} <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Red%20Heart.webp" style="width: 20px; height: 20px;" alt="❤️">`;
+                scoreContent = `${u.score.toLocaleString()} <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Red%20Heart.webp" style="width: 18px; height: 18px; min-width: 18px; min-height: 18px; flex-shrink: 0; object-fit: contain; display: inline-block; vertical-align: middle;" alt="❤️">`;
             } else if (cat === "streak") {
                 const dayWord = u.score === 1 ? 'день' : (u.score < 5 ? 'дня' : 'дней');
-                scoreContent = `${u.score} ${dayWord} <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Fire.webp" style="width: 20px; height: 20px;" alt="🔥">`;
+                scoreContent = `${u.score} ${dayWord} <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Fire.webp" style="width: 18px; height: 18px; min-width: 18px; min-height: 18px; flex-shrink: 0; object-fit: contain; display: inline-block; vertical-align: middle;" alt="🔥">`;
             } else {
-                scoreContent = `${Utils.formatDuration(u.score)} <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Hourglass%20Done.webp" style="width: 20px; height: 20px;" alt="⏳">`;
+                scoreContent = `${Utils.formatDuration(u.score)} <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Hourglass%20Done.webp" style="width: 18px; height: 18px; min-width: 18px; min-height: 18px; flex-shrink: 0; object-fit: contain; display: inline-block; vertical-align: middle;" alt="⏳">`;
             }
 
             const scoreColor = cat === "lumens" ? "#ffd700" : (cat === "likes" ? "#ff4b4b" : (cat === "streak" ? "#ff7800" : "#60a5fa"));
 
-            html += `<div style="display:flex;align-items:center;padding:12px 16px;background:${isMe ? 'rgba(255,215,0,0.08)' : 'rgba(255,255,255,0.03)'};border:1px solid ${isMe ? 'rgba(255,215,0,0.3)' : 'rgba(255,255,255,0.05)'};border-radius:12px;cursor:pointer;transition:transform 0.2s, background 0.2s;" onmouseover="this.style.background='${isMe ? 'rgba(255,215,0,0.14)' : 'rgba(255,255,255,0.08)'}'" onmouseout="this.style.background='${isMe ? 'rgba(255,215,0,0.08)' : 'rgba(255,255,255,0.03)'}'" onclick="ProfileManager.openViewProfileModal('${u.uid}')">
-                <div style="width: 60px; text-align:center; margin-right:16px; font-weight:bold; ${placeStyle}">${placeText}</div>
-                <div style="width:46px;height:46px;margin-right:16px;border-radius:50%;overflow:visible;">${avHtml}</div>
-                <div style="flex:1;display:flex;flex-direction:column;gap:2px;">
-                    <div style="font-weight:700;font-size:16px;color:var(--text-main);display:flex;align-items:center;gap:6px;">
-                        <span>${Utils.escapeHtml(u.profile.name || "Пользователь")}</span>
-                        ${isMe ? '<span style="font-size:10px;padding:2px 6px;background:rgba(255,215,0,0.2);color:#ffd700;border-radius:4px;font-weight:800;">ВЫ</span>' : ''}
+            html += `<div class="leaderboard-item" style="display:flex;align-items:center;padding:12px 16px;background:${isMe ? 'rgba(255,215,0,0.08)' : 'rgba(255,255,255,0.03)'};border:1px solid ${isMe ? 'rgba(255,215,0,0.3)' : 'rgba(255,255,255,0.05)'};border-radius:12px;cursor:pointer;transition:transform 0.2s, background 0.2s;" onmouseover="this.style.background='${isMe ? 'rgba(255,215,0,0.14)' : 'rgba(255,255,255,0.08)'}'" onmouseout="this.style.background='${isMe ? 'rgba(255,215,0,0.08)' : 'rgba(255,255,255,0.03)'}'" onclick="ProfileManager.openViewProfileModal('${u.uid}')">
+                <div class="leaderboard-rank" style="width: 48px; min-width: 48px; flex-shrink: 0; text-align:center; margin-right:12px; font-weight:bold; ${placeStyle}">${placeText}</div>
+                <div class="leaderboard-avatar-wrap" style="width:42px;height:42px;min-width:42px;min-height:42px;flex-shrink:0;margin-right:12px;border-radius:50%;overflow:visible;">${avHtml}</div>
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;overflow:hidden;">
+                    <div style="font-weight:700;font-size:15px;color:var(--text-main);display:flex;align-items:center;gap:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${Utils.escapeHtml(u.profile.name || "Пользователь")}</span>
+                        ${isMe ? '<span style="font-size:10px;padding:2px 6px;background:rgba(255,215,0,0.2);color:#ffd700;border-radius:4px;font-weight:800;flex-shrink:0;">ВЫ</span>' : ''}
                     </div>
-                    <span style="font-size:12px;color:var(--text-muted);">@${Utils.escapeHtml(u.profile.username || "")}</span>
+                    <span style="font-size:12px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">@${Utils.escapeHtml(u.profile.username || "")}</span>
                 </div>
-                <div style="display:flex;align-items:center;gap:6px;font-weight:700;font-size:16px;color:${scoreColor};">
+                <div class="leaderboard-score" style="display:flex;align-items:center;gap:6px;font-weight:700;font-size:15px;color:${scoreColor};flex-shrink:0;white-space:nowrap;">
                     ${scoreContent}
                 </div>
             </div>`;

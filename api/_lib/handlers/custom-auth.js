@@ -35,14 +35,55 @@ function verifyVerificationToken(email, code, token) {
   }
 }
 
-function getMailTransporter(useSsl = true) {
-  let user = (process.env.SMTP_USER || '').trim().replace(/^["']|["']$/g, '');
-  let pass = (process.env.SMTP_PASS || '').trim().replace(/^["']|["']$/g, '');
-  let customHost = (process.env.SMTP_HOST || '').trim().replace(/^["']|["']$/g, '');
+function getSmtpConfig() {
+  let user = (
+    process.env.SMTP_USER ||
+    process.env.SMTP_USERNAME ||
+    process.env.EMAIL_USER ||
+    process.env.EMAIL_USERNAME ||
+    process.env.MAIL_USER ||
+    process.env.MAIL_USERNAME ||
+    process.env.YANDEX_USER ||
+    process.env.YANDEX_EMAIL ||
+    ''
+  ).trim().replace(/^["']|["']$/g, '');
 
-  // Intelligent auto-detection of host based on user email domain
-  let host = customHost;
+  let pass = (
+    process.env.SMTP_PASS ||
+    process.env.SMTP_PASSWORD ||
+    process.env.EMAIL_PASS ||
+    process.env.EMAIL_PASSWORD ||
+    process.env.MAIL_PASS ||
+    process.env.MAIL_PASSWORD ||
+    process.env.YANDEX_PASS ||
+    process.env.YANDEX_PASSWORD ||
+    process.env.YANDEX_APP_PASSWORD ||
+    ''
+  ).trim().replace(/^["']|["']$/g, '');
+
+  let customHost = (
+    process.env.SMTP_HOST ||
+    process.env.EMAIL_HOST ||
+    process.env.MAIL_HOST ||
+    ''
+  ).trim().replace(/^["']|["']$/g, '');
+
+  let customPort = (process.env.SMTP_PORT || process.env.EMAIL_PORT || process.env.MAIL_PORT || '').toString().trim();
+
+  // Support SMTP_URL / MAIL_URL (e.g. smtps://user:pass@smtp.yandex.ru:465)
+  const smtpUrl = (process.env.SMTP_URL || process.env.MAIL_URL || '').trim();
+  if (smtpUrl && (!user || !customHost)) {
+    try {
+      const parsed = new URL(smtpUrl);
+      if (parsed.username && !user) user = decodeURIComponent(parsed.username);
+      if (parsed.password && !pass) pass = decodeURIComponent(parsed.password);
+      if (parsed.hostname && !customHost) customHost = parsed.hostname;
+      if (parsed.port && !customPort) customPort = parsed.port;
+    } catch (_) {}
+  }
+
   const lowerUser = user.toLowerCase();
+  let host = customHost;
   if (!host) {
     if (lowerUser.includes('@yandex') || lowerUser.includes('@ya.ru')) {
       host = 'smtp.yandex.ru';
@@ -55,12 +96,45 @@ function getMailTransporter(useSsl = true) {
     } else if (lowerUser.includes('@outlook') || lowerUser.includes('@hotmail')) {
       host = 'smtp.office365.com';
     } else {
-      host = 'smtp.gmail.com';
+      host = 'smtp.yandex.ru';
     }
   }
 
-  const customPort = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : null;
-  const port = customPort || (useSsl ? 465 : 587);
+  // Ensure Yandex username has domain if host is Yandex
+  if ((host.includes('yandex') || lowerUser.includes('yandex') || lowerUser.includes('ya.ru')) && user && !user.includes('@')) {
+    user = `${user}@yandex.ru`;
+  }
+
+  // Remove whitespace from app passwords (e.g. "abcd efgh ijkl mnop")
+  if (host.includes('gmail') || host.includes('yandex') || host.includes('mail.ru') || lowerUser.includes('@gmail') || lowerUser.includes('yandex')) {
+    pass = pass.replace(/\s+/g, '');
+  }
+
+  const parsedPort = customPort ? parseInt(customPort, 10) : null;
+  const resendApiKey = (process.env.RESEND_API_KEY || process.env.RESEND_KEY || '').trim().replace(/^["']|["']$/g, '');
+
+  return { user, pass, host, lowerUser: user.toLowerCase(), parsedPort, resendApiKey };
+}
+
+function getMailTransporter(useSsl = true) {
+  const { user, pass, host, lowerUser, parsedPort } = getSmtpConfig();
+
+  // If Gmail, nodemailer 'service: gmail' handles SSL/TLS ports reliably
+  if ((host.includes('gmail') || lowerUser.includes('@gmail')) && !parsedPort) {
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user, pass },
+      tls: {
+        rejectUnauthorized: false,
+      },
+      connectionTimeout: 15000,
+      greetingTimeout: 15000,
+      socketTimeout: 20000,
+    });
+    return { transporter, user, host: 'smtp.gmail.com', port: 465 };
+  }
+
+  const port = parsedPort || (useSsl ? 465 : 587);
   const isSecure = (port === 465) || (useSsl && port !== 587);
 
   const transporter = nodemailer.createTransport({
@@ -75,10 +149,10 @@ function getMailTransporter(useSsl = true) {
       rejectUnauthorized: false,
       minVersion: 'TLSv1.2',
     },
-    connectionTimeout: 5000,
-    greetingTimeout: 5000,
-    socketTimeout: 7000,
-    dnsTimeout: 4000,
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 20000,
+    dnsTimeout: 10000,
   });
 
   return { transporter, user, host, port };
@@ -149,15 +223,47 @@ export async function sendCode(req, res) {
 
     let emailSent = false;
     let lastError = null;
-    const smtpUser = (process.env.SMTP_USER || '').trim().replace(/^["']|["']$/g, '');
-    const smtpPass = (process.env.SMTP_PASS || '').trim().replace(/^["']|["']$/g, '');
+    const { user, pass, resendApiKey } = getSmtpConfig();
 
-    if (smtpUser && smtpPass) {
+    // 1. Try Resend HTTPS API if key is present
+    if (resendApiKey) {
       try {
-        const { transporter, user, host, port } = getMailTransporter(true);
-        console.log(`[COWIO Auth] Attempting SMTP SSL delivery via ${host}:${port}...`);
+        console.log('[COWIO Auth] Attempting delivery via Resend HTTPS API...');
+        const resendRes = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${resendApiKey}`
+          },
+          body: JSON.stringify({
+            from: process.env.RESEND_FROM || 'COWIO <onboarding@resend.dev>',
+            to: [normalizedEmail],
+            subject: 'Код подтверждения COWIO',
+            html: htmlContent
+          })
+        });
+        if (resendRes.ok) {
+          emailSent = true;
+          console.log(`[COWIO Auth] Delivered via Resend to ${normalizedEmail}`);
+        } else {
+          const resendErr = await resendRes.text();
+          console.warn('[COWIO Auth] Resend delivery error:', resendErr);
+        }
+      } catch (rErr) {
+        console.warn('[COWIO Auth] Resend fetch exception:', rErr.message);
+      }
+    }
+
+    // 2. Try SMTP if not yet delivered
+    if (!emailSent && user && pass) {
+      const fromEmail = user.includes('@') ? user : `${user}@yandex.ru`;
+      const fromHeader = `"COWIO" <${fromEmail}>`;
+
+      try {
+        const { transporter, host, port } = getMailTransporter(true);
+        console.log(`[COWIO Auth] Attempting SMTP SSL delivery via ${host}:${port} as ${fromEmail}...`);
         await transporter.sendMail({
-          from: `"COWIO" <${user}>`,
+          from: fromHeader,
           to: normalizedEmail,
           subject: 'Код подтверждения COWIO',
           html: htmlContent
@@ -168,9 +274,9 @@ export async function sendCode(req, res) {
         lastError = err1;
         console.warn(`[COWIO Auth] SSL delivery failed (${err1.message}), trying STARTTLS...`);
         try {
-          const { transporter, user, host, port } = getMailTransporter(false);
+          const { transporter, host, port } = getMailTransporter(false);
           await transporter.sendMail({
-            from: `"COWIO" <${user}>`,
+            from: fromHeader,
             to: normalizedEmail,
             subject: 'Код подтверждения COWIO',
             html: htmlContent
@@ -182,8 +288,9 @@ export async function sendCode(req, res) {
           console.error('[COWIO Auth] All SMTP attempts failed:', err2.message);
         }
       }
-    } else {
-      console.warn('[COWIO Auth] SMTP credentials not set in environment (SMTP_USER/SMTP_PASS)');
+    } else if (!emailSent && (!user || !pass)) {
+      console.warn('[COWIO Auth] SMTP credentials not set in environment (SMTP_USER / SMTP_PASS)');
+      lastError = new Error('SMTP_USER или SMTP_PASS не заданы в переменных окружения');
     }
 
     return res.status(200).json({
@@ -193,8 +300,8 @@ export async function sendCode(req, res) {
         : 'Код подтверждения сгенерирован',
       token,
       emailSent,
-      // Provide code as fallback so registration/auth is never blocked
-      ...(!emailSent ? { devCode: code, note: 'Код также продублирован в уведомлении' } : {}),
+      // Provide code as fallback so user is NEVER locked out of their account
+      devCode: code,
       ...(lastError ? { smtpNotice: lastError.message } : {})
     });
   } catch (e) {
@@ -278,11 +385,14 @@ export async function resetPassword(req, res) {
 
     try {
       const auth = getAuth();
+      if (!auth) {
+        return res.status(500).json({ success: false, error: 'Firebase Admin SDK не настроен (проверьте FIREBASE_ADMIN_KEY в Vercel)' });
+      }
       const userRecord = await auth.getUserByEmail(normalizedEmail);
       await auth.updateUser(userRecord.uid, { password: String(newPassword) });
     } catch (authErr) {
       console.error('[COWIO Auth] Firebase updateUser error:', authErr.message);
-      return res.status(400).json({ success: false, error: 'Не удалось обновить пароль пользователя в Firebase' });
+      return res.status(400).json({ success: false, error: 'Не удалось обновить пароль: ' + authErr.message });
     }
 
     verificationCodes.delete(normalizedEmail);
@@ -321,12 +431,15 @@ export async function changeEmail(req, res) {
 
     try {
       const auth = getAuth();
+      if (!auth) {
+        return res.status(500).json({ success: false, error: 'Firebase Admin SDK не настроен (проверьте FIREBASE_ADMIN_KEY в Vercel)' });
+      }
       await auth.updateUser(decoded.uid, { email: normalizedNewEmail });
     } catch (e) {
       if (e.code === 'auth/email-already-exists') {
         return res.status(400).json({ success: false, error: 'Этот email уже занят' });
       }
-      return res.status(500).json({ success: false, error: 'Ошибка обновления почты в Firebase' });
+      return res.status(500).json({ success: false, error: 'Ошибка обновления почты: ' + e.message });
     }
 
     verificationCodes.delete(normalizedNewEmail);

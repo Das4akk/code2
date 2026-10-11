@@ -276,6 +276,110 @@
         background: rgba(255, 255, 255, 0.6);
       }
 
+      /* Leaderboard Mobile Icon Preservation & Anti-distortion */
+      #section-leaderboard img,
+      #leaderboard-list img,
+      .leaderboard-list img,
+      #lumens-leaderboard-list img,
+      .leaderboard-item img,
+      .leaderboard-rank img,
+      .leaderboard-score img {
+        flex-shrink: 0 !important;
+        object-fit: contain !important;
+        display: inline-block !important;
+        max-width: none !important;
+      }
+
+      .leaderboard-item {
+        display: flex !important;
+        align-items: center !important;
+        box-sizing: border-box !important;
+      }
+
+      .leaderboard-rank {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex-shrink: 0 !important;
+      }
+
+      .leaderboard-avatar-wrap {
+        flex-shrink: 0 !important;
+      }
+
+      .leaderboard-score {
+        flex-shrink: 0 !important;
+        white-space: nowrap !important;
+      }
+
+      @media (max-width: 768px) {
+        #section-leaderboard .leaderboard-container {
+          padding: 16px 12px 90px !important;
+          width: 100% !important;
+          box-sizing: border-box !important;
+        }
+
+        #section-leaderboard .section-title {
+          font-size: 22px !important;
+          margin-bottom: 16px !important;
+        }
+
+        #section-leaderboard button[id^="leaderboard-tab-"] {
+          padding: 6px 12px !important;
+          font-size: 13px !important;
+        }
+
+        #section-leaderboard button[id^="leaderboard-tab-"] img {
+          width: 16px !important;
+          height: 16px !important;
+          min-width: 16px !important;
+          min-height: 16px !important;
+          flex-shrink: 0 !important;
+          object-fit: contain !important;
+        }
+
+        #leaderboard-list .leaderboard-item,
+        #leaderboard-list > div {
+          padding: 10px 12px !important;
+          gap: 8px !important;
+          box-sizing: border-box !important;
+        }
+
+        #leaderboard-list .leaderboard-rank {
+          width: 36px !important;
+          min-width: 36px !important;
+          margin-right: 6px !important;
+          font-size: 14px !important;
+        }
+
+        #leaderboard-list .leaderboard-rank img {
+          width: 20px !important;
+          height: 20px !important;
+          min-width: 20px !important;
+          min-height: 20px !important;
+        }
+
+        #leaderboard-list .leaderboard-avatar-wrap {
+          width: 38px !important;
+          height: 38px !important;
+          min-width: 38px !important;
+          min-height: 38px !important;
+          margin-right: 8px !important;
+        }
+
+        #leaderboard-list .leaderboard-score {
+          font-size: 13.5px !important;
+          gap: 4px !important;
+        }
+
+        #leaderboard-list .leaderboard-score img {
+          width: 16px !important;
+          height: 16px !important;
+          min-width: 16px !important;
+          min-height: 16px !important;
+        }
+      }
+
       /* Room Video Autofill & Search Styles */
       .room-field-header {
         display: flex;

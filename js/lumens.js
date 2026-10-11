@@ -481,13 +481,13 @@ class LumenManager {
       listEl.innerHTML = topUsers.map((item, idx) => {
         const rank = idx + 1;
         const isMe = item.uid === myUid;
-        let rankBadge = `<span style="font-weight: 800; font-size: 12px; color: rgba(255,255,255,0.5); width: 24px; text-align: center;">#${rank}</span>`;
+        let rankBadge = `<span style="font-weight: 800; font-size: 12px; color: rgba(255,255,255,0.5); width: 24px; min-width: 24px; flex-shrink: 0; text-align: center;">#${rank}</span>`;
         if (rank === 1) {
-          rankBadge = `<img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Crown.webp" style="width: 22px; height: 22px; object-fit: contain;" alt="1">`;
+          rankBadge = `<img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Crown.webp" style="width: 22px; height: 22px; min-width: 22px; min-height: 22px; flex-shrink: 0; object-fit: contain; display: inline-block;" alt="1">`;
         } else if (rank === 2) {
-          rankBadge = `<img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Gem%20Stone.webp" style="width: 20px; height: 20px; object-fit: contain;" alt="2">`;
+          rankBadge = `<img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Gem%20Stone.webp" style="width: 20px; height: 20px; min-width: 20px; min-height: 20px; flex-shrink: 0; object-fit: contain; display: inline-block;" alt="2">`;
         } else if (rank === 3) {
-          rankBadge = `<img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Star.webp" style="width: 20px; height: 20px; object-fit: contain;" alt="3">`;
+          rankBadge = `<img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Star.webp" style="width: 20px; height: 20px; min-width: 20px; min-height: 20px; flex-shrink: 0; object-fit: contain; display: inline-block;" alt="3">`;
         }
 
         const name = Utils.escapeHtml(item.profile.name || "Пользователь");
@@ -497,21 +497,21 @@ class LumenManager {
         return `
           <div style="display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; background: ${isMe ? 'rgba(255, 215, 0, 0.08)' : 'rgba(255, 255, 255, 0.03)'}; border: 1px solid ${isMe ? 'rgba(255, 215, 0, 0.3)' : 'rgba(255, 255, 255, 0.06)'}; border-radius: 12px; cursor: pointer; transition: all 0.15s ease;" onclick="Utils.closeModal('modal-lumens-info'); ProfileManager.showProfile('${item.uid}')">
             <div style="display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
-              <div style="display: flex; align-items: center; justify-content: center; width: 24px; flex-shrink: 0;">
+              <div style="display: flex; align-items: center; justify-content: center; width: 24px; min-width: 24px; flex-shrink: 0;">
                 ${rankBadge}
               </div>
-              <img src="${avatar}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid rgba(255,255,255,0.15); flex-shrink: 0;" onerror="this.src='assets/avatars/default.png'">
+              <img src="${avatar}" style="width: 32px; height: 32px; min-width: 32px; min-height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid rgba(255,255,255,0.15); flex-shrink: 0;" onerror="this.src='assets/avatars/default.png'">
               <div style="display: flex; flex-direction: column; min-width: 0;">
                 <div style="font-size: 13px; font-weight: 700; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px;">
                   <span>${name}</span>
-                  ${isMe ? '<span style="font-size: 9.5px; padding: 1px 5px; background: rgba(255,215,0,0.2); color: #ffd700; border-radius: 4px; font-weight: 800;">ВЫ</span>' : ''}
+                  ${isMe ? '<span style="font-size: 9.5px; padding: 1px 5px; background: rgba(255,215,0,0.2); color: #ffd700; border-radius: 4px; font-weight: 800; flex-shrink: 0;">ВЫ</span>' : ''}
                 </div>
                 ${username ? `<div style="font-size: 11px; color: rgba(255, 255, 255, 0.45); line-height: 1.1;">${username}</div>` : ''}
               </div>
             </div>
-            <div style="font-size: 13px; font-weight: 800; color: #ffd700; display: flex; align-items: center; gap: 5px; margin-left: 8px; flex-shrink: 0;">
+            <div style="font-size: 13px; font-weight: 800; color: #ffd700; display: flex; align-items: center; gap: 5px; margin-left: 8px; flex-shrink: 0; white-space: nowrap;">
               <span>${item.lumens.toLocaleString()}</span>
-              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" class="inline-sparkles-icon" alt="✨">
+              <img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp" class="inline-sparkles-icon" style="width: 16px; height: 16px; min-width: 16px; min-height: 16px; flex-shrink: 0; object-fit: contain; display: inline-block;" alt="✨">
             </div>
           </div>
         `;
