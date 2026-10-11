@@ -877,13 +877,17 @@ class Utils {
                     gap: 16px !important;
                 }
                 .room-card {
-                    min-height: 200px;
-                    width: 100%;
+                    min-height: 240px !important;
+                    height: auto !important;
+                    width: 100% !important;
+                    display: flex !important;
+                    flex-direction: column !important;
                 }
                 .room-preview {
-                    height: 130px !important;
-                    min-height: 130px;
-                    flex-shrink: 0;
+                    aspect-ratio: 16 / 9 !important;
+                    height: auto !important;
+                    min-height: 175px !important;
+                    flex-shrink: 0 !important;
                 }
                 .room-info h4 {
                     white-space: normal !important;

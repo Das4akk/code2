@@ -1825,16 +1825,34 @@
         width: 100%;
       }
       @media (max-width: 768px) {
-        .rooms-grid {
+        .rooms-grid,
+        #library-grid {
           grid-template-columns: 1fr !important;
-          gap: 20px !important;
+          gap: 16px !important;
           padding-left: 0 !important;
           padding-right: 0 !important;
+          width: 100% !important;
+          box-sizing: border-box !important;
+        }
+        #section-library {
+          overflow-y: auto !important;
+          -webkit-overflow-scrolling: touch !important;
+          height: 100% !important;
+          max-height: 100% !important;
+          flex: 1 1 auto !important;
+          width: 100% !important;
+          box-sizing: border-box !important;
         }
         .room-card {
-          min-height: unset !important;
+          min-height: 240px !important;
+          height: auto !important;
+          width: 100% !important;
+          display: flex !important;
+          flex-direction: column !important;
           border-radius: 16px !important;
           overflow: hidden !important;
+          flex-shrink: 0 !important;
+          box-sizing: border-box !important;
           transition: transform 0.15s ease, box-shadow 0.15s ease !important;
           touch-action: manipulation;
           -webkit-tap-highlight-color: transparent;
@@ -1846,19 +1864,59 @@
           aspect-ratio: 16 / 9 !important;
           width: 100% !important;
           height: auto !important;
-          min-height: unset !important;
+          min-height: 180px !important;
           flex-shrink: 0 !important;
           border-radius: 14px 14px 0 0 !important;
           overflow: hidden !important;
           position: relative !important;
           background: #0d0d12 !important;
+          display: block !important;
         }
-        .room-preview img,
+        .room-preview > img:not(.library-private-lock):not(.emoji-icon),
+        .room-preview .room-preview-thumb,
         .room-preview video {
           width: 100% !important;
           height: 100% !important;
+          min-height: 180px !important;
           object-fit: cover !important;
           display: block !important;
+        }
+        .library-private-badge {
+          position: absolute !important;
+          top: 8px !important;
+          right: 8px !important;
+          background: rgba(0, 0, 0, 0.72) !important;
+          backdrop-filter: blur(8px) !important;
+          -webkit-backdrop-filter: blur(8px) !important;
+          padding: 3px 8px !important;
+          border-radius: 6px !important;
+          font-size: 11px !important;
+          font-weight: 600 !important;
+          color: #ffffff !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          gap: 4px !important;
+          z-index: 5 !important;
+          border: 1px solid rgba(255, 255, 255, 0.16) !important;
+          white-space: nowrap !important;
+          pointer-events: none !important;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+          width: auto !important;
+          height: auto !important;
+          max-width: max-content !important;
+        }
+        .library-private-badge img,
+        .library-private-badge .library-private-lock {
+          width: 13px !important;
+          height: 13px !important;
+          min-width: 13px !important;
+          min-height: 13px !important;
+          max-width: 13px !important;
+          max-height: 13px !important;
+          object-fit: contain !important;
+          vertical-align: middle !important;
+          display: inline-block !important;
+          flex-shrink: 0 !important;
         }
         .room-info {
           padding: 12px 14px !important;
@@ -1989,6 +2047,40 @@
         inset: 0;
         background: linear-gradient(to top, var(--panel), transparent);
         pointer-events: none;
+      }
+      .library-private-badge {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background: rgba(0, 0, 0, 0.72);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+        color: #ffffff;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        z-index: 5;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        white-space: nowrap;
+        pointer-events: none;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+      }
+      .library-private-badge img,
+      .library-private-badge .library-private-lock {
+        width: 14px;
+        height: 14px;
+        min-width: 14px;
+        min-height: 14px;
+        max-width: 14px;
+        max-height: 14px;
+        object-fit: contain;
+        vertical-align: middle;
+        display: inline-block;
+        flex-shrink: 0;
       }
       .room-info {
         padding: 16px;

@@ -6,9 +6,26 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
+    if (typeof req.body === 'string') {
+      try {
+        req.body = JSON.parse(req.body);
+      } catch (_) {}
+    } else if (!req.body && ['POST', 'PUT', 'PATCH'].includes(req.method)) {
+      try {
+        const buffers = [];
+        for await (const chunk of req) {
+          buffers.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+        }
+        const raw = Buffer.concat(buffers).toString('utf8');
+        if (raw) {
+          try { req.body = JSON.parse(raw); } catch (_) { req.body = raw; }
+        }
+      } catch (_) {}
+    }
+
     let action = (req.query?.action || req.body?.action || '').trim();
     if (!action) {
-      const urlPath = req.url.split('?')[0];
+      const urlPath = (req.url || '').split('?')[0];
       const segments = urlPath.split('/').filter(Boolean);
       const last = segments[segments.length - 1];
       if (last && last !== 'custom-auth' && last !== 'api') {

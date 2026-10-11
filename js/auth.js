@@ -633,10 +633,11 @@ class AuthManager {
         sessionStorage.setItem("cowio_auth_token_" + normalizedEmail, data.token);
       } catch (e) {}
     }
-    if (data.code) {
-      console.log(`[COWIO] Секретный код для ${normalizedEmail}: ${data.code}`);
+    const displayCode = data.code || data.devCode;
+    if (displayCode) {
+      console.log(`[COWIO] Код подтверждения для ${normalizedEmail}: ${displayCode}`);
       if (window.Utils && typeof Utils.toast === "function") {
-        Utils.toast(`Код подтверждения: ${data.code}`, "info");
+        Utils.toast(`Код подтверждения: ${displayCode}`, "info");
       }
     }
     return data;

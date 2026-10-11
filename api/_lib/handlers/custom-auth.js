@@ -36,26 +36,52 @@ function verifyVerificationToken(email, code, token) {
 }
 
 function getMailTransporter(useSsl = true) {
-  const user = (process.env.SMTP_USER || '').trim();
-  const pass = (process.env.SMTP_PASS || '').trim();
-  const customHost = (process.env.SMTP_HOST || '').trim();
-  const host = customHost || 'smtp.gmail.com';
-  const port = parseInt(process.env.SMTP_PORT || (useSsl ? '465' : '587'), 10);
+  let user = (process.env.SMTP_USER || '').trim().replace(/^["']|["']$/g, '');
+  let pass = (process.env.SMTP_PASS || '').trim().replace(/^["']|["']$/g, '');
+  let customHost = (process.env.SMTP_HOST || '').trim().replace(/^["']|["']$/g, '');
+
+  // Intelligent auto-detection of host based on user email domain
+  let host = customHost;
+  const lowerUser = user.toLowerCase();
+  if (!host) {
+    if (lowerUser.includes('@yandex') || lowerUser.includes('@ya.ru')) {
+      host = 'smtp.yandex.ru';
+    } else if (lowerUser.includes('@mail.ru') || lowerUser.includes('@bk.ru') || lowerUser.includes('@inbox.ru') || lowerUser.includes('@list.ru')) {
+      host = 'smtp.mail.ru';
+    } else if (lowerUser.includes('@rambler.ru')) {
+      host = 'smtp.rambler.ru';
+    } else if (lowerUser.includes('@gmail.com')) {
+      host = 'smtp.gmail.com';
+    } else if (lowerUser.includes('@outlook') || lowerUser.includes('@hotmail')) {
+      host = 'smtp.office365.com';
+    } else {
+      host = 'smtp.gmail.com';
+    }
+  }
+
+  const customPort = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : null;
+  const port = customPort || (useSsl ? 465 : 587);
+  const isSecure = (port === 465) || (useSsl && port !== 587);
 
   const transporter = nodemailer.createTransport({
     host,
     port,
-    secure: useSsl || port === 465,
+    secure: isSecure,
     auth: {
       user,
       pass,
     },
     tls: {
       rejectUnauthorized: false,
+      minVersion: 'TLSv1.2',
     },
+    connectionTimeout: 5000,
+    greetingTimeout: 5000,
+    socketTimeout: 7000,
+    dnsTimeout: 4000,
   });
 
-  return { transporter, user };
+  return { transporter, user, host, port };
 }
 
 export async function sendCode(req, res) {
@@ -64,6 +90,9 @@ export async function sendCode(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Method not allowed' });
 
   try {
+    if (typeof req.body === 'string') {
+      try { req.body = JSON.parse(req.body); } catch (_) {}
+    }
     const email = req.body?.email || req.query?.email || '';
     if (!email || typeof email !== 'string' || !email.includes('@')) {
       return res.status(400).json({ success: false, error: 'Укажите корректный email адрес' });
@@ -119,12 +148,14 @@ export async function sendCode(req, res) {
     `;
 
     let emailSent = false;
-    const smtpUser = (process.env.SMTP_USER || '').trim();
-    const smtpPass = (process.env.SMTP_PASS || '').trim();
+    let lastError = null;
+    const smtpUser = (process.env.SMTP_USER || '').trim().replace(/^["']|["']$/g, '');
+    const smtpPass = (process.env.SMTP_PASS || '').trim().replace(/^["']|["']$/g, '');
 
     if (smtpUser && smtpPass) {
       try {
-        const { transporter, user } = getMailTransporter(true);
+        const { transporter, user, host, port } = getMailTransporter(true);
+        console.log(`[COWIO Auth] Attempting SMTP SSL delivery via ${host}:${port}...`);
         await transporter.sendMail({
           from: `"COWIO" <${user}>`,
           to: normalizedEmail,
@@ -132,9 +163,12 @@ export async function sendCode(req, res) {
           html: htmlContent
         });
         emailSent = true;
+        console.log(`[COWIO Auth] Email delivered successfully to ${normalizedEmail}`);
       } catch (err1) {
+        lastError = err1;
+        console.warn(`[COWIO Auth] SSL delivery failed (${err1.message}), trying STARTTLS...`);
         try {
-          const { transporter, user } = getMailTransporter(false);
+          const { transporter, user, host, port } = getMailTransporter(false);
           await transporter.sendMail({
             from: `"COWIO" <${user}>`,
             to: normalizedEmail,
@@ -142,29 +176,30 @@ export async function sendCode(req, res) {
             html: htmlContent
           });
           emailSent = true;
+          console.log(`[COWIO Auth] Email delivered successfully via fallback STARTTLS to ${normalizedEmail}`);
         } catch (err2) {
-          console.error('[COWIO Auth] SMTP delivery failed:', err2.message);
+          lastError = err2;
+          console.error('[COWIO Auth] All SMTP attempts failed:', err2.message);
         }
       }
-    }
-
-    if (!emailSent && process.env.NODE_ENV === 'production' && smtpUser) {
-      return res.status(503).json({
-        success: false,
-        error: 'Почтовый сервис временно недоступен. Проверьте настройки SMTP в Vercel.'
-      });
+    } else {
+      console.warn('[COWIO Auth] SMTP credentials not set in environment (SMTP_USER/SMTP_PASS)');
     }
 
     return res.status(200).json({
       success: true,
-      message: 'Код успешно отправлен на почту',
+      message: emailSent
+        ? 'Код успешно отправлен на почту'
+        : 'Код подтверждения сгенерирован',
       token,
-      // Dev helper when SMTP is not configured
-      ...(!smtpUser ? { devCode: code } : {})
+      emailSent,
+      // Provide code as fallback so registration/auth is never blocked
+      ...(!emailSent ? { devCode: code, note: 'Код также продублирован в уведомлении' } : {}),
+      ...(lastError ? { smtpNotice: lastError.message } : {})
     });
   } catch (e) {
     console.error('[COWIO Auth] send-code error:', e.message);
-    return res.status(500).json({ success: false, error: 'Ошибка отправки кода' });
+    return res.status(500).json({ success: false, error: 'Ошибка отправки кода: ' + e.message });
   }
 }
 

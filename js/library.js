@@ -199,9 +199,9 @@ class LibraryManager {
         
         card.innerHTML = `
             <div class="room-preview">
-                <img src="${thumbUrl}" loading="lazy" decoding="async" onerror="this.onerror=null; this.src='https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Television.webp';" style="width:100%; height:100%; object-fit:cover;">
+                <img src="${thumbUrl}" class="room-preview-thumb" loading="lazy" decoding="async" onerror="this.onerror=null; this.src='https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Television.webp';" style="width:100%; height:100%; object-fit:cover;">
                 <div class="room-preview-overlay"></div>
-                ${v.isPublic ? '' : '<div style="position:absolute; top:8px; right:8px; background:rgba(0,0,0,0.7); padding:4px 8px; border-radius:6px; font-size:11px; display:flex; align-items:center; gap:4px;"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" loading="lazy" decoding="async" style="width:1.2em;height:1.2em;" /> Личное</div>'}
+                ${v.isPublic ? '' : '<div class="library-private-badge"><img src="https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp" class="library-private-lock" loading="lazy" decoding="async" alt="🔒" /> <span>Личное</span></div>'}
             </div>
             <div class="room-info">
                 <h4 class="rm-title">${window.Utils.escapeHtml(v.title || "Без названия")}</h4>
