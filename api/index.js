@@ -1,0 +1,208 @@
+import { setCors } from './_lib/helpers/auth.js';
+import * as customAuthHandler from './_lib/handlers/custom-auth.js';
+import * as videoHandler from './_lib/handlers/video.js';
+import * as authHandler from './_lib/handlers/auth.js';
+import * as adminHandler from './_lib/handlers/admin.js';
+import * as usersHandler from './_lib/handlers/users.js';
+import * as chatHandler from './_lib/handlers/chat.js';
+import * as premiumHandler from './_lib/handlers/premium.js';
+
+export default async function handler(req, res) {
+  setCors(req, res);
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
+  // Polyfill status and json methods for serverless compatibility
+  if (typeof res.status !== 'function') {
+    res.status = function (code) {
+      this.statusCode = code;
+      return this;
+    };
+  }
+  if (typeof res.json !== 'function') {
+    res.json = function (data) {
+      this.setHeader('Content-Type', 'application/json; charset=utf-8');
+      this.end(JSON.stringify(data));
+      return this;
+    };
+  }
+
+  // Parse body if JSON string or readable stream
+  if (typeof req.body === 'string') {
+    try {
+      req.body = JSON.parse(req.body);
+    } catch (_) {}
+  } else if (!req.body && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method || '')) {
+    try {
+      const buffers = [];
+      for await (const chunk of req) {
+        buffers.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+      const raw = Buffer.concat(buffers).toString('utf8');
+      if (raw) {
+        try {
+          req.body = JSON.parse(raw);
+        } catch (_) {
+          req.body = raw;
+        }
+      } else {
+        req.body = {};
+      }
+    } catch (_) {
+      req.body = {};
+    }
+  }
+
+  // Parse URL & Query params
+  const rawUrl = req.url || '';
+  const urlObj = new URL(rawUrl, 'http://localhost:3000');
+  const pathname = urlObj.pathname.replace(/\/+$/, '') || '/';
+  
+  if (!req.query) {
+    req.query = Object.fromEntries(urlObj.searchParams.entries());
+  } else {
+    for (const [k, v] of urlObj.searchParams.entries()) {
+      if (req.query[k] === undefined) req.query[k] = v;
+    }
+  }
+
+  // Helper to extract action from query, body, or pathname
+  const getSubAction = (prefix) => {
+    let act = (req.query?.action || req.body?.action || '').trim();
+    if (!act && pathname.startsWith(prefix)) {
+      const sub = pathname.slice(prefix.length).replace(/^\/+/, '').split('/')[0];
+      if (sub) act = sub.trim();
+    }
+    return act;
+  };
+
+  try {
+    // 1. Diagnostics & Health
+    if (pathname === '/api/health' || pathname === '/api/diag' || pathname === '/api/custom-auth/diag') {
+      return await customAuthHandler.getDiagnostics(req, res);
+    }
+
+    // 2. Custom Auth (send-code, verify-code, reset-password, change-email)
+    if (pathname.startsWith('/api/custom-auth')) {
+      const action = getSubAction('/api/custom-auth');
+      switch (action) {
+        case 'send-code':
+          return await customAuthHandler.sendCode(req, res);
+        case 'verify-code':
+          return await customAuthHandler.verifyCode(req, res);
+        case 'reset-password':
+          return await customAuthHandler.resetPassword(req, res);
+        case 'change-email':
+          return await customAuthHandler.changeEmail(req, res);
+        case 'diag':
+        case 'diagnostics':
+          return await customAuthHandler.getDiagnostics(req, res);
+        default:
+          return res.status(404).json({ error: `Unknown custom-auth action: ${action}` });
+      }
+    }
+
+    // 3. Resolve Media
+    if (pathname === '/api/resolve-media') {
+      return await videoHandler.resolveMedia(req, res);
+    }
+
+    // 4. Video & Library
+    if (pathname.startsWith('/api/video') || pathname.startsWith('/api/library')) {
+      const prefix = pathname.startsWith('/api/video') ? '/api/video' : '/api/library';
+      const action = getSubAction(prefix);
+      switch (action) {
+        case 'search':
+          return await videoHandler.search(req, res);
+        case 'info':
+          return await videoHandler.info(req, res);
+        case 'resolve-media':
+          return await videoHandler.resolveMedia(req, res);
+        case 'fetch-metadata':
+          return await videoHandler.fetchMetadata(req, res);
+        default:
+          if (req.query?.url || req.body?.url) {
+            return await videoHandler.info(req, res);
+          }
+          return res.status(404).json({ error: `Unknown video action: ${action}` });
+      }
+    }
+
+    // 5. Auth
+    if (pathname.startsWith('/api/auth')) {
+      const action = getSubAction('/api/auth') || 'check-role';
+      switch (action) {
+        case 'check-role':
+          return await authHandler.checkRole(req, res);
+        case 'claim-role':
+          return await authHandler.claimRole(req, res);
+        case 'geo':
+          return await authHandler.geo(req, res);
+        default:
+          return res.status(404).json({ error: `Unknown auth action: ${action}` });
+      }
+    }
+
+    // 6. Admin
+    if (pathname.startsWith('/api/admin')) {
+      const action = getSubAction('/api/admin');
+      switch (action) {
+        case 'recalc-leaderboard':
+          return await adminHandler.recalcLeaderboard(req, res);
+        case 'update-user-field':
+          return await adminHandler.updateUserField(req, res);
+        case 'set-user-role':
+          return await adminHandler.setUserRole(req, res);
+        case 'set-maintenance':
+          return await adminHandler.setMaintenance(req, res);
+        default:
+          return res.status(404).json({ error: `Unknown admin action: ${action}` });
+      }
+    }
+
+    // 7. Users
+    if (pathname.startsWith('/api/users')) {
+      const action = getSubAction('/api/users') || 'search';
+      switch (action) {
+        case 'search':
+          return await usersHandler.search(req, res);
+        case 'send-tip':
+        case 'tip':
+          return await usersHandler.sendTip(req, res);
+        default:
+          return res.status(404).json({ error: `Unknown users action: ${action}` });
+      }
+    }
+
+    // 8. Chat
+    if (pathname.startsWith('/api/chat')) {
+      const action = getSubAction('/api/chat') || 'send-message';
+      switch (action) {
+        case 'send-message':
+        case 'message':
+          return await chatHandler.sendMessage(req, res);
+        default:
+          return res.status(404).json({ error: `Unknown chat action: ${action}` });
+      }
+    }
+
+    // 9. Premium
+    if (pathname.startsWith('/api/premium')) {
+      const action = getSubAction('/api/premium');
+      switch (action) {
+        case 'create-payment':
+          return await premiumHandler.createPayment(req, res);
+        case 'status':
+          return await premiumHandler.status(req, res);
+        case 'webhook':
+          return await premiumHandler.webhook(req, res);
+        default:
+          return res.status(404).json({ error: `Unknown premium action: ${action}` });
+      }
+    }
+
+    return res.status(404).json({ error: `API route not found: ${pathname}` });
+  } catch (err) {
+    console.error('[Unified API Router Error]:', err);
+    return res.status(500).json({ error: err.message || 'Internal Server Error' });
+  }
+}

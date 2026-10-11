@@ -60,19 +60,6 @@ function apiDevPlugin(): Plugin {
           };
         }
 
-        if (pathname === '/api/health') {
-          try {
-            // @ts-ignore
-            const mod = await import('./api/health.js');
-            return await (mod.default || mod)(req, res);
-          } catch (hErr: any) {
-            console.error('[Health error]', hErr);
-            res.setHeader('Content-Type', 'application/json; charset=utf-8');
-            res.end(JSON.stringify({ status: 'ok', timestamp: Date.now(), app: 'COWIO', mode: 'dev' }));
-            return;
-          }
-        }
-
         // Parse request body for POST/PUT/PATCH if needed
         if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method || '')) {
           if (!(req as any).body) {
@@ -101,53 +88,9 @@ function apiDevPlugin(): Plugin {
         (req as any).query = Object.fromEntries(url.searchParams.entries());
 
         try {
-          if (pathname.startsWith('/api/auth')) {
-            // @ts-ignore
-            const mod = await import('./api/auth.js');
-            return await (mod.default || mod)(req, res);
-          }
-
-          if (pathname.startsWith('/api/custom-auth')) {
-            // @ts-ignore
-            const mod = await import('./api/custom-auth.js');
-            return await (mod.default || mod)(req, res);
-          }
-
-          if (pathname.startsWith('/api/admin')) {
-            // @ts-ignore
-            const mod = await import('./api/admin.js');
-            return await (mod.default || mod)(req, res);
-          }
-
-          if (pathname.startsWith('/api/users')) {
-            // @ts-ignore
-            const mod = await import('./api/users.js');
-            return await (mod.default || mod)(req, res);
-          }
-
-          if (pathname.startsWith('/api/chat')) {
-            // @ts-ignore
-            const mod = await import('./api/chat.js');
-            return await (mod.default || mod)(req, res);
-          }
-
-          if (pathname === '/api/resolve-media') {
-            // @ts-ignore
-            const mod = await import('./api/resolve-media.js');
-            return await (mod.default || mod)(req, res);
-          }
-
-          if (pathname.startsWith('/api/video') || pathname.startsWith('/api/library')) {
-            // @ts-ignore
-            const mod = await import('./api/video.js');
-            return await (mod.default || mod)(req, res);
-          }
-
-          if (pathname.startsWith('/api/premium')) {
-            // @ts-ignore
-            const mod = await import('./api/premium.js');
-            return await (mod.default || mod)(req, res);
-          }
+          // @ts-ignore
+          const mod = await import('./api/index.js');
+          return await (mod.default || mod)(req, res);
         } catch (apiErr: any) {
           console.error('[Vite API Proxy Error]:', apiErr);
           res.statusCode = 500;
