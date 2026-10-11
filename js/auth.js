@@ -647,10 +647,12 @@ class AuthManager {
     const normalizedEmail = String(email || "").trim().toLowerCase();
     let data = null;
     let text = "";
+    let statusCode = 0;
 
     try {
       const res = await this.postCustomAuth("send-code", { email: normalizedEmail });
       if (res) {
+        statusCode = res.status;
         text = await res.text();
         try {
           data = JSON.parse(text);
@@ -686,8 +688,17 @@ class AuthManager {
       return data;
     }
 
+    // Server returned a known error (e.g. rate limit, invalid email)
+    if (data && data.error) {
+      console.error('[COWIO Auth] Server error response:', statusCode, data.error);
+      if (window.Utils && typeof Utils.toast === "function") {
+        Utils.toast(data.error, "error", 10000);
+      }
+      return data;
+    }
+
     // 2. Emergency fallback: if serverless function crashed or is unavailable
-    console.warn('[COWIO Auth] Serverless API unavailable, activating local fallback code generator...');
+    console.warn(`[COWIO Auth] Serverless API unavailable (HTTP ${statusCode}: ${text.slice(0, 100)}), activating local fallback code generator...`);
     const fallbackCode = String(Math.floor(100000 + Math.random() * 900000));
     const fallbackToken = `${Date.now()}:fallback_${normalizedEmail}_${fallbackCode}`;
     this.lastAuthTokens.set(normalizedEmail, fallbackToken);
