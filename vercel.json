@@ -31,7 +31,6 @@
     { "source": "/api/video/:action*", "destination": "/api/video?action=:action" },
     { "source": "/api/library/:action*", "destination": "/api/video?action=:action" },
     { "source": "/api/resolve-media", "destination": "/api/resolve-media" },
-    { "source": "/api/emoji-proxy", "destination": "/api/emoji-proxy" },
     { "source": "/api/premium/:action*", "destination": "/api/premium?action=:action" },
     { "source": "/api/health", "destination": "/api/health" },
     { "source": "/((?!api/|assets/|css/|js/|partials/|public/|.*\\..*).*)", "destination": "/index.html" }

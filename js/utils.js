@@ -1,14 +1,11 @@
 class Utils {
-  static fixEmojiUrl(url, isReaction = false) {
+  static fixEmojiUrl(url) {
     if (!url || typeof url !== "string") return url;
     if (url.includes("raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/")) {
-      url = url.replace(
+      return url.replace(
         "raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/",
         "cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/",
       );
-    }
-    if (typeof window !== "undefined" && typeof window.getOptimizedEmojiUrl === "function") {
-      return window.getOptimizedEmojiUrl(url, isReaction);
     }
     return url;
   }

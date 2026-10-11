@@ -80,3 +80,38 @@ npm run dev
 # Сборка проекта
 npm run build
 ```
+
+---
+
+## 🎭 Памятка: Анимированные Telegram Эмодзи (CDN & Каталог)
+
+Все анимированные эмодзи в COWIO подключаются напрямую через публичный CDN репозитория **Telegram Animated Emojis**:
+
+* **Официальный репозиторий**: `https://github.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis`
+* **Базовый URL CDN (jsDelivr)**:
+  `https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/{Категория}/{Название%20Эмодзи}.webp`
+
+### Доступные категории:
+1. `Activity` (Медали, Конфетти, Звездочки, Игры, Магия, Трофеи):
+   * Пример: `https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Activity/Sparkles.webp`
+2. `Animals and Nature` (Огонь, Звезды, Животные, Природа):
+   * Пример: `https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Fire.webp`
+   * Пример: `https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Animals%20and%20Nature/Glowing%20Star.webp`
+3. `Food and Drink` (Еда, Напитки, Торты, Попкорн)
+4. `Objects` (Подарки, Сумки, Замки, Инструменты):
+   * Пример: `https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Shopping%20Bags.webp`
+   * Пример: `https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Objects/Locked%20With%20Key.webp`
+5. `People` (Персонажи, Профессии, Жесты)
+6. `Smileys` (Смайлы, Эмоции, Празднование):
+   * Пример: `https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Smileys/Partying%20Face.webp`
+7. `Symbols` (Сердца, Галочки, Вопросительные знаки):
+   * Пример: `https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Heart%20On%20Fire.webp`
+   * Пример: `https://cdn.jsdelivr.net/gh/Tarikul-Islam-Anik/Telegram-Animated-Emojis@main/Symbols/Speech%20Balloon.webp`
+8. `Travel and Places` (Ракеты, Транспорт, Локации)
+9. `Flags` (Флаги)
+
+### Важные правила использования:
+* **Не скачивать и не хранить эмодзи локально** на сервере во избежание раздувания размера репозитория (все 600+ webp весят десятки мегабайт).
+* **Не поднимать локальные прокси-серверы** для эмодзи (`/api/emoji-proxy`), так как jsDelivr CDN предоставляет неограниченный глобальный кэш и максимальную скорость отдачи прямо в браузере клиента.
+* Для поиска названий файлов используйте дерево файлов в репозитории GitHub: `github.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis`. Все названия пишутся на английском в стиле Title Case (`Fire.webp`, `Sparkles.webp`, `Party%20Popper.webp`).
+

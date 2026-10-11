@@ -1174,7 +1174,7 @@ class ProfileManager {
     );
     let innerHTML = "";
     if (profile.avatar) {
-      innerHTML = `<img src="${Utils.escapeHtml(profile.avatar)}" loading="lazy" decoding="async" onerror="this.parentElement.innerHTML='?';" style="width:100%; height:100%; object-fit:cover; border-radius:inherit;">`;
+      innerHTML = `<img src="${Utils.escapeHtml(profile.avatar)}" class="avatar-photo-img" loading="lazy" decoding="async" onerror="this.parentElement.innerHTML='?';" style="width:100%; height:100%; object-fit:cover; border-radius:inherit;">`;
     } else {
       innerHTML = textFallback;
     }
@@ -1188,14 +1188,14 @@ class ProfileManager {
         frameVal.startsWith("http")
       ) {
         // it is an image
-        frameHTML = `<img src="${frameVal}" loading="lazy" decoding="async" style="width:130%; height:130%; object-fit:contain; position:absolute; top:-15%; left:-15%; z-index:2; pointer-events:none;" onerror="this.style.display='none';">`;
+        frameHTML = `<img src="${frameVal}" class="profile-avatar-frame avatar-frame-img" loading="lazy" decoding="async" style="width:130%; height:130%; object-fit:contain; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); z-index:4; pointer-events:none;" onerror="this.style.display='none';">`;
       } else {
         // it is a CSS class
-        frameHTML = `<div class="${frameVal}" style="z-index:2; pointer-events:none;"></div>`;
+        frameHTML = `<div class="profile-avatar-frame avatar-frame-elem ${frameVal}" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:130%; height:130%; z-index:4; pointer-events:none;"></div>`;
       }
     }
 
-    return `<div class="avatar-inner-wrap" style="position:relative; width:100%; height:100%; display:flex; align-items:center; justify-content:center; border-radius:inherit;"><div style="position:absolute; inset:0; width:100%; height:100%; overflow:hidden; border-radius:inherit; display:flex; align-items:center; justify-content:center; font-size:inherit; font-weight:inherit; color:inherit; background:transparent;">${innerHTML}</div>${frameHTML}</div>`;
+    return `<div class="avatar-inner-wrap" style="position:relative; width:100%; height:100%; display:flex; align-items:center; justify-content:center; border-radius:inherit; overflow:visible;"><div class="avatar-photo-wrap" style="position:absolute; inset:0; width:100%; height:100%; overflow:hidden; border-radius:inherit; display:flex; align-items:center; justify-content:center; font-size:inherit; font-weight:inherit; color:inherit; background:transparent;">${innerHTML}</div>${frameHTML}</div>`;
   } // [NEW]
 
   static updateAvatarPreview(url, name) {

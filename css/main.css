@@ -1540,17 +1540,16 @@
         overflow: visible;
         flex-shrink: 0;
       }
-      .friend-item .avatar img,
-      .friend-item img,
-      .friend-item .avatar-inner-wrap,
+      .friend-item .avatar img:not(.profile-avatar-frame):not(.avatar-frame-img),
+      .friend-item img:not(.profile-avatar-frame):not(.avatar-frame-img),
       .friend-request-item .avatar,
-      .friend-request-item img,
-      .friend-avatar,
-      .friends-list img,
-      .friend-requests-list img,
-      #friends-list img,
-      #find-friend-results img,
-      [class*="friend"] img:not([style*="pointer-events:none"]),
+      .friend-request-item img:not(.profile-avatar-frame):not(.avatar-frame-img),
+      .friend-avatar:not(.profile-avatar-frame):not(.avatar-frame-img),
+      .friends-list img:not(.profile-avatar-frame):not(.avatar-frame-img),
+      .friend-requests-list img:not(.profile-avatar-frame):not(.avatar-frame-img),
+      #friends-list img:not(.profile-avatar-frame):not(.avatar-frame-img),
+      #find-friend-results img:not(.profile-avatar-frame):not(.avatar-frame-img),
+      [class*="friend"] img:not([style*="pointer-events"]):not(.profile-avatar-frame):not(.avatar-frame-img),
       [class*="friend"] .avatar {
         border-radius: 50% !important;
         object-fit: cover !important;
@@ -1628,7 +1627,7 @@
         overflow: visible;
         flex-shrink: 0;
       }
-      .room-outside-friend-avatar img {
+      .room-outside-friend-avatar img:not([style*="pointer-events"]):not(.profile-avatar-frame):not(.avatar-frame-img) {
         width: 100%;
         height: 100%;
         border-radius: 50% !important;
@@ -2020,22 +2019,25 @@
         max-width: 65%;
       }
       .rm-host-avatar {
-        width: 20px;
-        height: 20px;
+        width: 22px !important;
+        height: 22px !important;
+        min-width: 22px !important;
+        min-height: 22px !important;
         border-radius: 50% !important;
-        overflow: visible;
-        flex-shrink: 0;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        vertical-align: middle;
+        overflow: visible !important;
+        position: relative !important;
+        flex-shrink: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        vertical-align: middle !important;
       }
-      .rm-host-avatar .avatar,
-      .rm-host-avatar img {
-        width: 20px !important;
-        height: 20px !important;
+      .rm-host-avatar .avatar-inner-wrap {
+        width: 100% !important;
+        height: 100% !important;
+        overflow: visible !important;
         border-radius: 50% !important;
-        object-fit: cover !important;
+        position: relative !important;
       }
       .rm-host-name {
         white-space: nowrap;
@@ -2043,6 +2045,84 @@
         text-overflow: ellipsis;
         font-weight: 500;
         font-size: 12px;
+      }
+
+      /* ========================================================= */
+      /* UNIVERSAL AVATAR & FRAME SYSTEM - 100% CONCENTRIC & CENTERED */
+      /* ========================================================= */
+      .avatar-inner-wrap {
+        position: relative !important;
+        width: 100% !important;
+        height: 100% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: inherit !important;
+        overflow: visible !important;
+      }
+      .avatar-inner-wrap .avatar-photo-wrap,
+      .avatar-inner-wrap > div:first-child {
+        position: absolute !important;
+        inset: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        overflow: hidden !important;
+        border-radius: 50% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: inherit !important;
+        font-weight: inherit !important;
+        color: inherit !important;
+        background: transparent !important;
+      }
+      .avatar-inner-wrap .avatar-photo-wrap img,
+      .avatar-inner-wrap > div:first-child img {
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: cover !important;
+        border-radius: 50% !important;
+        display: block !important;
+      }
+
+      /* Bulletproof avatar frame overlay centering */
+      .profile-avatar-frame,
+      .avatar-frame-img,
+      .avatar-frame-elem,
+      .avatar-inner-wrap > img.profile-avatar-frame,
+      .avatar-inner-wrap > img.avatar-frame-img,
+      .avatar-inner-wrap > .profile-avatar-frame,
+      .avatar-inner-wrap > img[style*="pointer-events"],
+      .avatar-inner-wrap > img[style*="z-index"],
+      .rm-host-avatar .profile-avatar-frame,
+      .rm-host-avatar img.avatar-frame-img,
+      .rm-host-avatar img[style*="pointer-events"],
+      .stack-avatar .profile-avatar-frame,
+      .stack-avatar img.avatar-frame-img,
+      .stack-avatar img[style*="pointer-events"],
+      #view-avatar .profile-avatar-frame,
+      #view-avatar img.avatar-frame-img,
+      #lobby-app-bar-avatar .profile-avatar-frame,
+      #lobby-app-bar-avatar img.avatar-frame-img {
+        position: absolute !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        width: 130% !important;
+        height: 130% !important;
+        min-width: 130% !important;
+        min-height: 130% !important;
+        max-width: 130% !important;
+        max-height: 130% !important;
+        border-radius: 0 !important;
+        object-fit: contain !important;
+        pointer-events: none !important;
+        z-index: 4 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+        background: transparent !important;
       }
 
       /* ========================================================= */
@@ -7064,7 +7144,7 @@
     .lobby-app-bar-user .avatar,
     #lobby-app-bar-avatar,
     #lobby-app-bar-avatar .avatar,
-    #lobby-app-bar-avatar img {
+    #lobby-app-bar-avatar img:not(.profile-avatar-frame):not(.avatar-frame-img) {
       width: 32px !important;
       height: 32px !important;
       flex-shrink: 0 !important;
@@ -8440,11 +8520,11 @@
       }
       .avatar-img,
       img.avatar,
-      .chat-profile-link img,
-      .room-user-profile-link img,
-      .avatar-border-glow img,
+      .chat-profile-link img:not(.profile-avatar-frame):not(.avatar-frame-img),
+      .room-user-profile-link img:not(.profile-avatar-frame):not(.avatar-frame-img),
+      .avatar-border-glow img:not(.profile-avatar-frame):not(.avatar-frame-img),
       .chat-avatar-placeholder,
-      .lobby-friends-list img,
+      .lobby-friends-list img:not(.profile-avatar-frame):not(.avatar-frame-img),
       .avatar,
       .users-tab-avatar {
         border-radius: 50% !important;
@@ -10011,9 +10091,7 @@
     }
 
     /* Global Animated Emoji Hardware Acceleration & Frame Containment */
-    img[src*="Telegram-Animated-Emojis"],
-    img[src*="emoji-proxy"],
-    img[src^="/emoji/"] {
+    img[src*="Telegram-Animated-Emojis"] {
       content-visibility: auto;
       contain: paint layout;
       transform: translateZ(0);
@@ -10030,9 +10108,7 @@
     }
 
     /* Static Emojis High-Efficiency Performance Mode */
-    html.use-static-emojis img[src*="Telegram-Animated-Emojis"]:not(.room-reaction-anim),
-    html.use-static-emojis img[src*="emoji-proxy"]:not(.room-reaction-anim),
-    html.use-static-emojis img[src^="/emoji/"]:not(.room-reaction-anim) {
+    html.use-static-emojis img[src*="Telegram-Animated-Emojis"]:not(.room-reaction-anim) {
       content-visibility: auto;
       contain: paint layout style;
       image-rendering: auto;

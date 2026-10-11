@@ -313,7 +313,7 @@ class RoomManager {
       const hostEl = card.querySelector(".rm-host");
       if (hostEl) {
         hostEl.innerHTML = `
-          <span class="rm-host-avatar" title="Хост: ${Utils.escapeHtml(room.hostName || hostProfile.name || "Неизвестно")}">${hostAvatarHtml}</span>
+          <span class="rm-host-avatar" style="display:inline-flex;align-items:center;justify-content:center;position:relative;width:22px;height:22px;min-width:22px;min-height:22px;border-radius:50%;overflow:visible;flex-shrink:0;vertical-align:middle;" title="Хост: ${Utils.escapeHtml(room.hostName || hostProfile.name || "Неизвестно")}">${hostAvatarHtml}</span>
           <span class="rm-host-name">${Utils.escapeHtml(room.hostName || hostProfile.name || "Неизвестно")}</span>
         `;
       }

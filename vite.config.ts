@@ -141,12 +141,6 @@ function apiDevPlugin(): Plugin {
             const mod = await import('./api/premium.js');
             return await (mod.default || mod)(req, res);
           }
-
-          if (pathname === '/api/emoji-proxy') {
-            // @ts-ignore
-            const mod = await import('./api/emoji-proxy.js');
-            return await (mod.default || mod)(req, res);
-          }
         } catch (apiErr: any) {
           console.error('[Vite API Proxy Error]:', apiErr);
           res.statusCode = 500;

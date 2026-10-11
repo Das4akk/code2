@@ -36,8 +36,6 @@ import {
 } from './lib/roles.js';
 // @ts-ignore
 import { getVideoInfo, searchVideos } from './api/video-service.js';
-// @ts-ignore
-import { handleEmojiRequest } from './api/emoji-service.js';
 
 const firebaseAdmin: any = admin;
 const __filename = fileURLToPath(import.meta.url);
@@ -957,13 +955,6 @@ app.post('/api/library/fetch-metadata', requireAuth, async (req: Request, res: R
   } catch (e: any) {
     return res.status(500).json({ success: false, error: 'Metadata fetch error' });
   }
-});
-
-// ----------------------------------------------------
-// EMOJI & STICKER SERVING (HIGH-PERFORMANCE MULTI-TIER ENGINE)
-// ----------------------------------------------------
-app.get(['/api/emoji-proxy', '/emoji-proxy'], (req: Request, res: Response) => {
-  return handleEmojiRequest(req, res);
 });
 
 // ----------------------------------------------------
