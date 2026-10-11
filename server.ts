@@ -263,37 +263,96 @@ function verifyVerificationToken(email: string, code: string, token?: string): b
 }
 
 function getMailTransporter(useSsl = true) {
+  const env = process.env || {};
+
   let user = (
-    process.env.SMTP_USER ||
-    process.env.SMTP_USERNAME ||
-    process.env.EMAIL_USER ||
-    process.env.EMAIL_USERNAME ||
-    process.env.MAIL_USER ||
-    process.env.MAIL_USERNAME ||
-    process.env.YANDEX_USER ||
-    process.env.YANDEX_EMAIL ||
+    env.SMTP_USER ||
+    env.SMPT_USER ||
+    env.SMTP_USERNAME ||
+    env.SMPT_USERNAME ||
+    env.SMTP_LOGIN ||
+    env.SMPT_LOGIN ||
+    env.SMTP_EMAIL ||
+    env.SMPT_EMAIL ||
+    env.EMAIL_USER ||
+    env.EMAIL_USERNAME ||
+    env.EMAIL_LOGIN ||
+    env.MAIL_USER ||
+    env.MAIL_USERNAME ||
+    env.MAIL_LOGIN ||
+    env.YANDEX_USER ||
+    env.YANDEX_EMAIL ||
+    env.GMAIL_USER ||
+    env.GMAIL_EMAIL ||
+    env.NEXT_PUBLIC_SMTP_USER ||
+    env.NEXT_PUBLIC_SMPT_USER ||
+    env.VERCEL_SMTP_USER ||
+    env.VERCEL_SMPT_USER ||
     ''
-  ).trim().replace(/^["']|["']$/g, '');
+  );
+
+  if (!user) {
+    for (const [key, val] of Object.entries(env)) {
+      if (/^(smtp|smpt|email|mail).*?(user|username|login|email)$/i.test(key) && val) {
+        user = String(val);
+        break;
+      }
+    }
+  }
 
   let pass = (
-    process.env.SMTP_PASS ||
-    process.env.SMTP_PASSWORD ||
-    process.env.EMAIL_PASS ||
-    process.env.EMAIL_PASSWORD ||
-    process.env.MAIL_PASS ||
-    process.env.MAIL_PASSWORD ||
-    process.env.YANDEX_PASS ||
-    process.env.YANDEX_PASSWORD ||
-    process.env.YANDEX_APP_PASSWORD ||
+    env.SMTP_PASS ||
+    env.SMPT_PASS ||
+    env.SMTP_PASSWORD ||
+    env.SMPT_PASSWORD ||
+    env.SMTP_KEY ||
+    env.SMPT_KEY ||
+    env.EMAIL_PASS ||
+    env.EMAIL_PASSWORD ||
+    env.MAIL_PASS ||
+    env.MAIL_PASSWORD ||
+    env.YANDEX_PASS ||
+    env.YANDEX_PASSWORD ||
+    env.YANDEX_APP_PASSWORD ||
+    env.GMAIL_PASS ||
+    env.GMAIL_PASSWORD ||
+    env.GMAIL_APP_PASSWORD ||
+    env.NEXT_PUBLIC_SMTP_PASS ||
+    env.NEXT_PUBLIC_SMPT_PASS ||
+    env.VERCEL_SMTP_PASS ||
+    env.VERCEL_SMPT_PASS ||
     ''
-  ).trim().replace(/^["']|["']$/g, '');
+  );
+
+  if (!pass) {
+    for (const [key, val] of Object.entries(env)) {
+      if (/^(smtp|smpt|email|mail).*?(pass|password|app_pass|app_password|secret|key)$/i.test(key) && val) {
+        pass = String(val);
+        break;
+      }
+    }
+  }
+
+  user = String(user || '').trim().replace(/^["']|["']$/g, '');
+  pass = String(pass || '').trim().replace(/^["']|["']$/g, '');
 
   let customHost = (
-    process.env.SMTP_HOST ||
-    process.env.EMAIL_HOST ||
-    process.env.MAIL_HOST ||
+    env.SMTP_HOST ||
+    env.SMPT_HOST ||
+    env.EMAIL_HOST ||
+    env.MAIL_HOST ||
+    env.YANDEX_HOST ||
     ''
-  ).trim().replace(/^["']|["']$/g, '');
+  );
+  if (!customHost) {
+    for (const [key, val] of Object.entries(env)) {
+      if (/^(smtp|smpt|email|mail).*?host$/i.test(key) && val) {
+        customHost = String(val);
+        break;
+      }
+    }
+  }
+  customHost = String(customHost || '').trim().replace(/^["']|["']$/g, '');
 
   let host = customHost;
   const lowerUser = user.toLowerCase();
@@ -304,7 +363,7 @@ function getMailTransporter(useSsl = true) {
       host = 'smtp.mail.ru';
     } else if (lowerUser.includes('@rambler.ru')) {
       host = 'smtp.rambler.ru';
-    } else if (lowerUser.includes('@gmail.com')) {
+    } else if (lowerUser.includes('@gmail.com') || lowerUser.includes('gmail')) {
       host = 'smtp.gmail.com';
     } else if (lowerUser.includes('@outlook') || lowerUser.includes('@hotmail')) {
       host = 'smtp.office365.com';
@@ -321,23 +380,45 @@ function getMailTransporter(useSsl = true) {
     pass = pass.replace(/\s+/g, '');
   }
 
-  const customPort = (process.env.SMTP_PORT || process.env.EMAIL_PORT || process.env.MAIL_PORT || '').toString().trim();
+  const customPort = (env.SMTP_PORT || env.SMPT_PORT || env.EMAIL_PORT || env.MAIL_PORT || '').toString().trim();
   const parsedPort = customPort ? parseInt(customPort, 10) : null;
+  const isGmail = host.includes('gmail') || lowerUser.includes('@gmail');
 
-  if ((host.includes('gmail') || lowerUser.includes('@gmail')) && !parsedPort) {
-    return {
-      transporter: nodemailer.createTransport({
-        service: 'gmail',
-        auth: { user, pass },
-        tls: { rejectUnauthorized: false },
-        connectionTimeout: 15000,
-        greetingTimeout: 15000,
-        socketTimeout: 20000,
-      }),
-      user,
-      host: 'smtp.gmail.com',
-      port: 465
-    };
+  if (isGmail && !parsedPort) {
+    if (useSsl) {
+      return {
+        transporter: nodemailer.createTransport({
+          host: 'smtp.gmail.com',
+          port: 465,
+          secure: true,
+          auth: { user, pass },
+          tls: { rejectUnauthorized: false },
+          connectionTimeout: 12000,
+          greetingTimeout: 12000,
+          socketTimeout: 15000,
+        }),
+        user,
+        host: 'smtp.gmail.com',
+        port: 465
+      };
+    } else {
+      return {
+        transporter: nodemailer.createTransport({
+          host: 'smtp.gmail.com',
+          port: 587,
+          secure: false,
+          requireTLS: true,
+          auth: { user, pass },
+          tls: { rejectUnauthorized: false, minVersion: 'TLSv1.2' },
+          connectionTimeout: 12000,
+          greetingTimeout: 12000,
+          socketTimeout: 15000,
+        }),
+        user,
+        host: 'smtp.gmail.com',
+        port: 587
+      };
+    }
   }
 
   const port = parsedPort || (useSsl ? 465 : 587);

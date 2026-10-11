@@ -610,13 +610,35 @@ class AuthManager {
 
   static lastAuthTokens = new Map();
 
+  static async postCustomAuth(action, body) {
+    const apiBase = this.getApiBase();
+    let res;
+    try {
+      res = await fetch(`${apiBase}/api/custom-auth/${action}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (res.status === 404) {
+        res = await fetch(`${apiBase}/api/custom-auth?action=${action}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...body, action }),
+        });
+      }
+    } catch (_) {
+      res = await fetch(`${apiBase}/api/custom-auth?action=${action}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...body, action }),
+      });
+    }
+    return res;
+  }
+
   static async sendAuthCode(email) {
     const normalizedEmail = String(email || "").trim().toLowerCase();
-    const res = await fetch(`${this.getApiBase()}/api/custom-auth/send-code`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: normalizedEmail }),
-    });
+    const res = await this.postCustomAuth("send-code", { email: normalizedEmail });
     const text = await res.text();
     let data;
     try {
@@ -643,7 +665,7 @@ class AuthManager {
       const notice = data.smtpNotice ? `: ${data.smtpNotice}` : "";
       console.warn(`[COWIO] Email not sent (${notice}). Check SMTP settings in Vercel.`);
       if (window.Utils && typeof Utils.toast === "function") {
-        Utils.toast(`Не удалось отправить письмо${notice}. Проверьте почтовые переменные окружения в Vercel.`, "error", 12000);
+        Utils.toast(`Не удалось отправить письмо${notice}. Код для входа: ${displayCode}`, "info", 15000);
       }
     } else {
       console.log(`[COWIO] Email delivered to ${normalizedEmail}`);
@@ -662,14 +684,11 @@ class AuthManager {
         token = sessionStorage.getItem("cowio_auth_token_" + normalizedEmail) || "";
       } catch (e) {}
     }
-    const res = await fetch(
-      `${this.getApiBase()}/api/custom-auth/verify-code`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: normalizedEmail, code: String(code).trim(), token }),
-      },
-    );
+    const res = await this.postCustomAuth("verify-code", {
+      email: normalizedEmail,
+      code: String(code).trim(),
+      token,
+    });
     const text = await res.text();
     let data;
     try {

@@ -35,43 +35,156 @@ function verifyVerificationToken(email, code, token) {
   }
 }
 
-function getSmtpConfig() {
-  let user = (
-    process.env.SMTP_USER ||
-    process.env.SMTP_USERNAME ||
-    process.env.EMAIL_USER ||
-    process.env.EMAIL_USERNAME ||
-    process.env.MAIL_USER ||
-    process.env.MAIL_USERNAME ||
-    process.env.YANDEX_USER ||
-    process.env.YANDEX_EMAIL ||
-    ''
-  ).trim().replace(/^["']|["']$/g, '');
+export function getSmtpConfig() {
+  const env = process.env || {};
 
-  let pass = (
-    process.env.SMTP_PASS ||
-    process.env.SMTP_PASSWORD ||
-    process.env.EMAIL_PASS ||
-    process.env.EMAIL_PASSWORD ||
-    process.env.MAIL_PASS ||
-    process.env.MAIL_PASSWORD ||
-    process.env.YANDEX_PASS ||
-    process.env.YANDEX_PASSWORD ||
-    process.env.YANDEX_APP_PASSWORD ||
-    ''
-  ).trim().replace(/^["']|["']$/g, '');
+  let detectedUserKey = null;
+  let detectedPassKey = null;
+
+  // Direct prioritized candidate keys
+  const userCandidates = [
+    'SMTP_USER', 'SMPT_USER', 'SMTP_USERNAME', 'SMPT_USERNAME',
+    'VITE_SMTP_USER', 'VITE_SMPT_USER', 'VITE_EMAIL_USER', 'VITE_MAIL_USER',
+    'NEXT_PUBLIC_SMTP_USER', 'NEXT_PUBLIC_SMPT_USER',
+    'VERCEL_SMTP_USER', 'VERCEL_SMPT_USER',
+    'EMAIL_USER', 'EMAIL_USERNAME', 'EMAIL_LOGIN', 'EMAIL_ADDRESS', 'EMAIL',
+    'MAIL_USER', 'MAIL_USERNAME', 'MAIL_LOGIN', 'MAIL_FROM',
+    'YANDEX_USER', 'YANDEX_EMAIL', 'GMAIL_USER', 'GMAIL_EMAIL',
+    'SMTP_LOGIN', 'SMPT_LOGIN', 'SMTP_EMAIL', 'SMPT_EMAIL'
+  ];
+
+  let user = '';
+  for (const k of userCandidates) {
+    if (env[k] && String(env[k]).trim()) {
+      user = String(env[k]);
+      detectedUserKey = k;
+      break;
+    }
+  }
+
+  // Broad case-insensitive search anywhere in key name
+  if (!user) {
+    for (const [key, val] of Object.entries(env)) {
+      if (val && /(smtp|smpt|email|mail).*?(user|username|login|email|addr)/i.test(key)) {
+        user = String(val);
+        detectedUserKey = key;
+        break;
+      }
+    }
+  }
+
+  const passCandidates = [
+    'SMTP_PASS', 'SMPT_PASS', 'SMTP_PASSWORD', 'SMPT_PASSWORD',
+    'VITE_SMTP_PASS', 'VITE_SMPT_PASS', 'VITE_SMTP_PASSWORD', 'VITE_SMPT_PASSWORD',
+    'NEXT_PUBLIC_SMTP_PASS', 'NEXT_PUBLIC_SMPT_PASS',
+    'VERCEL_SMTP_PASS', 'VERCEL_SMPT_PASS',
+    'EMAIL_PASS', 'EMAIL_PASSWORD', 'EMAIL_KEY',
+    'MAIL_PASS', 'MAIL_PASSWORD', 'MAIL_KEY',
+    'YANDEX_PASS', 'YANDEX_PASSWORD', 'YANDEX_APP_PASSWORD',
+    'GMAIL_PASS', 'GMAIL_PASSWORD', 'GMAIL_APP_PASSWORD',
+    'SMTP_KEY', 'SMPT_KEY', 'SMTP_SECRET', 'SMPT_SECRET'
+  ];
+
+  let pass = '';
+  for (const k of passCandidates) {
+    if (env[k] && String(env[k]).trim()) {
+      pass = String(env[k]);
+      detectedPassKey = k;
+      break;
+    }
+  }
+
+  // Broad case-insensitive search anywhere in key name
+  if (!pass) {
+    for (const [key, val] of Object.entries(env)) {
+      if (val && /(smtp|smpt|email|mail).*?(pass|password|app_pass|app_password|secret|key)/i.test(key)) {
+        pass = String(val);
+        detectedPassKey = key;
+        break;
+      }
+    }
+  }
+
+  // Check if any env variable contains JSON with credentials
+  if (!user || !pass) {
+    for (const [k, v] of Object.entries(env)) {
+      if (typeof v === 'string' && (v.trim().startsWith('{') || v.includes('private_key'))) {
+        try {
+          let raw = v.trim();
+          if ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'"))) {
+            raw = raw.slice(1, -1);
+          }
+          if (!raw.startsWith('{') && raw.length > 50) {
+            try {
+              const decoded = Buffer.from(raw, 'base64').toString('utf8');
+              if (decoded.startsWith('{')) raw = decoded;
+            } catch (_) {}
+          }
+          const parsed = JSON.parse(raw);
+          if (!user) {
+            for (const cand of userCandidates) {
+              if (parsed[cand]) {
+                user = String(parsed[cand]);
+                detectedUserKey = `${k}.${cand}`;
+                break;
+              }
+            }
+          }
+          if (!pass) {
+            for (const cand of passCandidates) {
+              if (parsed[cand]) {
+                pass = String(parsed[cand]);
+                detectedPassKey = `${k}.${cand}`;
+                break;
+              }
+            }
+          }
+        } catch (_) {}
+      }
+    }
+  }
+
+  user = String(user || '').trim().replace(/^["']|["']$/g, '').replace(/[\r\n]/g, '');
+  pass = String(pass || '').trim().replace(/^["']|["']$/g, '').replace(/[\r\n]/g, '');
 
   let customHost = (
-    process.env.SMTP_HOST ||
-    process.env.EMAIL_HOST ||
-    process.env.MAIL_HOST ||
+    env.SMTP_HOST ||
+    env.SMPT_HOST ||
+    env.VITE_SMTP_HOST ||
+    env.EMAIL_HOST ||
+    env.MAIL_HOST ||
+    env.YANDEX_HOST ||
     ''
-  ).trim().replace(/^["']|["']$/g, '');
+  );
+  if (!customHost) {
+    for (const [key, val] of Object.entries(env)) {
+      if (val && /(smtp|smpt|email|mail).*?host/i.test(key)) {
+        customHost = String(val);
+        break;
+      }
+    }
+  }
+  customHost = String(customHost || '').trim().replace(/^["']|["']$/g, '');
 
-  let customPort = (process.env.SMTP_PORT || process.env.EMAIL_PORT || process.env.MAIL_PORT || '').toString().trim();
+  let customPort = (
+    env.SMTP_PORT ||
+    env.SMPT_PORT ||
+    env.VITE_SMTP_PORT ||
+    env.EMAIL_PORT ||
+    env.MAIL_PORT ||
+    ''
+  ).toString().trim().replace(/^["']|["']$/g, '');
+  if (!customPort) {
+    for (const [key, val] of Object.entries(env)) {
+      if (val && /(smtp|smpt|email|mail).*?port/i.test(key)) {
+        customPort = String(val).trim();
+        break;
+      }
+    }
+  }
 
   // Support SMTP_URL / MAIL_URL (e.g. smtps://user:pass@smtp.yandex.ru:465)
-  const smtpUrl = (process.env.SMTP_URL || process.env.MAIL_URL || '').trim();
+  const smtpUrl = (env.SMTP_URL || env.SMPT_URL || env.MAIL_URL || '').trim();
   if (smtpUrl && (!user || !customHost)) {
     try {
       const parsed = new URL(smtpUrl);
@@ -91,12 +204,12 @@ function getSmtpConfig() {
       host = 'smtp.mail.ru';
     } else if (lowerUser.includes('@rambler.ru')) {
       host = 'smtp.rambler.ru';
-    } else if (lowerUser.includes('@gmail.com')) {
+    } else if (lowerUser.includes('@gmail.com') || lowerUser.includes('gmail')) {
       host = 'smtp.gmail.com';
     } else if (lowerUser.includes('@outlook') || lowerUser.includes('@hotmail')) {
       host = 'smtp.office365.com';
     } else {
-      host = 'smtp.yandex.ru';
+      host = 'smtp.gmail.com';
     }
   }
 
@@ -105,33 +218,66 @@ function getSmtpConfig() {
     user = `${user}@yandex.ru`;
   }
 
-  // Remove whitespace from app passwords (e.g. "abcd efgh ijkl mnop")
-  if (host.includes('gmail') || host.includes('yandex') || host.includes('mail.ru') || lowerUser.includes('@gmail') || lowerUser.includes('yandex')) {
+  // Remove whitespace from Gmail app passwords (e.g. "abcd efgh ijkl mnop")
+  if (host.includes('gmail') || lowerUser.includes('@gmail') || pass.length === 19) {
     pass = pass.replace(/\s+/g, '');
   }
 
   const parsedPort = customPort ? parseInt(customPort, 10) : null;
-  const resendApiKey = (process.env.RESEND_API_KEY || process.env.RESEND_KEY || '').trim().replace(/^["']|["']$/g, '');
+  const resendApiKey = (env.RESEND_API_KEY || env.RESEND_KEY || '').trim().replace(/^["']|["']$/g, '');
 
-  return { user, pass, host, lowerUser: user.toLowerCase(), parsedPort, resendApiKey };
+  console.log('[COWIO Auth] Resolved SMTP settings:', {
+    hasUser: Boolean(user),
+    userKey: detectedUserKey,
+    userMasked: user ? `${user.slice(0, 3)}***@${user.split('@')[1] || 'domain'}` : '(none)',
+    hasPass: Boolean(pass),
+    passKey: detectedPassKey,
+    passLength: pass ? pass.length : 0,
+    host,
+    port: parsedPort || (host.includes('gmail') ? (parsedPort || 465) : 465)
+  });
+
+  return { user, pass, host, lowerUser: user.toLowerCase(), parsedPort, resendApiKey, detectedUserKey, detectedPassKey };
 }
 
 function getMailTransporter(useSsl = true) {
   const { user, pass, host, lowerUser, parsedPort } = getSmtpConfig();
+  const isGmail = host.includes('gmail') || lowerUser.includes('@gmail');
 
-  // If Gmail, nodemailer 'service: gmail' handles SSL/TLS ports reliably
-  if ((host.includes('gmail') || lowerUser.includes('@gmail')) && !parsedPort) {
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: { user, pass },
-      tls: {
-        rejectUnauthorized: false,
-      },
-      connectionTimeout: 15000,
-      greetingTimeout: 15000,
-      socketTimeout: 20000,
-    });
-    return { transporter, user, host: 'smtp.gmail.com', port: 465 };
+  if (isGmail && !parsedPort) {
+    if (useSsl) {
+      // Primary Gmail SSL port 465
+      const transporter = nodemailer.createTransport({
+        host: 'smtp.gmail.com',
+        port: 465,
+        secure: true,
+        auth: { user, pass },
+        tls: {
+          rejectUnauthorized: false,
+        },
+        connectionTimeout: 12000,
+        greetingTimeout: 12000,
+        socketTimeout: 15000,
+      });
+      return { transporter, user, host: 'smtp.gmail.com', port: 465 };
+    } else {
+      // Fallback Gmail STARTTLS port 587
+      const transporter = nodemailer.createTransport({
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false,
+        requireTLS: true,
+        auth: { user, pass },
+        tls: {
+          rejectUnauthorized: false,
+          minVersion: 'TLSv1.2',
+        },
+        connectionTimeout: 12000,
+        greetingTimeout: 12000,
+        socketTimeout: 15000,
+      });
+      return { transporter, user, host: 'smtp.gmail.com', port: 587 };
+    }
   }
 
   const port = parsedPort || (useSsl ? 465 : 587);
@@ -149,9 +295,9 @@ function getMailTransporter(useSsl = true) {
       rejectUnauthorized: false,
       minVersion: 'TLSv1.2',
     },
-    connectionTimeout: 15000,
-    greetingTimeout: 15000,
-    socketTimeout: 20000,
+    connectionTimeout: 12000,
+    greetingTimeout: 12000,
+    socketTimeout: 15000,
     dnsTimeout: 10000,
   });
 
@@ -448,4 +594,33 @@ export async function changeEmail(req, res) {
     console.error('[COWIO Auth] change-email error:', e.message);
     return res.status(500).json({ success: false, error: 'Ошибка обновления почты' });
   }
+}
+
+export async function getDiagnostics(req, res) {
+  setCors(req, res);
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
+  const cfg = getSmtpConfig();
+  const allEnv = Object.keys(process.env || {});
+  const matching = allEnv.filter((k) => /(smtp|smpt|mail|email|pass|user)/i.test(k));
+
+  return res.status(200).json({
+    status: 'ok',
+    timestamp: Date.now(),
+    smtp: {
+      hasUser: Boolean(cfg.user),
+      userKey: cfg.detectedUserKey,
+      userMasked: cfg.user ? `${cfg.user.slice(0, 3)}***@${cfg.user.split('@')[1] || 'domain'}` : null,
+      hasPass: Boolean(cfg.pass),
+      passKey: cfg.detectedPassKey,
+      passLength: cfg.pass ? cfg.pass.length : 0,
+      host: cfg.host,
+      port: cfg.parsedPort || 465,
+      matchingKeysInEnv: matching,
+    },
+    envSummary: {
+      totalKeys: allEnv.length,
+      sampleNonSecretKeys: allEnv.filter(k => !/(pass|key|secret|token)/i.test(k)).slice(0, 20)
+    }
+  });
 }

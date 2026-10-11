@@ -10,7 +10,8 @@
     "dev": "vite --host 0.0.0.0 --port 3000 --strictPort",
     "dev:server": "tsx server.ts",
     "build": "vite build",
-    "lint": "npm run build",
+    "start": "tsx server.ts",
+    "lint": "vite build",
     "preview": "vite preview --host 0.0.0.0 --port 3000"
   },
   "dependencies": {

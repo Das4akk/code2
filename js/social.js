@@ -587,14 +587,22 @@ class FriendsManager {
     }
 
     if (keys.length > 0) {
-      badge.innerText = keys.length;
-      badge.classList.add("show");
+      if (badge) {
+        badge.innerText = keys.length;
+        badge.classList.add("show");
+      }
     } else {
-      badge.classList.remove("show");
-      container.innerHTML =
-        '<div style="font-size: 12px; color: var(--text-muted); padding: 5px; text-align: center;">Нет новых заявок</div>';
+      if (badge) {
+        badge.classList.remove("show");
+      }
+      if (container) {
+        container.innerHTML =
+          '<div style="font-size: 12px; color: var(--text-muted); padding: 5px; text-align: center;">Нет новых заявок</div>';
+      }
       return;
     }
+
+    if (!container) return;
 
     const itemsHtml = [];
     for (const uid of keys) {
@@ -667,8 +675,9 @@ class FriendsManager {
 
   static async renderFriends(friendsMap) {
     const container = Utils.$("friends-list");
-    const keys = Object.keys(friendsMap).filter(
-      (k) => friendsMap[k].status === "accepted",
+    if (!container) return;
+    const keys = Object.keys(friendsMap || {}).filter(
+      (k) => friendsMap[k] && friendsMap[k].status === "accepted",
     );
 
     if (keys.length === 0) {
@@ -677,7 +686,7 @@ class FriendsManager {
       return;
     }
 
-    Array.from(container.children).forEach((child) => {
+    Array.from(container.children || []).forEach((child) => {
       if (!keys.includes(child.dataset.uid)) child.remove();
     });
 

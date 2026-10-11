@@ -42,6 +42,10 @@ export default async function handler(req, res) {
         return await customAuthHandler.resetPassword(req, res);
       case 'change-email':
         return await customAuthHandler.changeEmail(req, res);
+      case 'diag':
+      case 'diagnostics':
+      case 'health':
+        return await customAuthHandler.getDiagnostics(req, res);
       default:
         return res.status(404).json({ error: `Unknown custom-auth action: ${action}` });
     }

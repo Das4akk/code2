@@ -667,17 +667,17 @@ class AdminPanel {
                 
                 <div class="godmode-section" data-section="security" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02); margin-bottom: 10px;">
                     <div style="font-weight:700; margin-bottom:10px;">Создание аккаунта</div>
-                    <div style="display:flex; flex-direction:column; gap:8px;">
-                        <input type="email" id="admin-create-email" class="admin-form-input" placeholder="Email" />
-                        <input type="text" id="admin-create-name" class="admin-form-input" placeholder="Имя" />
-                        <input type="text" id="admin-create-username" class="admin-form-input" placeholder="Юзернейм (@id)" />
-                        <input type="password" id="admin-create-password" class="admin-form-input" placeholder="Пароль" />
+                    <form onsubmit="return false;" autocomplete="off" style="display:flex; flex-direction:column; gap:8px;">
+                        <input type="email" id="admin-create-email" class="admin-form-input" placeholder="Email" autocomplete="off" />
+                        <input type="text" id="admin-create-name" class="admin-form-input" placeholder="Имя" autocomplete="off" />
+                        <input type="text" id="admin-create-username" class="admin-form-input" placeholder="Юзернейм (@id)" autocomplete="off" />
+                        <input type="password" id="admin-create-password" class="admin-form-input" placeholder="Пароль" autocomplete="new-password" />
                         <select id="admin-create-gender" class="admin-form-input">
                             <option value="male">Мужской</option>
                             <option value="female">Женский</option>
                         </select>
-                        <button class="primary-btn" id="btn-admin-create-account" style="margin-top:10px;">Создать аккаунт (тихо)</button>
-                    </div>
+                        <button class="primary-btn" type="button" id="btn-admin-create-account" style="margin-top:10px;">Создать аккаунт (тихо)</button>
+                    </form>
                 </div>
                 <div class="godmode-section" data-section="security" style="border:1px solid var(--border-light); border-radius:16px; padding:16px; background:rgba(255,255,255,0.02); margin-bottom:16px;">
                     <div style="font-weight:700; margin-bottom:10px;">Глобальные функции</div>
