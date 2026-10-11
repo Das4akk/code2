@@ -1,8 +1,15 @@
 import crypto from 'crypto';
+import dns from 'dns';
 import nodemailer from 'nodemailer';
 import { setCors, verifyToken } from '../helpers/auth.js';
 import { getAuth, getDb } from '../helpers/firebase.js';
 import { getResolvedSmtpConfig, initEnv } from '../helpers/env.js';
+
+try {
+  if (dns && typeof dns.setDefaultResultOrder === 'function') {
+    dns.setDefaultResultOrder('ipv4first');
+  }
+} catch (_) {}
 
 initEnv();
 
@@ -80,10 +87,11 @@ function getMailTransporter(useSsl = true) {
         tls: {
           rejectUnauthorized: false,
         },
-        connectionTimeout: 8000,
-        greetingTimeout: 8000,
-        socketTimeout: 10000,
-        dnsTimeout: 5000,
+        connectionTimeout: 4000,
+        greetingTimeout: 4000,
+        socketTimeout: 5000,
+        dnsTimeout: 3000,
+        family: 4,
       });
       return { transporter, user, host: 'smtp.gmail.com', port: 465 };
     } else {
@@ -98,10 +106,11 @@ function getMailTransporter(useSsl = true) {
           rejectUnauthorized: false,
           minVersion: 'TLSv1.2',
         },
-        connectionTimeout: 8000,
-        greetingTimeout: 8000,
-        socketTimeout: 10000,
-        dnsTimeout: 5000,
+        connectionTimeout: 4000,
+        greetingTimeout: 4000,
+        socketTimeout: 5000,
+        dnsTimeout: 3000,
+        family: 4,
       });
       return { transporter, user, host: 'smtp.gmail.com', port: 587 };
     }
@@ -122,10 +131,11 @@ function getMailTransporter(useSsl = true) {
       rejectUnauthorized: false,
       minVersion: 'TLSv1.2',
     },
-    connectionTimeout: 8000,
-    greetingTimeout: 8000,
-    socketTimeout: 10000,
-    dnsTimeout: 5000,
+    connectionTimeout: 4000,
+    greetingTimeout: 4000,
+    socketTimeout: 5000,
+    dnsTimeout: 3000,
+    family: 4,
   });
 
   return { transporter, user, host, port };
@@ -267,7 +277,7 @@ export async function sendCode(req, res) {
       try {
         await Promise.race([
           sendSmtpAttempts(),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Превышено время ожидания ответа почтового сервера (таймаут 12с)')), 12000))
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Превышено время ожидания ответа почтового сервера (таймаут 6с)')), 6000))
         ]);
       } catch (tErr) {
         lastError = tErr;

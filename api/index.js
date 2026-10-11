@@ -1,5 +1,6 @@
 import { setCors } from './_lib/helpers/auth.js';
 import { initEnv } from './_lib/helpers/env.js';
+import * as customAuthHandler from './_lib/handlers/custom-auth.js';
 
 // Pre-load and normalize environment variables at module initialization
 initEnv();
@@ -96,13 +97,11 @@ export default async function handler(req, res) {
   try {
     // 1. Diagnostics & Health
     if (pathname === '/api/health' || pathname === '/api/diag' || pathname === '/api/custom-auth/diag') {
-      const { getDiagnostics } = await import('./_lib/handlers/custom-auth.js');
-      return await getDiagnostics(req, res);
+      return await customAuthHandler.getDiagnostics(req, res);
     }
 
     // 2. Custom Auth (send-code, verify-code, reset-password, change-email)
     if (pathname.startsWith('/api/custom-auth')) {
-      const customAuthHandler = await import('./_lib/handlers/custom-auth.js');
       const action = getSubAction('/api/custom-auth');
       switch (action) {
         case 'send-code':
