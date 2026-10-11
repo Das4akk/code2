@@ -11,6 +11,7 @@ import nodemailer from 'nodemailer';
 import admin from 'firebase-admin';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 
+import { initEnv, getResolvedSmtpConfig } from './api/_lib/helpers/env.js';
 import { validateUrl, safeFetch, isDomainAllowed, isPrivateIp, ALLOWED_MEDIA_DOMAINS } from './utils/url-validator.js';
 import { sanitizeHtml, sanitizeText, sanitizeObject, prototypePollutionMiddleware } from './utils/sanitize.js';
 import { requireAuth, requireRole, optionalAuth } from './lib/auth-middleware.js';
@@ -181,8 +182,10 @@ app.use(prototypePollutionMiddleware);
 // ----------------------------------------------------
 // FIREBASE ADMIN & NODEMAILER INITIALIZATION
 // ----------------------------------------------------
-let smtpUser = (process.env.SMTP_USER || process.env.EMAIL_USER || '').trim();
-let smtpPass = (process.env.SMTP_PASS || process.env.EMAIL_PASS || '').trim().replace(/\s+/g, '');
+initEnv();
+const initialSmtp = getResolvedSmtpConfig();
+let smtpUser = initialSmtp.user;
+let smtpPass = initialSmtp.pass;
 
 try {
   const databaseURL = process.env.FIREBASE_DATABASE_URL || 'https://das4akk-1-default-rtdb.firebaseio.com';
@@ -263,128 +266,16 @@ function verifyVerificationToken(email: string, code: string, token?: string): b
 }
 
 function getMailTransporter(useSsl = true) {
-  const env = process.env || {};
+  const cfg = getResolvedSmtpConfig();
+  const user = cfg.user;
+  const pass = cfg.pass;
+  const host = cfg.host;
+  const lowerUser = cfg.lowerUser;
+  const parsedPort = cfg.port;
 
-  let user = (
-    env.SMTP_USER ||
-    env.SMPT_USER ||
-    env.SMTP_USERNAME ||
-    env.SMPT_USERNAME ||
-    env.SMTP_LOGIN ||
-    env.SMPT_LOGIN ||
-    env.SMTP_EMAIL ||
-    env.SMPT_EMAIL ||
-    env.EMAIL_USER ||
-    env.EMAIL_USERNAME ||
-    env.EMAIL_LOGIN ||
-    env.MAIL_USER ||
-    env.MAIL_USERNAME ||
-    env.MAIL_LOGIN ||
-    env.YANDEX_USER ||
-    env.YANDEX_EMAIL ||
-    env.GMAIL_USER ||
-    env.GMAIL_EMAIL ||
-    env.NEXT_PUBLIC_SMTP_USER ||
-    env.NEXT_PUBLIC_SMPT_USER ||
-    env.VERCEL_SMTP_USER ||
-    env.VERCEL_SMPT_USER ||
-    ''
-  );
-
-  if (!user) {
-    for (const [key, val] of Object.entries(env)) {
-      if (/^(smtp|smpt|email|mail).*?(user|username|login|email)$/i.test(key) && val) {
-        user = String(val);
-        break;
-      }
-    }
-  }
-
-  let pass = (
-    env.SMTP_PASS ||
-    env.SMPT_PASS ||
-    env.SMTP_PASSWORD ||
-    env.SMPT_PASSWORD ||
-    env.SMTP_KEY ||
-    env.SMPT_KEY ||
-    env.EMAIL_PASS ||
-    env.EMAIL_PASSWORD ||
-    env.MAIL_PASS ||
-    env.MAIL_PASSWORD ||
-    env.YANDEX_PASS ||
-    env.YANDEX_PASSWORD ||
-    env.YANDEX_APP_PASSWORD ||
-    env.GMAIL_PASS ||
-    env.GMAIL_PASSWORD ||
-    env.GMAIL_APP_PASSWORD ||
-    env.NEXT_PUBLIC_SMTP_PASS ||
-    env.NEXT_PUBLIC_SMPT_PASS ||
-    env.VERCEL_SMTP_PASS ||
-    env.VERCEL_SMPT_PASS ||
-    ''
-  );
-
-  if (!pass) {
-    for (const [key, val] of Object.entries(env)) {
-      if (/^(smtp|smpt|email|mail).*?(pass|password|app_pass|app_password|secret|key)$/i.test(key) && val) {
-        pass = String(val);
-        break;
-      }
-    }
-  }
-
-  user = String(user || '').trim().replace(/^["']|["']$/g, '');
-  pass = String(pass || '').trim().replace(/^["']|["']$/g, '');
-
-  let customHost = (
-    env.SMTP_HOST ||
-    env.SMPT_HOST ||
-    env.EMAIL_HOST ||
-    env.MAIL_HOST ||
-    env.YANDEX_HOST ||
-    ''
-  );
-  if (!customHost) {
-    for (const [key, val] of Object.entries(env)) {
-      if (/^(smtp|smpt|email|mail).*?host$/i.test(key) && val) {
-        customHost = String(val);
-        break;
-      }
-    }
-  }
-  customHost = String(customHost || '').trim().replace(/^["']|["']$/g, '');
-
-  let host = customHost;
-  const lowerUser = user.toLowerCase();
-  if (!host) {
-    if (lowerUser.includes('@yandex') || lowerUser.includes('@ya.ru')) {
-      host = 'smtp.yandex.ru';
-    } else if (lowerUser.includes('@mail.ru') || lowerUser.includes('@bk.ru') || lowerUser.includes('@inbox.ru') || lowerUser.includes('@list.ru')) {
-      host = 'smtp.mail.ru';
-    } else if (lowerUser.includes('@rambler.ru')) {
-      host = 'smtp.rambler.ru';
-    } else if (lowerUser.includes('@gmail.com') || lowerUser.includes('gmail')) {
-      host = 'smtp.gmail.com';
-    } else if (lowerUser.includes('@outlook') || lowerUser.includes('@hotmail')) {
-      host = 'smtp.office365.com';
-    } else {
-      host = 'smtp.yandex.ru';
-    }
-  }
-
-  if ((host.includes('yandex') || lowerUser.includes('yandex') || lowerUser.includes('ya.ru')) && user && !user.includes('@')) {
-    user = `${user}@yandex.ru`;
-  }
-
-  if (host.includes('gmail') || host.includes('yandex') || host.includes('mail.ru') || lowerUser.includes('@gmail') || lowerUser.includes('yandex')) {
-    pass = pass.replace(/\s+/g, '');
-  }
-
-  const customPort = (env.SMTP_PORT || env.SMPT_PORT || env.EMAIL_PORT || env.MAIL_PORT || '').toString().trim();
-  const parsedPort = customPort ? parseInt(customPort, 10) : null;
   const isGmail = host.includes('gmail') || lowerUser.includes('@gmail');
 
-  if (isGmail && !parsedPort) {
+  if (isGmail && (!parsedPort || parsedPort === 465 || parsedPort === 587)) {
     if (useSsl) {
       return {
         transporter: nodemailer.createTransport({
@@ -759,8 +650,9 @@ app.post(
       }
 
       // 2. SMTP delivery
-      const { transporter, user, host, port } = getMailTransporter(true);
-      if (!emailSent && user) {
+      const cfg = getResolvedSmtpConfig();
+      if (!emailSent && cfg.hasUser && cfg.hasPass) {
+        const { transporter, user } = getMailTransporter(true);
         const fromEmail = user.includes('@') ? user : `${user}@yandex.ru`;
         const fromHeader = `"COWIO" <${fromEmail}>`;
 
@@ -772,8 +664,10 @@ app.post(
             html: htmlContent
           });
           emailSent = true;
+          console.log(`[COWIO Auth] Email delivered successfully to ${normalizedEmail}`);
         } catch (err1: any) {
           lastError = err1;
+          console.warn(`[COWIO Auth] SSL delivery failed (${err1.message}), trying STARTTLS...`);
           try {
             const { transporter: fallbackTransporter } = getMailTransporter(false);
             await fallbackTransporter.sendMail({
@@ -783,11 +677,15 @@ app.post(
               html: htmlContent
             });
             emailSent = true;
+            console.log(`[COWIO Auth] Email delivered successfully via fallback STARTTLS to ${normalizedEmail}`);
           } catch (err2: any) {
             lastError = err2;
             console.error('[COWIO Auth] All SMTP attempts failed:', err2.message);
           }
         }
+      } else if (!emailSent && (!cfg.hasUser || !cfg.hasPass)) {
+        console.warn('[COWIO Auth] SMTP credentials not set in environment (SMTP_USER / SMTP_PASS or SMPT_USER / SMPT_PASS)');
+        lastError = new Error('SMTP_USER или SMTP_PASS не заданы в переменных окружения');
       }
 
       return res.json({

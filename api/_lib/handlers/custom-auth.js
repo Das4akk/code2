@@ -2,6 +2,9 @@ import crypto from 'crypto';
 import nodemailer from 'nodemailer';
 import { setCors, verifyToken } from '../helpers/auth.js';
 import { getAuth, getDb } from '../helpers/firebase.js';
+import { getResolvedSmtpConfig, initEnv } from '../helpers/env.js';
+
+initEnv();
 
 const AUTH_SECRET = process.env.AUTH_SECRET || 'temporary_cowio_session_auth_secret_key_32bytes';
 
@@ -36,208 +39,30 @@ function verifyVerificationToken(email, code, token) {
 }
 
 export function getSmtpConfig() {
-  const env = process.env || {};
-
-  let detectedUserKey = null;
-  let detectedPassKey = null;
-
-  // Direct prioritized candidate keys
-  const userCandidates = [
-    'SMTP_USER', 'SMPT_USER', 'SMTP_USERNAME', 'SMPT_USERNAME',
-    'VITE_SMTP_USER', 'VITE_SMPT_USER', 'VITE_EMAIL_USER', 'VITE_MAIL_USER',
-    'NEXT_PUBLIC_SMTP_USER', 'NEXT_PUBLIC_SMPT_USER',
-    'VERCEL_SMTP_USER', 'VERCEL_SMPT_USER',
-    'EMAIL_USER', 'EMAIL_USERNAME', 'EMAIL_LOGIN', 'EMAIL_ADDRESS', 'EMAIL',
-    'MAIL_USER', 'MAIL_USERNAME', 'MAIL_LOGIN', 'MAIL_FROM',
-    'YANDEX_USER', 'YANDEX_EMAIL', 'GMAIL_USER', 'GMAIL_EMAIL',
-    'SMTP_LOGIN', 'SMPT_LOGIN', 'SMTP_EMAIL', 'SMPT_EMAIL'
-  ];
-
-  let user = '';
-  for (const k of userCandidates) {
-    if (env[k] && String(env[k]).trim()) {
-      user = String(env[k]);
-      detectedUserKey = k;
-      break;
-    }
-  }
-
-  // Broad case-insensitive search anywhere in key name
-  if (!user) {
-    for (const [key, val] of Object.entries(env)) {
-      if (val && /(smtp|smpt|email|mail).*?(user|username|login|email|addr)/i.test(key)) {
-        user = String(val);
-        detectedUserKey = key;
-        break;
-      }
-    }
-  }
-
-  const passCandidates = [
-    'SMTP_PASS', 'SMPT_PASS', 'SMTP_PASSWORD', 'SMPT_PASSWORD',
-    'VITE_SMTP_PASS', 'VITE_SMPT_PASS', 'VITE_SMTP_PASSWORD', 'VITE_SMPT_PASSWORD',
-    'NEXT_PUBLIC_SMTP_PASS', 'NEXT_PUBLIC_SMPT_PASS',
-    'VERCEL_SMTP_PASS', 'VERCEL_SMPT_PASS',
-    'EMAIL_PASS', 'EMAIL_PASSWORD', 'EMAIL_KEY',
-    'MAIL_PASS', 'MAIL_PASSWORD', 'MAIL_KEY',
-    'YANDEX_PASS', 'YANDEX_PASSWORD', 'YANDEX_APP_PASSWORD',
-    'GMAIL_PASS', 'GMAIL_PASSWORD', 'GMAIL_APP_PASSWORD',
-    'SMTP_KEY', 'SMPT_KEY', 'SMTP_SECRET', 'SMPT_SECRET'
-  ];
-
-  let pass = '';
-  for (const k of passCandidates) {
-    if (env[k] && String(env[k]).trim()) {
-      pass = String(env[k]);
-      detectedPassKey = k;
-      break;
-    }
-  }
-
-  // Broad case-insensitive search anywhere in key name
-  if (!pass) {
-    for (const [key, val] of Object.entries(env)) {
-      if (val && /(smtp|smpt|email|mail).*?(pass|password|app_pass|app_password|secret|key)/i.test(key)) {
-        pass = String(val);
-        detectedPassKey = key;
-        break;
-      }
-    }
-  }
-
-  // Check if any env variable contains JSON with credentials
-  if (!user || !pass) {
-    for (const [k, v] of Object.entries(env)) {
-      if (typeof v === 'string' && (v.trim().startsWith('{') || v.includes('private_key'))) {
-        try {
-          let raw = v.trim();
-          if ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'"))) {
-            raw = raw.slice(1, -1);
-          }
-          if (!raw.startsWith('{') && raw.length > 50) {
-            try {
-              const decoded = Buffer.from(raw, 'base64').toString('utf8');
-              if (decoded.startsWith('{')) raw = decoded;
-            } catch (_) {}
-          }
-          const parsed = JSON.parse(raw);
-          if (!user) {
-            for (const cand of userCandidates) {
-              if (parsed[cand]) {
-                user = String(parsed[cand]);
-                detectedUserKey = `${k}.${cand}`;
-                break;
-              }
-            }
-          }
-          if (!pass) {
-            for (const cand of passCandidates) {
-              if (parsed[cand]) {
-                pass = String(parsed[cand]);
-                detectedPassKey = `${k}.${cand}`;
-                break;
-              }
-            }
-          }
-        } catch (_) {}
-      }
-    }
-  }
-
-  user = String(user || '').trim().replace(/^["']|["']$/g, '').replace(/[\r\n]/g, '');
-  pass = String(pass || '').trim().replace(/^["']|["']$/g, '').replace(/[\r\n]/g, '');
-
-  let customHost = (
-    env.SMTP_HOST ||
-    env.SMPT_HOST ||
-    env.VITE_SMTP_HOST ||
-    env.EMAIL_HOST ||
-    env.MAIL_HOST ||
-    env.YANDEX_HOST ||
-    ''
-  );
-  if (!customHost) {
-    for (const [key, val] of Object.entries(env)) {
-      if (val && /(smtp|smpt|email|mail).*?host/i.test(key)) {
-        customHost = String(val);
-        break;
-      }
-    }
-  }
-  customHost = String(customHost || '').trim().replace(/^["']|["']$/g, '');
-
-  let customPort = (
-    env.SMTP_PORT ||
-    env.SMPT_PORT ||
-    env.VITE_SMTP_PORT ||
-    env.EMAIL_PORT ||
-    env.MAIL_PORT ||
-    ''
-  ).toString().trim().replace(/^["']|["']$/g, '');
-  if (!customPort) {
-    for (const [key, val] of Object.entries(env)) {
-      if (val && /(smtp|smpt|email|mail).*?port/i.test(key)) {
-        customPort = String(val).trim();
-        break;
-      }
-    }
-  }
-
-  // Support SMTP_URL / MAIL_URL (e.g. smtps://user:pass@smtp.yandex.ru:465)
-  const smtpUrl = (env.SMTP_URL || env.SMPT_URL || env.MAIL_URL || '').trim();
-  if (smtpUrl && (!user || !customHost)) {
-    try {
-      const parsed = new URL(smtpUrl);
-      if (parsed.username && !user) user = decodeURIComponent(parsed.username);
-      if (parsed.password && !pass) pass = decodeURIComponent(parsed.password);
-      if (parsed.hostname && !customHost) customHost = parsed.hostname;
-      if (parsed.port && !customPort) customPort = parsed.port;
-    } catch (_) {}
-  }
-
-  const lowerUser = user.toLowerCase();
-  let host = customHost;
-  if (!host) {
-    if (lowerUser.includes('@yandex') || lowerUser.includes('@ya.ru')) {
-      host = 'smtp.yandex.ru';
-    } else if (lowerUser.includes('@mail.ru') || lowerUser.includes('@bk.ru') || lowerUser.includes('@inbox.ru') || lowerUser.includes('@list.ru')) {
-      host = 'smtp.mail.ru';
-    } else if (lowerUser.includes('@rambler.ru')) {
-      host = 'smtp.rambler.ru';
-    } else if (lowerUser.includes('@gmail.com') || lowerUser.includes('gmail')) {
-      host = 'smtp.gmail.com';
-    } else if (lowerUser.includes('@outlook') || lowerUser.includes('@hotmail')) {
-      host = 'smtp.office365.com';
-    } else {
-      host = 'smtp.gmail.com';
-    }
-  }
-
-  // Ensure Yandex username has domain if host is Yandex
-  if ((host.includes('yandex') || lowerUser.includes('yandex') || lowerUser.includes('ya.ru')) && user && !user.includes('@')) {
-    user = `${user}@yandex.ru`;
-  }
-
-  // Remove whitespace from Gmail app passwords (e.g. "abcd efgh ijkl mnop")
-  if (host.includes('gmail') || lowerUser.includes('@gmail') || pass.length === 19) {
-    pass = pass.replace(/\s+/g, '');
-  }
-
-  const parsedPort = customPort ? parseInt(customPort, 10) : null;
-  const resendApiKey = (env.RESEND_API_KEY || env.RESEND_KEY || '').trim().replace(/^["']|["']$/g, '');
-
+  const cfg = getResolvedSmtpConfig();
   console.log('[COWIO Auth] Resolved SMTP settings:', {
-    hasUser: Boolean(user),
-    userKey: detectedUserKey,
-    userMasked: user ? `${user.slice(0, 3)}***@${user.split('@')[1] || 'domain'}` : '(none)',
-    hasPass: Boolean(pass),
-    passKey: detectedPassKey,
-    passLength: pass ? pass.length : 0,
-    host,
-    port: parsedPort || (host.includes('gmail') ? (parsedPort || 465) : 465)
+    hasUser: cfg.hasUser,
+    userKey: cfg.detectedUserKey,
+    userMasked: cfg.user ? `${cfg.user.slice(0, 3)}***@${cfg.user.split('@')[1] || 'domain'}` : '(none)',
+    hasPass: cfg.hasPass,
+    passKey: cfg.detectedPassKey,
+    passLength: cfg.pass ? cfg.pass.length : 0,
+    host: cfg.host,
+    port: cfg.port
   });
 
-  return { user, pass, host, lowerUser: user.toLowerCase(), parsedPort, resendApiKey, detectedUserKey, detectedPassKey };
+  return {
+    user: cfg.user,
+    pass: cfg.pass,
+    host: cfg.host,
+    lowerUser: cfg.lowerUser,
+    parsedPort: cfg.port,
+    resendApiKey: cfg.resendApiKey,
+    detectedUserKey: cfg.detectedUserKey,
+    detectedPassKey: cfg.detectedPassKey,
+    hasUser: cfg.hasUser,
+    hasPass: cfg.hasPass
+  };
 }
 
 function getMailTransporter(useSsl = true) {
@@ -255,9 +80,10 @@ function getMailTransporter(useSsl = true) {
         tls: {
           rejectUnauthorized: false,
         },
-        connectionTimeout: 3500,
-        greetingTimeout: 3500,
-        socketTimeout: 4500,
+        connectionTimeout: 8000,
+        greetingTimeout: 8000,
+        socketTimeout: 10000,
+        dnsTimeout: 5000,
       });
       return { transporter, user, host: 'smtp.gmail.com', port: 465 };
     } else {
@@ -272,9 +98,10 @@ function getMailTransporter(useSsl = true) {
           rejectUnauthorized: false,
           minVersion: 'TLSv1.2',
         },
-        connectionTimeout: 3500,
-        greetingTimeout: 3500,
-        socketTimeout: 4500,
+        connectionTimeout: 8000,
+        greetingTimeout: 8000,
+        socketTimeout: 10000,
+        dnsTimeout: 5000,
       });
       return { transporter, user, host: 'smtp.gmail.com', port: 587 };
     }
@@ -295,10 +122,10 @@ function getMailTransporter(useSsl = true) {
       rejectUnauthorized: false,
       minVersion: 'TLSv1.2',
     },
-    connectionTimeout: 3500,
-    greetingTimeout: 3500,
-    socketTimeout: 4500,
-    dnsTimeout: 3000,
+    connectionTimeout: 8000,
+    greetingTimeout: 8000,
+    socketTimeout: 10000,
+    dnsTimeout: 5000,
   });
 
   return { transporter, user, host, port };
@@ -440,14 +267,14 @@ export async function sendCode(req, res) {
       try {
         await Promise.race([
           sendSmtpAttempts(),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Превышено время ожидания ответа почтового сервера (таймаут 6.5с)')), 6500))
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Превышено время ожидания ответа почтового сервера (таймаут 12с)')), 12000))
         ]);
       } catch (tErr) {
         lastError = tErr;
         console.warn('[COWIO Auth] SMTP deadline reached:', tErr.message);
       }
     } else if (!emailSent && (!user || !pass)) {
-      console.warn('[COWIO Auth] SMTP credentials not set in environment (SMTP_USER / SMTP_PASS)');
+      console.warn('[COWIO Auth] SMTP credentials not set in environment (SMTP_USER / SMTP_PASS or SMPT_USER / SMPT_PASS)');
       lastError = new Error('SMTP_USER или SMTP_PASS не заданы в переменных окружения');
     }
 
@@ -620,15 +447,18 @@ export async function getDiagnostics(req, res) {
     status: 'ok',
     timestamp: Date.now(),
     smtp: {
-      hasUser: Boolean(cfg.user),
+      hasUser: Boolean(cfg.hasUser),
       userKey: cfg.detectedUserKey,
       userMasked: cfg.user ? `${cfg.user.slice(0, 3)}***@${cfg.user.split('@')[1] || 'domain'}` : null,
-      hasPass: Boolean(cfg.pass),
+      hasPass: Boolean(cfg.hasPass),
       passKey: cfg.detectedPassKey,
       passLength: cfg.pass ? cfg.pass.length : 0,
       host: cfg.host,
       port: cfg.parsedPort || 465,
       matchingKeysInEnv: matching,
+      statusMessage: (cfg.hasUser && cfg.hasPass)
+        ? `SMTP готов к отправке писем через ${cfg.host}:${cfg.parsedPort || 465}`
+        : `SMTP не настроен: отсутствуют ${!cfg.hasUser ? 'SMTP_USER (или SMPT_USER) ' : ''}${!cfg.hasPass ? 'SMTP_PASS (или SMPT_PASS)' : ''}`
     },
     envSummary: {
       totalKeys: allEnv.length,

@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import './api/_lib/helpers/env.js';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';

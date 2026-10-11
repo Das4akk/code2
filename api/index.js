@@ -1,4 +1,8 @@
 import { setCors } from './_lib/helpers/auth.js';
+import { initEnv } from './_lib/helpers/env.js';
+
+// Pre-load and normalize environment variables at module initialization
+initEnv();
 
 export default async function handler(req, res) {
   setCors(req, res);
@@ -32,13 +36,50 @@ export default async function handler(req, res) {
   // Parse URL & Query params
   const rawUrl = req.url || '';
   const urlObj = new URL(rawUrl, 'http://localhost:3000');
-  const pathname = urlObj.pathname.replace(/\/+$/, '') || '/';
+  let pathname = urlObj.pathname.replace(/\/+$/, '') || '/';
   
   if (!req.query) {
     req.query = Object.fromEntries(urlObj.searchParams.entries());
   } else {
     for (const [k, v] of urlObj.searchParams.entries()) {
       if (req.query[k] === undefined) req.query[k] = v;
+    }
+  }
+
+  // Vercel rewrite resolution:
+  // When vercel.json rewrites /api/(.*) -> /api/index.js,
+  // req.url may simply be '/api/index.js' or '/api'.
+  // We resolve the true requested path from headers or __route query parameter.
+  if (req.query?.__route) {
+    pathname = '/api/' + String(req.query.__route).replace(/^\/+/, '').split('?')[0];
+  } else if (req.headers && req.headers['x-matched-path']) {
+    pathname = String(req.headers['x-matched-path']).split('?')[0];
+  } else if (req.headers && req.headers['x-forwarded-uri']) {
+    pathname = String(req.headers['x-forwarded-uri']).split('?')[0];
+  } else if (req.headers && req.headers['x-invoke-path']) {
+    pathname = String(req.headers['x-invoke-path']).split('?')[0];
+  }
+
+  // Clean trailing slashes
+  pathname = pathname.replace(/\/+$/, '') || '/';
+
+  // If the path is still /api/index.js, /api/index, /api, or root /:
+  // Route intelligently using the action query/body parameter
+  const actionParam = (req.query?.action || req.body?.action || '').trim();
+  if (
+    pathname === '/api/index.js' ||
+    pathname === '/api/index' ||
+    pathname === '/api' ||
+    pathname === '/'
+  ) {
+    if (actionParam === 'send-code' || actionParam === 'verify-code' || actionParam === 'reset-password' || actionParam === 'change-email') {
+      pathname = `/api/custom-auth/${actionParam}`;
+    } else if (actionParam === 'health' || actionParam === 'diag' || actionParam === 'diagnostics') {
+      pathname = '/api/health';
+    } else if (actionParam === 'resolve-media') {
+      pathname = '/api/resolve-media';
+    } else if (req.query?.endpoint || req.body?.endpoint) {
+      pathname = '/api/' + String(req.query?.endpoint || req.body?.endpoint).replace(/^\/+/, '');
     }
   }
 
