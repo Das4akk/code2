@@ -48,17 +48,21 @@ export default async function handler(req, res) {
   }
 
   // Vercel rewrite resolution:
-  // When vercel.json rewrites /api/(.*) -> /api/index.js,
-  // req.url may simply be '/api/index.js' or '/api'.
-  // We resolve the true requested path from headers or __route query parameter.
-  if (req.query?.__route) {
+  if (req.query?.endpoint) {
+    pathname = '/api/' + String(req.query.endpoint).replace(/^\/+/, '').split('?')[0];
+  } else if (req.query?.__route) {
     pathname = '/api/' + String(req.query.__route).replace(/^\/+/, '').split('?')[0];
-  } else if (req.headers && req.headers['x-matched-path']) {
-    pathname = String(req.headers['x-matched-path']).split('?')[0];
-  } else if (req.headers && req.headers['x-forwarded-uri']) {
-    pathname = String(req.headers['x-forwarded-uri']).split('?')[0];
-  } else if (req.headers && req.headers['x-invoke-path']) {
-    pathname = String(req.headers['x-invoke-path']).split('?')[0];
+  } else if (
+    pathname === '/api/index' ||
+    pathname === '/api/index.js' ||
+    pathname === '/api' ||
+    pathname === '/'
+  ) {
+    if (req.headers && req.headers['x-forwarded-uri']) {
+      pathname = String(req.headers['x-forwarded-uri']).split('?')[0];
+    } else if (req.headers && req.headers['x-invoke-path']) {
+      pathname = String(req.headers['x-invoke-path']).split('?')[0];
+    }
   }
 
   // Clean trailing slashes

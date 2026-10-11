@@ -68,127 +68,133 @@ export function initEnv() {
   } catch (_) {}
 
   // 3. Normalize common typos and aliases, specifically SMPT_* vs SMTP_*
-  const aliasPairs = [
-    // SMPT typo -> standard SMTP
-    ['SMPT_USER', 'SMTP_USER'],
-    ['SMPT_PASS', 'SMTP_PASS'],
-    ['SMPT_PASSWORD', 'SMTP_PASS'],
-    ['SMPT_HOST', 'SMTP_HOST'],
-    ['SMPT_PORT', 'SMTP_PORT'],
-    ['SMPT_KEY', 'SMTP_PASS'],
-    ['SMPT_LOGIN', 'SMTP_USER'],
-    ['SMPT_USERNAME', 'SMTP_USER'],
-    ['SMPT_EMAIL', 'SMTP_USER'],
+  try {
+    const aliasPairs = [
+      // SMPT typo -> standard SMTP
+      ['SMPT_USER', 'SMTP_USER'],
+      ['SMPT_PASS', 'SMTP_PASS'],
+      ['SMPT_PASSWORD', 'SMTP_PASS'],
+      ['SMPT_HOST', 'SMTP_HOST'],
+      ['SMPT_PORT', 'SMTP_PORT'],
+      ['SMPT_KEY', 'SMTP_PASS'],
+      ['SMPT_LOGIN', 'SMTP_USER'],
+      ['SMPT_USERNAME', 'SMTP_USER'],
+      ['SMPT_EMAIL', 'SMTP_USER'],
 
-    // SMTP variants
-    ['SMTP_PASSWORD', 'SMTP_PASS'],
-    ['SMTP_KEY', 'SMTP_PASS'],
-    ['SMTP_SECRET', 'SMTP_PASS'],
-    ['SMTP_LOGIN', 'SMTP_USER'],
-    ['SMTP_USERNAME', 'SMTP_USER'],
-    ['SMTP_EMAIL', 'SMTP_USER'],
+      // SMTP variants
+      ['SMTP_PASSWORD', 'SMTP_PASS'],
+      ['SMTP_KEY', 'SMTP_PASS'],
+      ['SMTP_SECRET', 'SMTP_PASS'],
+      ['SMTP_LOGIN', 'SMTP_USER'],
+      ['SMTP_USERNAME', 'SMTP_USER'],
+      ['SMTP_EMAIL', 'SMTP_USER'],
 
-    // General email aliases
-    ['EMAIL_USER', 'SMTP_USER'],
-    ['EMAIL_LOGIN', 'SMTP_USER'],
-    ['EMAIL_PASS', 'SMTP_PASS'],
-    ['EMAIL_PASSWORD', 'SMTP_PASS'],
-    ['MAIL_USER', 'SMTP_USER'],
-    ['MAIL_PASS', 'SMTP_PASS'],
-    ['MAIL_PASSWORD', 'SMTP_PASS'],
+      // General email aliases
+      ['EMAIL_USER', 'SMTP_USER'],
+      ['EMAIL_LOGIN', 'SMTP_USER'],
+      ['EMAIL_PASS', 'SMTP_PASS'],
+      ['EMAIL_PASSWORD', 'SMTP_PASS'],
+      ['MAIL_USER', 'SMTP_USER'],
+      ['MAIL_PASS', 'SMTP_PASS'],
+      ['MAIL_PASSWORD', 'SMTP_PASS'],
 
-    // Vite / Vercel / Next prefixes
-    ['VITE_SMTP_USER', 'SMTP_USER'],
-    ['VITE_SMPT_USER', 'SMTP_USER'],
-    ['VITE_SMTP_PASS', 'SMTP_PASS'],
-    ['VITE_SMPT_PASS', 'SMTP_PASS'],
-    ['VERCEL_SMTP_USER', 'SMTP_USER'],
-    ['VERCEL_SMPT_USER', 'SMTP_USER'],
-    ['VERCEL_SMTP_PASS', 'SMTP_PASS'],
-    ['VERCEL_SMPT_PASS', 'SMTP_PASS'],
-    ['NEXT_PUBLIC_SMTP_USER', 'SMTP_USER'],
-    ['NEXT_PUBLIC_SMPT_USER', 'SMTP_USER'],
-    ['NEXT_PUBLIC_SMTP_PASS', 'SMTP_PASS'],
-    ['NEXT_PUBLIC_SMPT_PASS', 'SMTP_PASS'],
-  ];
+      // Vite / Vercel / Next prefixes
+      ['VITE_SMTP_USER', 'SMTP_USER'],
+      ['VITE_SMPT_USER', 'SMTP_USER'],
+      ['VITE_SMTP_PASS', 'SMTP_PASS'],
+      ['VITE_SMPT_PASS', 'SMTP_PASS'],
+      ['VERCEL_SMTP_USER', 'SMTP_USER'],
+      ['VERCEL_SMPT_USER', 'SMTP_USER'],
+      ['VERCEL_SMTP_PASS', 'SMTP_PASS'],
+      ['VERCEL_SMPT_PASS', 'SMTP_PASS'],
+      ['NEXT_PUBLIC_SMTP_USER', 'SMTP_USER'],
+      ['NEXT_PUBLIC_SMPT_USER', 'SMTP_USER'],
+      ['NEXT_PUBLIC_SMTP_PASS', 'SMTP_PASS'],
+      ['NEXT_PUBLIC_SMPT_PASS', 'SMTP_PASS'],
+    ];
 
-  for (const [alias, standard] of aliasPairs) {
-    const aliasVal = process.env[alias];
-    const standardVal = process.env[standard];
+    for (const [alias, standard] of aliasPairs) {
+      const aliasVal = process.env[alias];
+      const standardVal = process.env[standard];
 
-    if (aliasVal && !standardVal) {
-      process.env[standard] = aliasVal;
-    } else if (standardVal && !aliasVal) {
-      process.env[alias] = standardVal;
+      if (aliasVal && !standardVal) {
+        process.env[standard] = aliasVal;
+      } else if (standardVal && !aliasVal) {
+        process.env[alias] = standardVal;
+      }
     }
-  }
+  } catch (_) {}
 
   // 4. Case-insensitive lookup fallback if keys were saved in lowercase or mixed case
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    for (const [k, v] of Object.entries(process.env)) {
-      if (!v || typeof v !== 'string' || !v.trim()) continue;
-      const lowerKey = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+  try {
+    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+      for (const [k, v] of Object.entries(process.env)) {
+        if (!v || typeof v !== 'string' || !v.trim()) continue;
+        const lowerKey = k.toLowerCase().replace(/[^a-z0-9]/g, '');
 
-      if (!process.env.SMTP_USER && (
-        lowerKey.includes('smtpuser') ||
-        lowerKey.includes('smptuser') ||
-        lowerKey.includes('smtplogin') ||
-        lowerKey.includes('smptlogin') ||
-        lowerKey.includes('smtpusername') ||
-        lowerKey.includes('emailuser')
-      )) {
-        process.env.SMTP_USER = v.trim();
-        process.env.SMPT_USER = v.trim();
-      }
+        if (!process.env.SMTP_USER && (
+          lowerKey.includes('smtpuser') ||
+          lowerKey.includes('smptuser') ||
+          lowerKey.includes('smtplogin') ||
+          lowerKey.includes('smptlogin') ||
+          lowerKey.includes('smtpusername') ||
+          lowerKey.includes('emailuser')
+        )) {
+          process.env.SMTP_USER = v.trim();
+          process.env.SMPT_USER = v.trim();
+        }
 
-      if (!process.env.SMTP_PASS && (
-        lowerKey.includes('smtppass') ||
-        lowerKey.includes('smptpass') ||
-        lowerKey.includes('smtppassword') ||
-        lowerKey.includes('smptpassword') ||
-        lowerKey.includes('emailpass') ||
-        lowerKey.includes('emailpassword')
-      )) {
-        process.env.SMTP_PASS = v.trim();
-        process.env.SMPT_PASS = v.trim();
+        if (!process.env.SMTP_PASS && (
+          lowerKey.includes('smtppass') ||
+          lowerKey.includes('smptpass') ||
+          lowerKey.includes('smtppassword') ||
+          lowerKey.includes('smptpassword') ||
+          lowerKey.includes('emailpass') ||
+          lowerKey.includes('emailpassword')
+        )) {
+          process.env.SMTP_PASS = v.trim();
+          process.env.SMPT_PASS = v.trim();
+        }
       }
     }
-  }
+  } catch (_) {}
 
   // 5. Inspect JSON-containing environment variables (e.g. FIREBASE_ADMIN_KEY, GOOGLE_CREDENTIALS, SMTP_CONFIG)
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    for (const [k, v] of Object.entries(process.env)) {
-      if (typeof v === 'string' && (v.trim().startsWith('{') || v.includes('private_key'))) {
-        try {
-          let raw = v.trim();
-          if ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'"))) {
-            raw = raw.slice(1, -1);
-          }
-          if (!raw.startsWith('{') && raw.length > 50) {
-            try {
-              const decoded = Buffer.from(raw, 'base64').toString('utf8');
-              if (decoded.startsWith('{')) raw = decoded;
-            } catch (_) {}
-          }
-          const parsed = JSON.parse(raw);
-          if (!process.env.SMTP_USER) {
-            const userVal = parsed.SMTP_USER || parsed.SMPT_USER || parsed.user || parsed.email;
-            if (userVal) {
-              process.env.SMTP_USER = String(userVal).trim();
-              process.env.SMPT_USER = String(userVal).trim();
+  try {
+    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+      for (const [k, v] of Object.entries(process.env)) {
+        if (typeof v === 'string' && (v.trim().startsWith('{') || v.includes('private_key'))) {
+          try {
+            let raw = v.trim();
+            if ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'"))) {
+              raw = raw.slice(1, -1);
             }
-          }
-          if (!process.env.SMTP_PASS) {
-            const passVal = parsed.SMTP_PASS || parsed.SMPT_PASS || parsed.pass || parsed.password;
-            if (passVal) {
-              process.env.SMTP_PASS = String(passVal).trim();
-              process.env.SMPT_PASS = String(passVal).trim();
+            if (!raw.startsWith('{') && raw.length > 50) {
+              try {
+                const decoded = Buffer.from(raw, 'base64').toString('utf8');
+                if (decoded.startsWith('{')) raw = decoded;
+              } catch (_) {}
             }
-          }
-        } catch (_) {}
+            const parsed = JSON.parse(raw);
+            if (!process.env.SMTP_USER) {
+              const userVal = parsed.SMTP_USER || parsed.SMPT_USER || parsed.user || parsed.email;
+              if (userVal) {
+                process.env.SMTP_USER = String(userVal).trim();
+                process.env.SMPT_USER = String(userVal).trim();
+              }
+            }
+            if (!process.env.SMTP_PASS) {
+              const passVal = parsed.SMTP_PASS || parsed.SMPT_PASS || parsed.pass || parsed.password;
+              if (passVal) {
+                process.env.SMTP_PASS = String(passVal).trim();
+                process.env.SMPT_PASS = String(passVal).trim();
+              }
+            }
+          } catch (_) {}
+        }
       }
     }
-  }
+  } catch (_) {}
 
   envInitialized = true;
   return process.env;
@@ -301,7 +307,7 @@ export function getResolvedSmtpConfig() {
 
   const lowerUser = user.toLowerCase();
 
-  if (!host) {
+  if (!host || !host.includes('.')) {
     if (lowerUser.includes('@yandex') || lowerUser.includes('@ya.ru')) {
       host = 'smtp.yandex.ru';
     } else if (

@@ -74,7 +74,9 @@ export function getSmtpConfig() {
 
 function getMailTransporter(useSsl = true) {
   const { user, pass, host, lowerUser, parsedPort } = getSmtpConfig();
-  const isGmail = host.includes('gmail') || lowerUser.includes('@gmail');
+  const safeHost = String(host || 'smtp.gmail.com').trim();
+  const safeLowerUser = String(lowerUser || '').trim();
+  const isGmail = safeHost.includes('gmail') || safeLowerUser.includes('@gmail');
 
   if (isGmail && !parsedPort) {
     if (useSsl) {
@@ -120,7 +122,7 @@ function getMailTransporter(useSsl = true) {
   const isSecure = (port === 465) || (useSsl && port !== 587);
 
   const transporter = nodemailer.createTransport({
-    host,
+    host: safeHost,
     port,
     secure: isSecure,
     auth: {
@@ -138,7 +140,7 @@ function getMailTransporter(useSsl = true) {
     family: 4,
   });
 
-  return { transporter, user, host, port };
+  return { transporter, user, host: safeHost, port };
 }
 
 export async function sendCode(req, res) {
@@ -274,14 +276,19 @@ export async function sendCode(req, res) {
         }
       };
 
+      let timerId;
       try {
         await Promise.race([
           sendSmtpAttempts(),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Превышено время ожидания ответа почтового сервера (таймаут 6с)')), 6000))
+          new Promise((_, reject) => {
+            timerId = setTimeout(() => reject(new Error('Превышено время ожидания ответа почтового сервера (таймаут 6с)')), 6000);
+          })
         ]);
       } catch (tErr) {
         lastError = tErr;
         console.warn('[COWIO Auth] SMTP deadline reached:', tErr.message);
+      } finally {
+        if (timerId) clearTimeout(timerId);
       }
     } else if (!emailSent && (!user || !pass)) {
       console.warn('[COWIO Auth] SMTP credentials not set in environment (SMTP_USER / SMTP_PASS or SMPT_USER / SMPT_PASS)');
