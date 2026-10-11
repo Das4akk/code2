@@ -1,11 +1,4 @@
 import { setCors } from './_lib/helpers/auth.js';
-import * as customAuthHandler from './_lib/handlers/custom-auth.js';
-import * as videoHandler from './_lib/handlers/video.js';
-import * as authHandler from './_lib/handlers/auth.js';
-import * as adminHandler from './_lib/handlers/admin.js';
-import * as usersHandler from './_lib/handlers/users.js';
-import * as chatHandler from './_lib/handlers/chat.js';
-import * as premiumHandler from './_lib/handlers/premium.js';
 
 export default async function handler(req, res) {
   setCors(req, res);
@@ -78,11 +71,13 @@ export default async function handler(req, res) {
   try {
     // 1. Diagnostics & Health
     if (pathname === '/api/health' || pathname === '/api/diag' || pathname === '/api/custom-auth/diag') {
-      return await customAuthHandler.getDiagnostics(req, res);
+      const { getDiagnostics } = await import('./_lib/handlers/custom-auth.js');
+      return await getDiagnostics(req, res);
     }
 
     // 2. Custom Auth (send-code, verify-code, reset-password, change-email)
     if (pathname.startsWith('/api/custom-auth')) {
+      const customAuthHandler = await import('./_lib/handlers/custom-auth.js');
       const action = getSubAction('/api/custom-auth');
       switch (action) {
         case 'send-code':
@@ -103,11 +98,13 @@ export default async function handler(req, res) {
 
     // 3. Resolve Media
     if (pathname === '/api/resolve-media') {
+      const videoHandler = await import('./_lib/handlers/video.js');
       return await videoHandler.resolveMedia(req, res);
     }
 
     // 4. Video & Library
     if (pathname.startsWith('/api/video') || pathname.startsWith('/api/library')) {
+      const videoHandler = await import('./_lib/handlers/video.js');
       const prefix = pathname.startsWith('/api/video') ? '/api/video' : '/api/library';
       const action = getSubAction(prefix);
       switch (action) {
@@ -129,6 +126,7 @@ export default async function handler(req, res) {
 
     // 5. Auth
     if (pathname.startsWith('/api/auth')) {
+      const authHandler = await import('./_lib/handlers/auth.js');
       const action = getSubAction('/api/auth') || 'check-role';
       switch (action) {
         case 'check-role':
@@ -144,6 +142,7 @@ export default async function handler(req, res) {
 
     // 6. Admin
     if (pathname.startsWith('/api/admin')) {
+      const adminHandler = await import('./_lib/handlers/admin.js');
       const action = getSubAction('/api/admin');
       switch (action) {
         case 'recalc-leaderboard':
@@ -161,6 +160,7 @@ export default async function handler(req, res) {
 
     // 7. Users
     if (pathname.startsWith('/api/users')) {
+      const usersHandler = await import('./_lib/handlers/users.js');
       const action = getSubAction('/api/users') || 'search';
       switch (action) {
         case 'search':
@@ -175,6 +175,7 @@ export default async function handler(req, res) {
 
     // 8. Chat
     if (pathname.startsWith('/api/chat')) {
+      const chatHandler = await import('./_lib/handlers/chat.js');
       const action = getSubAction('/api/chat') || 'send-message';
       switch (action) {
         case 'send-message':
@@ -187,6 +188,7 @@ export default async function handler(req, res) {
 
     // 9. Premium
     if (pathname.startsWith('/api/premium')) {
+      const premiumHandler = await import('./_lib/handlers/premium.js');
       const action = getSubAction('/api/premium');
       switch (action) {
         case 'create-payment':
